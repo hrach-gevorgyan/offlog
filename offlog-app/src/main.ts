@@ -1,10 +1,24 @@
 import { mount } from 'svelte'
 import './app.css'
 import App from './App.svelte'
+import { showError } from './lib/store'
 
 const app = mount(App, {
   target: document.getElementById('app')!,
 })
+
+// Crash recovery net: an uncaught error or rejected promise anywhere in the
+// app would otherwise fail silently (stuck spinner, a click that does
+// nothing) with no signal to the user. Surface it as the existing error
+// toast instead of leaving the UI in an unexplained broken state.
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Unhandled rejection:', e.reason);
+  showError('Something went wrong. Please try again.');
+});
+window.addEventListener('error', (e) => {
+  console.error('Uncaught error:', e.error ?? e.message);
+  showError('Something went wrong. Please try again.');
+});
 
 const isNative = (window as any).Capacitor?.isNativePlatform?.();
 

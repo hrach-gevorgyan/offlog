@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { ProjectDoc, TaskDoc } from './types';
   import { createTask, updateTask, posBetween, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks } from './db';
-  import { reloadTasks } from './store';
+  import { reloadTasks, showError } from './store';
   import CardDetail from './CardDetail.svelte';
 
   export let project: ProjectDoc;
@@ -31,10 +31,14 @@
   async function quickAdd(colId: string) {
     const t = quickAddTitle.trim();
     if (!t) { quickAddCol = null; return; }
-    await createTask(project._id, project.space_id, colId, t);
-    await reloadTasks();
-    quickAddTitle = '';
-    quickAddCol = null;
+    try {
+      await createTask(project._id, project.space_id, colId, t);
+      await reloadTasks();
+      quickAddTitle = '';
+      quickAddCol = null;
+    } catch {
+      showError('Failed to add task. Please try again.');
+    }
   }
 
   // ── Card drag ──────────────────────────────────────────────────────────────
@@ -83,8 +87,12 @@
       newPos = posBetween(before, after);
     }
 
-    await updateTask(dragTask._id!, { column_id: colId, position: newPos });
-    await reloadTasks();
+    try {
+      await updateTask(dragTask._id!, { column_id: colId, position: newPos });
+      await reloadTasks();
+    } catch {
+      showError('Failed to move task. Please try again.');
+    }
     dragTask = null;
     dragOverColId = null;
     dragOverIndex = null;
@@ -122,9 +130,13 @@
     const toIdx   = cols.findIndex(c => c.id === targetColId);
     const [moved] = cols.splice(fromIdx, 1);
     cols.splice(toIdx, 0, moved);
-    const updated = await reorderColumns(project._id, cols);
-    project = updated;
-    dispatch('projectUpdated', updated);
+    try {
+      const updated = await reorderColumns(project._id, cols);
+      project = updated;
+      dispatch('projectUpdated', updated);
+    } catch {
+      showError('Failed to reorder statuses. Please try again.');
+    }
     dragCol = null;
     dragOverCol = null;
   }
@@ -138,9 +150,13 @@
   async function saveColRename(colId: string) {
     const name = editingColName.trim();
     if (name) {
-      const updated = await renameColumn(project._id, colId, name);
-      project = updated;
-      dispatch('projectUpdated', updated);
+      try {
+        const updated = await renameColumn(project._id, colId, name);
+        project = updated;
+        dispatch('projectUpdated', updated);
+      } catch {
+        showError('Failed to rename status. Please try again.');
+      }
     }
     editingColId = null;
   }
@@ -148,10 +164,14 @@
   async function doAddCol() {
     const name = newColName.trim();
     if (!name) { addingCol = false; return; }
-    const updated = await addColumn(project._id, name);
-    project = updated;
-    dispatch('projectUpdated', updated);
-    newColName = '';
+    try {
+      const updated = await addColumn(project._id, name);
+      project = updated;
+      dispatch('projectUpdated', updated);
+      newColName = '';
+    } catch {
+      showError('Failed to add status. Please try again.');
+    }
     addingCol = false;
   }
 
@@ -161,10 +181,14 @@
       ? `Remove column? ${colTasks.length} card(s) will move to the first column.`
       : 'Remove this column?';
     if (!confirm(msg.replace('column', 'status'))) return;
-    const updated = await removeColumn(project._id, colId);
-    project = updated;
-    dispatch('projectUpdated', updated);
-    await reloadTasks();
+    try {
+      const updated = await removeColumn(project._id, colId);
+      project = updated;
+      dispatch('projectUpdated', updated);
+      await reloadTasks();
+    } catch (e: any) {
+      showError(e?.message ?? 'Failed to remove status. Please try again.');
+    }
   }
 
   import { PRIORITY_COLOR, PRIORITY_LABEL_SHORT as PRIORITY_LABEL } from './constants';
@@ -222,8 +246,12 @@
         const after  = colTasks[dragOverIndex]?.position ?? null;
         newPos = posBetween(before, after);
       }
-      await updateTask(touchTask._id!, { column_id: colId, position: newPos });
-      await reloadTasks();
+      try {
+        await updateTask(touchTask._id!, { column_id: colId, position: newPos });
+        await reloadTasks();
+      } catch {
+        showError('Failed to move task. Please try again.');
+      }
     }
     touchTask = null;
     dragTask = null;
@@ -272,8 +300,12 @@
         {#if (tasksByCol[col.id]?.length ?? 0) > 0}
           <button class="col-archive" title="Archive all tasks in this column" on:click={async () => {
             if (!confirm(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`)) return;
-            await archiveColumnTasks(project._id, col.id);
-            await reloadTasks();
+            try {
+              await archiveColumnTasks(project._id, col.id);
+              await reloadTasks();
+            } catch {
+              showError('Failed to archive tasks. Please try again.');
+            }
           }}>
             <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>

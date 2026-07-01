@@ -42,7 +42,8 @@
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; cd \"C:\\\\Users\\\\hrach\\\\Documents\\\\Offlog\\\\offlog-app\\\\android\"; .\\\\gradlew assembleDebug 2>&1 | Select-Object -Last 20)",
       "Bash(xargs grep -l \"setBackgroundColor\\\\|EdgeToEdge\\\\|edge_to_edge\")",
       "Bash(npm run *)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

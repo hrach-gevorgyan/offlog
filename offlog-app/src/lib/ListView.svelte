@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ProjectDoc, TaskDoc } from './types';
   import { updateTask, archiveTask, unarchiveTask, getArchivedTasksForProject } from './db';
-  import { reloadTasks } from './store';
+  import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
   import { dueLabel, dueState, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
@@ -113,8 +113,12 @@
           class:done={task.column_id === lastColId()}
           title="Move to last status"
           on:click|stopPropagation={async () => {
-            await updateTask(task._id!, { column_id: lastColId() });
-            await reloadTasks();
+            try {
+              await updateTask(task._id!, { column_id: lastColId() });
+              await reloadTasks();
+            } catch {
+              showError('Failed to update task. Please try again.');
+            }
           }}
         ></span>
         <span class="task-title">{task.title}{#if task.pinned} <span class="pin-mark"><svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor" stroke="none"><polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/></svg></span>{/if}</span>
@@ -147,9 +151,13 @@
             <span class="task-title archived-title">{task.title}</span>
             <span class="col-name">{colName(task.column_id)}</span>
             <button class="unarchive-btn" on:click={async () => {
-              await unarchiveTask(task._id!);
-              await reloadTasks();
-              archivedTasks = await getArchivedTasksForProject(project._id);
+              try {
+                await unarchiveTask(task._id!);
+                await reloadTasks();
+                archivedTasks = await getArchivedTasksForProject(project._id);
+              } catch {
+                showError('Failed to restore task. Please try again.');
+              }
             }}>Restore</button>
           </div>
         {/each}

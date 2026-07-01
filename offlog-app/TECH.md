@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.7.2 · Local-first task management for browser and Android
+Version 2.9.0 · Local-first task management for browser and Android
 
 ---
 
@@ -19,6 +19,7 @@ Offlog is a personal task management tool built to work exactly the way one pers
 | Local Database | **PouchDB 9** | IndexedDB in browser, speaks CouchDB replication protocol |
 | Sync Server | **CouchDB** | Self-hosted, optional. App works fully offline without it |
 | Mobile Wrapper | **Capacitor 7** | Wraps Vite build into a WebView-based Android APK |
+| Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
 | PWA | **vite-plugin-pwa** (Workbox) | Installable, offline-capable desktop/web app — see below |
 | Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
 | Fonts | Hanken Grotesk + IBM Plex Mono | Sans for UI, mono for timestamps and labels |
@@ -121,6 +122,51 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 
 ---
 
+## Performance & Reliability (v2.9.0)
+
+A pre-3.0 hardening pass — no new user-facing features, just making the existing ones fast and resilient at scale.
+
+### Real database indexing
+
+`pouchdb-find` is a listed dependency, but the global `PouchDB` object (loaded as a UMD script in `index.html`, core-only) never actually had it registered — `db.createIndex`/`db.find` didn't exist on it despite the type references. `db.ts` now imports `pouchdb-find` as an ES module and calls `PouchDB.plugin(PouchDBFind)` against the global constructor before first use.
+
+`getTasksForProject()` — the single hottest read in the app, called on every project switch and every reload — now queries through a real Mango index on `['type', 'project_id']` via `db.find()` instead of scanning every task in the database and filtering in JS. Measured on an isolated 5,000-task synthetic database (never touching the real synced data): **~831ms per full-scan-and-filter query vs. ~90ms via the indexed `find()`** for a single project's tasks — roughly 9x faster, and the gap widens the larger the total task count grows, since the old approach re-scanned *every* task in the database on *every* call regardless of which project was asked for.
+
+**Bug caught during that same benchmark**: `pouchdb-find`'s `db.find()` silently defaults to a **25-result limit** when none is specified. Without an explicit `limit: 100000` in the query, any project past 25 tasks would have had its later tasks silently vanish from the board. Caught by comparing result counts against the old full-scan implementation during benchmarking — not from any user report — before it shipped.
+
+### In-memory task cache
+
+Cross-cutting reads — global search, the Dashboard, the Agenda, tag autocomplete — all need *every* task in the database, not just one project's, so an index can't reduce that to less than a full scan. `getAllTasksRaw()` in `db.ts` caches that full scan in memory and every one of those functions now reads from it instead of re-querying and re-parsing IndexedDB on every call (previously: every keystroke in Global Search re-ran a full `allDocs` scan).
+
+Invalidation is centralized in `subscribe()` — the same function every live sync change and local reload already flows through — plus directly inside every task-writing function (`createTask`, `updateTask`, `duplicateTask`, `unarchiveTask`, `undoDelete`, `deleteProject`, `wipeAndReseed`, `importJSON`) as a safety net against any read-after-write race where a cached read could otherwise run before the async live-changes listener has invalidated it.
+
+### Reduced redundant renders
+
+- `store.ts`'s `activeProjectId` subscription used to independently re-fetch and set `tasks` on every project switch *and* skip-fire once immediately on module load (duplicating what `init()`'s own `reload()` already does moments later). Simplified to reuse the existing `reloadTasks()` helper and skip that redundant first firing.
+- Fixed a stray `syncState.listeners` subscription in `Sidebar.svelte` that was never cleaned up on unmount (harmless in practice since the sidebar is a permanent singleton, but incorrect hygiene that would leak on any future refactor that could remount it).
+- Removed a leftover dynamic `import('../lib/db')` in `Sidebar.svelte`'s `exportJSON()` — `db` is already statically imported everywhere else in the file, so the dynamic import only existed to trigger Vite's `INEFFECTIVE_DYNAMIC_IMPORT` warning on every build for no benefit.
+
+### Crash recovery & error handling
+
+- `App.svelte`'s `onMount` now wraps `init()` in a try/catch. If startup fails (corrupted IndexedDB, storage quota exceeded, etc.) the app shows a dedicated recovery screen with the error message and a Retry button instead of hanging on "Loading…" forever with no explanation.
+- `main.ts` registers `window.addEventListener('unhandledrejection'/'error', ...)` as a last-resort net — any error that would otherwise fail silently (a click that does nothing, a promise rejection nobody awaited) now at least surfaces the existing red error toast instead of leaving the UI in an unexplained broken state.
+- Audited every remaining task-mutating call site without error handling (several in `KanbanBoard.svelte`: quick-add, card drag-drop, column rename/add/remove/reorder, archive-column, touch drag; a couple in `ListView.svelte` and `DeadlinesView.svelte`'s "mark done"; `Sidebar.svelte`'s create/delete project and export) and wrapped each in try/catch + `showError()`, consistent with the pattern already used in `CardDetail.svelte`.
+
+### Database integrity checker + repair utility
+
+New in `db.ts`: `checkIntegrity()` scans every document and reports:
+- orphaned projects (pointing to a missing space)
+- orphaned tasks (pointing to a missing project)
+- tasks referencing a status/column id that no longer exists on their project
+- projects with zero statuses (flagged for manual review only — inventing default statuses for a project the user configured a specific way would be too destructive to do silently)
+- unresolved sync conflicts (documents with `_conflicts`)
+
+`repairDatabase()` applies safe, well-understood fixes for everything except the zero-statuses case: orphaned tasks/projects get reassigned to the Unsorted space (or archived if even that's missing), invalid status references reset to the project's first status, and conflicts are resolved by removing the losing revisions.
+
+Both are exposed as **Check Database** / **Repair Issues** buttons in a new Maintenance section of Settings (`Sidebar.svelte`) — report only by default, repair requires an explicit confirm.
+
+---
+
 ## Shared Utilities  (`utils.ts`)
 
 All date-formatting and filter logic is centralized here — no duplication across views:
@@ -141,9 +187,18 @@ All date-formatting and filter logic is centralized here — no duplication acro
 1. `startSync()` in `db.ts` starts a **live bidirectional PouchDB sync** with CouchDB
 2. Any local write replicates to CouchDB immediately
 3. Any remote change fires a PouchDB `.changes()` event → `store.ts` reloads all data
-4. Conflicts: PouchDB default "last write wins" — sufficient for single-user use
-5. The app works fully offline; sync resumes automatically on reconnect
-6. Sync URL is set in the sidebar settings panel and stored in `localStorage`
+4. The app works fully offline; sync resumes automatically on reconnect
+5. Sync URL is set in the sidebar settings panel and stored in `localStorage`
+
+### Sync reliability (v2.8.0)
+
+`syncState` in `db.ts` tracks more than just idle/syncing/error:
+
+- **`lastSynced` persists across restarts** — written to `localStorage` (`offlog_last_synced`) on every successful sync, hydrated on module load. Previously this was in-memory only, so the sidebar showed "Not synced yet" after every app restart even if the last sync had succeeded moments before closing.
+- **Real offline detection** — `window.addEventListener('online'/'offline', ...)` sets a dedicated `'offline'` status, distinct from `'error'`. When a sync error occurs while `navigator.onLine` is false, it's reported as offline rather than a misleading server/auth error (which is what it would otherwise look like). Coming back online immediately triggers `syncNow()`.
+- **Human-readable errors** — `describeSyncError()` maps raw PouchDB/fetch errors (401/403, 404, network failures) to short, actionable text instead of a raw `Error: ...` object dump.
+- **Retry count** — `syncState.retryCount` increments on each consecutive sync error (PouchDB's own `retry: true` already retries automatically; this just surfaces how many attempts have failed so far in the sidebar, e.g. "Cannot reach sync server (retry 3)").
+- **Conflict reporting** — `scanConflicts()` runs after every successful sync via `db.allDocs({ conflicts: true })`, counting documents with unresolved conflicting revisions. Surfaced as a small warning badge in the sidebar when count > 0. This is *reporting only* — no resolution UI, by design (kept out of scope; PouchDB's default deterministic "last write wins" conflict resolution still applies underneath).
 
 ---
 
@@ -176,6 +231,42 @@ Priority colors (`constants.ts`) moved from muted grays/ochres to saturated Tail
 ## View Persistence
 
 The last active view is saved to `localStorage` key `offlog_view` as `{ view: 'dashboard' | 'agenda' | 'project', projectId }`. On load, `App.svelte` restores it. Active space/project IDs are also saved separately so the sidebar highlights the right item.
+
+---
+
+## Notifications (v2.8.0)
+
+`src/lib/notifications.ts` is a single module handling both platforms, kept deliberately decoupled from `db.ts` in one direction only (`notifications.ts` imports `db.ts` for the reschedule query; `db.ts` never imports `notifications.ts`, avoiding any circular-import risk).
+
+### Reminder field
+
+`TaskDoc.reminder_at: string | null` — an absolute ISO timestamp, independent of `due_date`. Set via a `datetime-local` input in `CardDetail.svelte`; converted to/from local time explicitly (not `toISOString().slice(0,16)`, which would silently shift the displayed time to UTC) via a small `isoToLocalInput()` helper.
+
+### Scheduling model: cancel-all-then-reschedule-from-scratch
+
+Rather than tracking every individual create/update/delete/complete call site, `rescheduleAll()` is called once from `store.ts`'s `reload()` — which already runs after every local mutation and every incoming sync change. Each call:
+
+1. Fetches all active (non-deleted, non-archived, not-in-last-column) tasks with a future `reminder_at` via `getAllActiveTasksWithReminders()` in `db.ts`
+2. Cancels everything currently scheduled
+3. Re-schedules from that fresh list
+
+This is simple and self-healing — a task that's completed, deleted, archived, or has its reminder cleared just stops appearing in the query, so its notification is naturally cancelled on the next reload without any special-casing at the UI layer. At personal-task-manager scale (dozens to low hundreds of tasks) this is cheap enough to not need finer-grained diffing.
+
+### Native (Android) — genuinely fires while fully closed
+
+Uses `@capacitor/local-notifications`, which hands scheduling off to the OS (`AlarmManager`), so reminders fire even if the app process isn't running. Task ids (strings) are hashed to a deterministic 32-bit integer (`numericId()`) since the plugin requires numeric notification ids. Clicking a notification fires `localNotificationActionPerformed`, which sets `pendingOpenTaskId` — `App.svelte` watches this store and opens `CardDetail` for that task via `getTaskById()` + a lookup in the already-loaded `projects` store.
+
+Requires `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and `RECEIVE_BOOT_COMPLETED` in `AndroidManifest.xml` (added in this version).
+
+### Web — best-effort, not a substitute for a push server
+
+There is no push backend behind this app, so genuinely-closed-browser notifications aren't possible on web without one (a deliberate scope decision — this app is local-first with an optional self-hosted CouchDB, not a hosted service that could run a push relay). What's implemented instead:
+
+- **`setTimeout`-based scheduling** while the tab/PWA process is alive (covers the common case of leaving the app open or installed and running in the background)
+- **Catch-up on load** — `catchUpWeb()` fires notifications immediately for any reminder that became due within the last hour while the app was closed, so a missed reminder isn't silently lost forever, just delayed until next open
+- Clicking a web notification focuses the window and sets the same `pendingOpenTaskId` store used by the native path
+
+Notification permission is requested lazily — either from the inline hint shown in `CardDetail` when a reminder is set but permission isn't granted yet, or from the new **Notifications** section in Settings (`Sidebar.svelte`), never proactively on app load.
 
 ---
 
@@ -230,7 +321,8 @@ cd android && .\gradlew assembleDebug
 | Area | Note |
 |---|---|
 | Undo buffer | In-memory only — lost on page refresh |
-| Conflict resolution | Last-write-wins — fine for single user, not multi-user |
+| Conflict resolution | Last-write-wins by default; v2.8.0 adds *reporting* (conflict count in sidebar) but no resolution UI — by design, out of scope |
+| Web notifications while fully closed | Not possible without a push server, which this app deliberately doesn't have. Best-effort: fires while the tab/PWA is running, plus a 1-hour catch-up window on next open. Android has genuine closed-app notifications via native OS scheduling |
 | No Kanban filter | Search/filter only available in List and Table views (by design — not planned) |
 | No bulk actions | No multi-select / bulk move or delete (not planned) |
 | No recurring tasks | Not planned |
@@ -243,7 +335,9 @@ cd android && .\gradlew assembleDebug
 
 | Version | Changes |
 |---|---|
-| **2.7.2** | Fixed the Agenda "badge-count" (task count next to OVERDUE/THIS WEEK/LATER labels) rendering invisible — `background: currentColor` on `.badge-count` always reads the *element's own* `color` property, which the same rule also set to `var(--surface)` (white), so the pill was white-on-white regardless of the parent label's intended color. Each label variant now gets an explicit `background` (`.overdue-label .badge-count`, etc.) instead of relying on `currentColor`. Also fixed "Mark done" (the circle next to each Agenda task) appearing to do nothing: `getAllTasksDue()` in `db.ts` returned every task with a due date regardless of whether it was already sitting in its project's last ("Completed") column, so clicking mark-done correctly moved the task there in the database, but it never left the Agenda list — zero visible feedback. The query now fetches projects, resolves each task's last-column ID, and excludes already-completed tasks (also now excludes archived tasks, which it hadn't before). Additionally, the service worker's default update check only runs on a fresh navigation — an installed PWA that's brought back to the foreground without being fully closed first can sit on a stale cached build. Added a `visibilitychange` listener in `main.ts` that calls the update-check function whenever the tab/app regains focus, so new builds are picked up without requiring a manual close-and-reopen |
+| **2.9.0** | Pre-3.0 hardening pass — see Performance & Reliability section above. Real `pouchdb-find` indexing (the plugin was never actually registered against the global PouchDB, despite being a dependency — found and fixed), an in-memory task cache invalidated centrally, a caught-before-shipping `db.find()` default-25-result-limit bug, crash recovery (App.svelte error boundary + global unhandled-rejection net), error handling audited and filled in across every remaining unguarded mutation, and a new database integrity checker + repair utility in Settings. Also cleaned up several leftover test-data cards that earlier notification testing had accidentally left in the real synced database, and fixed a Dashboard bug where `DashboardView.svelte`'s `.task-proj` project-name badge had no `max-width` — a long project name (e.g. "Just testing purpose") could squeeze the flexible `.task-title` down to near-zero width in the narrow 320px right column, making the task's actual title invisible and the project name look like it had taken its place |
+| 2.8.0 | **Notifications**: new `reminder_at` field on tasks (independent of `due_date`), set via a `datetime-local` picker in CardDetail. Android uses `@capacitor/local-notifications` — fires even while the app is fully closed, via native OS scheduling. Web uses the Notification API with `setTimeout` scheduling (best-effort, requires the tab/PWA to be running) plus a 1-hour catch-up check on load for reminders missed while closed. Clicking a notification opens the task via a new `pendingOpenTaskId` store. Scheduling uses a simple cancel-all-then-reschedule-from-scratch model on every store reload rather than tracking individual mutation sites — see Notifications section above. **Sync reliability**: `lastSynced` now persists across app restarts (was in-memory only), real offline detection via `navigator.onLine` + online/offline events (distinct from generic sync errors), human-readable error messages instead of raw error dumps, a visible retry-attempt count, and conflict-count reporting in the sidebar (reporting only, no resolution UI) |
+| 2.7.2 | Fixed the Agenda "badge-count" (task count next to OVERDUE/THIS WEEK/LATER labels) rendering invisible — `background: currentColor` on `.badge-count` always reads the *element's own* `color` property, which the same rule also set to `var(--surface)` (white), so the pill was white-on-white regardless of the parent label's intended color. Each label variant now gets an explicit `background` (`.overdue-label .badge-count`, etc.) instead of relying on `currentColor`. Also fixed "Mark done" (the circle next to each Agenda task) appearing to do nothing: `getAllTasksDue()` in `db.ts` returned every task with a due date regardless of whether it was already sitting in its project's last ("Completed") column, so clicking mark-done correctly moved the task there in the database, but it never left the Agenda list — zero visible feedback. The query now fetches projects, resolves each task's last-column ID, and excludes already-completed tasks (also now excludes archived tasks, which it hadn't before). Additionally, the service worker's default update check only runs on a fresh navigation — an installed PWA that's brought back to the foreground without being fully closed first can sit on a stale cached build. Added a `visibilitychange` listener in `main.ts` that calls the update-check function whenever the tab/app regains focus, so new builds are picked up without requiring a manual close-and-reopen |
 | 2.7.1 | Fixed inconsistent mobile header layout: Dashboard and Agenda rendered the hamburger menu in its own near-empty row above the title (via a wrapper in `App.svelte`), while the project/Kanban view has always shown hamburger + title inline in one compact row. Moved the hamburger button into `DashboardView.svelte` and `DeadlinesView.svelte` themselves (dispatching a `menu` event that `App.svelte` listens for), matching the project view's header pattern exactly. Also fixed a card-overlap bug on Dashboard surfaced by testing at narrow widths: `.project-grid`'s `grid-auto-rows: 130px` was a hard fixed height, so a card whose stats wrapped to two lines (task count + overdue badge) had its text overflow and overlap the title above; changed to `minmax(130px, auto)` |
 | 2.7.0 | Added PWA support via `vite-plugin-pwa` — installable web app manifest + Workbox service worker precaching the app shell (JS/CSS/HTML/icons) for full offline use on desktop. Service worker registration is manual and web-only (skipped entirely on Android, where Capacitor already bundles assets natively); see PWA section above for the reasoning |
 | 2.6.5 | Fixed the real cause of the "gray hover" over Changelog — reported on both PC and mobile. It was a z-index bug from the v2.4.1 `.scrim` consolidation: the shared global `.scrim` class (app.css) is `z-index: 400`, but `ChangelogView`'s own `.panel` was left at `z-index: 301` — *below* the scrim — so the semi-transparent dark overlay rendered on top of the panel, dimming/graying its content. Bumped to `z-index: 402` (matching the pattern used by `GlobalSearch` at 401 and `QuickAdd` at 501, both already correctly above the scrim) |

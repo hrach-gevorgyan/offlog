@@ -2,8 +2,9 @@ import { writable, derived, get } from 'svelte/store';
 import type { SpaceDoc, ProjectDoc, TaskDoc } from './types';
 import {
   getSpaces, getProjects, getTasksForProject,
-  seedIfEmpty, startSync, subscribe,
+  seedIfEmpty, startSync, subscribe, initIndexes,
 } from './db';
+import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
 
 export const modalOpen = writable(false);
 export const errorToast = writable<string>('');
@@ -42,6 +43,7 @@ async function reload() {
   projects.set(await getProjects());
   const $projectId = get(activeProjectId);
   tasks.set(await getTasksForProject($projectId));
+  rescheduleAll().catch(() => {});
 }
 
 export async function reloadTasks() {
@@ -50,12 +52,20 @@ export async function reloadTasks() {
 }
 
 export async function init() {
+  await initIndexes();
   await seedIfEmpty();
   await reload();
   startSync();
   subscribe(() => reload());
+  checkPermission();
+  initNotificationListeners().catch(() => {});
 }
 
-activeProjectId.subscribe(async (id) => {
-  tasks.set(await getTasksForProject(id));
+// Switching the active project needs its own trigger (reload() only runs
+// on init + live db changes, not on plain navigation) — reuses the same
+// fetch as reload() instead of duplicating it inline.
+let _initialized = false;
+activeProjectId.subscribe(() => {
+  if (!_initialized) { _initialized = true; return; } // skip the initial firing; init() already loads it
+  reloadTasks();
 });

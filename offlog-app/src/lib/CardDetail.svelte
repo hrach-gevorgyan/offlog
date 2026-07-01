@@ -3,16 +3,24 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, getLogsForTask, duplicateTask } from './db';
   import { reloadTasks, showError, modalOpen } from './store';
+  import { requestPermission, permissionState } from './notifications';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
+  function isoToLocalInput(iso: string): string {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   let title = task.title;
   let body = task.body;
   let priority = task.priority;
   let due_date = task.due_date ?? '';
+  let reminder_at = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
@@ -32,7 +40,7 @@
   }
 
   const ACTION_COLOR: Record<string, string> = { create: '#4ade80', update: '#5d9bff', move: '#d99a3b', delete: '#f87171' };
-  const FIELD_LABEL: Record<string, string> = { title: 'Title', body: 'Notes', priority: 'Priority', due_date: 'Due date', tags: 'Tags', column_id: 'Status', pinned: 'Pinned', archived: 'Archived' };
+  const FIELD_LABEL: Record<string, string> = { title: 'Title', body: 'Notes', priority: 'Priority', due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags', column_id: 'Status', pinned: 'Pinned', archived: 'Archived' };
   const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
   function fmtLogVal(field: string, val: any): string {
@@ -82,6 +90,7 @@
         title, body,
         priority: priority as 1 | 2 | 3,
         due_date: due_date || null,
+        reminder_at: reminder_at ? new Date(reminder_at).toISOString() : null,
         column_id, tags, pinned,
       });
       await reloadTasks();
@@ -151,7 +160,24 @@
         Due date
         <input type="date" bind:value={due_date} />
       </label>
+
+      <label>
+        Reminder
+        <input type="datetime-local" bind:value={reminder_at} />
+      </label>
     </div>
+
+    {#if reminder_at && $permissionState !== 'granted'}
+      <div class="reminder-hint">
+        {#if $permissionState === 'unsupported'}
+          Notifications aren't supported in this browser.
+        {:else}
+          Notifications aren't enabled yet —
+          <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
+          so this reminder can actually notify you.
+        {/if}
+      </div>
+    {/if}
 
     <div class="tags-field">
       <span class="field-label">Tags</span>
@@ -284,12 +310,23 @@
     font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
     text-transform: uppercase; color: var(--faint);
   }
-  select, input[type=date] {
+  select, input[type=date], input[type=datetime-local] {
     padding: .5rem .6rem; border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
     font-size: .9rem; font-family: 'Hanken Grotesk', sans-serif;
   }
-  select:focus, input[type=date]:focus { outline: none; border-color: var(--accent); }
+  select:focus, input[type=date]:focus, input[type=datetime-local]:focus { outline: none; border-color: var(--accent); }
+
+  .reminder-hint {
+    font-size: .78rem; color: var(--faint); line-height: 1.4;
+    background: var(--col-bg); border-radius: var(--radius-sm);
+    padding: .5rem .65rem; margin-top: -.4rem;
+  }
+  .reminder-enable-btn {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--accent); font-weight: 600; font-size: inherit;
+    text-decoration: underline;
+  }
   .tags-field { display: flex; flex-direction: column; gap: .3rem; }
   .field-label {
     font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;

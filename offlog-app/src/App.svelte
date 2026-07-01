@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
-  import { updateProject, subscribeUndo, getUndoBuffer, undoDelete } from './lib/db';
+  import { updateProject, subscribeUndo, getUndoBuffer, undoDelete, getTaskById } from './lib/db';
+  import { pendingOpenTaskId } from './lib/notifications';
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
   import ListView from './lib/ListView.svelte';
@@ -14,6 +15,7 @@
   import QuickAdd from './lib/QuickAdd.svelte';
 
   let ready = false;
+  let initError: string | null = null;
   let showDeadlines = false;
   let showDashboard = true;
   let sidebarOpen = false;
@@ -52,6 +54,18 @@
     await reloadTasks();
   }
 
+  async function openFromNotification(taskId: string) {
+    const task = await getTaskById(taskId);
+    const proj = task ? $projects.find(p => p._id === task.project_id) ?? null : null;
+    if (task && proj) {
+      searchDetailTask = task;
+      searchDetailProject = proj;
+    }
+    pendingOpenTaskId.set(null);
+  }
+
+  $: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);
+
   function onKeydown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); showSearch = true; }
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); showQuickAdd = true; }
@@ -59,7 +73,12 @@
 
   onMount(async () => {
     if (localStorage.getItem('dark')) document.body.classList.add('dark');
-    await init();
+    try {
+      await init();
+    } catch (e: any) {
+      initError = e?.message ?? 'The app failed to start.';
+      return;
+    }
     // Restore last view
     try {
       const saved = JSON.parse(localStorage.getItem('offlog_view') ?? '{}');
@@ -73,6 +92,8 @@
     ready = true;
     subscribeUndo(showUndoToast);
   });
+
+  function retryInit() { location.reload(); }
 
   type View = 'kanban' | 'list' | 'table';
   $: currentView = ($activeProject?.default_view ?? 'kanban') as View;
@@ -189,6 +210,13 @@
         </div>
       {/if}
     </main>
+  </div>
+{:else if initError}
+  <div class="crash-recovery">
+    <h2>Offlog couldn't start</h2>
+    <p class="crash-msg">{initError}</p>
+    <p class="crash-hint">This usually clears up on a retry. If it keeps happening, your local database may need repair — try Export JSON as a backup from a working session first if possible.</p>
+    <button class="retry-btn" on:click={retryInit}>Retry</button>
   </div>
 {:else}
   <div class="loading">Loading…</div>
@@ -329,6 +357,20 @@
     display: flex; align-items: center; justify-content: center;
     height: 100dvh; color: var(--faint);
     font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
+  }
+
+  .crash-recovery {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100dvh; padding: 24px; text-align: center; gap: 10px;
+    background: var(--bg); color: var(--text);
+  }
+  .crash-recovery h2 { margin: 0; font-size: 18px; }
+  .crash-msg { color: var(--danger); font-size: 13px; max-width: 380px; }
+  .crash-hint { color: var(--faint); font-size: 12.5px; max-width: 380px; line-height: 1.5; }
+  .retry-btn {
+    margin-top: 8px; padding: 8px 20px; border-radius: var(--radius-sm);
+    border: 1px solid var(--text); background: var(--text); color: var(--bg);
+    cursor: pointer; font-size: 13px; font-weight: 600;
   }
 
   /* ── FAB ── */

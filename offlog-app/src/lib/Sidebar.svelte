@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { spaces, projects, activeSpaceId, activeProjectId } from './store';
-  import { createProject, deleteProject, syncState, syncNow, importJSON } from './db';
+  import { spaces, projects, activeSpaceId, activeProjectId, showError } from './store';
+  import db, { createProject, deleteProject, syncState, syncNow, importJSON, checkIntegrity, repairDatabase, type IntegrityIssue } from './db';
   import { getSyncUrl, setSyncUrl } from '../config';
   import { derived } from 'svelte/store';
   import ChangelogView from './ChangelogView.svelte';
+  import { requestPermission, permissionState } from './notifications';
 
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let showDeadlines = false;
@@ -17,6 +18,9 @@
   let syncUrl = getSyncUrl();
   let syncStatus = syncState.status;
   let lastSynced = syncState.lastSynced;
+  let syncError = syncState.error;
+  let retryCount = syncState.retryCount;
+  let conflictCount = syncState.conflictCount;
   let newProjectName = '';
   let addingProject = false;
   let storageInfo = '';
@@ -54,14 +58,17 @@
   }
 
   async function exportJSON() {
-    const db = (await import('../lib/db')).default;
-    const all = await db.allDocs({ include_docs: true });
-    const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
-    const blob = new Blob([JSON.stringify(docs, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `offlog-backup-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
+    try {
+      const all = await db.allDocs({ include_docs: true });
+      const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+      const blob = new Blob([JSON.stringify(docs, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `offlog-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    } catch {
+      showError('Failed to export backup. Please try again.');
+    }
   }
 
   async function loadStorage() {
@@ -71,10 +78,53 @@
     } else { storageInfo = 'Not available'; }
   }
 
-  syncState.listeners.add(() => {
+  function onSyncChange() {
     syncStatus = syncState.status;
     lastSynced = syncState.lastSynced;
-  });
+    syncError = syncState.error;
+    retryCount = syncState.retryCount;
+    conflictCount = syncState.conflictCount;
+  }
+  syncState.listeners.add(onSyncChange);
+  onDestroy(() => syncState.listeners.delete(onSyncChange));
+
+  // ── Maintenance: integrity check + repair ──────────────────────────────────
+  let integrityReport: { issues: IntegrityIssue[]; checked: number } | null = null;
+  let checkingIntegrity = false;
+  let repairing = false;
+
+  async function runIntegrityCheck() {
+    checkingIntegrity = true;
+    try {
+      integrityReport = await checkIntegrity();
+    } catch {
+      showError('Failed to check database. Please try again.');
+    } finally {
+      checkingIntegrity = false;
+    }
+  }
+
+  let repairStatus = '';
+  async function runRepair() {
+    if (!confirm('Repair detected issues? This reassigns orphaned tasks/projects to Unsorted and resolves sync conflicts by keeping the current winning version.')) return;
+    repairing = true;
+    try {
+      const { fixed, skipped } = await repairDatabase();
+      integrityReport = await checkIntegrity();
+      repairStatus = `Repaired ${fixed} issue${fixed === 1 ? '' : 's'}${skipped ? `, ${skipped} skipped` : ''}.`;
+      setTimeout(() => { repairStatus = ''; }, 5000);
+    } catch {
+      showError('Repair failed. Please try again.');
+    } finally {
+      repairing = false;
+    }
+  }
+
+  function fmtLastSynced(ts: string): string {
+    const d = new Date(ts);
+    const sameDay = d.toDateString() === new Date().toDateString();
+    return sameDay ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString();
+  }
 
   const spaceProjects = derived([projects, activeSpaceId], ([$p, $sid]) =>
     $p.filter(p => p.space_id === $sid)
@@ -83,15 +133,23 @@
   async function doAddProject() {
     const name = newProjectName.trim();
     if (!name) { addingProject = false; return; }
-    await createProject($activeSpaceId, name);
-    newProjectName = '';
+    try {
+      await createProject($activeSpaceId, name);
+      newProjectName = '';
+    } catch {
+      showError('Failed to create project. Please try again.');
+    }
     addingProject = false;
   }
 
   async function doDeleteProject(id: string, name: string) {
     if (!confirm(`Delete project "${name}" and all its tasks?`)) return;
-    await deleteProject(id);
-    if ($activeProjectId === id) activeProjectId.set('');
+    try {
+      await deleteProject(id);
+      if ($activeProjectId === id) activeProjectId.set('');
+    } catch {
+      showError('Failed to delete project. Please try again.');
+    }
   }
 
   function saveSettings() { setSyncUrl(syncUrl); showSettings = false; location.reload(); }
@@ -190,16 +248,27 @@
   </div>
 
   <div class="bottom">
-    <div class="sync-row">
-      <span class="sync-indicator" class:active={syncStatus === 'syncing'} class:error={syncStatus === 'error'}></span>
+    <div class="sync-row" title={syncError ?? ''}>
+      <span
+        class="sync-indicator"
+        class:active={syncStatus === 'syncing'}
+        class:error={syncStatus === 'error'}
+        class:offline={syncStatus === 'offline'}
+      ></span>
       <span class="sync-label">
-        {#if syncStatus === 'syncing'}Syncing…
-        {:else if syncStatus === 'error'}Sync error
-        {:else if lastSynced}Synced {new Date(lastSynced).toLocaleTimeString()}
+        {#if syncStatus === 'offline'}Offline — will retry when back online
+        {:else if syncStatus === 'syncing'}Syncing…
+        {:else if syncStatus === 'error'}{syncError ?? 'Sync error'}{retryCount > 1 ? ` (retry ${retryCount})` : ''}
+        {:else if lastSynced}Synced {fmtLastSynced(lastSynced)}
         {:else}Not synced yet{/if}
       </span>
-      <button class="sync-now-btn" on:click={syncNow}>↻</button>
+      <button class="sync-now-btn" on:click={syncNow} title="Sync now">↻</button>
     </div>
+    {#if conflictCount > 0}
+      <div class="conflict-warning" title="Documents with unresolved sync conflicts">
+        ⚠ {conflictCount} sync conflict{conflictCount === 1 ? '' : 's'}
+      </div>
+    {/if}
     <button class="settings-btn" on:click={() => { showChangelog = true; dispatch('navigate'); }}>↩ Changelog</button>
     <button class="settings-btn" on:click={() => { openSettings(); dispatch('navigate'); }}>⚙ Settings</button>
   </div>
@@ -223,6 +292,21 @@
       </div>
 
       <div class="setting-group">
+        <div class="setting-section-title">Notifications</div>
+        <div class="setting-row">
+          <span class="setting-label">
+            {#if $permissionState === 'granted'}Enabled — task reminders will notify you
+            {:else if $permissionState === 'denied'}Blocked — allow notifications for this site in your browser settings
+            {:else if $permissionState === 'unsupported'}Not supported in this browser
+            {:else}Not enabled yet{/if}
+          </span>
+          {#if $permissionState !== 'granted' && $permissionState !== 'unsupported'}
+            <button class="export-btn" on:click={() => requestPermission()}>Enable</button>
+          {/if}
+        </div>
+      </div>
+
+      <div class="setting-group">
         <div class="setting-section-title">Sync</div>
         <label>
           CouchDB URL
@@ -240,6 +324,32 @@
           <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
           <button class="export-btn" on:click={handleImport}>Import JSON</button>
         </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-section-title">Maintenance</div>
+        <div class="setting-row">
+          <span class="storage-info" style="color: var(--muted)">
+            {#if checkingIntegrity}Checking…
+            {:else if integrityReport}{integrityReport.issues.length === 0 ? `No issues found (${integrityReport.checked} docs checked)` : `${integrityReport.issues.length} issue${integrityReport.issues.length === 1 ? '' : 's'} found`}
+            {:else}Verify database consistency{/if}
+          </span>
+          <button class="export-btn" on:click={runIntegrityCheck} disabled={checkingIntegrity}>Check Database</button>
+        </div>
+        {#if integrityReport && integrityReport.issues.length > 0}
+          <div class="integrity-list">
+            {#each integrityReport.issues.slice(0, 8) as issue}
+              <div class="integrity-row">{issue.description}</div>
+            {/each}
+            {#if integrityReport.issues.length > 8}
+              <div class="integrity-row">…and {integrityReport.issues.length - 8} more</div>
+            {/if}
+          </div>
+          <div class="setting-row">
+            <span class="storage-info" style="color: var(--muted)">{repairStatus}</span>
+            <button class="export-btn" on:click={runRepair} disabled={repairing}>{repairing ? 'Repairing…' : 'Repair Issues'}</button>
+          </div>
+        {/if}
       </div>
 
       <div class="settings-actions">
@@ -381,7 +491,15 @@
   }
   .sync-indicator.active { background: var(--accent); box-shadow: 0 0 0 3px rgba(93,155,255,.16); }
   .sync-indicator.error  { background: var(--danger); box-shadow: 0 0 0 3px rgba(248,113,113,.16); }
-  .sync-label { font-size: .74rem; color: var(--muted); flex: 1; font-weight: 500; }
+  .sync-indicator.offline { background: var(--faint); box-shadow: 0 0 0 3px rgba(77,83,112,.16); }
+  .sync-label {
+    font-size: .74rem; color: var(--muted); flex: 1; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .conflict-warning {
+    font-size: .72rem; color: var(--due-soon-ink); background: var(--due-soon-bg);
+    border-radius: var(--radius-sm); padding: .35rem .6rem; font-weight: 600;
+  }
   .sync-now-btn { background: none; border: none; cursor: pointer; font-size: .95rem; color: var(--faint); padding: 0; transition: color .12s; }
   .sync-now-btn:hover { color: var(--text); }
 
@@ -473,6 +591,14 @@
     white-space: nowrap;
   }
   .export-btn:hover { background: var(--hover); }
+  .export-btn:disabled { opacity: .5; cursor: default; }
+
+  .integrity-list {
+    display: flex; flex-direction: column; gap: 3px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: .5rem .65rem; max-height: 140px; overflow-y: auto;
+  }
+  .integrity-row { font-size: .74rem; color: var(--muted); line-height: 1.4; }
 
   @media (max-width: 768px) {
     .proj-delete-btn { opacity: .7; }

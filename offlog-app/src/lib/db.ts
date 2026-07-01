@@ -1,11 +1,56 @@
-// PouchDB is loaded as a UMD global via index.html <script src="/pouchdb.js">
+// PouchDB core is loaded as a UMD global via index.html <script src="/pouchdb.js">
+// — that bundle is core-only and does NOT include pouchdb-find (createIndex/
+// find), despite pouchdb-find being a project dependency and its types being
+// referenced. Register it as a real plugin against the global constructor;
+// without this, db.createIndex()/db.find() below would silently do nothing
+// useful (createIndex no-ops, find() throws) since the methods don't exist.
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
+import PouchDBFind from 'pouchdb-find';
 import { getSyncUrl, COUCH_USER, COUCH_PASS } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source } from './types';
 
+(PouchDB as any).plugin(PouchDBFind);
+
 const SOURCE: Source = (window as any).Capacitor?.getPlatform() === 'android' ? 'mobile' : 'pc';
 const db = new PouchDB('offlog');
+
+// ── Indexes ───────────────────────────────────────────────────────────────────
+// Mango indexes for pouchdb-find. getTasksForProject is the hottest path in
+// the app (runs on every project switch and every reload), so it queries
+// through this index instead of scanning every task doc and filtering in JS.
+let _indexesReady: Promise<void> | null = null;
+export function initIndexes(): Promise<void> {
+  if (_indexesReady) return _indexesReady;
+  _indexesReady = (async () => {
+    try {
+      await db.createIndex({ index: { fields: ['type', 'project_id'] }, ddoc: 'idx-type-project' });
+      await db.createIndex({ index: { fields: ['type', 'ref'] }, ddoc: 'idx-type-ref' });
+    } catch {
+      // Index creation failing (e.g. unsupported adapter) shouldn't break
+      // the app — queries fall back to their allDocs equivalents, just slower.
+    }
+  })();
+  return _indexesReady;
+}
+
+// ── In-memory task cache ──────────────────────────────────────────────────────
+// Cross-cutting reads (search, agenda, dashboard, tags) all need every task
+// in the database, not just one project's — an index can't reduce that to
+// less than a full scan. Caching the full task list avoids re-reading and
+// re-parsing every task doc from IndexedDB on every keystroke/search/reload.
+// Invalidated centrally in subscribe() below, the single point through which
+// every local write and every incoming sync change already flows.
+let _taskCache: TaskDoc[] | null = null;
+
+async function getAllTasksRaw(): Promise<TaskDoc[]> {
+  if (_taskCache) return _taskCache;
+  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
+  _taskCache = r.rows.map(r => r.doc!);
+  return _taskCache;
+}
+
+export function invalidateTaskCache(): void { _taskCache = null; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,8 +101,8 @@ export async function getLogsForTask(taskId: string): Promise<any[]> {
 
 export async function getDashboardData() {
   const [allProjects, allSpaces] = await Promise.all([getProjects(), getSpaces()]);
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  const tasks = r.rows.map(r => r.doc!).filter(d => !d.deleted && !d.archived);
+  const all = await getAllTasksRaw();
+  const tasks = all.filter(d => !d.deleted && !d.archived);
   const today = new Date().toISOString().slice(0, 10);
 
   const byProject: Record<string, { total: number; pinned: number; overdue: number; lastColId: string }> = {};
@@ -81,20 +126,14 @@ export async function getDashboardData() {
 export async function searchAllTasks(query: string): Promise<(TaskDoc & { project_name: string; space_id: string })[]> {
   if (!query.trim()) return [];
   const q = query.trim().toLowerCase();
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  const tasks = r.rows.map(r => r.doc!).filter(d =>
+  const all = await getAllTasksRaw();
+  const tasks = all.filter(d =>
     !d.deleted && !d.archived &&
     (d.title.toLowerCase().includes(q) || d.tags?.some((t: string) => t.includes(q)) || d.body?.toLowerCase().includes(q))
   );
-  const projCache: Record<string, any> = {};
-  const result = [];
-  for (const t of tasks) {
-    if (!projCache[t.project_id]) {
-      try { projCache[t.project_id] = await db.get(t.project_id); } catch { projCache[t.project_id] = null; }
-    }
-    result.push({ ...t, project_name: projCache[t.project_id]?.name ?? '—' });
-  }
-  return result;
+  const allProjects = await getProjects();
+  const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
+  return tasks.map(t => ({ ...t, project_name: projCache[t.project_id]?.name ?? '—' }));
 }
 
 export async function clearLogs(): Promise<void> {
@@ -107,29 +146,85 @@ export async function clearLogs(): Promise<void> {
 
 let _syncHandler: any = null;
 
+function describeSyncError(err: any): string {
+  if (!err) return 'Unknown sync error';
+  const status = err.status ?? err.statusCode;
+  if (status === 401 || status === 403) return 'Authentication failed — check sync credentials';
+  if (status === 404) return 'Sync database not found on server';
+  if (status === 0 || err.name === 'TypeError' || /network|failed to fetch/i.test(err.message ?? '')) {
+    return 'Cannot reach sync server';
+  }
+  return err.message ?? err.reason ?? String(err);
+}
+
+const LAST_SYNC_KEY = 'offlog_last_synced';
+
 export const syncState = {
   status: 'idle' as 'idle' | 'syncing' | 'error' | 'offline',
-  lastSynced: null as string | null,
+  lastSynced: localStorage.getItem(LAST_SYNC_KEY),
   error: null as string | null,
+  retryCount: 0,
+  conflictCount: 0,
   listeners: new Set<() => void>(),
 };
 
 function notify() { syncState.listeners.forEach(fn => fn()); }
 
+function markSynced() {
+  const ts = now();
+  syncState.status = 'idle';
+  syncState.lastSynced = ts;
+  syncState.error = null;
+  syncState.retryCount = 0;
+  localStorage.setItem(LAST_SYNC_KEY, ts);
+  scanConflicts();
+  notify();
+}
+
+function markError(err: any) {
+  // A genuine offline state takes priority over whatever sync error
+  // surfaced — it's almost certainly just the network being down.
+  if (!navigator.onLine) { syncState.status = 'offline'; syncState.error = null; notify(); return; }
+  syncState.status = 'error';
+  syncState.error = describeSyncError(err);
+  syncState.retryCount += 1;
+  notify();
+}
+
+export async function scanConflicts(): Promise<number> {
+  const r = await db.allDocs({ conflicts: true });
+  const count = r.rows.filter((row: any) => row.value?.conflicts?.length).length;
+  syncState.conflictCount = count;
+  notify();
+  return count;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    if (syncState.status === 'offline') { syncState.status = 'syncing'; notify(); }
+    syncNow().catch(() => {});
+  });
+  window.addEventListener('offline', () => {
+    syncState.status = 'offline'; syncState.error = null; notify();
+  });
+}
+
 export function startSync() {
   if (_syncHandler) _syncHandler.cancel();
+  if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
   _syncHandler = db.sync(remote(), { live: true, retry: true })
     .on('change', () => { syncState.status = 'syncing'; notify(); })
-    .on('paused', () => { syncState.status = 'idle'; syncState.lastSynced = now(); notify(); })
-    .on('error', (err: any) => { syncState.status = 'error'; syncState.error = String(err); notify(); });
+    .on('paused', (err: any) => { if (err) markError(err); else markSynced(); })
+    .on('active', () => { syncState.status = 'syncing'; notify(); })
+    .on('error', (err: any) => markError(err));
 }
 
 export function syncNow(): Promise<void> {
   return new Promise((resolve, reject) => {
     syncState.status = 'syncing'; notify();
     db.sync(remote())
-      .on('complete', () => { syncState.status = 'idle'; syncState.lastSynced = now(); notify(); resolve(); })
-      .on('error', (err: any) => { syncState.status = 'error'; syncState.error = String(err); notify(); reject(err); });
+      .on('complete', () => { markSynced(); resolve(); })
+      .on('error', (err: any) => { markError(err); reject(err); });
   });
 }
 
@@ -147,6 +242,7 @@ export async function wipeAndReseed(): Promise<void> {
   const all = await db.allDocs({ include_docs: true });
   const dels = all.rows.map(r => ({ ...r.doc!, _deleted: true }));
   if (dels.length) await db.bulkDocs(dels);
+  invalidateTaskCache();
 
   // Seed fresh: one space + one project
   await db.put<SpaceDoc>({
@@ -247,9 +343,10 @@ export async function deleteProject(id: string): Promise<void> {
   const doc = await db.get(id);
   await db.remove(doc);
   // hard-delete all tasks in this project
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  const projectTasks = r.rows.map(r => r.doc!).filter(d => d.project_id === id);
+  const all = await getAllTasksRaw();
+  const projectTasks = all.filter(d => d.project_id === id);
   if (projectTasks.length) await db.bulkDocs(projectTasks.map(t => ({ ...t, _deleted: true })));
+  invalidateTaskCache();
 }
 
 export async function removeColumn(projectId: string, colId: string): Promise<ProjectDoc> {
@@ -267,8 +364,21 @@ export async function removeColumn(projectId: string, colId: string): Promise<Pr
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
 export async function getTasksForProject(projectId: string): Promise<TaskDoc[]> {
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  return r.rows.map(r => r.doc!).filter(d => d.project_id === projectId && !d.deleted && !d.archived);
+  await initIndexes();
+  try {
+    // pouchdb-find defaults to a 25-result limit when none is specified —
+    // without this, any project past 25 tasks would silently truncate.
+    const r = await db.find({
+      selector: { type: 'task', project_id: projectId },
+      use_index: 'idx-type-project',
+      limit: 100000,
+    });
+    return (r.docs as TaskDoc[]).filter(d => !d.deleted && !d.archived);
+  } catch {
+    // Fallback if find()/the index is unavailable for any reason.
+    const all = await getAllTasksRaw();
+    return all.filter(d => d.project_id === projectId && !d.deleted && !d.archived);
+  }
 }
 
 export async function createTask(projectId: string, spaceId: string, columnId: string, title: string): Promise<TaskDoc> {
@@ -280,11 +390,12 @@ export async function createTask(projectId: string, spaceId: string, columnId: s
     _id: `task:${nanoid()}`, type: 'task',
     project_id: projectId, space_id: spaceId, column_id: columnId,
     title, body: '', priority: 1,
-    due_date: null, tags: [],
+    due_date: null, reminder_at: null, tags: [],
     position: maxPos + 1024,
     deleted: false, created_at: ts, updated_at: ts, source: SOURCE,
   };
   await db.put(doc);
+  invalidateTaskCache();
   let projName: string | undefined;
   try { projName = (await db.get<ProjectDoc>(projectId)).name; } catch {}
   await logChange(doc._id!, 'create', undefined, undefined, undefined, { task_title: title, project_name: projName });
@@ -294,6 +405,7 @@ export async function createTask(projectId: string, spaceId: string, columnId: s
 export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(id);
   await db.put({ ...doc, ...changes, updated_at: now(), source: SOURCE });
+  invalidateTaskCache();
 
   const isMove   = changes.column_id !== undefined && changes.column_id !== doc.column_id;
   const isDelete = !!changes.deleted;
@@ -362,11 +474,13 @@ export async function duplicateTask(id: string): Promise<TaskDoc> {
     deleted: false,
     archived: false,
     pinned: false,
+    reminder_at: null,
     created_at: ts,
     updated_at: ts,
     source: SOURCE,
   };
   await db.put(doc);
+  invalidateTaskCache();
   let projName: string | undefined;
   try { projName = (await db.get<ProjectDoc>(src.project_id)).name; } catch {}
   await logChange(doc._id!, 'create', undefined, undefined, undefined, { task_title: doc.title, project_name: projName });
@@ -387,18 +501,20 @@ export async function undoDelete(id: string): Promise<void> {
     const { _rev, ...fresh } = doc as any;
     await db.put({ ...fresh, deleted: false, updated_at: now(), source: SOURCE });
   }
+  invalidateTaskCache();
 }
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
 
 export async function getArchivedTasksForProject(projectId: string): Promise<TaskDoc[]> {
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  return r.rows.map(r => r.doc!).filter(d => d.project_id === projectId && !d.deleted && !!d.archived);
+  const all = await getAllTasksRaw();
+  return all.filter(d => d.project_id === projectId && !d.deleted && !!d.archived);
 }
 
 export async function unarchiveTask(id: string): Promise<void> {
   const doc = await db.get<TaskDoc>(id);
   await db.put({ ...doc, archived: false, updated_at: now(), source: SOURCE });
+  invalidateTaskCache();
 }
 
 export async function archiveTask(id: string): Promise<void> {
@@ -420,21 +536,22 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
   // strip _rev so we don't cause conflicts — PouchDB will merge
   const clean = valid.map(({ _rev, ...d }) => d);
   const results = await db.bulkDocs(clean);
+  invalidateTaskCache();
   const ok = results.filter((r: any) => !r.error || r.status === 409).length;
   const skipped = results.filter((r: any) => r.error && r.status !== 409).length;
   return { ok, skipped };
 }
 
 export async function getAllTags(): Promise<string[]> {
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
+  const all = await getAllTasksRaw();
   const set = new Set<string>();
-  r.rows.forEach(row => row.doc?.tags?.forEach(t => set.add(t)));
+  all.forEach(d => d.tags?.forEach(t => set.add(t)));
   return [...set].sort();
 }
 
 export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: string; space_id: string })[]> {
-  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  const tasks = r.rows.map(r => r.doc!).filter(d => !d.deleted && !d.archived && d.due_date);
+  const all = await getAllTasksRaw();
+  const tasks = all.filter(d => !d.deleted && !d.archived && d.due_date);
   const allProjects = await getProjects();
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
   const result = [];
@@ -449,10 +566,123 @@ export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: stri
   return result.sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
 }
 
+export async function getTaskById(id: string): Promise<TaskDoc | null> {
+  try { return await db.get<TaskDoc>(id); } catch { return null; }
+}
+
+export async function getAllActiveTasksWithReminders(): Promise<TaskDoc[]> {
+  const all = await getAllTasksRaw();
+  const allProjects = await getProjects();
+  const lastColByProject: Record<string, string | undefined> = Object.fromEntries(
+    allProjects.map(p => [p._id, p.columns.at(-1)?.id])
+  );
+  return all.filter(d =>
+    !d.deleted && !d.archived && d.reminder_at &&
+    d.column_id !== lastColByProject[d.project_id]
+  );
+}
+
+// ── Integrity check + repair ──────────────────────────────────────────────────
+
+export interface IntegrityIssue {
+  type: 'orphaned_project' | 'orphaned_task' | 'invalid_column' | 'no_columns' | 'conflict';
+  docId: string;
+  description: string;
+}
+
+export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; checked: number }> {
+  const issues: IntegrityIssue[] = [];
+  const r = await db.allDocs({ include_docs: true, conflicts: true });
+  const docs = r.rows.map(row => row.doc!).filter(d => !(d as any)._id.startsWith('_'));
+
+  const spaces = docs.filter((d: any) => d.type === 'space') as SpaceDoc[];
+  const projects = docs.filter((d: any) => d.type === 'project') as ProjectDoc[];
+  const tasks = docs.filter((d: any) => d.type === 'task') as TaskDoc[];
+  const spaceIds = new Set(spaces.map(s => s._id));
+  const projectIds = new Set(projects.map(p => p._id));
+
+  for (const p of projects) {
+    if (!spaceIds.has(p.space_id)) {
+      issues.push({ type: 'orphaned_project', docId: p._id!, description: `Project "${p.name}" points to a missing space` });
+    }
+    if (!p.columns || p.columns.length === 0) {
+      issues.push({ type: 'no_columns', docId: p._id!, description: `Project "${p.name}" has no statuses (not auto-repaired — needs manual review)` });
+    }
+  }
+
+  for (const t of tasks) {
+    if (t.deleted) continue;
+    if (!projectIds.has(t.project_id)) {
+      issues.push({ type: 'orphaned_task', docId: t._id!, description: `Task "${t.title}" points to a missing project` });
+      continue;
+    }
+    const proj = projects.find(p => p._id === t.project_id);
+    if (proj && proj.columns.length && !proj.columns.some(c => c.id === t.column_id)) {
+      issues.push({ type: 'invalid_column', docId: t._id!, description: `Task "${t.title}" points to a missing status in "${proj.name}"` });
+    }
+  }
+
+  for (const row of r.rows as any[]) {
+    if (row.value?.conflicts?.length) {
+      issues.push({ type: 'conflict', docId: row.id, description: `${row.value.conflicts.length} unresolved conflicting revision(s)` });
+    }
+  }
+
+  return { issues, checked: docs.length };
+}
+
+// Applies safe, well-understood fixes only. "no_columns" is deliberately
+// left for manual review — inventing default statuses for a project the
+// user configured a specific way is too destructive to do silently.
+export async function repairDatabase(): Promise<{ fixed: number; skipped: number }> {
+  const { issues } = await checkIntegrity();
+  let fixed = 0, skipped = 0;
+
+  for (const issue of issues) {
+    try {
+      if (issue.type === 'orphaned_task') {
+        const doc = await db.get<TaskDoc>(issue.docId);
+        const fallback = await getProjects('space:unsorted');
+        if (fallback.length) {
+          await db.put({ ...doc, project_id: fallback[0]._id, column_id: fallback[0].columns[0]?.id ?? doc.column_id, updated_at: now(), source: SOURCE });
+        } else {
+          await db.put({ ...doc, archived: true, updated_at: now(), source: SOURCE });
+        }
+        fixed++;
+      } else if (issue.type === 'invalid_column') {
+        const doc = await db.get<TaskDoc>(issue.docId);
+        const proj = await db.get<ProjectDoc>(doc.project_id);
+        await db.put({ ...doc, column_id: proj.columns[0]?.id ?? doc.column_id, updated_at: now(), source: SOURCE });
+        fixed++;
+      } else if (issue.type === 'orphaned_project') {
+        const doc = await db.get<ProjectDoc>(issue.docId);
+        await db.put({ ...doc, space_id: 'space:unsorted', updated_at: now(), source: SOURCE });
+        fixed++;
+      } else if (issue.type === 'conflict') {
+        const doc = await db.get(issue.docId, { conflicts: true } as any) as any;
+        const conflicts: string[] = doc._conflicts ?? [];
+        for (const rev of conflicts) await db.remove(issue.docId, rev);
+        if (conflicts.length) fixed++; else skipped++;
+      } else {
+        skipped++;
+      }
+    } catch {
+      skipped++;
+    }
+  }
+
+  invalidateTaskCache();
+  await scanConflicts();
+  return { fixed, skipped };
+}
+
 // ── Live query ────────────────────────────────────────────────────────────────
 
 export function subscribe(callback: () => void): () => void {
-  const handler = db.changes({ since: 'now', live: true }).on('change', callback);
+  const handler = db.changes({ since: 'now', live: true }).on('change', () => {
+    invalidateTaskCache();
+    callback();
+  });
   return () => handler.cancel();
 }
 

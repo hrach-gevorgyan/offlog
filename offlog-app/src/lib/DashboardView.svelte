@@ -206,7 +206,11 @@
   .task-row:hover { background: var(--hover); }
   .prio-bar { width: 3px; height: 24px; border-radius: 2px; flex-shrink: 0; }
   .task-title { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .task-proj { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; flex-shrink: 0; }
+  .task-proj {
+    font-family: var(--mono); font-size: 10px; color: var(--faint);
+    white-space: nowrap; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis;
+    max-width: 72px;
+  }
   .task-due { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
   .task-due.overdue { color: var(--danger); }
 

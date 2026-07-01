@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { getAllTasksDue, updateTask, subscribe } from './db';
-  import { projects } from './store';
+  import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabelLong, dueRelative } from './utils';
   import CardDetail from './CardDetail.svelte';
@@ -52,8 +52,12 @@
     if (!proj) return;
     const lastCol = proj.columns.at(-1)?.id;
     if (!lastCol || t.column_id === lastCol) return;
-    await updateTask(t._id!, { column_id: lastCol });
-    await load();
+    try {
+      await updateTask(t._id!, { column_id: lastCol });
+      await load();
+    } catch {
+      showError('Failed to update task. Please try again.');
+    }
   }
 </script>
 
