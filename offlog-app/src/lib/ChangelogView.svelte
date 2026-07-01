@@ -101,7 +101,7 @@
 </div>
 
 <style>
-  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; }
+  /* .scrim is defined globally in app.css */
 
   .panel {
     position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw);

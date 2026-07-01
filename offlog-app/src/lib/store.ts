@@ -5,6 +5,14 @@ import {
   seedIfEmpty, startSync, subscribe,
 } from './db';
 
+export const errorToast = writable<string>('');
+let _errorTimer: ReturnType<typeof setTimeout> | undefined;
+export function showError(msg: string) {
+  clearTimeout(_errorTimer);
+  errorToast.set(msg);
+  _errorTimer = setTimeout(() => errorToast.set(''), 4000);
+}
+
 export const spaces = writable<SpaceDoc[]>([]);
 export const projects = writable<ProjectDoc[]>([]);
 export const tasks = writable<TaskDoc[]>([]);

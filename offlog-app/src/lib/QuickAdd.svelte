@@ -69,7 +69,7 @@
 </div>
 
 <style>
-  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 500; }
+  /* .scrim is defined globally in app.css */
 
   .panel {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);

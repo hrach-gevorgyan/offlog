@@ -1,10 +1,11 @@
 // PouchDB is loaded as a UMD global via index.html <script src="/pouchdb.js">
-declare const PouchDB: any;
+/// <reference types="pouchdb" />
+/// <reference types="pouchdb-find" />
 import { getSyncUrl, COUCH_USER, COUCH_PASS } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source } from './types';
 
 const SOURCE: Source = (window as any).Capacitor?.getPlatform() === 'android' ? 'mobile' : 'pc';
-const db = new PouchDB<any>('offlog');
+const db = new PouchDB('offlog');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -279,7 +280,7 @@ export async function createTask(projectId: string, spaceId: string, columnId: s
     _id: `task:${nanoid()}`, type: 'task',
     project_id: projectId, space_id: spaceId, column_id: columnId,
     title, body: '', priority: 1,
-    due_date: null, reminder_at: null, tags: [],
+    due_date: null, tags: [],
     position: maxPos + 1024,
     deleted: false, created_at: ts, updated_at: ts, source: SOURCE,
   };
@@ -344,6 +345,32 @@ export async function deleteTask(id: string): Promise<void> {
   if (_undoBuffer.length > 10) _undoBuffer.pop();
   _undoListeners.forEach(fn => fn());
   await updateTask(id, { deleted: true });
+}
+
+export async function duplicateTask(id: string): Promise<TaskDoc> {
+  const src = await db.get<TaskDoc>(id);
+  const existing = await getTasksForProject(src.project_id);
+  const colTasks = existing.filter(t => t.column_id === src.column_id);
+  const maxPos = colTasks.length ? Math.max(...colTasks.map(t => t.position)) : 0;
+  const ts = now();
+  const doc: TaskDoc = {
+    ...src,
+    _id: `task:${nanoid()}`,
+    _rev: undefined,
+    title: `${src.title} (copy)`,
+    position: maxPos + 1024,
+    deleted: false,
+    archived: false,
+    pinned: false,
+    created_at: ts,
+    updated_at: ts,
+    source: SOURCE,
+  };
+  await db.put(doc);
+  let projName: string | undefined;
+  try { projName = (await db.get<ProjectDoc>(src.project_id)).name; } catch {}
+  await logChange(doc._id!, 'create', undefined, undefined, undefined, { task_title: doc.title, project_name: projName });
+  return doc;
 }
 
 export async function undoDelete(id: string): Promise<void> {

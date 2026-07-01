@@ -115,7 +115,7 @@
 </div>
 
 <style>
-  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 400; }
+  /* .scrim is defined globally in app.css */
 
   .search-panel {
     position: fixed; top: 15vh; left: 50%; transform: translateX(-50%);

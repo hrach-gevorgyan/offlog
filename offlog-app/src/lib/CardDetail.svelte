@@ -1,8 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { TaskDoc, ProjectDoc } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, getLogsForTask } from './db';
-  import { reloadTasks } from './store';
+  import { updateTask, deleteTask, getAllTags, archiveTask, getLogsForTask, duplicateTask } from './db';
+  import { reloadTasks, showError } from './store';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -76,22 +76,41 @@
 
   async function save() {
     saving = true;
-    await updateTask(task._id!, {
-      title, body,
-      priority: priority as 1 | 2 | 3,
-      due_date: due_date || null,
-      column_id, tags, pinned,
-    });
-    await reloadTasks();
-    saving = false;
-    dispatch('close');
+    try {
+      await updateTask(task._id!, {
+        title, body,
+        priority: priority as 1 | 2 | 3,
+        due_date: due_date || null,
+        column_id, tags, pinned,
+      });
+      await reloadTasks();
+      dispatch('close');
+    } catch (e) {
+      showError('Failed to save task. Please try again.');
+    } finally {
+      saving = false;
+    }
   }
 
   async function softDelete() {
     if (!confirm('Delete this task?')) return;
-    await deleteTask(task._id!);
-    await reloadTasks();
-    dispatch('close');
+    try {
+      await deleteTask(task._id!);
+      await reloadTasks();
+      dispatch('close');
+    } catch (e) {
+      showError('Failed to delete task.');
+    }
+  }
+
+  async function duplicate() {
+    try {
+      await duplicateTask(task._id!);
+      await reloadTasks();
+      dispatch('close');
+    } catch (e) {
+      showError('Failed to duplicate task.');
+    }
   }
 </script>
 
@@ -196,7 +215,8 @@
     <div class="actions">
       <div class="left-actions">
         <button class="delete-btn" on:click={softDelete}>Delete</button>
-        <button class="archive-btn" on:click={async () => { await archiveTask(task._id!); await reloadTasks(); dispatch('close'); }}>Archive</button>
+        <button class="archive-btn" on:click={async () => { try { await archiveTask(task._id!); await reloadTasks(); dispatch('close'); } catch { showError('Failed to archive task.'); } }}>Archive</button>
+        <button class="dupe-btn" on:click={duplicate} title="Duplicate task">Duplicate</button>
       </div>
       <div class="right">
         <button on:click={() => dispatch('close')}>Cancel</button>
@@ -335,6 +355,8 @@
   .delete-btn:hover { background: var(--overdue-bg); }
   .archive-btn { color: var(--muted); border-color: transparent; background: transparent; }
   .archive-btn:hover { color: var(--accent); }
+  .dupe-btn { color: var(--muted); border-color: transparent; background: transparent; }
+  .dupe-btn:hover { color: var(--text); }
 
   .timestamps {
     display: flex; flex-direction: column; gap: 3px;

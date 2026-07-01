@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks } from './lib/store';
+  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast } from './lib/store';
   import { updateProject, subscribeUndo, getUndoBuffer, undoDelete } from './lib/db';
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
@@ -229,6 +229,10 @@
   />
 {/if}
 
+{#if $errorToast}
+  <div class="error-toast">{$errorToast}</div>
+{/if}
+
 {#if undoToasts.length}
   <div class="toast-stack">
     {#each undoToasts as t (t.id)}
@@ -331,6 +335,17 @@
   }
   .fab:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,.3); }
   .fab:active { transform: scale(.96); }
+
+  /* ── Error toast ── */
+  .error-toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--danger); color: #fff;
+    padding: 11px 18px; border-radius: 10px;
+    font-size: 13.5px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    z-index: 1000; white-space: nowrap;
+    animation: toast-in .22s cubic-bezier(0.4,0,0.2,1) both;
+  }
 
   /* ── Undo toast ── */
   .toast-stack {

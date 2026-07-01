@@ -40,7 +40,6 @@ export interface TaskDoc {
   body: string;
   priority: 1 | 2 | 3;
   due_date: string | null;
-  reminder_at: string | null;
   tags: string[];
   position: number;
   deleted: boolean;
