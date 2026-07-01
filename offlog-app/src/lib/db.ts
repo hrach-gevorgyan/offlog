@@ -117,7 +117,10 @@ export async function getDashboardData() {
   }
 
   const pinnedTasks = tasks.filter(t => t.pinned).slice(0, 10);
-  const overdueTasks = tasks.filter(t => t.due_date && t.due_date < today).sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? '')).slice(0, 10);
+  const overdueTasks = tasks
+    .filter(t => t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id]?.lastColId)
+    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
+    .slice(0, 10);
   const projCache: Record<string, string> = Object.fromEntries(allProjects.map(p => [p._id, p.name]));
 
   return { allProjects, allSpaces, byProject, pinnedTasks, overdueTasks, projCache, totalTasks: tasks.length };

@@ -1,6 +1,6 @@
 # Offlog
 
-Version 2.9.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 2.9.1 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -198,7 +198,8 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 
 | Version | Highlights |
 |---|---|
-| **2.9.0** | Pre-3.0 stabilization pass: real database indexing (~9x faster project loads at scale — plus a hidden 25-result query limit caught and fixed before shipping), an in-memory task cache for search/dashboard/agenda, crash recovery with a proper error screen instead of an infinite spinner, error handling filled in across every remaining unguarded action, and a new database integrity checker + repair tool in Settings. Also fixed a Dashboard bug where a long project name could squeeze an overdue task's title down to invisible width in the narrow two-column layout |
+| **2.9.1** | Fixed the Dashboard "⚠ Overdue" list showing tasks that were overdue but already marked complete — the per-project overdue *count* already excluded completed tasks, but the actual list panel didn't apply the same check |
+| 2.9.0 | Pre-3.0 stabilization pass: real database indexing (~9x faster project loads at scale — plus a hidden 25-result query limit caught and fixed before shipping), an in-memory task cache for search/dashboard/agenda, crash recovery with a proper error screen instead of an infinite spinner, error handling filled in across every remaining unguarded action, and a new database integrity checker + repair tool in Settings. Also fixed a Dashboard bug where a long project name could squeeze an overdue task's title down to invisible width in the narrow two-column layout |
 | 2.8.0 | Task reminders with native Android notifications (fire while the app is closed) and best-effort web notifications; clicking one opens the task. Sync status is now much richer: persisted last-sync time, real offline detection, human-readable errors, retry count, and conflict reporting in the sidebar |
 | 2.7.2 | Fixed the Agenda task-count badges being invisible (white text on white background — a CSS `currentColor` bug). Fixed "Mark done" appearing to do nothing — it was actually working, but completed tasks never left the Agenda list, so there was no visible confirmation the click did anything |
 | 2.7.1 | Dashboard and Agenda now use the same compact hamburger + title header row as the project view on mobile (was a separate near-empty row above the title). Also fixed a Dashboard card text-overlap bug when a project's stats wrap to two lines |
