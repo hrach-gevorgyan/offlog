@@ -10,6 +10,15 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
   },
+  plugins: {
+    LocalNotifications: {
+      // Android status bar icons must be a plain white silhouette with
+      // transparency — a full-color icon (like the app launcher icon) gets
+      // silently replaced by a generic system icon (the alert triangle).
+      smallIcon: 'ic_stat_notify',
+      iconColor: '#6d5ef5',
+    },
+  },
 };
 
 export default config;

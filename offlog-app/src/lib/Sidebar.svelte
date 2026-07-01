@@ -25,6 +25,7 @@
   let addingProject = false;
   let storageInfo = '';
   let darkMode = typeof localStorage !== 'undefined' && !!localStorage.getItem('dark');
+  const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
 
   function toggleDark() {
     darkMode = !darkMode;
@@ -304,6 +305,11 @@
             <button class="export-btn" on:click={() => requestPermission()}>Enable</button>
           {/if}
         </div>
+        {#if isAndroid}
+          <p class="setting-hint">
+            On Android, reminders still fire without any extra step, but the OS may deliver them a few minutes late unless you allow precise timing: <strong>Settings → Apps → Offlog → Alarms & reminders</strong>. This is an Android battery-saving restriction (since Android 12), not something the app can skip or auto-grant.
+          </p>
+        {/if}
       </div>
 
       <div class="setting-group">
@@ -568,6 +574,7 @@
     border-bottom: 1px solid var(--border);
   }
   .setting-row { display: flex; align-items: center; gap: .75rem; }
+  .setting-hint { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 

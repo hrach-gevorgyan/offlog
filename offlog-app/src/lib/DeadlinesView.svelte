@@ -89,7 +89,7 @@
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
-              <span class="due-chip overdue">{dueRelative(t.due_date!)} · {dueLabelLong(t.due_date!)}</span>
+              <span class="due-chip overdue">{dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
         </section>
