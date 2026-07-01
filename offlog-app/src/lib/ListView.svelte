@@ -111,7 +111,7 @@
         <span
           class="circle"
           class:done={task.column_id === lastColId()}
-          title="Move to last column"
+          title="Move to last status"
           on:click|stopPropagation={async () => {
             await updateTask(task._id!, { column_id: lastColId() });
             await reloadTasks();

@@ -262,7 +262,7 @@
         {:else}
           <span class="col-name">{col.name}</span>
           <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <span class="col-rename" title="Rename column" on:click|stopPropagation={() => { editingColId = col.id; editingColName = col.name; }}>
+          <span class="col-rename" title="Rename status" on:click|stopPropagation={() => { editingColId = col.id; editingColName = col.name; }}>
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z"/>
             </svg>
@@ -280,7 +280,7 @@
             </svg>
           </button>
         {/if}
-        <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove column">×</button>
+        <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">×</button>
       </div>
 
       <!-- Card list — drop zone for cards -->

@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.4.1 · Local-first task management for browser and Android
+Version 2.5.0 · Local-first task management for browser and Android
 
 ---
 
@@ -105,16 +105,18 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 |---|---|---|
 | `space:` | SpaceDoc | `name`, `color`, `position` |
 | `project:` | ProjectDoc | `space_id`, `name`, `columns[]`, `default_view` |
-| `task:` | TaskDoc | `project_id`, `column_id`, `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived` |
+| `task:` | TaskDoc | `project_id`, `column_id` (status), `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived` |
 | `log:` | LogEntry | `ref` (task id), `action`, `diffs`, `timestamp` |
 
 ### Key conventions
 
 - **Soft delete**: tasks get `deleted: true`, never hard-removed (avoids sync conflicts)
 - **Archive**: tasks get `archived: true`, filtered from normal views, restorable
-- **Priority**: `1` Low · `2` Medium · `3` High — shown as left border color
+- **Duplicate**: `duplicateTask(id)` in `db.ts` clones a task into the same status column with `" (copy)"` appended to the title, a fresh `_id`, reset `pinned`/`archived`, and new timestamps
+- **Priority**: `1` Low · `2` Medium · `3` High — shown as left border color (see palette below)
 - **Pinned**: always sorts to top of any view
 - **Source**: `'pc'` or `'mobile'` — set on write, used in changelog
+- **"Status" vs "Column"**: internally, a project's stages are stored as `Column[]` on `columns` and each task references one via `column_id` — this is a legacy internal name. Every user-facing label calls it "Status" (e.g. "+ Status", "Rename status"); only variable/field names still say "column"
 
 ---
 
@@ -154,7 +156,19 @@ All colors are CSS custom properties in `app.css`:
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode. The sidebar always uses a dark color scheme regardless of page theme.
 
-Key tokens: `--bg`, `--surface`, `--text`, `--muted`, `--faint`, `--border`, `--accent`, `--danger`, `--overdue-bg/ink`, `--due-soon-bg/ink`
+Key tokens: `--bg`, `--surface`, `--col-bg`, `--text`, `--muted`, `--faint`, `--border`, `--accent`, `--danger`, `--overdue-bg/ink`, `--due-soon-bg/ink`
+
+### v2.5 palette refresh
+
+The v2.4.x palette used near-identical tones for `--bg` and `--col-bg`, which made Kanban status columns visually blend into the empty page — they *were* stretching to fill the available width (flex-grow was always working correctly), but low contrast made filled space look empty. v2.5 raises contrast and saturation:
+
+| Token | v2.4.x (light) | v2.5 (light) |
+|---|---|---|
+| `--col-bg` | `#edf0f7` (barely distinct from `--bg`) | `#e7ebfb` (clearly indigo-tinted) |
+| `--accent` | `#2d6be4` (flat blue) | `#6d5ef5` (vivid violet-blue) |
+| `--sidebar-bg` | `#1a1e27` (plain gray-navy) | `#14162a` (deeper indigo-black) |
+
+Priority colors (`constants.ts`) moved from muted grays/ochres to saturated Tailwind-style tones: Low `#34D399` (emerald), Medium `#FBBF24` (amber), High `#F43F5E` (rose). Dark mode received matching contrast increases (`--col-bg: #232842`, `--accent: #8b7bff`).
 
 ---
 
@@ -190,9 +204,20 @@ cd android && .\gradlew assembleDebug
 | Area | Note |
 |---|---|
 | Undo buffer | In-memory only — lost on page refresh |
-| PouchDB types | `declare const PouchDB: any` — UMD global, no TS types at instantiation |
 | Conflict resolution | Last-write-wins — fine for single user, not multi-user |
 | No PWA manifest | No service worker / offline install on desktop |
-| `reminder_at` field | Exists in TaskDoc but not wired to any notification system |
-| No Kanban filter | Search/filter only available in List and Table views |
-| No bulk actions | No multi-select / bulk move or delete |
+| No Kanban filter | Search/filter only available in List and Table views (by design — not planned) |
+| No bulk actions | No multi-select / bulk move or delete (not planned) |
+| No recurring tasks | Not planned |
+| Android app icon | Adaptive icon mipmaps exist under `android/app/src/main/res/mipmap-*/` but a replacement flat/no-background source icon is still pending. If a rebuilt APK still shows the old default Capacitor icon after install, **uninstall the app from the device first** — Android's launcher caches icons per package and a plain overwrite install can keep the stale one. Also run **Build → Clean Project** in Android Studio after swapping icon assets. |
+| Android-specific bugs (v2.5 backlog) | Agenda view rendering issues on-device, project delete (×) requiring long-press, and the soft-keyboard "Go" action not submitting — these need testing on an actual device/emulator, tracked for a v2.6 mobile-focused pass |
+
+---
+
+## Version History
+
+| Version | Changes |
+|---|---|
+| **2.5.0** | Brighter/higher-contrast color palette (see above), `duplicateTask()` + Duplicate button in CardDetail, "Status" wording used consistently in all remaining UI strings, FAB hides behind any open modal/sidebar |
+| 2.4.1 | Extracted `utils.ts` (shared date/filter helpers), removed dead `Counter.svelte`, fixed remaining `any` types, global `.scrim` class, error toast on failed DB writes |
+| 2.4 | Dashboard set as home screen, responsive Dashboard/Agenda layouts, last-view persistence across refresh, Android APK + custom launcher icon, DB reseed to 4 spaces + Draft project |

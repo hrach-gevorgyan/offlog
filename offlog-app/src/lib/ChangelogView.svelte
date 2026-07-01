@@ -13,7 +13,7 @@
 
   const FIELD_LABEL: Record<string, string> = {
     title: 'Title', body: 'Notes', priority: 'Priority',
-    due_date: 'Due date', tags: 'Tags', name: 'Name', columns: 'Columns',
+    due_date: 'Due date', tags: 'Tags', name: 'Name', columns: 'Statuses',
   };
 
   const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };

@@ -1,6 +1,6 @@
 # Offlog
 
-A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 2.5.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -11,11 +11,13 @@ A local-first task management app built with Svelte 5, PouchDB, and Capacitor. R
 - **Dashboard** — overview of all projects with pinned and overdue tasks at a glance
 - **Quick Add** — Ctrl+N anywhere to create a task with space/project selector
 - **Global Search** — Ctrl+K to search across all tasks instantly
-- **Card detail** — full task editor with notes, priority, due date, tags, columns, and changelog
+- **Card detail** — full task editor with notes, priority, due date, tags, status, and changelog
+- **Duplicate task** — one click to clone a card (title, tags, due date, priority) into the same status
 - **Dark mode** — toggle persisted to localStorage
 - **Sync** — live CouchDB replication (optional); works fully offline without it
 - **Undo** — soft-delete with in-memory undo buffer (last 10 deletions)
 - **Android APK** — packaged with Capacitor 7
+- **Brighter UI palette** — higher-contrast surfaces and vivid priority/accent colors (v2.5)
 
 ---
 
@@ -50,7 +52,7 @@ offlog-app/
       ListView.svelte        # Sortable/filterable task list
       TableView.svelte       # Compact table view
       DeadlinesView.svelte   # Agenda — all tasks with due dates
-      CardDetail.svelte      # Full task editor modal
+      CardDetail.svelte      # Full task editor modal (edit, delete, archive, duplicate)
       QuickAdd.svelte        # Ctrl+N fast-add modal
       GlobalSearch.svelte    # Ctrl+K search modal
       ChangelogView.svelte   # Full activity log
@@ -116,6 +118,10 @@ cd android
 
 APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
 
+Or open `android/` directly in Android Studio and run **Build → Generate Signed APK**.
+
+> **Icon note:** if the installed app still shows the old default Capacitor icon after installing a new build, uninstall the app from the device/emulator first, then reinstall — Android's launcher aggressively caches icons per package and a plain overwrite install often keeps the stale one. In Android Studio, also run **Build → Clean Project** before rebuilding after icon assets change.
+
 ---
 
 ## Data Model
@@ -173,3 +179,15 @@ curl -X PUT http://admin:pass@localhost:5984/offlog/_security \
 ```
 
 The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
+
+---
+
+## Version History
+
+| Version | Highlights |
+|---|---|
+| **2.5.0** | Brighter/higher-contrast color palette, duplicate-task action, "Status" naming throughout (was "Column"), FAB hidden behind open modals, codebase audit fixes |
+| 2.4.1 | Shared `utils.ts` (date/filter helpers), removed dead code, fixed `any` types, global modal scrim, error toasts |
+| 2.4 | Dashboard as home screen, responsive Agenda/Dashboard, view persistence across refresh, Android APK + custom icon |
+
+See [TECH.md](offlog-app/TECH.md) for architecture details and known limitations.
