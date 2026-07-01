@@ -6,7 +6,9 @@ const app = mount(App, {
   target: document.getElementById('app')!,
 })
 
-if ((window as any).Capacitor?.isNativePlatform?.()) {
+const isNative = (window as any).Capacitor?.isNativePlatform?.();
+
+if (isNative) {
   // Android 15+ (targetSdk 35+) enforces edge-to-edge and ignores
   // StatusBar.setBackgroundColor() — it's a no-op there. Instead we
   // let the WebView draw behind the status bar (overlay: true) and
@@ -15,6 +17,14 @@ if ((window as any).Capacitor?.isNativePlatform?.()) {
   import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
     StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+  }).catch(() => {});
+} else {
+  // Register the PWA service worker on web only. Skipped on Android
+  // since Capacitor already bundles assets natively — a service
+  // worker there would only risk serving stale cached JS across
+  // APK updates.
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({ immediate: true });
   }).catch(() => {});
 }
 

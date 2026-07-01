@@ -1,6 +1,6 @@
 # Offlog
 
-Version 2.6.5 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 2.7.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -17,6 +17,7 @@ Version 2.6.5 · A local-first task management app built with Svelte 5, PouchDB,
 - **Sync** — live CouchDB replication (optional); works fully offline without it
 - **Undo** — soft-delete with in-memory undo buffer (last 10 deletions)
 - **Android APK** — packaged with Capacitor 7
+- **Installable PWA** — web build is offline-capable and installable via the browser (v2.7)
 - **Brighter UI palette** — higher-contrast surfaces and vivid priority/accent colors (v2.5)
 
 ---
@@ -100,6 +101,15 @@ Sync is optional — the app works fully offline without these set.
 cd offlog-app
 npm run build
 # Output in offlog-app/dist/
+```
+
+The build includes a PWA manifest + service worker (via `vite-plugin-pwa`). `npm run dev` does **not** register a service worker — to test installability/offline behavior, serve the actual production build:
+
+```bash
+npm run build
+npm run preview
+# then open the printed localhost URL and check the browser's
+# "Install app" icon in the address bar
 ```
 
 ### Build Android APK
@@ -186,7 +196,8 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 
 | Version | Highlights |
 |---|---|
-| **2.6.5** | Fixed the actual cause of the "gray hover" on Changelog (affected PC too, not just mobile) — a z-index bug where the panel rendered below its own dark scrim |
+| **2.7.0** | Added PWA support — installable manifest + Workbox service worker precaches the app shell for full offline use on desktop/web. Android is unaffected (service worker only registers on web, never inside the Capacitor WebView) |
+| 2.6.5 | Fixed the actual cause of the "gray hover" on Changelog (affected PC too, not just mobile) — a z-index bug where the panel rendered below its own dark scrim |
 | 2.6.4 | Fixed a gray/dark double-overlay on mobile when opening Changelog or Settings from the sidebar drawer — the mobile sidebar wasn't closing itself first, so its dark scrim stacked underneath the new modal's own scrim |
 | 2.6.3 | Same status-bar-strip cropping issue as 2.6.2, but for the mobile sidebar drawer and the CardDetail/Changelog side panels — these render as their own fixed full-screen elements, so the 2.6.2 fix (which only touched the main layout) didn't cover them |
 | 2.6.1 | Real fix for the Android status bar (targetSdk 36 enforces edge-to-edge display, which made v2.6.0's fix a no-op — see TECH.md); regenerated web + Android icons from a fresh source image with a properly safe-zone-padded Android adaptive icon so round/squircle launcher masks don't clip it |

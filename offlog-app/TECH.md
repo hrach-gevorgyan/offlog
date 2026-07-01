@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.6.5 · Local-first task management for browser and Android
+Version 2.7.0 · Local-first task management for browser and Android
 
 ---
 
@@ -19,6 +19,7 @@ Offlog is a personal task management tool built to work exactly the way one pers
 | Local Database | **PouchDB 9** | IndexedDB in browser, speaks CouchDB replication protocol |
 | Sync Server | **CouchDB** | Self-hosted, optional. App works fully offline without it |
 | Mobile Wrapper | **Capacitor 7** | Wraps Vite build into a WebView-based Android APK |
+| PWA | **vite-plugin-pwa** (Workbox) | Installable, offline-capable desktop/web app — see below |
 | Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
 | Fonts | Hanken Grotesk + IBM Plex Mono | Sans for UI, mono for timestamps and labels |
 
@@ -178,6 +179,30 @@ The last active view is saved to `localStorage` key `offlog_view` as `{ view: 'd
 
 ---
 
+## PWA (Web)
+
+`vite.config.ts` configures `vite-plugin-pwa` in `generateSW` mode, which produces at build time:
+
+- `dist/manifest.webmanifest` — app name, `theme_color`/`background_color` (`#14162a`, matching the sidebar), `display: 'standalone'`, and icons (both `any` and `maskable` purpose, reusing the same flattened-navy `icon-192.png`/`icon-512.png` used everywhere else — see icon section above)
+- `dist/sw.js` + `dist/workbox-*.js` — a Workbox service worker that precaches the built JS/CSS/HTML/icons (`globPatterns: ['**/*.{js,css,html,svg,png,ico}']`) so the app shell loads instantly offline
+- `dist/registerSW.js` is **not** auto-injected (`injectRegister: false`) — registration is manual, see below
+
+### Why registration is manual and web-only
+
+`src/main.ts` checks `Capacitor.isNativePlatform()` first:
+- **Native (Android)**: skip service worker entirely. Capacitor already bundles all assets into the APK and serves them via its own virtual `https://` scheme — a service worker there is redundant and risks serving stale cached JS across APK updates instead of the freshly installed version.
+- **Web**: `import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))`. `registerType: 'autoUpdate'` means new builds activate automatically on next load rather than requiring a manual "update available" prompt.
+
+### What the service worker does *not* touch
+
+`runtimeCaching: []` — the service worker only precaches the static build shell. It never intercepts CouchDB sync requests (XHR/fetch to the configured sync URL) or any other runtime network call. PouchDB's own IndexedDB storage already provides the actual offline data layer completely independently of the service worker; the SW's only job is making the *app shell itself* (JS/CSS/HTML) installable and loadable with zero network, which browsers didn't previously get (only the Capacitor/Android build did).
+
+### Result
+
+The web build is now installable (browser "Install app" prompt / add-to-home-screen) and works fully offline on desktop, closing the gap where "local-first" previously only fully applied to the Android build.
+
+---
+
 ## Mobile (Android)
 
 Capacitor wraps the Vite `dist/` output into a WebView Android app. The web code runs identically — same PouchDB, same sync, same UI.
@@ -206,7 +231,6 @@ cd android && .\gradlew assembleDebug
 |---|---|
 | Undo buffer | In-memory only — lost on page refresh |
 | Conflict resolution | Last-write-wins — fine for single user, not multi-user |
-| No PWA manifest | No service worker / offline install on desktop |
 | No Kanban filter | Search/filter only available in List and Table views (by design — not planned) |
 | No bulk actions | No multi-select / bulk move or delete (not planned) |
 | No recurring tasks | Not planned |
@@ -219,7 +243,8 @@ cd android && .\gradlew assembleDebug
 
 | Version | Changes |
 |---|---|
-| **2.6.5** | Fixed the real cause of the "gray hover" over Changelog — reported on both PC and mobile. It was a z-index bug from the v2.4.1 `.scrim` consolidation: the shared global `.scrim` class (app.css) is `z-index: 400`, but `ChangelogView`'s own `.panel` was left at `z-index: 301` — *below* the scrim — so the semi-transparent dark overlay rendered on top of the panel, dimming/graying its content. Bumped to `z-index: 402` (matching the pattern used by `GlobalSearch` at 401 and `QuickAdd` at 501, both already correctly above the scrim) |
+| **2.7.0** | Added PWA support via `vite-plugin-pwa` — installable web app manifest + Workbox service worker precaching the app shell (JS/CSS/HTML/icons) for full offline use on desktop. Service worker registration is manual and web-only (skipped entirely on Android, where Capacitor already bundles assets natively); see PWA section above for the reasoning |
+| 2.6.5 | Fixed the real cause of the "gray hover" over Changelog — reported on both PC and mobile. It was a z-index bug from the v2.4.1 `.scrim` consolidation: the shared global `.scrim` class (app.css) is `z-index: 400`, but `ChangelogView`'s own `.panel` was left at `z-index: 301` — *below* the scrim — so the semi-transparent dark overlay rendered on top of the panel, dimming/graying its content. Bumped to `z-index: 402` (matching the pattern used by `GlobalSearch` at 401 and `QuickAdd` at 501, both already correctly above the scrim) |
 | 2.6.4 | Fixed a gray/dark double-overlay when opening Changelog or Settings from the mobile sidebar drawer. The "Dashboard", "Agenda", and project buttons all call `dispatch('navigate')`, which `App.svelte` uses to close the mobile sidebar (`sidebarOpen = false`) — but the "↩ Changelog" and "⚙ Settings" buttons never did, so the mobile drawer (with its own `.mobile-scrim`) stayed open underneath whatever modal was opened on top of it, and the two semi-transparent scrims stacked into a visibly darker/grayer overlay. Both buttons now dispatch `navigate` too |
 | 2.6.3 | The 2.6.2 fix only patched `.layout` (the main desktop-flow container). Any UI that renders as its own `position: fixed` full-screen element — bypassing `.layout` entirely — still started at `y=0` and got its top cropped by the status-bar strip: the mobile sidebar drawer (`Sidebar.svelte`, `@media max-width:768px`), `CardDetail`'s edit panel, and `ChangelogView`'s panel. Added `padding-top: env(safe-area-inset-top)` (additive to each element's existing top padding) to all three. `QuickAdd` (bottom-anchored) and `GlobalSearch` (`top: 15vh`, already well clear of any status bar height) didn't need changes |
 | 2.6.2 | Fixed the top of the app (including the sidebar hamburger button) being hidden behind the new colored status-bar strip. The v2.6.1 fix added `.status-bar-fill` at `z-index: 10000` but never pushed the actual app content down to make room for it — `.layout` started at `y=0` same as the strip, so the strip covered it. Added `padding-top: env(safe-area-inset-top)` + `box-sizing: border-box` to `.layout` so content now starts below the strip instead of under it |
