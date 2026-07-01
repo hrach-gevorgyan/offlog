@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Offlog</string>
+    <string name="title_activity_main">Offlog</string>
+    <string name="package_name">com.offlog.app</string>
+    <string name="custom_url_scheme">com.offlog.app</string>
+</resources>

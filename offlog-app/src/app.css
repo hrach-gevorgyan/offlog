@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  /* surfaces */
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --sidebar-bg: #1a1e27;
+  --col-bg: #edf0f7;
+
+  /* lines */
+  --border: #e3e7f2;
+  --border-strong: #c8cfdf;
+  --hover: #e6eaf6;
+
+  /* ink */
+  --text: #12162b;
+  --muted: #5d6480;
+  --faint: #9097b5;
+
+  /* meaning */
+  --accent: #2d6be4;
+  --danger: #e53935;
+  --due-soon-bg: #fff8e1;
+  --due-soon-ink: #d97706;
+  --overdue-bg: #fff1f0;
+  --overdue-ink: #c62828;
+
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: .18s;
+  --dur: .26s;
+
+  font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Dark mode */
+body.dark {
+  --bg: #13151c;
+  --surface: #1c1f2a;
+  --sidebar-bg: #0f1118;
+  --col-bg: #191c26;
+  --border: #272b3a;
+  --border-strong: #343848;
+  --hover: #202435;
+  --text: #eaecf6;
+  --muted: #8890b0;
+  --faint: #4d5370;
+  --accent: #5d9bff;
+  --danger: #f87171;
+  --due-soon-bg: #2a2210;
+  --due-soon-ink: #fbbf24;
+  --overdue-bg: #2a1515;
+  --overdue-ink: #f87171;
+}
+
+html, body { margin: 0; padding: 0; height: 100%; color: var(--text); background: var(--bg); }
+#app { height: 100%; }
+
+@media (max-width: 768px) {
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+}
+
+button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+input, textarea, select { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+a { -webkit-tap-highlight-color: transparent; }
+
+/* calm scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }

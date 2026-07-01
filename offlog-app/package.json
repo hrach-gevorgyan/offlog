@@ -1,0 +1,37 @@
+{
+  "name": "offlog-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tsconfig/svelte": "^5.0.8",
+    "@types/node": "^24.13.2",
+    "@types/pouchdb": "^6.4.2",
+    "canvas": "^3.2.3",
+    "svelte": "^5.56.4",
+    "svelte-check": "^4.7.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "pouchdb": "^9.0.0",
+    "pouchdb-browser": "^9.0.0",
+    "pouchdb-find": "^9.0.0"
+  },
+  "allowScripts": {
+    "sharp@0.32.6": true,
+    "leveldown@5.6.0": true,
+    "leveldown@6.1.1": true
+  }
+}
