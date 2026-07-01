@@ -106,7 +106,7 @@
   .panel {
     position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw);
     background: var(--surface); border-left: 1px solid var(--border);
-    box-shadow: -8px 0 32px rgba(0,0,0,.15); z-index: 301;
+    box-shadow: -8px 0 32px rgba(0,0,0,.15); z-index: 402;
     display: flex; flex-direction: column;
     padding-top: env(safe-area-inset-top, 0px);
     animation: slideIn .38s cubic-bezier(0.4,0,0.2,1) both;
