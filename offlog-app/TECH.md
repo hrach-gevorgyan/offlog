@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.5.0 · Local-first task management for browser and Android
+Version 2.6.0 · Local-first task management for browser and Android
 
 ---
 
@@ -187,6 +187,7 @@ Mobile-specific adaptations:
 - **`enterkeyhint`** on inputs: shows GO/Done on soft keyboard
 - **Responsive CSS**: breakpoints at 900px, 768px, 600px, 440px
 - **Source field**: `'mobile'` instead of `'pc'` for changelog tracking
+- **Status bar** (v2.6): `main.ts` detects `Capacitor.isNativePlatform()` and dynamically imports `@capacitor/status-bar` to set the native status bar background to `#14162a` (the sidebar color) with light icon style (`Style.Dark`). `android/app/src/main/res/values/colors.xml` sets the same color as `colorPrimaryDark` so it's correct even before JS runs (during splash)
 
 Build steps:
 ```bash
@@ -209,8 +210,8 @@ cd android && .\gradlew assembleDebug
 | No Kanban filter | Search/filter only available in List and Table views (by design — not planned) |
 | No bulk actions | No multi-select / bulk move or delete (not planned) |
 | No recurring tasks | Not planned |
-| Android app icon | Adaptive icon mipmaps exist under `android/app/src/main/res/mipmap-*/` but a replacement flat/no-background source icon is still pending. If a rebuilt APK still shows the old default Capacitor icon after install, **uninstall the app from the device first** — Android's launcher caches icons per package and a plain overwrite install can keep the stale one. Also run **Build → Clean Project** in Android Studio after swapping icon assets. |
-| Android-specific bugs (v2.5 backlog) | Agenda view rendering issues on-device, project delete (×) requiring long-press, and the soft-keyboard "Go" action not submitting — these need testing on an actual device/emulator, tracked for a v2.6 mobile-focused pass |
+| Android app icon | A replacement flat/no-background source icon from design is still pending — current icon (mountain/sunset design) is consistent across web and Android as of v2.6, but is a placeholder, not final branding |
+| Android-specific bugs (backlog) | Project delete (×) requiring long-press, and the soft-keyboard "Go" action not submitting — need testing on an actual device/emulator, tracked for a future mobile-focused pass |
 
 ---
 
@@ -218,6 +219,7 @@ cd android && .\gradlew assembleDebug
 
 | Version | Changes |
 |---|---|
-| **2.5.0** | Brighter/higher-contrast color palette (see above), `duplicateTask()` + Duplicate button in CardDetail, "Status" wording used consistently in all remaining UI strings, FAB hides behind any open modal/sidebar |
+| **2.6.0** | Fixed Android status bar color (was default system gray/white, now matches sidebar `#14162a` via `@capacitor/status-bar` + native `colors.xml` fallback); regenerated all Android launcher icons from the existing `assets/icon-*.png` source via `@capacitor/assets` — web and Android icons were out of sync because Android generation was never actually run after the web icon was set; fixed Dashboard pinned/overdue task rows having no click handler at all (`CardDetail` now opens on click, matching every other view) |
+| 2.5.0 | Brighter/higher-contrast color palette (see above), `duplicateTask()` + Duplicate button in CardDetail, "Status" wording used consistently in all remaining UI strings, FAB hides behind any open modal/sidebar |
 | 2.4.1 | Extracted `utils.ts` (shared date/filter helpers), removed dead `Counter.svelte`, fixed remaining `any` types, global `.scrim` class, error toast on failed DB writes |
 | 2.4 | Dashboard set as home screen, responsive Dashboard/Agenda layouts, last-view persistence across refresh, Android APK + custom launcher icon, DB reseed to 4 spaces + Draft project |

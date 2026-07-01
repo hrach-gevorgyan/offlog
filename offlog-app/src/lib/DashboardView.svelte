@@ -1,12 +1,17 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { getDashboardData, subscribe } from './db';
+  import { reloadTasks } from './store';
   import { PRIORITY_COLOR } from './constants';
   import { dueLabelLong } from './utils';
+  import type { TaskDoc, ProjectDoc } from './types';
+  import CardDetail from './CardDetail.svelte';
 
   const dispatch = createEventDispatcher<{ openProject: string }>();
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
+  let detailTask: TaskDoc | null = null;
+  let detailProject: ProjectDoc | null = null;
 
   async function load() { data = await getDashboardData(); }
 
@@ -14,6 +19,11 @@
     load();
     return subscribe(() => load());
   });
+
+  function openTask(t: TaskDoc) {
+    detailTask = t;
+    detailProject = data?.allProjects.find(p => p._id === t.project_id) ?? null;
+  }
 </script>
 
 <div class="dash">
@@ -63,7 +73,8 @@
               <div class="section-title">★ Pinned</div>
               <div class="task-list">
                 {#each data.pinnedTasks as t (t._id)}
-                  <div class="task-row">
+                  <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
+                  <div class="task-row" on:click={() => openTask(t)}>
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
                     <span class="task-title">{t.title}</span>
                     <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
@@ -78,7 +89,8 @@
               <div class="section-title overdue-title">⚠ Overdue</div>
               <div class="task-list">
                 {#each data.overdueTasks as t (t._id)}
-                  <div class="task-row">
+                  <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
+                  <div class="task-row" on:click={() => openTask(t)}>
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
                     <span class="task-title">{t.title}</span>
                     <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
@@ -98,6 +110,14 @@
     </div>
   {/if}
 </div>
+
+{#if detailTask && detailProject}
+  <CardDetail
+    task={detailTask}
+    project={detailProject}
+    on:close={async () => { detailTask = null; detailProject = null; await reloadTasks(); await load(); }}
+  />
+{/if}
 
 <style>
   .dash { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
@@ -163,7 +183,9 @@
   .task-row {
     display: flex; align-items: center; gap: 9px;
     padding: 9px 12px; background: var(--surface);
+    cursor: pointer; transition: background .1s;
   }
+  .task-row:hover { background: var(--hover); }
   .prio-bar { width: 3px; height: 24px; border-radius: 2px; flex-shrink: 0; }
   .task-title { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .task-proj { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; flex-shrink: 0; }

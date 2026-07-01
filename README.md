@@ -1,6 +1,6 @@
 # Offlog
 
-Version 2.5.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 2.6.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -120,7 +120,7 @@ APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
 
 Or open `android/` directly in Android Studio and run **Build → Generate Signed APK**.
 
-> **Icon note:** if the installed app still shows the old default Capacitor icon after installing a new build, uninstall the app from the device/emulator first, then reinstall — Android's launcher aggressively caches icons per package and a plain overwrite install often keeps the stale one. In Android Studio, also run **Build → Clean Project** before rebuilding after icon assets change.
+> **Icon note:** as of v2.6, the Android launcher icon matches the web icon (both use the mountain/sunset design in `assets/icon-*.png`). If the installed app still shows an old icon after installing a new build, uninstall the app from the device/emulator first, then reinstall — Android's launcher aggressively caches icons per package and a plain overwrite install often keeps the stale one. In Android Studio, also run **Build → Clean Project** before rebuilding after icon assets change.
 
 ---
 
@@ -186,7 +186,8 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 
 | Version | Highlights |
 |---|---|
-| **2.5.0** | Brighter/higher-contrast color palette, duplicate-task action, "Status" naming throughout (was "Column"), FAB hidden behind open modals, codebase audit fixes |
+| **2.6.0** | Android status bar now matches app theme (was default system gray/white), Android launcher icon regenerated to match the web icon (they'd drifted out of sync), Dashboard pinned/overdue tasks are now clickable (previously did nothing) |
+| 2.5.0 | Brighter/higher-contrast color palette, duplicate-task action, "Status" naming throughout (was "Column"), FAB hidden behind open modals, codebase audit fixes |
 | 2.4.1 | Shared `utils.ts` (date/filter helpers), removed dead code, fixed `any` types, global modal scrim, error toasts |
 | 2.4 | Dashboard as home screen, responsive Agenda/Dashboard, view persistence across refresh, Android APK + custom icon |
 

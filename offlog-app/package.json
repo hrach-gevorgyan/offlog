@@ -1,7 +1,7 @@
 {
   "name": "offlog-app",
   "private": true,
-  "version": "2.5.0",
+  "version": "2.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,7 @@
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/status-bar": "^8.0.2",
     "pouchdb": "^9.0.0",
     "pouchdb-browser": "^9.0.0",
     "pouchdb-find": "^9.0.0"
