@@ -118,26 +118,15 @@
 
     <main class="main">
       {#if showDashboard}
-        <div class="board-header">
-          <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
-            <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
-            </svg>
-          </button>
-        </div>
-        <DashboardView on:openProject={(e) => {
-          showDashboard = false;
-          activeProjectId.set(e.detail);
-        }} />
+        <DashboardView
+          on:menu={() => sidebarOpen = true}
+          on:openProject={(e) => {
+            showDashboard = false;
+            activeProjectId.set(e.detail);
+          }}
+        />
       {:else if showDeadlines}
-        <div class="board-header">
-          <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
-            <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
-            </svg>
-          </button>
-        </div>
-        <DeadlinesView />
+        <DeadlinesView on:menu={() => sidebarOpen = true} />
       {:else if $activeProject}
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">

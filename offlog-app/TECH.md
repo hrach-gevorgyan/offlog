@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.7.0 · Local-first task management for browser and Android
+Version 2.7.1 · Local-first task management for browser and Android
 
 ---
 
@@ -243,7 +243,8 @@ cd android && .\gradlew assembleDebug
 
 | Version | Changes |
 |---|---|
-| **2.7.0** | Added PWA support via `vite-plugin-pwa` — installable web app manifest + Workbox service worker precaching the app shell (JS/CSS/HTML/icons) for full offline use on desktop. Service worker registration is manual and web-only (skipped entirely on Android, where Capacitor already bundles assets natively); see PWA section above for the reasoning |
+| **2.7.1** | Fixed inconsistent mobile header layout: Dashboard and Agenda rendered the hamburger menu in its own near-empty row above the title (via a wrapper in `App.svelte`), while the project/Kanban view has always shown hamburger + title inline in one compact row. Moved the hamburger button into `DashboardView.svelte` and `DeadlinesView.svelte` themselves (dispatching a `menu` event that `App.svelte` listens for), matching the project view's header pattern exactly. Also fixed a card-overlap bug on Dashboard surfaced by testing at narrow widths: `.project-grid`'s `grid-auto-rows: 130px` was a hard fixed height, so a card whose stats wrapped to two lines (task count + overdue badge) had its text overflow and overlap the title above; changed to `minmax(130px, auto)` |
+| 2.7.0 | Added PWA support via `vite-plugin-pwa` — installable web app manifest + Workbox service worker precaching the app shell (JS/CSS/HTML/icons) for full offline use on desktop. Service worker registration is manual and web-only (skipped entirely on Android, where Capacitor already bundles assets natively); see PWA section above for the reasoning |
 | 2.6.5 | Fixed the real cause of the "gray hover" over Changelog — reported on both PC and mobile. It was a z-index bug from the v2.4.1 `.scrim` consolidation: the shared global `.scrim` class (app.css) is `z-index: 400`, but `ChangelogView`'s own `.panel` was left at `z-index: 301` — *below* the scrim — so the semi-transparent dark overlay rendered on top of the panel, dimming/graying its content. Bumped to `z-index: 402` (matching the pattern used by `GlobalSearch` at 401 and `QuickAdd` at 501, both already correctly above the scrim) |
 | 2.6.4 | Fixed a gray/dark double-overlay when opening Changelog or Settings from the mobile sidebar drawer. The "Dashboard", "Agenda", and project buttons all call `dispatch('navigate')`, which `App.svelte` uses to close the mobile sidebar (`sidebarOpen = false`) — but the "↩ Changelog" and "⚙ Settings" buttons never did, so the mobile drawer (with its own `.mobile-scrim`) stayed open underneath whatever modal was opened on top of it, and the two semi-transparent scrims stacked into a visibly darker/grayer overlay. Both buttons now dispatch `navigate` too |
 | 2.6.3 | The 2.6.2 fix only patched `.layout` (the main desktop-flow container). Any UI that renders as its own `position: fixed` full-screen element — bypassing `.layout` entirely — still started at `y=0` and got its top cropped by the status-bar strip: the mobile sidebar drawer (`Sidebar.svelte`, `@media max-width:768px`), `CardDetail`'s edit panel, and `ChangelogView`'s panel. Added `padding-top: env(safe-area-inset-top)` (additive to each element's existing top padding) to all three. `QuickAdd` (bottom-anchored) and `GlobalSearch` (`top: 15vh`, already well clear of any status bar height) didn't need changes |

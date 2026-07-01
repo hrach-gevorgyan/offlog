@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { getAllTasksDue, updateTask, subscribe } from './db';
   import { projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabelLong, dueRelative } from './utils';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
+
+  const dispatch = createEventDispatcher<{ menu: void }>();
 
   type DueTask = TaskDoc & { project_name?: string };
 
@@ -57,8 +59,15 @@
 
 <div class="deadlines">
   <div class="dl-header">
-    <h1 class="dl-title">Agenda</h1>
-    <span class="dl-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
+    <button class="hamburger" on:click={() => dispatch('menu')} aria-label="Menu">
+      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
+      </svg>
+    </button>
+    <div class="title-block">
+      <h1 class="dl-title">Agenda</h1>
+      <span class="dl-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
+    </div>
   </div>
 
   <div class="dl-body">
@@ -146,12 +155,23 @@
   .deadlines { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .dl-header {
+    display: flex; align-items: center; gap: 10px;
     padding: 20px 28px 14px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
+  .title-block { min-width: 0; }
   .dl-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
   .dl-count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+  .hamburger {
+    display: none;
+    background: none; border: none; cursor: pointer;
+    color: var(--text); padding: 4px; border-radius: 6px;
+    flex-shrink: 0; align-items: center; justify-content: center;
+    transition: background .12s;
+  }
+  .hamburger:hover { background: var(--hover); }
 
   .dl-body {
     flex: 1; min-height: 0; overflow-y: auto;
@@ -219,6 +239,10 @@
   .due-chip.today   { background: rgba(45,107,228,.12); color: var(--accent); }
   .due-chip.week    { background: rgba(34,197,94,.12); color: #22c55e; }
   .due-chip.later   { background: var(--col-bg); color: var(--faint); }
+
+  @media (max-width: 768px) {
+    .hamburger { display: flex; }
+  }
 
   /* Medium — hide proj badge */
   @media (max-width: 700px) {

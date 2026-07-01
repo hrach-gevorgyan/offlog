@@ -7,7 +7,7 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import CardDetail from './CardDetail.svelte';
 
-  const dispatch = createEventDispatcher<{ openProject: string }>();
+  const dispatch = createEventDispatcher<{ openProject: string; menu: void }>();
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
@@ -28,10 +28,17 @@
 
 <div class="dash">
   <div class="dash-header">
-    <h1 class="dash-title">Dashboard</h1>
-    {#if data}
-      <span class="dash-sub">{data.totalTasks} active task{data.totalTasks === 1 ? '' : 's'} across {data.allProjects.length} project{data.allProjects.length === 1 ? '' : 's'}</span>
-    {/if}
+    <button class="hamburger" on:click={() => dispatch('menu')} aria-label="Menu">
+      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
+      </svg>
+    </button>
+    <div class="title-block">
+      <h1 class="dash-title">Dashboard</h1>
+      {#if data}
+        <span class="dash-sub">{data.totalTasks} active task{data.totalTasks === 1 ? '' : 's'} across {data.allProjects.length} project{data.allProjects.length === 1 ? '' : 's'}</span>
+      {/if}
+    </div>
   </div>
 
   {#if !data}
@@ -123,10 +130,21 @@
   .dash { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .dash-header {
+    display: flex; align-items: center; gap: 10px;
     padding: 20px 28px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
+  .title-block { min-width: 0; }
   .dash-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
   .dash-sub { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+  .hamburger {
+    display: none;
+    background: none; border: none; cursor: pointer;
+    color: var(--text); padding: 4px; border-radius: 6px;
+    flex-shrink: 0; align-items: center; justify-content: center;
+    transition: background .12s;
+  }
+  .hamburger:hover { background: var(--hover); }
 
   .dash-body {
     flex: 1; min-height: 0; overflow-y: auto;
@@ -157,7 +175,7 @@
   .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    grid-auto-rows: 130px;
+    grid-auto-rows: minmax(130px, auto);
     gap: 12px;
     align-content: start;
   }
@@ -199,6 +217,9 @@
   @media (max-width: 900px) {
     .dash-cols { grid-template-columns: 1fr; }
     .col-tasks { gap: 16px; }
+  }
+  @media (max-width: 768px) {
+    .hamburger { display: flex; }
   }
   @media (max-width: 600px) {
     .dash-header { padding: 14px 16px 10px; }
