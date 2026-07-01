@@ -24,7 +24,16 @@ if (isNative) {
   // worker there would only risk serving stale cached JS across
   // APK updates.
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({ immediate: true });
+    const updateSW = registerSW({ immediate: true });
+    // The browser's default SW update check only fires on a fresh
+    // navigation, so an installed/standalone PWA that's just brought
+    // back to the foreground (not fully closed+reopened) can sit on a
+    // stale cached build indefinitely. Re-check whenever the tab/app
+    // regains focus so new builds are picked up without the user
+    // needing to manually close and reopen it.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') updateSW();
+    });
   }).catch(() => {});
 }
 

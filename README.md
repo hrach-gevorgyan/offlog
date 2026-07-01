@@ -1,6 +1,6 @@
 # Offlog
 
-Version 2.7.1 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 2.7.2 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -196,7 +196,8 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 
 | Version | Highlights |
 |---|---|
-| **2.7.1** | Dashboard and Agenda now use the same compact hamburger + title header row as the project view on mobile (was a separate near-empty row above the title). Also fixed a Dashboard card text-overlap bug when a project's stats wrap to two lines |
+| **2.7.2** | Fixed the Agenda task-count badges being invisible (white text on white background — a CSS `currentColor` bug). Fixed "Mark done" appearing to do nothing — it was actually working, but completed tasks never left the Agenda list, so there was no visible confirmation the click did anything |
+| 2.7.1 | Dashboard and Agenda now use the same compact hamburger + title header row as the project view on mobile (was a separate near-empty row above the title). Also fixed a Dashboard card text-overlap bug when a project's stats wrap to two lines |
 | 2.7.0 | Added PWA support — installable manifest + Workbox service worker precaches the app shell for full offline use on desktop/web. Android is unaffected (service worker only registers on web, never inside the Capacitor WebView) |
 | 2.6.5 | Fixed the actual cause of the "gray hover" on Changelog (affected PC too, not just mobile) — a z-index bug where the panel rendered below its own dark scrim |
 | 2.6.4 | Fixed a gray/dark double-overlay on mobile when opening Changelog or Settings from the sidebar drawer — the mobile sidebar wasn't closing itself first, so its dark scrim stacked underneath the new modal's own scrim |

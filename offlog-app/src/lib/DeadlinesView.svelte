@@ -81,7 +81,7 @@
           {#each overdue as t (t._id)}
             <div class="task-row" on:click={() => openDetail(t)}>
               <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <span class="circle" class:done={false} on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
+              <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -196,9 +196,16 @@
   .later-label   { color: var(--faint); }
 
   .badge-count {
-    background: currentColor; color: var(--surface); opacity: .85;
+    color: #fff; opacity: .9;
     font-size: 9px; padding: 1px 5px; border-radius: 8px; font-weight: 700;
   }
+  /* background can't use currentColor here — that would read the badge's
+     own `color` (white) rather than the parent label's color, so each
+     variant gets an explicit background matching its label */
+  .overdue-label .badge-count { background: #b0432e; }
+  .today-label   .badge-count { background: #4f7bc4; }
+  .week-label    .badge-count { background: #5f9b6a; }
+  .later-label   .badge-count { background: var(--faint); }
 
   .task-row {
     display: grid;

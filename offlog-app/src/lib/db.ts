@@ -434,14 +434,17 @@ export async function getAllTags(): Promise<string[]> {
 
 export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: string; space_id: string })[]> {
   const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
-  const tasks = r.rows.map(r => r.doc!).filter(d => !d.deleted && d.due_date);
-  const projCache: Record<string, ProjectDoc> = {};
+  const tasks = r.rows.map(r => r.doc!).filter(d => !d.deleted && !d.archived && d.due_date);
+  const allProjects = await getProjects();
+  const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
   const result = [];
   for (const t of tasks) {
-    if (!projCache[t.project_id]) {
-      try { projCache[t.project_id] = await db.get<ProjectDoc>(t.project_id); } catch {}
-    }
-    result.push({ ...t, project_name: projCache[t.project_id]?.name });
+    const proj = projCache[t.project_id];
+    const lastColId = proj?.columns.at(-1)?.id;
+    // Already marked done (sitting in the last/"Completed" column) — leave
+    // it off the agenda instead of showing it forever after "Mark done".
+    if (lastColId && t.column_id === lastColId) continue;
+    result.push({ ...t, project_name: proj?.name });
   }
   return result.sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
 }
