@@ -271,6 +271,7 @@
     .sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
       width: 280px;
+      padding-top: calc(1.1rem + env(safe-area-inset-top, 0px));
       transform: translateX(-100%);
       transition: transform .38s cubic-bezier(0.4, 0, 0.2, 1),
                   visibility .38s;

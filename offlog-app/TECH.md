@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.6.2 · Local-first task management for browser and Android
+Version 2.6.3 · Local-first task management for browser and Android
 
 ---
 
@@ -219,7 +219,8 @@ cd android && .\gradlew assembleDebug
 
 | Version | Changes |
 |---|---|
-| **2.6.2** | Fixed the top of the app (including the sidebar hamburger button) being hidden behind the new colored status-bar strip. The v2.6.1 fix added `.status-bar-fill` at `z-index: 10000` but never pushed the actual app content down to make room for it — `.layout` started at `y=0` same as the strip, so the strip covered it. Added `padding-top: env(safe-area-inset-top)` + `box-sizing: border-box` to `.layout` so content now starts below the strip instead of under it |
+| **2.6.3** | The 2.6.2 fix only patched `.layout` (the main desktop-flow container). Any UI that renders as its own `position: fixed` full-screen element — bypassing `.layout` entirely — still started at `y=0` and got its top cropped by the status-bar strip: the mobile sidebar drawer (`Sidebar.svelte`, `@media max-width:768px`), `CardDetail`'s edit panel, and `ChangelogView`'s panel. Added `padding-top: env(safe-area-inset-top)` (additive to each element's existing top padding) to all three. `QuickAdd` (bottom-anchored) and `GlobalSearch` (`top: 15vh`, already well clear of any status bar height) didn't need changes |
+| 2.6.2 | Fixed the top of the app (including the sidebar hamburger button) being hidden behind the new colored status-bar strip. The v2.6.1 fix added `.status-bar-fill` at `z-index: 10000` but never pushed the actual app content down to make room for it — `.layout` started at `y=0` same as the strip, so the strip covered it. Added `padding-top: env(safe-area-inset-top)` + `box-sizing: border-box` to `.layout` so content now starts below the strip instead of under it |
 | 2.6.1 | Real fix for the Android status bar (v2.6.0's approach was a no-op on targetSdk 36 — see explanation above); regenerated all icons (web + Android) from a new source image, with a properly safe-zone-padded adaptive icon foreground so circular/squircle launcher masks don't clip the artwork |
 | 2.6.0 | (Superseded) Attempted Android status bar color fix via `setBackgroundColor()` — didn't work on Android 16 target; regenerated Android launcher icons from the *previous* `assets/icon-*.png` source, which turned out to itself be stale/mismatched vs. the actual web icon; fixed Dashboard pinned/overdue task rows having no click handler at all (`CardDetail` now opens on click, matching every other view) — this fix was correct and remains |
 | 2.5.0 | Brighter/higher-contrast color palette (see above), `duplicateTask()` + Duplicate button in CardDetail, "Status" wording used consistently in all remaining UI strings, FAB hides behind any open modal/sidebar |

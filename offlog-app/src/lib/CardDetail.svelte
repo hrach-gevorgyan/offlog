@@ -244,6 +244,7 @@
     height: 100dvh;
     display: flex; flex-direction: column;
     padding: 1.5rem 1.6rem;
+    padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
     gap: 1.1rem;
     border-left: 1px solid var(--border);
     box-shadow: -20px 0 50px rgba(0,0,0,.22);

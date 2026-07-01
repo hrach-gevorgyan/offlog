@@ -108,6 +108,7 @@
     background: var(--surface); border-left: 1px solid var(--border);
     box-shadow: -8px 0 32px rgba(0,0,0,.15); z-index: 301;
     display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top, 0px);
     animation: slideIn .38s cubic-bezier(0.4,0,0.2,1) both;
   }
   @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
