@@ -200,8 +200,8 @@
       </span>
       <button class="sync-now-btn" on:click={syncNow}>↻</button>
     </div>
-    <button class="settings-btn" on:click={() => showChangelog = true}>↩ Changelog</button>
-    <button class="settings-btn" on:click={openSettings}>⚙ Settings</button>
+    <button class="settings-btn" on:click={() => { showChangelog = true; dispatch('navigate'); }}>↩ Changelog</button>
+    <button class="settings-btn" on:click={() => { openSettings(); dispatch('navigate'); }}>⚙ Settings</button>
   </div>
 </aside>
 

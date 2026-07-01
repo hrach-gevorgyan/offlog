@@ -1,6 +1,6 @@
 # Offlog
 
-Version 2.6.3 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 2.6.4 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -186,7 +186,8 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 
 | Version | Highlights |
 |---|---|
-| **2.6.3** | Same status-bar-strip cropping issue as 2.6.2, but for the mobile sidebar drawer and the CardDetail/Changelog side panels — these render as their own fixed full-screen elements, so the 2.6.2 fix (which only touched the main layout) didn't cover them |
+| **2.6.4** | Fixed a gray/dark double-overlay on mobile when opening Changelog or Settings from the sidebar drawer — the mobile sidebar wasn't closing itself first, so its dark scrim stacked underneath the new modal's own scrim |
+| 2.6.3 | Same status-bar-strip cropping issue as 2.6.2, but for the mobile sidebar drawer and the CardDetail/Changelog side panels — these render as their own fixed full-screen elements, so the 2.6.2 fix (which only touched the main layout) didn't cover them |
 | 2.6.1 | Real fix for the Android status bar (targetSdk 36 enforces edge-to-edge display, which made v2.6.0's fix a no-op — see TECH.md); regenerated web + Android icons from a fresh source image with a properly safe-zone-padded Android adaptive icon so round/squircle launcher masks don't clip it |
 | 2.6.0 | Dashboard pinned/overdue tasks are now clickable (previously did nothing) — this part shipped correctly. Status bar and icon fixes in this version didn't fully take, see 2.6.1 |
 | 2.5.0 | Brighter/higher-contrast color palette, duplicate-task action, "Status" naming throughout (was "Column"), FAB hidden behind open modals, codebase audit fixes |
