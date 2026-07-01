@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getAllTasksDue, updateTask } from './db';
-  import { subscribe } from './db';
-  import CardDetail from './CardDetail.svelte';
+  import { getAllTasksDue, updateTask, subscribe } from './db';
   import { projects } from './store';
+  import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
+  import { dueLabelLong, dueRelative } from './utils';
+  import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
 
   type DueTask = TaskDoc & { project_name?: string };
@@ -38,20 +39,6 @@
   $: dueToday  = all.filter(t => t.due_date === today);
   $: thisWeek  = all.filter(t => t.due_date! > today && t.due_date! <= endOfWeek());
   $: later     = all.filter(t => t.due_date! > endOfWeek());
-
-  import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-
-  function fmtDate(d: string): string {
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  function daysLabel(due: string): string {
-    const days = Math.round((new Date(due).getTime() - new Date(today).getTime()) / 86400000);
-    if (days < 0) return `${Math.abs(days)}d overdue`;
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    return `in ${days}d`;
-  }
 
   function openDetail(t: DueTask) {
     detailTask = t;
@@ -89,7 +76,7 @@
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
-              <span class="due-chip overdue">{daysLabel(t.due_date!)} · {fmtDate(t.due_date!)}</span>
+              <span class="due-chip overdue">{dueRelative(t.due_date!)} · {dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
         </section>
@@ -121,7 +108,7 @@
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
-              <span class="due-chip week">{daysLabel(t.due_date!)} · {fmtDate(t.due_date!)}</span>
+              <span class="due-chip week">{dueRelative(t.due_date!)} · {dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
         </section>
@@ -137,7 +124,7 @@
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
-              <span class="due-chip later">{fmtDate(t.due_date!)}</span>
+              <span class="due-chip later">{dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
         </section>

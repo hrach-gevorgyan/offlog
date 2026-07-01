@@ -2,6 +2,8 @@
   import type { ProjectDoc, TaskDoc } from './types';
   import { updateTask, archiveTask, unarchiveTask, getArchivedTasksForProject } from './db';
   import { reloadTasks } from './store';
+  import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
+  import { dueLabel, dueState, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
 
   export let project: ProjectDoc;
@@ -11,43 +13,15 @@
   let sortKey: SortKey = 'due';
   let search = '';
   let filterCol = '';
-  let filterPrio = 0; // 0 = all
+  let filterPrio = 0;
   let filterTag = '';
   let showArchived = false;
 
   const colName = (id: string) => project.columns.find(c => c.id === id)?.name ?? '—';
-  const today = new Date().toISOString().slice(0, 10);
-
-  import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-
-  function dueLabel(due: string | null): string {
-    if (!due) return '';
-    const days = Math.round((new Date(due).getTime() - new Date(today).getTime()) / 86400000);
-    const d = new Date(due);
-    const short = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    if (days < 0) return 'Overdue · ' + short;
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    return short;
-  }
-
-  function dueState(due: string | null): 'overdue' | 'soon' | 'normal' | 'none' {
-    if (!due) return 'none';
-    const days = Math.round((new Date(due).getTime() - new Date(today).getTime()) / 86400000);
-    if (days < 0) return 'overdue';
-    if (days <= 1) return 'soon';
-    return 'normal';
-  }
 
   $: allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
 
-  $: filtered = tasks.filter(t => {
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterCol && t.column_id !== filterCol) return false;
-    if (filterPrio && t.priority !== filterPrio) return false;
-    if (filterTag && !t.tags.includes(filterTag)) return false;
-    return true;
-  });
+  $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag);
 
   $: sorted = [...filtered].sort((a, b) => {
     if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;

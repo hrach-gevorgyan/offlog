@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { ProjectDoc, TaskDoc } from './types';
   import { reloadTasks } from './store';
+  import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
+  import { dueLabel, dueInk, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
 
   export let project: ProjectDoc;
@@ -15,38 +17,10 @@
   let sortAsc = true;
 
   const colName = (id: string) => project.columns.find(c => c.id === id)?.name ?? '—';
-  const today = new Date().toISOString().slice(0, 10);
-
-  import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-
-  function dueLabel(due: string | null): string {
-    if (!due) return '—';
-    const days = Math.round((new Date(due).getTime() - new Date(today).getTime()) / 86400000);
-    const d = new Date(due);
-    const short = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    if (days < 0) return 'Overdue · ' + short;
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    return short;
-  }
-
-  function dueInk(due: string | null): string {
-    if (!due) return 'var(--faint)';
-    const days = Math.round((new Date(due).getTime() - new Date(today).getTime()) / 86400000);
-    if (days < 0) return 'var(--overdue-ink)';
-    if (days <= 1) return 'var(--due-soon-ink)';
-    return 'var(--muted)';
-  }
 
   $: allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
 
-  $: filtered = tasks.filter(t => {
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterCol && t.column_id !== filterCol) return false;
-    if (filterPrio && t.priority !== filterPrio) return false;
-    if (filterTag && !t.tags.includes(filterTag)) return false;
-    return true;
-  });
+  $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag);
 
   $: sorted = [...filtered].sort((a, b) => {
     let cmp = 0;

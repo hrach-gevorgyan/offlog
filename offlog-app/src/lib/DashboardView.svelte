@@ -2,11 +2,11 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import { getDashboardData, subscribe } from './db';
   import { PRIORITY_COLOR } from './constants';
+  import { dueLabelLong } from './utils';
 
   const dispatch = createEventDispatcher<{ openProject: string }>();
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
-  const today = new Date().toISOString().slice(0, 10);
 
   async function load() { data = await getDashboardData(); }
 
@@ -14,15 +14,6 @@
     load();
     return subscribe(() => load());
   });
-
-  function fmtDate(d: string) {
-    const days = Math.round((new Date(d).getTime() - new Date(today).getTime()) / 86400000);
-    const short = new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    if (days < 0) return `${Math.abs(days)}d overdue · ${short}`;
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    return short;
-  }
 </script>
 
 <div class="dash">
@@ -91,7 +82,7 @@
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
                     <span class="task-title">{t.title}</span>
                     <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
-                    <span class="task-due overdue">{fmtDate(t.due_date!)}</span>
+                    <span class="task-due overdue">{dueLabelLong(t.due_date!)}</span>
                   </div>
                 {/each}
               </div>
