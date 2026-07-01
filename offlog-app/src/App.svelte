@@ -258,7 +258,13 @@
     z-index: 10000;
   }
 
-  .layout { display: flex; height: 100dvh; overflow: hidden; }
+  .layout {
+    display: flex;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); min-width: 0; }
 
   /* Mobile scrim */
