@@ -101,6 +101,7 @@
 <svelte:window on:keydown={onKeydown}/>
 
 {#if ready}
+  <div class="status-bar-fill"></div>
   <div class="layout">
     <Sidebar
       bind:showDeadlines
@@ -248,6 +249,15 @@
 {/if}
 
 <style>
+  /* Colored strip behind the transparent Android status bar (edge-to-edge).
+     env(safe-area-inset-top) is 0 on desktop/browser, so this is invisible there. */
+  .status-bar-fill {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background: var(--sidebar-bg);
+    z-index: 10000;
+  }
+
   .layout { display: flex; height: 100dvh; overflow: hidden; }
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); min-width: 0; }
 

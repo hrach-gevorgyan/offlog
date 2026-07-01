@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.6.0 · Local-first task management for browser and Android
+Version 2.6.1 · Local-first task management for browser and Android
 
 ---
 
@@ -187,7 +187,7 @@ Mobile-specific adaptations:
 - **`enterkeyhint`** on inputs: shows GO/Done on soft keyboard
 - **Responsive CSS**: breakpoints at 900px, 768px, 600px, 440px
 - **Source field**: `'mobile'` instead of `'pc'` for changelog tracking
-- **Status bar** (v2.6): `main.ts` detects `Capacitor.isNativePlatform()` and dynamically imports `@capacitor/status-bar` to set the native status bar background to `#14162a` (the sidebar color) with light icon style (`Style.Dark`). `android/app/src/main/res/values/colors.xml` sets the same color as `colorPrimaryDark` so it's correct even before JS runs (during splash)
+- **Status bar** (v2.6.1): targetSdk 36 (Android 16) enforces edge-to-edge display; `StatusBar.setBackgroundColor()` is a hard no-op above API 35 regardless of what color is passed (confirmed by reading `@capacitor/status-bar`'s Android source — `shouldSetStatusBarColor()` returns `false` unconditionally once `targetSdk > 35`). Fighting this by trying to set a background color (the v2.6.0 approach) silently failed, leaving the system's default status bar with our light icon style on top — invisible icons on a light background. The fix embraces edge-to-edge instead: `main.ts` calls `StatusBar.setOverlaysWebView({ overlay: true })` (content draws behind the transparent status bar, standard for modern Android) and `StatusBar.setStyle({ style: Style.Dark })` for light/white icons (this call is *not* gated by the edge-to-edge check, so it still works). A colored strip (`.status-bar-fill` in `App.svelte`) is painted behind the transparent status bar using `height: env(safe-area-inset-top)` and `background: var(--sidebar-bg)`, so the (now-transparent) system icons sit on a dark background and stay visible. Requires `viewport-fit=cover` in the `index.html` viewport meta tag for `env(safe-area-inset-top)` to resolve to a nonzero value on notched/edge-to-edge devices — Capacitor's WebView bridge supplies the actual inset automatically once that's set
 
 Build steps:
 ```bash
@@ -210,7 +210,7 @@ cd android && .\gradlew assembleDebug
 | No Kanban filter | Search/filter only available in List and Table views (by design — not planned) |
 | No bulk actions | No multi-select / bulk move or delete (not planned) |
 | No recurring tasks | Not planned |
-| Android app icon | A replacement flat/no-background source icon from design is still pending — current icon (mountain/sunset design) is consistent across web and Android as of v2.6, but is a placeholder, not final branding |
+| Android app icon | As of v2.6.1, web + Android use the same source (`C:\Users\hrach\Downloads\new_icon.png`, flattened onto navy `#14162a` for legacy/web use, kept transparent with a safe-zone-padded copy for the adaptive icon foreground layer). This may still be a placeholder pending final branding |
 | Android-specific bugs (backlog) | Project delete (×) requiring long-press, and the soft-keyboard "Go" action not submitting — need testing on an actual device/emulator, tracked for a future mobile-focused pass |
 
 ---
@@ -219,7 +219,8 @@ cd android && .\gradlew assembleDebug
 
 | Version | Changes |
 |---|---|
-| **2.6.0** | Fixed Android status bar color (was default system gray/white, now matches sidebar `#14162a` via `@capacitor/status-bar` + native `colors.xml` fallback); regenerated all Android launcher icons from the existing `assets/icon-*.png` source via `@capacitor/assets` — web and Android icons were out of sync because Android generation was never actually run after the web icon was set; fixed Dashboard pinned/overdue task rows having no click handler at all (`CardDetail` now opens on click, matching every other view) |
+| **2.6.1** | Real fix for the Android status bar (v2.6.0's approach was a no-op on targetSdk 36 — see explanation above); regenerated all icons (web + Android) from a new source image, with a properly safe-zone-padded adaptive icon foreground so circular/squircle launcher masks don't clip the artwork |
+| 2.6.0 | (Superseded) Attempted Android status bar color fix via `setBackgroundColor()` — didn't work on Android 16 target; regenerated Android launcher icons from the *previous* `assets/icon-*.png` source, which turned out to itself be stale/mismatched vs. the actual web icon; fixed Dashboard pinned/overdue task rows having no click handler at all (`CardDetail` now opens on click, matching every other view) — this fix was correct and remains |
 | 2.5.0 | Brighter/higher-contrast color palette (see above), `duplicateTask()` + Duplicate button in CardDetail, "Status" wording used consistently in all remaining UI strings, FAB hides behind any open modal/sidebar |
 | 2.4.1 | Extracted `utils.ts` (shared date/filter helpers), removed dead `Counter.svelte`, fixed remaining `any` types, global `.scrim` class, error toast on failed DB writes |
 | 2.4 | Dashboard set as home screen, responsive Dashboard/Agenda layouts, last-view persistence across refresh, Android APK + custom launcher icon, DB reseed to 4 spaces + Draft project |
