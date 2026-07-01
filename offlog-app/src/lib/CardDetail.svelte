@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import type { TaskDoc, ProjectDoc } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, getLogsForTask, duplicateTask } from './db';
-  import { reloadTasks, showError } from './store';
+  import { reloadTasks, showError, modalOpen } from './store';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -23,7 +23,8 @@
   let showHistory = false;
   let history: Awaited<ReturnType<typeof getLogsForTask>> = [];
 
-  onMount(async () => { allTags = await getAllTags(); });
+  onMount(async () => { modalOpen.set(true); allTags = await getAllTags(); });
+  onDestroy(() => modalOpen.set(false));
 
   async function loadHistory() {
     if (!showHistory) { showHistory = true; history = await getLogsForTask(task._id!); }

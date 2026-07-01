@@ -5,6 +5,7 @@ import {
   seedIfEmpty, startSync, subscribe,
 } from './db';
 
+export const modalOpen = writable(false);
 export const errorToast = writable<string>('');
 let _errorTimer: ReturnType<typeof setTimeout> | undefined;
 export function showError(msg: string) {

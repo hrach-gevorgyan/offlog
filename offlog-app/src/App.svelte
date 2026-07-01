@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast } from './lib/store';
+  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
   import { updateProject, subscribeUndo, getUndoBuffer, undoDelete } from './lib/db';
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
@@ -204,11 +204,13 @@
   <div class="loading">Loading…</div>
 {/if}
 
+{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
 <button class="fab" on:click={() => showQuickAdd = true} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
   </svg>
 </button>
+{/if}
 
 {#if showQuickAdd}
   <QuickAdd on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
