@@ -1,0 +1,142 @@
+# Offlog — Contributor Guide (AI & Human)
+
+This file is the entry point for anyone (AI assistant or human) making changes.
+Architecture details live in [offlog-app/TECH.md](offlog-app/TECH.md); user-facing
+docs in [README.md](README.md); planned work in [ROADMAP.md](ROADMAP.md).
+Keep all three updated when your change affects them.
+
+## What this is
+
+A **single-user, local-first** task manager. Svelte 5 + TypeScript + Vite,
+PouchDB (IndexedDB) for storage, optional live sync to a self-hosted CouchDB,
+Capacitor 7 for the Android build, vite-plugin-pwa for the installable web build.
+There is deliberately **no backend, no accounts, no telemetry** — everything
+works fully offline and the only network call is CouchDB replication.
+
+## Commands
+
+```bash
+cd offlog-app
+npm run dev             # dev server at http://localhost:5173
+npm run build           # production build → dist/  (must be warning-free, see below)
+npx tsc --noEmit -p .   # type check
+npx cap sync android    # copy dist/ into the Android project (run after build)
+```
+
+Android APK: `cd android && .\gradlew assembleDebug` (set
+`JAVA_HOME` to Android Studio's JBR first). Dev environment is **Windows** —
+prefer POSIX-safe commands in scripts, and expect LF→CRLF warnings from git
+(harmless, don't "fix" them).
+
+## Layer rules (who may talk to whom)
+
+```
+UI components (.svelte) → store.ts → db.ts → PouchDB
+                        ↘ db.ts directly for reads/mutations is OK,
+                          but ALWAYS reload via store helpers afterwards
+notifications.ts → db.ts   (one direction only; db.ts must never import notifications.ts)
+```
+
+- `store.ts` is the only reactive state layer. Components never hold their own
+  copy of task lists beyond derived/local view state.
+- After any task mutation from a component, call `reloadTasks()` (or rely on the
+  live `subscribe()` change feed if the write goes through sync).
+- Every task-mutating call site must be wrapped in `try/catch` + `showError()`.
+  No silent failures — this is an established, audited invariant (v2.9.0).
+
+## Database invariants (db.ts)
+
+- **PouchDB is a UMD global** loaded via `index.html` (`public/pouchdb.js`),
+  core-only. Plugins (e.g. `pouchdb-find`) must be registered explicitly with
+  `PouchDB.plugin(...)` — importing them is not enough.
+- `db.find()` **silently defaults to 25 results** — always pass an explicit
+  `limit`. This has bitten us before.
+- **Soft delete only** for tasks (`deleted: true`); never `db.remove()` a task
+  except in `deleteProject`/`wipeAndReseed`. Hard deletes break sync semantics.
+- **`_taskCache` must be invalidated** (`invalidateTaskCache()`) inside every
+  function that writes a task doc, in addition to the central invalidation in
+  `subscribe()`. If you add a new write path, add the invalidation.
+- **"Done" is positional**: a task is considered complete when its `column_id`
+  equals the **last** column of its project (`columns.at(-1)`). There is no
+  `done` boolean. Agenda, dashboard overdue counts, and reminders all rely on
+  this — apply the same rule in any new query.
+- **Ordering** uses fractional positions (`posBetween`) — insert between
+  neighbors without renumbering.
+- Every mutation writes a `log:` changelog doc via `logChange()`. New mutation
+  types should follow the same pattern (action ∈ create/update/move/delete).
+- Document `_id` prefixes are the type system: `space:` / `project:` / `task:` /
+  `log:`. Range scans depend on these prefixes — never change them.
+
+## Theming rules
+
+- **All colors are CSS custom properties** in `src/app.css` (`:root` light,
+  `body.dark` dark). The full token table is in TECH.md → "Theme System".
+- **Never hardcode a hex/rgba color in a component**, with two exceptions:
+  pure-black shadows/scrims (`rgba(0,0,0,.x)`) and the sidebar's local
+  translucent white overrides (it is pinned always-dark by design).
+- Derived tints use `color-mix(in srgb, var(--token) X%, transparent)` —
+  never a separately hardcoded rgba of the token's current value.
+- Semantic tokens: `--accent` (indigo), `--danger`, `--success`,
+  `--overdue-bg/ink`, `--due-soon-bg/ink`. Add a token rather than a literal
+  if a new semantic color is needed, and add it to **both** light and dark
+  blocks plus the tables in TECH.md and README.
+- Brand color changes must also propagate to: `index.html` `<meta theme-color>`,
+  `vite.config.ts` PWA manifest, `capacitor.config.ts` `iconColor`, and
+  `android/.../values/colors.xml`.
+- `Sidebar.svelte`'s `.settings-panel` is a DOM **sibling** of the sidebar, not
+  a descendant — it inherits page-level tokens, not the sidebar's dark
+  overrides. Don't "fix" this by adding local palette overrides there.
+
+## Accessibility rules (enforced — build must stay warning-free)
+
+- `npm run build` currently emits **zero Svelte compiler warnings**. Keep it
+  that way; fix warnings properly instead of adding `svelte-ignore`.
+- Anything clickable is a real `<button>` (with `aria-label` if icon-only),
+  or has `role="button" tabindex="0"` + Enter/Space keydown when a button
+  element genuinely can't be used (e.g. rows containing other buttons).
+- Never `outline: none` on `:focus` without a replacement — the global
+  `:focus-visible` rule in app.css provides keyboard focus rings; don't defeat it.
+- Every modal/panel closes on Escape. Hover-only controls need a visible
+  fallback on touch (see the Kanban column-action `@media (max-width: 768px)`
+  pattern).
+- Legitimate remaining `svelte-ignore` uses: scrim click-to-close (Escape is
+  the keyboard path) and intentional `a11y-autofocus` on inline editors.
+
+## Android / PWA gotchas (hard-won — read before touching)
+
+- **Status bar**: targetSdk 36 is edge-to-edge; `StatusBar.setBackgroundColor()`
+  is a hard no-op. The working approach is the `.status-bar-fill` strip in
+  App.svelte + `env(safe-area-inset-top)` padding. Details in TECH.md.
+- **Notification icons** must be white silhouettes with transparency, or
+  Android silently substitutes a generic triangle.
+- **Service worker is web-only** (`main.ts` gates on `Capacitor.isNativePlatform()`).
+  Never register it in the Android build — it would serve stale JS across APK updates.
+- `position: fixed` full-screen elements bypass `.layout` and need their own
+  `padding-top: env(safe-area-inset-top)`.
+- Android launcher icon changes: uninstall the app before reinstalling, and
+  Clean Project — the launcher caches icons aggressively.
+
+## Release checklist
+
+1. `npm run build` — must succeed with **zero warnings**
+2. `npx tsc --noEmit -p .` — clean
+3. Verify visually in the browser preview (light **and** dark mode)
+4. Bump version in **both** `package.json` and
+   `android/app/build.gradle` (`versionCode` +1, `versionName`)
+5. `npx cap sync android`
+6. Update version-history tables in `offlog-app/TECH.md` **and** `README.md`
+   (TECH.md entry is detailed/technical; README entry is user-facing)
+7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
+8. **Never push, sync to Android, or commit palette/visual changes without
+   the owner's explicit confirmation of how it looks**
+
+## Style conventions
+
+- Match existing code: compact CSS (one-line related properties), Svelte 5
+  with `on:` event syntax, TypeScript everywhere, no CSS framework.
+- Comments explain **constraints and why**, not what the next line does.
+  The codebase has a strong tradition of comments documenting non-obvious
+  invariants (see db.ts) — follow it.
+- User-facing wording: statuses are called **"Status"**, never "Column"
+  (internal field names still say `column_id` — that's a frozen legacy name).
+- Dates in docs are absolute (e.g. "2026-07"), not relative.

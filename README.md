@@ -237,4 +237,8 @@ The accent (`#6366F1` indigo) is also used for the PWA theme color, the Android 
 | 2.4.1 | Shared `utils.ts` (date/filter helpers), removed dead code, fixed `any` types, global modal scrim, error toasts |
 | 2.4 | Dashboard as home screen, responsive Agenda/Dashboard, view persistence across refresh, Android APK + custom icon |
 
-See [TECH.md](offlog-app/TECH.md) for architecture details.
+## Further Reading
+
+- [TECH.md](offlog-app/TECH.md) — architecture, data model, sync internals, theme tokens
+- [CLAUDE.md](CLAUDE.md) — contributor guide (conventions, invariants, release checklist) for humans and AI assistants
+- [ROADMAP.md](ROADMAP.md) — planned work: performance/stability track and feature track

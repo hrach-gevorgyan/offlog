@@ -2,6 +2,10 @@
 
 Version 3.0.1 · Local-first task management for browser and Android
 
+> Contributor conventions, invariants, and the release checklist live in
+> [CLAUDE.md](../CLAUDE.md). Planned work lives in [ROADMAP.md](../ROADMAP.md).
+> This file documents how the system currently works.
+
 ---
 
 ## Why This Project Exists
