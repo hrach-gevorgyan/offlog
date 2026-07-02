@@ -325,7 +325,6 @@
         on:drop={(e) => onCardListDrop(e, col.id)}
       >
         {#each tasksByCol[col.id] ?? [] as task, idx (task._id)}
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div
             class="card"
             data-task-idx={idx}
@@ -333,12 +332,15 @@
             class:insert-before={dragOverColId === col.id && dragOverIndex === idx}
             style="--prio-color:{PRIORITY_COLOR[task.priority]}"
             draggable="true"
+            role="button"
+            tabindex="0"
             on:dragstart={(e) => onCardDragStart(e, task)}
             on:dragover={(e) => onCardDragOver(e, col.id, idx)}
             on:drop={(e) => onCardListDrop(e, col.id)}
             on:dragend={onCardDragEnd}
             on:touchstart|nonpassive={(e) => onTouchStart(e, task, e.currentTarget)}
             on:click={() => { if (!touchGhost) detailTask = task; }}
+            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
@@ -422,6 +424,9 @@
   @media (max-width: 768px) {
     .board { padding: 1rem; gap: .75rem; }
     .column { width: 260px; }
+    /* These are hover-revealed on desktop, but touch has no hover state —
+       without this they're effectively undiscoverable on mobile. */
+    .col-rename, .col-archive, .col-remove { opacity: .55; }
   }
   .column {
     background: var(--col-bg);

@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 2.9.2 · Local-first task management for browser and Android
+Version 3.0.0 · Local-first task management for browser and Android
 
 ---
 
@@ -202,29 +202,34 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 ---
 
-## Theme System
+## Theme System — Brand Colors (v3.0)
 
-All colors are CSS custom properties in `app.css`:
+All colors are CSS custom properties in `app.css` — no hardcoded colors anywhere else in the app, including the PWA manifest and Android native theming:
 
 - `:root` — light theme
 - `body.dark` — dark theme overrides
 - `color: var(--text)` is set on `body` so it cascades everywhere
+- Component-local overrides (e.g. `Sidebar.svelte`'s `.sidebar`, which is always dark regardless of page theme) redeclare the same variable names in their own scope rather than hardcoding values, so they stay in sync with any future palette change
+- Derived tints (hover states, translucent highlights, badge backgrounds) use `color-mix(in srgb, var(--accent) X%, transparent)` instead of separately hardcoded rgba() values tied to whatever the accent used to be
 
-Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode. The sidebar always uses a dark color scheme regardless of page theme.
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `--bg` | `#F6F7F9` | `#181A20` | page background |
+| `--surface` | `#FFFFFF` | `#242934` | cards, panels |
+| `--sidebar-bg` | `#181A20` | `#101218` | sidebar (always dark) |
+| `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
+| `--border` | `#E2E4EA` | `#2F3542` | hairlines |
+| `--border-strong` | `#C7CBD6` | `#3F4657` | scrollbar thumb, stronger dividers |
+| `--hover` | `#ECEEF2` | `#2A2F3A` | row/button hover |
+| `--text` | `#1F2937` | `#F3F4F6` | primary ink |
+| `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
+| `--faint` | `#9CA3AF` | `#6B7280` | tertiary ink, placeholders |
+| `--accent` | `#6366F1` | `#818CF8` | indigo — buttons, active states, links |
+| `--danger` | `#DC2626` | `#F87171` | destructive actions |
 
-Key tokens: `--bg`, `--surface`, `--col-bg`, `--text`, `--muted`, `--faint`, `--border`, `--accent`, `--danger`, `--overdue-bg/ink`, `--due-soon-bg/ink`
+The same accent (`#6366F1`) drives the PWA `theme_color`/`background_color` (`vite.config.ts`), the `<meta name="theme-color">` in `index.html`, Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`), and the notification icon color (`capacitor.config.ts`) — one brand color across web, installed PWA, and native app, updated in one place if it ever changes again.
 
-### v2.5 palette refresh
-
-The v2.4.x palette used near-identical tones for `--bg` and `--col-bg`, which made Kanban status columns visually blend into the empty page — they *were* stretching to fill the available width (flex-grow was always working correctly), but low contrast made filled space look empty. v2.5 raises contrast and saturation:
-
-| Token | v2.4.x (light) | v2.5 (light) |
-|---|---|---|
-| `--col-bg` | `#edf0f7` (barely distinct from `--bg`) | `#e7ebfb` (clearly indigo-tinted) |
-| `--accent` | `#2d6be4` (flat blue) | `#6d5ef5` (vivid violet-blue) |
-| `--sidebar-bg` | `#1a1e27` (plain gray-navy) | `#14162a` (deeper indigo-black) |
-
-Priority colors (`constants.ts`) moved from muted grays/ochres to saturated Tailwind-style tones: Low `#34D399` (emerald), Medium `#FBBF24` (amber), High `#F43F5E` (rose). Dark mode received matching contrast increases (`--col-bg: #232842`, `--accent: #8b7bff`).
+Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
 
 ---
 
@@ -274,7 +279,7 @@ Notification permission is requested lazily — either from the inline hint show
 
 `vite.config.ts` configures `vite-plugin-pwa` in `generateSW` mode, which produces at build time:
 
-- `dist/manifest.webmanifest` — app name, `theme_color`/`background_color` (`#14162a`, matching the sidebar), `display: 'standalone'`, and icons (both `any` and `maskable` purpose, reusing the same flattened-navy `icon-192.png`/`icon-512.png` used everywhere else — see icon section above)
+- `dist/manifest.webmanifest` — app name, `theme_color`/`background_color` (`#181a20`, matching the sidebar), `display: 'standalone'`, and icons (both `any` and `maskable` purpose)
 - `dist/sw.js` + `dist/workbox-*.js` — a Workbox service worker that precaches the built JS/CSS/HTML/icons (`globPatterns: ['**/*.{js,css,html,svg,png,ico}']`) so the app shell loads instantly offline
 - `dist/registerSW.js` is **not** auto-injected (`injectRegister: false`) — registration is manual, see below
 
@@ -316,26 +321,12 @@ cd android && .\gradlew assembleDebug
 
 ---
 
-## Known Limitations / Future Work
-
-| Area | Note |
-|---|---|
-| Undo buffer | In-memory only — lost on page refresh |
-| Conflict resolution | Last-write-wins by default; v2.8.0 adds *reporting* (conflict count in sidebar) but no resolution UI — by design, out of scope |
-| Web notifications while fully closed | Not possible without a push server, which this app deliberately doesn't have. Best-effort: fires while the tab/PWA is running, plus a 1-hour catch-up window on next open. Android has genuine closed-app notifications via native OS scheduling |
-| No Kanban filter | Search/filter only available in List and Table views (by design — not planned) |
-| No bulk actions | No multi-select / bulk move or delete (not planned) |
-| No recurring tasks | Not planned |
-| Android app icon | As of v2.6.1, web + Android use the same source (`C:\Users\hrach\Downloads\new_icon.png`, flattened onto navy `#14162a` for legacy/web use, kept transparent with a safe-zone-padded copy for the adaptive icon foreground layer). This may still be a placeholder pending final branding |
-| Android-specific bugs (backlog) | Project delete (×) requiring long-press, and the soft-keyboard "Go" action not submitting — need testing on an actual device/emulator, tracked for a future mobile-focused pass |
-
----
-
 ## Version History
 
 | Version | Changes |
 |---|---|
-| **2.9.2** | Three Android/Agenda fixes reported directly from a real device. (1) The Agenda's Overdue chip showed the duration twice ("63d overdue · 63d overdue · Wed, Apr 29") — `dueLabelLong()` already embeds "Xd overdue" internally, but the template also called `dueRelative()` (which returns the same "Xd overdue" text) and concatenated both; removed the redundant `dueRelative()` call for the overdue row specifically (the "this week"/"later" rows were already correct, since `dueLabelLong()` omits the relative prefix for non-overdue dates). (2) Notifications showed a generic system alert-triangle icon instead of the app's icon — Android status bar icons must be a plain white silhouette with transparency; the app's full-color launcher icon doesn't qualify and Android silently substitutes a fallback. Generated a proper monochrome mountain-glyph icon (`assets/notification-icon.svg` → `ic_stat_notify.png` at all densities) and configured `LocalNotifications.smallIcon`/`iconColor` in `capacitor.config.ts`. (3) User asked why reminders didn't fire until manually enabling "Alarms & reminders" in Android settings — traced to `@capacitor/local-notifications`'s own Android implementation: it already gracefully falls back to inexact (`AlarmManager.set`) delivery when `canScheduleExactAlarms()` is false, rather than crashing, but inexact delivery under Android's Doze/battery restrictions can be delayed by several minutes. This is an OS-level restriction the app can't bypass without a custom native settings-intent (out of scope for this session, needs on-device testing); added a clear explanation in Settings instead of leaving it as an unexplained manual step |
+| **3.0.0** | **Brand color system**: full palette rewrite (soft neutral-gray background, indigo accent — see Theme System above) applied via CSS custom properties only, replacing hardcoded colors that had drifted out of sync across `Sidebar.svelte`, `DeadlinesView.svelte`, `ListView.svelte`, `GlobalSearch.svelte`, `ChangelogView.svelte`, and `CardDetail.svelte` since as far back as the v2.4.x palette. Also removed a fully dead duplicate hardcoded palette block on `Sidebar.svelte`'s `.settings-panel` (verified via DOM structure that the panel is a sibling of `<aside>`, not a descendant, so it was never actually shadowed by the sidebar's dark overrides and had simply drifted). Propagated to the PWA manifest, `<meta name="theme-color">`, Android `colorPrimary`/`colorAccent`, and the notification icon color. **Usability pass**: keyboard shortcuts panel (press `?`), Escape closes any open modal, `:focus-visible` outline restored app-wide for keyboard navigation (many components had `outline: none` on `:focus`, which also silently strips keyboard focus indicators), keyboard-operable task rows/cards across Kanban/List/Table/Dashboard/Agenda (`role="button" tabindex="0"` + Enter/Space handling), sidebar active-state and hover language unified (space nav and top-level nav now share the same accent-tinted active style), Kanban column-action buttons (rename/archive/remove) no longer invisible on touch devices (were hover-only via `opacity: 0`) |
+| 2.9.2 | Three Android/Agenda fixes reported directly from a real device. (1) The Agenda's Overdue chip showed the duration twice ("63d overdue · 63d overdue · Wed, Apr 29") — `dueLabelLong()` already embeds "Xd overdue" internally, but the template also called `dueRelative()` (which returns the same "Xd overdue" text) and concatenated both; removed the redundant `dueRelative()` call for the overdue row specifically (the "this week"/"later" rows were already correct, since `dueLabelLong()` omits the relative prefix for non-overdue dates). (2) Notifications showed a generic system alert-triangle icon instead of the app's icon — Android status bar icons must be a plain white silhouette with transparency; the app's full-color launcher icon doesn't qualify and Android silently substitutes a fallback. Generated a proper monochrome mountain-glyph icon (`assets/notification-icon.svg` → `ic_stat_notify.png` at all densities) and configured `LocalNotifications.smallIcon`/`iconColor` in `capacitor.config.ts`. (3) User asked why reminders didn't fire until manually enabling "Alarms & reminders" in Android settings — traced to `@capacitor/local-notifications`'s own Android implementation: it already gracefully falls back to inexact (`AlarmManager.set`) delivery when `canScheduleExactAlarms()` is false, rather than crashing, but inexact delivery under Android's Doze/battery restrictions can be delayed by several minutes. This is an OS-level restriction the app can't bypass without a custom native settings-intent (out of scope for this session, needs on-device testing); added a clear explanation in Settings instead of leaving it as an unexplained manual step |
 | 2.9.1 | Fixed `getDashboardData()`'s `overdueTasks` list showing tasks that were overdue but already sitting in their project's last ("Completed") column. `byProject[...].overdue` (the per-project count shown on each project card) already excluded them via a `column_id !== lastColId` check, but the flat `overdueTasks` array used for the "⚠ Overdue" panel never applied that same filter — an inconsistency between the two, not a new bug introduced by any prior change. Verified with a throwaway task: appears in the list while active, disappears once moved to the last column |
 | 2.9.0 | Pre-3.0 hardening pass — see Performance & Reliability section above. Real `pouchdb-find` indexing (the plugin was never actually registered against the global PouchDB, despite being a dependency — found and fixed), an in-memory task cache invalidated centrally, a caught-before-shipping `db.find()` default-25-result-limit bug, crash recovery (App.svelte error boundary + global unhandled-rejection net), error handling audited and filled in across every remaining unguarded mutation, and a new database integrity checker + repair utility in Settings. Also cleaned up several leftover test-data cards that earlier notification testing had accidentally left in the real synced database, and fixed a Dashboard bug where `DashboardView.svelte`'s `.task-proj` project-name badge had no `max-width` — a long project name (e.g. "Just testing purpose") could squeeze the flexible `.task-title` down to near-zero width in the narrow 320px right column, making the task's actual title invisible and the project name look like it had taken its place |
 | 2.8.0 | **Notifications**: new `reminder_at` field on tasks (independent of `due_date`), set via a `datetime-local` picker in CardDetail. Android uses `@capacitor/local-notifications` — fires even while the app is fully closed, via native OS scheduling. Web uses the Notification API with `setTimeout` scheduling (best-effort, requires the tab/PWA to be running) plus a 1-hour catch-up check on load for reminders missed while closed. Clicking a notification opens the task via a new `pendingOpenTaskId` store. Scheduling uses a simple cancel-all-then-reschedule-from-scratch model on every store reload rather than tracking individual mutation sites — see Notifications section above. **Sync reliability**: `lastSynced` now persists across app restarts (was in-memory only), real offline detection via `navigator.onLine` + online/offline events (distinct from generic sync errors), human-readable error messages instead of raw error dumps, a visible retry-attempt count, and conflict-count reporting in the sidebar (reporting only, no resolution UI) |

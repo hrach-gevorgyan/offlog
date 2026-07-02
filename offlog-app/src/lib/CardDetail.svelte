@@ -10,6 +10,10 @@
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') dispatch('close');
+  }
+
   function isoToLocalInput(iso: string): string {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -39,7 +43,7 @@
     else { showHistory = false; }
   }
 
-  const ACTION_COLOR: Record<string, string> = { create: '#4ade80', update: '#5d9bff', move: '#d99a3b', delete: '#f87171' };
+  const ACTION_COLOR: Record<string, string> = { create: '#4ade80', update: '#6366f1', move: '#d99a3b', delete: '#f87171' };
   const FIELD_LABEL: Record<string, string> = { title: 'Title', body: 'Notes', priority: 'Priority', due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags', column_id: 'Status', pinned: 'Pinned', archived: 'Archived' };
   const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
@@ -123,6 +127,8 @@
     }
   }
 </script>
+
+<svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="overlay" on:click|self={() => dispatch('close')}>

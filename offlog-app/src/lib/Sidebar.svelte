@@ -13,6 +13,12 @@
   export let showDashboard = false;
   export let open = false;
 
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    if (showSettings) showSettings = false;
+    else if (open) open = false;
+  }
+
   let showChangelog = false;
   let showSettings = false;
   let syncUrl = getSyncUrl();
@@ -164,6 +170,8 @@
   };
   const DEFAULT_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>`;
 </script>
+
+<svelte:window on:keydown={onWindowKeydown}/>
 
 <aside class="sidebar" class:mobile-open={open}>
   <div class="logo">Offlog</div>
@@ -372,15 +380,17 @@
     background: var(--sidebar-bg); border-right: 1px solid rgba(255,255,255,.06);
     display: flex; flex-direction: column;
     padding: 1.1rem .75rem; gap: .35rem; overflow-y: auto;
-    /* override text colors for dark sidebar */
-    --text: #e8edf8;
-    --muted: #8890b0;
-    --faint: #4d5370;
+    /* Sidebar is always dark regardless of the page's light/dark toggle,
+       so its surface tones are pinned here rather than following
+       --bg/--surface. */
+    --text: #f3f4f6;
+    --muted: #a3a9b7;
+    --faint: #6b7280;
     --hover: rgba(255,255,255,.07);
-    --surface: #232737;
+    --surface: #242934;
     --border: rgba(255,255,255,.07);
     --border-strong: rgba(255,255,255,.13);
-    --accent: #5d9bff;
+    --accent: #818cf8;
   }
 
   @media (max-width: 768px) {
@@ -401,21 +411,25 @@
       visibility: visible;
     }
   }
-  .logo { font-weight: 700; font-size: 1.05rem; padding: .25rem .35rem .85rem; letter-spacing: -.02em; color: #fff; }
+  .logo {
+    font-family: var(--mono); font-weight: 600; font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .14em; padding: .25rem .35rem .85rem; color: var(--faint);
+  }
 
   /* Agenda nav */
   .agenda-btn {
     display: flex; align-items: center; gap: .55rem;
     width: 100%; border: none; cursor: pointer; text-align: left;
     padding: .55rem .75rem; border-radius: var(--radius-sm);
-    background: rgba(93,155,255,.14); color: #7ab4ff;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
     font-weight: 700; font-size: .88rem; letter-spacing: -.01em;
-    border: 1.5px solid rgba(93,155,255,.28);
+    border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
     transition: background .12s, box-shadow .12s;
     margin-bottom: .2rem;
   }
-  .agenda-btn:hover { background: rgba(93,155,255,.22); }
-  .agenda-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px rgba(45,107,228,.35); }
+  .agenda-btn:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+  .agenda-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent); }
   .agenda-btn.active svg { stroke: #fff; }
 
   .spaces-divider { height: 1px; background: var(--border); margin: .5rem 0; }
@@ -430,7 +444,11 @@
     transition: background var(--dur) var(--ease);
   }
   .space-btn:hover { background: var(--hover); }
-  .space-btn.active { background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .space-btn.active {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .space-btn.active .space-name { color: var(--accent); }
   .space-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; }
   .space-icon :global(svg) { width: 18px; height: 18px; }
   .space-name { font-size: .92rem; font-weight: 600; flex: 1; letter-spacing: -.01em; }
@@ -462,12 +480,13 @@
 
   .proj-delete-btn {
     background: none; border: none; cursor: pointer;
-    color: var(--faint); font-size: 1rem; padding: 0 .25rem;
-    opacity: .35; transition: opacity .12s, color .12s;
+    color: var(--faint); font-size: 1rem; padding: .15rem .35rem;
+    border-radius: 4px;
+    opacity: .35; transition: opacity .12s, color .12s, background .12s;
     line-height: 1;
   }
   .project-row:hover .proj-delete-btn { opacity: 1; }
-  .proj-delete-btn:hover { color: var(--danger); opacity: 1; }
+  .proj-delete-btn:hover { color: var(--danger); opacity: 1; background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
   .new-project-input {
     padding: .35rem .55rem; font-size: .85rem;
@@ -495,7 +514,7 @@
     background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.16);
     transition: background .3s, box-shadow .3s; flex-shrink: 0;
   }
-  .sync-indicator.active { background: var(--accent); box-shadow: 0 0 0 3px rgba(93,155,255,.16); }
+  .sync-indicator.active { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
   .sync-indicator.error  { background: var(--danger); box-shadow: 0 0 0 3px rgba(248,113,113,.16); }
   .sync-indicator.offline { background: var(--faint); box-shadow: 0 0 0 3px rgba(77,83,112,.16); }
   .sync-label {
@@ -522,31 +541,14 @@
     display: flex; align-items: center; justify-content: center; z-index: 200;
   }
   .settings-panel {
-    /* Reset to page-level variables — panel is on light/dark page, not dark sidebar */
-    --text: #12162b;
-    --muted: #5d6480;
-    --faint: #9097b5;
-    --surface: #ffffff;
-    --bg: #f5f7fa;
-    --border: #e3e7f2;
-    --border-strong: #c8cfdf;
-    --hover: #e6eaf6;
-    --accent: #2d6be4;
+    /* This panel is a sibling of <aside class="sidebar">, not a descendant —
+       it already inherits the real global :root/body.dark variables
+       directly. No local overrides needed (a previous hardcoded duplicate
+       palette here had silently drifted out of sync with the real theme). */
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 1.5rem; width: min(400px, 90vw);
     display: flex; flex-direction: column; gap: 1rem;
     box-shadow: 0 20px 50px rgba(0,0,0,.18);
-  }
-  :global(body.dark) .settings-panel {
-    --text: #eaecf6;
-    --muted: #8890b0;
-    --faint: #4d5370;
-    --surface: #1c1f2a;
-    --bg: #13151c;
-    --border: #272b3a;
-    --border-strong: #343848;
-    --hover: #202435;
-    --accent: #5d9bff;
   }
   .settings-panel h3 { margin: 0; font-size: 1rem; letter-spacing: -.01em; }
   .settings-panel label {

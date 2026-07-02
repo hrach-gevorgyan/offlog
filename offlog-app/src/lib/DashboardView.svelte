@@ -54,8 +54,13 @@
             {#each data.allProjects as proj (proj._id)}
               {@const stats = data.byProject[proj._id] ?? { total: 0, pinned: 0, overdue: 0 }}
               {@const space = data.allSpaces.find(s => s._id === proj.space_id)}
-              <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-              <div class="proj-card" on:click={() => dispatch('openProject', proj._id)}>
+              <div
+                class="proj-card"
+                role="button"
+                tabindex="0"
+                on:click={() => dispatch('openProject', proj._id)}
+                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('openProject', proj._id); } }}
+              >
                 <div class="proj-card-top">
                   {#if space}
                     <span class="space-dot" style="background:{space.color}"></span>
@@ -80,8 +85,13 @@
               <div class="section-title">★ Pinned</div>
               <div class="task-list">
                 {#each data.pinnedTasks as t (t._id)}
-                  <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-                  <div class="task-row" on:click={() => openTask(t)}>
+                  <div
+                    class="task-row"
+                    role="button"
+                    tabindex="0"
+                    on:click={() => openTask(t)}
+                    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(t); } }}
+                  >
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
                     <span class="task-title">{t.title}</span>
                     <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
@@ -96,8 +106,13 @@
               <div class="section-title overdue-title">⚠ Overdue</div>
               <div class="task-list">
                 {#each data.overdueTasks as t (t._id)}
-                  <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-                  <div class="task-row" on:click={() => openTask(t)}>
+                  <div
+                    class="task-row"
+                    role="button"
+                    tabindex="0"
+                    on:click={() => openTask(t)}
+                    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(t); } }}
+                  >
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
                     <span class="task-title">{t.title}</span>
                     <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>

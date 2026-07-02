@@ -29,6 +29,7 @@
   $: if (ready) { showDashboard; showDeadlines; $activeProjectId; saveView(); }
   let showSearch = false;
   let showQuickAdd = false;
+  let showShortcuts = false;
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;
 
@@ -67,8 +68,13 @@
   $: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);
 
   function onKeydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); showSearch = true; }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); showQuickAdd = true; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); showSearch = true; return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); showQuickAdd = true; return; }
+    // Don't hijack "?" while the user is typing in a field.
+    const el = e.target as HTMLElement;
+    const typing = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;
+    if (e.key === '?' && !typing) { e.preventDefault(); showShortcuts = true; return; }
+    if (e.key === 'Escape' && showShortcuts) { showShortcuts = false; return; }
   }
 
   onMount(async () => {
@@ -249,6 +255,25 @@
   />
 {/if}
 
+{#if showShortcuts}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="scrim" on:click|self={() => showShortcuts = false}>
+    <div class="shortcuts-panel">
+      <div class="shortcuts-head">
+        <h3>Keyboard shortcuts</h3>
+        <button class="shortcuts-close" on:click={() => showShortcuts = false} aria-label="Close">✕</button>
+      </div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row"><kbd>Ctrl</kbd><span>+</span><kbd>K</kbd><span class="shortcut-desc">Global search</span></div>
+        <div class="shortcut-row"><kbd>Ctrl</kbd><span>+</span><kbd>N</kbd><span class="shortcut-desc">Quick add task</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span class="shortcut-desc">Show this list</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span class="shortcut-desc">Close any open panel</span></div>
+        <div class="shortcut-row"><kbd>Enter</kbd><span class="shortcut-desc">Open a focused card, save a rename</span></div>
+      </div>
+    </div>
+  </div>
+{/if}
+
 {#if $errorToast}
   <div class="error-toast">{$errorToast}</div>
 {/if}
@@ -384,6 +409,29 @@
   }
   .fab:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,.3); }
   .fab:active { transform: scale(.96); }
+
+  /* ── Shortcuts panel ── */
+  .scrim { display: flex; align-items: center; justify-content: center; }
+  .shortcuts-panel {
+    position: relative; z-index: 401;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem 1.4rem; width: min(360px, 90vw);
+    box-shadow: 0 20px 50px rgba(0,0,0,.18);
+  }
+  .shortcuts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .9rem; }
+  .shortcuts-head h3 { margin: 0; font-size: 1rem; letter-spacing: -.01em; }
+  .shortcuts-close {
+    background: var(--hover); border: none; cursor: pointer;
+    width: 26px; height: 26px; border-radius: 6px; color: var(--muted); font-size: .8rem;
+  }
+  .shortcuts-close:hover { background: var(--border-strong); color: var(--text); }
+  .shortcuts-list { display: flex; flex-direction: column; gap: .6rem; }
+  .shortcut-row { display: flex; align-items: center; gap: .3rem; font-size: .85rem; color: var(--text); }
+  .shortcut-row kbd {
+    font-family: var(--mono); font-size: .74rem; background: var(--col-bg);
+    border: 1px solid var(--border-strong); border-radius: 5px; padding: .15rem .4rem;
+  }
+  .shortcut-desc { margin-left: .5rem; color: var(--muted); }
 
   /* ── Error toast ── */
   .error-toast {

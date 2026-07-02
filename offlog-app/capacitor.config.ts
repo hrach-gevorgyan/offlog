@@ -16,7 +16,7 @@ const config: CapacitorConfig = {
       // transparency — a full-color icon (like the app launcher icon) gets
       // silently replaced by a generic system icon (the alert triangle).
       smallIcon: 'ic_stat_notify',
-      iconColor: '#6d5ef5',
+      iconColor: '#6366f1',
     },
   },
 };

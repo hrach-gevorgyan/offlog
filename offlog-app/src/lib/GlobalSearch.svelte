@@ -158,7 +158,7 @@
 
   .result-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .result-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .result-title :global(mark) { background: rgba(93,155,255,.25); color: var(--accent); border-radius: 2px; padding: 0 1px; }
+  .result-title :global(mark) { background: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); border-radius: 2px; padding: 0 1px; }
   .result-tags { font-size: 11px; color: var(--faint); font-family: var(--mono); }
 
   .result-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }

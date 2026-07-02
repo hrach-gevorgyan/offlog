@@ -83,7 +83,13 @@
         <section>
           <div class="group-label overdue-label">Overdue <span class="badge-count">{overdue.length}</span></div>
           {#each overdue as t (t._id)}
-            <div class="task-row" on:click={() => openDetail(t)}>
+            <div
+              class="task-row"
+              role="button"
+              tabindex="0"
+              on:click={() => openDetail(t)}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
+            >
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
@@ -99,7 +105,13 @@
         <section>
           <div class="group-label today-label">Today <span class="badge-count">{dueToday.length}</span></div>
           {#each dueToday as t (t._id)}
-            <div class="task-row" on:click={() => openDetail(t)}>
+            <div
+              class="task-row"
+              role="button"
+              tabindex="0"
+              on:click={() => openDetail(t)}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
+            >
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
@@ -115,7 +127,13 @@
         <section>
           <div class="group-label week-label">This week <span class="badge-count">{thisWeek.length}</span></div>
           {#each thisWeek as t (t._id)}
-            <div class="task-row" on:click={() => openDetail(t)}>
+            <div
+              class="task-row"
+              role="button"
+              tabindex="0"
+              on:click={() => openDetail(t)}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
+            >
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
@@ -131,7 +149,13 @@
         <section>
           <div class="group-label later-label">Later <span class="badge-count">{later.length}</span></div>
           {#each later as t (t._id)}
-            <div class="task-row" on:click={() => openDetail(t)}>
+            <div
+              class="task-row"
+              role="button"
+              tabindex="0"
+              on:click={() => openDetail(t)}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
+            >
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
@@ -194,8 +218,8 @@
     margin-bottom: 8px; padding-bottom: 6px;
     border-bottom: 1.5px solid var(--border);
   }
-  .overdue-label { color: #b0432e; border-color: #b0432e33; }
-  .today-label   { color: #4f7bc4; border-color: #4f7bc433; }
+  .overdue-label { color: var(--overdue-ink); border-color: color-mix(in srgb, var(--overdue-ink) 20%, transparent); }
+  .today-label   { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
   .week-label    { color: #5f9b6a; border-color: #5f9b6a33; }
   .later-label   { color: var(--faint); }
 
@@ -206,8 +230,8 @@
   /* background can't use currentColor here — that would read the badge's
      own `color` (white) rather than the parent label's color, so each
      variant gets an explicit background matching its label */
-  .overdue-label .badge-count { background: #b0432e; }
-  .today-label   .badge-count { background: #4f7bc4; }
+  .overdue-label .badge-count { background: var(--overdue-ink); }
+  .today-label   .badge-count { background: var(--accent); }
   .week-label    .badge-count { background: #5f9b6a; }
   .later-label   .badge-count { background: var(--faint); }
 
@@ -247,7 +271,7 @@
     padding: 3px 9px; border-radius: 6px; white-space: nowrap;
   }
   .due-chip.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
-  .due-chip.today   { background: rgba(45,107,228,.12); color: var(--accent); }
+  .due-chip.today   { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .due-chip.week    { background: rgba(34,197,94,.12); color: #22c55e; }
   .due-chip.later   { background: var(--col-bg); color: var(--faint); }
 

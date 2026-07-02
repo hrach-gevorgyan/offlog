@@ -1,6 +1,6 @@
 # Offlog
 
-Version 2.9.2 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 3.0.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -19,8 +19,10 @@ Version 2.9.2 · A local-first task management app built with Svelte 5, PouchDB,
 - **Undo** — soft-delete with in-memory undo buffer (last 10 deletions)
 - **Android APK** — packaged with Capacitor 7
 - **Installable PWA** — web build is offline-capable and installable via the browser (v2.7)
-- **Brighter UI palette** — higher-contrast surfaces and vivid priority/accent colors (v2.5)
 - **Database maintenance** — a Check Database / Repair Issues tool in Settings scans for and fixes orphaned tasks/projects, invalid status references, and unresolved sync conflicts (v2.9)
+- **Brand color system** — a soft neutral-gray/indigo palette (light + dark), fully token-driven so it applies consistently across the app, PWA, and Android status bar (v3.0)
+- **Keyboard shortcuts panel** — press `?` anywhere to view all shortcuts; Escape closes any modal (v3.0)
+- **Accessibility pass** — keyboard-operable rows/cards throughout (Kanban, List, Table, Dashboard, Agenda), visible focus rings for keyboard navigation (v3.0)
 
 ---
 
@@ -194,11 +196,30 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 
 ---
 
+## Brand Colors
+
+The full palette lives as CSS custom properties in `offlog-app/src/app.css` (`:root` for light, `body.dark` for dark) — no hardcoded colors anywhere else in the app, PWA manifest, or Android theming.
+
+| Role | Light | Dark |
+|---|---|---|
+| Background | `#F6F7F9` | `#181A20` |
+| Surface (cards, panels) | `#FFFFFF` | `#242934` |
+| Sidebar (always dark) | `#181A20` | `#101218` |
+| Kanban column fill | `#ECEEF2` | `#1E222C` |
+| Text | `#1F2937` | `#F3F4F6` |
+| Muted text | `#4B5563` | `#A3A9B7` |
+| Accent | `#6366F1` | `#818CF8` |
+
+The accent (`#6366F1` indigo) is also used for the PWA theme color, the Android status bar/`colorPrimary`, and the notification icon color, so the brand color is consistent across web, installed PWA, and the native app.
+
+---
+
 ## Version History
 
 | Version | Highlights |
 |---|---|
-| **2.9.2** | Fixed the Agenda's overdue duration showing twice ("63d overdue · 63d overdue · Wed, Apr 29"). Fixed Android notifications appearing with a generic system alert-triangle icon instead of the app's own icon — Android requires a plain white silhouette for status bar icons, which the app never had. Added an explanation in Settings for why Android may deliver reminders a few minutes late unless "Alarms & reminders" is enabled — an OS battery-saving restriction the app already works around, not a bug |
+| **3.0.0** | Full visual overhaul — new soft neutral-gray/indigo brand palette applied consistently across light mode, dark mode, PWA manifest, and Android (status bar, launcher theme, notification icon), replacing scattered hardcoded colors with CSS custom properties throughout. Usability pass: keyboard shortcuts panel (`?`), Escape closes any modal, keyboard-operable rows/cards in Kanban/List/Table/Dashboard/Agenda, visible focus rings for keyboard navigation, sidebar active-state and hover consistency fixes, mobile Kanban column-action buttons no longer invisible on touch |
+| 2.9.2 | Fixed the Agenda's overdue duration showing twice ("63d overdue · 63d overdue · Wed, Apr 29"). Fixed Android notifications appearing with a generic system alert-triangle icon instead of the app's own icon — Android requires a plain white silhouette for status bar icons, which the app never had. Added an explanation in Settings for why Android may deliver reminders a few minutes late unless "Alarms & reminders" is enabled — an OS battery-saving restriction the app already works around, not a bug |
 | 2.9.1 | Fixed the Dashboard "⚠ Overdue" list showing tasks that were overdue but already marked complete — the per-project overdue *count* already excluded completed tasks, but the actual list panel didn't apply the same check |
 | 2.9.0 | Pre-3.0 stabilization pass: real database indexing (~9x faster project loads at scale — plus a hidden 25-result query limit caught and fixed before shipping), an in-memory task cache for search/dashboard/agenda, crash recovery with a proper error screen instead of an infinite spinner, error handling filled in across every remaining unguarded action, and a new database integrity checker + repair tool in Settings. Also fixed a Dashboard bug where a long project name could squeeze an overdue task's title down to invisible width in the narrow two-column layout |
 | 2.8.0 | Task reminders with native Android notifications (fire while the app is closed) and best-effort web notifications; clicking one opens the task. Sync status is now much richer: persisted last-sync time, real offline detection, human-readable errors, retry count, and conflict reporting in the sidebar |
@@ -214,4 +235,4 @@ The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
 | 2.4.1 | Shared `utils.ts` (date/filter helpers), removed dead code, fixed `any` types, global modal scrim, error toasts |
 | 2.4 | Dashboard as home screen, responsive Agenda/Dashboard, view persistence across refresh, Android APK + custom icon |
 
-See [TECH.md](offlog-app/TECH.md) for architecture details and known limitations.
+See [TECH.md](offlog-app/TECH.md) for architecture details.

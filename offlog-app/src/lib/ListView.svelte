@@ -105,8 +105,14 @@
   <!-- Task list -->
   <div class="task-list">
     {#each sorted as task (task._id)}
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="task-row" style="--prio-color:{PRIO_COLOR[task.priority]}" on:click={() => detailTask = task}>
+      <div
+        class="task-row"
+        style="--prio-color:{PRIO_COLOR[task.priority]}"
+        role="button"
+        tabindex="0"
+        on:click={() => detailTask = task}
+        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
+      >
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <span
           class="circle"
@@ -249,7 +255,7 @@
     color: var(--muted); font-size: 11.5px; font-weight: 500; padding: 5px 10px; cursor: pointer;
     transition: color .12s, border-color .12s, background .12s;
   }
-  .archive-toggle:hover, .archive-toggle.active { color: var(--accent); border-color: var(--accent); background: rgba(93,155,255,.07); }
+  .archive-toggle:hover, .archive-toggle.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
 
   .archived-section { padding: 16px 0 0; }
   .archived-label {

@@ -98,8 +98,13 @@
 
     <!-- Data rows -->
     {#each sorted as task (task._id)}
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
-      <div class="tbl-row" on:click={() => detailTask = task}>
+      <div
+        class="tbl-row"
+        role="button"
+        tabindex="0"
+        on:click={() => detailTask = task}
+        on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
+      >
         <span class="cell-title">{task.title}</span>
         <span class="cell-col">{colName(task.column_id)}</span>
         <span class="cell-pri">

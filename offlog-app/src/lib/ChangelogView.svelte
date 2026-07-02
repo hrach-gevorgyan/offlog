@@ -7,8 +7,12 @@
 
   onMount(async () => { logs = await getRecentLogs(80); });
 
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') dispatch('close');
+  }
+
   const ACTION_COLOR: Record<string, string> = {
-    create: '#5f9b6a', update: '#4f7bc4', move: '#d99a3b', delete: '#b0432e',
+    create: '#5f9b6a', update: '#6366f1', move: '#d99a3b', delete: '#b0432e',
   };
 
   const FIELD_LABEL: Record<string, string> = {
@@ -68,6 +72,8 @@
     return `Updated ${who ?? 'item'}`;
   }
 </script>
+
+<svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 <div class="scrim" on:click|self={() => dispatch('close')}></div>
@@ -157,7 +163,7 @@
     padding: 2px 7px; border-radius: 5px; flex-shrink: 0;
     background: var(--col-bg); color: var(--muted);
   }
-  .source-pill.source-mobile { background: rgba(93,155,255,.12); color: var(--accent); }
+  .source-pill.source-mobile { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 
   .log-time { font-family: var(--mono); font-size: 10.5px; color: var(--faint); flex-shrink: 0; }
 
