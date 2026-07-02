@@ -1,9 +1,30 @@
 # Offlog — Contributor Guide (AI & Human)
 
-This file is the entry point for anyone (AI assistant or human) making changes.
-Architecture details live in [offlog-app/TECH.md](offlog-app/TECH.md); user-facing
-docs in [README.md](README.md); planned work in [ROADMAP.md](ROADMAP.md).
-Keep all three updated when your change affects them.
+This file is the entry point for anyone (AI assistant or human) making
+changes — it stays at the repo root deliberately, since AI tooling only
+auto-loads a CLAUDE.md found there. Everything else lives in
+[docs/](docs/): [docs/TECH.md](docs/TECH.md) (architecture),
+[docs/ROADMAP.md](docs/ROADMAP.md) (planned work, including long-horizon
+direction — mesh sync, security, business model, in its Track D and the
+sections after it),
+[docs/DECISIONS.md](docs/DECISIONS.md) (why non-obvious choices were made),
+[docs/CHANGELOG.md](docs/CHANGELOG.md) (version history), and
+[docs/QUESTIONS.md](docs/QUESTIONS.md) (open questions). User-facing pitch
+is the root [README.md](README.md).
+
+**Mandatory, not optional: read the relevant document(s) above before
+making any change or moving forward on a request, and revise whichever of
+them your change affects afterward** — including shrinking or deleting
+content that's become stale, not just adding to it. A change that isn't
+reflected in the docs it affects isn't finished. This applies to every
+document in this list, every session, no exceptions.
+
+**Before proposing "why not just do X differently" — check
+docs/DECISIONS.md first.** Several non-obvious choices (PouchDB-as-UMD-
+global, CouchDB over any hosted backend, soft-delete-only, positional
+"done", no F-Droid/iOS, no paywall ever) have already been debated and
+closed with reasons recorded there. Don't re-open them without new
+information.
 
 ## What this is
 
@@ -95,7 +116,8 @@ the live `subscribe()` change feed and in-memory task cache pick it up.
 ## Theming rules
 
 - **All colors are CSS custom properties** in `src/app.css` (`:root` light,
-  `body.dark` dark). The full token table is in TECH.md → "Theme System".
+  `body.dark` dark). The full token table is in `docs/TECH.md` → "Theme System"
+  — this is the only copy; don't duplicate it into README.md.
 - **Never hardcode a hex/rgba color in a component**, with two exceptions:
   pure-black shadows/scrims (`rgba(0,0,0,.x)`) and the sidebar's local
   translucent white overrides (it is pinned always-dark by design).
@@ -104,7 +126,7 @@ the live `subscribe()` change feed and in-memory task cache pick it up.
 - Semantic tokens: `--accent` (indigo), `--danger`, `--success`,
   `--overdue-bg/ink`, `--due-soon-bg/ink`. Add a token rather than a literal
   if a new semantic color is needed, and add it to **both** light and dark
-  blocks plus the tables in TECH.md and README.
+  blocks plus the table in `docs/TECH.md`.
 - Brand color changes must also propagate to: `index.html` `<meta theme-color>`,
   `vite.config.ts` PWA manifest, `capacitor.config.ts` `iconColor`, and
   `android/.../values/colors.xml`.
@@ -147,7 +169,7 @@ verification.
 
 - **Status bar**: targetSdk 36 is edge-to-edge; `StatusBar.setBackgroundColor()`
   is a hard no-op. The working approach is the `.status-bar-fill` strip in
-  App.svelte + `env(safe-area-inset-top)` padding. Details in TECH.md.
+  App.svelte + `env(safe-area-inset-top)` padding. Details in docs/TECH.md.
 - **Notification icons** must be white silhouettes with transparency, or
   Android silently substitutes a generic triangle.
 - **Service worker is web-only** (`main.ts` gates on `Capacitor.isNativePlatform()`).
@@ -156,6 +178,32 @@ verification.
   `padding-top: env(safe-area-inset-top)`.
 - Android launcher icon changes: uninstall the app before reinstalling, and
   Clean Project — the launcher caches icons aggressively.
+
+## Project status & direction
+
+- **This repo has no git remote and is not on GitHub yet — deliberately.**
+  The owner decided (2026-07-02) to go public only once the app is stable
+  and security-audited. Do not add a remote, push, or suggest making the
+  repo public without an explicit owner request. See DECISIONS.md.
+- **Known pre-public-release blocker**: `offlog-app/src/config.ts` has a
+  hardcoded CouchDB password and LAN IP, also present throughout git
+  history. The owner's explicit decision: fix this **as the last step
+  before any public release**, tracked in docs/ROADMAP.md's Track C — not
+  urgent for day-to-day work, but never let a public-facing change (a
+  landing page, a public repo push) go out before this is fixed.
+- **Security is presently minimal by design** (no login, no encryption at
+  rest, unencrypted CouchDB sync) — this is an accepted local-first
+  tradeoff for now, not an oversight, but it is explicitly *not* audited
+  or hardened yet. See docs/ROADMAP.md's Track D Security section before adding any feature that expands
+  the network attack surface (e.g. the planned mesh sync) — that class of
+  change has a hard security-review gate the owner has already set.
+- **Business model**: the app and its source stay free/open-source and
+  never paywalled or ad-supported, permanently — any future monetization
+  (e.g. an optional hosted sync relay) is a separate product sold
+  alongside the app, never a gate inside it. See docs/ROADMAP.md's Business Model section.
+- **Distribution target**: GitHub (source) + a website + Google Play.
+  F-Droid and iOS are explicitly out of scope (owner decision, 2026-07-02) —
+  don't propose either without the owner raising it first.
 
 ## Release checklist
 
@@ -172,8 +220,8 @@ actually requested, but don't invoke Capacitor/Gradle unprompted.
 5. Bump version in **both** `package.json` and
    `android/app/build.gradle` (`versionCode` +1, `versionName`) —
    even though Android isn't being synced/built this release
-6. Update version-history tables in `offlog-app/TECH.md` **and** `README.md`
-   (TECH.md entry is detailed/technical; README entry is user-facing)
+6. Add a new entry to `docs/CHANGELOG.md` — the single source of truth for
+   version history (do not duplicate it back into TECH.md or README.md)
 7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
 8. **Never push, sync to Android, build the APK, or commit palette/visual
    changes without the owner's explicit confirmation/request**

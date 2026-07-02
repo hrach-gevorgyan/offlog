@@ -5,20 +5,70 @@ Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
 
+Related documents: [TECH.md](TECH.md) (how it works today),
+[DECISIONS.md](DECISIONS.md) (why non-obvious choices were made),
+[CHANGELOG.md](CHANGELOG.md) (version history), [QUESTIONS.md](QUESTIONS.md)
+(open questions worth outside input). Long-horizon direction — mesh sync,
+security, business model — used to be a separate VISION.md; folded into
+this file's Track D and the sections after it (2026-07) to stop splitting
+one story across two documents.
+
 ## Mission
 
 Offlog is free, open-source, and local-first — no account, no telemetry, no
 subscription, ever. The biggest goal on this roadmap is making it something
 a non-technical person can actually find and install without knowing what
-"self-host CouchDB" means: an official listing (Play Store and/or F-Droid),
-a public GitHub repo, a real license. Offlog is not trying to out-feature
-Trello, Notion, ClickUp, or Jira — it isn't competing with them. The goal is
-a small, calm tool people like using, not a checklist of matched features.
+"self-host CouchDB" means: an official listing (Play Store), a public
+GitHub repo, a real license. Offlog is not trying to out-feature Trello,
+Notion, ClickUp, or Jira — it isn't competing with them. The goal is a
+small, calm tool people like using, not a checklist of matched features.
 Every roadmap item should be judged against that: does it make Offlog nicer
 to use, or does it just make it bigger?
 
-Three tracks, intentionally separate so a stability pass never gets mixed
-into a feature branch, and neither gets mixed into distribution work:
+---
+
+## Path to v1.0 — the whole story, even the parts that aren't realistic yet
+
+This section exists so the destination is never buried under backlog
+detail. It's a narrative, not a schedule — some of it (Track D especially)
+is genuinely uncertain and may not land as described. That's fine; the
+point is to always know what the roadmap is *for*, not just what's next.
+
+1. **Right now (Track A + B):** keep the app trustworthy and close real
+   feature gaps, in small paired releases (see Sequencing below). This is
+   the only part of the roadmap with real short-term commitments.
+2. **In parallel, whenever there's spare attention (Track C, starting
+   now):** get honest about what "ready for a stranger to install" means —
+   fix the hardcoded credentials, verify zero-config first run actually
+   holds, prepare the public GitHub repo and a Play Store listing. Most of
+   this is documentation/audit work, not new features, and doesn't have to
+   wait for Track A/B to finish.
+3. **Once the app feels finished enough to represent well publicly:** go
+   public. GitHub repo, website, Play Store listing. This is the concrete,
+   externally-visible "we made it" milestone — everything before this
+   point is preparation for it.
+4. **The unique differentiator (Track D, long-horizon, not yet started):**
+   device-mesh sync — every device can be a server, paired via QR code, no
+   central server required, CouchDB sync still available in parallel. This
+   is what makes Offlog's sync story genuinely different from every other
+   local-first tool, not just "another sync feature." It is hard, phased,
+   and gated by a real security review before anything ships to real
+   users — see Track D below for the full plan.
+5. **Sustaining it (business model, not yet built):** the app and source
+   stay free/open-source/unpaywalled forever. If a hosted-relay convenience
+   product happens, it's sold separately, never as a gate inside the app.
+   GitHub Sponsors/donations can start the moment the repo is public — no
+   product work required.
+6. **If it succeeds (genuinely speculative, written down so it isn't
+   forgotten):** the mesh-sync engine could outgrow the task manager and
+   become a reusable local-first sync core for other personal-data apps;
+   the project itself, documentation discipline and all, could stand as a
+   public case study in AI-assisted development done well.
+
+Nothing above skips a step. A public repo with hardcoded credentials in its
+history, or a mesh-sync feature shipped without a security review, would
+undermine the entire premise — so the ordering here is a real constraint,
+not just narrative flow.
 
 ---
 
@@ -45,8 +95,8 @@ anywhere (now tracked as A14) directly shaped that redesign's mobile
 navigation pattern. v3.7.0 followed up as an Android-focused release:
 **A13 (focus-trap accessibility)** and **A14 (hardware back-button
 handling)** shipped alongside **B3 (notification actions)** and **B10
-(quick-capture home-screen widget)** — see TECH.md's v3.7.0 entry. Details in
-[TECH.md](offlog-app/TECH.md)'s per-version changelog entries.
+(quick-capture home-screen widget)**. Full details in
+[CHANGELOG.md](CHANGELOG.md)'s per-version entries.
 
 ---
 
@@ -89,12 +139,12 @@ duplicate reminders under those conditions — worth deliberately testing
 rather than waiting for a real missed reminder to report it.
 
 ### A13. Accessibility re-audit for the newer components — shipped in v3.7.0
-See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
-(not renumbered/removed) so the sequencing table below stays accurate.
+See [CHANGELOG.md](CHANGELOG.md)'s v3.7.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### A14. Android hardware back-button handling — shipped in v3.7.0
-See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
-(not renumbered/removed) so the sequencing table below stays accurate.
+See [CHANGELOG.md](CHANGELOG.md)'s v3.7.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### A15. Widget/back-button regression coverage
 v3.7.0 added real native surface — `modalStack.ts`'s history-backed overlay
@@ -129,8 +179,8 @@ Goal: close the gaps a single power user actually hits. Nothing here should
 compromise local-first (no feature may require a server beyond CouchDB).
 
 ### B1. Space management — shipped in v3.6.0
-See [TECH.md](offlog-app/TECH.md)'s v3.6.0 changelog entry. Number kept
-(not renumbered/removed) so the sequencing table below stays accurate.
+See [CHANGELOG.md](CHANGELOG.md)'s v3.6.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### B2. Filters on Kanban + saved filters
 Search/filter exists in List and Table only (a deliberate v2 scope cut, can
@@ -138,8 +188,8 @@ be revisited). Add the same filter bar to Kanban, then let any filter
 combination be saved as a named view per project.
 
 ### B3. Notification actions — shipped in v3.7.0
-See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
-(not renumbered/removed) so the sequencing table below stays accurate.
+See [CHANGELOG.md](CHANGELOG.md)'s v3.7.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### B4. Import/export v2
 Current JSON export is a raw doc dump. Add: export a single project,
@@ -152,8 +202,8 @@ created/skipped before writing.
 useful once sync spans 3+ devices.
 
 ### B6. Tag management — shipped in v3.6.0
-See [TECH.md](offlog-app/TECH.md)'s v3.6.0 changelog entry. Number kept
-(not renumbered/removed) so the sequencing table below stays accurate.
+See [CHANGELOG.md](CHANGELOG.md)'s v3.6.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### B7. Calendar / week view for Agenda
 The Agenda groups by Overdue/Today/This Week/Later as flat lists. A
@@ -177,8 +227,8 @@ can drive the whole app from the keyboard without memorizing separate
 shortcuts for everything.
 
 ### B10. Android quick-capture widget — shipped in v3.7.0
-See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
-(not renumbered/removed) so the sequencing table below stays accurate.
+See [CHANGELOG.md](CHANGELOG.md)'s v3.7.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### B11. High contrast mode
 A third `body` theme class alongside light/dark, raising border/text
@@ -279,8 +329,8 @@ against anyone), add `LICENSE`, a `CONTRIBUTING.md`, issue templates, and a
 README written for someone who has never seen this project before, not
 just this local CLAUDE.md-oriented one. Audit for anything that assumes a
 local-only environment (paths, comments referencing internal-only context)
-before it goes public. Lowest-risk, highest-priority item on this track —
-can start any time, doesn't block or get blocked by A/B work.
+before it goes public. Blocked on **C7** (credential cleanup) and a real
+stability/security pass — see the note there and in DECISIONS.md.
 
 ### C2. Zero-config first run, verified
 The architecture is already local-first with no required server, but this
@@ -297,12 +347,12 @@ telemetry — "we collect nothing" still needs to be a page). Copy should
 frame Offlog as a calm personal tool, not pitch it against Trello/Notion/
 ClickUp/Jira by feature count.
 
-### C4. F-Droid listing
-Matches the free/open philosophy more directly than the Play Store — no
-developer fee, no Google account required to install, and F-Droid's
-reproducible-build model fits a Capacitor app built from public source
-cleanly. Natural pairing with C1 once the repo is public; can ship
-alongside or instead of C3 depending on which audience matters more.
+### C4. F-Droid listing — declined
+Considered and explicitly declined by the owner (2026-07-02): Offlog isn't
+being positioned as "an app that needs to be in every store." Distribution
+stays to GitHub + a website + Google Play; no iOS. See DECISIONS.md.
+Number kept (not reused) so it's clear this was a decision, not an
+oversight.
 
 ### C5. Public web install landing page
 For anyone who'd rather not go through an app store: a small, plain
@@ -316,6 +366,250 @@ A short pass over README/store copy/landing page copy to make sure the
 comes through — description text should sell the feeling of using Offlog,
 not a feature-parity checklist against bigger tools.
 
+### C7. Fix hardcoded CouchDB credentials — mandatory, blocks C1
+`offlog-app/src/config.ts` hardcodes a real CouchDB password and LAN IP as
+fallback defaults, present in git history too. **This must be fixed before
+the repo goes public or any store listing goes live** — not optional, not
+best-effort. Also the reason the repo stays private for now (see
+DECISIONS.md): going public happens only after this is fixed *and* the app
+has had a real stability/security pass. Fix approach: no real credentials
+in source at all, `.env.local`-only with no committed fallback; if the
+existing local repo's history matters to keep, this may mean publishing to
+GitHub as fresh history rather than pushing this repo's full log — decide
+at the time based on how much of the commit history is worth keeping
+public vs. how much scrubbing it needs.
+
+---
+
+## Track D — Mesh Sync (long-horizon, not yet started)
+
+The single hardest problem standing between "works great for one person on
+one device" (true today) and "installable by anyone, works across all
+their devices" (the mission) is **multi-device sync without asking a
+non-technical person to run a server**. CouchDB self-hosting is the current
+answer and will remain available — but it's fundamentally a power-user
+feature, not a mission-complete one. This track is not sequenced into the
+A/B/C release table below yet; **D0 is a spike whose outcome determines
+whether the rest proceeds as designed.**
+
+### The idea
+Every device running Offlog can act as **both a sync client and a sync
+server**. A person with a phone, a home PC, and a tablet pairs the three
+once (via QR code), and from then on any two that are reachable — same
+Wi-Fi, or a direct connection — replicate directly with each other. No
+central server in the loop. CouchDB stays available as an alternative
+transport for devices that are never on the same network — mesh and
+CouchDB aren't mutually exclusive, they're two transports for the same
+underlying PouchDB replication protocol.
+
+### Why this is novel, not just "another sync feature"
+PouchDB already speaks a CouchDB-compatible HTTP replication protocol —
+that part isn't new. What's genuinely rare is turning every *end-user
+device* into a replication endpoint, rather than requiring a server
+(self-hosted or vendor-hosted) as the hub. Most "local-first" tools that
+claim this either still require a relay server for discovery/NAT
+traversal, or restrict peer-to-peer to two devices on the same LAN with
+manual IP entry. A phone that can *also* be a server, discoverable by QR
+code, with automatic reconnection once paired, is a stronger claim than
+most of the local-first space currently makes honestly.
+
+### Why it's hard, stated plainly
+- **Running a server on a phone** means a background process with a
+  listening port — battery and OS-lifecycle implications (Android
+  restricts background services; this is Android-only in scope per the
+  no-iOS decision, which helps but isn't free).
+- **Network reachability is the core problem.** Same-Wi-Fi is easy.
+  Different Wi-Fi (phone on cellular, laptop on home network) is not —
+  needs either a rendezvous/discovery step or an honest, visible
+  "sync next time you're on the same network" fallback, not a silent
+  failure.
+- **Security of an ad-hoc local HTTP server** is a real problem, not a
+  detail — see the Security section below.
+- **N-way conflict resolution** — PouchDB's replication is multi-master-
+  safe pairwise, but a mesh of 3-4 devices syncing opportunistically
+  (not always all-connected at once) needs to be tested specifically for
+  that topology, not assumed safe by extension.
+
+None of this is a reason not to build it — it's the reason it's phased
+below instead of attempted as one release.
+
+### Architecture
+
+```
+┌─────────────┐        QR pairing (one-time,          ┌─────────────┐
+│   Phone      │◄──────  out-of-band trust  ─────────►│     PC       │
+│  (Offlog +   │        exchange, establishes          │  (Offlog +   │
+│  local sync  │        a shared pairing secret)       │  local sync  │
+│  server)     │                                        │  server)     │
+└──────┬──────┘                                        └──────┬──────┘
+       │                                                       │
+       │         same Wi-Fi: direct PouchDB replication        │
+       │         (device-to-device, mDNS-style rediscovery      │
+       │◄────────  after the first pairing) ────────────────►│
+       │                                                       │
+       │                                                       │
+┌──────▼──────┐                                        ┌──────▼──────┐
+│   Tablet     │◄──── same mesh, same pairing model ──►│  (optional)  │
+│              │                                        │  CouchDB     │
+└─────────────┘                                        │  relay, for  │
+                                                          │  devices     │
+                                                          │  never on    │
+                                                          │  the same    │
+                                                          │  network     │
+                                                          └─────────────┘
+```
+
+Key architectural choices (full rationale in DECISIONS.md):
+- **Local HTTP server per device**, exposing a CouchDB-compatible
+  replication endpoint against the device's own PouchDB instance —
+  `pouchdb-server`-style, run as a Capacitor background process on
+  Android, a small companion process on desktop/PC.
+- **QR code for initial pairing only.** The QR payload carries the
+  pairing device's current local address plus a one-time pairing token —
+  scanned once, it establishes a long-lived shared secret used to
+  authenticate all future connections between those two specific devices.
+  No account, no external server involved in pairing.
+- **mDNS/local network discovery for reconnection**, so two already-paired
+  devices on the same Wi-Fi find each other automatically without
+  re-scanning a QR code.
+- **CouchDB remains a fully independent, optional transport** — mesh only,
+  CouchDB only, or both at once, same as any CouchDB URL today.
+- **Per-device retention policies govern local storage**, not a global
+  cap — see Retention below.
+
+### Phased implementation guide (nothing here ships as one release)
+
+**D0 — Seed / the "clean baseline" for this whole track.** Before any
+networking code: a throwaway spike answering whether a background
+CouchDB-compatible server can actually run inside a Capacitor Android app
+and survive being backgrounded — the single riskiest technical assumption
+in the whole plan. Also decide the PC-side equivalent (the web build has no
+native background process today — does mesh sync need an Electron-style
+wrapper, or a companion lightweight local server?). Output: a written
+go/no-go informing whether D1 proceeds as designed.
+
+**D1 — Pairing, two devices, same Wi-Fi only.** QR-code pairing UI,
+one-time trust exchange, shared secret storage. Manual "sync with paired
+device" trigger (not automatic yet) — proves the replication path works
+before automating it. No mDNS yet. Ship as an experimental, opt-in Settings
+feature, clearly labeled early-stage.
+
+**D2 — Automatic reconnection, same network.** mDNS-based rediscovery of
+already-paired devices; background/live sync against them, same trigger
+model `startSync()` already uses for CouchDB.
+
+**D3 — Real N-way mesh + retention.** Test and harden the 3+ device
+topology explicitly, not just assume pairwise correctness generalizes.
+Retention policy UI (see below) becomes necessary once storage isn't
+bounded by "whatever fits in one CouchDB instance."
+
+**D4 — Cross-network fallback.** The hard, possibly-permanently-out-of-
+scope case: phone on cellular, laptop on home Wi-Fi, no shared network.
+Candidates needing real research before commitment: a lightweight
+self-hostable rendezvous relay (still no vendor lock-in, just a discovery
+hop), or explicitly documenting "mesh sync requires a shared network; use
+CouchDB for always-available sync" as the honest permanent answer.
+
+### Security — a hard gate, not a nice-to-have
+Current state, stated plainly rather than assumed:
+- **No login/account concept exists.** Physical access to an unlocked
+  device is full data access — an accepted local-first tradeoff, but an
+  explicit one; an optional app-level PIN/biometric lock (Capacitor
+  biometric plugins exist) for shared devices is a candidate Track B item.
+- **CouchDB sync traffic is not encrypted today** — `config.ts` talks to a
+  plain `http://` LAN address with a hardcoded username/password (see
+  Track C's C7). Minimum bar before any public release: sync must support
+  HTTPS, no credential ships hardcoded in source.
+- **No encryption at rest.** IndexedDB storage is plaintext. Worth
+  deciding deliberately whether this matters for the target audience (a
+  personal task manager, not a password manager) rather than leaving it
+  undecided.
+- **Mesh sync raises the stakes on all of the above.** An ad-hoc local
+  HTTP server, even LAN-only, is a bigger attack surface than one
+  configured CouchDB URL. The QR pairing secret must be treated as a real
+  credential — used to authenticate *and* encrypt the connection, never
+  logged or displayed again after the initial pairing screen.
+
+None of this blocks D0-D1 experimentation, but **no mesh-sync phase past
+D1 ships to real users without a real security review** — a hard gate,
+precisely because it's exposing a network service from a personal device
+for the first time in this app's life. See QUESTIONS.md's Q4/Q7/Q8 for
+what's still unresolved about how to actually execute that review.
+
+### Retention & "unlimited" storage
+Is truly unlimited local storage realistic? Not without a policy — and the
+app already has the right instinct (log/deleted-task pruning exist today,
+see CLAUDE.md's db.ts invariants), it just needs to stay deliberate and
+user-facing as mesh sync raises the stakes:
+- Keep the existing time-based retention pattern as the default, but make
+  retention windows **visible and adjustable** in Settings once mesh sync
+  is in play, since a phone's storage budget is much tighter than a PC's.
+- A device in the mesh doesn't need to hold every historical revision
+  forever just because another device does — retention can reasonably be
+  **per-device**, not a single global policy, once D3 lands.
+- This is exactly what A17 (storage-pressure handling, Track A) exists to
+  cover — mesh sync makes it more urgent, not a new problem.
+
+---
+
+## Business model — sustaining this without compromising "free forever"
+
+The app and its core code stay free and open-source permanently, but the
+project needs to be able to sustain its owner. The model that fits,
+matching how comparable local-first projects (Obsidian, Standard Notes,
+Bitwarden) actually sustain themselves without betraying an open-source
+mission:
+
+- **The app is never paywalled, never feature-gated, never ad-supported,
+  never sells data.** Non-negotiable per the Mission above.
+- **Any paid layer is convenience, not capability** — most plausibly, an
+  optional hosted sync relay for people who don't want to self-host
+  CouchDB *or* deal with mesh pairing. Anyone capable of self-hosting or
+  using mesh sync gets 100% of the same functionality free, forever.
+- **GitHub Sponsors / a simple donation link** is the lowest-effort,
+  lowest-risk starting point — can exist immediately once the repo is
+  public, no product work required.
+- **The Play Store listing stays free** — a paid app or in-app purchase
+  would contradict the mission directly. A hosted-relay product, if it
+  happens, is sold separately from the app, never as an IAP inside it.
+
+This doesn't need to be decided in detail yet — it needs a direction that
+doesn't get contradicted by product decisions made before it's addressed.
+See QUESTIONS.md's Q5/Q6 for what's still genuinely unresolved here.
+
+---
+
+## What's next, if this succeeds
+
+Two real directions, not chosen between yet, just named so they're
+revisited deliberately rather than forgotten if Offlog does well:
+
+1. **The sync/mesh engine outgrows the task manager.** A device-pairing +
+   mesh-replication layer built well isn't inherently task-manager-
+   specific — it's a reusable local-first sync core other personal-data
+   apps (notes, habit tracking, a private journal) could sit on top of.
+   If ever pursued, this should be a deliberate architectural decision
+   (extract the engine, keep Offlog as the flagship app on top of it), not
+   an accident of code reuse.
+2. **The project becomes a public reference/case study** — both for
+   local-first architecture (Svelte + PouchDB + Capacitor, documented in
+   TECH.md) and for AI-assisted development done with real discipline
+   (this whole docs/ set as a working example, not marketing copy). Has
+   value independent of the app's own user count.
+
+Neither is a commitment — written down so that if Offlog does succeed, the
+next decision is a deliberate one made with this context in hand, not a
+scramble.
+
+---
+
+## Open questions
+
+Anything genuinely unresolved — technical feasibility, business-model
+specifics, security tradeoffs — that would benefit from an outside AI's or
+human's opinion lives in [QUESTIONS.md](QUESTIONS.md), not scattered inline
+here. Check there before assuming an item above is fully settled.
+
 ---
 
 ## Sequencing suggestion
@@ -324,12 +618,14 @@ The original 5:10 Track A:B split below is fully paired through v4.0.0.
 A15–A17 and B11–B20 (added while reshaping Settings in v3.6.0 and while
 scoping the app's growth beyond v4.0.0) aren't slotted into a release yet —
 re-pair them alongside whichever future items land, rather than
-force-fitting them into the table below. Track C
-runs independently of version numbers: **C1 and C2 can start now**, in
-parallel with v3.8.0, since they're documentation/verification work that
-doesn't touch app code; **C3–C6 fit naturally once the app feels
+force-fitting them into the table below. Track C runs independently of
+version numbers: **C7 (credential fix) and C2 can start now**, in parallel
+with v3.8.0, since they're documentation/verification/security work that
+barely touches app code; **C1/C3/C5/C6 fit naturally once the app feels
 "finished enough" to represent well in a public listing** — realistically
-after v4.0.0, once the current Track A/B backlog has landed.
+after v4.0.0, once the current Track A/B backlog has landed. Track D (mesh
+sync) isn't sequenced at all yet — D0 is a spike whose outcome determines
+whether it's sequenced as designed.
 
 | Release | Track A | Track B | Why paired |
 |---|---|---|---|

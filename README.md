@@ -1,6 +1,14 @@
 # Offlog
 
-Version 3.7.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 3.7.0 · A free, open-source, local-first task management app.
+No account, no telemetry, no subscription, ever. Runs in the browser and
+as a native Android app. Sync is optional and never required.
+
+Offlog isn't trying to out-feature Trello, Notion, ClickUp, or Jira — it
+isn't competing with them. It's a small, calm tool built to work exactly
+the way one person wants, and given away for anyone else who wants the
+same thing. Full mission and long-horizon direction (mesh sync, security,
+business model): [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -9,87 +17,33 @@ Version 3.7.0 · A local-first task management app built with Svelte 5, PouchDB,
 - **Spaces & Projects** — organize work into colored spaces, each containing multiple projects
 - **Multiple views** — Kanban board, list, table, and agenda (deadlines) per project
 - **Dashboard** — overview of all projects with pinned and overdue tasks at a glance
-- **Quick Add** — Ctrl+N anywhere to create a task with space/project selector
+- **Quick Add** — Ctrl+N anywhere to create a task with space/project selector; a home-screen widget on Android
 - **Global Search** — Ctrl+K to search across all tasks instantly
 - **Card detail** — full task editor with notes, priority, due date, tags, status, and changelog
-- **Duplicate task** — one click to clone a card (title, tags, due date, priority) into the same status
+- **Duplicate task** — one click to clone a card into the same status
 - **Dark mode** — toggle persisted to localStorage
-- **Sync** — live CouchDB replication (optional); works fully offline without it, with offline detection, retry status, and conflict reporting in the sidebar (v2.8)
-- **Reminders** — set a reminder time per task, independent of due date; native notifications on Android (fire even while the app is closed), best-effort browser notifications on web; clicking one opens the task (v2.8)
-- **Undo** — soft-delete with in-memory undo buffer (last 10 deletions)
-- **Android APK** — packaged with Capacitor 7
-- **Installable PWA** — web build is offline-capable and installable via the browser (v2.7)
-- **Database maintenance** — a Check Database / Repair Issues tool in Settings scans for and fixes orphaned tasks/projects, invalid status references, and unresolved sync conflicts (v2.9)
-- **Brand color system** — a soft neutral-gray/indigo palette (light + dark), fully token-driven so it applies consistently across the app, PWA, and Android status bar (v3.0)
-- **Keyboard shortcuts panel** — press `?` anywhere to view all shortcuts; Escape closes any modal (v3.0)
-- **Accessibility pass** — keyboard-operable rows/cards throughout (Kanban, List, Table, Dashboard, Agenda), visible focus rings for keyboard navigation (v3.0)
+- **Sync** — live CouchDB replication (optional); works fully offline without it, with offline detection, retry status, and conflict reporting
+- **Reminders** — set a reminder time per task, independent of due date; native notifications on Android with "Done"/"Snooze 1h" actions right from the lock screen
+- **Undo & Recycle** — soft-delete with undo, plus a full Recycle view with restore/delete-forever
+- **Android hardware back button** — closes whatever modal/panel is open, the way it should
+- **Accessibility** — keyboard-operable throughout, focus trapping in every modal, visible focus rings
+- **Android APK** packaged with Capacitor, and an **installable PWA** for the web build
+- **Database maintenance** — a Check Database / Repair Issues tool scans for and fixes orphaned tasks/projects, invalid status references, and unresolved sync conflicts
 
----
-
-## Tech Stack
-
-| Layer | Tool |
-|---|---|
-| UI framework | Svelte 5 + TypeScript |
-| Build tool | Vite |
-| Local database | PouchDB (UMD global via `public/pouchdb.js`) |
-| Remote sync | CouchDB |
-| Mobile wrapper | Capacitor 7 |
-| Styling | CSS custom properties (no framework) |
-
----
-
-## Project Structure
-
-```
-offlog-app/
-  src/
-    App.svelte          # Root layout, keyboard shortcuts, undo toast, view routing
-    config.ts           # CouchDB URL + credentials (reads from .env.local)
-    lib/
-      db.ts             # All PouchDB operations + CouchDB sync + changelog
-      store.ts          # Svelte stores (spaces, projects, tasks, active IDs)
-      types.ts          # TypeScript interfaces for all document types
-      constants.ts      # Priority colors, labels, default columns
-      Sidebar.svelte    # Space/project nav, dark mode toggle, sync indicator
-      DashboardView.svelte   # Home screen — project cards + pinned/overdue
-      KanbanBoard.svelte     # Drag-and-drop kanban with touch support
-      ListView.svelte        # Sortable/filterable task list
-      TableView.svelte       # Compact table view
-      DeadlinesView.svelte   # Agenda — all tasks with due dates
-      CardDetail.svelte      # Full task editor modal (edit, delete, archive, duplicate)
-      QuickAdd.svelte        # Ctrl+N fast-add modal
-      GlobalSearch.svelte    # Ctrl+K search modal
-      ChangelogView.svelte   # Full activity log
-  android/              # Capacitor Android project
-  public/
-    pouchdb.js          # PouchDB UMD bundle
-  .env.local            # VITE_COUCH_URL, VITE_COUCH_USER, VITE_COUCH_PASS
-```
+Full version-by-version history: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ---
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js 18+
-- (Optional) CouchDB instance for sync
-- (Optional) Android Studio + JDK for APK builds
-
-### Install & Run
-
 ```bash
 cd offlog-app
 npm install
-npm run dev
+npm run dev              # http://localhost:5173
 ```
 
-App runs at `http://localhost:5173`.
-
-### Environment Variables
-
-Create `offlog-app/.env.local`:
+Sync is optional — the app works fully offline with no setup. To enable
+sync, create `offlog-app/.env.local`:
 
 ```
 VITE_COUCH_URL=http://192.168.x.x:5984/offlog
@@ -97,156 +51,28 @@ VITE_COUCH_USER=youruser
 VITE_COUCH_PASS=yourpass
 ```
 
-Sync is optional — the app works fully offline without these set.
-
-### Build Web
-
-```bash
-cd offlog-app
-npm run build
-# Output in offlog-app/dist/
-```
-
-The build includes a PWA manifest + service worker (via `vite-plugin-pwa`). `npm run dev` does **not** register a service worker — to test installability/offline behavior, serve the actual production build:
-
-```bash
-npm run build
-npm run preview
-# then open the printed localhost URL and check the browser's
-# "Install app" icon in the address bar
-```
-
-### Build Android APK
-
-```bash
-cd offlog-app
-npm run build
-npx cap sync android
-
-# Set JAVA_HOME if needed:
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-
-cd android
-.\gradlew assembleDebug
-```
-
-APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
-
-Or open `android/` directly in Android Studio and run **Build → Generate Signed APK**.
-
-> **Icon note:** as of v2.6.1, the Android launcher icon matches the web icon exactly (both generated from the same source). If the installed app still shows an old icon after installing a new build, uninstall the app from the device/emulator first, then reinstall — Android's launcher aggressively caches icons per package and a plain overwrite install often keeps the stale one. In Android Studio, also run **Build → Clean Project** before rebuilding after icon assets change.
+Build for web (`npm run build`, output in `offlog-app/dist/`) or Android
+(`npx cap sync android` then build via Android Studio or Gradle) — full
+build/deploy steps, environment details, and the CouchDB setup snippet are
+in [docs/TECH.md](docs/TECH.md).
 
 ---
 
-## Data Model
+## Documentation
 
-All documents live in a single PouchDB database (`offlog`). Documents are typed by an `type` field:
+Everything beyond this pitch lives in [docs/](docs/):
 
-```
-SpaceDoc    _id: "space:<key>"     — colored workspace container
-ProjectDoc  _id: "project:<key>"  — belongs to a space, has kanban columns
-TaskDoc     _id: "task:<nanoid>"  — belongs to a project, has priority/due/tags
-LogEntry    _id: "log:<nanoid>"   — immutable changelog entry per task mutation
-```
-
-Soft-delete: tasks get `deleted: true` (filtered from all queries). Archive: `archived: true`.
-
----
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
+| Document | What's in it |
 |---|---|
-| Ctrl+N | Quick add task |
-| Ctrl+K | Global search |
-| Escape | Close any modal |
+| [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Planned work, the public-release path, and long-horizon direction (mesh sync, security, business model) |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Why non-obvious architectural choices were made |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Full version history |
+| [docs/QUESTIONS.md](docs/QUESTIONS.md) | Open questions worth outside input |
+| [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
----
+## License
 
-## Default Data
-
-On first launch (empty database), the app seeds:
-
-- **Unsorted** space (gray)
-- **Personal** space (green)
-- **Family** space (amber)
-- **Work** space (blue)
-- **Draft** project inside Unsorted
-
----
-
-## CouchDB Setup (optional)
-
-```bash
-# Create database
-curl -X PUT http://admin:pass@localhost:5984/offlog
-
-# Create app user
-curl -X PUT http://admin:pass@localhost:5984/_users/org.couchdb.user:offlog \
-  -H "Content-Type: application/json" \
-  -d '{"name":"offlog","password":"yourpass","roles":[],"type":"user"}'
-
-# Grant access
-curl -X PUT http://admin:pass@localhost:5984/offlog/_security \
-  -H "Content-Type: application/json" \
-  -d '{"admins":{"names":[],"roles":[]},"members":{"names":["offlog"],"roles":[]}}'
-```
-
-The app syncs live via `PouchDB.sync()` with auto-reconnect on connection loss.
-
----
-
-## Brand Colors
-
-The full palette lives as CSS custom properties in `offlog-app/src/app.css` (`:root` for light, `body.dark` for dark) — no hardcoded colors anywhere else in the app, PWA manifest, or Android theming.
-
-| Role | Light | Dark |
-|---|---|---|
-| Background | `#F6F7F9` | `#181A20` |
-| Surface (cards, panels) | `#FFFFFF` | `#242934` |
-| Sidebar (always dark) | `#181A20` | `#101218` |
-| Kanban column fill | `#ECEEF2` | `#1E222C` |
-| Text | `#1F2937` | `#F3F4F6` |
-| Muted text | `#4B5563` | `#A3A9B7` |
-| Accent | `#6366F1` | `#818CF8` |
-| Success | `#22C55E` | `#4ADE80` |
-
-The accent (`#6366F1` indigo) is also used for the PWA theme color, the Android status bar/`colorPrimary`, and the notification icon color, so the brand color is consistent across web, installed PWA, and the native app.
-
----
-
-## Version History
-
-| Version | Highlights |
-|---|---|
-| **3.7.0** | Android-focused release. The hardware/gesture back button now closes whatever panel or modal is open (Settings, Trash, task details, etc.) instead of minimizing the app — and every one of those panels now traps keyboard focus and returns it to what you clicked when it closes. Task reminder notifications gained "Done" and "Snooze 1h" buttons you can tap right from the lock screen. A new "Quick Add" home-screen widget (add it from your widget picker, same as any other Android widget) jumps straight to adding a task. Also fixed the List view's status/due-date columns shifting around depending on how many tags a task had, and replaced the plain OS-style project picker in Quick Add with a proper themed dropdown |
-| 3.6.0 | Manage your spaces (rename, recolor, reorder, delete) and tags (rename, merge, delete) directly from Settings. Settings itself is fully redesigned — a proper category list instead of one long scrolling page, with a layout that adapts cleanly to phone screens instead of cramming everything into a tiny width |
-| 3.5.0 | Fixed the Settings panel getting cut off top and bottom when the (now-working) conflict list has several items. Fixed the Android splash screen — it was never properly connected to Android's splash screen system, so newer phones showed a plain white flash instead of the app's actual charcoal branding before launch |
-| 3.4.0 | Added the project's first automated tests (26 tests covering the database layer), which caught and fixed two real bugs that had been silently shipping since v3.1.0: sync conflict detection never actually worked (the conflict-count badge always read zero), and resolving a conflict didn't fully clean it up. Also trimmed the app's download size a bit further by loading a task's edit history on demand instead of bundling it upfront |
-| 3.3.0 | Polish pass on v3.2.0's Trash/Maintenance redesign: the sidebar's bottom row is now one clean row of three (Changelog / Deleted / Settings) with a proper settings icon and a quiet item count instead of a loud notification badge. Every confirmation prompt in the app (deleting a task, a project, a status, emptying Deleted) is now a styled in-app dialog instead of the browser's native popup. "Check Database", "Repair Issues", and "Optimize Storage" are combined into one Maintenance flow with a visible progress bar and a plain-English note for each step |
-| 3.2.0 | Trash is now its own space in the sidebar (with a live count badge) instead of a list buried in Settings — see every deleted task, restore it, or delete it forever, plus an "Empty Trash" button. Settings' storage cleanup button is now "Optimize Storage" and does something more meaningful: compacts the database to actually reclaim disk space, not just remove old records |
-| 3.1.1 | Deleted tasks now have a retention policy too (3 months, auto-cleared — verified the "Recently Deleted" list itself already stayed capped at 10 rows regardless of scale). Settings' Data section now shows an actual breakdown of what's stored (active/archived/deleted tasks, history entries) instead of just a raw MB figure, plus a "Clean Up Now" button to run cleanup immediately |
-| 3.1.0 | First roadmap pass (performance & stability): undo now survives a page refresh (Settings → Recently Deleted), sync conflicts can be reviewed and resolved instead of always auto-resolving to last-write-wins, faster app startup (parallelized data loading, skips the one-time seed check after first launch), a single sync replication runs at a time instead of two competing ones, changelog storage growth is now bounded (6-month retention), and the Changelog view loads on demand instead of bloating the main bundle |
-| 3.0.1 | Cleanup patch: build is now completely free of compiler warnings. All icon-only click targets are real buttons with screen-reader labels (mark-done circles, tag chips, status rename), search results have proper list semantics, the dark-mode toggle is a labeled switch, and a new `--success` color token replaces the last scattered hardcoded greens |
-| 3.0.0 | Full visual overhaul — new soft neutral-gray/indigo brand palette applied consistently across light mode, dark mode, PWA manifest, and Android (status bar, launcher theme, notification icon), replacing scattered hardcoded colors with CSS custom properties throughout. Usability pass: keyboard shortcuts panel (`?`), Escape closes any modal, keyboard-operable rows/cards in Kanban/List/Table/Dashboard/Agenda, visible focus rings for keyboard navigation, sidebar active-state and hover consistency fixes, mobile Kanban column-action buttons no longer invisible on touch |
-| 2.9.2 | Fixed the Agenda's overdue duration showing twice ("63d overdue · 63d overdue · Wed, Apr 29"). Fixed Android notifications appearing with a generic system alert-triangle icon instead of the app's own icon — Android requires a plain white silhouette for status bar icons, which the app never had. Added an explanation in Settings for why Android may deliver reminders a few minutes late unless "Alarms & reminders" is enabled — an OS battery-saving restriction the app already works around, not a bug |
-| 2.9.1 | Fixed the Dashboard "⚠ Overdue" list showing tasks that were overdue but already marked complete — the per-project overdue *count* already excluded completed tasks, but the actual list panel didn't apply the same check |
-| 2.9.0 | Pre-3.0 stabilization pass: real database indexing (~9x faster project loads at scale — plus a hidden 25-result query limit caught and fixed before shipping), an in-memory task cache for search/dashboard/agenda, crash recovery with a proper error screen instead of an infinite spinner, error handling filled in across every remaining unguarded action, and a new database integrity checker + repair tool in Settings. Also fixed a Dashboard bug where a long project name could squeeze an overdue task's title down to invisible width in the narrow two-column layout |
-| 2.8.0 | Task reminders with native Android notifications (fire while the app is closed) and best-effort web notifications; clicking one opens the task. Sync status is now much richer: persisted last-sync time, real offline detection, human-readable errors, retry count, and conflict reporting in the sidebar |
-| 2.7.2 | Fixed the Agenda task-count badges being invisible (white text on white background — a CSS `currentColor` bug). Fixed "Mark done" appearing to do nothing — it was actually working, but completed tasks never left the Agenda list, so there was no visible confirmation the click did anything |
-| 2.7.1 | Dashboard and Agenda now use the same compact hamburger + title header row as the project view on mobile (was a separate near-empty row above the title). Also fixed a Dashboard card text-overlap bug when a project's stats wrap to two lines |
-| 2.7.0 | Added PWA support — installable manifest + Workbox service worker precaches the app shell for full offline use on desktop/web. Android is unaffected (service worker only registers on web, never inside the Capacitor WebView) |
-| 2.6.5 | Fixed the actual cause of the "gray hover" on Changelog (affected PC too, not just mobile) — a z-index bug where the panel rendered below its own dark scrim |
-| 2.6.4 | Fixed a gray/dark double-overlay on mobile when opening Changelog or Settings from the sidebar drawer — the mobile sidebar wasn't closing itself first, so its dark scrim stacked underneath the new modal's own scrim |
-| 2.6.3 | Same status-bar-strip cropping issue as 2.6.2, but for the mobile sidebar drawer and the CardDetail/Changelog side panels — these render as their own fixed full-screen elements, so the 2.6.2 fix (which only touched the main layout) didn't cover them |
-| 2.6.1 | Real fix for the Android status bar (targetSdk 36 enforces edge-to-edge display, which made v2.6.0's fix a no-op — see TECH.md); regenerated web + Android icons from a fresh source image with a properly safe-zone-padded Android adaptive icon so round/squircle launcher masks don't clip it |
-| 2.6.0 | Dashboard pinned/overdue tasks are now clickable (previously did nothing) — this part shipped correctly. Status bar and icon fixes in this version didn't fully take, see 2.6.1 |
-| 2.5.0 | Brighter/higher-contrast color palette, duplicate-task action, "Status" naming throughout (was "Column"), FAB hidden behind open modals, codebase audit fixes |
-| 2.4.1 | Shared `utils.ts` (date/filter helpers), removed dead code, fixed `any` types, global modal scrim, error toasts |
-| 2.4 | Dashboard as home screen, responsive Agenda/Dashboard, view persistence across refresh, Android APK + custom icon |
-
-## Further Reading
-
-- [TECH.md](offlog-app/TECH.md) — architecture, data model, sync internals, theme tokens
-- [CLAUDE.md](CLAUDE.md) — contributor guide (conventions, invariants, release checklist) for humans and AI assistants
-- [ROADMAP.md](ROADMAP.md) — planned work: performance/stability track and feature track
+Not yet decided/applied — tracked in [docs/ROADMAP.md](docs/ROADMAP.md)'s
+Track C (a permissive license, leaning MIT, is planned ahead of any public
+release).
