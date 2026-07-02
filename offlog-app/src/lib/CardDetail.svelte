@@ -4,6 +4,7 @@
   import { updateTask, deleteTask, getAllTags, archiveTask, getLogsForTask, duplicateTask } from './db';
   import { reloadTasks, showError, modalOpen } from './store';
   import { requestPermission, permissionState } from './notifications';
+  import { confirmAction } from './confirm';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -107,7 +108,7 @@
   }
 
   async function softDelete() {
-    if (!confirm('Delete this task?')) return;
+    if (!(await confirmAction('Delete this task?', { danger: true, confirmLabel: 'Delete' }))) return;
     try {
       await deleteTask(task._id!);
       await reloadTasks();

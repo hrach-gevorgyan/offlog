@@ -3,9 +3,10 @@
   import { getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribe } from './db';
   import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
+  import { confirmAction } from './confirm';
   import type { TaskDoc } from './types';
 
-  const dispatch = createEventDispatcher<{ menu: void }>();
+  const dispatch = createEventDispatcher<{ close: void }>();
 
   type TrashedTask = TaskDoc & { project_name?: string };
 
@@ -19,6 +20,10 @@
     const unsub = subscribe(() => load());
     return unsub;
   });
+
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') dispatch('close');
+  }
 
   // Deleted tasks only carry a timestamp, not a duration — this turns
   // updated_at into the same kind of relative label used elsewhere in the
@@ -45,7 +50,7 @@
   }
 
   async function removeForever(t: TrashedTask) {
-    if (!confirm(`Permanently delete "${t.title}"? This can't be undone.`)) return;
+    if (!(await confirmAction(`Permanently delete "${t.title}"? This can't be undone.`, { danger: true, confirmLabel: 'Delete forever' }))) return;
     try {
       await deleteForever(t._id!);
       await load();
@@ -56,46 +61,47 @@
 
   async function emptyAll() {
     if (!items.length) return;
-    if (!confirm(`Permanently delete all ${items.length} item${items.length === 1 ? '' : 's'} in Trash? This can't be undone.`)) return;
+    if (!(await confirmAction(`Permanently delete all ${items.length} item${items.length === 1 ? '' : 's'} in Recycle? This can't be undone.`, { danger: true, confirmLabel: 'Empty Recycle' }))) return;
     emptying = true;
     try {
       await emptyTrash();
       await load();
     } catch {
-      showError('Failed to empty Trash. Please try again.');
+      showError('Failed to empty Recycle. Please try again.');
     } finally {
       emptying = false;
     }
   }
 </script>
 
-<div class="trash">
-  <div class="tr-header">
-    <button class="hamburger" on:click={() => dispatch('menu')} aria-label="Menu">
-      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-        <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
-      </svg>
-    </button>
-    <div class="title-block">
-      <h1 class="tr-title">Trash</h1>
-      <span class="tr-count">{items.length} deleted task{items.length === 1 ? '' : 's'} · auto-removed after 3 months</span>
-    </div>
-    <div class="spacer"></div>
+<svelte:window on:keydown={onWindowKeydown}/>
+
+<!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
+<div class="scrim" on:click|self={() => dispatch('close')}></div>
+
+<div class="panel">
+  <div class="panel-head">
+    <span class="panel-title">Recycle</span>
     {#if items.length > 0}
-      <button class="empty-trash-btn" on:click={emptyAll} disabled={emptying}>{emptying ? 'Emptying…' : 'Empty Trash'}</button>
+      <button class="clear-btn" on:click={emptyAll} disabled={emptying}>{emptying ? 'Emptying…' : 'Empty'}</button>
     {/if}
+    <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
   </div>
 
-  <div class="tr-body">
+  <div class="rc-sub">{items.length} deleted task{items.length === 1 ? '' : 's'} · auto-removed after 3 months</div>
+
+  <div class="item-list">
     {#if items.length === 0}
-      <div class="empty">Trash is empty. Deleted tasks show up here and can be restored, or removed for good.</div>
+      <div class="empty">Recycle is empty. Deleted tasks show up here and can be restored, or removed for good.</div>
     {:else}
       {#each items as t (t._id)}
-        <div class="trash-row">
+        <div class="item-row">
           <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}"></span>
-          <span class="task-title">{t.title}</span>
-          <span class="proj-badge">{t.project_name ?? '—'}</span>
-          <span class="deleted-chip">Deleted {timeAgo(t.updated_at)}</span>
+          <div class="item-main">
+            <span class="item-title">{t.title}</span>
+            {#if t.project_name}<span class="item-proj">{t.project_name}</span>{/if}
+          </div>
+          <span class="item-time">{timeAgo(t.updated_at)}</span>
           <button class="restore-btn" on:click={() => restore(t._id!)}>Restore</button>
           <button class="forever-btn" on:click={() => removeForever(t)} title="Delete forever" aria-label="Delete forever">
             <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -109,78 +115,70 @@
 </div>
 
 <style>
-  .trash { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  /* .scrim is defined globally in app.css */
 
-  .tr-header {
+  .panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw);
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -8px 0 32px rgba(0,0,0,.15); z-index: 402;
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top, 0px);
+    animation: slideIn .38s cubic-bezier(0.4,0,0.2,1) both;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .panel-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 20px 24px 4px; border-bottom: none; flex-shrink: 0;
+  }
+  .panel-title { font-size: 16px; font-weight: 700; flex: 1; letter-spacing: -.015em; }
+
+  .rc-sub {
+    padding: 0 24px 16px; font-family: var(--mono); font-size: 11px; color: var(--faint);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+
+  .clear-btn {
+    background: none; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: 6px;
+    cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--danger);
+    padding: 4px 10px; transition: background .12s;
+  }
+  .clear-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+  .clear-btn:disabled { opacity: .5; cursor: default; }
+
+  .close-btn {
+    background: none; border: none; cursor: pointer; font-size: 14px;
+    color: var(--faint); padding: 4px 6px; border-radius: 6px;
+    transition: background .12s, color .12s;
+  }
+  .close-btn:hover { background: var(--hover); color: var(--text); }
+
+  .item-list { flex: 1; overflow-y: auto; padding: 12px 24px 24px; }
+  .empty { color: var(--faint); font-size: 13.5px; padding: 12px 0; line-height: 1.5; }
+
+  .item-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 20px 28px 14px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
   }
-  .title-block { min-width: 0; }
-  .tr-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
-  .tr-count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
-  .spacer { flex: 1; }
+  .prio-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
-  .hamburger {
-    display: none;
-    background: none; border: none; cursor: pointer;
-    color: var(--text); padding: 4px; border-radius: 6px;
-    flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
+  .item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .item-title {
+    font-size: 13.5px; font-weight: 500; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .hamburger:hover { background: var(--hover); }
+  .item-proj { font-family: var(--mono); font-size: 10px; color: var(--faint); }
 
-  .empty-trash-btn {
-    padding: .45rem .9rem; border-radius: var(--radius-sm);
-    border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
-    color: var(--danger); font-size: .82rem; font-weight: 600; cursor: pointer;
-    white-space: nowrap; transition: background .12s;
-  }
-  .empty-trash-btn:hover { background: color-mix(in srgb, var(--danger) 18%, transparent); }
-  .empty-trash-btn:disabled { opacity: .5; cursor: default; }
-
-  .tr-body {
-    flex: 1; min-height: 0; overflow-y: auto;
-    padding: 20px 28px 40px;
-    width: 100%; max-width: 900px; box-sizing: border-box;
-  }
-
-  .empty { color: var(--faint); font-size: 14px; padding: 12px 0; max-width: 46ch; }
-
-  .trash-row {
-    display: grid;
-    grid-template-columns: 10px 1fr auto auto auto auto;
-    align-items: center; gap: 10px;
-    padding: 10px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--surface);
-    margin-bottom: 5px;
-  }
-
-  .prio-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-  .task-title {
-    font-size: 14px; font-weight: 500; color: var(--muted);
-    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-
-  .proj-badge {
-    font-family: var(--mono); font-size: 10px; color: var(--faint);
-    background: var(--col-bg); padding: 2px 8px; border-radius: 6px;
-    white-space: nowrap;
-  }
-
-  .deleted-chip {
-    font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--faint);
-    white-space: nowrap;
+  .item-time {
+    font-family: var(--mono); font-size: 10.5px; color: var(--faint);
+    white-space: nowrap; flex-shrink: 0;
   }
 
   .restore-btn {
-    padding: .3rem .7rem; border-radius: var(--radius-sm);
+    padding: .3rem .65rem; border-radius: 6px;
     border: 1px solid var(--border-strong); cursor: pointer;
-    background: var(--bg); color: var(--text); font-size: .78rem; font-weight: 500;
-    white-space: nowrap; transition: background .1s;
+    background: var(--bg); color: var(--text); font-size: .75rem; font-weight: 500;
+    white-space: nowrap; transition: background .1s; flex-shrink: 0;
   }
   .restore-btn:hover { background: var(--hover); }
 
@@ -188,23 +186,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); padding: .3rem; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    transition: background .1s, color .1s;
+    transition: background .1s, color .1s; flex-shrink: 0;
   }
   .forever-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
-
-  @media (max-width: 768px) {
-    .hamburger { display: flex; }
-  }
-
-  @media (max-width: 700px) {
-    .tr-header { padding: 14px 16px 10px; }
-    .tr-body   { padding: 14px 14px 32px; }
-    .tr-title  { font-size: 17px; }
-    .proj-badge { display: none; }
-  }
-
-  @media (max-width: 480px) {
-    .trash-row { grid-template-columns: 1fr auto auto; row-gap: 6px; }
-    .prio-dot, .deleted-chip { display: none; }
-  }
 </style>

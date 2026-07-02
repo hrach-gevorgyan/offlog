@@ -3,18 +3,18 @@
   import db, {
     createProject, deleteProject, syncState, syncNow, importJSON, checkIntegrity, repairDatabase, type IntegrityIssue,
     getConflicts, resolveConflict, type ConflictInfo,
-    getStorageBreakdown, optimizeStorage, type StorageBreakdown, subscribe as subscribeDb,
+    getStorageBreakdown, pruneOldLogs, pruneOldDeletedTasks, type StorageBreakdown, subscribe as subscribeDb,
   } from './db';
   import { getSyncUrl, setSyncUrl } from '../config';
   import { derived } from 'svelte/store';
   import { requestPermission, permissionState } from './notifications';
+  import { confirmAction } from './confirm';
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let showDeadlines = false;
   export let showDashboard = false;
-  export let showTrash = false;
   export let open = false;
 
   function onWindowKeydown(e: KeyboardEvent) {
@@ -38,12 +38,19 @@
   let darkMode = typeof localStorage !== 'undefined' && !!localStorage.getItem('dark');
   const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
 
-  // ChangelogView is a full separate screen only opened from this button —
-  // loading it as a dynamic import keeps it out of the main bundle.
+  // ChangelogView/TrashView are full separate screens only opened from these
+  // buttons — loading them as dynamic imports keeps them out of the main bundle.
   let ChangelogViewComp: typeof import('./ChangelogView.svelte').default | null = null;
   async function openChangelog() {
     if (!ChangelogViewComp) ChangelogViewComp = (await import('./ChangelogView.svelte')).default;
     showChangelog = true;
+  }
+
+  let showTrash = false;
+  let TrashViewComp: typeof import('./TrashView.svelte').default | null = null;
+  async function openTrash() {
+    if (!TrashViewComp) TrashViewComp = (await import('./TrashView.svelte')).default;
+    showTrash = true;
   }
 
   // Sync conflicts (view both versions, pick a winner)
@@ -65,36 +72,15 @@
 
   // Storage breakdown — the raw MB figure from navigator.storage.estimate()
   // (loadStorage(), below) can't say *what's* using the space; this gives an
-  // actual doc-count answer. "Optimize Storage" prunes anything old enough
-  // under the existing retention policies and compacts the database, which
-  // is the step that actually reclaims disk space (removing doc *records*
-  // doesn't by itself shrink what PouchDB/IndexedDB has on disk).
+  // actual doc-count answer.
   let breakdown: StorageBreakdown | null = null;
   async function loadBreakdown() { breakdown = await getStorageBreakdown(); }
-  // Kept live (not just loaded when Settings opens) so the Trash nav
-  // button's item count badge stays accurate as tasks get deleted/restored
-  // anywhere in the app.
+  // Kept live (not just loaded when Settings opens) so numbers shown
+  // anywhere stay accurate as tasks get deleted/restored elsewhere in the app.
   onMount(() => {
     loadBreakdown();
     return subscribeDb(() => loadBreakdown());
   });
-  let optimizing = false;
-  let optimizeStatus = '';
-  async function runOptimize() {
-    optimizing = true;
-    try {
-      const { prunedLogs, prunedTasks } = await optimizeStorage();
-      optimizeStatus = (prunedLogs + prunedTasks) > 0
-        ? `Freed up space — removed ${prunedTasks} old trash item${prunedTasks === 1 ? '' : 's'} and ${prunedLogs} old history entr${prunedLogs === 1 ? 'y' : 'ies'}.`
-        : 'Already optimized — nothing old enough to remove.';
-      await loadBreakdown();
-    } catch {
-      showError('Optimize failed. Please try again.');
-    } finally {
-      optimizing = false;
-      setTimeout(() => { optimizeStatus = ''; }, 6000);
-    }
-  }
 
   function toggleDark() {
     darkMode = !darkMode;
@@ -159,37 +145,83 @@
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
 
-  // ── Maintenance: integrity check + repair ──────────────────────────────────
-  let integrityReport: { issues: IntegrityIssue[]; checked: number } | null = null;
-  let checkingIntegrity = false;
-  let repairing = false;
+  // ── Maintenance ──────────────────────────────────────────────────────────
+  // One combined, visible flow instead of three separate unexplained buttons
+  // (Check Database / Repair Issues / Optimize Storage). Runs as an ordered
+  // list of steps with live status, so "what does this actually do" has a
+  // concrete on-screen answer instead of just a spinner.
+  type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
+  interface MaintStep { key: string; label: string; status: MaintStatus; note: string }
 
-  async function runIntegrityCheck() {
-    checkingIntegrity = true;
+  let showMaintenance = false;
+  let maintRunning = false;
+  let maintSteps: MaintStep[] = [];
+  let remainingIssues: IntegrityIssue[] = [];
+
+  function freshMaintSteps(): MaintStep[] {
+    return [
+      { key: 'check',   label: 'Checking database for problems', status: 'pending', note: '' },
+      { key: 'repair',  label: 'Repairing anything fixable',      status: 'pending', note: '' },
+      { key: 'history', label: 'Clearing old activity history',   status: 'pending', note: '' },
+      { key: 'trash',   label: 'Clearing old items from Recycle', status: 'pending', note: '' },
+      { key: 'compact', label: 'Compacting the database',         status: 'pending', note: '' },
+    ];
+  }
+
+  function openMaintenance() {
+    showMaintenance = true;
+    maintSteps = freshMaintSteps();
+    remainingIssues = [];
+  }
+
+  function setStep(i: number, patch: Partial<MaintStep>) {
+    maintSteps = maintSteps.map((s, idx) => idx === i ? { ...s, ...patch } : s);
+  }
+
+  async function runMaintenance() {
+    maintRunning = true;
+    maintSteps = freshMaintSteps();
+    remainingIssues = [];
     try {
-      integrityReport = await checkIntegrity();
+      setStep(0, { status: 'running' });
+      const { issues, checked } = await checkIntegrity();
+      setStep(0, { status: 'done', note: issues.length === 0 ? `No problems found (${checked} items checked)` : `${issues.length} issue${issues.length === 1 ? '' : 's'} found` });
+
+      if (issues.length === 0) {
+        setStep(1, { status: 'skipped', note: 'Nothing to repair' });
+      } else {
+        setStep(1, { status: 'running' });
+        const { fixed, skipped } = await repairDatabase();
+        setStep(1, { status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
+        if (skipped > 0) {
+          const after = await checkIntegrity();
+          remainingIssues = after.issues;
+        }
+      }
+
+      setStep(2, { status: 'running' });
+      const prunedLogs = await pruneOldLogs();
+      setStep(2, { status: 'done', note: prunedLogs > 0 ? `Removed ${prunedLogs} entr${prunedLogs === 1 ? 'y' : 'ies'} older than 6 months` : 'Nothing old enough to remove' });
+
+      setStep(3, { status: 'running' });
+      const prunedTasks = await pruneOldDeletedTasks();
+      setStep(3, { status: 'done', note: prunedTasks > 0 ? `Removed ${prunedTasks} item${prunedTasks === 1 ? '' : 's'} older than 3 months` : 'Nothing old enough to remove' });
+
+      setStep(4, { status: 'running' });
+      await db.compact();
+      setStep(4, { status: 'done', note: 'Reclaimed disk space' });
+
+      await loadBreakdown();
     } catch {
-      showError('Failed to check database. Please try again.');
+      const runningIdx = maintSteps.findIndex(s => s.status === 'running');
+      if (runningIdx >= 0) setStep(runningIdx, { status: 'error', note: 'Failed — please try again' });
+      showError('Maintenance failed partway through. Please try again.');
     } finally {
-      checkingIntegrity = false;
+      maintRunning = false;
     }
   }
 
-  let repairStatus = '';
-  async function runRepair() {
-    if (!confirm('Repair detected issues? This reassigns orphaned tasks/projects to Unsorted and resolves sync conflicts by keeping the current winning version.')) return;
-    repairing = true;
-    try {
-      const { fixed, skipped } = await repairDatabase();
-      integrityReport = await checkIntegrity();
-      repairStatus = `Repaired ${fixed} issue${fixed === 1 ? '' : 's'}${skipped ? `, ${skipped} skipped` : ''}.`;
-      setTimeout(() => { repairStatus = ''; }, 5000);
-    } catch {
-      showError('Repair failed. Please try again.');
-    } finally {
-      repairing = false;
-    }
-  }
+  $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
 
   function fmtLastSynced(ts: string): string {
     const d = new Date(ts);
@@ -214,7 +246,7 @@
   }
 
   async function doDeleteProject(id: string, name: string) {
-    if (!confirm(`Delete project "${name}" and all its tasks?`)) return;
+    if (!(await confirmAction(`Delete project "${name}" and all its tasks?`, { danger: true, confirmLabel: 'Delete' }))) return;
     try {
       await deleteProject(id);
       if ($activeProjectId === id) activeProjectId.set('');
@@ -243,7 +275,7 @@
   <button
     class="agenda-btn"
     class:active={showDashboard}
-    on:click={() => { showDashboard = true; showDeadlines = false; showTrash = false; dispatch('navigate'); }}
+    on:click={() => { showDashboard = true; showDeadlines = false; dispatch('navigate'); }}
   >
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
       <rect x="2" y="2" width="6" height="6" rx="1"/>
@@ -257,7 +289,7 @@
   <button
     class="agenda-btn"
     class:active={showDeadlines}
-    on:click={() => { showDeadlines = true; showDashboard = false; showTrash = false; dispatch('navigate'); }}
+    on:click={() => { showDeadlines = true; showDashboard = false; dispatch('navigate'); }}
   >
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
       <rect x="2" y="3" width="14" height="12" rx="2"/>
@@ -268,31 +300,16 @@
     </svg>
     Agenda
   </button>
-
-  <button
-    class="agenda-btn trash-nav-btn"
-    class:active={showTrash}
-    on:click={() => { showTrash = true; showDashboard = false; showDeadlines = false; dispatch('navigate'); }}
-  >
-    <svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
-    </svg>
-    Trash
-    {#if breakdown && breakdown.deletedTasks > 0}
-      <span class="trash-count">{breakdown.deletedTasks}</span>
-    {/if}
-  </button>
   <div class="spaces-divider"></div>
 
   <nav class="spaces">
     {#each $spaces as space (space._id)}
       <button
         class="space-btn"
-        class:active={$activeSpaceId === space._id && !showDeadlines && !showTrash}
+        class:active={$activeSpaceId === space._id && !showDeadlines}
         on:click={() => {
           showDeadlines = false;
           showDashboard = false;
-          showTrash = false;
           activeSpaceId.set(space._id);
           const first = $projects.find(p => p.space_id === space._id);
           if (first) activeProjectId.set(first._id);
@@ -357,13 +374,36 @@
         ⚠ {conflictCount} sync conflict{conflictCount === 1 ? '' : 's'}
       </div>
     {/if}
-    <button class="settings-btn" on:click={() => { openChangelog(); dispatch('navigate'); }}>↩ Changelog</button>
-    <button class="settings-btn" on:click={() => { openSettings(); dispatch('navigate'); }}>⚙ Settings</button>
+    <div class="bottom-row">
+      <button class="icon-btn" on:click={() => { openChangelog(); dispatch('navigate'); }}>
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
+        </svg>
+        <span>Changelog</span>
+      </button>
+      <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }}>
+        <svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
+        </svg>
+        <span>Deleted{#if breakdown && breakdown.deletedTasks > 0}<span class="trash-count"> · {breakdown.deletedTasks}</span>{/if}</span>
+      </button>
+      <button class="icon-btn" on:click={() => { openSettings(); dispatch('navigate'); }}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </div>
   </div>
 </aside>
 
 {#if showChangelog && ChangelogViewComp}
   <svelte:component this={ChangelogViewComp} on:close={() => showChangelog = false} />
+{/if}
+
+{#if showTrash && TrashViewComp}
+  <svelte:component this={TrashViewComp} on:close={() => showTrash = false} />
 {/if}
 
 {#if showSettings}
@@ -447,7 +487,7 @@
           <p class="setting-hint">
             {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
             {breakdown.archivedTasks} archived ·
-            {breakdown.deletedTasks} in Trash ·
+            {breakdown.deletedTasks} in Recycle ·
             {breakdown.logEntries} history entries
           </p>
         {/if}
@@ -460,36 +500,62 @@
       <div class="setting-group">
         <div class="setting-section-title">Maintenance</div>
         <div class="setting-row">
-          <span class="storage-info" style="color: var(--muted)">
-            {#if checkingIntegrity}Checking…
-            {:else if integrityReport}{integrityReport.issues.length === 0 ? `No issues found (${integrityReport.checked} docs checked)` : `${integrityReport.issues.length} issue${integrityReport.issues.length === 1 ? '' : 's'} found`}
-            {:else}Verify database consistency{/if}
-          </span>
-          <button class="export-btn" on:click={runIntegrityCheck} disabled={checkingIntegrity}>Check Database</button>
-        </div>
-        {#if integrityReport && integrityReport.issues.length > 0}
-          <div class="integrity-list">
-            {#each integrityReport.issues.slice(0, 8) as issue}
-              <div class="integrity-row">{issue.description}</div>
-            {/each}
-            {#if integrityReport.issues.length > 8}
-              <div class="integrity-row">…and {integrityReport.issues.length - 8} more</div>
-            {/if}
-          </div>
-          <div class="setting-row">
-            <span class="storage-info" style="color: var(--muted)">{repairStatus}</span>
-            <button class="export-btn" on:click={runRepair} disabled={repairing}>{repairing ? 'Repairing…' : 'Repair Issues'}</button>
-          </div>
-        {/if}
-        <div class="setting-row">
-          <span class="storage-info" style="color: var(--muted)">{optimizeStatus || 'Compact the database and clear out old trash/history to reclaim space'}</span>
-          <button class="export-btn" on:click={runOptimize} disabled={optimizing}>{optimizing ? 'Optimizing…' : 'Optimize Storage'}</button>
+          <span class="storage-info" style="color: var(--muted)">Check for problems, repair what's fixable, and reclaim space</span>
+          <button class="export-btn" on:click={() => { showSettings = false; openMaintenance(); }}>Open</button>
         </div>
       </div>
 
       <div class="settings-actions">
         <button on:click={() => showSettings = false}>Cancel</button>
         <button class="save-btn" on:click={saveSettings}>Save & restart sync</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showMaintenance}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="settings-overlay" on:click|self={() => { if (!maintRunning) showMaintenance = false; }}>
+    <div class="settings-panel maint-panel">
+      <h3>Maintenance</h3>
+      <p class="setting-hint">
+        Runs a full check in order: looks for database problems, repairs what it safely can,
+        clears old activity history (6+ months) and old Recycle items (3+ months), then compacts
+        the database to reclaim the space they were using.
+      </p>
+
+      <div class="progress-track"><div class="progress-fill" style="width:{maintProgress}%"></div></div>
+
+      <div class="maint-steps">
+        {#each maintSteps as step (step.key)}
+          <div class="maint-step" class:running={step.status === 'running'}>
+            <span class="maint-step-icon" class:done={step.status === 'done'} class:skipped={step.status === 'skipped'} class:error={step.status === 'error'} class:running={step.status === 'running'}>
+              {#if step.status === 'done'}✓
+              {:else if step.status === 'skipped'}–
+              {:else if step.status === 'error'}✕
+              {:else if step.status === 'running'}<span class="spinner"></span>
+              {/if}
+            </span>
+            <span class="maint-step-label">{step.label}</span>
+            {#if step.note}<span class="maint-step-note">{step.note}</span>{/if}
+          </div>
+        {/each}
+      </div>
+
+      {#if remainingIssues.length > 0}
+        <div class="integrity-list">
+          {#each remainingIssues.slice(0, 8) as issue}
+            <div class="integrity-row">{issue.description}</div>
+          {/each}
+        </div>
+        <p class="setting-hint">These need manual review — not safe to fix automatically.</p>
+      {/if}
+
+      <div class="settings-actions">
+        <button on:click={() => showMaintenance = false} disabled={maintRunning}>Close</button>
+        <button class="save-btn" on:click={runMaintenance} disabled={maintRunning}>
+          {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
+        </button>
       </div>
     </div>
   </div>
@@ -553,12 +619,7 @@
   .agenda-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent); }
   .agenda-btn.active svg { stroke: #fff; }
 
-  .trash-count {
-    margin-left: auto;
-    font-family: var(--mono); font-size: .68rem; font-weight: 700;
-    background: color-mix(in srgb, var(--faint) 30%, transparent);
-    color: inherit; padding: 1px 6px; border-radius: 8px;
-  }
+  .trash-count { color: var(--faint); font-weight: 400; }
 
   .spaces-divider { height: 1px; background: var(--border); margin: .5rem 0; }
 
@@ -656,12 +717,21 @@
   .sync-now-btn { background: none; border: none; cursor: pointer; font-size: .95rem; color: var(--faint); padding: 0; transition: color .12s; }
   .sync-now-btn:hover { color: var(--text); }
 
-  .settings-btn {
-    background: none; border: none; cursor: pointer;
-    color: var(--faint); font-size: .8rem; text-align: left;
-    padding: .2rem .55rem; transition: color .12s;
+  .bottom-row { display: flex; gap: .35rem; }
+  .icon-btn {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: .3rem;
+    background: var(--hover); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--muted); padding: .5rem .3rem;
+    transition: background .12s, color .12s, border-color .12s;
   }
-  .settings-btn:hover { color: var(--text); }
+  .icon-btn svg { flex-shrink: 0; opacity: .85; }
+  .icon-btn span {
+    font-size: .62rem; font-weight: 500; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
+  .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
 
   /* Settings overlay */
   .settings-overlay {
@@ -746,6 +816,46 @@
   .conflict-item-type { font-weight: 400; color: var(--faint); }
   .conflict-item-row { display: flex; align-items: center; gap: .75rem; }
   .conflict-item-meta { font-size: .72rem; color: var(--muted); flex: 1; }
+
+  /* Maintenance modal */
+  .maint-panel { gap: .85rem; }
+
+  .progress-track {
+    height: 6px; border-radius: 3px; background: var(--border); overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent); border-radius: 3px;
+    transition: width .3s var(--ease);
+  }
+
+  .maint-steps { display: flex; flex-direction: column; gap: .5rem; }
+  .maint-step {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .4rem .1rem; border-radius: var(--radius-sm);
+  }
+  .maint-step.running { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+  .maint-step-icon {
+    width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; font-weight: 700; color: var(--faint);
+    border: 1.5px solid var(--border-strong);
+  }
+  .maint-step-icon.done    { color: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .maint-step-icon.skipped { color: var(--faint); }
+  .maint-step-icon.error   { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .maint-step-icon.running { border-color: var(--accent); }
+
+  .spinner {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .maint-step-label { font-size: .84rem; color: var(--text); flex: 1; }
+  .maint-step-note { font-size: .72rem; color: var(--faint); text-align: right; white-space: nowrap; }
 
   @media (max-width: 768px) {
     .proj-delete-btn { opacity: .7; }

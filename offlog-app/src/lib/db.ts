@@ -201,19 +201,6 @@ export async function getStorageBreakdown(): Promise<StorageBreakdown> {
   return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length };
 }
 
-// "Optimize Storage" (Settings → Maintenance) — the button people actually
-// want when they ask "how do I free up space", as opposed to the silent
-// weekly maybePrune*() calls above. Removing old log/deleted-task *documents*
-// doesn't by itself shrink what's on disk — PouchDB/IndexedDB keeps old
-// revisions around until compact() runs, which is the step that actually
-// reclaims space. This does both in one action: prune what's old enough
-// under the existing retention policies, then compact.
-export async function optimizeStorage(): Promise<{ prunedLogs: number; prunedTasks: number }> {
-  const [prunedLogs, prunedTasks] = await Promise.all([pruneOldLogs(), pruneOldDeletedTasks()]);
-  await db.compact();
-  return { prunedLogs, prunedTasks };
-}
-
 export async function getDashboardData() {
   const [allProjects, allSpaces] = await Promise.all([getProjects(), getSpaces()]);
   const all = await getAllTasksRaw();

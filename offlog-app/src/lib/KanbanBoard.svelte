@@ -3,6 +3,7 @@
   import type { ProjectDoc, TaskDoc } from './types';
   import { createTask, updateTask, posBetween, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks } from './db';
   import { reloadTasks, showError } from './store';
+  import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
 
   export let project: ProjectDoc;
@@ -180,7 +181,7 @@
     const msg = colTasks.length
       ? `Remove column? ${colTasks.length} card(s) will move to the first column.`
       : 'Remove this column?';
-    if (!confirm(msg.replace('column', 'status'))) return;
+    if (!(await confirmAction(msg.replace('column', 'status'), { danger: true, confirmLabel: 'Remove' }))) return;
     try {
       const updated = await removeColumn(project._id, colId);
       project = updated;
@@ -298,7 +299,7 @@
         <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
         {#if (tasksByCol[col.id]?.length ?? 0) > 0}
           <button class="col-archive" title="Archive all tasks in this column" on:click={async () => {
-            if (!confirm(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`)) return;
+            if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
             try {
               await archiveColumnTasks(project._id, col.id);
               await reloadTasks();

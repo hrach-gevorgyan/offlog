@@ -10,25 +10,24 @@
   import TableView from './lib/TableView.svelte';
   import DeadlinesView from './lib/DeadlinesView.svelte';
   import DashboardView from './lib/DashboardView.svelte';
-  import TrashView from './lib/TrashView.svelte';
   import GlobalSearch from './lib/GlobalSearch.svelte';
   import CardDetail from './lib/CardDetail.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
+  import ConfirmDialog from './lib/ConfirmDialog.svelte';
 
   let ready = false;
   let initError: string | null = null;
   let showDeadlines = false;
   let showDashboard = true;
-  let showTrash = false;
   let sidebarOpen = false;
 
   function saveView() {
     if (!ready) return;
-    const view = showDashboard ? 'dashboard' : showDeadlines ? 'agenda' : showTrash ? 'trash' : 'project';
+    const view = showDashboard ? 'dashboard' : showDeadlines ? 'agenda' : 'project';
     localStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId) }));
   }
 
-  $: if (ready) { showDashboard; showDeadlines; showTrash; $activeProjectId; saveView(); }
+  $: if (ready) { showDashboard; showDeadlines; $activeProjectId; saveView(); }
   let showSearch = false;
   let showQuickAdd = false;
   let showShortcuts = false;
@@ -91,7 +90,6 @@
     try {
       const saved = JSON.parse(localStorage.getItem('offlog_view') ?? '{}');
       if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
-      else if (saved.view === 'trash') { showDashboard = false; showTrash = true; }
       else if (saved.view === 'project' && saved.projectId) {
         showDashboard = false; showDeadlines = false;
         activeProjectId.set(saved.projectId);
@@ -136,7 +134,6 @@
     <Sidebar
       bind:showDeadlines
       bind:showDashboard
-      bind:showTrash
       bind:open={sidebarOpen}
       on:navigate={() => sidebarOpen = false}
     />
@@ -158,8 +155,6 @@
         />
       {:else if showDeadlines}
         <DeadlinesView on:menu={() => sidebarOpen = true} />
-      {:else if showTrash}
-        <TrashView on:menu={() => sidebarOpen = true} />
       {:else if $activeProject}
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
@@ -233,6 +228,8 @@
 {:else}
   <div class="loading">Loading…</div>
 {/if}
+
+<ConfirmDialog />
 
 {#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
 <button class="fab" on:click={() => showQuickAdd = true} title="Quick add task (Ctrl+N)">
