@@ -201,6 +201,19 @@ export async function getStorageBreakdown(): Promise<StorageBreakdown> {
   return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length };
 }
 
+// "Optimize Storage" (Settings → Maintenance) — the button people actually
+// want when they ask "how do I free up space", as opposed to the silent
+// weekly maybePrune*() calls above. Removing old log/deleted-task *documents*
+// doesn't by itself shrink what's on disk — PouchDB/IndexedDB keeps old
+// revisions around until compact() runs, which is the step that actually
+// reclaims space. This does both in one action: prune what's old enough
+// under the existing retention policies, then compact.
+export async function optimizeStorage(): Promise<{ prunedLogs: number; prunedTasks: number }> {
+  const [prunedLogs, prunedTasks] = await Promise.all([pruneOldLogs(), pruneOldDeletedTasks()]);
+  await db.compact();
+  return { prunedLogs, prunedTasks };
+}
+
 export async function getDashboardData() {
   const [allProjects, allSpaces] = await Promise.all([getProjects(), getSpaces()]);
   const all = await getAllTasksRaw();
@@ -627,6 +640,36 @@ export async function undoDelete(id: string): Promise<void> {
   await db.put({ ...current, deleted: false, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
   _undoListeners.forEach(fn => fn());
+}
+
+// ── Trash (its own view — see TrashView.svelte) ─────────────────────────────
+// The Settings panel used to embed a "last 10 deleted" list directly; it's a
+// full deleted-items view now, so it needs the complete list (not just the
+// last 10 getRecentlyDeleted() returns for the undo toast) plus permanent
+// deletion and a bulk "Empty Trash".
+
+export async function getAllDeletedTasks(): Promise<(TaskDoc & { project_name?: string })[]> {
+  const all = await getAllTasksRaw();
+  const deleted = all
+    .filter(d => d.deleted)
+    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''));
+  const allProjects = await getProjects();
+  const projCache: Record<string, string> = Object.fromEntries(allProjects.map(p => [p._id, p.name]));
+  return deleted.map(t => ({ ...t, project_name: projCache[t.project_id] }));
+}
+
+export async function deleteForever(id: string): Promise<void> {
+  const doc = await db.get<TaskDoc>(id);
+  await db.remove(doc);
+  invalidateTaskCache();
+}
+
+export async function emptyTrash(): Promise<number> {
+  const all = await getAllTasksRaw();
+  const trashed = all.filter(d => d.deleted);
+  if (trashed.length) await db.bulkDocs(trashed.map(d => ({ ...d, _deleted: true })));
+  invalidateTaskCache();
+  return trashed.length;
 }
 
 // ── Tags ──────────────────────────────────────────────────────────────────────

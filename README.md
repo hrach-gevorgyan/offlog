@@ -1,6 +1,6 @@
 # Offlog
 
-Version 3.1.1 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 3.2.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -219,7 +219,8 @@ The accent (`#6366F1` indigo) is also used for the PWA theme color, the Android 
 
 | Version | Highlights |
 |---|---|
-| **3.1.1** | Deleted tasks now have a retention policy too (3 months, auto-cleared — verified the "Recently Deleted" list itself already stayed capped at 10 rows regardless of scale). Settings' Data section now shows an actual breakdown of what's stored (active/archived/deleted tasks, history entries) instead of just a raw MB figure, plus a "Clean Up Now" button to run cleanup immediately |
+| **3.2.0** | Trash is now its own space in the sidebar (with a live count badge) instead of a list buried in Settings — see every deleted task, restore it, or delete it forever, plus an "Empty Trash" button. Settings' storage cleanup button is now "Optimize Storage" and does something more meaningful: compacts the database to actually reclaim disk space, not just remove old records |
+| 3.1.1 | Deleted tasks now have a retention policy too (3 months, auto-cleared — verified the "Recently Deleted" list itself already stayed capped at 10 rows regardless of scale). Settings' Data section now shows an actual breakdown of what's stored (active/archived/deleted tasks, history entries) instead of just a raw MB figure, plus a "Clean Up Now" button to run cleanup immediately |
 | 3.1.0 | First roadmap pass (performance & stability): undo now survives a page refresh (Settings → Recently Deleted), sync conflicts can be reviewed and resolved instead of always auto-resolving to last-write-wins, faster app startup (parallelized data loading, skips the one-time seed check after first launch), a single sync replication runs at a time instead of two competing ones, changelog storage growth is now bounded (6-month retention), and the Changelog view loads on demand instead of bloating the main bundle |
 | 3.0.1 | Cleanup patch: build is now completely free of compiler warnings. All icon-only click targets are real buttons with screen-reader labels (mark-done circles, tag chips, status rename), search results have proper list semantics, the dark-mode toggle is a labeled switch, and a new `--success` color token replaces the last scattered hardcoded greens |
 | 3.0.0 | Full visual overhaul — new soft neutral-gray/indigo brand palette applied consistently across light mode, dark mode, PWA manifest, and Android (status bar, launcher theme, notification icon), replacing scattered hardcoded colors with CSS custom properties throughout. Usability pass: keyboard shortcuts panel (`?`), Escape closes any modal, keyboard-operable rows/cards in Kanban/List/Table/Dashboard/Agenda, visible focus rings for keyboard navigation, sidebar active-state and hover consistency fixes, mobile Kanban column-action buttons no longer invisible on touch |

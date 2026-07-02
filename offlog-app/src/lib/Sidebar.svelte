@@ -2,19 +2,19 @@
   import { spaces, projects, activeSpaceId, activeProjectId, showError, reloadTasks } from './store';
   import db, {
     createProject, deleteProject, syncState, syncNow, importJSON, checkIntegrity, repairDatabase, type IntegrityIssue,
-    getRecentlyDeleted, undoDelete, getConflicts, resolveConflict, type ConflictInfo,
-    getStorageBreakdown, pruneOldLogs, pruneOldDeletedTasks, type StorageBreakdown,
+    getConflicts, resolveConflict, type ConflictInfo,
+    getStorageBreakdown, optimizeStorage, type StorageBreakdown, subscribe as subscribeDb,
   } from './db';
-  import type { TaskDoc } from './types';
   import { getSyncUrl, setSyncUrl } from '../config';
   import { derived } from 'svelte/store';
   import { requestPermission, permissionState } from './notifications';
 
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let showDeadlines = false;
   export let showDashboard = false;
+  export let showTrash = false;
   export let open = false;
 
   function onWindowKeydown(e: KeyboardEvent) {
@@ -46,19 +46,6 @@
     showChangelog = true;
   }
 
-  // Recently deleted (undo, persisted — see db.ts getRecentlyDeleted)
-  let recentlyDeleted: TaskDoc[] = [];
-  async function loadRecentlyDeleted() { recentlyDeleted = await getRecentlyDeleted(10); }
-  async function restoreTask(id: string) {
-    try {
-      await undoDelete(id);
-      await reloadTasks();
-      await loadRecentlyDeleted();
-    } catch {
-      showError('Failed to restore task. Please try again.');
-    }
-  }
-
   // Sync conflicts (view both versions, pick a winner)
   let conflictList: ConflictInfo[] = [];
   let loadingConflicts = false;
@@ -78,25 +65,34 @@
 
   // Storage breakdown — the raw MB figure from navigator.storage.estimate()
   // (loadStorage(), below) can't say *what's* using the space; this gives an
-  // actual doc-count answer, and "Clean Up Now" runs both retention policies
-  // immediately instead of waiting for their normal weekly schedule.
+  // actual doc-count answer. "Optimize Storage" prunes anything old enough
+  // under the existing retention policies and compacts the database, which
+  // is the step that actually reclaims disk space (removing doc *records*
+  // doesn't by itself shrink what PouchDB/IndexedDB has on disk).
   let breakdown: StorageBreakdown | null = null;
   async function loadBreakdown() { breakdown = await getStorageBreakdown(); }
-  let cleaning = false;
-  let cleanupStatus = '';
-  async function cleanUpNow() {
-    cleaning = true;
+  // Kept live (not just loaded when Settings opens) so the Trash nav
+  // button's item count badge stays accurate as tasks get deleted/restored
+  // anywhere in the app.
+  onMount(() => {
+    loadBreakdown();
+    return subscribeDb(() => loadBreakdown());
+  });
+  let optimizing = false;
+  let optimizeStatus = '';
+  async function runOptimize() {
+    optimizing = true;
     try {
-      const [logs, tasks] = await Promise.all([pruneOldLogs(), pruneOldDeletedTasks()]);
-      cleanupStatus = (logs + tasks) > 0
-        ? `Removed ${tasks} old deleted task${tasks === 1 ? '' : 's'} and ${logs} old log entr${logs === 1 ? 'y' : 'ies'}.`
-        : 'Nothing old enough to remove yet.';
-      await Promise.all([loadBreakdown(), loadRecentlyDeleted()]);
+      const { prunedLogs, prunedTasks } = await optimizeStorage();
+      optimizeStatus = (prunedLogs + prunedTasks) > 0
+        ? `Freed up space — removed ${prunedTasks} old trash item${prunedTasks === 1 ? '' : 's'} and ${prunedLogs} old history entr${prunedLogs === 1 ? 'y' : 'ies'}.`
+        : 'Already optimized — nothing old enough to remove.';
+      await loadBreakdown();
     } catch {
-      showError('Cleanup failed. Please try again.');
+      showError('Optimize failed. Please try again.');
     } finally {
-      cleaning = false;
-      setTimeout(() => { cleanupStatus = ''; }, 5000);
+      optimizing = false;
+      setTimeout(() => { optimizeStatus = ''; }, 6000);
     }
   }
 
@@ -228,7 +224,7 @@
   }
 
   function saveSettings() { setSyncUrl(syncUrl); showSettings = false; location.reload(); }
-  function openSettings() { showSettings = true; loadStorage(); loadRecentlyDeleted(); loadBreakdown(); if (conflictCount > 0) loadConflicts(); }
+  function openSettings() { showSettings = true; loadStorage(); loadBreakdown(); if (conflictCount > 0) loadConflicts(); }
 
   const SPACE_ICON: Record<string, string> = {
     'space:unsorted': `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><polyline points="2,9 20,9"/><polyline points="6,13 10,13 10,16 14,16"/></svg>`,
@@ -247,7 +243,7 @@
   <button
     class="agenda-btn"
     class:active={showDashboard}
-    on:click={() => { showDashboard = true; showDeadlines = false; dispatch('navigate'); }}
+    on:click={() => { showDashboard = true; showDeadlines = false; showTrash = false; dispatch('navigate'); }}
   >
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
       <rect x="2" y="2" width="6" height="6" rx="1"/>
@@ -261,7 +257,7 @@
   <button
     class="agenda-btn"
     class:active={showDeadlines}
-    on:click={() => { showDeadlines = true; showDashboard = false; dispatch('navigate'); }}
+    on:click={() => { showDeadlines = true; showDashboard = false; showTrash = false; dispatch('navigate'); }}
   >
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
       <rect x="2" y="3" width="14" height="12" rx="2"/>
@@ -272,16 +268,31 @@
     </svg>
     Agenda
   </button>
+
+  <button
+    class="agenda-btn trash-nav-btn"
+    class:active={showTrash}
+    on:click={() => { showTrash = true; showDashboard = false; showDeadlines = false; dispatch('navigate'); }}
+  >
+    <svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
+    </svg>
+    Trash
+    {#if breakdown && breakdown.deletedTasks > 0}
+      <span class="trash-count">{breakdown.deletedTasks}</span>
+    {/if}
+  </button>
   <div class="spaces-divider"></div>
 
   <nav class="spaces">
     {#each $spaces as space (space._id)}
       <button
         class="space-btn"
-        class:active={$activeSpaceId === space._id && !showDeadlines}
+        class:active={$activeSpaceId === space._id && !showDeadlines && !showTrash}
         on:click={() => {
           showDeadlines = false;
           showDashboard = false;
+          showTrash = false;
           activeSpaceId.set(space._id);
           const first = $projects.find(p => p.space_id === space._id);
           if (first) activeProjectId.set(first._id);
@@ -436,8 +447,8 @@
           <p class="setting-hint">
             {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
             {breakdown.archivedTasks} archived ·
-            {breakdown.deletedTasks} deleted (undo-able, auto-cleared after 3 months) ·
-            {breakdown.logEntries} history entries (auto-cleared after 6 months)
+            {breakdown.deletedTasks} in Trash ·
+            {breakdown.logEntries} history entries
           </p>
         {/if}
         <div class="setting-row">
@@ -445,18 +456,6 @@
           <button class="export-btn" on:click={handleImport}>Import JSON</button>
         </div>
       </div>
-
-      {#if recentlyDeleted.length > 0}
-        <div class="setting-group">
-          <div class="setting-section-title">Recently Deleted</div>
-          {#each recentlyDeleted as t (t._id)}
-            <div class="setting-row">
-              <span class="storage-info" style="color: var(--muted)">{t.title}</span>
-              <button class="export-btn" on:click={() => restoreTask(t._id!)}>Restore</button>
-            </div>
-          {/each}
-        </div>
-      {/if}
 
       <div class="setting-group">
         <div class="setting-section-title">Maintenance</div>
@@ -483,8 +482,8 @@
           </div>
         {/if}
         <div class="setting-row">
-          <span class="storage-info" style="color: var(--muted)">{cleanupStatus || 'Remove old deleted tasks and history entries now, instead of waiting'}</span>
-          <button class="export-btn" on:click={cleanUpNow} disabled={cleaning}>{cleaning ? 'Cleaning…' : 'Clean Up Now'}</button>
+          <span class="storage-info" style="color: var(--muted)">{optimizeStatus || 'Compact the database and clear out old trash/history to reclaim space'}</span>
+          <button class="export-btn" on:click={runOptimize} disabled={optimizing}>{optimizing ? 'Optimizing…' : 'Optimize Storage'}</button>
         </div>
       </div>
 
@@ -553,6 +552,13 @@
   .agenda-btn:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
   .agenda-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent); }
   .agenda-btn.active svg { stroke: #fff; }
+
+  .trash-count {
+    margin-left: auto;
+    font-family: var(--mono); font-size: .68rem; font-weight: 700;
+    background: color-mix(in srgb, var(--faint) 30%, transparent);
+    color: inherit; padding: 1px 6px; border-radius: 8px;
+  }
 
   .spaces-divider { height: 1px; background: var(--border); margin: .5rem 0; }
 
