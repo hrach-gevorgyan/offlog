@@ -3,8 +3,8 @@
 Version 3.7.0 · Local-first task management for browser and Android
 
 > Contributor conventions, invariants, and the release checklist live in
-> [CLAUDE.md](../CLAUDE.md). Planned work (including long-horizon direction
-> — mesh sync, security, business model) lives in [ROADMAP.md](ROADMAP.md);
+> [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
+> and security posture) lives in [ROADMAP.md](ROADMAP.md);
 > why non-obvious choices were made in [DECISIONS.md](DECISIONS.md);
 > version history in [CHANGELOG.md](CHANGELOG.md). This file documents how
 > the system currently works — mission/pitch lives in the root [README.md](../README.md),

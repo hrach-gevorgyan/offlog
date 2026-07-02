@@ -5,10 +5,10 @@ No account, no telemetry, no subscription, ever. Runs in the browser and
 as a native Android app. Sync is optional and never required.
 
 Offlog isn't trying to out-feature Trello, Notion, ClickUp, or Jira — it
-isn't competing with them. It's a small, calm tool built to work exactly
-the way one person wants, and given away for anyone else who wants the
-same thing. Full mission and long-horizon direction (mesh sync, security,
-business model): [docs/ROADMAP.md](docs/ROADMAP.md).
+isn't competing with them. It's a personal tool, built by one person for
+their own use and given away as-is for anyone else who wants the same
+thing: no account, no telemetry, no business model, not even a paid tier.
+Full mission and planned work: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -65,7 +65,7 @@ Everything beyond this pitch lives in [docs/](docs/):
 | Document | What's in it |
 |---|---|
 | [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Planned work, the public-release path, and long-horizon direction (mesh sync, security, business model) |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Planned work and the public-release path |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Why non-obvious architectural choices were made |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Full version history |
 | [docs/QUESTIONS.md](docs/QUESTIONS.md) | Open questions worth outside input |

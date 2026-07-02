@@ -32,35 +32,63 @@ using a hosted-only backend (Firebase, Supabase) would make "sync" quietly
 depend on a vendor Offlog doesn't control, contradicting the no-vendor-
 lock-in mission even if that vendor has a free tier.
 
-### Why mesh/device-to-device sync is a future addition, not a CouchDB replacement (2026-07-02)
-Decided in ROADMAP.md's Track D: CouchDB sync stays as a permanent,
-independent transport option. Mesh sync (every device can be a server) is
-being pursued *in addition to*, not *instead of*, CouchDB — because mesh
-sync cannot solve the "devices are never on the same network" case without
-a relay of some kind, and CouchDB already is exactly that relay for anyone
-willing to run one. Building mesh sync as a replacement would mean solving
-a strictly harder version of a problem CouchDB sync already solves.
+### Why mesh sync was considered, then declined outright (2026-07-03)
+Mesh/device-to-device sync (every device also acts as a server, paired via
+QR code, no central relay) was explored in real depth in ROADMAP.md's
+Track D, then dropped entirely — not deferred, not "still the long-term
+plan," genuinely off the table. Two reasons, either one alone would have
+been enough:
 
-### Why "no server" is not literally true for mesh sync, and why that's fine
-The mesh-sync design (ROADMAP.md's Track D Architecture section) still runs a local HTTP server per
-device — the "no server" claim in Offlog's mission refers to *no server
-Offlog operates or that requires trusting a third party*, not literally
-zero listening ports anywhere. Each device serving itself is philosophically
-identical to "the app talks to its own local database," just reachable
-over the LAN by other devices the owner has explicitly paired.
+- **The technical foundation was weaker than it first looked.** The
+  design needed each Android device to run a background
+  CouchDB-compatible HTTP server, reachable even while the app isn't in
+  the foreground. The closest working precedent, Syncthing-Android, only
+  manages this with a foreground service and a permanent notification,
+  plus the user manually exempting the app from battery optimization —
+  friction real users regularly get wrong, per Syncthing's own community
+  forum. Android 15 made this worse, not better: it now caps that class
+  of foreground service at 6 hours of background runtime per 24-hour
+  period. Separately, two devices that are never on the same network
+  still can't sync without some kind of relay, which quietly contradicts
+  the "no server Offlog operates" pitch the whole track was sold on.
+- **There was no strategic reason to absorb that cost.** Offlog is a
+  single-user personal project with no business model (see below) — mesh
+  sync's payoff scales with a multi-device *userbase*, which this project
+  isn't trying to build. Spending native-background-service work, a
+  mandatory security review, and N-way conflict testing on a feature
+  whose main beneficiary would be hypothetical future users wasn't worth
+  it.
+
+CouchDB sync remains the one, permanent sync transport — self-hosted,
+already works, not going anywhere. If mesh sync is ever revisited, it
+should be because a genuinely new reason to want it shows up (e.g. real
+other people asking for it), not because this reasoning turned out wrong.
 
 ---
 
 ## Distribution & business model
 
-### Why the app will never be paywalled or ad-supported, even with a business model (2026-07-02)
-Settled in ROADMAP.md's Business Model section: monetization (if any) is a separately-sold
-convenience layer (e.g. a hosted sync relay), never a gate on the app's
-own functionality. This is treated as non-negotiable, not a tradeoff to
-revisit under revenue pressure — the entire differentiation strategy
-(see ROADMAP.md's Mission) depends on this being unconditionally true, and
-a single feature-gate would retroactively make every future "free and
-open" claim suspect.
+### Why there's no business model at all, not even an optional paid layer (2026-07-03)
+Revises the 2026-07-02 decision directly below, which still assumed some
+future paid convenience layer (most likely a hosted sync relay) would
+eventually exist. On reflection: Offlog is a personal tool built for its
+owner's own use, not a product being grown toward revenue — and the
+realistic paying audience for one person's niche task manager is close to
+zero without a real userbase, which building one isn't a goal here either.
+Chasing a business model before there's evidence anyone besides the owner
+wants this app puts the cart before the horse. The app stays free and
+open-source permanently; if it ever gets real outside usage and a genuine
+support need emerges, a donation link is the appropriate scale of
+response, not a product line. This also resolves QUESTIONS.md's former
+"is a hosted relay worth building" / "what number would sustain this"
+questions — both removed as moot rather than left open.
+
+### Why the app will never be paywalled or ad-supported, even if that changes (2026-07-02)
+Settled in ROADMAP.md's Mission: even if the "no business model at all"
+decision above were ever revisited, monetization (if any) would have to
+be a separately-sold convenience layer, never a gate on the app's own
+functionality. Kept as a standing floor under any future reconsideration —
+this constraint doesn't move even if the entry above does.
 
 ### Why F-Droid is explicitly out of scope (2026-07-02)
 Considered and declined by the owner — Offlog isn't being positioned as
@@ -85,18 +113,18 @@ platform. See ROADMAP.md's Track C for the tracked release-readiness step.
 
 ### Why "done" is positional (last column), not a boolean field
 Documented as an enforced invariant in CLAUDE.md already — repeated here
-because it's the kind of thing a mesh-sync N-way conflict scenario could
-tempt someone to "fix" by adding a `done: boolean` for simpler conflict
-resolution. Don't. The positional model is intentional (it's just "which
-column," which is what Kanban already represents) and changing it would
-require a data migration and touch every view — not something to casually
-introduce while solving an unrelated sync problem.
+because a multi-device CouchDB conflict scenario could tempt someone to
+"fix" by adding a `done: boolean` for simpler conflict resolution. Don't.
+The positional model is intentional (it's just "which column," which is
+what Kanban already represents) and changing it would require a data
+migration and touch every view — not something to casually introduce
+while solving an unrelated sync problem.
 
 ### Why soft-delete only, never `db.remove()` for tasks (except admin paths)
-Also an existing CLAUDE.md invariant — recorded here because mesh sync's
-N-way replication makes hard deletes more dangerous, not less: a hard
-delete that hasn't yet replicated to a currently-offline paired device
-will resurrect the "deleted" doc as a new create the next time that device
+Also an existing CLAUDE.md invariant — recorded here because CouchDB's
+multi-device replication makes hard deletes more dangerous, not less: a
+hard delete that hasn't yet replicated to a currently-offline device will
+resurrect the "deleted" doc as a new create the next time that device
 reconnects, unless the delete itself is a replicated tombstone. Soft
 delete already produces exactly that tombstone behavior for free.
 

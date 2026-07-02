@@ -4,9 +4,8 @@ This file is the entry point for anyone (AI assistant or human) making
 changes — it stays at the repo root deliberately, since AI tooling only
 auto-loads a CLAUDE.md found there. Everything else lives in
 [docs/](docs/): [docs/TECH.md](docs/TECH.md) (architecture),
-[docs/ROADMAP.md](docs/ROADMAP.md) (planned work, including long-horizon
-direction — mesh sync, security, business model, in its Track D and the
-sections after it),
+[docs/ROADMAP.md](docs/ROADMAP.md) (planned work and the public-release
+path),
 [docs/DECISIONS.md](docs/DECISIONS.md) (why non-obvious choices were made),
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (version history), and
 [docs/QUESTIONS.md](docs/QUESTIONS.md) (open questions). User-facing pitch
@@ -194,13 +193,15 @@ verification.
 - **Security is presently minimal by design** (no login, no encryption at
   rest, unencrypted CouchDB sync) — this is an accepted local-first
   tradeoff for now, not an oversight, but it is explicitly *not* audited
-  or hardened yet. See docs/ROADMAP.md's Track D Security section before adding any feature that expands
-  the network attack surface (e.g. the planned mesh sync) — that class of
-  change has a hard security-review gate the owner has already set.
-- **Business model**: the app and its source stay free/open-source and
-  never paywalled or ad-supported, permanently — any future monetization
-  (e.g. an optional hosted sync relay) is a separate product sold
-  alongside the app, never a gate inside it. See docs/ROADMAP.md's Business Model section.
+  or hardened yet. Treat any future feature that would expand the network
+  attack surface with the same caution — mesh/device-to-device sync was
+  considered and explicitly declined (2026-07-03) for exactly this reason
+  among others; see DECISIONS.md.
+- **Business model**: none, deliberately. Offlog is a personal tool the
+  owner built for their own use and gives away as open source — it stays
+  free forever with no paywall, no ads, and no monetization plan of any
+  kind, not even an optional paid layer. Don't propose monetization ideas
+  unless the owner raises it again. See DECISIONS.md.
 - **Distribution target**: GitHub (source) + a website + Google Play.
   F-Droid and iOS are explicitly out of scope (owner decision, 2026-07-02) —
   don't propose either without the owner raising it first.
