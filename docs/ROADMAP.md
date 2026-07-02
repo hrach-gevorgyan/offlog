@@ -161,6 +161,56 @@ before it's a real user complaint rather than a hypothetical, similar in
 spirit to A10's large-dataset validation but specifically about running
 low on space rather than running slow.
 
+### A18. PWA not force-updating after a new version ships
+`registerType: 'autoUpdate'` is supposed to mean new builds activate on
+next load, but reports say the installed PWA sits on a stale version after
+a release. Audit `main.ts`'s `registerSW()`/`visibilitychange` update-check
+path end to end — likely the check needs to force a `skipWaiting()` +
+reload rather than just re-checking for an update in the background.
+
+### A19. First launch should always open Dashboard
+`App.svelte`'s view-restore logic is supposed to default to Dashboard when
+`localStorage`'s `offlog_view` is empty, but reports say a first-time
+install doesn't reliably land there. Re-verify the restore logic against a
+genuinely empty `localStorage`, not just a cleared `offlog_view` key —
+something else may be short-circuiting the check.
+
+### A20. List view attribute alignment still breaks with mixed deadlines
+The v3.7.0 fixed-grid fix (`.task-row` as a 5-column CSS grid) was meant to
+solve exactly this, but it's reported as still misaligned when some cards
+in the same list have a due date and others don't. Re-test specifically
+that condition (not just varying tag counts, which is what v3.7.0's fix
+targeted) — the `due-spacer` placeholder element may not be behaving as
+intended.
+
+### A21. Visual check: tag overflow past 3 tags
+The `tags-col` fixed-width grid column (v3.7.0) was designed to clip/scroll
+tag overflow gracefully, but was never explicitly verified past 2-3 tags on
+one card. Confirm the actual visual behavior (truncation vs. wrap vs.
+overflow-hidden cutoff) is acceptable, across List, Table, and wherever
+else tags render.
+
+### A22. Accidental "mark done" click has no undo
+List view's status dot marks a task done on a single click, filling green —
+but the only way back from an accidental click is reopening the card and
+changing status manually. Add a brief undo affordance (matching the
+pattern already used for task deletion) instead of requiring a full
+re-edit for a one-click mistake.
+
+### A23. Sidebar scale test with 20+ projects
+Nothing has verified the sidebar's project list rendering/scroll behavior
+past a handful of projects — worth confirming it holds up navigably (and
+performantly) once a user has accumulated 20 or more, same spirit as A10
+but specifically for the always-visible nav rather than a single view.
+
+### A24. Version-over-version performance metrics
+Nothing currently measures whether a given release made the app faster or
+slower — A10's large-dataset validation needs measurement infrastructure
+anyway; formalize it into a small benchmark harness (Kanban/List/Table
+render time, `getDashboardData()` latency, Global Search responsiveness)
+that can be re-run release to release, not just once, to catch which
+specific change made a part of the app heavier.
+
 ---
 
 ## Track B — Features
@@ -275,12 +325,12 @@ fields per project is the ceiling, not a schema editor.
 ### B17. Dashboard as a real home screen
 `DashboardView.svelte` is already the default landing view, but it's thin —
 worth deliberately investing in it as *the* first thing a user sees, not an
-afterthought next to Kanban/List/Table. Candidates: a genuine "what needs
-attention today" summary instead of raw counts, a quick-glance per-space
-breakdown, and surfacing recently-completed tasks for a sense of progress.
-Should stay fast and calm, not a cluttered analytics page — the goal is
-"open the app, immediately know what to do," not a dashboard for its own
-sake.
+afterthought next to Kanban/List/Table. Concretely: a brief last-week
+performance summary (tasks completed, busiest project) and today's
+upcoming tasks alongside the existing pinned/overdue panels — Agenda stays
+unchanged, this is a glance-level preview, not a duplicate of it. Should
+stay fast and calm, not a cluttered analytics page — the goal is "open the
+app, immediately know what to do," not a dashboard for its own sake.
 
 ### B18. Subtasks / checklists within a task
 `CardDetail` has a free-text markdown body but no structured checklist —
@@ -303,6 +353,94 @@ by the Agenda view. Reuses the `AppWidgetProvider`/RemoteViews plumbing
 B10 already established; the main new work is `updatePeriodMillis`-driven
 refresh (Quick Add's widget never needed to update itself after creation,
 this one does whenever the underlying data changes).
+
+### B21. Dark mode follows OS setting
+Dark mode is currently a manual toggle only. Add a "Follow system" option
+(default) alongside explicit Light/Dark, reading `prefers-color-scheme` on
+both Android and PC/web, while keeping the existing manual override for
+anyone who wants to diverge from the OS setting.
+
+### B22. Named clients/devices
+`Source` currently only distinguishes `pc`/`pc2`/`mobile` — not enough
+once there's more than one PC or more than one phone in play. Let a device
+be given a real name (e.g. "Work Laptop", "Hrach's Phone") on first
+sync/setup, stored and surfaced everywhere `Source` currently shows up
+(changelog, B5's multi-device polish).
+
+### B23. Sidebar: last 3 modified cards
+A small "recent" section in the sidebar surfacing the last 3 modified
+tasks across all projects, for quickly resuming whatever was just being
+worked on without navigating back to its project.
+
+### B24. Seed data: 3 spaces, not 4
+`seedIfEmpty()`/`wipeAndReseed()` currently create Unsorted, Personal,
+Family, and Work. Drop Family from the default seed — not every user has
+one, and a space nobody asked for is clutter, not a feature. Down to
+Unsorted, Personal, Work.
+
+### B25. Deadline quick-suggestions on new card
+When setting a due date in `CardDetail`/`QuickAdd`, offer one-tap relative
+shortcuts (Today, Tomorrow, 1 week, 1 month) alongside the existing date
+picker, instead of requiring the exact date to be picked every time for
+the common "just remind me in a week" case.
+
+### B26. Tag autocomplete beyond the current project
+`CardDetail`'s tag suggestions currently only look at tags already used
+elsewhere — worth explicitly deciding whether suggestions should be
+scoped to the current project first (most relevant) with a fallback to
+all-tags-everywhere, rather than one flat list that doesn't distinguish.
+
+### B27. Archived tasks are too hidden
+Archived tasks are currently only reachable via a toggle inside List view
+— easy to forget exists. Worth surfacing archived-task counts somewhere
+more visible (Dashboard, project header) so "where did that task go" has
+an obvious answer.
+
+### B28. Rethink "last column = done"
+The positional-done convention (`column_id === columns.at(-1)`) is a
+locked invariant (see DECISIONS.md) for good reason — but it also means a
+project's last status is *always* the done state, with no way to mark a
+different column as "done" or have multiple terminal states. Needs a real
+design conversation before any implementation — this may stay exactly as
+it is after that conversation, but it hasn't been deliberately revisited
+since it was first decided.
+
+### B29. Show tags on Kanban cards
+Tags currently render in List and Table but not on Kanban cards
+themselves — add them (compact, matching the existing chip style) so
+Kanban isn't the one view where tag context is invisible.
+
+### B30. Notes length guardrail
+`CardDetail`'s notes field is unbounded markdown free text — add a soft
+length guardrail (a visible counter past some threshold, not a hard block)
+so it stays "notes on a task," not an invitation to write a full document
+inside a task card.
+
+### B31. Third Android widget: project list
+Alongside B10 (Quick Add) and B20 (Agenda), a third home-screen widget
+listing projects with quick actions (open, maybe quick-add-to-this-project)
+— completes the "3 widgets" set using the same `AppWidgetProvider`/
+RemoteViews plumbing already established by the first two.
+
+### B32. Archive a whole project
+Today only individual tasks can be archived — there's no way to archive
+an entire project at once (as distinct from deleting it, which is
+destructive). Add a project-level archive action that archives the
+project and, by default, its non-completed tasks, restorable the same way
+individual archived tasks are.
+
+### B33. Sub-projects
+Nested project hierarchy — a project containing child projects, not just
+a flat space → project → task structure. Genuinely large: touches the
+data model (`ProjectDoc.space_id` becomes more like `parent_id`), every
+view's project-picker UI, and Dashboard/sidebar nesting display. Needs its
+own scoping pass before estimation, not a quick add.
+
+### B34. Project pinning
+Same mechanism as existing task pinning (`pinned` field, always-sorts-to-
+top), applied to projects — pin a project to the top of the sidebar/space
+list for the ones actively being worked, same UX pattern already proven
+for tasks.
 
 ---
 
@@ -351,10 +489,13 @@ Home Screen" button for the existing PWA build — no jargon, no setup
 explanation needed for the common case.
 
 ### C6. Brand & positioning pass
-A short pass over README/store copy/landing page copy to make sure the
+A short pass over every public-facing document — README, store copy,
+landing page copy, and any doc a stranger might actually read (not the
+AI/contributor-facing ones like CLAUDE.md/DECISIONS.md) — to make sure the
 "not competing, just likable" framing from the Mission above actually
-comes through — description text should sell the feeling of using Offlog,
-not a feature-parity checklist against bigger tools.
+comes through, written for humans discovering the project, not for
+whoever's maintaining it. Description text should sell the feeling of
+using Offlog, not a feature-parity checklist against bigger tools.
 
 ### C7. Fix hardcoded CouchDB credentials — mandatory, blocks C1
 `offlog-app/src/config.ts` hardcodes a real CouchDB password and LAN IP as
@@ -434,28 +575,40 @@ here. Check there before assuming an item above is fully settled.
 
 ## Sequencing suggestion
 
-The original 5:10 Track A:B split below is fully paired through v4.0.0.
-A15–A17 and B11–B20 (added while reshaping Settings in v3.6.0 and while
-scoping the app's growth beyond v4.0.0) aren't slotted into a release yet —
-re-pair them alongside whichever future items land, rather than
-force-fitting them into the table below. Track C runs independently of
-version numbers: **C7 (credential fix) and C2 can start now**, in parallel
-with v3.8.0, since they're documentation/verification/security work that
+Re-paired 2026-07-03 from scratch across the entire unshipped backlog (13
+Track A items, 30 Track B items) — the old v3.8.0–v4.0.0 pairing is
+superseded entirely by the table below, not layered on top of it. Every
+unshipped item is placed exactly once, zero leftovers. Track C runs
+independently of version numbers: **C7 (credential fix) and C2 can start
+any time**, since they're documentation/verification/security work that
 barely touches app code; **C1/C3/C5/C6 fit naturally once the app feels
 "finished enough" to represent well in a public listing** — realistically
-after v4.0.0, once the current Track A/B backlog has landed. Track D (mesh
-sync) was declined outright (see above) and never entered sequencing.
+after this table's backlog has substantially landed. Track D (mesh sync)
+was declined outright and never entered sequencing.
 
-| Release | Track A | Track B | Why paired |
-|---|---|---|---|
-| **v3.6.0** | A9 — UI component tests | B1 — Space management, B6 — Tag management | Both features are small, self-contained "manage X in Settings" screens — same shape, low risk, a good first target to exercise the new component-testing setup from A9 before anything more complex. |
-| **v3.7.0** (shipped) | A13 — Accessibility re-audit, A14 — Android hardware back-button handling | B3 — Notification actions, B10 — Android quick-capture widget | An Android-focused release — both features are native-only surface (notification action buttons, home-screen widget). A14 (found during v3.6.0's Settings redesign) folded in here since it's squarely Android interaction plumbing, same as A13's focus on the newest interactive elements. **Moved ahead of the original v3.7.0** per owner request to prioritize Android work first. |
-| **v3.8.0** | A11 — Error-handling audit, pass 2 | B2 — Kanban filters, B9 — Command palette | Both add many new mutation/action call sites — auditing the try/catch + `showError()` invariant first makes it a live checklist while building these, not a separate pass done after the fact. |
-| **v3.9.0** | A10 — Large-dataset performance validation | B7 — Calendar/week view, B4 — Import/export v2 | Both features are data-volume-sensitive (a new heavier render view, bulk export/import) — validating performance at scale in the same cycle catches regressions before they ship, not after. |
-| **v4.0.0** | A12 — Notification reliability audit | B5 — Multi-device polish, B8 — Project templates | A12 and B5 both deal with sync/timing edge cases (DST, timezones, multi-device drift) — natural fit. B8 closes out the roadmap; the milestone bump to v4.0.0 marks the whole current plan shipped. |
+| # | Release | Track A | Track B | Why paired |
+|---|---|---|---|---|
+| — | v3.6.0 (shipped) | A9 | B1, B6 | Small, self-contained "manage X in Settings" screens — good first target for A9's new component-testing setup. |
+| — | v3.7.0 (shipped) | A13, A14 | B3, B10 | Android-focused release — native-only surface (notification actions, home-screen widget) alongside the accessibility/back-button work that shaped it. |
+| 1 | v3.8.0 | A18, A19, A20, A22 | — | Four user-visible correctness bugs first: PWA not force-updating, wrong first-launch view, list-view alignment regression, and an accidental-click with no safety net. All bugs, no features — clears real pain before anything else. |
+| 2 | v3.9.0 | A21 | B29, B24 | Tag-chip rendering is the thread: checking overflow past 3 tags (A21) belongs with adding tags to Kanban cards (B29), a new place they can overflow. B24 (seed data) rides along as a small unrelated fix. |
+| 3 | v4.0.0 | A23 | B23, B34 | All sidebar-focused. Testing scale at 20+ projects (A23) is the right moment to add two features (recent items, pinning) that make a long sidebar more navigable. |
+| 4 | v4.1.0 | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
+| 5 | v4.2.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
+| 6 | v4.3.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
+| 7 | v4.4.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 8 | v4.5.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 9 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 10 | v4.7.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 11 | v4.8.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 12 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 13 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 14 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 15 | v4.12.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 16 | v4.13.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 
-Within each release: land the Track A item first (or in the same PR as the
-first Track B item it protects/enables), then the two Track B items. Extend
+Within each release: land any Track A item first (or in the same PR as the
+Track B item it protects/enables), then the Track B items. Extend
 `tests/db.test.ts` for any new `db.ts` logic as features land — don't let
 coverage fall behind again. Re-evaluate this table after each release;
 delete shipped rows and re-pair whatever's left if new items get added to
