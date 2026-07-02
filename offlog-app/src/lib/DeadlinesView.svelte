@@ -90,8 +90,7 @@
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
+              <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -112,8 +111,7 @@
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
+              <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -134,8 +132,7 @@
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
+              <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -156,8 +153,7 @@
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
-              <!-- svelte-ignore a11y-click-events-have-key-events -->
-              <span class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done"></span>
+              <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <span class="task-title">{t.title}</span>
               <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -220,7 +216,7 @@
   }
   .overdue-label { color: var(--overdue-ink); border-color: color-mix(in srgb, var(--overdue-ink) 20%, transparent); }
   .today-label   { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
-  .week-label    { color: #5f9b6a; border-color: #5f9b6a33; }
+  .week-label    { color: var(--success); border-color: color-mix(in srgb, var(--success) 20%, transparent); }
   .later-label   { color: var(--faint); }
 
   .badge-count {
@@ -232,7 +228,7 @@
      variant gets an explicit background matching its label */
   .overdue-label .badge-count { background: var(--overdue-ink); }
   .today-label   .badge-count { background: var(--accent); }
-  .week-label    .badge-count { background: #5f9b6a; }
+  .week-label    .badge-count { background: var(--success); }
   .later-label   .badge-count { background: var(--faint); }
 
   .task-row {
@@ -248,6 +244,7 @@
 
   .circle {
     width: 18px; height: 18px; border-radius: 50%;
+    background: none; padding: 0;
     border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
     transition: border-color .12s, background .12s; display: block;
   }
@@ -272,7 +269,7 @@
   }
   .due-chip.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
   .due-chip.today   { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-  .due-chip.week    { background: rgba(34,197,94,.12); color: #22c55e; }
+  .due-chip.week    { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
   .due-chip.later   { background: var(--col-bg); color: var(--faint); }
 
   @media (max-width: 768px) {

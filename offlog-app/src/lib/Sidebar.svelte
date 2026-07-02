@@ -295,7 +295,7 @@
 
       <div class="setting-row">
         <div class="setting-label">Dark mode</div>
-        <button class="toggle-btn" class:on={darkMode} on:click={toggleDark}>
+        <button class="toggle-btn" class:on={darkMode} on:click={toggleDark} aria-label="Toggle dark mode" role="switch" aria-checked={darkMode}>
           <span class="toggle-knob"></span>
         </button>
       </div>
@@ -511,12 +511,12 @@
   }
   .sync-indicator {
     width: 7px; height: 7px; border-radius: 50%;
-    background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.16);
+    background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent);
     transition: background .3s, box-shadow .3s; flex-shrink: 0;
   }
   .sync-indicator.active { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
-  .sync-indicator.error  { background: var(--danger); box-shadow: 0 0 0 3px rgba(248,113,113,.16); }
-  .sync-indicator.offline { background: var(--faint); box-shadow: 0 0 0 3px rgba(77,83,112,.16); }
+  .sync-indicator.error  { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent); }
+  .sync-indicator.offline { background: var(--faint); box-shadow: 0 0 0 3px color-mix(in srgb, var(--faint) 16%, transparent); }
   .sync-label {
     font-size: .74rem; color: var(--muted); flex: 1; font-weight: 500;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

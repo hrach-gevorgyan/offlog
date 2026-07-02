@@ -22,6 +22,7 @@
   /* meaning */
   --accent: #6366f1;
   --danger: #dc2626;
+  --success: #22c55e;
   --due-soon-bg: #fef3c7;
   --due-soon-ink: #92400e;
   --overdue-bg: #fee2e2;
@@ -57,6 +58,7 @@ body.dark {
   --faint: #6b7280;
   --accent: #818cf8;
   --danger: #f87171;
+  --success: #4ade80;
   --due-soon-bg: #3a2e10;
   --due-soon-ink: #fbbf24;
   --overdue-bg: #3a1620;

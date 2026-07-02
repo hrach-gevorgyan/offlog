@@ -113,11 +113,11 @@
         on:click={() => detailTask = task}
         on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
       >
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <span
+        <button
           class="circle"
           class:done={task.column_id === lastColId()}
           title="Move to last status"
+          aria-label="Move to last status"
           on:click|stopPropagation={async () => {
             try {
               await updateTask(task._id!, { column_id: lastColId() });
@@ -126,7 +126,7 @@
               showError('Failed to update task. Please try again.');
             }
           }}
-        ></span>
+        ></button>
         <span class="task-title">{task.title}{#if task.pinned} <span class="pin-mark"><svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor" stroke="none"><polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/></svg></span>{/if}</span>
         {#each task.tags as tag}
           <span class="tag">{tag}</span>
@@ -152,7 +152,6 @@
       <div class="archived-label">Archived ({archivedTasks.length})</div>
       <div class="task-list">
         {#each archivedTasks as task (task._id)}
-          <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div class="task-row archived-row" style="--prio-color:{PRIO_COLOR[task.priority]}">
             <span class="task-title archived-title">{task.title}</span>
             <span class="col-name">{colName(task.column_id)}</span>
@@ -287,11 +286,12 @@
 
   .circle {
     width: 19px; height: 19px; border-radius: 50%;
+    background: none; padding: 0;
     border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
     transition: border-color .12s, background .12s; display: block;
   }
   .circle:hover { border-color: var(--accent); }
-  .circle.done { background: #22c55e; border-color: #22c55e; }
+  .circle.done { background: var(--success); border-color: var(--success); }
 
   .task-title {
     flex: 1; min-width: 0; font-size: 14px; font-weight: 500; color: var(--text);

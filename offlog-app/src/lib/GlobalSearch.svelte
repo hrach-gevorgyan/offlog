@@ -73,16 +73,21 @@
     {/if}
   </div>
 
-  <div class="results">
+  <!-- Keyboard interaction (arrows + Enter) is handled by the search input
+       above, listbox-style — rows themselves are mouse targets only. -->
+  <div class="results" role="listbox" aria-label="Search results">
     {#if searching}
       <div class="hint">Searching…</div>
     {:else if query.trim() && results.length === 0}
       <div class="hint">No results for "{query}"</div>
     {:else if results.length > 0}
       {#each results as r, i (r._id)}
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div
           class="result-row"
+          role="option"
+          aria-selected={i === selectedIdx}
+          tabindex="-1"
           class:selected={i === selectedIdx}
           on:click={() => openResult(r)}
           on:mouseenter={() => selectedIdx = i}

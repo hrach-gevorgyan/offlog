@@ -191,8 +191,7 @@
         {#each tags as tag}
           <span class="tag-chip">
             {tag}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <span class="tag-remove" on:click={() => removeTag(tag)}>×</span>
+            <button class="tag-remove" on:click={() => removeTag(tag)} aria-label="Remove tag {tag}">×</button>
           </span>
         {/each}
         <input
@@ -207,8 +206,8 @@
       {#if tagSuggestions.length}
         <div class="tag-suggestions">
           {#each tagSuggestions as s}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <span class="tag-suggestion" on:mousedown|preventDefault={() => { tags = [...tags, s]; tagInput = ''; }}>{s}</span>
+            <!-- mousedown (not click) so it fires before the tag input's on:blur -->
+            <button class="tag-suggestion" on:mousedown|preventDefault={() => { tags = [...tags, s]; tagInput = ''; }}>{s}</button>
           {/each}
         </div>
       {/if}
@@ -352,6 +351,7 @@
   }
   .tag-remove {
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
+    background: none; border: none; padding: 0;
     transition: color .1s;
   }
   .tag-remove:hover { color: var(--danger); }
