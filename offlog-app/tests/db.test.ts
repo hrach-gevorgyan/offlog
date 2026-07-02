@@ -11,6 +11,8 @@ import db, {
   pruneOldLogs, pruneOldDeletedTasks,
   invalidateTaskCache,
   seedIfEmpty, getSpaces, initIndexes,
+  createSpace, updateSpace, reorderSpaces, deleteSpace,
+  getTagCounts, renameTag, deleteTagEverywhere,
 } from '../src/lib/db';
 import type { SpaceDoc } from '../src/lib/types';
 
@@ -353,5 +355,114 @@ describe('bootstrap (seedIfEmpty smoke test)', () => {
     await seedIfEmpty();
     const after = await getSpaces();
     expect(after).toHaveLength(before.length);
+  });
+});
+
+describe('space management', () => {
+  it('creates a space positioned after the existing ones', async () => {
+    await seedSpace();
+    const space = await createSpace('Hobbies', '#f97316');
+    expect(space.position).toBe(1);
+    const all = await getSpaces();
+    expect(all.map(s => s.name)).toContain('Hobbies');
+  });
+
+  it('updates a space\'s name and color', async () => {
+    const space = await createSpace('Hobbies', '#f97316');
+    const updated = await updateSpace(space._id, { name: 'Crafts', color: '#22c55e' });
+    expect(updated.name).toBe('Crafts');
+    expect(updated.color).toBe('#22c55e');
+  });
+
+  it('reorders spaces to match the given id order', async () => {
+    const a = await createSpace('A', '#000');
+    const b = await createSpace('B', '#000');
+    const c = await createSpace('C', '#000');
+    await reorderSpaces([c._id, a._id, b._id]);
+    const ordered = await getSpaces();
+    expect(ordered.map(s => s._id)).toEqual([c._id, a._id, b._id]);
+  });
+
+  it('refuses to delete the Unsorted space', async () => {
+    await seedSpace();
+    await expect(deleteSpace('space:unsorted')).rejects.toThrow();
+  });
+
+  it('deleting a space reassigns its projects to Unsorted instead of destroying them', async () => {
+    await seedSpace();
+    const hobbies = await createSpace('Hobbies', '#f97316');
+    const project = await createProject(hobbies._id, 'Woodworking');
+    await deleteSpace(hobbies._id);
+    const reassigned = await db.get<any>(project._id);
+    expect(reassigned.space_id).toBe('space:unsorted');
+    const remainingSpaces = await getSpaces();
+    expect(remainingSpaces.map(s => s._id)).not.toContain(hobbies._id);
+  });
+});
+
+describe('tag management', () => {
+  it('counts tag usage across active tasks only', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const colId = project.columns[0].id;
+    const t1 = await createTask(project._id, 'space:unsorted', colId, 'A');
+    const t2 = await createTask(project._id, 'space:unsorted', colId, 'B');
+    const t3 = await createTask(project._id, 'space:unsorted', colId, 'C (deleted)');
+    await updateTask(t1._id!, { tags: ['urgent', 'home'] });
+    await updateTask(t2._id!, { tags: ['urgent'] });
+    await updateTask(t3._id!, { tags: ['urgent'] });
+    await deleteTask(t3._id!);
+
+    const counts = await getTagCounts();
+    expect(counts).toEqual([
+      { tag: 'urgent', count: 2 },
+      { tag: 'home', count: 1 },
+    ]);
+  });
+
+  it('renames a tag across every task that has it', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const colId = project.columns[0].id;
+    const t1 = await createTask(project._id, 'space:unsorted', colId, 'A');
+    const t2 = await createTask(project._id, 'space:unsorted', colId, 'B');
+    await updateTask(t1._id!, { tags: ['wrk'] });
+    await updateTask(t2._id!, { tags: ['wrk', 'urgent'] });
+
+    const changed = await renameTag('wrk', 'work');
+    expect(changed).toBe(2);
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks.find(t => t._id === t1._id)!.tags).toEqual(['work']);
+    expect(tasks.find(t => t._id === t2._id)!.tags.sort()).toEqual(['urgent', 'work']);
+  });
+
+  it('renaming a tag to an existing tag merges instead of duplicating', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+    await updateTask(task._id!, { tags: ['wrk', 'work'] });
+
+    await renameTag('wrk', 'work');
+
+    const [updated] = await getTasksForProject(project._id);
+    expect(updated.tags).toEqual(['work']);
+  });
+
+  it('deletes a tag from every task that has it', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const colId = project.columns[0].id;
+    const t1 = await createTask(project._id, 'space:unsorted', colId, 'A');
+    const t2 = await createTask(project._id, 'space:unsorted', colId, 'B');
+    await updateTask(t1._id!, { tags: ['temp'] });
+    await updateTask(t2._id!, { tags: ['temp', 'keep'] });
+
+    const removed = await deleteTagEverywhere('temp');
+    expect(removed).toBe(2);
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks.find(t => t._id === t1._id)!.tags).toEqual([]);
+    expect(tasks.find(t => t._id === t2._id)!.tags).toEqual(['keep']);
   });
 });

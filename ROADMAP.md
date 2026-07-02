@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Baseline: **v3.5.0** (tag `v3.5.0`, 2026-07) — the current stable release.
+Baseline: **v3.6.0** (tag `v3.6.0`, 2026-07) — the current stable release.
 Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
@@ -10,7 +10,7 @@ a feature branch:
 
 ---
 
-## Shipped (Track A, v3.1.0 – v3.5.0)
+## Shipped (Track A, v3.1.0 – v3.6.0; Track B, v3.6.0)
 
 A1–A8 (persistent undo, changelog growth control, conflict resolution,
 startup cost audit, sync robustness/dedup, automated tests, bundle diet ×2)
@@ -23,8 +23,15 @@ worked at all (`row.value.conflicts` isn't a real PouchDB field; it's
 uncleaned. v3.5.0 followed up with the fallout from conflict detection
 finally working: a Settings panel layout bug (no scroll cap, so a populated
 conflict list pushed the header/buttons off-screen) and an Android splash
-screen that was never actually wired to the real SplashScreen API. Details
-in [TECH.md](offlog-app/TECH.md)'s per-version changelog entries.
+screen that was never actually wired to the real SplashScreen API. v3.6.0
+shipped the first Track B items — **B1 (Space management)** and **B6 (Tag
+management)** — alongside a full Settings redesign (category/detail layout,
+responsive down to phone widths) that wasn't originally scoped but became
+necessary once B1/B6 exposed how cluttered the old flat Settings page had
+become; discovering the app has no Android hardware back-button handling
+anywhere (now tracked as A14) directly shaped that redesign's mobile
+navigation pattern. Details in [TECH.md](offlog-app/TECH.md)'s per-version
+changelog entries.
 
 ---
 
@@ -73,6 +80,20 @@ particular (a real modal blocking the whole app) should trap Tab cycling
 and return focus to the triggering element on close, not just handle
 Escape/Enter as it does now.
 
+### A14. Android hardware back-button handling
+Confirmed via grep (v3.6.0 investigation, while designing Settings'
+drill-down navigation) that nothing in the app registers
+`App.addListener('backButton')` — the hardware/gesture back button on
+Android has no in-app handling at all. Right now that mostly means it
+falls through to Capacitor's default (minimize/exit), which is already a
+rough edge for any open modal/panel (Trash, Changelog, Maintenance,
+CardDetail). It became a hard blocker for the Settings redesign
+specifically: drill-down navigation (category list → detail) needs back to
+step up one level, not exit the app, so v3.6.0 deliberately used an
+on-screen "‹ Back" button and left this alone rather than scope-creep an
+app-wide navigation stack into a Settings layout change. Needed before any
+future feature adds another layer of in-app navigation.
+
 ---
 
 ## Track B — Features
@@ -80,10 +101,9 @@ Escape/Enter as it does now.
 Goal: close the gaps a single power user actually hits. Nothing here should
 compromise local-first (no feature may require a server beyond CouchDB).
 
-### B1. Space management
-Spaces are seeded once and immutable in the UI (rename/recolor/add/reorder
-all missing). A small "Manage spaces" section in Settings. The data layer
-already supports it — this is UI only.
+### B1. Space management — shipped in v3.6.0
+See [TECH.md](offlog-app/TECH.md)'s v3.6.0 changelog entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
 ### B2. Filters on Kanban + saved filters
 Search/filter exists in List and Table only (a deliberate v2 scope cut, can
@@ -105,12 +125,9 @@ created/skipped before writing.
 2h ago" in CardDetail history, and a per-device last-seen list in Settings —
 useful once sync spans 3+ devices.
 
-### B6. Tag management
-Tags are free-form strings entered per-task with no way to see or manage
-them globally — a typo'd tag lives forever as a distinct tag. A "Manage
-tags" section in Settings: list every tag with its usage count, rename
-(rewrites the tag across all tasks), merge two tags into one, or delete a
-tag from every task at once.
+### B6. Tag management — shipped in v3.6.0
+See [TECH.md](offlog-app/TECH.md)'s v3.6.0 changelog entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
 ### B7. Calendar / week view for Agenda
 The Agenda groups by Overdue/Today/This Week/Later as flat lists. A
@@ -139,20 +156,62 @@ A home-screen widget or Android App Shortcut that opens straight to
 task without a full app launch. Native-only; no web/PWA equivalent needed
 since desktop already has Ctrl+N.
 
+### B11. High contrast mode
+A third `body` theme class alongside light/dark, raising border/text
+contrast ratios throughout — same token-driven approach as the existing
+palette (add the values to `app.css`, no component changes needed if every
+color already routes through a CSS custom property). Toggled from Settings
+→ Appearance, next to the existing dark mode switch. Raised while reshaping
+Settings in v3.6.0.
+
+### B12. Auto-reminder from due date
+Right now a reminder (`reminder_at`) is a fully separate field the user
+sets manually, independent of `due_date`. Add an optional "remind me on the
+due date" toggle in `CardDetail` that derives `reminder_at` from `due_date`
+at a configurable time-of-day (a new Settings → Notifications default, e.g.
+"9:00 AM"), instead of requiring the exact date+time to be picked twice for
+the common case of "just remind me the day it's due."
+
+### B13. Sync on/off toggle
+Settings → Sync currently only has the CouchDB URL field — there's no way
+to temporarily disable sync without clearing the URL (which drops the
+configured server entirely). Add an explicit on/off toggle that calls
+`startSync()`/cancels `_syncHandler` without touching the stored URL, for
+"stop syncing for a while" without losing the configuration.
+
+### B14. Explain the storage quota number
+Settings → Data shows the raw `navigator.storage.estimate()` output
+("X MB used / Y MB quota") with no context — the quota figure in particular
+is a browser-assigned ceiling most users have never encountered and don't
+know how to interpret. Add a short inline explanation (e.g. "quota is set
+by your browser based on available disk space, not by Offlog") and clarify
+whether approaching it matters (it doesn't, in practice, until real disk
+pressure — PouchDB/IndexedDB storage for a single-user task list is tiny
+relative to typical quotas).
+
+### B15. Fold Maintenance into the Settings detail pane
+v3.6.0 gave Maintenance its own modal-on-top-of-a-modal (Settings →
+Maintenance → "Run Maintenance" opens `MaintenanceModal.svelte` layered on
+top). Now that Settings itself has a proper category/detail structure,
+review whether Maintenance's step list, progress bar, and Run button can
+render directly in the Maintenance category's detail pane instead of a
+second overlay — one less layer, and it's no longer clearly justified now
+that Settings has real internal navigation of its own.
+
 ---
 
 ## Sequencing suggestion
 
-5 Track A items, 10 Track B items — a clean 1:2 ratio. Ship as five minor
-releases, each pairing one stability item with two features that share
-enough surface area to test together as one coherent unit, rather than
-three unrelated changes bundled by coincidence.
+The original 5:10 Track A:B split below is fully paired through v4.0.0.
+B11–B15 (added while reshaping Settings in v3.6.0) aren't slotted into a
+release yet — re-pair them alongside whichever future A items land, rather
+than force-fitting them into the table below.
 
 | Release | Track A | Track B | Why paired |
 |---|---|---|---|
 | **v3.6.0** | A9 — UI component tests | B1 — Space management, B6 — Tag management | Both features are small, self-contained "manage X in Settings" screens — same shape, low risk, a good first target to exercise the new component-testing setup from A9 before anything more complex. |
 | **v3.7.0** | A11 — Error-handling audit, pass 2 | B2 — Kanban filters, B9 — Command palette | Both add many new mutation/action call sites — auditing the try/catch + `showError()` invariant first makes it a live checklist while building these, not a separate pass done after the fact. |
-| **v3.8.0** | A13 — Accessibility re-audit | B3 — Notification actions, B10 — Android quick-capture widget | An Android-focused release — both features are native-only surface (notification action buttons, home-screen widget), so the a11y re-audit covers the newest interactive elements as they're built. |
+| **v3.8.0** | A13 — Accessibility re-audit, **+ A14 — Android hardware back-button handling** | B3 — Notification actions, B10 — Android quick-capture widget | An Android-focused release — both features are native-only surface (notification action buttons, home-screen widget). A14 (found during v3.6.0's Settings redesign) folds in here since it's squarely Android interaction plumbing, same as A13's focus on the newest interactive elements. |
 | **v3.9.0** | A10 — Large-dataset performance validation | B7 — Calendar/week view, B4 — Import/export v2 | Both features are data-volume-sensitive (a new heavier render view, bulk export/import) — validating performance at scale in the same cycle catches regressions before they ship, not after. |
 | **v4.0.0** | A12 — Notification reliability audit | B5 — Multi-device polish, B8 — Project templates | A12 and B5 both deal with sync/timing edge cases (DST, timezones, multi-device drift) — natural fit. B8 closes out the roadmap; the milestone bump to v4.0.0 marks the whole current plan shipped. |
 

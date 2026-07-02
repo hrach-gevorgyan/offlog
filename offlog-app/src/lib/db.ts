@@ -420,6 +420,51 @@ export async function getSpaces(): Promise<SpaceDoc[]> {
   return r.rows.map(r => r.doc!).sort((a, b) => a.position - b.position);
 }
 
+export async function createSpace(name: string, color: string): Promise<SpaceDoc> {
+  const existing = await getSpaces();
+  const position = existing.length ? Math.max(...existing.map(s => s.position)) + 1 : 0;
+  const doc: SpaceDoc = {
+    _id: `space:${nanoid()}`, type: 'space', name, color, position,
+    updated_at: now(), source: SOURCE,
+  };
+  await db.put(doc);
+  return doc;
+}
+
+export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'name' | 'color'>>): Promise<SpaceDoc> {
+  const doc = await db.get<SpaceDoc>(id);
+  const updated = { ...doc, ...changes, updated_at: now(), source: SOURCE };
+  await db.put(updated);
+  return updated;
+}
+
+export async function reorderSpaces(spaceIds: string[]): Promise<void> {
+  const all = await getSpaces();
+  const byId = new Map(all.map(s => [s._id, s]));
+  const updates = spaceIds
+    .map((id, i) => {
+      const doc = byId.get(id);
+      return doc ? { ...doc, position: i, updated_at: now(), source: SOURCE } : null;
+    })
+    .filter((d): d is SpaceDoc => d !== null);
+  if (updates.length) await db.bulkDocs(updates);
+}
+
+// "Unsorted" can't be deleted — it's the permanent fallback target
+// repairDatabase() and reseeding rely on. Deleting any other space
+// reassigns its projects to Unsorted rather than deleting them, matching
+// the same reassign-not-destroy approach repairDatabase() already uses for
+// orphaned projects.
+export async function deleteSpace(id: string): Promise<void> {
+  if (id === 'space:unsorted') throw new Error('The Unsorted space cannot be deleted.');
+  const doc = await db.get<SpaceDoc>(id);
+  const projects = await getProjects(id);
+  if (projects.length) {
+    await db.bulkDocs(projects.map(p => ({ ...p, space_id: 'space:unsorted', updated_at: now(), source: SOURCE })));
+  }
+  await db.remove(doc);
+}
+
 // ── Projects ──────────────────────────────────────────────────────────────────
 
 export async function getProjects(spaceId?: string): Promise<ProjectDoc[]> {
@@ -708,6 +753,60 @@ export async function getAllTags(): Promise<string[]> {
   const set = new Set<string>();
   all.forEach(d => d.tags?.forEach(t => set.add(t)));
   return [...set].sort();
+}
+
+// ── Tag management ───────────────────────────────────────────────────────
+// Tags are free-form strings on each task with no central record — these
+// operate directly across every task's tags array via bulkDocs rather than
+// one updateTask() per task, and (like the retention-pruning functions
+// above) deliberately skip logChange() per affected task: a rename/delete
+// can touch hundreds of tasks at once, and one changelog entry per task
+// would drown out everything else in the activity log for what's really a
+// single admin action.
+
+export async function getTagCounts(): Promise<{ tag: string; count: number }[]> {
+  const all = await getAllTasksRaw();
+  const counts = new Map<string, number>();
+  for (const t of all) {
+    if (t.deleted) continue;
+    for (const tag of t.tags ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+// Renaming to a tag that already exists elsewhere acts as a merge — each
+// affected task's tags are deduped via Set rather than ending up with the
+// same tag listed twice.
+export async function renameTag(oldTag: string, newTag: string): Promise<number> {
+  const trimmed = newTag.trim();
+  if (!trimmed || trimmed === oldTag) return 0;
+  const all = await getAllTasksRaw();
+  const affected = all.filter(t => !t.deleted && t.tags?.includes(oldTag));
+  if (!affected.length) return 0;
+  const updates = affected.map(t => ({
+    ...t,
+    tags: [...new Set(t.tags.map(tag => (tag === oldTag ? trimmed : tag)))],
+    updated_at: now(), source: SOURCE,
+  }));
+  await db.bulkDocs(updates);
+  invalidateTaskCache();
+  return updates.length;
+}
+
+export async function deleteTagEverywhere(tag: string): Promise<number> {
+  const all = await getAllTasksRaw();
+  const affected = all.filter(t => !t.deleted && t.tags?.includes(tag));
+  if (!affected.length) return 0;
+  const updates = affected.map(t => ({
+    ...t,
+    tags: t.tags.filter(x => x !== tag),
+    updated_at: now(), source: SOURCE,
+  }));
+  await db.bulkDocs(updates);
+  invalidateTaskCache();
+  return updates.length;
 }
 
 export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: string; space_id: string })[]> {
