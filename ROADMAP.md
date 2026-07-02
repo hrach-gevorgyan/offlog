@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Baseline: **v3.0.1** (tag `v3.0.1`, 2026-07) — the declared stable release.
+Baseline: **v3.1.0** (tag `v3.1.0`, 2026-07) — the current stable release.
 Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
@@ -10,43 +10,22 @@ a feature branch:
 
 ---
 
+## Shipped (Track A, v3.1.0)
+
+A1 (persistent undo), A2 (changelog growth control), A3 (conflict resolution
+UI), A4 (startup cost audit), A5 (sync robustness/dedup), and A7 (bundle
+diet — ChangelogView lazy-loaded) shipped together. Details in
+[TECH.md](offlog-app/TECH.md)'s v3.1.0 changelog entry. A6 (automated tests)
+remains open below — it was deliberately sequenced first in the original
+plan but got deprioritized when this batch shipped together; still the
+highest-leverage next step before further changes to `db.ts`.
+
+---
+
 ## Track A — Performance & Stability
 
 Goal: the app stays trustworthy as data grows and devices multiply. No new
 user-visible features; every item here should be invisible when it works.
-
-### A1. Persistent undo buffer
-The undo buffer for deleted tasks is in-memory only — a refresh right after a
-delete loses the undo. Since tasks are soft-deleted anyway (`deleted: true`),
-undo can be rebuilt from the database: a "recently deleted" query (last N
-deleted, ordered by `updated_at`) replaces the in-memory array entirely.
-*Low effort, removes a real data-loss feeling.*
-
-### A2. Changelog growth control
-`log:` docs accumulate forever and `getLogsForTask()` scans **all** logs and
-filters in JS. Two steps: (1) route the per-task history query through the
-already-created `idx-type-ref` Mango index; (2) add a retention policy —
-compact logs older than N months into nothing (they're already viewable
-nowhere past 80 entries). *The single biggest long-term scale risk.*
-
-### A3. Conflict resolution UI
-Conflicts are detected and counted (sidebar badge) but resolution is
-last-write-wins with losing revisions kept forever. A minimal resolution
-panel in Settings: list conflicted docs, show both versions' title/updated_at,
-pick a winner. Repair already deletes losing revs — this just adds choice.
-
-### A4. Startup cost audit
-`init()` runs seed check + full reload + index creation serially on every
-launch. Measure, then: skip `seedIfEmpty` once seeded (localStorage flag),
-parallelize the space/project/task fetches (already `Promise.all`-able),
-defer `rescheduleAll` off the critical path. Target: interactive < 300ms on
-mid-range Android.
-
-### A5. Sync robustness under bad networks
-`retry: true` handles disconnects, but there is no backoff visibility and
-`syncNow()` creates a second concurrent replication alongside the live one.
-Dedupe (cancel/restart the live sync instead), and surface "last error at
-<time>" in Settings for diagnosing flaky LAN sync.
 
 ### A6. Automated tests
 There are none. Priority order: (1) unit tests for `db.ts` pure logic
@@ -56,10 +35,13 @@ agenda/dashboard/reminders — it's duplicated in three queries and only
 convention keeps them aligned; (3) a smoke test that boots the app headless.
 *Do this before any large Track B feature.*
 
-### A7. Bundle diet
-193 KB main chunk. PouchDB is the bulk and already external; the quick wins
-are lazy-loading `ChangelogView`/`CardDetail` history and checking whether
-`pouchdb-find`'s ES import duplicates code already in the UMD bundle.
+### A8. Further bundle diet
+ChangelogView is now lazy-loaded (v3.1.0). Main chunk is still ~196 KB.
+Remaining candidates: lazy-load `CardDetail`'s history panel specifically
+(it's already behind `{#if showHistory}` but that doesn't split the bundle
+on its own — needs a dynamic import like ChangelogView got), and check
+whether `pouchdb-find`'s ES import duplicates code already present in the
+UMD `pouchdb.js` bundle.
 
 ---
 
@@ -114,7 +96,9 @@ useful once sync spans 3+ devices.
 
 ## Sequencing suggestion
 
-1. **A6 (tests) first** — everything else gets safer.
-2. Then A1 + A2 (cheap, real risk reduction).
+1. **A6 (tests) next** — the stability batch shipped without them; they're
+   now the highest-leverage thing before touching `db.ts` again (the
+   conflict-resolution and log-pruning code added in v3.1.0 has no coverage).
+2. Then A8 if bundle size becomes a real complaint (currently not urgent).
 3. First feature: B1 or B3 (B3 is the smallest; B1 is the highest value).
 4. Re-evaluate this document after each release; delete shipped items.

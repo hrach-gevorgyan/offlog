@@ -2,7 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import type { SpaceDoc, ProjectDoc, TaskDoc } from './types';
 import {
   getSpaces, getProjects, getTasksForProject,
-  seedIfEmpty, startSync, subscribe, initIndexes,
+  seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
 
@@ -39,10 +39,17 @@ export const projectTasks = derived(
 );
 
 async function reload() {
-  spaces.set(await getSpaces());
-  projects.set(await getProjects());
+  // None of these three reads depend on each other (tasks only needs the
+  // already-known activeProjectId, not the freshly-loaded spaces/projects),
+  // so fetching them in parallel instead of sequentially shaves a full
+  // round-trip off every reload — this runs on init and on every incoming
+  // sync change.
   const $projectId = get(activeProjectId);
-  tasks.set(await getTasksForProject($projectId));
+  const [sp, pr, tk] = await Promise.all([getSpaces(), getProjects(), getTasksForProject($projectId)]);
+  spaces.set(sp);
+  projects.set(pr);
+  tasks.set(tk);
+  // Not awaited — reminders don't need to block the UI becoming interactive.
   rescheduleAll().catch(() => {});
 }
 
@@ -52,13 +59,17 @@ export async function reloadTasks() {
 }
 
 export async function init() {
-  await initIndexes();
-  await seedIfEmpty();
+  // seedIfEmpty() doesn't depend on the Mango indexes existing (it only
+  // writes docs), and reload()'s own call to getTasksForProject() already
+  // awaits initIndexes() internally — so the two can run concurrently here
+  // instead of the seed check waiting on index creation first.
+  await Promise.all([initIndexes(), seedIfEmpty()]);
   await reload();
   startSync();
   subscribe(() => reload());
   checkPermission();
   initNotificationListeners().catch(() => {});
+  maybePruneOldLogs();
 }
 
 // Switching the active project needs its own trigger (reload() only runs

@@ -1,9 +1,12 @@
 <script lang="ts">
-  import { spaces, projects, activeSpaceId, activeProjectId, showError } from './store';
-  import db, { createProject, deleteProject, syncState, syncNow, importJSON, checkIntegrity, repairDatabase, type IntegrityIssue } from './db';
+  import { spaces, projects, activeSpaceId, activeProjectId, showError, reloadTasks } from './store';
+  import db, {
+    createProject, deleteProject, syncState, syncNow, importJSON, checkIntegrity, repairDatabase, type IntegrityIssue,
+    getRecentlyDeleted, undoDelete, getConflicts, resolveConflict, type ConflictInfo,
+  } from './db';
+  import type { TaskDoc } from './types';
   import { getSyncUrl, setSyncUrl } from '../config';
   import { derived } from 'svelte/store';
-  import ChangelogView from './ChangelogView.svelte';
   import { requestPermission, permissionState } from './notifications';
 
   import { createEventDispatcher, onDestroy } from 'svelte';
@@ -25,6 +28,7 @@
   let syncStatus = syncState.status;
   let lastSynced = syncState.lastSynced;
   let syncError = syncState.error;
+  let lastErrorAt = syncState.lastErrorAt;
   let retryCount = syncState.retryCount;
   let conflictCount = syncState.conflictCount;
   let newProjectName = '';
@@ -32,6 +36,44 @@
   let storageInfo = '';
   let darkMode = typeof localStorage !== 'undefined' && !!localStorage.getItem('dark');
   const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
+
+  // ChangelogView is a full separate screen only opened from this button —
+  // loading it as a dynamic import keeps it out of the main bundle.
+  let ChangelogViewComp: typeof import('./ChangelogView.svelte').default | null = null;
+  async function openChangelog() {
+    if (!ChangelogViewComp) ChangelogViewComp = (await import('./ChangelogView.svelte')).default;
+    showChangelog = true;
+  }
+
+  // Recently deleted (undo, persisted — see db.ts getRecentlyDeleted)
+  let recentlyDeleted: TaskDoc[] = [];
+  async function loadRecentlyDeleted() { recentlyDeleted = await getRecentlyDeleted(10); }
+  async function restoreTask(id: string) {
+    try {
+      await undoDelete(id);
+      await reloadTasks();
+      await loadRecentlyDeleted();
+    } catch {
+      showError('Failed to restore task. Please try again.');
+    }
+  }
+
+  // Sync conflicts (view both versions, pick a winner)
+  let conflictList: ConflictInfo[] = [];
+  let loadingConflicts = false;
+  async function loadConflicts() {
+    loadingConflicts = true;
+    try { conflictList = await getConflicts(); } finally { loadingConflicts = false; }
+  }
+  async function resolve(c: ConflictInfo, keep: 'current' | 'other') {
+    try {
+      await resolveConflict(c.docId, keep, c.other.rev);
+      await reloadTasks();
+      await loadConflicts();
+    } catch {
+      showError('Failed to resolve conflict. Please try again.');
+    }
+  }
 
   function toggleDark() {
     darkMode = !darkMode;
@@ -89,6 +131,7 @@
     syncStatus = syncState.status;
     lastSynced = syncState.lastSynced;
     syncError = syncState.error;
+    lastErrorAt = syncState.lastErrorAt;
     retryCount = syncState.retryCount;
     conflictCount = syncState.conflictCount;
   }
@@ -160,7 +203,7 @@
   }
 
   function saveSettings() { setSyncUrl(syncUrl); showSettings = false; location.reload(); }
-  function openSettings() { showSettings = true; loadStorage(); }
+  function openSettings() { showSettings = true; loadStorage(); loadRecentlyDeleted(); if (conflictCount > 0) loadConflicts(); }
 
   const SPACE_ICON: Record<string, string> = {
     'space:unsorted': `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><polyline points="2,9 20,9"/><polyline points="6,13 10,13 10,16 14,16"/></svg>`,
@@ -278,13 +321,13 @@
         ⚠ {conflictCount} sync conflict{conflictCount === 1 ? '' : 's'}
       </div>
     {/if}
-    <button class="settings-btn" on:click={() => { showChangelog = true; dispatch('navigate'); }}>↩ Changelog</button>
+    <button class="settings-btn" on:click={() => { openChangelog(); dispatch('navigate'); }}>↩ Changelog</button>
     <button class="settings-btn" on:click={() => { openSettings(); dispatch('navigate'); }}>⚙ Settings</button>
   </div>
 </aside>
 
-{#if showChangelog}
-  <ChangelogView on:close={() => showChangelog = false} />
+{#if showChangelog && ChangelogViewComp}
+  <svelte:component this={ChangelogViewComp} on:close={() => showChangelog = false} />
 {/if}
 
 {#if showSettings}
@@ -326,7 +369,37 @@
           CouchDB URL
           <input bind:value={syncUrl} placeholder="http://192.168.27.200:5984/offlog" />
         </label>
+        {#if syncError && lastErrorAt}
+          <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
+        {/if}
       </div>
+
+      {#if conflictCount > 0 || conflictList.length > 0}
+        <div class="setting-group">
+          <div class="setting-section-title">Conflicts</div>
+          <div class="setting-row">
+            <span class="storage-info" style="color: var(--muted)">
+              {#if loadingConflicts}Loading…
+              {:else if conflictList.length}{conflictList.length} document{conflictList.length === 1 ? '' : 's'} with unresolved edits
+              {:else}{conflictCount} conflict{conflictCount === 1 ? '' : 's'} detected{/if}
+            </span>
+            <button class="export-btn" on:click={loadConflicts} disabled={loadingConflicts}>Review</button>
+          </div>
+          {#each conflictList as c (c.docId)}
+            <div class="conflict-item">
+              <div class="conflict-item-title">{c.label} <span class="conflict-item-type">({c.type})</span></div>
+              <div class="conflict-item-row">
+                <span class="conflict-item-meta">Current — updated {fmtLastSynced(c.current.updated_at ?? c.current.created_at ?? '')}</span>
+                <button class="export-btn" on:click={() => resolve(c, 'current')}>Keep this</button>
+              </div>
+              <div class="conflict-item-row">
+                <span class="conflict-item-meta">Other — updated {fmtLastSynced(c.other.doc.updated_at ?? c.other.doc.created_at ?? '')}</span>
+                <button class="export-btn" on:click={() => resolve(c, 'other')}>Keep this</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
 
       <div class="setting-group">
         <div class="setting-section-title">Data</div>
@@ -339,6 +412,18 @@
           <button class="export-btn" on:click={handleImport}>Import JSON</button>
         </div>
       </div>
+
+      {#if recentlyDeleted.length > 0}
+        <div class="setting-group">
+          <div class="setting-section-title">Recently Deleted</div>
+          {#each recentlyDeleted as t (t._id)}
+            <div class="setting-row">
+              <span class="storage-info" style="color: var(--muted)">{t.title}</span>
+              <button class="export-btn" on:click={() => restoreTask(t._id!)}>Restore</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
 
       <div class="setting-group">
         <div class="setting-section-title">Maintenance</div>
@@ -608,6 +693,16 @@
     padding: .5rem .65rem; max-height: 140px; overflow-y: auto;
   }
   .integrity-row { font-size: .74rem; color: var(--muted); line-height: 1.4; }
+
+  .conflict-item {
+    display: flex; flex-direction: column; gap: .3rem;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: .5rem .65rem;
+  }
+  .conflict-item-title { font-size: .8rem; font-weight: 600; color: var(--text); }
+  .conflict-item-type { font-weight: 400; color: var(--faint); }
+  .conflict-item-row { display: flex; align-items: center; gap: .75rem; }
+  .conflict-item-meta { font-size: .72rem; color: var(--muted); flex: 1; }
 
   @media (max-width: 768px) {
     .proj-delete-btn { opacity: .7; }

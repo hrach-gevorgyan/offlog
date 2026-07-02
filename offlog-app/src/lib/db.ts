@@ -95,8 +95,50 @@ export async function getRecentLogs(limit = 80): Promise<any[]> {
 }
 
 export async function getLogsForTask(taskId: string): Promise<any[]> {
-  const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, include_docs: true });
-  return r.rows.map(r => r.doc!).filter((d: any) => d.ref === taskId);
+  await initIndexes();
+  try {
+    // idx-type-ref lets this skip scanning every log doc in the database —
+    // matters once the changelog has accumulated thousands of entries.
+    const r = await db.find({
+      selector: { type: 'log', ref: taskId },
+      use_index: 'idx-type-ref',
+      limit: 100000,
+    });
+    return (r.docs as any[]).sort((a, b) => (b.ts ?? '').localeCompare(a.ts ?? ''));
+  } catch {
+    const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, include_docs: true });
+    return r.rows.map(r => r.doc!).filter((d: any) => d.ref === taskId);
+  }
+}
+
+// ── Log retention ────────────────────────────────────────────────────────────
+// log: docs are append-only and never pruned by any other code path, so the
+// changelog grows forever. getRecentLogs() is capped at 80 for display, but
+// getLogsForTask() and checkIntegrity() (via allDocs) still scan the full
+// set — bounding total growth is cheaper than trying to optimize every future
+// query against an unbounded table.
+
+const LOG_RETENTION_MONTHS = 6;
+const LOG_PRUNE_KEY = 'offlog_logs_pruned_at';
+const LOG_PRUNE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // at most once a week
+
+export async function pruneOldLogs(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - LOG_RETENTION_MONTHS);
+  const cutoffIso = cutoff.toISOString();
+  const r = await db.allDocs({ startkey: 'log:', endkey: 'log:￰', include_docs: true });
+  const stale = r.rows.map(row => row.doc!).filter((d: any) => d.ts && d.ts < cutoffIso);
+  if (stale.length) await db.bulkDocs(stale.map((d: any) => ({ ...d, _deleted: true })));
+  return stale.length;
+}
+
+// Fire-and-forget, rate-limited so it doesn't re-scan the whole log table on
+// every single app launch — called once from store.ts's init().
+export function maybePruneOldLogs(): void {
+  const last = Number(localStorage.getItem(LOG_PRUNE_KEY) ?? 0);
+  if (Date.now() - last < LOG_PRUNE_INTERVAL_MS) return;
+  localStorage.setItem(LOG_PRUNE_KEY, String(Date.now()));
+  pruneOldLogs().catch(() => {});
 }
 
 export async function getDashboardData() {
@@ -166,6 +208,7 @@ export const syncState = {
   status: 'idle' as 'idle' | 'syncing' | 'error' | 'offline',
   lastSynced: localStorage.getItem(LAST_SYNC_KEY),
   error: null as string | null,
+  lastErrorAt: null as string | null,
   retryCount: 0,
   conflictCount: 0,
   listeners: new Set<() => void>(),
@@ -191,6 +234,7 @@ function markError(err: any) {
   syncState.status = 'error';
   syncState.error = describeSyncError(err);
   syncState.retryCount += 1;
+  syncState.lastErrorAt = now();
   notify();
 }
 
@@ -212,22 +256,36 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// Both startSync() and syncNow() attach these same handlers to a *single*
+// live replication (_syncHandler) — syncNow() used to spin up its own
+// separate one-shot db.sync() alongside the already-running live one,
+// meaning two concurrent replications hit the same remote at once. Routing
+// both through one handler at a time avoids that redundant traffic and any
+// risk of the two racing to write the same doc.
+function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
+  let settled = false;
+  const settle = (err: any) => { if (!settled) { settled = true; onSettle?.(err); } };
+  handler
+    .on('change', () => { syncState.status = 'syncing'; notify(); })
+    .on('active', () => { syncState.status = 'syncing'; notify(); })
+    .on('paused', (err: any) => { if (err) markError(err); else markSynced(); settle(err); })
+    .on('error', (err: any) => { markError(err); settle(err); });
+  return handler;
+}
+
 export function startSync() {
   if (_syncHandler) _syncHandler.cancel();
   if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
-  _syncHandler = db.sync(remote(), { live: true, retry: true })
-    .on('change', () => { syncState.status = 'syncing'; notify(); })
-    .on('paused', (err: any) => { if (err) markError(err); else markSynced(); })
-    .on('active', () => { syncState.status = 'syncing'; notify(); })
-    .on('error', (err: any) => markError(err));
+  _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }));
 }
 
 export function syncNow(): Promise<void> {
   return new Promise((resolve, reject) => {
     syncState.status = 'syncing'; notify();
-    db.sync(remote())
-      .on('complete', () => { markSynced(); resolve(); })
-      .on('error', (err: any) => { markError(err); reject(err); });
+    if (_syncHandler) _syncHandler.cancel();
+    _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }), (err) => {
+      if (err) reject(err); else resolve();
+    });
   });
 }
 
@@ -259,9 +317,16 @@ export async function wipeAndReseed(): Promise<void> {
   });
 }
 
+const SEEDED_KEY = 'offlog_seeded';
+
 export async function seedIfEmpty() {
+  // Once we know the database has been seeded, skip the getSpaces() read
+  // entirely on every future launch instead of re-querying it — this scan
+  // is small (4 docs) but it's on the startup critical path of every app
+  // open, forever, for a check that's only ever relevant once.
+  if (localStorage.getItem(SEEDED_KEY)) return;
   const existing = await getSpaces();
-  if (existing.length > 0) return; // already seeded
+  if (existing.length > 0) { localStorage.setItem(SEEDED_KEY, '1'); return; }
 
   const SPACES = [
     { key: 'unsorted', name: 'Unsorted', color: '#6B7280' },
@@ -279,6 +344,7 @@ export async function seedIfEmpty() {
     name: 'Draft', position: 0, columns: DEFAULT_COLS,
     default_view: 'kanban', updated_at: now(), source: SOURCE,
   });
+  localStorage.setItem(SEEDED_KEY, '1');
 }
 
 // ── Spaces ────────────────────────────────────────────────────────────────────
@@ -445,21 +511,26 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
   return { ...doc, ...changes, updated_at: now(), source: SOURCE } as TaskDoc;
 }
 
-// ── Undo delete buffer (in-memory, last 10) ───────────────────────────────────
+// ── Undo (recently deleted, sourced from the database) ────────────────────────
+// Tasks are soft-deleted (deleted: true), so "recently deleted" doesn't need
+// its own storage — it's just a query. This also means undo survives a page
+// refresh, unlike the old in-memory-only buffer which lost everything the
+// moment the tab reloaded even though the underlying task was still recoverable.
 
-type UndoEntry = { doc: TaskDoc; listeners: Set<() => void> };
-const _undoBuffer: UndoEntry[] = [];
 const _undoListeners = new Set<() => void>();
-
 export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return () => _undoListeners.delete(fn); }
-export function getUndoBuffer(): TaskDoc[] { return _undoBuffer.map(e => e.doc); }
+
+export async function getRecentlyDeleted(limit = 10): Promise<TaskDoc[]> {
+  const all = await getAllTasksRaw();
+  return all
+    .filter(d => d.deleted)
+    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+    .slice(0, limit);
+}
 
 export async function deleteTask(id: string): Promise<void> {
-  const doc = await db.get<TaskDoc>(id);
-  _undoBuffer.unshift({ doc, listeners: new Set() });
-  if (_undoBuffer.length > 10) _undoBuffer.pop();
-  _undoListeners.forEach(fn => fn());
   await updateTask(id, { deleted: true });
+  _undoListeners.forEach(fn => fn());
 }
 
 export async function duplicateTask(id: string): Promise<TaskDoc> {
@@ -491,20 +562,11 @@ export async function duplicateTask(id: string): Promise<TaskDoc> {
 }
 
 export async function undoDelete(id: string): Promise<void> {
-  const idx = _undoBuffer.findIndex(e => e.doc._id === id);
-  if (idx === -1) return;
-  const { doc } = _undoBuffer.splice(idx, 1)[0];
-  _undoListeners.forEach(fn => fn());
-  // get current rev so we can update the deleted doc
-  try {
-    const current = await db.get<TaskDoc>(doc._id!);
-    await db.put({ ...current, deleted: false, updated_at: now(), source: SOURCE });
-  } catch {
-    // doc may be truly gone — re-insert without rev
-    const { _rev, ...fresh } = doc as any;
-    await db.put({ ...fresh, deleted: false, updated_at: now(), source: SOURCE });
-  }
+  const current = await db.get<TaskDoc>(id);
+  if (!current.deleted) return;
+  await db.put({ ...current, deleted: false, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
+  _undoListeners.forEach(fn => fn());
 }
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
@@ -677,6 +739,61 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
   invalidateTaskCache();
   await scanConflicts();
   return { fixed, skipped };
+}
+
+// ── Conflict resolution ─────────────────────────────────────────────────────
+// repairDatabase() above always keeps the current winning revision and
+// discards the rest — a reasonable default, but it means the user never
+// gets to choose if PouchDB's deterministic pick happened to keep the wrong
+// side of a genuine edit conflict. These two functions let Settings show
+// both versions of a conflicted doc and let the user decide.
+
+export interface ConflictInfo {
+  docId: string;
+  type: string;
+  label: string;
+  current: any;
+  other: { rev: string; doc: any };
+}
+
+export async function getConflicts(): Promise<ConflictInfo[]> {
+  const r = await db.allDocs({ include_docs: true, conflicts: true });
+  const out: ConflictInfo[] = [];
+  for (const row of r.rows as any[]) {
+    const revs: string[] = row.value?.conflicts ?? [];
+    if (!revs.length) continue;
+    const current = row.doc!;
+    // Only the first conflicting revision is shown — multi-way conflicts are
+    // rare for a single-user app and repairDatabase() remains available for
+    // those as a blunter "keep current, discard the rest" fallback.
+    const other = await db.get(row.id, { rev: revs[0] } as any) as any;
+    out.push({
+      docId: row.id,
+      type: current.type,
+      label: current.title ?? current.name ?? row.id,
+      current,
+      other: { rev: revs[0], doc: other },
+    });
+  }
+  return out;
+}
+
+export async function resolveConflict(docId: string, keep: 'current' | 'other', otherRev?: string): Promise<void> {
+  const doc = await db.get(docId, { conflicts: true } as any) as any;
+  const losingRevs: string[] = doc._conflicts ?? [];
+  if (keep === 'other' && otherRev) {
+    const winning = await db.get(docId, { rev: otherRev } as any) as any;
+    await db.put({ ...winning, _id: docId, _rev: doc._rev });
+  }
+  // Whichever side was kept, every conflicting revision still on record
+  // needs explicit removal — CouchDB/PouchDB don't auto-prune losing
+  // branches just because a new revision was written.
+  for (const rev of losingRevs) {
+    if (rev === otherRev && keep === 'other') continue; // already adopted above
+    try { await db.remove(docId, rev); } catch {}
+  }
+  invalidateTaskCache();
+  await scanConflicts();
 }
 
 // ── Live query ────────────────────────────────────────────────────────────────

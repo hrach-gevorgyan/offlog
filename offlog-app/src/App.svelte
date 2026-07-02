@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
-  import { updateProject, subscribeUndo, getUndoBuffer, undoDelete, getTaskById } from './lib/db';
+  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById } from './lib/db';
   import { pendingOpenTaskId } from './lib/notifications';
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
@@ -36,8 +36,8 @@
   // Undo toast
   let undoToasts: { id: string; title: string; timer: any }[] = [];
 
-  function showUndoToast() {
-    const buf = getUndoBuffer();
+  async function showUndoToast() {
+    const buf = await getRecentlyDeleted(1);
     if (!buf.length) return;
     const task = buf[0];
     if (undoToasts.find(t => t.id === task._id)) return;
