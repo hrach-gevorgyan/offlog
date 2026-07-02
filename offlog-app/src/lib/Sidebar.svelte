@@ -747,6 +747,12 @@
     padding: 1.5rem; width: min(400px, 90vw);
     display: flex; flex-direction: column; gap: 1rem;
     box-shadow: 0 20px 50px rgba(0,0,0,.18);
+    /* Variable-length content (conflict list, integrity issues) can grow
+       taller than the viewport — without a cap the panel just overflows off
+       both the top and bottom of the screen with no way to reach the header
+       or the Cancel/Save buttons. Scroll inside the panel instead. */
+    max-height: min(85vh, 720px);
+    overflow-y: auto;
   }
   .settings-panel h3 { margin: 0; font-size: 1rem; letter-spacing: -.01em; }
   .settings-panel label {

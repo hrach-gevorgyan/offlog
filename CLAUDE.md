@@ -20,6 +20,7 @@ cd offlog-app
 npm run dev             # dev server at http://localhost:5173
 npm run build           # production build → dist/  (must be warning-free, see below)
 npx tsc --noEmit -p .   # type check
+npm test                # vitest — db.ts unit tests against pouchdb-adapter-memory
 npx cap sync android    # copy dist/ into the Android project (run after build)
 ```
 
@@ -71,6 +72,14 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
   the whole `{id, name}` object — tasks silently vanish from Kanban (they
   don't match any column) while still being valid, queryable docs. Always
   assign `column.id`, not `column`.
+- **Conflict info lives on `row.doc._conflicts`, never on `row.value.conflicts`.**
+  The latter has never existed in PouchDB's API — `db.allDocs({conflicts:true})`
+  only attaches `_conflicts` to the fetched doc (which requires
+  `include_docs: true` too). A real bug shipped in v3.1.0 checking the wrong
+  field, caught by `tests/db.test.ts`'s manufactured-conflict test in v3.4.0.
+  When resolving a conflict, every revision in `_conflicts` needs an explicit
+  `db.remove(id, rev)` — including the one whose content you adopted, since
+  adopting content by writing a new revision does not remove its old leaf.
 
 ## Generating test/dummy data
 
@@ -118,6 +127,22 @@ the live `subscribe()` change feed and in-memory task cache pick it up.
 - Legitimate remaining `svelte-ignore` uses: scrim click-to-close (Escape is
   the keyboard path) and intentional `a11y-autofocus` on inline editors.
 
+## Testing
+
+`tests/db.test.ts` (Vitest, `vitest.config.ts`) covers `db.ts`'s pure/query
+logic against `pouchdb-adapter-memory` — `tests/setup.ts` stubs the global
+`PouchDB` (normally the UMD script) and a Node-global-localStorage conflict
+(Node 20+'s own experimental `localStorage` shadows jsdom's; sidestepped
+with a tiny in-memory polyfill rather than fighting over which one wins).
+The `db` instance is a module-level singleton reused across the whole test
+file, same as in the real app — tests get isolation from a `beforeEach` that
+wipes every doc, not from a fresh instance. When adding a new `db.ts`
+function with any non-trivial logic, add a test here before shipping —
+this suite already caught two real bugs (broken conflict detection, an
+incomplete conflict resolution) that had been silently shipping. UI
+components have no test coverage yet; that's still manual/browser-preview
+verification.
+
 ## Android / PWA gotchas (hard-won — read before touching)
 
 - **Status bar**: targetSdk 36 is edge-to-edge; `StatusBar.setBackgroundColor()`
@@ -142,14 +167,15 @@ actually requested, but don't invoke Capacitor/Gradle unprompted.
 
 1. `npm run build` — must succeed with **zero warnings**
 2. `npx tsc --noEmit -p .` — clean
-3. Verify visually in the browser preview (light **and** dark mode)
-4. Bump version in **both** `package.json` and
+3. `npm test` — clean
+4. Verify visually in the browser preview (light **and** dark mode)
+5. Bump version in **both** `package.json` and
    `android/app/build.gradle` (`versionCode` +1, `versionName`) —
    even though Android isn't being synced/built this release
-5. Update version-history tables in `offlog-app/TECH.md` **and** `README.md`
+6. Update version-history tables in `offlog-app/TECH.md` **and** `README.md`
    (TECH.md entry is detailed/technical; README entry is user-facing)
-6. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
-7. **Never push, sync to Android, build the APK, or commit palette/visual
+7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
+8. **Never push, sync to Android, build the APK, or commit palette/visual
    changes without the owner's explicit confirmation/request**
 
 ## Style conventions

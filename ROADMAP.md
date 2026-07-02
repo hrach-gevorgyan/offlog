@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Baseline: **v3.1.1** (tag `v3.1.1`, 2026-07) — the current stable release.
+Baseline: **v3.4.0** (tag `v3.4.0`, 2026-07) — the current stable release.
 Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
@@ -10,20 +10,25 @@ a feature branch:
 
 ---
 
-## Shipped (Track A, v3.1.0 – v3.1.1)
+## Shipped (Track A, v3.1.0 – v3.4.0)
 
 A1 (persistent undo), A2 (changelog growth control), A3 (conflict resolution
 UI), A4 (startup cost audit), A5 (sync robustness/dedup), and A7 (bundle
 diet — ChangelogView lazy-loaded) shipped in v3.1.0. v3.1.1 followed up after
-testing A1 at scale (50 dummy tasks, 25 deleted): the "Recently Deleted" list
-was already correctly capped at 10 rows, but the underlying soft-deleted docs
-had no retention policy — added one (3-month window), plus a real storage
-breakdown in Settings (doc counts, not just a raw MB figure) and a manual
-"Clean Up Now" button. Details in [TECH.md](offlog-app/TECH.md)'s v3.1.0/
-v3.1.1 changelog entries. A6 (automated tests) remains open below — it was
-deliberately sequenced first in the original plan but got deprioritized when
-this batch shipped together; still the highest-leverage next step before
-further changes to `db.ts`.
+testing A1 at scale: added deleted-task retention and a real storage
+breakdown in Settings. v3.4.0 shipped **A6 (automated tests)** — first
+Vitest suite (`tests/db.test.ts`, 26 tests against `pouchdb-adapter-memory`)
+covering CRUD, the "done = last column" convention across both queries that
+rely on it, integrity check/repair, conflict resolution, retention pruning,
+and a bootstrap smoke test. **It immediately paid for itself**: caught two
+real bugs that had been silently shipping since v3.1.0 — conflict detection
+never worked at all (`row.value.conflicts` isn't a real PouchDB field; it's
+`row.doc._conflicts`), and resolving a conflict left one revision behind
+uncleaned. Also shipped **A8 (further bundle diet)** — `CardDetail`'s history
+panel is now lazy-loaded, and the `pouchdb-find` duplication question was
+answered by measurement: ~51 KB raw / ~16.7 KB gzip, structural to the UMD-
+core-plus-ESM-plugin loading strategy, not worth unwinding on its own.
+Details in [TECH.md](offlog-app/TECH.md)'s per-version changelog entries.
 
 ---
 
@@ -32,21 +37,10 @@ further changes to `db.ts`.
 Goal: the app stays trustworthy as data grows and devices multiply. No new
 user-visible features; every item here should be invisible when it works.
 
-### A6. Automated tests
-There are none. Priority order: (1) unit tests for `db.ts` pure logic
-(`posBetween`, integrity check/repair, import validation) against
-`pouchdb-adapter-memory`; (2) the "done = last column" rule across
-agenda/dashboard/reminders — it's duplicated in three queries and only
-convention keeps them aligned; (3) a smoke test that boots the app headless.
-*Do this before any large Track B feature.*
-
-### A8. Further bundle diet
-ChangelogView is now lazy-loaded (v3.1.0). Main chunk is still ~196 KB.
-Remaining candidates: lazy-load `CardDetail`'s history panel specifically
-(it's already behind `{#if showHistory}` but that doesn't split the bundle
-on its own — needs a dynamic import like ChangelogView got), and check
-whether `pouchdb-find`'s ES import duplicates code already present in the
-UMD `pouchdb.js` bundle.
+Nothing currently queued — A1 through A8 are all shipped. Re-populate this
+section as new stability concerns come up (the conflict-detection bug found
+by A6 is a reminder that untested code paths are the main remaining risk;
+UI components still have zero test coverage).
 
 ---
 
@@ -101,9 +95,8 @@ useful once sync spans 3+ devices.
 
 ## Sequencing suggestion
 
-1. **A6 (tests) next** — the stability batch shipped without them; they're
-   now the highest-leverage thing before touching `db.ts` again (the
-   conflict-resolution and log-pruning code added in v3.1.0 has no coverage).
-2. Then A8 if bundle size becomes a real complaint (currently not urgent).
-3. First feature: B1 or B3 (B3 is the smallest; B1 is the highest value).
-4. Re-evaluate this document after each release; delete shipped items.
+1. Track A is fully shipped (A1–A8). First feature: B1 or B3 (B3 is the
+   smallest; B1 is the highest value).
+2. As Track B features land, extend `tests/db.test.ts` for any new `db.ts`
+   logic rather than letting coverage fall behind again.
+3. Re-evaluate this document after each release; delete shipped items.

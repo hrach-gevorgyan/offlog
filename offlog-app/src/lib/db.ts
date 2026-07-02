@@ -299,8 +299,14 @@ function markError(err: any) {
 }
 
 export async function scanConflicts(): Promise<number> {
-  const r = await db.allDocs({ conflicts: true });
-  const count = r.rows.filter((row: any) => row.value?.conflicts?.length).length;
+  // PouchDB only ever attaches conflict info to the fetched doc's own
+  // _conflicts field, never to row.value — so include_docs is required, and
+  // row.doc._conflicts (not row.value.conflicts) is the field to read. A
+  // prior version of this function checked row.value.conflicts, which never
+  // exists; the conflict count silently stayed at 0 regardless of real
+  // conflicts. Caught by tests/db.test.ts's manufactured-conflict test.
+  const r = await db.allDocs({ include_docs: true, conflicts: true });
+  const count = r.rows.filter((row: any) => row.doc?._conflicts?.length).length;
   syncState.conflictCount = count;
   notify();
   return count;
@@ -778,8 +784,10 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
   }
 
   for (const row of r.rows as any[]) {
-    if (row.value?.conflicts?.length) {
-      issues.push({ type: 'conflict', docId: row.id, description: `${row.value.conflicts.length} unresolved conflicting revision(s)` });
+    // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
+    // never on row.value.
+    if (row.doc?._conflicts?.length) {
+      issues.push({ type: 'conflict', docId: row.id, description: `${row.doc._conflicts.length} unresolved conflicting revision(s)` });
     }
   }
 
@@ -850,7 +858,9 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
   const r = await db.allDocs({ include_docs: true, conflicts: true });
   const out: ConflictInfo[] = [];
   for (const row of r.rows as any[]) {
-    const revs: string[] = row.value?.conflicts ?? [];
+    // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
+    // never on row.value.
+    const revs: string[] = row.doc?._conflicts ?? [];
     if (!revs.length) continue;
     const current = row.doc!;
     // Only the first conflicting revision is shown — multi-way conflicts are
@@ -875,11 +885,13 @@ export async function resolveConflict(docId: string, keep: 'current' | 'other', 
     const winning = await db.get(docId, { rev: otherRev } as any) as any;
     await db.put({ ...winning, _id: docId, _rev: doc._rev });
   }
-  // Whichever side was kept, every conflicting revision still on record
-  // needs explicit removal — CouchDB/PouchDB don't auto-prune losing
-  // branches just because a new revision was written.
+  // Every conflicting revision still needs explicit removal — CouchDB/
+  // PouchDB don't auto-prune losing branches just because a new revision
+  // was written. This includes the adopted "other" revision itself: its
+  // content was copied into a fresh revision on top of the current one
+  // above, but the old "other" leaf is still its own separate branch and
+  // stays a live conflict unless it's removed too, same as the rest.
   for (const rev of losingRevs) {
-    if (rev === otherRev && keep === 'other') continue; // already adopted above
     try { await db.remove(docId, rev); } catch {}
   }
   invalidateTaskCache();
