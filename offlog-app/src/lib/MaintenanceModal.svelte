@@ -2,8 +2,11 @@
   import { createEventDispatcher } from 'svelte';
   import db, { checkIntegrity, repairDatabase, pruneOldLogs, pruneOldDeletedTasks, type IntegrityIssue } from './db';
   import { showError } from './store';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
 
   const dispatch = createEventDispatcher<{ close: void; done: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   // One combined, visible flow instead of three separate unexplained buttons
   // (Check Database / Repair Issues / Optimize Storage). Runs as an ordered
@@ -77,15 +80,15 @@
   $: progress = Math.round((steps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (steps.length || 1)) * 100);
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && !running) dispatch('close');
+    if (e.key === 'Escape' && !running) requestClose();
   }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="settings-overlay" on:click|self={() => { if (!running) dispatch('close'); }}>
-  <div class="settings-panel maint-panel">
+<div class="settings-overlay" on:click|self={() => { if (!running) requestClose(); }}>
+  <div class="settings-panel maint-panel" use:trapFocus>
     <h3>Maintenance</h3>
     <p class="setting-hint">
       Runs a full check in order: looks for database problems, repairs what it safely can,
@@ -121,7 +124,7 @@
     {/if}
 
     <div class="settings-actions">
-      <button on:click={() => dispatch('close')} disabled={running}>Close</button>
+      <button on:click={() => requestClose()} disabled={running}>Close</button>
       <button class="save-btn" on:click={run} disabled={running}>
         {running ? 'Running…' : steps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
       </button>

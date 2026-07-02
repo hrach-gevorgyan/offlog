@@ -4,9 +4,12 @@
   import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
   import { confirmAction } from './confirm';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
   import type { TaskDoc } from './types';
 
   const dispatch = createEventDispatcher<{ close: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   type TrashedTask = TaskDoc & { project_name?: string };
 
@@ -22,7 +25,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') requestClose();
   }
 
   // Deleted tasks only carry a timestamp, not a duration — this turns
@@ -77,15 +80,15 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => dispatch('close')}></div>
+<div class="scrim" on:click|self={() => requestClose()}></div>
 
-<div class="panel">
+<div class="panel" use:trapFocus>
   <div class="panel-head">
     <span class="panel-title">Recycle</span>
     {#if items.length > 0}
       <button class="clear-btn" on:click={emptyAll} disabled={emptying}>{emptying ? 'Emptying…' : 'Empty'}</button>
     {/if}
-    <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()}>✕</button>
   </div>
 
   <div class="rc-sub">{items.length} deleted task{items.length === 1 ? '' : 's'} · auto-removed after 3 months</div>

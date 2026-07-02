@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Baseline: **v3.6.0** (tag `v3.6.0`, 2026-07) — the current stable release.
+Baseline: **v3.7.0** (tag `v3.7.0`, 2026-07) — the current stable release.
 Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
@@ -10,7 +10,7 @@ a feature branch:
 
 ---
 
-## Shipped (Track A, v3.1.0 – v3.6.0; Track B, v3.6.0)
+## Shipped (Track A, v3.1.0 – v3.7.0; Track B, v3.6.0 – v3.7.0)
 
 A1–A8 (persistent undo, changelog growth control, conflict resolution,
 startup cost audit, sync robustness/dedup, automated tests, bundle diet ×2)
@@ -30,8 +30,11 @@ responsive down to phone widths) that wasn't originally scoped but became
 necessary once B1/B6 exposed how cluttered the old flat Settings page had
 become; discovering the app has no Android hardware back-button handling
 anywhere (now tracked as A14) directly shaped that redesign's mobile
-navigation pattern. Details in [TECH.md](offlog-app/TECH.md)'s per-version
-changelog entries.
+navigation pattern. v3.7.0 followed up as an Android-focused release:
+**A13 (focus-trap accessibility)** and **A14 (hardware back-button
+handling)** shipped alongside **B3 (notification actions)** and **B10
+(quick-capture app shortcut)** — see TECH.md's v3.7.0 entry. Details in
+[TECH.md](offlog-app/TECH.md)'s per-version changelog entries.
 
 ---
 
@@ -73,26 +76,13 @@ Android exact-alarm fallback are both plausible sources of missed or
 duplicate reminders under those conditions — worth deliberately testing
 rather than waiting for a real missed reminder to report it.
 
-### A13. Accessibility re-audit for the newer components
-The last a11y pass (v3.0) predates `ConfirmDialog`, the Maintenance modal,
-and `TrashView` — none of the three trap focus, and `ConfirmDialog` in
-particular (a real modal blocking the whole app) should trap Tab cycling
-and return focus to the triggering element on close, not just handle
-Escape/Enter as it does now.
+### A13. Accessibility re-audit for the newer components — shipped in v3.7.0
+See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
-### A14. Android hardware back-button handling
-Confirmed via grep (v3.6.0 investigation, while designing Settings'
-drill-down navigation) that nothing in the app registers
-`App.addListener('backButton')` — the hardware/gesture back button on
-Android has no in-app handling at all. Right now that mostly means it
-falls through to Capacitor's default (minimize/exit), which is already a
-rough edge for any open modal/panel (Trash, Changelog, Maintenance,
-CardDetail). It became a hard blocker for the Settings redesign
-specifically: drill-down navigation (category list → detail) needs back to
-step up one level, not exit the app, so v3.6.0 deliberately used an
-on-screen "‹ Back" button and left this alone rather than scope-creep an
-app-wide navigation stack into a Settings layout change. Needed before any
-future feature adds another layer of in-app navigation.
+### A14. Android hardware back-button handling — shipped in v3.7.0
+See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
 ---
 
@@ -110,10 +100,9 @@ Search/filter exists in List and Table only (a deliberate v2 scope cut, can
 be revisited). Add the same filter bar to Kanban, then let any filter
 combination be saved as a named view per project.
 
-### B3. Notification actions
-Android notifications are tap-to-open only. Add "Done" and "Snooze 1h"
-action buttons (`@capacitor/local-notifications` supports action types) —
-completing a task from the lock screen without opening the app.
+### B3. Notification actions — shipped in v3.7.0
+See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
 ### B4. Import/export v2
 Current JSON export is a raw doc dump. Add: export a single project,
@@ -150,11 +139,9 @@ name — "dark mode", "new project", "settings", "export" — so power users
 can drive the whole app from the keyboard without memorizing separate
 shortcuts for everything.
 
-### B10. Android quick-capture widget
-A home-screen widget or Android App Shortcut that opens straight to
-`QuickAdd` (or even accepts a title via the OS share sheet) — capturing a
-task without a full app launch. Native-only; no web/PWA equivalent needed
-since desktop already has Ctrl+N.
+### B10. Android quick-capture widget — shipped in v3.7.0
+See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
 ### B11. High contrast mode
 A third `body` theme class alongside light/dark, raising border/text
@@ -210,7 +197,7 @@ than force-fitting them into the table below.
 | Release | Track A | Track B | Why paired |
 |---|---|---|---|
 | **v3.6.0** | A9 — UI component tests | B1 — Space management, B6 — Tag management | Both features are small, self-contained "manage X in Settings" screens — same shape, low risk, a good first target to exercise the new component-testing setup from A9 before anything more complex. |
-| **v3.7.0** | A13 — Accessibility re-audit, **+ A14 — Android hardware back-button handling** | B3 — Notification actions, B10 — Android quick-capture widget | An Android-focused release — both features are native-only surface (notification action buttons, home-screen widget). A14 (found during v3.6.0's Settings redesign) folds in here since it's squarely Android interaction plumbing, same as A13's focus on the newest interactive elements. **Moved ahead of the original v3.7.0** per owner request to prioritize Android work next. |
+| **v3.7.0** (shipped) | A13 — Accessibility re-audit, A14 — Android hardware back-button handling | B3 — Notification actions, B10 — Android quick-capture widget | An Android-focused release — both features are native-only surface (notification action buttons, app shortcut). A14 (found during v3.6.0's Settings redesign) folded in here since it's squarely Android interaction plumbing, same as A13's focus on the newest interactive elements. **Moved ahead of the original v3.7.0** per owner request to prioritize Android work first. |
 | **v3.8.0** | A11 — Error-handling audit, pass 2 | B2 — Kanban filters, B9 — Command palette | Both add many new mutation/action call sites — auditing the try/catch + `showError()` invariant first makes it a live checklist while building these, not a separate pass done after the fact. |
 | **v3.9.0** | A10 — Large-dataset performance validation | B7 — Calendar/week view, B4 — Import/export v2 | Both features are data-volume-sensitive (a new heavier render view, bulk export/import) — validating performance at scale in the same cycle catches regressions before they ship, not after. |
 | **v4.0.0** | A12 — Notification reliability audit | B5 — Multi-device polish, B8 — Project templates | A12 and B5 both deal with sync/timing edge cases (DST, timezones, multi-device drift) — natural fit. B8 closes out the roadmap; the milestone bump to v4.0.0 marks the whole current plan shipped. |

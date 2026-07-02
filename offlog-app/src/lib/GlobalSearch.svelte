@@ -4,8 +4,11 @@
   import { projects } from './store';
   import type { TaskDoc, ProjectDoc } from './types';
   import { PRIORITY_COLOR, PRIORITY_LABEL } from './constants';
+  import { closeOnBack, discardTop } from './modalStack';
+  import { trapFocus } from './focusTrap';
 
   const dispatch = createEventDispatcher<{ open: { task: TaskDoc; project: ProjectDoc }; close: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   let query = '';
   let results: (TaskDoc & { project_name: string })[] = [];
@@ -34,11 +37,17 @@
   function openResult(r: TaskDoc & { project_name: string }) {
     const proj = $projects.find(p => p._id === r.project_id);
     if (!proj) return;
+    // discardTop(), not requestClose() — this search panel is being
+    // immediately replaced by the task's CardDetail, not dismissed
+    // outright. See modalStack.ts's discardTop() comment for why routing
+    // this through history.back() races the CardDetail that's about to
+    // mount and push its own entry.
+    discardTop();
     dispatch('open', { task: r, project: proj });
   }
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') { dispatch('close'); return; }
+    if (e.key === 'Escape') { requestClose(); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, results.length - 1); }
     if (e.key === 'ArrowUp')   { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); }
     if (e.key === 'Enter' && results[selectedIdx]) openResult(results[selectedIdx]);
@@ -54,9 +63,9 @@
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click={() => dispatch('close')}></div>
+<div class="scrim" on:click={() => requestClose()}></div>
 
-<div class="search-panel">
+<div class="search-panel" use:trapFocus>
   <div class="search-bar">
     <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
       <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>

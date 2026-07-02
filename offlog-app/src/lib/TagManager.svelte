@@ -3,8 +3,11 @@
   import { getTagCounts, renameTag, deleteTagEverywhere, subscribe } from './db';
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
 
   const dispatch = createEventDispatcher<{ close: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   let items: { tag: string; count: number }[] = [];
   let editingTag: string | null = null;
@@ -19,7 +22,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') { if (editingTag) editingTag = null; else dispatch('close'); }
+    if (e.key === 'Escape') { if (editingTag) editingTag = null; else requestClose(); }
   }
 
   function startEdit(tag: string) { editingTag = tag; editingName = tag; }
@@ -52,12 +55,12 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => dispatch('close')}></div>
+<div class="scrim" on:click|self={() => requestClose()}></div>
 
-<div class="panel">
+<div class="panel" use:trapFocus>
   <div class="panel-head">
     <span class="panel-title">Manage Tags</span>
-    <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()}>✕</button>
   </div>
 
   <div class="tg-sub">Rename a tag to match another to merge them.</div>

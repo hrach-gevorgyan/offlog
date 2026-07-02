@@ -2,8 +2,12 @@
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import { projects, reloadTasks, spaces } from './store';
   import { createTask } from './db';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
+  import CustomSelect from './CustomSelect.svelte';
 
   const dispatch = createEventDispatcher<{ close: void; created: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   let title = '';
   let projectId = '';
@@ -13,10 +17,15 @@
   // pick a sensible default project
   $: if (!projectId && $projects.length) projectId = $projects[0]._id;
 
+  $: projectOptions = $projects.map(p => {
+    const sp = $spaces.find(s => s._id === p.space_id);
+    return { value: p._id, label: p.name, group: sp?.name ?? '' };
+  });
+
   onMount(async () => { await tick(); inputEl?.focus(); });
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') requestClose();
     if (e.key === 'Enter') doAdd();
   }
 
@@ -32,14 +41,14 @@
     title = '';
     saving = false;
     dispatch('created');
-    dispatch('close');
+    requestClose();
   }
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click={() => dispatch('close')}></div>
+<div class="scrim" on:click={() => requestClose()}></div>
 
-<div class="panel">
+<div class="panel" use:trapFocus>
   <div class="panel-title">Quick add task</div>
 
   <input
@@ -52,15 +61,12 @@
   />
 
   <div class="row">
-    <select bind:value={projectId} class="proj-select">
-      {#each $projects as p (p._id)}
-        {@const sp = $spaces.find(s => s._id === p.space_id)}
-        <option value={p._id}>{sp ? `${sp.name} / ${p.name}` : p.name}</option>
-      {/each}
-    </select>
+    <div class="proj-select-wrap">
+      <CustomSelect options={projectOptions} bind:value={projectId} placement="up" />
+    </div>
 
     <div class="actions">
-      <button class="cancel-btn" on:click={() => dispatch('close')}>Cancel</button>
+      <button class="cancel-btn" on:click={() => requestClose()}>Cancel</button>
       <button class="add-btn" on:click={doAdd} disabled={!title.trim() || saving}>
         {saving ? 'Adding…' : 'Add task'}
       </button>
@@ -95,12 +101,7 @@
 
   .row { display: flex; align-items: center; gap: 10px; }
 
-  .proj-select {
-    flex: 1; padding: .45rem .6rem; border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
-    font-size: .88rem; font-family: inherit; outline: none; cursor: pointer;
-  }
-  .proj-select:focus { border-color: var(--accent); }
+  .proj-select-wrap { flex: 1; min-width: 0; }
 
   .actions { display: flex; gap: 7px; flex-shrink: 0; }
 

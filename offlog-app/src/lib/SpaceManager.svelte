@@ -3,9 +3,12 @@
   import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
   import type { SpaceDoc } from './types';
 
   const dispatch = createEventDispatcher<{ close: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   let items: SpaceDoc[] = [];
   let editingId: string | null = null;
@@ -23,7 +26,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') { if (editingId) editingId = null; else dispatch('close'); }
+    if (e.key === 'Escape') { if (editingId) editingId = null; else requestClose(); }
   }
 
   function startEdit(s: SpaceDoc) { editingId = s._id; editingName = s.name; }
@@ -85,12 +88,12 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => dispatch('close')}></div>
+<div class="scrim" on:click|self={() => requestClose()}></div>
 
-<div class="panel">
+<div class="panel" use:trapFocus>
   <div class="panel-head">
     <span class="panel-title">Manage Spaces</span>
-    <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()}>✕</button>
   </div>
 
   <div class="item-list">

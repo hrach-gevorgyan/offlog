@@ -5,14 +5,17 @@
   import { reloadTasks, showError, modalOpen } from './store';
   import { requestPermission, permissionState } from './notifications';
   import { confirmAction } from './confirm';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
 
   const dispatch = createEventDispatcher<{ close: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') requestClose();
   }
 
   function isoToLocalInput(iso: string): string {
@@ -80,7 +83,7 @@
         column_id, tags, pinned,
       });
       await reloadTasks();
-      dispatch('close');
+      requestClose();
     } catch (e) {
       showError('Failed to save task. Please try again.');
     } finally {
@@ -93,7 +96,7 @@
     try {
       await deleteTask(task._id!);
       await reloadTasks();
-      dispatch('close');
+      requestClose();
     } catch (e) {
       showError('Failed to delete task.');
     }
@@ -103,7 +106,7 @@
     try {
       await duplicateTask(task._id!);
       await reloadTasks();
-      dispatch('close');
+      requestClose();
     } catch (e) {
       showError('Failed to duplicate task.');
     }
@@ -113,8 +116,8 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="overlay" on:click|self={() => dispatch('close')}>
-  <div class="panel">
+<div class="overlay" on:click|self={() => requestClose()}>
+  <div class="panel" use:trapFocus>
     <div class="panel-header">
       <textarea class="title-input" bind:value={title} placeholder="Task title" rows="1" on:input={(e) => { const t = e.currentTarget; t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }}></textarea>
       <button class="pin-btn" class:pinned on:click={() => pinned = !pinned} title={pinned ? 'Unpin' : 'Pin task'}>
@@ -122,7 +125,7 @@
           <polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/>
         </svg>
       </button>
-      <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
+      <button class="close-btn" on:click={() => requestClose()}>✕</button>
     </div>
 
     <div class="fields">
@@ -217,11 +220,11 @@
     <div class="actions">
       <div class="left-actions">
         <button class="delete-btn" on:click={softDelete}>Delete</button>
-        <button class="archive-btn" on:click={async () => { try { await archiveTask(task._id!); await reloadTasks(); dispatch('close'); } catch { showError('Failed to archive task.'); } }}>Archive</button>
+        <button class="archive-btn" on:click={async () => { try { await archiveTask(task._id!); await reloadTasks(); requestClose(); } catch { showError('Failed to archive task.'); } }}>Archive</button>
         <button class="dupe-btn" on:click={duplicate} title="Duplicate task">Duplicate</button>
       </div>
       <div class="right">
-        <button on:click={() => dispatch('close')}>Cancel</button>
+        <button on:click={() => requestClose()}>Cancel</button>
         <button class="save-btn" on:click={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
         </button>

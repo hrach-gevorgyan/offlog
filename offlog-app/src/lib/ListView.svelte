@@ -128,9 +128,11 @@
           }}
         ></button>
         <span class="task-title">{task.title}{#if task.pinned} <span class="pin-mark"><svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor" stroke="none"><polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/></svg></span>{/if}</span>
-        {#each task.tags as tag}
-          <span class="tag">{tag}</span>
-        {/each}
+        <div class="tags-col">
+          {#each task.tags as tag}
+            <span class="tag">{tag}</span>
+          {/each}
+        </div>
         <span class="col-name">{colName(task.column_id)}</span>
         {#if task.due_date}
           <span class="due-badge state-{dueState(task.due_date)}">{dueLabel(task.due_date)}</span>
@@ -186,7 +188,9 @@
   @media (max-width: 768px) {
     .list-wrap { padding: 14px 14px; }
     .search-box { max-width: 100%; }
+    .task-row { grid-template-columns: 19px minmax(0,1fr) 84px; }
     .col-name { display: none; }
+    .tags-col { display: none; }
     .due-spacer { display: none; }
   }
 
@@ -262,7 +266,10 @@
     letter-spacing: .08em; color: var(--faint); font-weight: 700;
     padding: 0 4px 8px;
   }
-  .archived-row { opacity: .6; cursor: default; }
+  /* Archived rows have a different, shorter set of children (no circle,
+     tags, or due badge) — they get their own flex layout rather than
+     slotting into task-row's fixed 5-column grid. */
+  .archived-row { display: flex; align-items: center; gap: 13px; opacity: .6; cursor: default; }
   .archived-row:hover { opacity: .85; background: var(--hover); }
   .archived-title { text-decoration: line-through; color: var(--muted) !important; }
   .unarchive-btn {
@@ -275,8 +282,14 @@
   /* Task list */
   .task-list { background: var(--surface); border: 1px solid var(--border); border-radius: 13px; overflow: hidden; }
 
+  /* Grid, not flex — tags are a variable-width run of chips, and as a plain
+     flex sibling their width pushed col-name/due-badge sideways by a
+     different amount on every row (no tags = shifted left, one tag = a bit
+     right, two tags = more). A fixed-width grid column for tags keeps
+     status and due date aligned into real columns regardless of tag count. */
   .task-row {
-    display: flex; align-items: center; gap: 13px;
+    display: grid; grid-template-columns: 19px minmax(0,1fr) 130px 84px 84px;
+    align-items: center; gap: 13px;
     padding: 13px 16px; border-bottom: 1px solid var(--border);
     border-left: 3px solid var(--prio-color, var(--border));
     cursor: pointer; transition: background .1s;
@@ -299,20 +312,26 @@
   }
 
   .pin-mark { display: inline-flex; align-items: center; color: var(--accent); opacity: .8; vertical-align: middle; margin-left: 3px; }
-  .tag { font-size: 11px; color: var(--muted); background: var(--col-bg); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
 
-  .col-name { font-family: var(--mono); font-size: 11px; color: var(--faint); width: 84px; text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .tags-col {
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+    overflow: hidden; flex-wrap: nowrap; min-width: 0;
+  }
+  .tag {
+    font-size: 11px; color: var(--muted); background: var(--col-bg); padding: 2px 8px; border-radius: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0;
+  }
+
+  .col-name { font-family: var(--mono); font-size: 11px; color: var(--faint); text-align: right; white-space: nowrap; }
 
   .due-badge {
     font-family: var(--mono); font-size: 11px; font-weight: 500;
-    padding: 3px 9px; border-radius: 6px; min-width: 74px;
-    text-align: center; white-space: nowrap; flex-shrink: 0;
+    padding: 3px 9px; border-radius: 6px;
+    text-align: center; white-space: nowrap;
     background: var(--col-bg); color: var(--muted);
   }
   .due-badge.state-overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
   .due-badge.state-soon    { background: var(--due-soon-bg); color: var(--due-soon-ink); }
-
-  .due-spacer { width: 74px; flex-shrink: 0; }
 
   .empty { padding: 3rem; text-align: center; color: var(--faint); font-size: .88rem; }
 </style>

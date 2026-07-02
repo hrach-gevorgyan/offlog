@@ -8,8 +8,11 @@
   import { getSyncUrl, setSyncUrl } from '../config';
   import { requestPermission, permissionState } from './notifications';
   import { showError } from './store';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
 
   const dispatch = createEventDispatcher<{ close: void }>();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
   type Category = 'appearance' | 'notifications' | 'sync' | 'organize' | 'data' | 'maintenance';
   const CATEGORIES: { key: Category; label: string; icon: string }[] = [
@@ -25,11 +28,17 @@
   // full-width detail view on selection, with an on-screen Back button —
   // there's no room for a real two-column layout on a ~360-400px phone
   // screen. Desktop: both panes visible at once, category just changes
-  // which content shows. See CLAUDE.md/ROADMAP.md A14 — this deliberately
-  // avoids relying on Android's hardware back button, which the app
-  // doesn't intercept anywhere yet.
+  // which content shows.
+  //
+  // Entering a detail view on mobile pushes a *second* history layer via
+  // closeOnBack (on top of the one this component's own requestClose
+  // already pushed for the whole panel) — so hardware/gesture back and
+  // Escape both step from detail back to the category list first, and
+  // only close Settings entirely on a second press. See modalStack.ts and
+  // ROADMAP.md A14.
   let isNarrow = false;
   let activeCategory: Category | null = null;
+  let popDetailLayer: (() => void) | null = null;
 
   onMount(() => {
     const mq = window.matchMedia('(max-width: 640px)');
@@ -40,13 +49,21 @@
     return () => mq.removeEventListener('change', onChange);
   });
 
-  function selectCategory(key: Category) { activeCategory = key; }
-  function backToList() { activeCategory = null; }
+  function selectCategory(key: Category) {
+    activeCategory = key;
+    if (isNarrow && !popDetailLayer) {
+      popDetailLayer = closeOnBack(() => { activeCategory = null; popDetailLayer = null; });
+    }
+  }
+  function backToList() {
+    if (popDetailLayer) popDetailLayer();
+    else activeCategory = null;
+  }
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
     if (isNarrow && activeCategory) backToList();
-    else dispatch('close');
+    else requestClose();
   }
 
   // ── Appearance ──────────────────────────────────────────────────────────
@@ -180,14 +197,14 @@
     showMaintenance = true;
   }
 
-  function saveSettings() { setSyncUrl(syncUrl); dispatch('close'); location.reload(); }
+  function saveSettings() { setSyncUrl(syncUrl); requestClose(); location.reload(); }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="settings-overlay" on:click|self={() => dispatch('close')}>
-  <div class="settings-panel">
+<div class="settings-overlay" on:click|self={() => requestClose()}>
+  <div class="settings-panel" use:trapFocus>
     <div class="settings-body" class:detail-open={activeCategory !== null}>
       <nav class="settings-nav">
         <h3 class="nav-title">Settings</h3>
@@ -323,7 +340,7 @@
     </div>
 
     <div class="settings-actions">
-      <button on:click={() => dispatch('close')}>Cancel</button>
+      <button on:click={() => requestClose()}>Cancel</button>
       <button class="save-btn" on:click={saveSettings}>Save & restart sync</button>
     </div>
   </div>

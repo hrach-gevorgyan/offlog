@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
-import { getAllActiveTasksWithReminders, updateTask } from './db';
-import type { TaskDoc } from './types';
+import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
+import type { TaskDoc, ProjectDoc } from './types';
 
 // Set by a notification click (native action or web Notification.onclick).
 // App.svelte watches this to open the corresponding task.
@@ -113,8 +113,23 @@ function catchUpWeb(tasks: TaskDoc[]) {
 // ── Native (Android) scheduling — genuinely fires while the app is fully
 // closed, since it's handed off to the OS scheduler ──
 
+// "Done" and "Snooze 1h" action buttons on the notification itself — lets a
+// reminder be handled from the lock screen without opening the app. Must be
+// registered before any notification using this actionTypeId is scheduled
+// (Android reads the action type at schedule time, not at display time).
+const REMINDER_ACTION_TYPE = 'REMINDER_ACTIONS';
+
 async function scheduleNative(tasks: TaskDoc[]) {
   const { LocalNotifications } = await import('@capacitor/local-notifications');
+  await LocalNotifications.registerActionTypes({
+    types: [{
+      id: REMINDER_ACTION_TYPE,
+      actions: [
+        { id: 'done', title: 'Done' },
+        { id: 'snooze', title: 'Snooze 1h' },
+      ],
+    }],
+  });
   const pending = await LocalNotifications.getPending();
   if (pending.notifications.length) {
     await LocalNotifications.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
@@ -127,8 +142,29 @@ async function scheduleNative(tasks: TaskDoc[]) {
       body: t.due_date ? `Due ${t.due_date}` : 'Reminder',
       schedule: { at: new Date(t.reminder_at!) },
       extra: { taskId: t._id },
+      actionTypeId: REMINDER_ACTION_TYPE,
     }));
   if (toSchedule.length) await LocalNotifications.schedule({ notifications: toSchedule });
+}
+
+// Moves a task to its project's last column — the same "done" rule used
+// everywhere else in the app (see db.ts / CLAUDE.md: "Done" is positional,
+// column_id === columns.at(-1), there's no separate done boolean).
+async function completeTaskFromNotification(taskId: string): Promise<void> {
+  const task = await getTaskById(taskId);
+  if (!task) return;
+  const project = await db.get(task.project_id) as ProjectDoc;
+  const lastCol = project.columns.at(-1);
+  if (!lastCol) return;
+  await updateTask(taskId, { column_id: lastCol.id, reminder_at: null });
+}
+
+async function snoozeTaskFromNotification(taskId: string): Promise<void> {
+  const at = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  await updateTask(taskId, { reminder_at: at });
+  // rescheduleAll() runs on the next store reload (triggered by the write
+  // above via the live change feed) and will pick up the new reminder_at —
+  // no need to reschedule this one notification directly here.
 }
 
 export async function initNotificationListeners(): Promise<void> {
@@ -138,7 +174,10 @@ export async function initNotificationListeners(): Promise<void> {
   permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
     const taskId = (action.notification.extra as any)?.taskId;
-    if (taskId) pendingOpenTaskId.set(taskId);
+    if (!taskId) return;
+    if (action.actionId === 'done') completeTaskFromNotification(taskId).catch(() => {});
+    else if (action.actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => {});
+    else pendingOpenTaskId.set(taskId); // 'tap' (default open) — anything else falls through to opening the task
   });
 }
 

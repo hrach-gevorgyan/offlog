@@ -1,14 +1,17 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { getRecentLogs, clearLogs } from './db';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
 
   const dispatch = createEventDispatcher();
+  const requestClose = closeOnBack(() => dispatch('close'));
   let logs: Awaited<ReturnType<typeof getRecentLogs>> = [];
 
   onMount(async () => { logs = await getRecentLogs(80); });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') requestClose();
   }
 
   const ACTION_COLOR: Record<string, string> = {
@@ -76,15 +79,15 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => dispatch('close')}></div>
+<div class="scrim" on:click|self={() => requestClose()}></div>
 
-<div class="panel">
+<div class="panel" use:trapFocus>
   <div class="panel-head">
     <span class="panel-title">Changelog</span>
     {#if logs.length > 0}
       <button class="clear-btn" on:click={async () => { await clearLogs(); logs = []; }}>Clear all</button>
     {/if}
-    <button class="close-btn" on:click={() => dispatch('close')}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()}>✕</button>
   </div>
 
   <div class="log-list">

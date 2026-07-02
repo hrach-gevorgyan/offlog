@@ -15,13 +15,12 @@
   export let open = false;
 
   // Settings' own Escape handling (including its mobile back-vs-close
-  // distinction) lives in SettingsPanel.svelte — don't also react to it
-  // here, or Escape would both step back within Settings and force-close
-  // the whole panel in the same keypress.
-  function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key !== 'Escape') return;
-    if (open) open = false;
-  }
+  // distinction) lives in SettingsPanel.svelte. The mobile drawer's Escape
+  // handling lives in App.svelte's onKeydown, alongside its back-button
+  // routing (closeSidebar) — the drawer's `open` state is bound two-way
+  // from there, and closing it needs to go through that same routing
+  // (see modalStack.ts / ROADMAP.md A14), not set `open = false` directly
+  // here, which would desync the pushed history entry from what's visible.
 
   let showChangelog = false;
   let showSettings = false;
@@ -117,8 +116,6 @@
   };
   const DEFAULT_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>`;
 </script>
-
-<svelte:window on:keydown={onWindowKeydown}/>
 
 <aside class="sidebar" class:mobile-open={open}>
   <div class="logo">Offlog</div>

@@ -1,6 +1,6 @@
 # Offlog
 
-Version 3.6.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
+Version 3.7.0 · A local-first task management app built with Svelte 5, PouchDB, and Capacitor. Runs in the browser and as a native Android app. Syncs to CouchDB when available.
 
 ---
 
@@ -219,7 +219,8 @@ The accent (`#6366F1` indigo) is also used for the PWA theme color, the Android 
 
 | Version | Highlights |
 |---|---|
-| **3.6.0** | Manage your spaces (rename, recolor, reorder, delete) and tags (rename, merge, delete) directly from Settings. Settings itself is fully redesigned — a proper category list instead of one long scrolling page, with a layout that adapts cleanly to phone screens instead of cramming everything into a tiny width |
+| **3.7.0** | Android-focused release. The hardware/gesture back button now closes whatever panel or modal is open (Settings, Trash, task details, etc.) instead of minimizing the app — and every one of those panels now traps keyboard focus and returns it to what you clicked when it closes. Task reminder notifications gained "Done" and "Snooze 1h" buttons you can tap right from the lock screen. A new "Quick Add" shortcut (long-press the Offlog icon on your home screen) jumps straight to adding a task. Also fixed the List view's status/due-date columns shifting around depending on how many tags a task had, and replaced the plain OS-style project picker in Quick Add with a proper themed dropdown |
+| 3.6.0 | Manage your spaces (rename, recolor, reorder, delete) and tags (rename, merge, delete) directly from Settings. Settings itself is fully redesigned — a proper category list instead of one long scrolling page, with a layout that adapts cleanly to phone screens instead of cramming everything into a tiny width |
 | 3.5.0 | Fixed the Settings panel getting cut off top and bottom when the (now-working) conflict list has several items. Fixed the Android splash screen — it was never properly connected to Android's splash screen system, so newer phones showed a plain white flash instead of the app's actual charcoal branding before launch |
 | 3.4.0 | Added the project's first automated tests (26 tests covering the database layer), which caught and fixed two real bugs that had been silently shipping since v3.1.0: sync conflict detection never actually worked (the conflict-count badge always read zero), and resolving a conflict didn't fully clean it up. Also trimmed the app's download size a bit further by loading a task's edit history on demand instead of bundling it upfront |
 | 3.3.0 | Polish pass on v3.2.0's Trash/Maintenance redesign: the sidebar's bottom row is now one clean row of three (Changelog / Deleted / Settings) with a proper settings icon and a quiet item count instead of a loud notification badge. Every confirmation prompt in the app (deleting a task, a project, a status, emptying Deleted) is now a styled in-app dialog instead of the browser's native popup. "Check Database", "Repair Issues", and "Optimize Storage" are combined into one Maintenance flow with a visible progress bar and a plain-English note for each step |

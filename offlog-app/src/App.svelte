@@ -14,6 +14,7 @@
   import CardDetail from './lib/CardDetail.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
+  import { closeOnBack } from './lib/modalStack';
 
   let ready = false;
   let initError: string | null = null;
@@ -33,6 +34,30 @@
   let showShortcuts = false;
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;
+
+  // The shortcuts panel is a plain boolean toggled within this
+  // always-mounted component, not a separate component that mounts/
+  // unmounts per open — so unlike the other overlays (which each register
+  // their own back-button layer via closeOnBack at component init), it
+  // needs it wired reactively. See modalStack.ts / ROADMAP.md A14.
+  let popShortcutsLayer: (() => void) | null = null;
+  $: if (showShortcuts && !popShortcutsLayer) {
+    popShortcutsLayer = closeOnBack(() => { showShortcuts = false; popShortcutsLayer = null; });
+  }
+  function closeShortcuts() { if (popShortcutsLayer) popShortcutsLayer(); else showShortcuts = false; }
+
+  // The mobile sidebar drawer deliberately does NOT get a closeOnBack
+  // history layer. It's primarily a launchpad — tapping any nav item
+  // inside it immediately opens something else (a project, Settings,
+  // Trash…), which pushes its own history entry practically the same
+  // instant the drawer closes. Routing the drawer's close through
+  // history.back() in that sequence raced against the newly-opened
+  // overlay's history.pushState() (back() resolves async via 'popstate',
+  // pushState runs sync) and could close the *new* overlay incorrectly.
+  // A plain direct close avoids the race; Escape and the scrim/hamburger
+  // still work as before, just without hardware-back support specifically
+  // for "drawer open, nothing else" (a much rarer state to be caught in).
+  function closeSidebar() { sidebarOpen = false; }
 
   // Undo toast
   let undoToasts: { id: string; title: string; timer: any }[] = [];
@@ -75,11 +100,36 @@
     const el = e.target as HTMLElement;
     const typing = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;
     if (e.key === '?' && !typing) { e.preventDefault(); showShortcuts = true; return; }
-    if (e.key === 'Escape' && showShortcuts) { showShortcuts = false; return; }
+    if (e.key === 'Escape' && showShortcuts) { closeShortcuts(); return; }
+    if (e.key === 'Escape' && sidebarOpen) { closeSidebar(); return; }
   }
+
+  // Android hardware/gesture back button: delegate to browser history when
+  // there's somewhere to go back to (which is exactly when an overlay
+  // registered via closeOnBack has pushed an entry — see modalStack.ts),
+  // otherwise let the OS handle it normally (minimize the app — the
+  // correct behavior at the true root, unlike falling through to this
+  // when a modal is actually open). @capacitor/app is a no-op import on
+  // web, so this listener only ever fires on native.
+  async function setupBackButton() {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    const { App: CapApp } = await import('@capacitor/app');
+    CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (canGoBack) window.history.back();
+      else CapApp.exitApp();
+    });
+  }
+
+  // Fired by MainActivity.java when the app is opened via the "Quick Add"
+  // static Android app shortcut (long-press the launcher icon) — see
+  // res/xml/shortcuts.xml, MainActivity's handleShortcutIntent(), and
+  // ROADMAP.md B10. No-op on web (nothing ever dispatches this event there).
+  function onQuickAddShortcut() { showQuickAdd = true; }
 
   onMount(async () => {
     if (localStorage.getItem('dark')) document.body.classList.add('dark');
+    setupBackButton();
+    window.addEventListener('offlogQuickAdd', onQuickAddShortcut);
     try {
       await init();
     } catch (e: any) {
@@ -135,13 +185,13 @@
       bind:showDeadlines
       bind:showDashboard
       bind:open={sidebarOpen}
-      on:navigate={() => sidebarOpen = false}
+      on:navigate={closeSidebar}
     />
 
     <!-- Mobile scrim -->
     {#if sidebarOpen}
       <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-      <div class="mobile-scrim" on:click={() => sidebarOpen = false}></div>
+      <div class="mobile-scrim" on:click={closeSidebar}></div>
     {/if}
 
     <main class="main">
@@ -260,11 +310,11 @@
 
 {#if showShortcuts}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="scrim" on:click|self={() => showShortcuts = false}>
+  <div class="scrim" on:click|self={closeShortcuts}>
     <div class="shortcuts-panel">
       <div class="shortcuts-head">
         <h3>Keyboard shortcuts</h3>
-        <button class="shortcuts-close" on:click={() => showShortcuts = false} aria-label="Close">✕</button>
+        <button class="shortcuts-close" on:click={closeShortcuts} aria-label="Close">✕</button>
       </div>
       <div class="shortcuts-list">
         <div class="shortcut-row"><kbd>Ctrl</kbd><span>+</span><kbd>K</kbd><span class="shortcut-desc">Global search</span></div>
