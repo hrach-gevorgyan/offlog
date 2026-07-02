@@ -143,13 +143,22 @@ since desktop already has Ctrl+N.
 
 ## Sequencing suggestion
 
-1. **A9 (UI tests) first** — Track A's own automated-testing item (A6)
-   proved its value immediately; the same argument applies to the
-   components, which still have zero coverage.
-2. Then A11 (error-handling audit) — cheap, and the newest features
-   (Trash, Maintenance) are the least likely to have been audited yet.
-3. First feature: B1 (smallest, self-contained) or B6 (tag management,
-   similarly small and a real day-to-day quality-of-life gap).
-4. As Track B features land, extend `tests/db.test.ts` for any new `db.ts`
-   logic rather than letting coverage fall behind again.
-5. Re-evaluate this document after each release; delete shipped items.
+5 Track A items, 10 Track B items — a clean 1:2 ratio. Ship as five minor
+releases, each pairing one stability item with two features that share
+enough surface area to test together as one coherent unit, rather than
+three unrelated changes bundled by coincidence.
+
+| Release | Track A | Track B | Why paired |
+|---|---|---|---|
+| **v3.6.0** | A9 — UI component tests | B1 — Space management, B6 — Tag management | Both features are small, self-contained "manage X in Settings" screens — same shape, low risk, a good first target to exercise the new component-testing setup from A9 before anything more complex. |
+| **v3.7.0** | A11 — Error-handling audit, pass 2 | B2 — Kanban filters, B9 — Command palette | Both add many new mutation/action call sites — auditing the try/catch + `showError()` invariant first makes it a live checklist while building these, not a separate pass done after the fact. |
+| **v3.8.0** | A13 — Accessibility re-audit | B3 — Notification actions, B10 — Android quick-capture widget | An Android-focused release — both features are native-only surface (notification action buttons, home-screen widget), so the a11y re-audit covers the newest interactive elements as they're built. |
+| **v3.9.0** | A10 — Large-dataset performance validation | B7 — Calendar/week view, B4 — Import/export v2 | Both features are data-volume-sensitive (a new heavier render view, bulk export/import) — validating performance at scale in the same cycle catches regressions before they ship, not after. |
+| **v4.0.0** | A12 — Notification reliability audit | B5 — Multi-device polish, B8 — Project templates | A12 and B5 both deal with sync/timing edge cases (DST, timezones, multi-device drift) — natural fit. B8 closes out the roadmap; the milestone bump to v4.0.0 marks the whole current plan shipped. |
+
+Within each release: land the Track A item first (or in the same PR as the
+first Track B item it protects/enables), then the two Track B items. Extend
+`tests/db.test.ts` for any new `db.ts` logic as features land — don't let
+coverage fall behind again. Re-evaluate this table after each release;
+delete shipped rows and re-pair whatever's left if new items get added to
+either track in the meantime.
