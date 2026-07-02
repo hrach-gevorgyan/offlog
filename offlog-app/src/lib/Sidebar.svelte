@@ -3,6 +3,7 @@
   import db, {
     createProject, deleteProject, syncState, syncNow, importJSON, checkIntegrity, repairDatabase, type IntegrityIssue,
     getRecentlyDeleted, undoDelete, getConflicts, resolveConflict, type ConflictInfo,
+    getStorageBreakdown, pruneOldLogs, pruneOldDeletedTasks, type StorageBreakdown,
   } from './db';
   import type { TaskDoc } from './types';
   import { getSyncUrl, setSyncUrl } from '../config';
@@ -72,6 +73,30 @@
       await loadConflicts();
     } catch {
       showError('Failed to resolve conflict. Please try again.');
+    }
+  }
+
+  // Storage breakdown — the raw MB figure from navigator.storage.estimate()
+  // (loadStorage(), below) can't say *what's* using the space; this gives an
+  // actual doc-count answer, and "Clean Up Now" runs both retention policies
+  // immediately instead of waiting for their normal weekly schedule.
+  let breakdown: StorageBreakdown | null = null;
+  async function loadBreakdown() { breakdown = await getStorageBreakdown(); }
+  let cleaning = false;
+  let cleanupStatus = '';
+  async function cleanUpNow() {
+    cleaning = true;
+    try {
+      const [logs, tasks] = await Promise.all([pruneOldLogs(), pruneOldDeletedTasks()]);
+      cleanupStatus = (logs + tasks) > 0
+        ? `Removed ${tasks} old deleted task${tasks === 1 ? '' : 's'} and ${logs} old log entr${logs === 1 ? 'y' : 'ies'}.`
+        : 'Nothing old enough to remove yet.';
+      await Promise.all([loadBreakdown(), loadRecentlyDeleted()]);
+    } catch {
+      showError('Cleanup failed. Please try again.');
+    } finally {
+      cleaning = false;
+      setTimeout(() => { cleanupStatus = ''; }, 5000);
     }
   }
 
@@ -203,7 +228,7 @@
   }
 
   function saveSettings() { setSyncUrl(syncUrl); showSettings = false; location.reload(); }
-  function openSettings() { showSettings = true; loadStorage(); loadRecentlyDeleted(); if (conflictCount > 0) loadConflicts(); }
+  function openSettings() { showSettings = true; loadStorage(); loadRecentlyDeleted(); loadBreakdown(); if (conflictCount > 0) loadConflicts(); }
 
   const SPACE_ICON: Record<string, string> = {
     'space:unsorted': `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><polyline points="2,9 20,9"/><polyline points="6,13 10,13 10,16 14,16"/></svg>`,
@@ -407,6 +432,14 @@
           <span class="storage-info">{storageInfo || 'Calculating…'}</span>
           <button class="export-btn" on:click={exportJSON}>Export JSON</button>
         </div>
+        {#if breakdown}
+          <p class="setting-hint">
+            {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
+            {breakdown.archivedTasks} archived ·
+            {breakdown.deletedTasks} deleted (undo-able, auto-cleared after 3 months) ·
+            {breakdown.logEntries} history entries (auto-cleared after 6 months)
+          </p>
+        {/if}
         <div class="setting-row">
           <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
           <button class="export-btn" on:click={handleImport}>Import JSON</button>
@@ -449,6 +482,10 @@
             <button class="export-btn" on:click={runRepair} disabled={repairing}>{repairing ? 'Repairing…' : 'Repair Issues'}</button>
           </div>
         {/if}
+        <div class="setting-row">
+          <span class="storage-info" style="color: var(--muted)">{cleanupStatus || 'Remove old deleted tasks and history entries now, instead of waiting'}</span>
+          <button class="export-btn" on:click={cleanUpNow} disabled={cleaning}>{cleaning ? 'Cleaning…' : 'Clean Up Now'}</button>
+        </div>
       </div>
 
       <div class="settings-actions">

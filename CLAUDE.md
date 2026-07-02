@@ -66,6 +66,22 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
   types should follow the same pattern (action ∈ create/update/move/delete).
 - Document `_id` prefixes are the type system: `space:` / `project:` / `task:` /
   `log:`. Range scans depend on these prefixes — never change them.
+- **`column_id` is a string id, not the column object.** A test-data script
+  writing `p.columns[i % p.columns.length]` from a raw project doc assigns
+  the whole `{id, name}` object — tasks silently vanish from Kanban (they
+  don't match any column) while still being valid, queryable docs. Always
+  assign `column.id`, not `column`.
+
+## Generating test/dummy data
+
+When asked to add dummy records for manual testing, write directly against
+the PouchDB instance in the browser (`new PouchDB('offlog')` — it's a global,
+reachable from `preview_eval` or the browser console) rather than driving the
+UI one task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
+identifiable and easy to bulk-remove later. Spread across every existing
+project **and** across each project's actual statuses (fetch real column ids
+first — see the `column_id` pitfall above). Reload the page after writing so
+the live `subscribe()` change feed and in-memory task cache pick it up.
 
 ## Theming rules
 
@@ -118,17 +134,23 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
 
 ## Release checklist
 
+Day-to-day work happens on the PC/web build. **Android sync
+(`npx cap sync android`) and APK builds are manual, owner-requested steps —
+do not run them as part of a routine release.** Bump the Android version
+numbers alongside the web ones so they stay in sync for whenever a build is
+actually requested, but don't invoke Capacitor/Gradle unprompted.
+
 1. `npm run build` — must succeed with **zero warnings**
 2. `npx tsc --noEmit -p .` — clean
 3. Verify visually in the browser preview (light **and** dark mode)
 4. Bump version in **both** `package.json` and
-   `android/app/build.gradle` (`versionCode` +1, `versionName`)
-5. `npx cap sync android`
-6. Update version-history tables in `offlog-app/TECH.md` **and** `README.md`
+   `android/app/build.gradle` (`versionCode` +1, `versionName`) —
+   even though Android isn't being synced/built this release
+5. Update version-history tables in `offlog-app/TECH.md` **and** `README.md`
    (TECH.md entry is detailed/technical; README entry is user-facing)
-7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
-8. **Never push, sync to Android, or commit palette/visual changes without
-   the owner's explicit confirmation of how it looks**
+6. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
+7. **Never push, sync to Android, build the APK, or commit palette/visual
+   changes without the owner's explicit confirmation/request**
 
 ## Style conventions
 

@@ -141,6 +141,66 @@ export function maybePruneOldLogs(): void {
   pruneOldLogs().catch(() => {});
 }
 
+// ── Deleted-task retention ──────────────────────────────────────────────────
+// Soft-deleted tasks (deleted: true) are never hard-removed by any other
+// code path either — the same unbounded-growth problem as logs above, just
+// for a different doc type. The "Recently Deleted" list in Settings is
+// already capped to the last 10 by getRecentlyDeleted(), so nothing older
+// than that is ever reachable for undo anyway; a shorter retention window
+// than logs (which are a genuine historical record worth keeping longer) is
+// safe here — 3 months is well past the point anyone would still want undo.
+
+const TASK_RETENTION_MONTHS = 3;
+const TASK_PRUNE_KEY = 'offlog_deleted_tasks_pruned_at';
+
+export async function pruneOldDeletedTasks(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - TASK_RETENTION_MONTHS);
+  const cutoffIso = cutoff.toISOString();
+  const all = await getAllTasksRaw();
+  const stale = all.filter(d => d.deleted && d.updated_at && d.updated_at < cutoffIso);
+  if (stale.length) {
+    await db.bulkDocs(stale.map(d => ({ ...d, _deleted: true })));
+    invalidateTaskCache();
+  }
+  return stale.length;
+}
+
+// Fire-and-forget, rate-limited the same way as maybePruneOldLogs — called
+// alongside it from store.ts's init().
+export function maybePruneOldDeletedTasks(): void {
+  const last = Number(localStorage.getItem(TASK_PRUNE_KEY) ?? 0);
+  if (Date.now() - last < LOG_PRUNE_INTERVAL_MS) return;
+  localStorage.setItem(TASK_PRUNE_KEY, String(Date.now()));
+  pruneOldDeletedTasks().catch(() => {});
+}
+
+// ── Storage breakdown ────────────────────────────────────────────────────────
+// navigator.storage.estimate() (used by the existing "X MB used" line in
+// Settings) reports total browser storage for the origin — it can't say
+// *what* is taking up that space. This gives an actual doc-count breakdown
+// so "how much data am I keeping" has a concrete, actionable answer, and so
+// the retention policies above have something visible to point at.
+
+export interface StorageBreakdown {
+  activeTasks: number;
+  archivedTasks: number;
+  deletedTasks: number;
+  logEntries: number;
+}
+
+export async function getStorageBreakdown(): Promise<StorageBreakdown> {
+  const all = await getAllTasksRaw();
+  let activeTasks = 0, archivedTasks = 0, deletedTasks = 0;
+  for (const d of all) {
+    if (d.deleted) deletedTasks++;
+    else if (d.archived) archivedTasks++;
+    else activeTasks++;
+  }
+  const logRows = await db.allDocs({ startkey: 'log:', endkey: 'log:￰' });
+  return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length };
+}
+
 export async function getDashboardData() {
   const [allProjects, allSpaces] = await Promise.all([getProjects(), getSpaces()]);
   const all = await getAllTasksRaw();

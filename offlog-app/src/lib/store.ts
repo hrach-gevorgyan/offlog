@@ -2,7 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import type { SpaceDoc, ProjectDoc, TaskDoc } from './types';
 import {
   getSpaces, getProjects, getTasksForProject,
-  seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs,
+  seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs, maybePruneOldDeletedTasks,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
 
@@ -70,6 +70,7 @@ export async function init() {
   checkPermission();
   initNotificationListeners().catch(() => {});
   maybePruneOldLogs();
+  maybePruneOldDeletedTasks();
 }
 
 // Switching the active project needs its own trigger (reload() only runs

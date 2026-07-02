@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Baseline: **v3.1.0** (tag `v3.1.0`, 2026-07) — the current stable release.
+Baseline: **v3.1.1** (tag `v3.1.1`, 2026-07) — the current stable release.
 Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
@@ -10,15 +10,20 @@ a feature branch:
 
 ---
 
-## Shipped (Track A, v3.1.0)
+## Shipped (Track A, v3.1.0 – v3.1.1)
 
 A1 (persistent undo), A2 (changelog growth control), A3 (conflict resolution
 UI), A4 (startup cost audit), A5 (sync robustness/dedup), and A7 (bundle
-diet — ChangelogView lazy-loaded) shipped together. Details in
-[TECH.md](offlog-app/TECH.md)'s v3.1.0 changelog entry. A6 (automated tests)
-remains open below — it was deliberately sequenced first in the original
-plan but got deprioritized when this batch shipped together; still the
-highest-leverage next step before further changes to `db.ts`.
+diet — ChangelogView lazy-loaded) shipped in v3.1.0. v3.1.1 followed up after
+testing A1 at scale (50 dummy tasks, 25 deleted): the "Recently Deleted" list
+was already correctly capped at 10 rows, but the underlying soft-deleted docs
+had no retention policy — added one (3-month window), plus a real storage
+breakdown in Settings (doc counts, not just a raw MB figure) and a manual
+"Clean Up Now" button. Details in [TECH.md](offlog-app/TECH.md)'s v3.1.0/
+v3.1.1 changelog entries. A6 (automated tests) remains open below — it was
+deliberately sequenced first in the original plan but got deprioritized when
+this batch shipped together; still the highest-leverage next step before
+further changes to `db.ts`.
 
 ---
 
