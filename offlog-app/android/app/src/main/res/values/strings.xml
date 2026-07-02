@@ -4,6 +4,6 @@
     <string name="title_activity_main">Offlog</string>
     <string name="package_name">com.offlog.app</string>
     <string name="custom_url_scheme">com.offlog.app</string>
-    <string name="shortcut_quickadd_short">Quick Add</string>
-    <string name="shortcut_quickadd_long">Quick Add Task</string>
+    <string name="widget_quick_add_label">Quick Add</string>
+    <string name="widget_quick_add_description">Add a task without opening Offlog</string>
 </resources>

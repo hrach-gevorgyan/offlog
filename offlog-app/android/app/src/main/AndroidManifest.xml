@@ -20,8 +20,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Resolves the "Quick Add" static app shortcut's
-                 com.offlog.app://quickadd intent (see res/xml/shortcuts.xml,
+            <!-- Resolves the Quick Add home-screen widget's
+                 com.offlog.app://quickadd intent (see QuickAddWidgetProvider,
                  ROADMAP.md B10) back to this same activity. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -29,9 +29,21 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.offlog.app" android:host="quickadd" />
             </intent-filter>
-
-            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- exported="true": the widget picker/launcher is a different app
+             and needs to bind this provider — the APPWIDGET_UPDATE broadcast
+             itself is already OS-protected regardless of this flag. -->
+        <receiver
+            android:name=".QuickAddWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_add_widget_info" />
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
