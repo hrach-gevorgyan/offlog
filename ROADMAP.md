@@ -5,8 +5,20 @@ Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
 
-Two tracks, intentionally separate so a stability pass never gets mixed into
-a feature branch:
+## Mission
+
+Offlog is free, open-source, and local-first — no account, no telemetry, no
+subscription, ever. The biggest goal on this roadmap is making it something
+a non-technical person can actually find and install without knowing what
+"self-host CouchDB" means: an official listing (Play Store and/or F-Droid),
+a public GitHub repo, a real license. Offlog is not trying to out-feature
+Trello, Notion, ClickUp, or Jira — it isn't competing with them. The goal is
+a small, calm tool people like using, not a checklist of matched features.
+Every roadmap item should be judged against that: does it make Offlog nicer
+to use, or does it just make it bigger?
+
+Three tracks, intentionally separate so a stability pass never gets mixed
+into a feature branch, and neither gets mixed into distribution work:
 
 ---
 
@@ -83,6 +95,31 @@ See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
 ### A14. Android hardware back-button handling — shipped in v3.7.0
 See [TECH.md](offlog-app/TECH.md)'s v3.7.0 changelog entry. Number kept
 (not renumbered/removed) so the sequencing table below stays accurate.
+
+### A15. Widget/back-button regression coverage
+v3.7.0 added real native surface — `modalStack.ts`'s history-backed overlay
+stack, the notification action buttons, and the home-screen widget — with
+zero automated coverage, only manual/browser verification. `modalStack.ts`
+in particular is pure JS with no Svelte or DOM dependency beyond
+`window.history`/`popstate`, so it's a cheap first target: a unit test can
+verify the LIFO stack order and `discardTop()` vs `requestClose()` behavior
+without spinning up a component at all.
+
+### A16. Offline-queue robustness for sync
+A5 (v3.1.0) fixed sync running two replications at once, but nothing has
+deliberately tested a genuinely flaky connection — dropped mid-replication,
+reconnecting with a partial write in flight. Different failure mode than
+A5's fix; worth simulating deliberately (e.g. killing the network mid-sync
+in dev tools) rather than waiting for a real report of a stuck or corrupted
+sync state.
+
+### A17. Storage-pressure handling
+Nothing today handles `navigator.storage.estimate()` actually approaching
+quota — worth deciding what graceful degradation even looks like for a
+local-first app (warn before writes start failing? nothing else to do?)
+before it's a real user complaint rather than a hypothetical, similar in
+spirit to A10's large-dataset validation but specifically about running
+low on space rather than running slow.
 
 ---
 
@@ -185,14 +222,114 @@ render directly in the Maintenance category's detail pane instead of a
 second overlay — one less layer, and it's no longer clearly justified now
 that Settings has real internal navigation of its own.
 
+### B16. Custom fields
+Tasks currently have a fixed shape (title, body, priority, due date,
+reminder, tags, pinned) — no way to add a project-specific field (e.g.
+"URL", "Estimate", "Client"). Add a per-project custom field definition
+(name + type: text/number/date/select) stored on `ProjectDoc`, rendered in
+`CardDetail` after the built-in fields, and as extra columns in Table view.
+Keep it opt-in and simple — this is the kind of feature that can easily
+balloon into a mini database builder; resist that, a handful of typed
+fields per project is the ceiling, not a schema editor.
+
+### B17. Dashboard as a real home screen
+`DashboardView.svelte` is already the default landing view, but it's thin —
+worth deliberately investing in it as *the* first thing a user sees, not an
+afterthought next to Kanban/List/Table. Candidates: a genuine "what needs
+attention today" summary instead of raw counts, a quick-glance per-space
+breakdown, and surfacing recently-completed tasks for a sense of progress.
+Should stay fast and calm, not a cluttered analytics page — the goal is
+"open the app, immediately know what to do," not a dashboard for its own
+sake.
+
+### B18. Subtasks / checklists within a task
+`CardDetail` has a free-text markdown body but no structured checklist —
+a natural fit given the notes field already exists. A simple `checklist:
+{ text: string; done: boolean }[]` array on `TaskDoc`, rendered as tappable
+checkboxes in `CardDetail`, with a small "3/5 done" progress indicator
+surfaced on the card itself in Kanban/List/Table.
+
+### B19. Bulk actions in List/Table
+Every task action today is one-at-a-time. Add multi-select (checkbox per
+row, shift-click range select) to List and Table views, with a bulk action
+bar for move-to-status, add/remove tag, and delete — the same underlying
+`updateTask()`/`deleteTask()` calls, just looped with one `reloadTasks()`
+at the end instead of per-task.
+
+### B20. Agenda widget
+A second home-screen widget alongside B10's Quick Add — read-only, showing
+the next 2-3 due tasks via the same `getAllTasksDue()` query already used
+by the Agenda view. Reuses the `AppWidgetProvider`/RemoteViews plumbing
+B10 already established; the main new work is `updatePeriodMillis`-driven
+refresh (Quick Add's widget never needed to update itself after creation,
+this one does whenever the underlying data changes).
+
+---
+
+## Track C — Public Release & Open Source
+
+Goal: the mission above, made concrete. Unlike Track A/B, these aren't
+paired into a version bump each — they're mostly one-time setup work, and
+several can start independently of whatever A/B release is in flight.
+
+### C1. Open-source the repository on GitHub
+Push the existing local repo public: pick a license (leaning MIT — the
+goal is people freely using and forking this, not enforcing copyleft
+against anyone), add `LICENSE`, a `CONTRIBUTING.md`, issue templates, and a
+README written for someone who has never seen this project before, not
+just this local CLAUDE.md-oriented one. Audit for anything that assumes a
+local-only environment (paths, comments referencing internal-only context)
+before it goes public. Lowest-risk, highest-priority item on this track —
+can start any time, doesn't block or get blocked by A/B work.
+
+### C2. Zero-config first run, verified
+The architecture is already local-first with no required server, but this
+needs to be *verified*, not assumed: a fresh install, no CouchDB configured,
+should never prompt for setup or imply something is missing. Audit
+first-run copy (Settings → Sync especially) to state plainly that sync is
+optional, not a "you should really configure this" nag.
+
+### C3. Play Store listing
+A signed release build (proper keystore, not the debug one), a Play
+Console developer account, and store listing assets — icon, screenshots,
+short/long description, and a privacy policy page (required even with zero
+telemetry — "we collect nothing" still needs to be a page). Copy should
+frame Offlog as a calm personal tool, not pitch it against Trello/Notion/
+ClickUp/Jira by feature count.
+
+### C4. F-Droid listing
+Matches the free/open philosophy more directly than the Play Store — no
+developer fee, no Google account required to install, and F-Droid's
+reproducible-build model fits a Capacitor app built from public source
+cleanly. Natural pairing with C1 once the repo is public; can ship
+alongside or instead of C3 depending on which audience matters more.
+
+### C5. Public web install landing page
+For anyone who'd rather not go through an app store: a small, plain
+landing page (GitHub Pages is enough) with a single "Install" / "Add to
+Home Screen" button for the existing PWA build — no jargon, no setup
+explanation needed for the common case.
+
+### C6. Brand & positioning pass
+A short pass over README/store copy/landing page copy to make sure the
+"not competing, just likable" framing from the Mission above actually
+comes through — description text should sell the feeling of using Offlog,
+not a feature-parity checklist against bigger tools.
+
 ---
 
 ## Sequencing suggestion
 
 The original 5:10 Track A:B split below is fully paired through v4.0.0.
-B11–B15 (added while reshaping Settings in v3.6.0) aren't slotted into a
-release yet — re-pair them alongside whichever future A items land, rather
-than force-fitting them into the table below.
+A15–A17 and B11–B20 (added while reshaping Settings in v3.6.0 and while
+scoping the app's growth beyond v4.0.0) aren't slotted into a release yet —
+re-pair them alongside whichever future items land, rather than
+force-fitting them into the table below. Track C
+runs independently of version numbers: **C1 and C2 can start now**, in
+parallel with v3.8.0, since they're documentation/verification work that
+doesn't touch app code; **C3–C6 fit naturally once the app feels
+"finished enough" to represent well in a public listing** — realistically
+after v4.0.0, once the current Track A/B backlog has landed.
 
 | Release | Track A | Track B | Why paired |
 |---|---|---|---|
