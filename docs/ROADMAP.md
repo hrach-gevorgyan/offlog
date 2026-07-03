@@ -444,37 +444,43 @@ pinned + one next task) rather than another way to render the full task
 table. **Do not implement from this description** — it needs a real design
 session with the owner first.
 
-### B36. List view power customization
+### B36. List view power customization — shipped in v3.8.5
 Direction set by the owner (2026-07-03) right after the List/Table merge
-and the from-scratch List rewrite: the merged List should grow into a
-heavily customizable data grid over time. The pieces, likely spanning
-several releases rather than shipping as one:
+and the from-scratch List rewrite. All seven pieces below shipped together
+in v3.8.5, all per-device via `localStorage` (not per-project, not
+synced — a phone and a PC may reasonably want different columns/filters):
 
-- **Saved filters** — persist named filter combinations per project (the
-  List half of what B2 already describes for Kanban; build the storage
-  once, share it across both views).
-- **Column selection** — show/hide columns per user preference (e.g. drop
-  Priority, add Created), persisted.
-- **Column reordering** — drag column headers to rearrange, persisted.
-- **Native horizontal scrolling** — when the chosen columns don't fit the
-  viewport, the grid scrolls horizontally instead of dropping or squeezing
-  columns; today's responsive tiers (hide tags → hide most columns) become
-  the fallback for narrow screens, not the only behavior.
-- **No text truncation, guaranteed** — a standing requirement, not a
-  one-off fix: with horizontal scrolling available, no cell should ever
-  ellipsize or clip its content. The 2026-07 rewrite already killed the
-  worst offenders (pill badges); this finishes the job for long titles
-  and long status names.
-- **Multi-column sort** — sort by more than one column (e.g. Status, then
-  Due within each status), the standard shift-click-a-second-header
-  pattern.
-- **More columns** — expose fields the grid doesn't show today: created
-  date, updated date, source device, and eventually B16's custom fields
-  as first-class columns.
-
-Column preferences need somewhere to live (per-project on `ProjectDoc`,
-or per-device in localStorage — decide when building; syncing view
-preferences across devices may not even be desirable).
+- **Saved filters** — name and persist the current search/status/priority/
+  tag combination per project, reapply or delete from a "Filters" menu.
+- **Column selection** — show/hide Status, Priority, Due, Tags, Created,
+  Updated, Device via a "Columns" menu.
+- **Column reordering** — drag any column header to rearrange; order
+  persists. A drag shows a left/right edge indicator on the header being
+  dragged over, so it's visible which side of that column the dragged one
+  will land on before you drop.
+- **Native horizontal scrolling** — replaces the old responsive tiers
+  entirely (no more hiding tags/status/priority at narrower widths). The
+  grid sizes to its natural content width and the container scrolls once
+  that's wider than available space — it does **not** cap at some fixed
+  width just because it can scroll; on a wide screen with few columns
+  visible, there's no scrollbar and no forced empty gap either.
+- **No text truncation, guaranteed** — nothing in the grid ellipsizes.
+  Long titles/status names make the row (and the whole scroll area) wider
+  instead of clipping.
+- **Multi-column sort** — **plain click** sorts by that column alone
+  (replaces whatever sort was active); **Shift+click** adds it as a
+  secondary/tertiary tiebreaker instead of replacing. Each sorted header
+  shows an arrow, and — only once more than one column is active — a
+  small number after the arrow (e.g. `↑2`) marking its position in the
+  tiebreak order. Documented in-app via each header's tooltip, since nothing
+  about a plain header button visually suggests Shift+click is possible.
+  **Tags is not sortable** (no single ordering for a list of tags) — its
+  header can still be dragged to reorder, just doesn't respond to a click;
+  its tooltip says so explicitly rather than silently doing nothing.
+- **More columns** — Created date, Updated date, and Device (`source`)
+  joined Status/Priority/Due/Tags as togglable columns, all shown as full
+  dates (month/day/year — no reason to abbreviate away the year now that
+  nothing truncates and horizontal scroll exists for overflow).
 
 ---
 

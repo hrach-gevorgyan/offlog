@@ -59,6 +59,22 @@ priority now, or is safe to defer indefinitely?
 
 ---
 
+## Feature integration
+
+### Q5. Will B16 custom fields automatically appear in List's column selection (B36)?
+B36 (List view power customization, shipped v3.8.5) has a fixed `ColKey`
+union and a `COL_LABELS`/`COL_WIDTH` map in `ListView.svelte` — Status,
+Priority, Due, Tags, Created, Updated, Device. B16 (custom fields, not yet
+built) would add arbitrary per-project fields to `ProjectDoc`. **Test once
+B16 exists**: does a custom field show up in the Columns menu without
+further ListView changes, or does `ListView.svelte` need explicit new code
+per custom field (reading `project`'s custom field defs and generating
+column entries dynamically, rather than the current fixed union)? If it's
+the latter, decide during B16's implementation rather than assuming B36's
+column system already generalizes to it.
+
+---
+
 ## How to use this document
 
 Each question above is meant to be copy-pasted on its own to another AI,
