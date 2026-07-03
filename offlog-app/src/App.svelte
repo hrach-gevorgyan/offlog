@@ -157,17 +157,17 @@
 
   function retryInit() { location.reload(); }
 
-  // 'table' was a real option before the 2026-07 merge of ListView and
-  // TableView into one sortable list — a project doc from before that
-  // merge can still have default_view: 'table' stored in the database.
-  // The cast + fallback below treats any such stale value as 'list'
-  // (TableView's replacement) rather than migrating every doc.
   type View = 'kanban' | 'list';
-  $: currentView = (($activeProject?.default_view as View | 'table' | undefined) === 'table'
-    ? 'list'
-    : $activeProject?.default_view ?? 'kanban') as View;
+  // Deliberately not persisted/restored from ProjectDoc.default_view —
+  // opening a project (from the sidebar, dashboard, search, etc.) always
+  // lands on Kanban; `default_view` is written by `setView()` below only
+  // as a legacy field, no longer read back. `setView` just switches the
+  // view for the current session.
+  let currentView: View = 'kanban';
+  $: if ($activeProjectId) currentView = 'kanban';
 
   async function setView(v: View) {
+    currentView = v;
     if (!$activeProject) return;
     await updateProject($activeProject._id, { default_view: v });
     projects.update(ps => ps.map(p => p._id === $activeProject!._id ? { ...p, default_view: v } : p));

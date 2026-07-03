@@ -33,8 +33,18 @@ export function trapFocus(node: HTMLElement) {
   // panel (e.g. an input with the existing a11y-autofocus pattern) —
   // only move focus in if it's currently outside the panel entirely.
   if (!node.contains(document.activeElement)) {
-    const focusable = getFocusable(node);
-    (focusable[0] ?? node).focus();
+    // Only jump into an inner field if it explicitly opted in via
+    // `autofocus` (e.g. a rename/add-item input) — otherwise land on the
+    // panel itself. Grabbing "just whatever is first in the DOM" used to
+    // put the caret straight into CardDetail's title textarea on every
+    // card open, silently putting it in edit mode with no intent to do so.
+    const explicit = node.querySelector<HTMLElement>('[autofocus]');
+    if (explicit) {
+      explicit.focus();
+    } else {
+      if (!node.hasAttribute('tabindex')) node.tabIndex = -1;
+      node.focus();
+    }
   }
 
   function onKeydown(e: KeyboardEvent) {

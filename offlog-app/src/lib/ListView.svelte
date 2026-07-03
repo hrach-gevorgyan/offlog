@@ -281,102 +281,119 @@
 <svelte:window on:click={onWindowClick} />
 
 <div class="list-wrap">
-  <!-- Toolbar -->
+  <!-- Toolbar + grid share one outer panel (single border/radius). The
+       toolbar is one guaranteed-single-row strip at every viewport width:
+       a flexible search box plus three fixed-size icon buttons (Filters /
+       Archived / Columns). All filter controls (status, tag, priority,
+       saved filters) live inside the Filters popover rather than inline —
+       inline controls could never be made to fit one row on a phone
+       without wrapping or horizontal scrolling, both explicitly rejected.
+       The funnel button carries a count badge so active filters stay
+       visible even though the controls themselves are collapsed. -->
+  <div class="list-panel">
   <div class="toolbar">
-    <div class="search-box">
-      <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-        <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/>
-      </svg>
-      <input class="search-input" bind:value={search} placeholder="Search tasks…" />
-      {#if search}<button class="clear-x" on:click={() => search = ''}>×</button>{/if}
-    </div>
-
-    <select class="filter-sel" bind:value={filterCol}>
-      <option value="">All statuses</option>
-      {#each project.columns as col}
-        <option value={col.id}>{col.name}</option>
-      {/each}
-    </select>
-
-    {#if allTags.length}
-      <select class="filter-sel" bind:value={filterTag}>
-        <option value="">All tags</option>
-        {#each allTags as t}<option value={t}>{t}</option>{/each}
-      </select>
-    {/if}
-
-    <div class="prio-chips">
-      {#each [[0,'All'],[1,'Low'],[2,'Med'],[3,'High']] as [v,label]}
-        <button class="prio-chip" class:active={filterPrio === v} on:click={() => filterPrio = filterPrio === v ? 0 : v}>
-          {#if v !== 0}<span class="chip-dot" style="background:{PRIO_COLOR[v]}"></span>{/if}
-          {label}
-        </button>
-      {/each}
-    </div>
-
-    {#if activeFilters > 0}
-      <button class="clear-all" on:click={clearFilters}>Clear filters ({activeFilters})</button>
-    {/if}
-
-    <div class="filter-menu-wrap">
-      <button class="col-menu-btn" on:click={() => showFilterMenu = !showFilterMenu}>
-        <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 2h12L8.5 7.5v4L5.5 13v-5.5z"/>
+      <div class="search-box">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/>
         </svg>
-        Filters
-      </button>
-      {#if showFilterMenu}
-        <div class="col-menu filter-menu">
-          <div class="filter-save-row">
-            <input class="filter-name-input" bind:value={newFilterName} placeholder="Name this filter…" on:keydown={(e) => { if (e.key === 'Enter') saveCurrentFilter(); }} />
-            <button class="filter-save-btn" on:click={saveCurrentFilter} disabled={!newFilterName.trim()}>Save</button>
-          </div>
-          {#if savedFilters.length}
-            <div class="filter-list">
-              {#each savedFilters as f (f.name)}
-                <div class="filter-row">
-                  <button class="filter-apply-btn" on:click={() => applySavedFilter(f)}>{f.name}</button>
-                  <button class="filter-del-btn" on:click={() => deleteSavedFilter(f.name)} aria-label="Delete filter {f.name}">×</button>
-                </div>
+        <input class="search-input" bind:value={search} placeholder="Search tasks…" />
+        {#if search}<button class="clear-x" on:click={() => search = ''}>×</button>{/if}
+      </div>
+
+    <div class="toolbar-actions">
+      <div class="filter-menu-wrap">
+        <button class="action-btn" class:active={activeFilters > 0 || showFilterMenu} on:click={() => showFilterMenu = !showFilterMenu} aria-label="Filters" title="Filters">
+          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 2h12L8.5 7.5v4L5.5 13v-5.5z"/>
+          </svg>
+          <span class="action-label">Filters</span>
+          {#if activeFilters > 0}<span class="filter-count">{activeFilters}</span>{/if}
+        </button>
+        {#if showFilterMenu}
+          <div class="col-menu filter-menu">
+            <div class="menu-label">Status</div>
+            <select class="filter-sel" bind:value={filterCol}>
+              <option value="">All statuses</option>
+              {#each project.columns as col}
+                <option value={col.id}>{col.name}</option>
+              {/each}
+            </select>
+
+            {#if allTags.length}
+              <div class="menu-label">Tag</div>
+              <select class="filter-sel" bind:value={filterTag}>
+                <option value="">All tags</option>
+                {#each allTags as t}<option value={t}>{t}</option>{/each}
+              </select>
+            {/if}
+
+            <div class="menu-label">Priority</div>
+            <div class="prio-chips">
+              {#each [[0,'All'],[1,'Low'],[2,'Med'],[3,'High']] as [v,label]}
+                <button class="prio-chip" class:active={filterPrio === v} on:click={() => filterPrio = filterPrio === v ? 0 : v}>
+                  {#if v !== 0}<span class="chip-dot" style="background:{PRIO_COLOR[v]}"></span>{/if}
+                  {label}
+                </button>
               {/each}
             </div>
-          {:else}
-            <div class="filter-empty">No saved filters yet</div>
-          {/if}
-        </div>
-      {/if}
-    </div>
 
-    <button class="archive-toggle" class:active={showArchived} on:click={() => showArchived = !showArchived} title="Show archived tasks">
-      <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
-      </svg>
-      Archived
-    </button>
+            {#if activeFilters > 0}
+              <button class="clear-all" on:click={clearFilters}>Clear filters ({activeFilters})</button>
+            {/if}
 
-    <div class="col-menu-wrap">
-      <button class="col-menu-btn" on:click={() => showColMenu = !showColMenu}>
-        <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="3" x2="3" y2="11"/><line x1="7" y1="3" x2="7" y2="11"/><line x1="11" y1="3" x2="11" y2="11"/>
+            <div class="menu-divider"></div>
+            <div class="menu-label">Saved filters</div>
+            <div class="filter-save-row">
+              <input class="filter-name-input" bind:value={newFilterName} placeholder="Name this filter…" on:keydown={(e) => { if (e.key === 'Enter') saveCurrentFilter(); }} />
+              <button class="filter-save-btn" on:click={saveCurrentFilter} disabled={!newFilterName.trim()}>Save</button>
+            </div>
+            {#if savedFilters.length}
+              <div class="filter-list">
+                {#each savedFilters as f (f.name)}
+                  <div class="filter-row">
+                    <button class="filter-apply-btn" on:click={() => applySavedFilter(f)}>{f.name}</button>
+                    <button class="filter-del-btn" on:click={() => deleteSavedFilter(f.name)} aria-label="Delete filter {f.name}">×</button>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <div class="filter-empty">No saved filters yet</div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      <button class="action-btn" class:active={showArchived} on:click={() => showArchived = !showArchived} aria-label="Show archived tasks" title="Show archived tasks">
+        <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
         </svg>
-        Columns
+        <span class="action-label">Archived</span>
       </button>
-      {#if showColMenu}
-        <div class="col-menu">
-          {#each colOrder as key (key)}
-            <label class="col-menu-item">
-              <input type="checkbox" checked={cols[key]} on:change={() => toggleCol(key)} />
-              {COL_LABELS[key]}
-            </label>
-          {/each}
-        </div>
-      {/if}
+
+      <div class="col-menu-wrap">
+        <button class="action-btn" class:active={showColMenu} on:click={() => showColMenu = !showColMenu} aria-label="Columns" title="Columns">
+          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="3" x2="3" y2="11"/><line x1="7" y1="3" x2="7" y2="11"/><line x1="11" y1="3" x2="11" y2="11"/>
+          </svg>
+          <span class="action-label">Columns</span>
+        </button>
+        {#if showColMenu}
+          <div class="col-menu">
+            {#each colOrder as key (key)}
+              <label class="col-menu-item">
+                <input type="checkbox" checked={cols[key]} on:change={() => toggleCol(key)} />
+                {COL_LABELS[key]}
+              </label>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 
   <!-- Data grid -->
   <div class="grid-scroll">
-    <div class="grid-card">
+    <div class="grid-card grid-card--flush">
       <div class="grid-head" style="grid-template-columns:{gridTemplate}">
         <span class="head-spacer"></span>
         <button class="th-btn" title="Click to sort. Shift+click to add as a secondary sort." on:click={(e) => toggleSort('title', e.shiftKey)}>Title <span class="sort-icon">{sortIcons.title}</span></button>
@@ -453,6 +470,7 @@
       {/if}
     </div>
   </div>
+  </div>
 
   {#if showArchived && archivedTasksRaw.length > 0}
     <div class="archived-section">
@@ -504,41 +522,58 @@
 <style>
   .list-wrap { flex: 1; overflow-y: auto; padding: 20px 28px; }
 
-  /* ── Toolbar ─────────────────────────────────────────────────────────── */
-  .toolbar {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px; flex-wrap: wrap;
+  /* ── List panel — toolbar + grid share one outer border/radius so they
+     read as a single structured surface instead of two floating cards ── */
+  .list-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 13px; overflow: hidden; margin-bottom: 20px;
   }
+  /* One row, guaranteed, at every viewport width — no wrapping, no
+     horizontal scrolling, no breakpoints (owner requirement after several
+     failed wrap/scroll attempts). This only works because the row's
+     content is minimal by construction: a shrinkable search box + three
+     fixed-size icon buttons ≈ 220px minimum, which fits even a 320px
+     phone. Everything else lives inside the Filters popover — don't add
+     inline controls back into this row without re-checking that math. */
+  .toolbar {
+    position: relative; /* anchors the Filters popover (see .filter-menu) */
+    display: flex; flex-wrap: nowrap; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border); padding: 10px 14px;
+  }
+  .toolbar-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 
   .search-box {
     display: flex; align-items: center; gap: 7px;
-    background: var(--surface); border: 1px solid var(--border-strong);
+    background: var(--bg); border: 1px solid var(--border-strong);
     border-radius: 8px; padding: 6px 10px;
-    flex: 1; min-width: 160px; max-width: 240px;
+    flex: 1 1 auto; min-width: 110px; max-width: 280px;
   }
   .search-box svg { color: var(--faint); flex-shrink: 0; }
   .search-input {
     border: none; background: none; font-size: 13px; color: var(--text);
-    width: 100%; outline: none;
+    width: 100%; outline: none; min-width: 0;
   }
   .search-input::placeholder { color: var(--faint); }
   .clear-x {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 14px; padding: 0; line-height: 1;
+    flex-shrink: 0;
   }
   .clear-x:hover { color: var(--text); }
 
+  /* Lives inside the Filters popover, not the toolbar row. */
   .filter-sel {
+    width: 100%;
     border: 1px solid var(--border-strong); border-radius: 8px;
-    background: var(--surface); color: var(--text);
+    background: var(--bg); color: var(--text);
     font-size: 12.5px; padding: 6px 10px; cursor: pointer; outline: none;
   }
 
-  .prio-chips { display: flex; gap: 3px; }
+  .prio-chips { display: flex; gap: 3px; flex-wrap: wrap; }
   .prio-chip {
     display: flex; align-items: center; gap: 5px;
     border: 1px solid var(--border-strong); border-radius: 7px;
-    background: var(--surface); color: var(--muted);
+    background: var(--bg); color: var(--muted);
     font-size: 12px; font-weight: 500; padding: 5px 9px;
     cursor: pointer; transition: background .1s, color .1s, border-color .1s;
   }
@@ -546,29 +581,41 @@
   .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
   .clear-all {
+    width: 100%;
     background: none; border: 1px solid var(--border-strong); border-radius: 7px;
     color: var(--muted); font-size: 11.5px; padding: 5px 10px; cursor: pointer;
     transition: color .12s, border-color .12s;
   }
   .clear-all:hover { color: var(--danger); border-color: var(--danger); }
 
-  .archive-toggle {
-    display: flex; align-items: center; gap: 5px;
-    background: none; border: 1px solid var(--border-strong); border-radius: 7px;
-    color: var(--muted); font-size: 11.5px; font-weight: 500; padding: 5px 10px; cursor: pointer;
-    transition: color .12s, border-color .12s, background .12s;
+  /* ── Icon-only action group (Filters/Archived/Columns) — fixed-size at
+     every resolution, tooltips + aria-labels carry the names ── */
+  .toolbar-actions { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px; }
+  .col-menu-wrap { position: relative; }
+  .filter-menu-wrap { position: static; } /* its popover anchors to .toolbar instead — see .filter-menu */
+  .action-btn {
+    position: relative;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    background: none; border: none; border-radius: 6px;
+    color: var(--muted); font-size: 11.5px; font-weight: 500;
+    padding: 7px 9px; cursor: pointer; white-space: nowrap;
+    transition: color .12s, background .12s;
   }
-  .archive-toggle:hover, .archive-toggle.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
+  .action-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .filter-count {
+    position: absolute; top: -3px; right: -3px;
+    min-width: 14px; height: 14px; padding: 0 3px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff;
+    border-radius: 7px; font-size: 9.5px; font-weight: 700; line-height: 1;
+  }
 
-  /* ── Columns menu + Filters menu (shared popover styling) ──────────────── */
-  .col-menu-wrap, .filter-menu-wrap { position: relative; }
-  .col-menu-btn {
-    display: flex; align-items: center; gap: 5px;
-    background: none; border: 1px solid var(--border-strong); border-radius: 7px;
-    color: var(--muted); font-size: 11.5px; font-weight: 500; padding: 5px 10px; cursor: pointer;
-    transition: color .12s, border-color .12s;
+  .menu-label {
+    font-family: var(--mono); font-size: .6rem; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--faint); padding: 6px 2px 2px;
   }
-  .col-menu-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .menu-divider { height: 1px; background: var(--border); margin: 8px -6px 0; }
   .col-menu {
     position: absolute; top: calc(100% + 6px); right: 0; z-index: 20;
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
@@ -581,7 +628,11 @@
   }
   .col-menu-item:hover { background: var(--hover); }
 
-  .filter-menu { min-width: 200px; }
+  /* Anchored to .toolbar (position:relative there; .filter-menu-wrap is
+     deliberately static) — anchoring to the button itself pushed the
+     popover past the viewport's left edge on a phone, since the button
+     sits mid-toolbar and the popover is wider than the space left of it. */
+  .filter-menu { width: min(280px, calc(100% - 28px)); min-width: 0; right: 14px; }
   .filter-save-row { display: flex; gap: 6px; padding: 2px; }
   .filter-name-input {
     flex: 1; min-width: 0; font-size: .8rem; padding: .4rem .5rem;
@@ -622,6 +673,11 @@
   .grid-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 13px;
     overflow: hidden; width: max-content; min-width: 100%;
+  }
+  /* Nested inside .list-panel (the main grid) — panel already provides
+     the border/radius/background, so the grid itself stays flush. */
+  .grid-card--flush {
+    background: none; border: none; border-radius: 0;
   }
 
   .grid-head, .grid-row {
@@ -734,5 +790,10 @@
   @media (max-width: 768px) {
     .list-wrap { padding: 14px 14px; }
     .search-box { max-width: 100%; }
+    /* Icon-only actions on phones — with labels the row's minimum width
+       wouldn't be guaranteed to fit a 320px screen; icons + tooltips/
+       aria-labels are. This is the only thing that changes between
+       desktop and mobile: still the same single row. */
+    .action-label { display: none; }
   }
 </style>
