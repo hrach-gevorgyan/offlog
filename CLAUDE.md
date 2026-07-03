@@ -25,6 +25,29 @@ global, CouchDB over any hosted backend, soft-delete-only, positional
 closed with reasons recorded there. Don't re-open them without new
 information.
 
+## Token/effort discipline (owner flagged this directly, 2026-07-03 — read this)
+
+Previous sessions burned tokens rebuilding, restarting preview servers, and
+narrating far more than the work needed. Concretely:
+
+- **Batch fixes, then verify once.** Don't rebuild + restart the preview
+  server + clear the service worker after every individual change. Make
+  all the edits for the current task, *then* run one build/verify pass.
+- **Don't reflexively spin up a live browser check for every tweak.**
+  Reserve `preview_start`/screenshots for changes whose correctness can't
+  be confirmed by reading the code (real layout/visual questions) — a
+  straightforward logic fix doesn't need a live round-trip to prove itself.
+- **Read narrowly.** Use `Grep`/an `offset`+`limit` `Read` instead of
+  reading a whole file when only a section is relevant.
+- **Keep responses terse.** State the result, not a running narration of
+  intermediate steps. No restating what was just done in a summary if the
+  tool output already showed it.
+- **Commit messages: 2-4 lines is usually enough.** Skip the multi-
+  paragraph rationale in the commit body when the "why" already lives in a
+  code comment or a docs/ file — link to it instead of repeating it.
+- **If a preview browser/server gets stuck, restart once and move on** —
+  don't retry the same stuck screenshot/eval call repeatedly.
+
 ## What this is
 
 A **single-user, local-first** task manager. Svelte 5 + TypeScript + Vite,
