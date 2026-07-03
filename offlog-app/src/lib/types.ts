@@ -24,6 +24,10 @@ export interface ProjectDoc {
   name: string;
   position: number;
   columns: Column[];
+  // 'table' was valid before ListView/TableView merged (2026-07) — old
+  // docs may still have it stored; App.svelte treats it as 'list' at
+  // read time rather than migrating every doc. Not offered as a choice
+  // for new writes.
   default_view: 'kanban' | 'list' | 'table';
   updated_at: string;
   source: Source;

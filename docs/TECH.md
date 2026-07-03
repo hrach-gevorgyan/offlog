@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 3.7.0 · Local-first task management for browser and Android
+Version 3.8.0 · Local-first task management for browser and Android
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
@@ -9,8 +9,6 @@ Version 3.7.0 · Local-first task management for browser and Android
 > version history in [CHANGELOG.md](CHANGELOG.md). This file documents how
 > the system currently works — mission/pitch lives in the root [README.md](../README.md),
 > not duplicated here.
-
----
 
 ---
 
@@ -40,7 +38,6 @@ Version 3.7.0 · Local-first task management for browser and Android
 │    ├── DashboardView    (home — overview)          │
 │    ├── KanbanBoard      (drag-and-drop columns)    │
 │    ├── ListView         (sortable + filterable)    │
-│    ├── TableView        (compact grid)             │
 │    ├── DeadlinesView    (agenda by due date)       │
 │    ├── CardDetail       (task editor modal)        │
 │    ├── QuickAdd         (Ctrl+N fast-add)          │
@@ -95,7 +92,6 @@ src/
     DashboardView.svelte   Home screen: project cards grid + pinned/overdue panels
     KanbanBoard.svelte     Drag-and-drop kanban (mouse + touch)
     ListView.svelte        List view with search, filter, sort, archive
-    TableView.svelte       Compact grid view with sortable columns
     DeadlinesView.svelte   Agenda grouped by: Overdue / Today / This Week / Later
     CardDetail.svelte      Full task editor modal with history
     QuickAdd.svelte        Ctrl+N fast-add modal (Space / Project selector)
@@ -179,12 +175,12 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 | Export | Used by |
 |---|---|
-| `dueLabel(due, fallback)` | ListView, TableView |
+| `dueLabel(due, fallback)` | ListView |
 | `dueLabelLong(due)` | DashboardView, DeadlinesView |
 | `dueRelative(due)` | DeadlinesView |
 | `dueState(due)` | ListView |
-| `dueInk(due)` | TableView |
-| `filterTasks(tasks, search, col, prio, tag)` | ListView, TableView |
+| `dueInk(due)` | ListView |
+| `filterTasks(tasks, search, col, prio, tag)` | ListView |
 
 ---
 

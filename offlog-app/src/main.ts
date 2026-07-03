@@ -38,15 +38,22 @@ if (isNative) {
   // worker there would only risk serving stale cached JS across
   // APK updates.
   import('virtual:pwa-register').then(({ registerSW }) => {
-    const updateSW = registerSW({ immediate: true });
-    // The browser's default SW update check only fires on a fresh
-    // navigation, so an installed/standalone PWA that's just brought
-    // back to the foreground (not fully closed+reopened) can sit on a
-    // stale cached build indefinitely. Re-check whenever the tab/app
-    // regains focus so new builds are picked up without the user
-    // needing to manually close and reopen it.
+    // registerSW()'s returned function is a no-op in 'autoUpdate' mode —
+    // it only sends a skip-waiting message in 'prompt' mode (see
+    // vite-plugin-pwa's client/build/register.js: `if (!auto)
+    // sendSkipWaitingMessage()`). Calling it here never actually asked
+    // the browser to check for a new service worker, so an installed/
+    // standalone PWA brought back to the foreground could sit on a stale
+    // build indefinitely (A18) — visibilitychange fired, but nothing it
+    // called did anything. The actual fix is forcing a real update check
+    // via the registration itself; the existing autoUpdate reload-on-
+    // activate listener (already wired up inside registerSW) then fires
+    // normally once a new worker is found and installed.
+    registerSW({ immediate: true });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') updateSW();
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker?.getRegistration().then(reg => reg?.update()).catch(() => {});
+      }
     });
   }).catch(() => {});
 }

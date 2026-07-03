@@ -109,6 +109,29 @@ platform. See ROADMAP.md's Track C for the tracked release-readiness step.
 
 ---
 
+## UI
+
+### Why List and Table merged into one view, and why the merged view is Table-shaped (2026-07-03)
+The two views duplicated ~70% of their code (identical search/filter
+toolbar, same underlying `filterTasks()`) and differed only in
+interactions: List had a one-click mark-done circle, pin-to-top, and the
+archived section; Table had click-to-sort column headers and a denser,
+better-aligned grid. Owner decision: one view instead of two. A first
+merge attempt grafted Table's headers onto List's layout and produced a
+cramped hybrid with clipping/alignment problems — the owner judged the
+old Table the better foundation ("previous table was better than list"),
+so the merged view was rewritten from scratch with **TableView as the
+design baseline** (real data grid, generous fixed columns, plain
+`dueInk`-colored text for due dates instead of pill badges — text can't
+be clipped by a background shape, which the badges repeatedly were) and
+List's interactions layered on top. Don't reintroduce a separate Table
+view, and don't bring back pill-style due badges in the grid — both were
+deliberately removed. A possible future third view is B35 ("Focus",
+concept only, needs owner co-design) — that's an addition for a different
+job, not a re-split of this merge.
+
+---
+
 ## Data model
 
 ### Why "done" is positional (last column), not a boolean field

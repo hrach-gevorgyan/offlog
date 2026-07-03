@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Baseline: **v3.7.0** (tag `v3.7.0`, 2026-07) — the current stable release.
+Baseline: **v3.8.0** (tag `v3.8.0`, 2026-07) — the current stable release.
 Everything below is a candidate, not a commitment. Items are ordered roughly
 by value-for-effort within each track. Before starting any item, re-check it
 against the current code — this document describes intent, not state.
@@ -62,7 +62,7 @@ real constraint, not just narrative flow.
 
 ---
 
-## Shipped (Track A, v3.1.0 – v3.7.0; Track B, v3.6.0 – v3.7.0)
+## Shipped (Track A, v3.1.0 – v3.8.0; Track B, v3.6.0 – v3.7.0)
 
 A1–A8 (persistent undo, changelog growth control, conflict resolution,
 startup cost audit, sync robustness/dedup, automated tests, bundle diet ×2)
@@ -85,8 +85,12 @@ anywhere (now tracked as A14) directly shaped that redesign's mobile
 navigation pattern. v3.7.0 followed up as an Android-focused release:
 **A13 (focus-trap accessibility)** and **A14 (hardware back-button
 handling)** shipped alongside **B3 (notification actions)** and **B10
-(quick-capture home-screen widget)**. Full details in
-[CHANGELOG.md](CHANGELOG.md)'s per-version entries.
+(quick-capture home-screen widget)**. v3.8.0 shipped four correctness bugs
+(**A18** PWA force-update, **A19** first-launch Dashboard fallback, **A20**
+List view mobile CSS cascade order, **A22** mark-done undo) alongside an
+owner-requested rewrite that merged List and Table into one view — see
+DECISIONS.md for why the merged view uses Table as its design baseline.
+Full details in [CHANGELOG.md](CHANGELOG.md)'s per-version entries.
 
 ---
 
@@ -161,41 +165,27 @@ before it's a real user complaint rather than a hypothetical, similar in
 spirit to A10's large-dataset validation but specifically about running
 low on space rather than running slow.
 
-### A18. PWA not force-updating after a new version ships
-`registerType: 'autoUpdate'` is supposed to mean new builds activate on
-next load, but reports say the installed PWA sits on a stale version after
-a release. Audit `main.ts`'s `registerSW()`/`visibilitychange` update-check
-path end to end — likely the check needs to force a `skipWaiting()` +
-reload rather than just re-checking for an update in the background.
+### A18. PWA not force-updating after a new version ships — shipped in v3.8.0
+See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
-### A19. First launch should always open Dashboard
-`App.svelte`'s view-restore logic is supposed to default to Dashboard when
-`localStorage`'s `offlog_view` is empty, but reports say a first-time
-install doesn't reliably land there. Re-verify the restore logic against a
-genuinely empty `localStorage`, not just a cleared `offlog_view` key —
-something else may be short-circuiting the check.
+### A19. First launch should always open Dashboard — shipped in v3.8.0
+See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
-### A20. List view attribute alignment still breaks with mixed deadlines
-The v3.7.0 fixed-grid fix (`.task-row` as a 5-column CSS grid) was meant to
-solve exactly this, but it's reported as still misaligned when some cards
-in the same list have a due date and others don't. Re-test specifically
-that condition (not just varying tag counts, which is what v3.7.0's fix
-targeted) — the `due-spacer` placeholder element may not be behaving as
-intended.
+### A20. List view attribute alignment still breaks with mixed deadlines — shipped in v3.8.0
+See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
-### A21. Visual check: tag overflow past 3 tags
-The `tags-col` fixed-width grid column (v3.7.0) was designed to clip/scroll
-tag overflow gracefully, but was never explicitly verified past 2-3 tags on
-one card. Confirm the actual visual behavior (truncation vs. wrap vs.
-overflow-hidden cutoff) is acceptable, across List, Table, and wherever
-else tags render.
+### A21. Visual check: tag overflow past 3 tags — shipped in v3.8.0
+Resolved as a side effect of the List/Table merge rewrite: tags now wrap
+onto extra lines (`.cell-tags { flex-wrap: wrap }`) instead of clipping or
+truncating. See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept
+(not renumbered/removed) so the sequencing table below stays accurate.
 
-### A22. Accidental "mark done" click has no undo
-List view's status dot marks a task done on a single click, filling green —
-but the only way back from an accidental click is reopening the card and
-changing status manually. Add a brief undo affordance (matching the
-pattern already used for task deletion) instead of requiring a full
-re-edit for a one-click mistake.
+### A22. Accidental "mark done" click has no undo — shipped in v3.8.0
+See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept (not
+renumbered/removed) so the sequencing table below stays accurate.
 
 ### A23. Sidebar scale test with 20+ projects
 Nothing has verified the sidebar's project list rendering/scroll behavior
@@ -442,6 +432,50 @@ top), applied to projects — pin a project to the top of the sidebar/space
 list for the ones actively being worked, same UX pattern already proven
 for tasks.
 
+### B35. Focus view — concept only, to be designed with the owner
+A possible third project view alongside Kanban and List, working name
+"Focus" (owner, 2026-07-03, raised while rewriting the List view). No
+committed definition yet — the stated intent is to imagine it together
+before scoping anything. Directional sketch to start that conversation
+from: where Kanban answers "what's the state of everything" and List
+answers "let me scan/sort the data," Focus would answer "what should I be
+doing right now" — a deliberately small, calm surface (e.g. today's due +
+pinned + one next task) rather than another way to render the full task
+table. **Do not implement from this description** — it needs a real design
+session with the owner first.
+
+### B36. List view power customization
+Direction set by the owner (2026-07-03) right after the List/Table merge
+and the from-scratch List rewrite: the merged List should grow into a
+heavily customizable data grid over time. The pieces, likely spanning
+several releases rather than shipping as one:
+
+- **Saved filters** — persist named filter combinations per project (the
+  List half of what B2 already describes for Kanban; build the storage
+  once, share it across both views).
+- **Column selection** — show/hide columns per user preference (e.g. drop
+  Priority, add Created), persisted.
+- **Column reordering** — drag column headers to rearrange, persisted.
+- **Native horizontal scrolling** — when the chosen columns don't fit the
+  viewport, the grid scrolls horizontally instead of dropping or squeezing
+  columns; today's responsive tiers (hide tags → hide most columns) become
+  the fallback for narrow screens, not the only behavior.
+- **No text truncation, guaranteed** — a standing requirement, not a
+  one-off fix: with horizontal scrolling available, no cell should ever
+  ellipsize or clip its content. The 2026-07 rewrite already killed the
+  worst offenders (pill badges); this finishes the job for long titles
+  and long status names.
+- **Multi-column sort** — sort by more than one column (e.g. Status, then
+  Due within each status), the standard shift-click-a-second-header
+  pattern.
+- **More columns** — expose fields the grid doesn't show today: created
+  date, updated date, source device, and eventually B16's custom fields
+  as first-class columns.
+
+Column preferences need somewhere to live (per-project on `ProjectDoc`,
+or per-device in localStorage — decide when building; syncing view
+preferences across devices may not even be desirable).
+
 ---
 
 ## Track C — Public Release & Open Source
@@ -578,7 +612,11 @@ here. Check there before assuming an item above is fully settled.
 Re-paired 2026-07-03 from scratch across the entire unshipped backlog (13
 Track A items, 30 Track B items) — the old v3.8.0–v4.0.0 pairing is
 superseded entirely by the table below, not layered on top of it. Every
-unshipped item is placed exactly once, zero leftovers. Track C runs
+item unshipped at re-pairing time is placed exactly once, plus **B36**
+(added later the same day) slotted into a new **v3.8.5** as a deliberate
+exception to the pairing convention — see that row for why. **B35 (Focus
+view) remains unscheduled** — it needs an owner design session before it
+can be scoped into any release. Track C runs
 independently of version numbers: **C7 (credential fix) and C2 can start
 any time**, since they're documentation/verification/security work that
 barely touches app code; **C1/C3/C5/C6 fit naturally once the app feels
@@ -590,26 +628,28 @@ was declined outright and never entered sequencing.
 |---|---|---|---|---|
 | — | v3.6.0 (shipped) | A9 | B1, B6 | Small, self-contained "manage X in Settings" screens — good first target for A9's new component-testing setup. |
 | — | v3.7.0 (shipped) | A13, A14 | B3, B10 | Android-focused release — native-only surface (notification actions, home-screen widget) alongside the accessibility/back-button work that shaped it. |
-| 1 | v3.8.0 | A18, A19, A20, A22 | — | Four user-visible correctness bugs first: PWA not force-updating, wrong first-launch view, list-view alignment regression, and an accidental-click with no safety net. All bugs, no features — clears real pain before anything else. |
-| 2 | v3.9.0 | A21 | B29, B24 | Tag-chip rendering is the thread: checking overflow past 3 tags (A21) belongs with adding tags to Kanban cards (B29), a new place they can overflow. B24 (seed data) rides along as a small unrelated fix. |
-| 3 | v4.0.0 | A23 | B23, B34 | All sidebar-focused. Testing scale at 20+ projects (A23) is the right moment to add two features (recent items, pinning) that make a long sidebar more navigable. |
-| 4 | v4.1.0 | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
-| 5 | v4.2.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
-| 6 | v4.3.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
-| 7 | v4.4.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 8 | v4.5.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 9 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 10 | v4.7.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 11 | v4.8.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 12 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 13 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 14 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 15 | v4.12.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 16 | v4.13.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | v3.8.0 (shipped) | A18, A19, A20, A21, A22 | — | Four user-visible correctness bugs (PWA not force-updating, wrong first-launch view, list-view alignment regression, an accidental-click with no safety net) plus the List/Table merge rewrite, which also resolved A21 (tag overflow) as a side effect. |
+| — | **v3.8.5** (light release, in progress) | — | B36 | **Deliberately not a full A+B paired cycle** — owner request to treat this as a lighter, faster commit rhythm for List-view customization landing in pieces (filters, column selection/reorder, horizontal scroll, no-truncation guarantee, multi-column sort, more columns) rather than one big release. Skip the usual "pair with a Track A item" step; still run the release checklist (tsc/build/test) before each commit, just without holding the whole thing for a matching stability item. |
+| 1 | v3.9.0 | A23 | B23, B34 | All sidebar-focused. Testing scale at 20+ projects (A23) is the right moment to add two features (recent items, pinning) that make a long sidebar more navigable. |
+| 2 | v4.0.0 | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
+| 3 | v4.1.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
+| 4 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
+| 5 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 6 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 7 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 8 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 9 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 10 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 11 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 12 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 13 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 14 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
 
 Within each release: land any Track A item first (or in the same PR as the
 Track B item it protects/enables), then the Track B items. Extend
 `tests/db.test.ts` for any new `db.ts` logic as features land — don't let
 coverage fall behind again. Re-evaluate this table after each release;
 delete shipped rows and re-pair whatever's left if new items get added to
-either track in the meantime.
+either track in the meantime. v3.8.5 is the one deliberate exception to
+the pairing convention — see its row above.

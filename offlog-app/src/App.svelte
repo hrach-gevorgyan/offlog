@@ -7,7 +7,6 @@
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
   import ListView from './lib/ListView.svelte';
-  import TableView from './lib/TableView.svelte';
   import DeadlinesView from './lib/DeadlinesView.svelte';
   import DashboardView from './lib/DashboardView.svelte';
   import GlobalSearch from './lib/GlobalSearch.svelte';
@@ -139,12 +138,18 @@
     // Restore last view
     try {
       const saved = JSON.parse(localStorage.getItem('offlog_view') ?? '{}');
+      // saved.projectId can point to a project that no longer exists — a
+      // wipeAndReseed(), a data reset, or a reinstall that kept
+      // localStorage but not IndexedDB all leave a stale id behind (A19).
+      // Blindly restoring it landed on a blank project view with nothing
+      // selected instead of falling back to Dashboard as intended.
+      const projectStillExists = saved.projectId && get(projects).some(p => p._id === saved.projectId);
       if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
-      else if (saved.view === 'project' && saved.projectId) {
+      else if (saved.view === 'project' && projectStillExists) {
         showDashboard = false; showDeadlines = false;
         activeProjectId.set(saved.projectId);
       }
-      // 'dashboard' or nothing → keep showDashboard = true
+      // 'dashboard', nothing, or a stale projectId → keep showDashboard = true
     } catch {}
     ready = true;
     subscribeUndo(showUndoToast);
@@ -152,8 +157,15 @@
 
   function retryInit() { location.reload(); }
 
-  type View = 'kanban' | 'list' | 'table';
-  $: currentView = ($activeProject?.default_view ?? 'kanban') as View;
+  // 'table' was a real option before the 2026-07 merge of ListView and
+  // TableView into one sortable list — a project doc from before that
+  // merge can still have default_view: 'table' stored in the database.
+  // The cast + fallback below treats any such stale value as 'list'
+  // (TableView's replacement) rather than migrating every doc.
+  type View = 'kanban' | 'list';
+  $: currentView = (($activeProject?.default_view as View | 'table' | undefined) === 'table'
+    ? 'list'
+    : $activeProject?.default_view ?? 'kanban') as View;
 
   async function setView(v: View) {
     if (!$activeProject) return;
@@ -166,13 +178,11 @@
   const ICONS: Record<View, string> = {
     kanban: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="4" height="11" rx="1"/><rect x="6.5" y="2.5" width="4" height="7" rx="1"/><rect x="11.5" y="2.5" width="3" height="9" rx="1"/></svg>',
     list:   '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>',
-    table:  '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1"/><line x1="2" y1="6.5" x2="14" y2="6.5"/><line x1="7" y1="3" x2="7" y2="13"/></svg>',
   };
 
   const VIEWS: { key: View; label: string }[] = [
     { key: 'kanban', label: 'Kanban' },
     { key: 'list',   label: 'List' },
-    { key: 'table',  label: 'Table' },
   ];
 </script>
 
@@ -250,10 +260,8 @@
               projects.update(ps => ps.map(p => p._id === e.detail._id ? e.detail : p));
             }}
           />
-        {:else if currentView === 'list'}
-          <ListView project={$activeProject} tasks={$projectTasks} />
         {:else}
-          <TableView project={$activeProject} tasks={$projectTasks} />
+          <ListView project={$activeProject} tasks={$projectTasks} />
         {/if}
 
       {:else}
