@@ -298,7 +298,7 @@ function markError(err: any) {
   notify();
 }
 
-export async function scanConflicts(): Promise<number> {
+async function scanConflicts(): Promise<number> {
   // PouchDB only ever attaches conflict info to the fetched doc's own
   // _conflicts field, never to row.value — so include_docs is required, and
   // row.doc._conflicts (not row.value.conflicts) is the field to read. A
