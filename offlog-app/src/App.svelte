@@ -196,6 +196,7 @@
       bind:showDashboard
       bind:open={sidebarOpen}
       on:navigate={closeSidebar}
+      on:openTask={(e) => { searchDetailTask = e.detail.task; searchDetailProject = e.detail.project; closeSidebar(); }}
     />
 
     <!-- Mobile scrim -->

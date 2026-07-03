@@ -187,11 +187,13 @@ truncating. See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept
 See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept (not
 renumbered/removed) so the sequencing table below stays accurate.
 
-### A23. Sidebar scale test with 20+ projects
-Nothing has verified the sidebar's project list rendering/scroll behavior
-past a handful of projects — worth confirming it holds up navigably (and
-performantly) once a user has accumulated 20 or more, same spirit as A10
-but specifically for the always-visible nav rather than a single view.
+### A23. Sidebar scale test with 20+ projects — done in v3.9.0
+Tested live by seeding (then removing) 22 dummy projects. It did **not**
+hold up navigably as originally built — the whole sidebar scrolled as one
+column, so Dashboard/Agenda/Spaces nav scrolled out of view once the
+project list got long. Fixed: `.sidebar` no longer scrolls itself; only
+`.projects-section` (`flex:1; min-height:0; overflow-y:auto`) does, so the
+top nav and bottom sync/footer bar stay pinned regardless of project count.
 
 ### A24. Version-over-version performance metrics
 Nothing currently measures whether a given release made the app faster or
@@ -357,10 +359,12 @@ be given a real name (e.g. "Work Laptop", "Hrach's Phone") on first
 sync/setup, stored and surfaced everywhere `Source` currently shows up
 (changelog, B5's multi-device polish).
 
-### B23. Sidebar: last 3 modified cards
-A small "recent" section in the sidebar surfacing the last 3 modified
+### B23. Sidebar: last modified cards — shipped in v3.9.0
+A small "recent" section in the sidebar surfacing the last modified
 tasks across all projects, for quickly resuming whatever was just being
-worked on without navigating back to its project.
+worked on without navigating back to its project. Shipped showing 2 (not
+3 as originally scoped — trimmed after a live visual review), opening
+the task's `CardDetail` directly.
 
 ### B24. Seed data: 3 spaces, not 4
 `seedIfEmpty()`/`wipeAndReseed()` currently create Unsorted, Personal,
@@ -426,7 +430,7 @@ data model (`ProjectDoc.space_id` becomes more like `parent_id`), every
 view's project-picker UI, and Dashboard/sidebar nesting display. Needs its
 own scoping pass before estimation, not a quick add.
 
-### B34. Project pinning
+### B34. Project pinning — shipped in v3.9.0
 Same mechanism as existing task pinning (`pinned` field, always-sorts-to-
 top), applied to projects — pin a project to the top of the sidebar/space
 list for the ones actively being worked, same UX pattern already proven
@@ -635,21 +639,21 @@ was declined outright and never entered sequencing.
 | — | v3.6.0 (shipped) | A9 | B1, B6 | Small, self-contained "manage X in Settings" screens — good first target for A9's new component-testing setup. |
 | — | v3.7.0 (shipped) | A13, A14 | B3, B10 | Android-focused release — native-only surface (notification actions, home-screen widget) alongside the accessibility/back-button work that shaped it. |
 | — | v3.8.0 (shipped) | A18, A19, A20, A21, A22 | — | Four user-visible correctness bugs (PWA not force-updating, wrong first-launch view, list-view alignment regression, an accidental-click with no safety net) plus the List/Table merge rewrite, which also resolved A21 (tag overflow) as a side effect. |
-| — | **v3.8.5** (light release, in progress) | — | B36 | **Deliberately not a full A+B paired cycle** — owner request to treat this as a lighter, faster commit rhythm for List-view customization landing in pieces (filters, column selection/reorder, horizontal scroll, no-truncation guarantee, multi-column sort, more columns) rather than one big release. Skip the usual "pair with a Track A item" step; still run the release checklist (tsc/build/test) before each commit, just without holding the whole thing for a matching stability item. |
-| 1 | v3.9.0 | A23 | B23, B34 | All sidebar-focused. Testing scale at 20+ projects (A23) is the right moment to add two features (recent items, pinning) that make a long sidebar more navigable. |
-| 2 | v4.0.0 | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
-| 3 | v4.1.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
-| 4 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
-| 5 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 6 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 7 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 8 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 9 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 10 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 11 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 12 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 13 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 14 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | v3.8.5 (shipped) | — | B36 | **Deliberately not a full A+B paired cycle** — owner request to treat this as a lighter, faster commit rhythm for List-view customization landing in pieces (filters, column selection/reorder, horizontal scroll, no-truncation guarantee, multi-column sort, more columns) rather than one big release. |
+| — | v3.9.0 (shipped) | A23 | B23, B34 | All sidebar-focused. A23's scale test (seeded 22 dummy projects) found a real bug — the sidebar scrolled as one block and top nav disappeared — fixed alongside B23 (recent tasks) and B34 (pinning), plus a full visual pass on the sidebar per live feedback. |
+| 1 | v4.0.0 | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
+| 2 | v4.1.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
+| 3 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
+| 4 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 5 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 6 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 7 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 8 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 9 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 10 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 11 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 12 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 13 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
 
 Within each release: land any Track A item first (or in the same PR as the

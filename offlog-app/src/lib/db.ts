@@ -631,6 +631,18 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
 const _undoListeners = new Set<() => void>();
 export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return () => _undoListeners.delete(fn); }
 
+// B23: sidebar "recent" shortcut — last N modified tasks across every
+// project, not just the currently open one. `tasks`/`projectTasks` in
+// store.ts only hold the active project's tasks, so this needs its own
+// cross-project query rather than reusing what's already loaded.
+export async function getRecentlyModifiedTasks(limit = 3): Promise<TaskDoc[]> {
+  const all = await getAllTasksRaw();
+  return all
+    .filter(d => !d.deleted && !d.archived)
+    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+    .slice(0, limit);
+}
+
 export async function getRecentlyDeleted(limit = 10): Promise<TaskDoc[]> {
   const all = await getAllTasksRaw();
   return all

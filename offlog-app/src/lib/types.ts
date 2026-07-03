@@ -29,6 +29,7 @@ export interface ProjectDoc {
   // read time rather than migrating every doc. Not offered as a choice
   // for new writes.
   default_view: 'kanban' | 'list' | 'table';
+  pinned?: boolean; // B34 — same always-sorts-to-top mechanism as TaskDoc.pinned
   updated_at: string;
   source: Source;
 }

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { spaces, projects, activeSpaceId, activeProjectId, showError, reloadTasks } from './store';
   import db, {
-    createProject, deleteProject, syncState, syncNow,
+    createProject, deleteProject, updateProject, syncState, syncNow,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
+    getRecentlyModifiedTasks,
   } from './db';
   import { derived } from 'svelte/store';
   import { confirmAction } from './confirm';
+  import type { TaskDoc, ProjectDoc } from './types';
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -63,7 +65,8 @@
   async function loadBreakdown() { breakdown = await getStorageBreakdown(); }
   onMount(() => {
     loadBreakdown();
-    return subscribeDb(() => loadBreakdown());
+    loadRecent();
+    return subscribeDb(() => { loadBreakdown(); loadRecent(); });
   });
 
   function onSyncChange() {
@@ -82,9 +85,33 @@
     return sameDay ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString();
   }
 
+  // B34: pinned projects float to the top, same convention as
+  // TaskDoc.pinned elsewhere in the app — otherwise stable in whatever
+  // order getProjects() already returns (by position).
   const spaceProjects = derived([projects, activeSpaceId], ([$p, $sid]) =>
-    $p.filter(p => p.space_id === $sid)
+    $p.filter(p => p.space_id === $sid).sort((a, b) => (!!b.pinned) === (!!a.pinned) ? 0 : b.pinned ? 1 : -1)
   );
+
+  async function toggleProjectPin(project: ProjectDoc) {
+    try {
+      await updateProject(project._id, { pinned: !project.pinned });
+    } catch {
+      showError('Failed to update project. Please try again.');
+    }
+  }
+
+  // B23: quick-resume shortcut — last 2 modified tasks across every
+  // project, not just the one currently open. Refreshed on any DB change
+  // (same subscribeDb() already used for the storage breakdown below) so
+  // it stays current as tasks are edited anywhere in the app.
+  let recentTasks: TaskDoc[] = [];
+  async function loadRecent() { recentTasks = await getRecentlyModifiedTasks(2); }
+
+  function openRecentTask(task: TaskDoc) {
+    const project = $projects.find(p => p._id === task.project_id);
+    if (!project) return;
+    dispatch('openTask', { task, project });
+  }
 
   async function doAddProject() {
     const name = newProjectName.trim();
@@ -165,13 +192,10 @@
           dispatch('navigate');
         }}
       >
-        <span class="space-icon" style="color:{space.color}">
+        <span class="space-icon" style="color:{space.color}; background:color-mix(in srgb, {space.color} 18%, transparent)">
           {@html SPACE_ICON[space._id] ?? DEFAULT_ICON}
         </span>
         <span class="space-name">{space.name}</span>
-        {#if $activeSpaceId === space._id}
-          <span class="space-dot" style="background:{space.color}"></span>
-        {/if}
       </button>
     {/each}
   </nav>
@@ -182,6 +206,16 @@
       <div class="project-row" class:active={$activeProjectId === project._id}>
         <button class="project-btn" on:click={() => { showDeadlines = false; showDashboard = false; activeProjectId.set(project._id); dispatch('navigate'); }}>
           {project.name}
+        </button>
+        <button
+          class="proj-pin-btn"
+          class:pinned={project.pinned}
+          title={project.pinned ? 'Unpin project' : 'Pin project'}
+          on:click|stopPropagation={() => toggleProjectPin(project)}
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" fill={project.pinned ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 17v5"/><path d="M9 3h6l-.5 6.5L17 12v2H7v-2l2.5-2.5L9 3Z"/>
+          </svg>
         </button>
         <button class="proj-delete-btn" title="Delete project" on:click={() => doDeleteProject(project._id, project.name)}>×</button>
       </div>
@@ -201,6 +235,19 @@
   </div>
 
   <div class="bottom">
+    {#if recentTasks.length > 0}
+      <div class="recent-section">
+        <div class="section-label">Recent</div>
+        {#each recentTasks as task (task._id)}
+          <button class="recent-btn" on:click={() => openRecentTask(task)} title={task.title}>
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="8" r="6.2"/><polyline points="8,4.5 8,8 10.5,9.5"/>
+            </svg>
+            <span>{task.title}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
     <div class="sync-row" title={syncError ?? ''}>
       <span
         class="sync-indicator"
@@ -263,7 +310,7 @@
     width: 224px; flex-shrink: 0;
     background: var(--sidebar-bg); border-right: 1px solid rgba(255,255,255,.06);
     display: flex; flex-direction: column;
-    padding: 1.1rem .75rem; gap: .35rem; overflow-y: auto;
+    padding: 1.1rem .75rem; gap: .35rem; overflow: hidden;
     /* Sidebar is always dark regardless of the page's light/dark toggle,
        so its surface tones are pinned here rather than following
        --bg/--surface. */
@@ -320,32 +367,57 @@
 
   .spaces-divider { height: 1px; background: var(--border); margin: .5rem 0; }
 
-  /* Fronts */
-  .spaces { display: flex; flex-direction: column; gap: .15rem; }
+  /* Spaces */
+  .spaces { display: flex; flex-direction: column; gap: .2rem; }
   .space-btn {
-    display: flex; align-items: center; gap: .6rem;
+    display: flex; align-items: center; gap: .65rem;
     background: none; border: none; cursor: pointer;
-    padding: .6rem .65rem; border-radius: var(--radius-sm);
-    color: var(--text); text-align: left; width: 100%;
-    transition: background var(--dur) var(--ease);
+    padding: .4rem .5rem; border-radius: var(--radius-sm);
+    color: var(--muted); text-align: left; width: 100%;
+    transition: background .12s, color .12s;
   }
-  .space-btn:hover { background: var(--hover); }
-  .space-btn.active {
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
-    box-shadow: inset 2px 0 0 var(--accent);
-  }
+  .space-btn:hover { background: var(--hover); color: var(--text); }
+  .space-btn.active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .space-btn.active .space-name { color: var(--accent); }
-  .space-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; }
-  .space-icon :global(svg) { width: 18px; height: 18px; }
-  .space-name { font-size: .92rem; font-weight: 600; flex: 1; letter-spacing: -.01em; }
-  .space-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .space-icon {
+    width: 26px; height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+  }
+  .space-icon :global(svg) { width: 15px; height: 15px; }
+  .space-name { font-size: .87rem; font-weight: 600; flex: 1; letter-spacing: -.01em; }
+
+  /* Recent (B23) — lives in the bottom section, near sync status */
+  .recent-section { display: flex; flex-direction: column; gap: .05rem; padding-bottom: .6rem; }
+  .recent-btn {
+    display: flex; align-items: center; gap: .45rem;
+    background: none; border: none; cursor: pointer; text-align: left; width: 100%;
+    padding: .32rem .55rem; border-radius: var(--radius-sm);
+    color: var(--muted); font-size: .8rem;
+    transition: color .12s, background .12s;
+  }
+  .recent-btn svg { flex-shrink: 0; opacity: .7; }
+  .recent-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent-btn:hover { color: var(--text); background: var(--hover); }
 
   /* Projects */
-  .projects-section { display: flex; flex-direction: column; gap: .05rem; padding-top: .65rem; flex: 1; }
+  .projects-section {
+    display: flex; flex-direction: column; gap: .05rem; padding-top: .65rem;
+    flex: 1; min-height: 0; overflow-y: auto;
+  }
   .section-label {
     font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
     letter-spacing: .09em; color: var(--faint); padding: .2rem .55rem .35rem;
   }
+
+  .proj-pin-btn {
+    background: none; border: none; cursor: pointer; padding: .15rem .35rem;
+    color: var(--faint); display: flex; align-items: center; border-radius: 4px;
+    opacity: .35; transition: opacity .12s, color .12s, background .12s;
+    flex-shrink: 0;
+  }
+  .project-row:hover .proj-pin-btn { opacity: .8; }
+  .proj-pin-btn:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .proj-pin-btn.pinned { opacity: 1; color: var(--accent); }
 
   .project-row {
     display: flex; align-items: center;
@@ -389,7 +461,10 @@
   .add-project-btn:hover { color: var(--text); }
 
   /* Bottom */
-  .bottom { margin-top: auto; display: flex; flex-direction: column; gap: .4rem; padding-top: .75rem; }
+  .bottom {
+    margin-top: auto; display: flex; flex-direction: column; gap: .4rem;
+    padding-top: .75rem; border-top: 1px solid var(--border);
+  }
   .sync-row {
     display: flex; align-items: center; gap: .5rem;
     background: var(--surface); border: 1px solid var(--border);
@@ -432,5 +507,6 @@
 
   @media (max-width: 768px) {
     .proj-delete-btn { opacity: .7; }
+    .proj-pin-btn:not(.pinned) { opacity: .7; }
   }
 </style>

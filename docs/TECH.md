@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 3.8.5 · Local-first task management for browser and Android
+Version 3.9.0 · Local-first task management for browser and Android
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
