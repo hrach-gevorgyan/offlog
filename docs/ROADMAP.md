@@ -432,17 +432,18 @@ Family, and Work. Drop Family from the default seed — not every user has
 one, and a space nobody asked for is clutter, not a feature. Down to
 Unsorted, Personal, Work.
 
-### B25. Deadline quick-suggestions on new card
-When setting a due date in `CardDetail`/`QuickAdd`, offer one-tap relative
+### B25. Deadline quick-suggestions on new card — shipped in v4.0.0
+`CardDetail`'s due-date field (QuickAdd has no due-date field at all, by
+design — it's a title+project-only fast-add) now has one-tap relative
 shortcuts (Today, Tomorrow, 1 week, 1 month) alongside the existing date
-picker, instead of requiring the exact date to be picked every time for
-the common "just remind me in a week" case.
+picker, with the matching shortcut highlighted when it equals the
+current due date.
 
-### B26. Tag autocomplete beyond the current project
-`CardDetail`'s tag suggestions currently only look at tags already used
-elsewhere — worth explicitly deciding whether suggestions should be
-scoped to the current project first (most relevant) with a fallback to
-all-tags-everywhere, rather than one flat list that doesn't distinguish.
+### B26. Tag autocomplete beyond the current project — shipped in v4.0.0
+`CardDetail`'s tag suggestions now rank tags already used in *this*
+project first, with a clearly separated "Other tags" secondary group for
+everywhere-else tags, rather than one flat undifferentiated list.
+`getAllTags()` in `db.ts` gained an optional `projectId` filter.
 
 ### B27. Archived tasks are too hidden
 Archived tasks are currently only reachable via a toggle inside List view
@@ -701,19 +702,19 @@ was declined outright and never entered sequencing.
 | — | v3.8.0 (shipped) | A18, A19, A20, A21, A22 | — | Four user-visible correctness bugs (PWA not force-updating, wrong first-launch view, list-view alignment regression, an accidental-click with no safety net) plus the List/Table merge rewrite, which also resolved A21 (tag overflow) as a side effect. |
 | — | v3.8.5 (shipped) | — | B36 | **Deliberately not a full A+B paired cycle** — owner request to treat this as a lighter, faster commit rhythm for List-view customization landing in pieces (filters, column selection/reorder, horizontal scroll, no-truncation guarantee, multi-column sort, more columns) rather than one big release. |
 | — | v3.9.0 (shipped) | A23 | B23, B34 | All sidebar-focused. A23's scale test (seeded 22 dummy projects) found a real bug — the sidebar scrolled as one block and top nav disappeared — fixed alongside B23 (recent tasks) and B34 (pinning), plus a full visual pass on the sidebar per live feedback. |
-| 1 | v4.0.0 | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
-| 2 | v4.1.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
-| 3 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
-| 4 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 5 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 6 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 7 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 8 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 9 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 10 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 11 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 12 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 13 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | v4.0.0 (shipped) | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
+| 1 | v4.1.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
+| 2 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
+| 3 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 4 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 5 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 6 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 7 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 8 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 9 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 10 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 11 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 12 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
 
 Within each release: land any Track A item first (or in the same PR as the

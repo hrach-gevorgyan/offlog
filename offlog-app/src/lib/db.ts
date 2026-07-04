@@ -760,10 +760,14 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
   return { ok, skipped };
 }
 
-export async function getAllTags(): Promise<string[]> {
+// Optional projectId narrows to just that project's tags (B26) — used to
+// rank tag-input suggestions "used in this project" first, with the
+// unfiltered call still available as the everywhere-else fallback list.
+export async function getAllTags(projectId?: string): Promise<string[]> {
   const all = await getAllTasksRaw();
+  const scoped = projectId ? all.filter(d => d.project_id === projectId) : all;
   const set = new Set<string>();
-  all.forEach(d => d.tags?.forEach(t => set.add(t)));
+  scoped.forEach(d => d.tags?.forEach(t => set.add(t)));
   return [...set].sort();
 }
 

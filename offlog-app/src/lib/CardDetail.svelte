@@ -25,6 +25,25 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
+  // B25: one-tap relative shortcuts for the common "just remind me in a
+  // week" case — the exact-date picker stays for anything else. Local
+  // calendar dates (not UTC) so "Today" can't roll over to yesterday for
+  // anyone west of UTC, matching how <input type="date"> itself works.
+  function dateFromToday(days: number, months = 0): string {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    if (months) d.setMonth(d.getMonth() + months);
+    d.setDate(d.getDate() + days);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  const DUE_SHORTCUTS: { label: string; days: number; months?: number }[] = [
+    { label: 'Today', days: 0 },
+    { label: 'Tomorrow', days: 1 },
+    { label: '1 week', days: 7 },
+    { label: '1 month', days: 0, months: 1 },
+  ];
+
   let title = task.title;
   let body = task.body;
   let priority = task.priority;
@@ -35,7 +54,9 @@
   let pinned = task.pinned ?? false;
   let tagInput = '';
   let tagSuggestions: string[] = [];
+  let otherTagSuggestions: string[] = [];
   let allTags: string[] = [];
+  let projectTags: string[] = [];
   let saving = false;
   let showHistory = false;
   // TaskHistoryPanel is only ever needed if the user clicks "Show history" —
@@ -43,7 +64,10 @@
   // the main bundle for the common case where nobody opens it.
   let TaskHistoryPanelComp: typeof import('./TaskHistoryPanel.svelte').default | null = null;
 
-  onMount(async () => { modalOpen.set(true); allTags = await getAllTags(); });
+  onMount(async () => {
+    modalOpen.set(true);
+    [allTags, projectTags] = await Promise.all([getAllTags(), getAllTags(project._id)]);
+  });
   onDestroy(() => modalOpen.set(false));
 
   async function loadHistory() {
@@ -52,9 +76,20 @@
     showHistory = true;
   }
 
-  $: tagSuggestions = tagInput.trim()
-    ? allTags.filter(t => t.startsWith(tagInput.trim().toLowerCase()) && !tags.includes(t))
-    : [];
+  // B26: tags already used in *this* project are the most likely match,
+  // so they're suggested first — everywhere-else tags are still offered,
+  // just as a clearly separate, secondary group rather than one flat
+  // undifferentiated list.
+  $: {
+    const q = tagInput.trim().toLowerCase();
+    if (q) {
+      tagSuggestions = projectTags.filter(t => t.startsWith(q) && !tags.includes(t));
+      otherTagSuggestions = allTags.filter(t => t.startsWith(q) && !tags.includes(t) && !projectTags.includes(t));
+    } else {
+      tagSuggestions = [];
+      otherTagSuggestions = [];
+    }
+  }
 
   function fmtTs(ts: string): string {
     return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -149,6 +184,16 @@
       <label>
         Due date
         <input type="date" bind:value={due_date} />
+        <div class="due-shortcuts">
+          {#each DUE_SHORTCUTS as s}
+            <button
+              type="button"
+              class="due-shortcut"
+              class:active={due_date === dateFromToday(s.days, s.months)}
+              on:click={() => due_date = dateFromToday(s.days, s.months)}
+            >{s.label}</button>
+          {/each}
+        </div>
       </label>
 
       <label>
@@ -187,11 +232,17 @@
           on:blur={() => setTimeout(addTag, 150)}
         />
       </div>
-      {#if tagSuggestions.length}
+      {#if tagSuggestions.length || otherTagSuggestions.length}
         <div class="tag-suggestions">
           {#each tagSuggestions as s}
             <!-- mousedown (not click) so it fires before the tag input's on:blur -->
             <button class="tag-suggestion" on:mousedown|preventDefault={() => { tags = [...tags, s]; tagInput = ''; }}>{s}</button>
+          {/each}
+          {#if tagSuggestions.length && otherTagSuggestions.length}
+            <div class="tag-suggestions-divider">Other tags</div>
+          {/if}
+          {#each otherTagSuggestions as s}
+            <button class="tag-suggestion tag-suggestion-other" on:mousedown|preventDefault={() => { tags = [...tags, s]; tagInput = ''; }}>{s}</button>
           {/each}
         </div>
       {/if}
@@ -294,6 +345,16 @@
   }
   select:focus, input[type=date]:focus, input[type=datetime-local]:focus { outline: none; border-color: var(--accent); }
 
+  .due-shortcuts { display: flex; gap: 5px; flex-wrap: wrap; }
+  .due-shortcut {
+    background: var(--col-bg); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 5px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
+    text-transform: none; font-family: 'Hanken Grotesk', sans-serif;
+    padding: 3px 9px; cursor: pointer; transition: background .1s, color .1s, border-color .1s;
+  }
+  .due-shortcut:hover { background: var(--hover); color: var(--text); }
+  .due-shortcut.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
   .reminder-hint {
     font-size: .78rem; color: var(--faint); line-height: 1.4;
     background: var(--col-bg); border-radius: var(--radius-sm);
@@ -342,6 +403,11 @@
     border: 1px solid var(--border); transition: background .1s;
   }
   .tag-suggestion:hover { background: var(--hover); }
+  .tag-suggestion-other { color: var(--muted); }
+  .tag-suggestions-divider {
+    width: 100%; font-size: .68rem; color: var(--faint); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; padding: 2px 2px 0;
+  }
 
   .notes-label {
     display: flex; flex-direction: column; gap: .3rem;
