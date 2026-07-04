@@ -16,3 +16,44 @@ export function getSyncUrl(): string {
 export function setSyncUrl(url: string) {
   localStorage.setItem('offlog_sync_url', url);
 }
+
+// B22: `source` on every doc used to be a fixed 'pc' | 'pc2' | 'mobile'
+// enum — not enough once there's more than one PC or phone in play. Now a
+// free-form per-device name, generated once on first run and editable in
+// Settings; stored (and everywhere `source` already showed up) as plain
+// text instead. Kept in its own localStorage key, not reusing
+// offlog_sync_url's pattern, since this identifies the device rather than
+// configuring where it syncs to.
+const DEVICE_NAME_KEY = 'offlog_device_name';
+
+function defaultDeviceName(): string {
+  const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
+  return isAndroid ? 'Android phone' : 'PC';
+}
+
+export function getDeviceName(): string {
+  const stored = localStorage.getItem(DEVICE_NAME_KEY);
+  if (stored) return stored;
+  const generated = defaultDeviceName();
+  localStorage.setItem(DEVICE_NAME_KEY, generated);
+  return generated;
+}
+
+export function setDeviceName(name: string) {
+  const trimmed = name.trim();
+  localStorage.setItem(DEVICE_NAME_KEY, trimmed || defaultDeviceName());
+}
+
+// B13: explicit sync on/off, independent of the configured URL — clearing
+// the URL to "pause" sync also drops the server config, which isn't what
+// "stop syncing for a while" should mean. Defaults to enabled (true) so
+// existing installs keep syncing exactly as before until someone opts out.
+const SYNC_ENABLED_KEY = 'offlog_sync_enabled';
+
+export function isSyncEnabled(): boolean {
+  return localStorage.getItem(SYNC_ENABLED_KEY) !== 'false';
+}
+
+export function setSyncEnabled(enabled: boolean) {
+  localStorage.setItem(SYNC_ENABLED_KEY, String(enabled));
+}

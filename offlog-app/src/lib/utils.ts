@@ -4,6 +4,23 @@ export function daysDiff(due: string): number {
   return Math.round((new Date(due).getTime() - new Date(TODAY()).getTime()) / 86400000);
 }
 
+// B5: relative-time formatting for "edited on <device>, 2h ago" in
+// CardDetail's history panel and Settings' per-device last-seen list —
+// distinct from the due-date-specific dueLabel/dueRelative above (which
+// assume a date-only, possibly-future value; this takes a full ISO
+// timestamp that's always in the past).
+export function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function dueLabel(due: string | null, fallback = ''): string {
   if (!due) return fallback;
   const days = daysDiff(due);

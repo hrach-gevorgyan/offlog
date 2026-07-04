@@ -153,13 +153,20 @@ push/pop pairs instead of relying on cross-test reset, and by testing
 `requestClose()`'s actual contract (delegates to `history.back()`) via a
 spy rather than waiting on navigation timing vitest can't control.
 
-### A16. Offline-queue robustness for sync
-A5 (v3.1.0) fixed sync running two replications at once, but nothing has
-deliberately tested a genuinely flaky connection — dropped mid-replication,
-reconnecting with a partial write in flight. Different failure mode than
-A5's fix; worth simulating deliberately (e.g. killing the network mid-sync
-in dev tools) rather than waiting for a real report of a stuck or corrupted
-sync state.
+### A16. Offline-queue robustness for sync — shipped in v4.2.0
+There's no CI-reachable CouchDB in this project to genuinely drop mid-
+replication against, so a literal "kill the network in dev tools" test
+wasn't practical here — instead audited and added deterministic coverage
+(`tests/sync.test.ts`) for the pieces that decide how a flaky/dropped
+connection is classified and recovered from: `describeSyncError()`'s
+auth/not-found/network/generic classification, and `attachSyncHandlers()`'s
+settle-once guard (the same dedup that fixed A5's "two replications at
+once" bug — verified it also survives an error-then-paused-with-error
+race, one plausible shape a dropped connection could produce). Both
+functions exported specifically for this. Also audited `startSync()`/
+`cancelSync()`'s interaction with the new B13 pause toggle — confirmed
+`startSync()` returns before any `db.sync()` call when paused, so toggling
+sync off can never leave a stray handler running.
 
 ### A17. Storage-pressure handling
 Nothing today handles `navigator.storage.estimate()` actually approaching
@@ -292,10 +299,13 @@ Current JSON export is a raw doc dump. Add: export a single project,
 CSV export for tables, and a guided import that previews what will be
 created/skipped before writing.
 
-### B5. Multi-device polish
-`Source` already distinguishes pc/pc2/mobile. Surface it: "edited on mobile,
-2h ago" in CardDetail history, and a per-device last-seen list in Settings —
-useful once sync spans 3+ devices.
+### B5. Multi-device polish — shipped in v4.2.0
+`CardDetail`'s history panel now shows the device name + relative time
+(`timeAgo()` in `utils.ts`) alongside each entry, and Settings → Sync has
+a "Devices seen recently" list (`getDeviceLastSeen()` in `db.ts` — scans
+the most recent 500 changelog entries for the latest timestamp per
+distinct `source`). Landed together with B22 since both needed the same
+underlying device-identity change.
 
 ### B6. Tag management — shipped in v3.6.0
 See [CHANGELOG.md](CHANGELOG.md)'s v3.6.0 entry. Number kept (not
@@ -342,12 +352,15 @@ at a configurable time-of-day (a new Settings → Notifications default, e.g.
 "9:00 AM"), instead of requiring the exact date+time to be picked twice for
 the common case of "just remind me the day it's due."
 
-### B13. Sync on/off toggle
-Settings → Sync currently only has the CouchDB URL field — there's no way
-to temporarily disable sync without clearing the URL (which drops the
-configured server entirely). Add an explicit on/off toggle that calls
-`startSync()`/cancels `_syncHandler` without touching the stored URL, for
-"stop syncing for a while" without losing the configuration.
+### B13. Sync on/off toggle — shipped in v4.2.0
+Settings → Sync now has an explicit on/off switch (`config.ts`'s
+`isSyncEnabled()`/`setSyncEnabled()`, defaulting to enabled so existing
+installs keep syncing exactly as before) — flipping it off calls
+`cancelSync()` (cancels `_syncHandler`, doesn't touch the stored URL);
+flipping it on calls `startSync()`. `startSync()` itself now checks the
+toggle and returns before ever calling `db.sync()` if paused, and the
+`online` event listener's auto-resync no longer fires while paused
+either — pausing means paused, not "paused until the network blips."
 
 ### B14. Explain the storage quota number
 Settings → Data shows the raw `navigator.storage.estimate()` output
@@ -427,12 +440,18 @@ Dark mode is currently a manual toggle only. Add a "Follow system" option
 both Android and PC/web, while keeping the existing manual override for
 anyone who wants to diverge from the OS setting.
 
-### B22. Named clients/devices
-`Source` currently only distinguishes `pc`/`pc2`/`mobile` — not enough
-once there's more than one PC or more than one phone in play. Let a device
-be given a real name (e.g. "Work Laptop", "Hrach's Phone") on first
-sync/setup, stored and surfaced everywhere `Source` currently shows up
-(changelog, B5's multi-device polish).
+### B22. Named clients/devices — shipped in v4.2.0
+`types.ts`'s `Source` widened from the fixed `'pc' | 'pc2' | 'mobile'`
+union to a plain `string` — every doc's `source` field now holds a
+free-form device name (`config.ts`'s `getDeviceName()`/`setDeviceName()`,
+generated once on first run as "PC" or "Android phone", editable in
+Settings → Sync → "This device's name"). A rename takes effect on the
+device's *next* app launch (`db.ts`'s `SOURCE` constant is read once at
+module load, same as before — a rename doesn't retroactively relabel
+past entries, same "already-written history stays as recorded" spirit as
+everything else in the changelog). Old docs with the literal
+`'pc'`/`'pc2'`/`'mobile'` values keep displaying those until next edited
+on that device.
 
 ### B23. Sidebar: last modified cards — shipped in v3.9.0
 A small "recent" section in the sidebar surfacing the last modified
@@ -567,6 +586,25 @@ synced — a phone and a PC may reasonably want different columns/filters):
   joined Status/Priority/Due/Tags as togglable columns, all shown as full
   dates (month/day/year — no reason to abbreviate away the year now that
   nothing truncates and horizontal scroll exists for overflow).
+
+### B37. Android widget visual design/UX pass — NOT started
+Owner feedback after v4.1.0 shipped all 3 widgets (B10 Quick Add, B20
+Agenda, B31 Project list): functionally working, but the actual visual
+design/UX needs a real pass, not just the plain solid-color-card-with-
+text-rows treatment each one currently has (`widget_quick_add.xml`,
+`widget_agenda.xml`, `widget_project_list.xml`, all using the same flat
+`widget_background.xml` rounded-rect). Needs an owner design session to
+scope concretely — candidates worth considering going in: per-widget
+visual identity instead of all 3 looking like variations of one card,
+using more of RemoteViews' actual supported view set (icons per row,
+better spacing/hierarchy, maybe a compact vs. expanded size variant via
+`targetCellWidth`/`targetCellHeight` ranges), matching light/dark host-
+launcher theme instead of always dark, and reconsidering the Agenda
+widget's due-date/priority visual treatment against how the in-app Agenda
+view itself presents that information. Deliberately scoped as design-only
+here — the data plumbing (`OffologWidgetPlugin`/`widgetBridge.ts`) built
+for B20/B31 stays as-is; this is about what gets *drawn* into the
+RemoteViews, not how data reaches them.
 
 ---
 
@@ -725,18 +763,19 @@ was declined outright and never entered sequencing.
 | — | v3.9.0 (shipped) | A23 | B23, B34 | All sidebar-focused. A23's scale test (seeded 22 dummy projects) found a real bug — the sidebar scrolled as one block and top nav disappeared — fixed alongside B23 (recent tasks) and B34 (pinning), plus a full visual pass on the sidebar per live feedback. |
 | — | v4.0.0 (shipped) | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
 | — | v4.1.0 (shipped) | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
-| 1 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
-| 2 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 3 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 4 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 5 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 6 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 7 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 8 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 9 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 10 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 11 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | v4.2.0 (shipped) | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
+| 1 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 2 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 3 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 4 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 5 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 6 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 7 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 8 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 9 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 10 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
+| — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release, same reason as B35. |
 
 Within each release: land any Track A item first (or in the same PR as the
 Track B item it protects/enables), then the Track B items. Extend

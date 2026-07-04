@@ -1,4 +1,10 @@
-export type Source = 'pc' | 'pc2' | 'mobile';
+// B22: used to be a fixed 'pc' | 'pc2' | 'mobile' enum — widened to a
+// free-form per-device name (see config.ts's getDeviceName()/setDeviceName()),
+// since a fixed 3-value set isn't enough once there's more than one PC or
+// phone in play. Old docs may still literally contain 'pc'/'pc2'/'mobile'
+// from before this widening — that's fine, they just display as their old
+// literal value until next edited on that device.
+export type Source = string;
 
 export interface SpaceDoc {
   _id: string;          // "space:unsorted" | "space:personal" | "space:family" | "space:work"

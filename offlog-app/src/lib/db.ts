@@ -7,12 +7,17 @@
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
-import { getSyncUrl, COUCH_USER, COUCH_PASS } from '../config';
+import { getSyncUrl, COUCH_USER, COUCH_PASS, getDeviceName, isSyncEnabled } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source } from './types';
 
 (PouchDB as any).plugin(PouchDBFind);
 
-const SOURCE: Source = (window as any).Capacitor?.getPlatform() === 'android' ? 'mobile' : 'pc';
+// B22: was a fixed platform-detected 'pc'/'mobile' — now the user-editable
+// per-device name (see config.ts). Read once per module load rather than
+// on every write — renaming a device via Settings triggers the same
+// location.reload() the sync-URL field already does, so a fresh SOURCE is
+// picked up on next load rather than needing this to be reactive.
+const SOURCE: Source = getDeviceName();
 const db = new PouchDB('offlog');
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
@@ -92,6 +97,25 @@ async function logChange(
 export async function getRecentLogs(limit = 80): Promise<any[]> {
   const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, limit, include_docs: true });
   return r.rows.map(r => r.doc!);
+}
+
+// B5: per-device last-seen list for Settings — scans a bounded window of
+// the most recent changelog entries (same range-scan-by-`log:`-prefix
+// pattern as getRecentLogs) rather than every log ever, same "cheap at
+// the scale of a personal task manager" reasoning used elsewhere in this
+// file. Descending order means the first entry seen for a given source
+// is already its most recent.
+export async function getDeviceLastSeen(): Promise<{ device: string; lastSeen: string }[]> {
+  const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, limit: 500, include_docs: true });
+  const seen = new Map<string, string>();
+  for (const row of r.rows) {
+    const doc: any = row.doc;
+    if (!doc?.source || seen.has(doc.source)) continue;
+    seen.set(doc.source, doc.ts);
+  }
+  return [...seen.entries()]
+    .map(([device, lastSeen]) => ({ device, lastSeen }))
+    .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
 }
 
 export async function getLogsForTask(taskId: string): Promise<any[]> {
@@ -251,7 +275,11 @@ export async function clearLogs(): Promise<void> {
 
 let _syncHandler: any = null;
 
-function describeSyncError(err: any): string {
+// Exported for tests/sync.test.ts (A16) — pure classification, no I/O, and
+// exactly the logic that decides what a flaky/dropped connection actually
+// tells the user, so it's worth covering deterministically rather than only
+// via a real (slow, network-dependent, sandbox-unreachable) db.sync() call.
+export function describeSyncError(err: any): string {
   if (!err) return 'Unknown sync error';
   const status = err.status ?? err.statusCode;
   if (status === 401 || status === 403) return 'Authentication failed — check sync credentials';
@@ -314,6 +342,7 @@ async function scanConflicts(): Promise<number> {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
+    if (!isSyncEnabled()) return; // B13 — an explicit pause shouldn't auto-resume on reconnect
     if (syncState.status === 'offline') { syncState.status = 'syncing'; notify(); }
     syncNow().catch(() => {});
   });
@@ -328,7 +357,13 @@ if (typeof window !== 'undefined') {
 // meaning two concurrent replications hit the same remote at once. Routing
 // both through one handler at a time avoids that redundant traffic and any
 // risk of the two racing to write the same doc.
-function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
+//
+// Exported for tests/sync.test.ts (A16) — takes a fake PouchDB-sync-shaped
+// object (anything with a chainable `.on(event, cb)`) so the "settle only
+// fires once even if both 'paused' and 'error' fire" dedup guard can be
+// verified without a real replication (this project has no CI-reachable
+// CouchDB to test a genuinely dropped connection against).
+export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
   let settled = false;
   const settle = (err: any) => { if (!settled) { settled = true; onSettle?.(err); } };
   handler
@@ -340,9 +375,22 @@ function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
 }
 
 export function startSync() {
-  if (_syncHandler) _syncHandler.cancel();
+  if (_syncHandler) { _syncHandler.cancel(); _syncHandler = null; }
+  // B13: an explicit pause takes priority over auto-starting on init —
+  // config.ts's isSyncEnabled() defaults to true, so existing installs
+  // keep syncing exactly as before until someone opts out in Settings.
+  if (!isSyncEnabled()) { syncState.status = 'idle'; notify(); return; }
   if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
   _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }));
+}
+
+// B13: the other half of the pause toggle — cancels the live replication
+// without touching the configured URL (setSyncUrl('') would drop the
+// server config entirely, which "pause for a while" shouldn't do).
+export function cancelSync() {
+  if (_syncHandler) { _syncHandler.cancel(); _syncHandler = null; }
+  syncState.status = 'idle';
+  notify();
 }
 
 export function syncNow(): Promise<void> {

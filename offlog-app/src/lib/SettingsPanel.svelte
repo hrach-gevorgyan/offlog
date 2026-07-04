@@ -4,8 +4,10 @@
     syncState, syncNow, importJSON,
     getConflicts, resolveConflict, type ConflictInfo,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
+    startSync, cancelSync, getDeviceLastSeen,
   } from './db';
-  import { getSyncUrl, setSyncUrl } from '../config';
+  import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled } from '../config';
+  import { timeAgo } from './utils';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError } from './store';
   import { closeOnBack } from './modalStack';
@@ -79,6 +81,28 @@
 
   // ── Sync ────────────────────────────────────────────────────────────────
   let syncUrl = getSyncUrl();
+  let deviceName = getDeviceName();
+  let syncEnabled = isSyncEnabled();
+
+  function toggleSyncEnabled() {
+    syncEnabled = !syncEnabled;
+    setSyncEnabled(syncEnabled);
+    if (syncEnabled) startSync(); else cancelSync();
+  }
+
+  // Renaming this device only affects new writes' `source` field — no
+  // reload needed the way changing the sync URL needs one (db.ts's
+  // module-level SOURCE constant is a separate concern from this saved
+  // string; the *next* app launch is what actually picks up a rename).
+  function saveDeviceName() { setDeviceName(deviceName); deviceName = getDeviceName(); }
+
+  let deviceLastSeen: { device: string; lastSeen: string }[] = [];
+  let deviceLastSeenLoaded = false;
+  async function loadDeviceLastSeen() {
+    deviceLastSeenLoaded = true; // set before the await — a genuinely-empty result must not retrigger this every reactive tick
+    deviceLastSeen = await getDeviceLastSeen();
+  }
+
   let syncStatus = syncState.status;
   let lastSynced = syncState.lastSynced;
   let syncError = syncState.error;
@@ -118,6 +142,7 @@
     }
   }
   $: if (activeCategory === 'sync' && conflictCount > 0 && conflictList.length === 0 && !loadingConflicts) loadConflicts();
+  $: if (activeCategory === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
   // ── Organize (Manage Spaces / Manage Tags) ─────────────────────────────
   let SpaceManagerComp: typeof import('./SpaceManager.svelte').default | null = null;
@@ -269,12 +294,39 @@
               {/if}
 
             {:else if activeCategory === 'sync'}
+              <div class="setting-row">
+                <span class="setting-label">{syncEnabled ? 'Sync enabled' : 'Sync paused'}</span>
+                <button class="toggle-btn" class:on={syncEnabled} on:click={toggleSyncEnabled} aria-label="Toggle sync" role="switch" aria-checked={syncEnabled}>
+                  <span class="toggle-knob"></span>
+                </button>
+              </div>
+              <p class="setting-hint">Pausing stops replication without losing the URL below — turn it back on any time.</p>
+
               <label class="field-label">
                 CouchDB URL
-                <input bind:value={syncUrl} placeholder="http://192.168.27.200:5984/offlog" />
+                <input bind:value={syncUrl} placeholder="http://192.168.27.200:5984/offlog" disabled={!syncEnabled} />
               </label>
               {#if syncError && lastErrorAt}
                 <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
+              {/if}
+
+              <label class="field-label">
+                This device's name
+                <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
+                  on:keydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
+              </label>
+              <p class="setting-hint">Shown on this device's own edits from now on — changelog entries, task history, and the list below.</p>
+
+              {#if deviceLastSeen.length}
+                <div class="setting-group">
+                  <div class="setting-section-title">Devices seen recently</div>
+                  {#each deviceLastSeen as d (d.device)}
+                    <div class="setting-row">
+                      <span class="storage-info">{d.device}</span>
+                      <span class="storage-info" style="color: var(--faint)">{timeAgo(d.lastSeen)}</span>
+                    </div>
+                  {/each}
+                </div>
               {/if}
 
               {#if conflictCount > 0 || conflictList.length > 0}
@@ -462,6 +514,7 @@
     background: var(--surface); color: var(--text); font-size: .9rem;
   }
   .field-label input:focus { outline: none; border-color: var(--accent); }
+  .field-label input:disabled { opacity: .5; cursor: default; }
 
   .toggle-btn {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;

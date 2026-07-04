@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getLogsForTask } from './db';
+  import { timeAgo } from './utils';
 
   export let taskId: string;
 
@@ -45,7 +46,10 @@
       <div class="history-row">
         <span class="h-pill" style="background:{ACTION_COLOR[log.action]}22; color:{ACTION_COLOR[log.action]}">{log.action}</span>
         <span class="h-desc">{describeLog(log)}</span>
-        <span class="h-time">{fmtTs(log.ts)}</span>
+        <span class="h-time-group">
+          {#if log.source}<span class="h-source">{log.source}</span>{/if}
+          <span class="h-time" title={fmtTs(log.ts)}>{timeAgo(log.ts)}</span>
+        </span>
       </div>
     {/each}
   {/if}
@@ -68,5 +72,10 @@
     padding: 1px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;
   }
   .h-desc { flex: 1; color: var(--text); line-height: 1.4; }
-  .h-time { font-family: var(--mono); font-size: .6rem; color: var(--faint); flex-shrink: 0; white-space: nowrap; }
+  .h-time-group { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; }
+  .h-source {
+    font-size: .58rem; color: var(--faint); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+  }
+  .h-time { font-family: var(--mono); font-size: .6rem; color: var(--faint); white-space: nowrap; }
 </style>
