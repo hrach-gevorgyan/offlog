@@ -9,6 +9,35 @@ export const pendingOpenTaskId = writable<string | null>(null);
 export type PermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
 export const permissionState = writable<PermissionState>('default');
 
+// Android 12+ splits notification scheduling into two separate grants:
+// POST_NOTIFICATIONS (can this app show a notification at all — the
+// `permissionState` above) and the "Alarms & reminders" special access
+// (can this app fire one at an *exact* time via AlarmManager). The second
+// one has no in-app runtime prompt dialog — it's a system settings toggle
+// — so a reminder can look "scheduled" while actually being silently
+// delivered late (batched into the OS's next inexact wakeup window,
+// sometimes minutes off) with nothing in the UI explaining why. Only
+// meaningful on native; stays 'unsupported' on web (reminders there are
+// setTimeout-based and don't go through AlarmManager at all).
+export type ExactAlarmState = 'granted' | 'denied' | 'unsupported';
+export const exactAlarmState = writable<ExactAlarmState>('unsupported');
+
+export async function checkExactAlarmPermission(): Promise<void> {
+  if (!isNative()) return;
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  const res = await LocalNotifications.checkExactNotificationSetting();
+  exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+}
+
+// Deep-links to the OS "Alarms & reminders" settings screen for this app —
+// there's no runtime permission dialog for this one, unlike requestPermission().
+export async function requestExactAlarmPermission(): Promise<void> {
+  if (!isNative()) return;
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  const res = await LocalNotifications.changeExactNotificationSetting();
+  exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+}
+
 const isNative = () => !!(window as any).Capacitor?.isNativePlatform?.();
 
 // Deterministic 32-bit integer id from a task's string id — Capacitor's
@@ -172,6 +201,7 @@ export async function initNotificationListeners(): Promise<void> {
   const { LocalNotifications } = await import('@capacitor/local-notifications');
   const perm = await LocalNotifications.checkPermissions();
   permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
+  await checkExactAlarmPermission();
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
     const taskId = (action.notification.extra as any)?.taskId;
     if (!taskId) return;

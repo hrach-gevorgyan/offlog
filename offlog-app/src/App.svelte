@@ -21,13 +21,29 @@
   let showDashboard = true;
   let sidebarOpen = false;
 
+  type View = 'kanban' | 'list';
+  // Per-project Kanban/List choice for the *current* browser session,
+  // restored across a same-session refresh (see onMount below) so
+  // reloading mid-List-view doesn't silently bounce back to Kanban.
+  // Only reset to 'kanban' at genuine navigation points (picking a
+  // project from the sidebar/dashboard) — see goToProject().
+  let currentView: View = 'kanban';
+
   function saveView() {
     if (!ready) return;
     const view = showDashboard ? 'dashboard' : showDeadlines ? 'agenda' : 'project';
-    localStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId) }));
+    localStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
   }
 
-  $: if (ready) { showDashboard; showDeadlines; $activeProjectId; saveView(); }
+  $: if (ready) { showDashboard; showDeadlines; $activeProjectId; currentView; saveView(); }
+
+  // The one place `activeProjectId` should reset the view to Kanban —
+  // called from deliberate "go to this project" actions (sidebar project/
+  // space click, dashboard project card), never from state restoration.
+  function goToProject(id: string) {
+    activeProjectId.set(id);
+    currentView = 'kanban';
+  }
   let showSearch = false;
   let showQuickAdd = false;
   let showShortcuts = false;
@@ -119,16 +135,36 @@
     });
   }
 
-  // Fired by MainActivity.java when the app is opened via the "Quick Add"
-  // static Android app shortcut (long-press the launcher icon) — see
-  // res/xml/shortcuts.xml, MainActivity's handleShortcutIntent(), and
-  // ROADMAP.md B10. No-op on web (nothing ever dispatches this event there).
-  function onQuickAddShortcut() { showQuickAdd = true; }
+  // The Quick Add home-screen widget (QuickAddWidgetProvider.java) opens
+  // MainActivity with a com.offlog.app://quickadd VIEW intent. This used
+  // to be forwarded via a custom native `triggerJSEvent` call in
+  // MainActivity.onCreate() — but that fired synchronously during
+  // native onCreate(), before the WebView had even loaded this script,
+  // let alone reached this onMount — so on a cold start (app not already
+  // running) the event was dispatched into the void and tapping the
+  // widget just opened the app with no Quick Add. Using @capacitor/app's
+  // own launch-URL handling instead: getLaunchUrl() reads the intent
+  // that started the app for cold start, and the 'appUrlOpen' listener
+  // (which Capacitor's own Bridge already fires for every plugin on
+  // onNewIntent, no custom native code needed) covers a warm start.
+  function isQuickAddUrl(url: string | undefined | null) {
+    return !!url && url.includes('quickadd');
+  }
+
+  async function setupQuickAddWidget() {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    const { App: CapApp } = await import('@capacitor/app');
+    const launch = await CapApp.getLaunchUrl();
+    if (isQuickAddUrl(launch?.url)) showQuickAdd = true;
+    CapApp.addListener('appUrlOpen', ({ url }) => {
+      if (isQuickAddUrl(url)) showQuickAdd = true;
+    });
+  }
 
   onMount(async () => {
     if (localStorage.getItem('dark')) document.body.classList.add('dark');
     setupBackButton();
-    window.addEventListener('offlogQuickAdd', onQuickAddShortcut);
+    setupQuickAddWidget();
     try {
       await init();
     } catch (e: any) {
@@ -147,7 +183,11 @@
       if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
       else if (saved.view === 'project' && projectStillExists) {
         showDashboard = false; showDeadlines = false;
+        // Restore via the plain store, not goToProject() — this is state
+        // restoration on reload, not a deliberate navigation, so the
+        // in-progress Kanban/List choice (below) must survive too.
         activeProjectId.set(saved.projectId);
+        if (saved.mode === 'list' || saved.mode === 'kanban') currentView = saved.mode;
       }
       // 'dashboard', nothing, or a stale projectId → keep showDashboard = true
     } catch {}
@@ -156,15 +196,6 @@
   });
 
   function retryInit() { location.reload(); }
-
-  type View = 'kanban' | 'list';
-  // Deliberately not persisted/restored from ProjectDoc.default_view —
-  // opening a project (from the sidebar, dashboard, search, etc.) always
-  // lands on Kanban; `default_view` is written by `setView()` below only
-  // as a legacy field, no longer read back. `setView` just switches the
-  // view for the current session.
-  let currentView: View = 'kanban';
-  $: if ($activeProjectId) currentView = 'kanban';
 
   async function setView(v: View) {
     currentView = v;
@@ -195,7 +226,7 @@
       bind:showDeadlines
       bind:showDashboard
       bind:open={sidebarOpen}
-      on:navigate={closeSidebar}
+      on:navigate={() => { closeSidebar(); currentView = 'kanban'; }}
       on:openTask={(e) => { searchDetailTask = e.detail.task; searchDetailProject = e.detail.project; closeSidebar(); }}
     />
 
@@ -211,7 +242,7 @@
           on:menu={() => sidebarOpen = true}
           on:openProject={(e) => {
             showDashboard = false;
-            activeProjectId.set(e.detail);
+            goToProject(e.detail);
           }}
         />
       {:else if showDeadlines}

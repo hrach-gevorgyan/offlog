@@ -6,7 +6,7 @@
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
   } from './db';
   import { getSyncUrl, setSyncUrl } from '../config';
-  import { requestPermission, permissionState } from './notifications';
+  import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError } from './store';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -150,6 +150,9 @@
     } else { storageInfo = 'Not available'; }
   }
   onMount(loadStorage);
+  // Re-check on every open, not just at app-start init — the user may have
+  // just come back from the OS "Alarms & reminders" settings screen.
+  onMount(() => { if (isAndroid) checkExactAlarmPermission(); });
 
   let importStatus = '';
   async function handleImport() {
@@ -250,8 +253,18 @@
                 {/if}
               </div>
               {#if isAndroid}
+                <div class="setting-row">
+                  <span class="setting-label">
+                    {#if $exactAlarmState === 'granted'}Precise timing enabled — reminders fire exactly on time
+                    {:else if $exactAlarmState === 'denied'}Not enabled — reminders may arrive a few minutes late
+                    {:else}Checking…{/if}
+                  </span>
+                  {#if $exactAlarmState === 'denied'}
+                    <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Enable</button>
+                  {/if}
+                </div>
                 <p class="setting-hint">
-                  On Android, reminders still fire without any extra step, but the OS may deliver them a few minutes late unless you allow precise timing: <strong>Settings → Apps → Offlog → Alarms & reminders</strong>. This is an Android battery-saving restriction (since Android 12), not something the app can skip or auto-grant.
+                  This is a separate Android permission from notifications themselves ("Alarms & reminders", since Android 12) — it's a system settings toggle with no in-app prompt, so it's easy to miss. Without it, reminders still arrive, just batched into the OS's next low-power wakeup window instead of at the exact minute you set.
                 </p>
               {/if}
 

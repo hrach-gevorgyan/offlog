@@ -200,6 +200,19 @@ verification.
   `padding-top: env(safe-area-inset-top)`.
 - Android launcher icon changes: uninstall the app before reinstalling, and
   Clean Project — the launcher caches icons aggressively.
+- **Prefer an official `@capacitor/*` plugin's own mechanism over a custom
+  native bridge event, when one exists.** A25 (ROADMAP.md) is the concrete
+  lesson: the Quick Add widget used to forward its launch intent via a
+  hand-rolled `getBridge().triggerJSEvent(...)` call in `MainActivity`,
+  which fired before the WebView had a listener attached — losing the
+  event on every cold start. `@capacitor/app`'s `getLaunchUrl()` +
+  `appUrlOpen` listener does the same job correctly, because Capacitor's
+  own Bridge already handles the timing/replay problem for its own
+  plugins' events. Same idea applies broadly: check whether
+  `@capacitor/local-notifications`, `@capacitor/app`, etc. already expose
+  the native capability you're about to hand-roll (see A28's
+  `checkExactNotificationSetting()`/`changeExactNotificationSetting()`
+  for another example) before writing custom Java.
 
 ## Project status & direction
 

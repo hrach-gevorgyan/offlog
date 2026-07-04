@@ -11,9 +11,9 @@ import android.widget.RemoteViews;
 // Real home-screen widget (drag-and-drop from the widget picker), not the
 // long-press launcher app shortcut this replaced — see ROADMAP.md B10.
 // RemoteViews can't run app JS directly, so tapping the widget just opens
-// MainActivity with the same com.offlog.app://quickadd URI the (now
-// removed) static shortcut used; MainActivity.handleShortcutIntent() and
-// App.svelte's 'offlogQuickAdd' listener need no changes to support this.
+// MainActivity with a com.offlog.app://quickadd VIEW intent — read on the
+// JS side via @capacitor/app's getLaunchUrl()/'appUrlOpen' in App.svelte's
+// setupQuickAddWidget(), no custom native forwarding code needed.
 public class QuickAddWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {

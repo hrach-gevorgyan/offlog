@@ -1,11 +1,18 @@
 package com.offlog.app;
 
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import androidx.core.splashscreen.SplashScreen;
 import com.getcapacitor.BridgeActivity;
 
+// The Quick Add home-screen widget (QuickAddWidgetProvider, ROADMAP.md B10)
+// opens this activity with a com.offlog.app://quickadd VIEW intent. No
+// custom intent handling needed here — Capacitor's own BridgeActivity
+// already forwards onCreate()/onNewIntent()'s intent to every installed
+// plugin (including @capacitor/app), which is what App.svelte's
+// getLaunchUrl()/'appUrlOpen' listener reads. An earlier version of this
+// class forwarded the intent manually via a custom triggerJSEvent() call
+// in onCreate(), which fired before the WebView had loaded far enough to
+// have a listener attached — losing the event on every cold start.
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -17,27 +24,5 @@ public class MainActivity extends BridgeActivity {
         // Activity window is created.
         SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
-        handleWidgetIntent(getIntent());
-    }
-
-    // launchMode="singleTask" means tapping the widget while the app is
-    // already running delivers here instead of onCreate().
-    @Override
-    public void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        handleWidgetIntent(intent);
-    }
-
-    // The Quick Add home-screen widget (QuickAddWidgetProvider, ROADMAP.md
-    // B10) resolves to this activity with a com.offlog.app://quickadd URI.
-    // Forwarded to the webview as a plain DOM event rather than handled
-    // natively — QuickAdd is a Svelte component the JS side already owns;
-    // App.svelte listens for 'offlogQuickAdd' on window.
-    private void handleWidgetIntent(Intent intent) {
-        if (intent == null) return;
-        Uri data = intent.getData();
-        if (data != null && "quickadd".equals(data.getHost()) && getBridge() != null) {
-            getBridge().triggerJSEvent("offlogQuickAdd", "window");
-        }
     }
 }

@@ -203,6 +203,66 @@ render time, `getDashboardData()` latency, Global Search responsiveness)
 that can be re-run release to release, not just once, to catch which
 specific change made a part of the app heavier.
 
+### A25. Quick Add widget opened the app but not Quick Add — shipped in v3.9.8
+Root cause: `MainActivity.onCreate()` forwarded the widget's launch intent
+to the webview via a custom `getBridge().triggerJSEvent("offlogQuickAdd", …)`
+call, fired synchronously during native `onCreate()` — well before the
+WebView had loaded far enough for `App.svelte`'s `onMount` listener to
+exist, so on a cold start (app not already running) the event was lost
+and tapping the widget just opened the app to Dashboard. Fixed by
+switching to `@capacitor/app`'s own launch-URL handling instead:
+`getLaunchUrl()` (read once at startup, covers cold start) plus an
+`appUrlOpen` listener (covers warm start — Capacitor's own Bridge already
+forwards `onNewIntent()` to every installed plugin, no custom native
+forwarding code needed at all). `MainActivity.java`'s custom intent
+handling was removed entirely as a result.
+
+### A26. PWA staleness / dev workflow needs a decision — NOT started (harder, needs owner input)
+Owner-reported: the installable PWA build repeatedly shows a stale
+icon/design after an update, even after A18 (v3.8.0) added a forced
+`registration.update()` call. Also flagged: confusion between the two
+local dev ports (`5173` = `npm run dev`, no real service worker; `4174`
+= `npm run preview`, added mid-session purely as a debugging aid to
+exercise the *real* PWA/SW lifecycle — not a second "way to run the
+app," and removed from `.claude/launch.json` now that its purpose is
+written down here instead). The recurring staleness itself is the real
+issue and needs an owner decision, not just another patch: options
+range from a visible "update available, tap to refresh" banner (surfaces
+the problem instead of silently retrying), to `registerType: 'prompt'`
+instead of `'autoUpdate'` in `vite-plugin-pwa` (trades silent updates for
+an explicit user-controlled refresh), to reducing what's precached so a
+stale cache has less surface area, to reconsidering how much the
+installable-PWA path is worth versus the Android APK as the primary
+"real app" experience. Needs a scoping conversation before implementation.
+
+### A27. Project-view no longer force-resets to Kanban on every refresh — shipped in v3.9.8
+`currentView` was reset to `'kanban'` by a blanket reactive statement
+keyed on `$activeProjectId` — which also fires when `onMount` restores
+the last-open project from `localStorage` after a page refresh, so
+reloading mid-List-view silently bounced back to Kanban. Kanban-as-
+default only makes sense for a *deliberate* "go to this project" action
+(sidebar/space click, dashboard project card). Fixed with an explicit
+`goToProject()` helper called only from those navigation sites; the
+Kanban/List choice itself is now also persisted in `offlog_view`
+(`mode` field) and restored alongside the project id, so a refresh
+returns you to exactly where you were.
+
+### A28. Exact-alarm ("Alarms & reminders") permission has no in-app status/control — shipped in v3.9.8
+Android splits notification scheduling into two separate grants:
+`POST_NOTIFICATIONS` (can the app notify at all — already surfaced) and
+the "Alarms & reminders" special app access (can it schedule an *exact*-
+time alarm via `AlarmManager` — since Android 12, with no runtime prompt
+dialog, only a system settings toggle). Without it, a reminder still
+"fires," just batched into the OS's next low-power wakeup window,
+sometimes minutes late, with nothing in the UI explaining why. Settings
+→ Notifications previously only had a passive paragraph telling the
+user to go find the toggle themselves. `@capacitor/local-notifications`
+(already a dependency, v8.2.0) exposes exactly the needed API —
+`checkExactNotificationSetting()` / `changeExactNotificationSetting()`
+(the latter deep-links straight to the OS screen) — now wired up as a
+live granted/denied status with an Enable button, re-checked every time
+Settings opens (in case the user just came back from that screen).
+
 ---
 
 ## Track B — Features
