@@ -16,7 +16,6 @@
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.2",
     "@types/pouchdb": "^6.4.2",
-    "canvas": "^3.2.3",
     "jsdom": "^29.1.1",
     "pouchdb-adapter-memory": "^9.0.0",
     "svelte": "^5.56.4",
@@ -34,7 +33,6 @@
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/status-bar": "^8.0.2",
     "pouchdb": "^9.0.0",
-    "pouchdb-browser": "^9.0.0",
     "pouchdb-find": "^9.0.0"
   },
   "allowScripts": {
