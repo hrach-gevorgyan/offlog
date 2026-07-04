@@ -5,6 +5,7 @@
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
+  import PinStar from './PinStar.svelte';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -344,7 +345,7 @@
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.pinned}<span class="card-pin" title="Pinned"><svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" stroke="none"><polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/></svg></span>{/if}
+              {#if task.pinned}<span class="card-pin" title="Pinned"><PinStar size={11} /></span>{/if}
             </div>
             <div class="card-meta">
               {#if task.due_date}

@@ -7,6 +7,7 @@
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import PinStar from './PinStar.svelte';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -121,9 +122,7 @@
     <div class="panel-header">
       <textarea class="title-input" bind:value={title} placeholder="Task title" rows="1" on:input={(e) => { const t = e.currentTarget; t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }}></textarea>
       <button class="pin-btn" class:pinned on:click={() => pinned = !pinned} title={pinned ? 'Unpin' : 'Pin task'}>
-        <svg viewBox="0 0 16 16" width="15" height="15" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/>
-        </svg>
+        <PinStar size={15} filled={pinned} stroked />
       </button>
       <button class="close-btn" on:click={() => requestClose()}>✕</button>
     </div>

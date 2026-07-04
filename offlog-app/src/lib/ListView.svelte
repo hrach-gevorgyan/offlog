@@ -6,6 +6,7 @@
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabel, dueInk, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
+  import PinStar from './PinStar.svelte';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -436,7 +437,7 @@
             on:click|stopPropagation={() => markDone(task)}
           ></button>
           <span class="cell-title">
-            {task.title}{#if task.pinned}<span class="pin-mark"><svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor" stroke="none"><polygon points="8,1.5 9.8,6 14.5,6.3 11,9.4 12.1,14 8,11.3 3.9,14 5,9.4 1.5,6.3 6.2,6"/></svg></span>{/if}
+            {task.title}{#if task.pinned}<span class="pin-mark"><PinStar size={10} /></span>{/if}
           </span>
           {#each visibleOrder as key (key)}
             {#if key === 'status'}
