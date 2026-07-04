@@ -140,14 +140,18 @@ renumbered/removed) so the sequencing table below stays accurate.
 See [CHANGELOG.md](CHANGELOG.md)'s v3.7.0 entry. Number kept (not
 renumbered/removed) so the sequencing table below stays accurate.
 
-### A15. Widget/back-button regression coverage
-v3.7.0 added real native surface — `modalStack.ts`'s history-backed overlay
-stack, the notification action buttons, and the home-screen widget — with
-zero automated coverage, only manual/browser verification. `modalStack.ts`
-in particular is pure JS with no Svelte or DOM dependency beyond
-`window.history`/`popstate`, so it's a cheap first target: a unit test can
-verify the LIFO stack order and `discardTop()` vs `requestClose()` behavior
-without spinning up a component at all.
+### A15. Widget/back-button regression coverage — shipped in v4.1.0
+`tests/modalStack.test.ts` covers the LIFO stack order, `discardTop()` vs
+`requestClose()`, and confirms `requestClose()` only ever delegates to
+`history.back()` (never pops the stack directly — see the module's own
+header comment on why that would desync it). One real gotcha hit while
+writing these: jsdom's `history.back()` doesn't reliably fire a
+`popstate` event the way real browsers eventually do, so a naive
+`beforeEach` cleanup loop waiting on it spun forever and OOM'd the test
+runner — worked around by making each test self-balance its own
+push/pop pairs instead of relying on cross-test reset, and by testing
+`requestClose()`'s actual contract (delegates to `history.back()`) via a
+spy rather than waiting on navigation timing vitest can't control.
 
 ### A16. Offline-queue robustness for sync
 A5 (v3.1.0) fixed sync running two replications at once, but nothing has
@@ -398,13 +402,24 @@ bar for move-to-status, add/remove tag, and delete — the same underlying
 `updateTask()`/`deleteTask()` calls, just looped with one `reloadTasks()`
 at the end instead of per-task.
 
-### B20. Agenda widget
-A second home-screen widget alongside B10's Quick Add — read-only, showing
-the next 2-3 due tasks via the same `getAllTasksDue()` query already used
-by the Agenda view. Reuses the `AppWidgetProvider`/RemoteViews plumbing
-B10 already established; the main new work is `updatePeriodMillis`-driven
-refresh (Quick Add's widget never needed to update itself after creation,
-this one does whenever the underlying data changes).
+### B20. Agenda widget — shipped in v4.1.0
+A second home-screen widget alongside B10's Quick Add — read-only,
+showing the next 3 due tasks (`getAllTasksDue()`, same query/ordering as
+the Agenda view). Turned out to need more than "reuse the AppWidgetProvider/
+RemoteViews plumbing" implied: task data lives entirely in the WebView's
+JS-side PouchDB, which native widget code has no access to at all — there
+was no native DB a periodic `updatePeriodMillis` timer could re-query.
+Built a small shared JS→native bridge instead (`OffologWidgetPlugin.java`,
+an app-local Capacitor plugin registered directly in `MainActivity`, not
+an npm package): `src/lib/widgetBridge.ts` computes the widget's data and
+pushes it after every `store.ts` `reload()` (init + every live sync/local
+change — the same place `rescheduleAll()` already runs from), the plugin
+persists it to `SharedPreferences` and immediately asks
+`AppWidgetManager` to redraw every instance. `updatePeriodMillis="0"`
+(disabled) — a periodic poll would just re-render the same stale data
+between pushes, so push-on-change is strictly better here. Tapping the
+widget opens the Agenda view via `com.offlog.app://agenda`, same deep-link
+pattern as B10's Quick Add.
 
 ### B21. Dark mode follows OS setting
 Dark mode is currently a manual toggle only. Add a "Follow system" option
@@ -471,11 +486,17 @@ length guardrail (a visible counter past some threshold, not a hard block)
 so it stays "notes on a task," not an invitation to write a full document
 inside a task card.
 
-### B31. Third Android widget: project list
-Alongside B10 (Quick Add) and B20 (Agenda), a third home-screen widget
-listing projects with quick actions (open, maybe quick-add-to-this-project)
-— completes the "3 widgets" set using the same `AppWidgetProvider`/
-RemoteViews plumbing already established by the first two.
+### B31. Third Android widget: project list — shipped in v4.1.0
+Completes the "3 widgets" set — up to 4 projects, each row tapping
+straight into that project (`com.offlog.app://project?id=<id>`, resolved
+in `App.svelte` against the loaded `projects` store the same way the
+localStorage view-restore already guards against a since-deleted
+project). Shares `OffologWidgetPlugin`/`widgetBridge.ts` with B20 rather
+than each widget getting its own bridge. Scoped down from "quick actions
+(open, maybe quick-add-to-this-project)" to just open — RemoteViews rows
+support one `PendingIntent` each with no per-row secondary action without
+a full `RemoteViewsService`/adapter, which would be a lot of native
+plumbing for a "maybe."
 
 ### B32. Archive a whole project
 Today only individual tasks can be archived — there's no way to archive
@@ -703,18 +724,18 @@ was declined outright and never entered sequencing.
 | — | v3.8.5 (shipped) | — | B36 | **Deliberately not a full A+B paired cycle** — owner request to treat this as a lighter, faster commit rhythm for List-view customization landing in pieces (filters, column selection/reorder, horizontal scroll, no-truncation guarantee, multi-column sort, more columns) rather than one big release. |
 | — | v3.9.0 (shipped) | A23 | B23, B34 | All sidebar-focused. A23's scale test (seeded 22 dummy projects) found a real bug — the sidebar scrolled as one block and top nav disappeared — fixed alongside B23 (recent tasks) and B34 (pinning), plus a full visual pass on the sidebar per live feedback. |
 | — | v4.0.0 (shipped) | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
-| 1 | v4.1.0 | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
-| 2 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
-| 3 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 4 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 5 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 6 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 7 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 8 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 9 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 10 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 11 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 12 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | v4.1.0 (shipped) | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
+| 1 | v4.2.0 | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
+| 2 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 3 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 4 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 5 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 6 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 7 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 8 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 9 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 10 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 11 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
 
 Within each release: land any Track A item first (or in the same PR as the

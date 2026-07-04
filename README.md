@@ -1,6 +1,6 @@
 # Offlog
 
-Version 4.0.0 · A free, open-source, local-first task management app.
+Version 4.1.0 · A free, open-source, local-first task management app.
 No account, no telemetry, no subscription, ever. Runs in the browser and
 as a native Android app. Sync is optional and never required.
 
@@ -17,7 +17,7 @@ Full mission and planned work: [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Spaces & Projects** — organize work into colored spaces, each containing multiple projects
 - **Multiple views** — Kanban board, list, table, and agenda (deadlines) per project
 - **Dashboard** — overview of all projects with pinned and overdue tasks at a glance
-- **Quick Add** — Ctrl+N anywhere to create a task with space/project selector; a home-screen widget on Android
+- **Quick Add** — Ctrl+N anywhere to create a task with space/project selector; also a home-screen widget on Android, alongside a read-only Agenda widget and a Project list widget
 - **Global Search** — Ctrl+K to search across all tasks instantly
 - **Card detail** — full task editor with notes, priority, due date, tags, status, and changelog
 - **Duplicate task** — one click to clone a card into the same status

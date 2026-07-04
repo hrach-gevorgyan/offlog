@@ -6,4 +6,8 @@
     <string name="custom_url_scheme">com.offlog.app</string>
     <string name="widget_quick_add_label">Quick Add</string>
     <string name="widget_quick_add_description">Add a task without opening Offlog</string>
+    <string name="widget_agenda_label">AGENDA</string>
+    <string name="widget_agenda_description">See your next few due tasks</string>
+    <string name="widget_projects_label">PROJECTS</string>
+    <string name="widget_projects_description">Jump straight into a project</string>
 </resources>

@@ -5,6 +5,7 @@ import {
   seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs, maybePruneOldDeletedTasks,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
+import { updateAgendaWidget, updateProjectsWidget } from './widgetBridge';
 
 export const modalOpen = writable(false);
 export const errorToast = writable<string>('');
@@ -51,6 +52,10 @@ async function reload() {
   tasks.set(tk);
   // Not awaited — reminders don't need to block the UI becoming interactive.
   rescheduleAll().catch(() => {});
+  // Same reasoning — the two home-screen widgets (B20/B31) refresh
+  // whenever anything actually changes, no separate polling loop needed.
+  updateAgendaWidget().catch(() => {});
+  updateProjectsWidget(pr).catch(() => {});
 }
 
 export async function reloadTasks() {

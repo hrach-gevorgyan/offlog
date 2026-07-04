@@ -135,44 +135,72 @@
     });
   }
 
-  // The Quick Add home-screen widget (QuickAddWidgetProvider.java) opens
-  // MainActivity with a com.offlog.app://quickadd VIEW intent. This used
-  // to be forwarded via a custom native `triggerJSEvent` call in
-  // MainActivity.onCreate() — but that fired synchronously during
-  // native onCreate(), before the WebView had even loaded this script,
-  // let alone reached this onMount — so on a cold start (app not already
-  // running) the event was dispatched into the void and tapping the
-  // widget just opened the app with no Quick Add. Using @capacitor/app's
-  // own launch-URL handling instead: getLaunchUrl() reads the intent
-  // that started the app for cold start, and the 'appUrlOpen' listener
-  // (which Capacitor's own Bridge already fires for every plugin on
-  // onNewIntent, no custom native code needed) covers a warm start.
-  function isQuickAddUrl(url: string | undefined | null) {
-    return !!url && url.includes('quickadd');
+  // The three home-screen widgets (QuickAddWidgetProvider B10,
+  // AgendaWidgetProvider B20, ProjectListWidgetProvider B31) all open
+  // MainActivity with a com.offlog.app://<host>[?query] VIEW intent. This
+  // used to be forwarded via a custom native `triggerJSEvent` call in
+  // MainActivity.onCreate() — but that fired synchronously during native
+  // onCreate(), before the WebView had even loaded this script, let alone
+  // reached this onMount — so on a cold start (app not already running)
+  // the event was dispatched into the void and tapping a widget just
+  // opened the app with nothing else happening. Using @capacitor/app's
+  // own launch-URL handling instead: getLaunchUrl() reads the intent that
+  // started the app for cold start, and the 'appUrlOpen' listener (which
+  // Capacitor's own Bridge already fires for every plugin on onNewIntent,
+  // no custom native code needed) covers a warm start.
+  // Returns true if the url actually navigated somewhere, so the caller
+  // can skip the localStorage view-restore below rather than have it race
+  // and clobber a deliberate widget-driven navigation.
+  function handleWidgetUrl(url: string | undefined | null): boolean {
+    if (!url) return false;
+    if (url.includes('quickadd')) { showQuickAdd = true; return false; } // an overlay, not a view change
+    if (url.includes('agenda')) { showDashboard = false; showDeadlines = true; return true; }
+    if (url.includes('project')) {
+      // The project-list widget's row may point at a project that's since
+      // been deleted — same "don't land on a broken view" caution as the
+      // localStorage view-restore below, just via a different trigger.
+      const id = new URL(url).searchParams.get('id');
+      if (id && get(projects).some(p => p._id === id)) { showDashboard = false; goToProject(id); return true; }
+    }
+    return false;
   }
 
-  async function setupQuickAddWidget() {
-    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+  // Cold start: check synchronously (relative to the rest of onMount)
+  // before the view-restore block runs, so a widget-driven navigation
+  // always wins over whatever was last open. Warm start (already
+  // running): the 'appUrlOpen' listener can fire at any later point,
+  // there's no restore-ordering race to worry about there.
+  async function checkLaunchUrl(): Promise<boolean> {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return false;
     const { App: CapApp } = await import('@capacitor/app');
     const launch = await CapApp.getLaunchUrl();
-    if (isQuickAddUrl(launch?.url)) showQuickAdd = true;
-    CapApp.addListener('appUrlOpen', ({ url }) => {
-      if (isQuickAddUrl(url)) showQuickAdd = true;
-    });
+    return handleWidgetUrl(launch?.url);
+  }
+
+  async function listenForWidgetLinks() {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    const { App: CapApp } = await import('@capacitor/app');
+    CapApp.addListener('appUrlOpen', ({ url }) => handleWidgetUrl(url));
   }
 
   onMount(async () => {
     if (localStorage.getItem('dark')) document.body.classList.add('dark');
     setupBackButton();
-    setupQuickAddWidget();
     try {
       await init();
     } catch (e: any) {
       initError = e?.message ?? 'The app failed to start.';
       return;
     }
-    // Restore last view
-    try {
+    // Awaited (unlike setupBackButton) so the project-widget deep link's
+    // existence check has a populated `projects` store, and so its result
+    // is known before deciding whether to run the view-restore below.
+    const launchedFromWidget = await checkLaunchUrl();
+    listenForWidgetLinks(); // future (warm-start) taps — no ordering race to wait for
+    // Restore last view — skipped if a widget tap already navigated
+    // somewhere on this cold start; that's a deliberate action and must
+    // win over whatever view happened to be open last.
+    if (!launchedFromWidget) try {
       const saved = JSON.parse(localStorage.getItem('offlog_view') ?? '{}');
       // saved.projectId can point to a project that no longer exists — a
       // wipeAndReseed(), a data reset, or a reinstall that kept

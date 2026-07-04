@@ -16,6 +16,13 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // registerPlugin() must run before super.onCreate() — that's what
+        // actually initializes the Bridge and loads the WebView; Capacitor's
+        // documented pattern for a same-repo (non-npm) custom plugin like
+        // OffologWidgetPlugin (ROADMAP.md B20/B31) is to register it here
+        // rather than via package.json/auto-discovery, which only applies
+        // to real installed plugin packages.
+        registerPlugin(OffologWidgetPlugin.class);
         // Must be called before super.onCreate() — this is what actually
         // activates the androidx.core.splashscreen compat theme attributes
         // (windowSplashScreenBackground/AnimatedIcon in styles.xml) on API
