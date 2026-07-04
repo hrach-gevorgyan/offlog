@@ -260,3 +260,17 @@ actually requested, but don't invoke Capacitor/Gradle unprompted.
 - User-facing wording: statuses are called **"Status"**, never "Column"
   (internal field names still say `column_id` — that's a frozen legacy name).
 - Dates in docs are absolute (e.g. "2026-07"), not relative.
+
+## Maintenance routine (mandatory)
+- Cadence: a maintenance pass **every 3 minor versions**, tracked in
+  [MAINTENANCE.md](MAINTENANCE.md)'s tracker (process lives there too).
+- Check the tracker **when bumping the version during a release**
+  (checklist step 5) — not on every session start, that's wasted tokens.
+  If the new minor >= "Next pass due", tell the owner: "A maintenance
+  pass is due (last: vX, current: vY). Run it now? (see MAINTENANCE.md)"
+  — and don't start one without confirmation.
+- When a pass completes, update the tracker: Last pass = current
+  version, Next pass due = current minor + 3.
+- Maintenance passes never add features and never touch doc schema,
+  PouchDB/CouchDB sync logic, storage format, soft-delete semantics, or
+  the positional-"done" rule without explicit owner approval.

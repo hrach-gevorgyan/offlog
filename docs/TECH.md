@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 3.9.6 · Local-first task management for browser and Android
+Version 3.9.7 · Local-first task management for browser and Android
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
@@ -87,6 +87,7 @@ src/
     types.ts              TypeScript interfaces: SpaceDoc, ProjectDoc, TaskDoc, Column
     constants.ts          Priority colors, priority labels, default column definitions
     utils.ts              Shared pure functions: dueLabel, dueState, dueInk, filterTasks
+    PinStar.svelte        The shared task-pin star icon (used by CardDetail/Kanban/List)
 
     Sidebar.svelte         Left nav: spaces, projects, sync indicator, dark toggle
     DashboardView.svelte   Home screen: project cards grid + pinned/overdue panels
