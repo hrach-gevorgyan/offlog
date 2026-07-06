@@ -845,6 +845,7 @@ outright and never entered sequencing.
 | — | v4.3.0 (shipped) | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
 | — | v4.4.0 (shipped) | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
 | — | v4.4.1 (shipped) | A29 | — | Light patch (owner-reported live) — clearer wording for the "cannot reach sync server" message, no A/B pairing. |
+| — | v4.4.2 (shipped) | — | — | Second maintenance pass (routine, see CHANGELOG.md and MAINTENANCE.md) — no A/B pairing. |
 | — | *Maintenance pass* | — | — | Scheduled after v4.4.0 ships (owner, 2026-07-05). |
 | 1 | v4.5.0 | — | B35 | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. |
 | 2 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |

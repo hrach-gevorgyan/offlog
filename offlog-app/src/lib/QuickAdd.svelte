@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from 'svelte';
-  import { projects, reloadTasks, spaces } from './store';
+  import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask } from './db';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -36,12 +36,17 @@
     const proj = $projects.find(p => p._id === projectId);
     if (!proj) { saving = false; return; }
     const firstCol = proj.columns[0].id;
-    await createTask(projectId, proj.space_id, firstCol, t);
-    await reloadTasks();
-    title = '';
-    saving = false;
-    dispatch('created');
-    requestClose();
+    try {
+      await createTask(projectId, proj.space_id, firstCol, t);
+      await reloadTasks();
+      title = '';
+      dispatch('created');
+      requestClose();
+    } catch {
+      showError('Failed to create task. Please try again.');
+    } finally {
+      saving = false;
+    }
   }
 </script>
 

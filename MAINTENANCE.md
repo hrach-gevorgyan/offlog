@@ -91,11 +91,7 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - Long context? Summarize state and suggest a good /clear point.
 
 ## Maintenance tracker
-Last pass: v3.9.7 (2026-07-05 — first pass; see CHANGELOG.md's 3.9.7 row)
-Next pass due: **after v4.4.0 ships** (owner override, 2026-07-05 — the
-strict "every 3 minor versions" count from v3.9.7 would land around
-v3.12.x/early v4.x, but the owner explicitly chose to skip that catch-up
-and resume the cadence at v4.4.0 instead). After that: another pass after
-**v4.7.0**, then continuing the every-3-releases cadence from there
-(v4.10.0, v4.13.0, …) — see docs/ROADMAP.md's sequencing table, which
-has these same points marked inline.
+Last pass: v4.4.2 (2026-07-07 — second pass; see CHANGELOG.md's 4.4.2 row)
+Next pass due: **after v4.7.0 ships**, then continuing the every-3-
+releases cadence from there (v4.10.0, v4.13.0, …) — see docs/ROADMAP.md's
+sequencing table, which has these same points marked inline.

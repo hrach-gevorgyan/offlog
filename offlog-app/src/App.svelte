@@ -228,8 +228,14 @@
   async function setView(v: View) {
     currentView = v;
     if (!$activeProject) return;
-    await updateProject($activeProject._id, { default_view: v });
-    projects.update(ps => ps.map(p => p._id === $activeProject!._id ? { ...p, default_view: v } : p));
+    // Legacy field, no longer read back (see A27) — the view switch above
+    // already fully succeeded synchronously, so a failure here is a silent
+    // background-persistence miss, not something the user needs an error
+    // toast for (same "fire and forget" reasoning as rescheduleAll()).
+    try {
+      await updateProject($activeProject._id, { default_view: v });
+      projects.update(ps => ps.map(p => p._id === $activeProject!._id ? { ...p, default_view: v } : p));
+    } catch {}
   }
 
   $: activeSpace = $spaces.find(s => s._id === $activeSpaceId);
