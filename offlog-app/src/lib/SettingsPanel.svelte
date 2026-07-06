@@ -167,12 +167,25 @@
     return subscribeDb(() => loadBreakdown());
   });
 
+  // A17/B14 — same screen, same navigator.storage.estimate() call: explain
+  // what the quota number actually means (a browser-assigned ceiling based
+  // on free disk space, not an Offlog-imposed limit — most users have never
+  // seen this number before), and only actually warn once usage is close
+  // enough to it to matter. At personal-task-list scale this essentially
+  // never fires — PouchDB/IndexedDB storage for one person's tasks is tiny
+  // relative to typical quotas — so the default state stays a plain, quiet
+  // fact rather than a constant nag.
   let storageInfo = '';
+  let storagePercent = 0;
+  let storageAvailable = true;
+  const STORAGE_WARN_THRESHOLD = 0.8;
   async function loadStorage() {
     if (navigator.storage?.estimate) {
       const { usage = 0, quota = 0 } = await navigator.storage.estimate();
       storageInfo = `${(usage / 1048576).toFixed(1)} MB used / ${(quota / 1048576).toFixed(0)} MB quota`;
-    } else { storageInfo = 'Not available'; }
+      storagePercent = quota > 0 ? usage / quota : 0;
+      storageAvailable = true;
+    } else { storageInfo = 'Not available'; storageAvailable = false; }
   }
   onMount(loadStorage);
   // Re-check on every open, not just at app-start init — the user may have
@@ -377,6 +390,21 @@
                 <span class="storage-info">{storageInfo || 'Calculating…'}</span>
                 <button class="export-btn" on:click={exportJSON}>Export JSON</button>
               </div>
+              {#if storageAvailable}
+                {#if storagePercent >= STORAGE_WARN_THRESHOLD}
+                  <p class="setting-hint setting-hint-warn">
+                    {(storagePercent * 100).toFixed(0)}% of quota used — getting close. Try Maintenance's
+                    cleanup tools (prune old history, empty Recycle) below, or free up device storage;
+                    once truly full, new writes would start failing.
+                  </p>
+                {:else}
+                  <p class="setting-hint">
+                    "Quota" is a ceiling your browser sets based on free disk space — not a limit Offlog
+                    imposes. A personal task list's data is tiny next to typical quotas, so this number is
+                    informational; nothing to act on unless it climbs near 100%.
+                  </p>
+                {/if}
+              {/if}
               {#if breakdown}
                 <p class="setting-hint">
                   {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
@@ -501,6 +529,10 @@
   }
   .setting-row { display: flex; align-items: center; gap: .75rem; }
   .setting-hint { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
+  .setting-hint-warn {
+    color: var(--due-soon-ink); background: var(--due-soon-bg);
+    padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 500;
+  }
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 

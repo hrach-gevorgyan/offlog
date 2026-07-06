@@ -168,13 +168,14 @@ functions exported specifically for this. Also audited `startSync()`/
 `startSync()` returns before any `db.sync()` call when paused, so toggling
 sync off can never leave a stray handler running.
 
-### A17. Storage-pressure handling
-Nothing today handles `navigator.storage.estimate()` actually approaching
-quota — worth deciding what graceful degradation even looks like for a
-local-first app (warn before writes start failing? nothing else to do?)
-before it's a real user complaint rather than a hypothetical, similar in
-spirit to A10's large-dataset validation but specifically about running
-low on space rather than running slow.
+### A17. Storage-pressure handling — shipped in v4.3.0
+Settings → Data now warns once usage crosses 80% of quota (amber hint,
+same visual treatment as the due-soon date color) pointing at
+Maintenance's cleanup tools or freeing device storage, instead of
+silently doing nothing until a write actually fails. Below that
+threshold it's just the plain informational note from B14. Shipped
+together with B14 since both touch the same `navigator.storage.estimate()`
+call on the same screen.
 
 ### A18. PWA not force-updating after a new version ships — shipped in v3.8.0
 See [CHANGELOG.md](CHANGELOG.md)'s v3.8.0 entry. Number kept (not
@@ -362,15 +363,12 @@ toggle and returns before ever calling `db.sync()` if paused, and the
 `online` event listener's auto-resync no longer fires while paused
 either — pausing means paused, not "paused until the network blips."
 
-### B14. Explain the storage quota number
-Settings → Data shows the raw `navigator.storage.estimate()` output
-("X MB used / Y MB quota") with no context — the quota figure in particular
-is a browser-assigned ceiling most users have never encountered and don't
-know how to interpret. Add a short inline explanation (e.g. "quota is set
-by your browser based on available disk space, not by Offlog") and clarify
-whether approaching it matters (it doesn't, in practice, until real disk
-pressure — PouchDB/IndexedDB storage for a single-user task list is tiny
-relative to typical quotas).
+### B14. Explain the storage quota number — shipped in v4.3.0
+Settings → Data now explains what the quota figure actually means (a
+browser-assigned ceiling based on free disk space, not an Offlog-imposed
+limit) and that it doesn't matter in practice at personal-task-list
+scale — until A17's 80%-threshold warning replaces this note with an
+actual call to action.
 
 ### B15. Fold Maintenance into the Settings detail pane
 v3.6.0 gave Maintenance its own modal-on-top-of-a-modal (Settings →
@@ -795,16 +793,16 @@ was declined outright and never entered sequencing.
 | — | v4.0.0 (shipped) | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
 | — | v4.1.0 (shipped) | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
 | — | v4.2.0 (shipped) | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
-| 1 | v4.3.0 | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 2 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 3 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 4 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 5 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 6 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 7 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 8 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 9 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 10 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | v4.3.0 (shipped) | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
+| 1 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| 2 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 3 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 4 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 5 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 6 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 7 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 8 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 9 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release, same reason as B35. |
 | — | (unscheduled) | — | B38 | Custom calendar/date picker — needs a scoping pass to confirm the full list of call sites before it can be sized into a release. |
