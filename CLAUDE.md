@@ -288,13 +288,17 @@ rather than invoking Gradle.
 ## Maintenance routine (mandatory)
 - Cadence: a maintenance pass **every 3 minor versions**, tracked in
   [MAINTENANCE.md](MAINTENANCE.md)'s tracker (process lives there too).
+  Currently on an explicit owner-set schedule (2026-07-05) rather than a
+  strict +3 count: next pass **after v4.4.0**, then **after v4.7.0**, then
+  the every-3 cadence resumes from there (v4.10.0, v4.13.0, …) — also
+  marked inline in docs/ROADMAP.md's sequencing table.
 - Check the tracker **when bumping the version during a release**
   (checklist step 5) — not on every session start, that's wasted tokens.
-  If the new minor >= "Next pass due", tell the owner: "A maintenance
-  pass is due (last: vX, current: vY). Run it now? (see MAINTENANCE.md)"
-  — and don't start one without confirmation.
+  If the release just shipped matches "Next pass due," tell the owner:
+  "A maintenance pass is due (last: vX, current: vY). Run it now? (see
+  MAINTENANCE.md)" — and don't start one without confirmation.
 - When a pass completes, update the tracker: Last pass = current
-  version, Next pass due = current minor + 3.
+  version, Next pass due = the next scheduled point per the cadence above.
 - Maintenance passes never add features and never touch doc schema,
   PouchDB/CouchDB sync logic, storage format, soft-delete semantics, or
   the positional-"done" rule without explicit owner approval.

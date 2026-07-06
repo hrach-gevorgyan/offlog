@@ -99,14 +99,21 @@ Full details in [CHANGELOG.md](CHANGELOG.md)'s per-version entries.
 Goal: the app stays trustworthy as data grows and devices multiply. No new
 user-visible features; every item here should be invisible when it works.
 
-### A9. UI component tests
-`tests/db.test.ts` only covers the database layer — every `.svelte`
-component has zero automated coverage, caught only by manual browser
-verification. Start with `@testing-library/svelte` for the components with
-the most non-obvious logic: `KanbanBoard`'s drag/drop position math,
-`CardDetail`'s save/diff logic, and `Sidebar`'s Maintenance step
-orchestration (the exact kind of multi-step async flow that's easy to
-silently break with a future refactor).
+### A9. UI component tests — still fully open (doc correction below)
+`tests/db.test.ts`/`modalStack.test.ts`/`sync.test.ts` cover the database
+and pure-logic layers only — every `.svelte` component has zero automated
+coverage, caught only by manual browser verification. Start with
+`@testing-library/svelte` for the components with the most non-obvious
+logic: `KanbanBoard`'s drag/drop position math, `CardDetail`'s save/diff
+logic, and `Sidebar`'s Maintenance step orchestration (the exact kind of
+multi-step async flow that's easy to silently break with a future
+refactor). **Correction (2026-07-05)**: the sequencing table's v3.6.0 row
+and CHANGELOG.md's v3.6.0 entry both label that release's work as "A9" —
+it wasn't. v3.6.0 only grew `tests/db.test.ts` (26→35 tests, still
+db-layer only) for the new Space/Tag CRUD functions it shipped; no real
+`.svelte` component test ever landed. Leaving the CHANGELOG wording as-is
+(it accurately describes what shipped, just mislabeled which roadmap
+item it was), but this item itself has never been done.
 
 ### A10. Large-dataset performance validation
 Manual testing so far has gone up to ~150 tasks (the 50-dummy-task batches
@@ -535,17 +542,40 @@ top), applied to projects — pin a project to the top of the sidebar/space
 list for the ones actively being worked, same UX pattern already proven
 for tasks.
 
-### B35. Focus view — concept only, to be designed with the owner
-A possible third project view alongside Kanban and List, working name
-"Focus" (owner, 2026-07-03, raised while rewriting the List view). No
-committed definition yet — the stated intent is to imagine it together
-before scoping anything. Directional sketch to start that conversation
-from: where Kanban answers "what's the state of everything" and List
-answers "let me scan/sort the data," Focus would answer "what should I be
-doing right now" — a deliberately small, calm surface (e.g. today's due +
-pinned + one next task) rather than another way to render the full task
-table. **Do not implement from this description** — it needs a real design
-session with the owner first.
+### B35. Focus view — scoped, ready to implement
+Working name "Focus" (owner, 2026-07-03, raised while rewriting the List
+view). Direction confirmed 2026-07-05: where Kanban answers "what's the
+state of everything" and List answers "let me scan/sort the data," Focus
+answers "what should I be doing right now" — the "today's short list"
+shape, not the "one task at a time" or "priority board" alternatives
+considered and set aside (the former is too big an interaction-model
+departure for a v1, the latter is too redundant with List's existing
+priority filter/sort).
+
+Scope, finalized:
+- **Global nav item, not a third per-project tab.** Sits next to
+  Dashboard/Agenda in the sidebar, not inside Kanban/List's view switcher.
+  A per-project Focus would mostly just be "Agenda, filtered to one
+  project" — thin. A global "what matters right now, across everything"
+  view earns its own surface the way Dashboard/Agenda already do.
+- **Content, capped at ~7 items total, in this priority order:**
+  pinned tasks first (any project), then overdue tasks, then due-today
+  tasks — same underlying `getAllTasksDue()` query Agenda already uses,
+  just truncated and re-ordered for "what's urgent" instead of Agenda's
+  full chronological grouping. If fewer than 7 after those three
+  categories, backfill with one "up next" suggestion: the oldest
+  `updated_at` non-done task in whichever project was most recently
+  worked in (reuses the `getRecentlyModifiedTasks()` project as the
+  signal for "what you were just doing").
+- **Explicit non-goals** (this is what keeps it from becoming a fourth
+  full view): no sort controls, no column customization, no saved
+  filters, no search box. If a request needs any of those, it belongs in
+  List, not Focus.
+- **Interaction**: click a task opens the normal `CardDetail`, same as
+  everywhere else. Marking done is the normal positional last-column
+  move — no special animation/celebration; that would be scope creep
+  against the "deliberately small, calm surface" goal.
+- Read-only aggregation view — no new doc fields, no schema change.
 
 ### B36. List view power customization — shipped in v3.8.5
 Direction set by the owner (2026-07-03) right after the List/Table merge
@@ -768,43 +798,53 @@ here. Check there before assuming an item above is fully settled.
 
 ## Sequencing suggestion
 
-Re-paired 2026-07-03 from scratch across the entire unshipped backlog (13
-Track A items, 30 Track B items) — the old v3.8.0–v4.0.0 pairing is
-superseded entirely by the table below, not layered on top of it. Every
-item unshipped at re-pairing time is placed exactly once, plus **B36**
-(added later the same day) slotted into a new **v3.8.5** as a deliberate
-exception to the pairing convention — see that row for why. **B35 (Focus
-view) remains unscheduled** — it needs an owner design session before it
-can be scoped into any release. Track C runs
-independently of version numbers: **C7 (credential fix) and C2 can start
-any time**, since they're documentation/verification/security work that
-barely touches app code; **C1/C3/C5/C6 fit naturally once the app feels
-"finished enough" to represent well in a public listing** — realistically
-after this table's backlog has substantially landed. Track D (mesh sync)
-was declined outright and never entered sequencing.
+Re-paired twice: 2026-07-03 (initial full backlog pairing) and again
+2026-07-05 once B35 (Focus view) was finally scoped and several new items
+(A9's real status corrected, A25–A28, B37–B39) needed slotting in. The
+table below supersedes both prior versions entirely, not layered on top.
+**Maintenance passes are now scheduled explicitly** (owner, 2026-07-05):
+one after **v4.4.0**, one after **v4.7.0**, then every 3 releases
+after that (v4.10.0, v4.13.0, …) — tracked the same way in
+[MAINTENANCE.md](../MAINTENANCE.md). Track C runs independently of version
+numbers: **C7 (credential fix) and C2 can start any time**, since they're
+documentation/verification/security work that barely touches app code;
+**C1/C3/C5/C6 fit naturally once the app feels "finished enough" to
+represent well in a public listing** — realistically after this table's
+backlog has substantially landed. Track D (mesh sync) was declined
+outright and never entered sequencing.
 
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
-| — | v3.6.0 (shipped) | A9 | B1, B6 | Small, self-contained "manage X in Settings" screens — good first target for A9's new component-testing setup. |
+| — | v3.6.0 (shipped) | — | B1, B6 | Small, self-contained "manage X in Settings" screens. (Originally mis-labeled as also shipping A9 here — see A9's own entry for the correction; it's still fully open.) |
 | — | v3.7.0 (shipped) | A13, A14 | B3, B10 | Android-focused release — native-only surface (notification actions, home-screen widget) alongside the accessibility/back-button work that shaped it. |
 | — | v3.8.0 (shipped) | A18, A19, A20, A21, A22 | — | Four user-visible correctness bugs (PWA not force-updating, wrong first-launch view, list-view alignment regression, an accidental-click with no safety net) plus the List/Table merge rewrite, which also resolved A21 (tag overflow) as a side effect. |
 | — | v3.8.5 (shipped) | — | B36 | **Deliberately not a full A+B paired cycle** — owner request to treat this as a lighter, faster commit rhythm for List-view customization landing in pieces (filters, column selection/reorder, horizontal scroll, no-truncation guarantee, multi-column sort, more columns) rather than one big release. |
 | — | v3.9.0 (shipped) | A23 | B23, B34 | All sidebar-focused. A23's scale test (seeded 22 dummy projects) found a real bug — the sidebar scrolled as one block and top nav disappeared — fixed alongside B23 (recent tasks) and B34 (pinning), plus a full visual pass on the sidebar per live feedback. |
+| — | v3.9.5 (shipped) | — | — | Light UX-fix cycle (owner-requested): card-click-into-title-edit fix, view-restore-to-kanban fix, List toolbar single-row rebuild. No A/B items — see CHANGELOG.md. |
+| — | v3.9.6 (shipped) | — | — | New brand icon across every platform surface. No A/B items. |
+| — | v3.9.7 (shipped) | — | — | First maintenance pass (routine setup + the pass itself) — see CHANGELOG.md and MAINTENANCE.md. |
+| — | v3.9.8 (shipped) | A25, A27, A28 | — | Three owner-reported bug fixes (Quick Add widget cold-start, view-restore-to-kanban regression, exact-alarm status). |
 | — | v4.0.0 (shipped) | — | B25, B26 | Both are card-creation input-assistance — deadline shortcuts and smarter tag autocomplete, same "make adding a task faster" investment. |
 | — | v4.1.0 (shipped) | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
 | — | v4.2.0 (shipped) | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
 | — | v4.3.0 (shipped) | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
 | 1 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
-| 2 | v4.5.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 3 | v4.6.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| — | *Maintenance pass* | — | — | Scheduled after v4.4.0 ships (owner, 2026-07-05). |
+| 2 | v4.5.0 | — | B35 | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. |
+| 3 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
 | 4 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
-| 5 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 6 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 7 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 8 | v4.11.0 | — | B8, B30 | Final small-feature pair: project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 9 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
-| — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
-| — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release, same reason as B35. |
+| — | *Maintenance pass* | — | — | Scheduled after v4.7.0 ships (owner, 2026-07-05). |
+| 5 | v4.8.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 6 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 7 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
+| 8 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 9 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 10 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally — Kanban drag/drop, CardDetail save/diff, Sidebar Maintenance orchestration), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
+| 11 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
+| — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release. |
 | — | (unscheduled) | — | B38 | Custom calendar/date picker — needs a scoping pass to confirm the full list of call sites before it can be sized into a release. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
 
