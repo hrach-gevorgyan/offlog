@@ -285,7 +285,14 @@ export function describeSyncError(err: any): string {
   if (status === 401 || status === 403) return 'Authentication failed — check sync credentials';
   if (status === 404) return 'Sync database not found on server';
   if (status === 0 || err.name === 'TypeError' || /network|failed to fetch/i.test(err.message ?? '')) {
-    return 'Cannot reach sync server';
+    // Owner-reported confusion (2026-07-06): the sync URL is a LAN IP
+    // (see DECISIONS.md — self-hosted CouchDB, no hosted alternative), so
+    // "cannot reach it" overwhelmingly means "not on that network right
+    // now" — a laptop on a different WiFi, a phone off home WiFi entirely.
+    // A device that's never synced before shows an empty/default-seeded
+    // app in exactly this situation, easy to mistake for lost data if the
+    // message doesn't say why in plain terms.
+    return 'Cannot reach sync server — check you\'re on the same network/WiFi it runs on';
   }
   return err.message ?? err.reason ?? String(err);
 }

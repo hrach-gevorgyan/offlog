@@ -285,6 +285,17 @@ user to go find the toggle themselves. `@capacitor/local-notifications`
 live granted/denied status with an Enable button, re-checked every time
 Settings opens (in case the user just came back from that screen).
 
+### A29. "Cannot reach sync server" doesn't say why — shipped in v4.4.1
+Owner-reported confusion (2026-07-06): a device on a different WiFi than
+the one CouchDB runs on (the sync URL is a LAN IP — see DECISIONS.md,
+self-hosted, no hosted alternative) can't reach it; a device that's never
+synced before shows an empty/default-seeded app in that exact situation,
+easy to mistake for lost data. The sidebar's sync-status row was already
+always visible on every screen, so the real gap wasn't discoverability —
+it was that `describeSyncError()`'s network-failure message just said
+"Cannot reach sync server" with no hint *why*. Reworded to "…check
+you're on the same network/WiFi it runs on."
+
 ---
 
 ## Track B — Features
@@ -833,6 +844,7 @@ outright and never entered sequencing.
 | — | v4.2.0 (shipped) | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
 | — | v4.3.0 (shipped) | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
 | — | v4.4.0 (shipped) | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| — | v4.4.1 (shipped) | A29 | — | Light patch (owner-reported live) — clearer wording for the "cannot reach sync server" message, no A/B pairing. |
 | — | *Maintenance pass* | — | — | Scheduled after v4.4.0 ships (owner, 2026-07-05). |
 | 1 | v4.5.0 | — | B35 | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. |
 | 2 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
