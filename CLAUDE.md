@@ -68,7 +68,9 @@ npx cap sync android    # copy dist/ into the Android project (run after build)
 ```
 
 Android APK: `cd android && .\gradlew assembleDebug` (set
-`JAVA_HOME` to Android Studio's JBR first). Dev environment is **Windows** —
+`JAVA_HOME` to Android Studio's JBR first) — **owner-only, run by them in
+Android Studio; never invoke this as the assistant** (see Release checklist
+below). Dev environment is **Windows** —
 prefer POSIX-safe commands in scripts, and expect LF→CRLF warnings from git
 (harmless, don't "fix" them).
 
@@ -245,10 +247,19 @@ verification.
 ## Release checklist
 
 Day-to-day work happens on the PC/web build. **Android sync
-(`npx cap sync android`) and APK builds are manual, owner-requested steps —
-do not run them as part of a routine release.** Bump the Android version
-numbers alongside the web ones so they stay in sync for whenever a build is
-actually requested, but don't invoke Capacitor/Gradle unprompted.
+(`npx cap sync android`) is a manual, owner-requested step — do not run it
+as part of a routine release.** Bump the Android version numbers alongside
+the web ones so they stay in sync for whenever a sync/build is actually
+requested.
+
+**Never run a Gradle/APK build (`gradlew assembleDebug` or similar) —
+ever, even when asked to verify Android changes.** The owner always builds
+and runs via Android Studio directly (2026-07-05). If Android-side changes
+need verification, `npx cap sync android` (copies `dist/` into the Android
+project so Android Studio picks up the latest code) is as far as this
+goes — confirm it compiles/looks right by reading the code and running
+`cap sync`, then say a Studio rebuild is needed to actually test it,
+rather than invoking Gradle.
 
 1. `npm run build` — must succeed with **zero warnings**
 2. `npx tsc --noEmit -p .` — clean

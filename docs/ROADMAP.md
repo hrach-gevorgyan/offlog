@@ -606,6 +606,37 @@ here — the data plumbing (`OffologWidgetPlugin`/`widgetBridge.ts`) built
 for B20/B31 stays as-is; this is about what gets *drawn* into the
 RemoteViews, not how data reaches them.
 
+### B38. Custom calendar/date picker instead of the native one — NOT started
+Owner feedback (2026-07-05): due date, reminder, and any future date
+input currently use the plain OS-native `<input type="date">`/
+`type="datetime-local">` pickers — inconsistent look across
+browsers/Android versions and no visual connection to the rest of the
+app's design. Replace with a real in-app calendar component (own
+month-grid UI, styled with the existing theme tokens) for a consistent
+experience everywhere a date is picked, rather than whatever the host
+OS/browser happens to render. Touches `CardDetail` (due date, reminder)
+and anywhere else a date input exists — needs a scoping pass to confirm
+full list of call sites before implementation.
+
+### B39. Renaming a device (B22) leaves a stale "dead" entry — NOT started
+Real gap found right after B22/B5 shipped (2026-07-05): "Devices seen
+recently" and `CardDetail` history are both derived by scanning past
+changelog entries for their literal `source` string
+(`getDeviceLastSeen()`, `TaskHistoryPanel.svelte`) — renaming a device
+only changes what *new* entries say, so the old name keeps showing up
+indefinitely as what looks like a separate, no-longer-active device,
+since nothing ties the old and new names back to the same physical
+device. Fixing this properly means B22's free-form `source` string isn't
+enough on its own — needs a **stable per-install device id** (generated
+once, never changes) separate from the human-editable display name, plus
+somewhere durable to store the current id→name mapping so historical
+entries (which only ever recorded the id) can resolve to whatever the
+device is named *now*. That's a real schema addition (a new synced doc
+type, e.g. `device:<id>`, or widening `source` from a plain string to
+`{id, name}`) — flagging as its own item rather than folding into B22
+because it needs the same care as any schema change (see CLAUDE.md), not
+a quick patch.
+
 ---
 
 ## Track C — Public Release & Open Source
@@ -776,6 +807,8 @@ was declined outright and never entered sequencing.
 | 10 | v4.12.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | — | B35 | Focus view — needs an owner design session before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release, same reason as B35. |
+| — | (unscheduled) | — | B38 | Custom calendar/date picker — needs a scoping pass to confirm the full list of call sites before it can be sized into a release. |
+| — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
 
 Within each release: land any Track A item first (or in the same PR as the
 Track B item it protects/enables), then the Track B items. Extend
