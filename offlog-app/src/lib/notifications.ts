@@ -76,6 +76,17 @@ export function checkPermission(): void {
 
 // ── Web scheduling (best-effort — see TECH.md for the "app must stay
 // running" caveat; there's no push backend behind this local-first app) ──
+//
+// A12 audit note on DST/timezone: reminder_at is stored as an absolute
+// ISO instant (UTC epoch under the hood). Every delay computed below is
+// `new Date(reminder_at).getTime() - Date.now()` — plain epoch-ms
+// arithmetic, which is DST-safe by construction; there's no local-time
+// component in this math for a DST transition to corrupt. The native
+// path (scheduleNative below) hands Android's AlarmManager an absolute
+// Date for the same reason. The one real gap this audit found wasn't a
+// DST bug — it was catchUpWeb() below leaving very-stale reminders
+// dangling forever instead of ever resolving them one way or the other;
+// see its own comment.
 
 const _webTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const MAX_TIMEOUT = 2_147_483_647; // setTimeout's 32-bit signed int limit (~24.8 days)
@@ -117,7 +128,14 @@ function scheduleWeb(task: TaskDoc) {
   if (!task.reminder_at) return;
   const delay = new Date(task.reminder_at).getTime() - Date.now();
   if (delay <= 0) return; // handled by the catch-up check instead
-  if (delay > MAX_TIMEOUT) return; // too far out — will be re-scheduled on a later reload
+  // Too far out to schedule now — picked up on a later reload() once it's
+  // within range instead (every app open + every live sync change calls
+  // rescheduleAll()). A12 audit: the only way this actually drops a
+  // reminder is a reminder >24.8 days out AND the web app never being
+  // opened again until after it's already due — accepted as a residual,
+  // low-probability edge case rather than adding a background re-check
+  // timer for it; the native path has no such limit at all.
+  if (delay > MAX_TIMEOUT) return;
   _webTimers.set(id, setTimeout(() => { fireWebNotification(task); _webTimers.delete(id); }, delay));
 }
 
@@ -129,13 +147,26 @@ function cancelWeb(taskId: string) {
 // Reminders due while the app/tab wasn't open can't fire on web (no push
 // server behind this app) — fire them immediately on load instead, as
 // long as they're not too stale to be useful.
-function catchUpWeb(tasks: TaskDoc[]) {
+//
+// A12 audit finding: a reminder past this window used to just sit there
+// forever — never fired (too stale), never cleared (nothing here touched
+// it), so it silently stayed "active" indefinitely and would keep
+// re-entering this same dead-end check on every future reload. Fixed by
+// explicitly clearing reminder_at once something is too stale to be a
+// useful notification, same as fireWebNotification() already does for the
+// reminders that DO fire — a stale reminder is closed out one way or the
+// other, never left dangling.
+// Exported for tests/notifications.test.ts (A12) — the stale-reminder
+// cleanup fix above is worth a real regression test.
+export function catchUpWeb(tasks: TaskDoc[]) {
   const now = Date.now();
   const CATCH_UP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
   for (const t of tasks) {
     if (!t.reminder_at) continue;
     const at = new Date(t.reminder_at).getTime();
-    if (at <= now && now - at < CATCH_UP_WINDOW_MS) fireWebNotification(t);
+    if (at > now) continue; // still in the future — scheduleWeb() owns this one
+    if (now - at < CATCH_UP_WINDOW_MS) fireWebNotification(t);
+    else updateTask(t._id!, { reminder_at: null }).catch(() => {});
   }
 }
 

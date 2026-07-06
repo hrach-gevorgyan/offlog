@@ -57,6 +57,12 @@ export interface TaskDoc {
   deleted: boolean;
   pinned?: boolean;
   archived?: boolean;
+  // B12: when true, reminder_at is derived from due_date + config.ts's
+  // getDefaultReminderTime() rather than set independently — CardDetail
+  // recomputes it whenever due_date (or the default time) changes while
+  // this is on. Optional/undefined on old docs = manual reminder, same as
+  // always.
+  remindOnDue?: boolean;
   created_at: string;
   updated_at: string;
   source: Source;

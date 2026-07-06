@@ -8,6 +8,7 @@
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import PinStar from './PinStar.svelte';
+  import { getDefaultReminderTime } from '../config';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -49,6 +50,17 @@
   let priority = task.priority;
   let due_date = task.due_date ?? '';
   let reminder_at = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
+  let remindOnDue = task.remindOnDue ?? false;
+
+  // B12: derives reminder_at from due_date + the configured default time
+  // whenever the toggle is on and due_date changes — recomputed live, not
+  // just once on enable, so editing the due date afterward keeps the
+  // reminder in sync without needing to re-toggle.
+  function dueDateToReminderInput(date: string): string {
+    const [h, m] = getDefaultReminderTime().split(':');
+    return `${date}T${h}:${m}`;
+  }
+  $: if (remindOnDue && due_date) reminder_at = dueDateToReminderInput(due_date);
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
@@ -116,7 +128,7 @@
         priority: priority as 1 | 2 | 3,
         due_date: due_date || null,
         reminder_at: reminder_at ? new Date(reminder_at).toISOString() : null,
-        column_id, tags, pinned,
+        column_id, tags, pinned, remindOnDue,
       });
       await reloadTasks();
       requestClose();
@@ -198,9 +210,14 @@
 
       <label>
         Reminder
-        <input type="datetime-local" bind:value={reminder_at} />
+        <input type="datetime-local" bind:value={reminder_at} disabled={remindOnDue} />
       </label>
     </div>
+
+    <label class="remind-on-due-row">
+      <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+      Remind me on the due date{#if due_date}&nbsp;at {getDefaultReminderTime()}{/if}
+    </label>
 
     {#if reminder_at && $permissionState !== 'granted'}
       <div class="reminder-hint">
@@ -344,6 +361,7 @@
     font-size: .9rem; font-family: 'Hanken Grotesk', sans-serif;
   }
   select:focus, input[type=date]:focus, input[type=datetime-local]:focus { outline: none; border-color: var(--accent); }
+  input[type=datetime-local]:disabled { opacity: .6; cursor: default; }
 
   .due-shortcuts { display: flex; gap: 5px; flex-wrap: wrap; }
   .due-shortcut {
@@ -360,6 +378,22 @@
     background: var(--col-bg); border-radius: var(--radius-sm);
     padding: .5rem .65rem; margin-top: -.4rem;
   }
+
+  .remind-on-due-row {
+    display: flex !important; flex-direction: row !important; align-items: center;
+    gap: .5rem; width: fit-content; max-width: 100%;
+    font-size: .8rem; color: var(--muted); font-weight: 500;
+    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
+    margin-top: -.5rem; padding: .4rem .7rem; border-radius: var(--radius-sm);
+    background: var(--col-bg); cursor: pointer; transition: background .12s, color .12s;
+  }
+  .remind-on-due-row:has(input:checked) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, var(--col-bg)); }
+  .remind-on-due-row:has(input:disabled) { opacity: .55; cursor: default; }
+  .remind-on-due-row input[type=checkbox] {
+    accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+    width: 15px; height: 15px; margin: 0;
+  }
+  .remind-on-due-row input[type=checkbox]:disabled { cursor: default; }
   .reminder-enable-btn {
     background: none; border: none; padding: 0; cursor: pointer;
     color: var(--accent); font-weight: 600; font-size: inherit;

@@ -6,7 +6,7 @@
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
   } from './db';
-  import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled } from '../config';
+  import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
   import { timeAgo } from './utils';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError } from './store';
@@ -78,6 +78,11 @@
 
   // ── Notifications ───────────────────────────────────────────────────────
   const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
+  // B12: default time-of-day used when a task's "remind me on the due
+  // date" toggle derives reminder_at — per-device, same reasoning as B36's
+  // localStorage choices (see config.ts's getDefaultReminderTime()).
+  let defaultReminderTime = getDefaultReminderTime();
+  function saveDefaultReminderTime() { setDefaultReminderTime(defaultReminderTime); }
 
   // ── Sync ────────────────────────────────────────────────────────────────
   let syncUrl = getSyncUrl();
@@ -305,6 +310,12 @@
                   This is a separate Android permission from notifications themselves ("Alarms & reminders", since Android 12) — it's a system settings toggle with no in-app prompt, so it's easy to miss. Without it, reminders still arrive, just batched into the OS's next low-power wakeup window instead of at the exact minute you set.
                 </p>
               {/if}
+
+              <label class="field-label">
+                Default "remind me on the due date" time
+                <input type="time" bind:value={defaultReminderTime} on:blur={saveDefaultReminderTime} />
+              </label>
+              <p class="setting-hint">Used whenever a task's "Remind me on the due date" checkbox is on, instead of picking the exact time yourself.</p>
 
             {:else if activeCategory === 'sync'}
               <div class="setting-row">

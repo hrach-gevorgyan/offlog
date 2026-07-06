@@ -131,13 +131,16 @@ empty, the Maintenance modal's five-step flow, `ConfirmDialog` consumers)
 needs the same audit applied fresh, since new features are exactly where
 this invariant tends to quietly lapse.
 
-### A12. Notification reliability audit
-Reminder scheduling (`notifications.ts`) has never been tested across DST
-transitions, device timezone changes, or the app being closed for several
-days then reopened. `catchUpWeb()`'s 1-hour catch-up window and the native
-Android exact-alarm fallback are both plausible sources of missed or
-duplicate reminders under those conditions — worth deliberately testing
-rather than waiting for a real missed reminder to report it.
+### A12. Notification reliability audit — shipped in v4.4.0
+DST/timezone: confirmed safe by construction — `reminder_at` is an
+absolute epoch instant, every delay computed from it is plain epoch-ms
+arithmetic with no local-time component for a DST transition to
+corrupt, on both the web (`setTimeout`) and native (`AlarmManager`, via
+an absolute `Date`) paths. Found a real bug instead: `catchUpWeb()` left
+a reminder that missed the 1-hour catch-up window (app closed for
+hours/days) dangling forever — never fired, never cleared, silently
+"active" indefinitely. Fixed to explicitly clear it; regression coverage
+in `tests/notifications.test.ts`.
 
 ### A13. Accessibility re-audit for the newer components — shipped in v3.7.0
 See [CHANGELOG.md](CHANGELOG.md)'s v3.7.0 entry. Number kept (not
@@ -352,13 +355,14 @@ color already routes through a CSS custom property). Toggled from Settings
 → Appearance, next to the existing dark mode switch. Raised while reshaping
 Settings in v3.6.0.
 
-### B12. Auto-reminder from due date
-Right now a reminder (`reminder_at`) is a fully separate field the user
-sets manually, independent of `due_date`. Add an optional "remind me on the
-due date" toggle in `CardDetail` that derives `reminder_at` from `due_date`
-at a configurable time-of-day (a new Settings → Notifications default, e.g.
-"9:00 AM"), instead of requiring the exact date+time to be picked twice for
-the common case of "just remind me the day it's due."
+### B12. Auto-reminder from due date — shipped in v4.4.0
+`CardDetail` has a "Remind me on the due date" checkbox (disabled until a
+due date is set) that derives `reminder_at` from `due_date` + a
+configurable default time (Settings → Notifications, default 9:00 AM —
+`config.ts`'s `getDefaultReminderTime()`/`setDefaultReminderTime()`, per-
+device like B36's choices), recomputing live as `due_date` changes and
+disabling the manual reminder input while on. New optional
+`TaskDoc.remindOnDue` field.
 
 ### B13. Sync on/off toggle — shipped in v4.2.0
 Settings → Sync now has an explicit on/off switch (`config.ts`'s
@@ -828,21 +832,21 @@ outright and never entered sequencing.
 | — | v4.1.0 (shipped) | A15 | B20, B31 | The "3 widgets" release. A15's back-button/widget test coverage underpins all native surface — building the second and third widget in the same release extends that coverage to both immediately. |
 | — | v4.2.0 (shipped) | A16 | B13, B5, B22 | Sync + device-identity is one theme: robustness testing, the pause toggle, and per-device naming/multi-device polish all touch the same sync/device state. |
 | — | v4.3.0 (shipped) | A17 | B14 | Storage-pressure handling and explaining the quota number — same screen, same data. |
-| 1 | v4.4.0 | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
+| — | v4.4.0 (shipped) | A12 | B12 | Auto-reminder derivation adds exactly the DST/timezone-sensitive scheduling code A12 is auditing for — build it under audit, not after. |
 | — | *Maintenance pass* | — | — | Scheduled after v4.4.0 ships (owner, 2026-07-05). |
-| 2 | v4.5.0 | — | B35 | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. |
-| 3 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 4 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 1 | v4.5.0 | — | B35 | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. |
+| 2 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
+| 3 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
 | — | *Maintenance pass* | — | — | Scheduled after v4.7.0 ships (owner, 2026-07-05). |
-| 5 | v4.8.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 6 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 7 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 4 | v4.8.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
+| 5 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 6 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 8 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 9 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 10 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally — Kanban drag/drop, CardDetail save/diff, Sidebar Maintenance orchestration), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 7 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 8 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 9 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally — Kanban drag/drop, CardDetail save/diff, Sidebar Maintenance orchestration), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
-| 11 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| 10 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release. |
 | — | (unscheduled) | — | B38 | Custom calendar/date picker — needs a scoping pass to confirm the full list of call sites before it can be sized into a release. |

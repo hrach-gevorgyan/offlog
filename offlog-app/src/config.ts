@@ -57,3 +57,18 @@ export function isSyncEnabled(): boolean {
 export function setSyncEnabled(enabled: boolean) {
   localStorage.setItem(SYNC_ENABLED_KEY, String(enabled));
 }
+
+// B12: "remind me on the due date" derives reminder_at from due_date at
+// this time-of-day, so the exact date+time doesn't need picking twice for
+// the common case. Per-device (not synced) — a phone and a PC may
+// reasonably want a different default nudge time, same reasoning as
+// B36's per-device localStorage choices.
+const DEFAULT_REMINDER_TIME_KEY = 'offlog_default_reminder_time';
+
+export function getDefaultReminderTime(): string {
+  return localStorage.getItem(DEFAULT_REMINDER_TIME_KEY) ?? '09:00';
+}
+
+export function setDefaultReminderTime(time: string) {
+  localStorage.setItem(DEFAULT_REMINDER_TIME_KEY, time);
+}
