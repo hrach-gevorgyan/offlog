@@ -126,9 +126,9 @@ design baseline** (real data grid, generous fixed columns, plain
 be clipped by a background shape, which the badges repeatedly were) and
 List's interactions layered on top. Don't reintroduce a separate Table
 view, and don't bring back pill-style due badges in the grid — both were
-deliberately removed. A possible future third view is B35 ("Focus",
-concept only, needs owner co-design) — that's an addition for a different
-job, not a re-split of this merge.
+deliberately removed. B35 ("Focus", shipped as a draft in v4.5.0) is a
+third view for a different job — "what should I be doing right now,"
+a daily commitment lock — not a re-split of this merge.
 
 ---
 
@@ -150,6 +150,27 @@ hard delete that hasn't yet replicated to a currently-offline device will
 resurrect the "deleted" doc as a new create the next time that device
 reconnects, unless the delete itself is a replicated tombstone. Soft
 delete already produces exactly that tombstone behavior for free.
+
+---
+
+## Mobile / Android
+
+### Why an official `@capacitor/*` plugin's own mechanism beats a custom native bridge event (A25, 2026-07)
+The Quick Add home-screen widget used to forward its launch intent via a
+hand-rolled `getBridge().triggerJSEvent(...)` call in `MainActivity` — it
+fired before the WebView had a listener attached, so the event was lost on
+every cold start (A25). Replaced with `@capacitor/app`'s own
+`getLaunchUrl()` + `appUrlOpen` listener, which does the same job
+correctly, because Capacitor's own Bridge already handles the
+timing/replay problem for its own plugins' events — a hand-rolled bridge
+call doesn't get that guarantee for free. The general lesson, not just
+this one fix: before writing custom native Java for something that feels
+like it needs "a bridge event," check whether `@capacitor/local-
+notifications`, `@capacitor/app`, etc. already expose the native
+capability directly (see A28's `checkExactNotificationSetting()`/
+`changeExactNotificationSetting()` for a second example of the same
+pattern paying off). Apply this check before adding any new native bridge
+code, not just when debugging one that's already broken.
 
 ---
 

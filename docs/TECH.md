@@ -185,6 +185,33 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 ---
 
+## Testing & Dev Workflows
+
+### Generating test/dummy data
+
+When asked to add dummy records for manual testing, write directly against
+the PouchDB instance in the browser (`new PouchDB('offlog')` — it's a global,
+reachable from `preview_eval` or the browser console) rather than driving the
+UI one task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
+identifiable and easy to bulk-remove later. Spread across every existing
+project **and** across each project's actual statuses (fetch real column ids
+first — CLAUDE.md's `column_id` invariant applies here too: assign
+`column.id`, never the whole column object). Reload the page after writing so
+the live `subscribe()` change feed and in-memory task cache pick it up.
+
+### `tests/setup.ts`'s Node/localStorage workaround
+
+`tests/db.test.ts` (Vitest, `vitest.config.ts`) covers `db.ts`'s pure/query
+logic against `pouchdb-adapter-memory`. `tests/setup.ts` stubs the global
+`PouchDB` (normally the UMD script) and works around a Node/jsdom conflict:
+Node 20+'s own experimental `localStorage` global shadows jsdom's, so rather
+than fighting over which one wins, `setup.ts` installs a tiny in-memory
+polyfill instead. The `db` instance is a module-level singleton reused
+across the whole test file, same as in the real app — tests get isolation
+from a `beforeEach` that wipes every doc, not from a fresh instance.
+
+---
+
 ## How Sync Works
 
 1. `startSync()` in `db.ts` starts a **live bidirectional PouchDB sync** with CouchDB
@@ -234,6 +261,12 @@ All colors are CSS custom properties in `app.css` — no hardcoded colors anywhe
 The same accent (`#6366F1`) drives the PWA `theme_color`/`background_color` (`vite.config.ts`), the `<meta name="theme-color">` in `index.html`, Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`), and the notification icon color (`capacitor.config.ts`) — one brand color across web, installed PWA, and native app, updated in one place if it ever changes again.
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
+
+**Gotcha**: `Sidebar.svelte`'s `.settings-panel` is a DOM **sibling** of the
+sidebar, not a descendant — it inherits page-level tokens, not the
+sidebar's dark overrides (the sidebar itself is pinned always-dark by
+design). Don't "fix" this by adding local palette overrides there; it's
+already correctly reading the page theme, not a bug.
 
 ---
 

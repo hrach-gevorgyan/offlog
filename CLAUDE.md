@@ -18,6 +18,21 @@ content that's become stale, not just adding to it. A change that isn't
 reflected in the docs it affects isn't finished. This applies to every
 document in this list, every session, no exceptions.
 
+**When to read which doc** (so "the relevant document(s)" isn't a blanket
+read-everything every time):
+- **TECH.md** — touching architecture, the data model, sync internals, or
+  Android/PWA platform behavior.
+- **ROADMAP.md** — starting a roadmap item, or making sequencing/scheduling
+  decisions.
+- **DECISIONS.md** — before any "why not X instead," or touching storage/
+  sync/business-model/distribution choices.
+- **QUESTIONS.md** — only when the task is itself one of the open
+  questions.
+- **CHANGELOG.md** — only at release time (the version-bump step), not per
+  code change.
+- **MAINTENANCE.md** — only when running an actual maintenance pass, or
+  checking whether one is due at a version bump.
+
 **Before proposing "why not just do X differently" — check
 docs/DECISIONS.md first.** Several non-obvious choices (PouchDB-as-UMD-
 global, CouchDB over any hosted backend, soft-delete-only, positional
@@ -47,14 +62,20 @@ narrating far more than the work needed. Concretely:
   code comment or a docs/ file — link to it instead of repeating it.
 - **If a preview browser/server gets stuck, restart once and move on** —
   don't retry the same stuck screenshot/eval call repeatedly.
+- **Use a subagent for open-ended codebase exploration** (the `Explore` or
+  `general-purpose` agent) instead of reading many files into the main
+  session directly — keeps the main context window free for the actual edit.
+- **Run `/compact` at the end of a shipped version**, not mid-task —
+  compacting mid-implementation risks losing in-progress reasoning.
+- **Use `/clear` between unrelated concerns** instead of letting one
+  session run long across topics that don't share context.
 
 ## What this is
 
-A **single-user, local-first** task manager. Svelte 5 + TypeScript + Vite,
-PouchDB (IndexedDB) for storage, optional live sync to a self-hosted CouchDB,
-Capacitor 7 for the Android build, vite-plugin-pwa for the installable web build.
-There is deliberately **no backend, no accounts, no telemetry** — everything
-works fully offline and the only network call is CouchDB replication.
+A **single-user, local-first** task manager with deliberately **no backend,
+no accounts, no telemetry** — everything works fully offline and the only
+network call is optional CouchDB replication. Full tech stack table in
+[docs/TECH.md](docs/TECH.md).
 
 ## Commands
 
@@ -128,14 +149,9 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
 
 ## Generating test/dummy data
 
-When asked to add dummy records for manual testing, write directly against
-the PouchDB instance in the browser (`new PouchDB('offlog')` — it's a global,
-reachable from `preview_eval` or the browser console) rather than driving the
-UI one task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
-identifiable and easy to bulk-remove later. Spread across every existing
-project **and** across each project's actual statuses (fetch real column ids
-first — see the `column_id` pitfall above). Reload the page after writing so
-the live `subscribe()` change feed and in-memory task cache pick it up.
+Write directly against the PouchDB browser global, don't drive the UI one
+task at a time — full recipe in [docs/TECH.md](docs/TECH.md)'s "Testing &
+Dev Workflows" section.
 
 ## Theming rules
 
@@ -154,9 +170,8 @@ the live `subscribe()` change feed and in-memory task cache pick it up.
 - Brand color changes must also propagate to: `index.html` `<meta theme-color>`,
   `vite.config.ts` PWA manifest, `capacitor.config.ts` `iconColor`, and
   `android/.../values/colors.xml`.
-- `Sidebar.svelte`'s `.settings-panel` is a DOM **sibling** of the sidebar, not
-  a descendant — it inherits page-level tokens, not the sidebar's dark
-  overrides. Don't "fix" this by adding local palette overrides there.
+- Known theming gotcha in `Sidebar.svelte`'s settings panel — see
+  [docs/TECH.md](docs/TECH.md)'s Theme System section before touching it.
 
 ## Accessibility rules (enforced — build must stay warning-free)
 
@@ -175,19 +190,14 @@ the live `subscribe()` change feed and in-memory task cache pick it up.
 
 ## Testing
 
-`tests/db.test.ts` (Vitest, `vitest.config.ts`) covers `db.ts`'s pure/query
-logic against `pouchdb-adapter-memory` — `tests/setup.ts` stubs the global
-`PouchDB` (normally the UMD script) and a Node-global-localStorage conflict
-(Node 20+'s own experimental `localStorage` shadows jsdom's; sidestepped
-with a tiny in-memory polyfill rather than fighting over which one wins).
-The `db` instance is a module-level singleton reused across the whole test
-file, same as in the real app — tests get isolation from a `beforeEach` that
-wipes every doc, not from a fresh instance. When adding a new `db.ts`
-function with any non-trivial logic, add a test here before shipping —
-this suite already caught two real bugs (broken conflict detection, an
-incomplete conflict resolution) that had been silently shipping. UI
-components have no test coverage yet; that's still manual/browser-preview
-verification.
+`tests/db.test.ts` (Vitest) covers `db.ts`'s pure/query logic against
+`pouchdb-adapter-memory` — see [docs/TECH.md](docs/TECH.md)'s "Testing &
+Dev Workflows" for how `tests/setup.ts` shims PouchDB/localStorage. When
+adding a new `db.ts` function with any non-trivial logic, add a test here
+before shipping — this suite already caught two real bugs (broken conflict
+detection, an incomplete conflict resolution) that had been silently
+shipping. UI components have no test coverage yet; that's still manual/
+browser-preview verification.
 
 ## Android / PWA gotchas (hard-won — read before touching)
 
@@ -203,46 +213,28 @@ verification.
 - Android launcher icon changes: uninstall the app before reinstalling, and
   Clean Project — the launcher caches icons aggressively.
 - **Prefer an official `@capacitor/*` plugin's own mechanism over a custom
-  native bridge event, when one exists.** A25 (ROADMAP.md) is the concrete
-  lesson: the Quick Add widget used to forward its launch intent via a
-  hand-rolled `getBridge().triggerJSEvent(...)` call in `MainActivity`,
-  which fired before the WebView had a listener attached — losing the
-  event on every cold start. `@capacitor/app`'s `getLaunchUrl()` +
-  `appUrlOpen` listener does the same job correctly, because Capacitor's
-  own Bridge already handles the timing/replay problem for its own
-  plugins' events. Same idea applies broadly: check whether
-  `@capacitor/local-notifications`, `@capacitor/app`, etc. already expose
-  the native capability you're about to hand-roll (see A28's
-  `checkExactNotificationSetting()`/`changeExactNotificationSetting()`
-  for another example) before writing custom Java.
+  native bridge event, when one exists.** Check before writing custom
+  Java — see [docs/DECISIONS.md](docs/DECISIONS.md)'s A25 entry for the
+  concrete bug this rule comes from.
 
 ## Project status & direction
 
-- **This repo has no git remote and is not on GitHub yet — deliberately.**
-  The owner decided (2026-07-02) to go public only once the app is stable
-  and security-audited. Do not add a remote, push, or suggest making the
-  repo public without an explicit owner request. See DECISIONS.md.
-- **Known pre-public-release blocker**: `offlog-app/src/config.ts` has a
-  hardcoded CouchDB password and LAN IP, also present throughout git
-  history. The owner's explicit decision: fix this **as the last step
-  before any public release**, tracked in docs/ROADMAP.md's Track C — not
-  urgent for day-to-day work, but never let a public-facing change (a
-  landing page, a public repo push) go out before this is fixed.
-- **Security is presently minimal by design** (no login, no encryption at
-  rest, unencrypted CouchDB sync) — this is an accepted local-first
-  tradeoff for now, not an oversight, but it is explicitly *not* audited
-  or hardened yet. Treat any future feature that would expand the network
-  attack surface with the same caution — mesh/device-to-device sync was
-  considered and explicitly declined (2026-07-03) for exactly this reason
-  among others; see DECISIONS.md.
-- **Business model**: none, deliberately. Offlog is a personal tool the
-  owner built for their own use and gives away as open source — it stays
-  free forever with no paywall, no ads, and no monetization plan of any
-  kind, not even an optional paid layer. Don't propose monetization ideas
-  unless the owner raises it again. See DECISIONS.md.
-- **Distribution target**: GitHub (source) + a website + Google Play.
-  F-Droid and iOS are explicitly out of scope (owner decision, 2026-07-02) —
-  don't propose either without the owner raising it first.
+Full reasoning behind all of this lives in
+[docs/DECISIONS.md](docs/DECISIONS.md) — the directives below are the
+actionable rules, kept short on purpose:
+
+- **No git remote yet, repo not public.** Don't add a remote, push, or
+  suggest making it public without an explicit owner request.
+- **Never let a public-facing change ship before the config.ts credential
+  fix** (tracked in docs/ROADMAP.md's Track C, item C7) — not urgent for
+  day-to-day work, but a hard gate on anything public-facing.
+- **Security is minimal by design, not yet audited.** Treat any feature
+  that would expand the network attack surface with the same caution
+  applied when mesh sync was declined.
+- **No business model, ever — don't propose monetization** unless the
+  owner raises it again.
+- **Distribution stays GitHub + a website + Google Play** — don't propose
+  F-Droid or iOS without the owner raising it first.
 
 ## Release checklist
 
@@ -286,19 +278,17 @@ rather than invoking Gradle.
 - Dates in docs are absolute (e.g. "2026-07"), not relative.
 
 ## Maintenance routine (mandatory)
-- Cadence: a maintenance pass **every 3 minor versions**, tracked in
-  [MAINTENANCE.md](MAINTENANCE.md)'s tracker (process lives there too).
-  Currently on an explicit owner-set schedule (2026-07-05): the v4.4.0
-  pass ran (v4.4.2), next due **after v4.7.0**, then the every-3 cadence
-  resumes from there (v4.10.0, v4.13.0, …) — also marked inline in
-  docs/ROADMAP.md's sequencing table.
+- Cadence: a maintenance pass **every 3 minor versions**. The current
+  Last-pass/Next-pass-due state lives **only** in
+  [MAINTENANCE.md](MAINTENANCE.md)'s tracker (process lives there too) —
+  don't restate specific version numbers here, they'll drift out of sync.
 - Check the tracker **when bumping the version during a release**
   (checklist step 5) — not on every session start, that's wasted tokens.
   If the release just shipped matches "Next pass due," tell the owner:
   "A maintenance pass is due (last: vX, current: vY). Run it now? (see
   MAINTENANCE.md)" — and don't start one without confirmation.
-- When a pass completes, update the tracker: Last pass = current
-  version, Next pass due = the next scheduled point per the cadence above.
+- When a pass completes, update MAINTENANCE.md's tracker (Last pass =
+  current version, Next pass due = next scheduled point).
 - Maintenance passes never add features and never touch doc schema,
   PouchDB/CouchDB sync logic, storage format, soft-delete semantics, or
   the positional-"done" rule without explicit owner approval.

@@ -1,0 +1,45 @@
+# Offlog — Changelog Archive
+
+Older releases, compressed to one line each (full detail lives in git —
+each row references its tag, e.g. `git show v3.9.8`). Split out of
+[CHANGELOG.md](CHANGELOG.md) 2026-07 once that file's recent-version table
+grew large enough that loading it by default got expensive; CHANGELOG.md
+keeps the newest releases in full detail and points here for anything
+older. Nothing is lost — this is a compression of an already-complete git
+history, not the only remaining record.
+
+| Version | Summary | Tag |
+|---|---|---|
+| 3.9.8 | Three owner-reported fixes: Quick Add widget cold-start bug (A25), project view force-resetting to Kanban on refresh (A27), exact-alarm permission status/control in Settings (A28) | `v3.9.8` |
+| 3.9.7 | First MAINTENANCE.md pass: dropped 2 unused dependencies, extracted a shared `PinStar.svelte` from 3 duplicated inline SVGs | `v3.9.7` |
+| 3.9.6 | New brand icon regenerated across every platform surface (PWA, Android adaptive/legacy, notification icon, splash screens) from one SVG source | `v3.9.6` |
+| 3.9.5 | UX fixes: card detail no longer opens in title-edit mode, project view always lands on Kanban, List toolbar rebuilt as one guaranteed single row at every width | `v3.9.5` |
+| 3.9.0 | Sidebar rework at 20+ projects scale (A23), new Recent-tasks section (B23), project pinning (B34) | `v3.9.0` |
+| 3.8.5 | List view power customization (B36): saved filters, column selection/reordering, native horizontal scroll, multi-column sort | `v3.8.5` |
+| 3.8.0 | 4 correctness bugs fixed (A18–A22) plus List/Table merged into one view, rewritten with Table as the design baseline | `v3.8.0` |
+| 3.7.0 | Android hardware back-button handling (A14) + accessibility re-audit (A13) + notification actions (B3) + quick-capture widget (B10) | `v3.7.0` |
+| 3.6.0 | First sequencing-plan release: space management (B1), tag management (B6), full Settings redesign into category/detail layout | `v3.6.0` |
+| 3.5.0 | Settings conflict-list overflow fix, Android splash screen actually wired to the AndroidX SplashScreen API (was previously a no-op) | `v3.5.0` |
+| 3.4.0 | First test infrastructure (Vitest + `pouchdb-adapter-memory`, 26 tests) — caught 2 real previously-shipped bugs (conflict field, incomplete conflict resolution); further bundle diet | `v3.4.0` |
+| 3.3.0 | Redesigned bottom sidebar row, replaced every `window.confirm()` with a themed `ConfirmDialog`, consolidated Maintenance into one modal with progress | `v3.3.0` |
+| 3.2.0 | Trash promoted to a dedicated top-level view (previously embedded in Settings); "Optimize Storage" now actually calls `db.compact()` | `v3.2.0` |
+| 3.1.1 | Retention policy added for soft-deleted tasks (previously only logs had one); new storage-breakdown view in Settings | `v3.1.1` |
+| 3.1.0 | First Track A pass: persistent undo, changelog growth control, conflict resolution UI, faster startup, sync robustness (single replication guard), bundle diet | `v3.1.0` |
+| 3.0.1 | Code-quality pass — zero Svelte compiler warnings achieved; real ARIA semantics added throughout | `v3.0.1` |
+| 3.0.0 | Full brand color system rewrite (CSS custom properties only) + accessibility pass (keyboard shortcuts panel, focus-visible, keyboard-operable rows everywhere) | `v3.0.0` |
+| 2.9.2 | Three Android/Agenda fixes from a real device: duplicated overdue-duration text, wrong notification icon, exact-alarm permission explanation | `v2.9.2` |
+| 2.9.1 | Fixed Dashboard's overdue-tasks list including tasks already in their project's last column | `v2.9.1` |
+| 2.9.0 | Pre-3.0 hardening pass: real `pouchdb-find` indexing, in-memory task cache, crash recovery, error-handling audit, database integrity checker | `v2.9.0` |
+| 2.8.0 | Notifications shipped: `reminder_at` field, native Android scheduling + web best-effort fallback; sync reliability improvements (persistent `lastSynced`, offline detection, human-readable errors) | `v2.8.0` |
+| 2.7.2 | Fixed invisible Agenda badge counts (`currentColor` bug) and a broken "mark done" that didn't remove tasks from the Agenda list | `v2.7.2` |
+| 2.7.1 | Fixed inconsistent mobile header layout across views; fixed a Dashboard card text-overlap bug | `v2.7.1` |
+| 2.7.0 | Added PWA support via `vite-plugin-pwa` — installable, offline-capable web build | `v2.7.0` |
+| 2.6.5 | Fixed a z-index bug causing a gray "double overlay" look over the Changelog panel | `v2.6.5` |
+| 2.6.4 | Fixed mobile sidebar drawer staying open underneath Changelog/Settings, stacking two scrims | `v2.6.4` |
+| 2.6.3 | Extended the status-bar safe-area fix to every `position: fixed` full-screen element, not just `.layout` | `v2.6.3` |
+| 2.6.2 | Fixed app content (including the hamburger button) being hidden behind the new status-bar strip | `v2.6.2` |
+| 2.6.1 | Real fix for the Android status bar (2.6.0's approach was a no-op on targetSdk 36); regenerated all icons | `v2.6.1` |
+| 2.6.0 | (Superseded) First Android status-bar fix attempt — didn't work on Android 16 target | `v2.6.0` |
+| 2.5.0 | Brighter/higher-contrast palette, `duplicateTask()` + Duplicate button, consistent "Status" wording, FAB visibility fix | `v2.5.0` |
+| 2.4.1 | Extracted shared `utils.ts`, removed dead code, global `.scrim` class, error toast on failed DB writes | `v2.4.1` |
+| 2.4 | Dashboard set as home screen, responsive layouts, last-view persistence, first Android APK | `v2.4` |
