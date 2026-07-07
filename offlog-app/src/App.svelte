@@ -8,6 +8,7 @@
   import KanbanBoard from './lib/KanbanBoard.svelte';
   import ListView from './lib/ListView.svelte';
   import DeadlinesView from './lib/DeadlinesView.svelte';
+  import FocusView from './lib/FocusView.svelte';
   import DashboardView from './lib/DashboardView.svelte';
   import GlobalSearch from './lib/GlobalSearch.svelte';
   import CardDetail from './lib/CardDetail.svelte';
@@ -19,6 +20,7 @@
   let initError: string | null = null;
   let showDeadlines = false;
   let showDashboard = true;
+  let showFocus = false;
   let sidebarOpen = false;
 
   type View = 'kanban' | 'list';
@@ -31,11 +33,11 @@
 
   function saveView() {
     if (!ready) return;
-    const view = showDashboard ? 'dashboard' : showDeadlines ? 'agenda' : 'project';
+    const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showDeadlines ? 'agenda' : 'project';
     localStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
   }
 
-  $: if (ready) { showDashboard; showDeadlines; $activeProjectId; currentView; saveView(); }
+  $: if (ready) { showDashboard; showDeadlines; showFocus; $activeProjectId; currentView; saveView(); }
 
   // The one place `activeProjectId` should reset the view to Kanban —
   // called from deliberate "go to this project" actions (sidebar project/
@@ -209,8 +211,9 @@
       // selected instead of falling back to Dashboard as intended.
       const projectStillExists = saved.projectId && get(projects).some(p => p._id === saved.projectId);
       if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
+      else if (saved.view === 'focus') { showDashboard = false; showFocus = true; }
       else if (saved.view === 'project' && projectStillExists) {
-        showDashboard = false; showDeadlines = false;
+        showDashboard = false; showDeadlines = false; showFocus = false;
         // Restore via the plain store, not goToProject() — this is state
         // restoration on reload, not a deliberate navigation, so the
         // in-progress Kanban/List choice (below) must survive too.
@@ -259,6 +262,7 @@
     <Sidebar
       bind:showDeadlines
       bind:showDashboard
+      bind:showFocus
       bind:open={sidebarOpen}
       on:navigate={() => { closeSidebar(); currentView = 'kanban'; }}
       on:openTask={(e) => { searchDetailTask = e.detail.task; searchDetailProject = e.detail.project; closeSidebar(); }}
@@ -279,6 +283,8 @@
             goToProject(e.detail);
           }}
         />
+      {:else if showFocus}
+        <FocusView on:menu={() => sidebarOpen = true} />
       {:else if showDeadlines}
         <DeadlinesView on:menu={() => sidebarOpen = true} />
       {:else if $activeProject}

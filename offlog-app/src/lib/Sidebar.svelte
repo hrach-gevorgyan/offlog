@@ -14,6 +14,7 @@
 
   export let showDeadlines = false;
   export let showDashboard = false;
+  export let showFocus = false;
   export let open = false;
 
   // Settings' own Escape handling (including its mobile back-vs-close
@@ -150,7 +151,7 @@
   <button
     class="agenda-btn"
     class:active={showDashboard}
-    on:click={() => { showDashboard = true; showDeadlines = false; dispatch('navigate'); }}
+    on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; dispatch('navigate'); }}
   >
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
       <rect x="2" y="2" width="6" height="6" rx="1"/>
@@ -163,8 +164,21 @@
 
   <button
     class="agenda-btn"
+    class:active={showFocus}
+    on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; dispatch('navigate'); }}
+  >
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+      <circle cx="9" cy="9" r="7"/>
+      <circle cx="9" cy="9" r="3.5"/>
+      <circle cx="9" cy="9" r="0.6" fill="currentColor"/>
+    </svg>
+    Focus
+  </button>
+
+  <button
+    class="agenda-btn"
     class:active={showDeadlines}
-    on:click={() => { showDeadlines = true; showDashboard = false; dispatch('navigate'); }}
+    on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; dispatch('navigate'); }}
   >
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
       <rect x="2" y="3" width="14" height="12" rx="2"/>
@@ -185,6 +199,7 @@
         on:click={() => {
           showDeadlines = false;
           showDashboard = false;
+          showFocus = false;
           activeSpaceId.set(space._id);
           const first = $projects.find(p => p.space_id === space._id);
           if (first) activeProjectId.set(first._id);
@@ -204,7 +219,7 @@
     <div class="section-label">Projects</div>
     {#each $spaceProjects as project (project._id)}
       <div class="project-row" class:active={$activeProjectId === project._id}>
-        <button class="project-btn" on:click={() => { showDeadlines = false; showDashboard = false; activeProjectId.set(project._id); dispatch('navigate'); }}>
+        <button class="project-btn" on:click={() => { showDeadlines = false; showDashboard = false; showFocus = false; activeProjectId.set(project._id); dispatch('navigate'); }}>
           {project.name}
         </button>
         <button

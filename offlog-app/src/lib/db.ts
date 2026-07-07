@@ -897,6 +897,25 @@ export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: stri
   return result.sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
 }
 
+// B35 (Focus view, revised) — a "daily commitment lock," not an
+// auto-computed priority list. The user picks up to 3 tasks each day;
+// Focus shows only those until each is done or the day rolls over. The
+// lock itself (which 3, which day) lives in localStorage (FocusView.svelte),
+// not a PouchDB doc — it's ephemeral per-day UI state, not data worth
+// syncing/persisting across devices. This function only supports the
+// *picker*: a flat list of open tasks to choose from. Reuses the same
+// "done = last column" exclusion as getAllTasksDue()/searchAllTasks().
+export async function getOpenTasksForFocusPicker(): Promise<(TaskDoc & { project_name?: string })[]> {
+  const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
+  const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
+  const lastColOf = (pid: string) => projCache[pid]?.columns.at(-1)?.id;
+  const notDone = (t: TaskDoc) => !t.deleted && !t.archived && t.column_id !== lastColOf(t.project_id);
+  return all
+    .filter(notDone)
+    .map(t => ({ ...t, project_name: projCache[t.project_id]?.name }))
+    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''));
+}
+
 export async function getTaskById(id: string): Promise<TaskDoc | null> {
   try { return await db.get<TaskDoc>(id); } catch { return null; }
 }

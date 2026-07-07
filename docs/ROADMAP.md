@@ -291,30 +291,54 @@ nesting. Scheduled for v4.14.0 (deliberately isolated).
 
 ### B34. Project pinning — shipped in v3.9.0
 
-### B35. Focus view — scoped, ready to implement
+### B35. Focus view — draft shipped in v4.5.0, more planned
 Working name "Focus" (owner, 2026-07-03). Direction confirmed 2026-07-05:
 where Kanban answers "what's the state of everything" and List answers
 "let me scan/sort the data," Focus answers "what should I be doing right
 now."
 
-Scope, finalized:
-- **Global nav item, not a third per-project tab.** Sits next to
-  Dashboard/Agenda in the sidebar. A per-project Focus would mostly just
-  be "Agenda, filtered to one project" — thin.
-- **Content, capped at ~7 items total, in priority order:** pinned tasks
-  (any project), then overdue, then due-today — same underlying
-  `getAllTasksDue()` query Agenda uses, truncated/re-ordered for "what's
-  urgent." If fewer than 7, backfill with one "up next" suggestion: the
-  oldest `updated_at` non-done task in whichever project was most recently
-  worked in.
-- **Explicit non-goals**: no sort controls, no column customization, no
-  saved filters, no search box — that's List's job, not Focus's.
-- **Interaction**: click opens the normal `CardDetail`; marking done is
-  the normal positional last-column move, no special animation.
-- Read-only aggregation view — no new doc fields, no schema change.
+**Superseded design note**: the first scope (an auto-computed, capped
+priority list — pinned → overdue → due-today → one "up next" backfill,
+read-only, no picking) was built, then the owner rejected it live
+(2026-07-08): "not making sense, we need a really focus space" — a passive
+ranked list didn't feel different enough from Agenda. Replaced same day
+with a **daily commitment lock**, which is what actually shipped:
 
-Scheduled for v4.5.0, alone (undiluted release, same reasoning as B36's
-own v3.8.5).
+- Global nav item beside Dashboard/Agenda (unchanged from original scope).
+- Each day, pick up to 3 open tasks into a commitment. The picker ranks
+  candidates by a scoring function (pinned > overdue > due-soon > priority)
+  but round-robins across those reason-buckets rather than taking a flat
+  top-3-by-score — otherwise an overdue-heavy backlog suggests 3 overdue
+  tasks every morning with zero variety. The 3 suggested rows are
+  visually highlighted (border/tint) and labeled with *why* (colored
+  chip: Pinned/Overdue/Due soon/High priority), not a bare star — reason
+  matters more than rank when deciding what to commit to.
+- The lock is `{date, taskIds}` in `localStorage['offlog_focus_lock']`,
+  **not a PouchDB doc** — deliberately ephemeral, per-device, unsynced.
+  A stale commitment on one device shouldn't leak into another, and it
+  isn't data worth carrying through backup/restore.
+- Once locked, only those tasks show (mark-done via the normal positional
+  last-column move) until each is done or the day rolls over (date
+  compare against the stored lock, not a timer).
+- Commit action is a sticky footer button, not scrolled-to — the v1 draft
+  buried it at the bottom of a long picker list, fixed same session.
+
+**Still explicitly a draft — not yet closed out.** Confirmed next steps
+(2026-07-08), not yet built:
+- **Add task from within Focus** — currently you can only pick from
+  existing open tasks; there's no quick-add entry point on this view.
+- **Connect with Dashboard** — Focus and Dashboard currently don't
+  reference each other at all; some link/summary between them is wanted,
+  exact shape not yet decided.
+- **A "Daily Brief" summary card** (Samsung Daily Brief-style) — a short
+  auto-generated line ("3 overdue, 2 due today, last worked on Project X")
+  at the top of Focus and/or Dashboard. Not scoped in detail yet: exact
+  wording rules, where exactly it lives, and whether it's Focus-only or
+  shared with Dashboard are all open.
+
+No schema change so far (lock is localStorage-only) — the Dashboard-link
+and Daily-Brief work may or may not require one; decide when those are
+actually scoped.
 
 ### B36. List view power customization — shipped in v3.8.5
 
@@ -445,7 +469,7 @@ only shows what's still ahead.
 
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
-| 1 | v4.5.0 | — | B35 | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. |
+| 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
 | 2 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
 | 3 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
 | — | *Maintenance pass* | — | — | Scheduled after v4.7.0 ships. |

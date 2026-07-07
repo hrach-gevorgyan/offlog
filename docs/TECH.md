@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 4.4.2 · Local-first task management for browser and Android
+Version 4.5.0 · Local-first task management for browser and Android
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
