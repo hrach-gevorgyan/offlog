@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import type { TaskDoc, ProjectDoc } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask } from './db';
+  import type { TaskDoc, ProjectDoc, CustomFieldDef } from './types';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs } from './db';
   import { reloadTasks, showError, modalOpen } from './store';
   import { requestPermission, permissionState } from './notifications';
   import { confirmAction } from './confirm';
@@ -71,6 +71,20 @@
   let projectTags: string[] = [];
   let saving = false;
   let showHistory = false;
+
+  // B16 (revised): field definitions are global (Settings → Organize →
+  // Manage Custom Fields), not managed from here — CardDetail only reads
+  // and fills in values. custom_values stays keyed by field id, not name
+  // (see types.ts), so a field rename in Settings doesn't orphan values.
+  let customFields: CustomFieldDef[] = [];
+  let customValues: Record<string, string | number | null> = { ...(task.custom_values ?? {}) };
+  // Cap how many custom fields show by default — a project with a dozen
+  // fields defined shouldn't turn every card into a long form. Anything
+  // past the cap is one click away, not hidden entirely.
+  const VISIBLE_FIELD_CAP = 3;
+  let showAllFields = false;
+  $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
+
   // TaskHistoryPanel is only ever needed if the user clicks "Show history" —
   // loading it as a dynamic import keeps its query/formatting logic out of
   // the main bundle for the common case where nobody opens it.
@@ -78,7 +92,7 @@
 
   onMount(async () => {
     modalOpen.set(true);
-    [allTags, projectTags] = await Promise.all([getAllTags(), getAllTags(project._id)]);
+    [allTags, projectTags, customFields] = await Promise.all([getAllTags(), getAllTags(project._id), getCustomFieldDefs()]);
   });
   onDestroy(() => modalOpen.set(false));
 
@@ -129,6 +143,7 @@
         due_date: due_date || null,
         reminder_at: reminder_at ? new Date(reminder_at).toISOString() : null,
         column_id, tags, pinned, remindOnDue,
+        custom_values: customValues,
       });
       await reloadTasks();
       requestClose();
@@ -265,6 +280,33 @@
       {/if}
     </div>
 
+    {#if customFields.length > 0}
+      <div class="custom-fields">
+        <span class="field-label">Custom fields</span>
+        {#each visibleFields as field (field.id)}
+          <label class="custom-field-label">
+            {field.name}
+            {#if field.type === 'select'}
+              <select bind:value={customValues[field.id]}>
+                <option value={null}></option>
+                {#each field.options ?? [] as opt}<option value={opt}>{opt}</option>{/each}
+              </select>
+            {:else}
+              <input
+                type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                bind:value={customValues[field.id]}
+              />
+            {/if}
+          </label>
+        {/each}
+        {#if customFields.length > VISIBLE_FIELD_CAP}
+          <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
+            {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
+          </button>
+        {/if}
+      </div>
+    {/if}
+
     <label class="notes-label">
       Notes (markdown)
       <textarea bind:value={body} rows="6" placeholder="Notes…"></textarea>
@@ -400,6 +442,21 @@
     text-decoration: underline;
   }
   .tags-field { display: flex; flex-direction: column; gap: .3rem; }
+  .custom-fields { display: flex; flex-direction: column; gap: .4rem; }
+  .custom-field-label {
+    display: flex; flex-direction: column; gap: .3rem;
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--faint);
+  }
+  .custom-field-label input, .custom-field-label select {
+    padding: .45rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); font-size: .9rem; font-family: inherit;
+    text-transform: none; letter-spacing: normal;
+  }
+  .add-field-btn {
+    align-self: flex-start; background: none; border: none; cursor: pointer;
+    color: var(--accent); font-size: .82rem; font-weight: 500; padding: .2rem 0;
+  }
   .field-label {
     font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
     text-transform: uppercase; color: var(--faint);

@@ -4,6 +4,7 @@
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById } from './lib/db';
   import { pendingOpenTaskId } from './lib/notifications';
+  import { applyTheme, watchSystemTheme } from './lib/theme';
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
   import ListView from './lib/ListView.svelte';
@@ -186,7 +187,8 @@
   }
 
   onMount(async () => {
-    if (localStorage.getItem('dark')) document.body.classList.add('dark');
+    applyTheme(); // runs the legacy-key migration once and re-applies (idempotent vs. index.html's pre-paint script)
+    watchSystemTheme(); // App.svelte is a permanent root singleton, never unmounted — no cleanup needed
     setupBackButton();
     try {
       await init();

@@ -12,6 +12,7 @@
   import { showError } from './store';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, type ThemeMode } from './theme';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -69,11 +70,19 @@
   }
 
   // ── Appearance ──────────────────────────────────────────────────────────
-  let darkMode = typeof localStorage !== 'undefined' && !!localStorage.getItem('dark');
-  function toggleDark() {
-    darkMode = !darkMode;
-    if (darkMode) { localStorage.setItem('dark', '1'); document.body.classList.add('dark'); }
-    else { localStorage.removeItem('dark'); document.body.classList.remove('dark'); }
+  // B21: three-way Light/Dark/System instead of a boolean toggle — System
+  // is the default for anyone who's never touched this setting (see
+  // theme.ts's migration). B11: a separate high-contrast toggle, layered
+  // on top of whichever of Light/Dark is currently effective.
+  let themeMode: ThemeMode = getThemeMode();
+  function selectThemeMode(mode: ThemeMode) {
+    themeMode = mode;
+    setThemeMode(mode);
+  }
+  let highContrast = getHighContrast();
+  function toggleHighContrast() {
+    highContrast = !highContrast;
+    setHighContrast(highContrast);
   }
 
   // ── Notifications ───────────────────────────────────────────────────────
@@ -162,6 +171,13 @@
   async function openTagManager() {
     if (!TagManagerComp) TagManagerComp = (await import('./TagManager.svelte')).default;
     showTagManager = true;
+  }
+
+  let CustomFieldManagerComp: typeof import('./CustomFieldManager.svelte').default | null = null;
+  let showCustomFieldManager = false;
+  async function openCustomFieldManager() {
+    if (!CustomFieldManagerComp) CustomFieldManagerComp = (await import('./CustomFieldManager.svelte')).default;
+    showCustomFieldManager = true;
   }
 
   // ── Data ────────────────────────────────────────────────────────────────
@@ -277,11 +293,30 @@
           <div class="detail-content">
             {#if activeCategory === 'appearance'}
               <div class="setting-row">
-                <div class="setting-label">Dark mode</div>
-                <button class="toggle-btn" class:on={darkMode} on:click={toggleDark} aria-label="Toggle dark mode" role="switch" aria-checked={darkMode}>
+                <div class="setting-label">Theme</div>
+                <div class="theme-segment" role="radiogroup" aria-label="Theme">
+                  {#each (['light', 'dark', 'system'] as ThemeMode[]) as mode}
+                    <button
+                      class="theme-seg-btn"
+                      class:active={themeMode === mode}
+                      role="radio"
+                      aria-checked={themeMode === mode}
+                      on:click={() => selectThemeMode(mode)}
+                    >
+                      {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'System'}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+              <p class="setting-hint">"System" follows your device's light/dark setting automatically.</p>
+
+              <div class="setting-row">
+                <div class="setting-label">High contrast</div>
+                <button class="toggle-btn" class:on={highContrast} on:click={toggleHighContrast} aria-label="Toggle high contrast" role="switch" aria-checked={highContrast}>
                   <span class="toggle-knob"></span>
                 </button>
               </div>
+              <p class="setting-hint">Raises border and text contrast throughout, on top of Light or Dark.</p>
 
             {:else if activeCategory === 'notifications'}
               <div class="setting-row">
@@ -395,6 +430,13 @@
                 </div>
                 <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
               </button>
+              <button class="link-row" on:click={openCustomFieldManager}>
+                <div class="link-row-text">
+                  <span class="link-row-title">Manage Custom Fields</span>
+                  <span class="link-row-desc">Add or remove task fields shared across every project</span>
+                </div>
+                <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
+              </button>
 
             {:else if activeCategory === 'data'}
               <div class="setting-row">
@@ -456,6 +498,9 @@
 
 {#if showTagManager && TagManagerComp}
   <svelte:component this={TagManagerComp} on:close={() => showTagManager = false} />
+{/if}
+{#if showCustomFieldManager && CustomFieldManagerComp}
+  <svelte:component this={CustomFieldManagerComp} on:close={() => showCustomFieldManager = false} />
 {/if}
 
 {#if showMaintenance && MaintenanceModalComp}
@@ -558,6 +603,18 @@
   }
   .field-label input:focus { outline: none; border-color: var(--accent); }
   .field-label input:disabled { opacity: .5; cursor: default; }
+
+  .theme-segment {
+    display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    overflow: hidden; flex-shrink: 0;
+  }
+  .theme-seg-btn {
+    padding: .35rem .75rem; border: none; background: var(--surface); color: var(--muted);
+    font-size: .8rem; font-weight: 500; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .theme-seg-btn + .theme-seg-btn { border-left: 1px solid var(--border-strong); }
+  .theme-seg-btn:hover { background: var(--hover); }
+  .theme-seg-btn.active { background: var(--accent); color: #fff; }
 
   .toggle-btn {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;

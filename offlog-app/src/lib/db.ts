@@ -8,7 +8,7 @@
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
 import { getSyncUrl, COUCH_USER, COUCH_PASS, getDeviceName, isSyncEnabled } from '../config';
-import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source } from './types';
+import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
 
 (PouchDB as any).plugin(PouchDBFind);
 
@@ -572,6 +572,44 @@ export async function renameColumn(projectId: string, colId: string, name: strin
 
 export async function reorderColumns(projectId: string, columns: Column[]): Promise<ProjectDoc> {
   return updateProject(projectId, { columns });
+}
+
+// B16 (revised, owner feedback 2026-07-09): custom fields are global, not
+// per-project — every task everywhere shares the same field definitions,
+// configured once from Settings → Organize, not invented ad hoc per card.
+// Stored as a single fixed-id doc rather than a `field:` range scan since
+// there's only ever one list to read/write, never a query over many.
+const CUSTOM_FIELDS_DOC_ID = 'meta:custom_fields';
+
+export async function getCustomFieldDefs(): Promise<CustomFieldDef[]> {
+  try {
+    const doc = await db.get<{ fields: CustomFieldDef[] }>(CUSTOM_FIELDS_DOC_ID);
+    return doc.fields ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addCustomFieldDef(name: string, type: CustomFieldDef['type'], options?: string[]): Promise<CustomFieldDef[]> {
+  const field: CustomFieldDef = { id: `field:${nanoid()}`, name, type, ...(options ? { options } : {}) };
+  let doc: any;
+  try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { doc = { _id: CUSTOM_FIELDS_DOC_ID, type: 'meta' }; }
+  const fields = [...(doc.fields ?? []), field];
+  await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
+  return fields;
+}
+
+// Removing a field definition intentionally leaves any task's stored
+// custom_values[fieldId] in place (dead but harmless keyed data) rather
+// than sweeping every task in the database to strip it — cheap to skip,
+// and CardDetail only ever renders values for fields still in this list,
+// so a stale key is simply never shown again.
+export async function removeCustomFieldDef(fieldId: string): Promise<CustomFieldDef[]> {
+  let doc: any;
+  try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
+  const fields = (doc.fields ?? []).filter((f: CustomFieldDef) => f.id !== fieldId);
+  await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
+  return fields;
 }
 
 export async function deleteProject(id: string): Promise<void> {

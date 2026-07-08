@@ -65,6 +65,26 @@ body.dark {
   --overdue-ink: #fb7185;
 }
 
+/* B11: high contrast — raises border/text contrast ratios only (not the
+   meaning colors --accent/--danger/--success), layered on top of whichever
+   of light/dark is active. Same token-driven approach as the base palette. */
+body.high-contrast {
+  --border: #b0b4bd;
+  --border-strong: #8a8f9c;
+  --hover: #d7dae0;
+  --text: #0b0f19;
+  --muted: #1f2937;
+  --faint: #4b5563;
+}
+body.dark.high-contrast {
+  --border: #565f74;
+  --border-strong: #7a8399;
+  --hover: #363c4a;
+  --text: #ffffff;
+  --muted: #d7dae0;
+  --faint: #9aa1b0;
+}
+
 html, body { margin: 0; padding: 0; height: 100%; color: var(--text); background: var(--bg); }
 #app { height: 100%; }
 

@@ -22,6 +22,16 @@ export interface Column {
   name: string;
 }
 
+// B16: a handful of typed fields per project, not a schema editor —
+// deliberately just these 4 types, no nesting, no per-field validation
+// rules. `options` only applies to `select`.
+export interface CustomFieldDef {
+  id: string;            // "field:<nanoid>"
+  name: string;
+  type: 'text' | 'number' | 'date' | 'select';
+  options?: string[];
+}
+
 export interface ProjectDoc {
   _id: string;          // "project:<nanoid>"
   _rev?: string;
@@ -63,6 +73,9 @@ export interface TaskDoc {
   // this is on. Optional/undefined on old docs = manual reminder, same as
   // always.
   remindOnDue?: boolean;
+  // B16: keyed by CustomFieldDef.id, not name — a field rename doesn't
+  // orphan existing values. Absent/undefined keys just render empty.
+  custom_values?: Record<string, string | number | null>;
   created_at: string;
   updated_at: string;
   source: Source;

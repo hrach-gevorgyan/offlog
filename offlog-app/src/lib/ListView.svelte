@@ -223,7 +223,85 @@
   // (unclipped) content width and the scroll container takes over once
   // that's wider than the viewport, instead of the old responsive
   // column-hiding tiers.
-  $: gridTemplate = '24px minmax(220px,max-content)' + visibleOrder.map(k => ` ${COL_WIDTH[k]}`).join('');
+  $: gridTemplate = (selectionMode ? '20px ' : '') + '24px minmax(220px,max-content)' + visibleOrder.map(k => ` ${COL_WIDTH[k]}`).join('');
+
+  // B19 (revised, owner feedback 2026-07-09): plain checkboxes-everywhere
+  // was rejected as a UI — checkboxes only appear once "Select" mode is
+  // explicitly turned on (matching Filters/Archived/Columns as a toggle in
+  // the same action group), and there's no shift-click range-select.
+  // `selected` is per-project-view state only, never persisted.
+  let selectionMode = false;
+  let selected = new Set<string>();
+  let bulkStatus = '';
+  let bulkPriority = 0;
+  let bulkTagAdd = '';
+  let bulkBusy = false;
+
+  function toggleSelectionMode() {
+    selectionMode = !selectionMode;
+    if (!selectionMode) selected = new Set();
+  }
+
+  function toggleRowSelect(taskId: string) {
+    const next = new Set(selected);
+    if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+    selected = next;
+  }
+
+  function clearSelection() { selected = new Set(); }
+
+  // Selection references task ids from whatever was visible when picked —
+  // if a filter/sort change hides a previously-selected task, drop it
+  // rather than silently bulk-acting on a task the user can no longer see.
+  $: { const visible = new Set(sorted.map(t => t._id!)); const next = new Set([...selected].filter(id => visible.has(id))); if (next.size !== selected.size) selected = next; }
+
+  async function bulkMoveStatus() {
+    if (!bulkStatus || !selected.size) return;
+    bulkBusy = true;
+    try {
+      for (const id of selected) await updateTask(id, { column_id: bulkStatus });
+      await reloadTasks();
+      clearSelection();
+    } catch {
+      showError('Failed to update some tasks. Please try again.');
+    } finally {
+      bulkBusy = false;
+      bulkStatus = '';
+    }
+  }
+
+  async function bulkChangePriority() {
+    if (!bulkPriority || !selected.size) return;
+    bulkBusy = true;
+    try {
+      for (const id of selected) await updateTask(id, { priority: bulkPriority as 1 | 2 | 3 });
+      await reloadTasks();
+      clearSelection();
+    } catch {
+      showError('Failed to update some tasks. Please try again.');
+    } finally {
+      bulkBusy = false;
+      bulkPriority = 0;
+    }
+  }
+
+  async function bulkAddTag() {
+    const tag = bulkTagAdd.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!tag || !selected.size) return;
+    bulkBusy = true;
+    try {
+      for (const id of selected) {
+        const t = sorted.find(x => x._id === id);
+        if (t && !t.tags.includes(tag)) await updateTask(id, { tags: [...t.tags, tag] });
+      }
+      await reloadTasks();
+      bulkTagAdd = '';
+    } catch {
+      showError('Failed to tag some tasks. Please try again.');
+    } finally {
+      bulkBusy = false;
+    }
+  }
 
   let detailTask: TaskDoc | null = null;
 
@@ -372,14 +450,21 @@
       </button>
 
       <div class="col-menu-wrap">
-        <button class="action-btn" class:active={showColMenu} on:click={() => showColMenu = !showColMenu} aria-label="Columns" title="Columns">
+        <button class="action-btn" class:active={showColMenu || selectionMode} on:click={() => showColMenu = !showColMenu} aria-label="Select and columns" title="Select rows / show-hide columns">
           <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="3" y1="3" x2="3" y2="11"/><line x1="7" y1="3" x2="7" y2="11"/><line x1="11" y1="3" x2="11" y2="11"/>
           </svg>
-          <span class="action-label">Columns</span>
+          <span class="action-label">Select</span>
         </button>
         {#if showColMenu}
           <div class="col-menu">
+            <label class="col-menu-item select-rows-item">
+              Select rows
+              <button class="toggle-mini" class:on={selectionMode} on:click={toggleSelectionMode} role="switch" aria-checked={selectionMode} aria-label="Toggle row selection">
+                <span class="toggle-mini-knob"></span>
+              </button>
+            </label>
+            <div class="menu-divider"></div>
             {#each colOrder as key (key)}
               <label class="col-menu-item">
                 <input type="checkbox" checked={cols[key]} on:change={() => toggleCol(key)} />
@@ -392,10 +477,42 @@
     </div>
   </div>
 
+  {#if selectionMode}
+    <div class="bulk-bar">
+      <span class="bulk-count">{selected.size} selected</span>
+      <select class="bulk-sel" bind:value={bulkStatus} on:change={bulkMoveStatus} disabled={bulkBusy || !selected.size}>
+        <option value="">Move to status…</option>
+        {#each project.columns as col}<option value={col.id}>{col.name}</option>{/each}
+      </select>
+      <select class="bulk-sel" bind:value={bulkPriority} on:change={bulkChangePriority} disabled={bulkBusy || !selected.size}>
+        <option value={0}>Change priority…</option>
+        <option value={1}>Low</option>
+        <option value={2}>Medium</option>
+        <option value={3}>High</option>
+      </select>
+      <input class="bulk-input" bind:value={bulkTagAdd} placeholder="Add tag…" on:keydown={(e) => e.key === 'Enter' && bulkAddTag()} disabled={bulkBusy || !selected.size} />
+      <button class="bulk-btn" on:click={bulkAddTag} disabled={bulkBusy || !selected.size || !bulkTagAdd.trim()}>Add tag</button>
+      <button class="bulk-btn bulk-clear" on:click={toggleSelectionMode} disabled={bulkBusy}>Done</button>
+    </div>
+  {/if}
+
   <!-- Data grid -->
   <div class="grid-scroll">
     <div class="grid-card grid-card--flush">
       <div class="grid-head" style="grid-template-columns:{gridTemplate}">
+        {#if selectionMode}
+          {@const allSelected = sorted.length > 0 && selected.size === sorted.length}
+          <button
+            class="row-check head-check"
+            class:checked={allSelected}
+            role="checkbox"
+            aria-checked={allSelected}
+            aria-label="Select all visible tasks"
+            on:click={() => { selected = allSelected ? new Set() : new Set(sorted.map(t => t._id!)); }}
+          >
+            {#if allSelected}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+          </button>
+        {/if}
         <span class="head-spacer"></span>
         <button class="th-btn" title="Click to sort. Shift+click to add as a secondary sort." on:click={(e) => toggleSort('title', e.shiftKey)}>Title <span class="sort-icon">{sortIcons.title}</span></button>
         {#each visibleOrder as key (key)}
@@ -423,12 +540,25 @@
       {#each sorted as task (task._id)}
         <div
           class="grid-row"
+          class:row-selected={selected.has(task._id!)}
           style="--prio-color:{PRIO_COLOR[task.priority]}; grid-template-columns:{gridTemplate}"
           role="button"
           tabindex="0"
-          on:click={() => detailTask = task}
-          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
+          on:click={() => selectionMode ? toggleRowSelect(task._id!) : (detailTask = task)}
+          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectionMode ? toggleRowSelect(task._id!) : (detailTask = task); } }}
         >
+          {#if selectionMode}
+            <button
+              class="row-check"
+              class:checked={selected.has(task._id!)}
+              role="checkbox"
+              aria-checked={selected.has(task._id!)}
+              aria-label="Select {task.title}"
+              on:click|stopPropagation={() => toggleRowSelect(task._id!)}
+            >
+              {#if selected.has(task._id!)}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+            </button>
+          {/if}
           <button
             class="circle"
             class:done={task.column_id === lastColId()}
@@ -628,6 +758,21 @@
     padding: .35rem .5rem; border-radius: 6px; font-size: .82rem; color: var(--text); cursor: pointer;
   }
   .col-menu-item:hover { background: var(--hover); }
+  .select-rows-item { justify-content: space-between; cursor: default; }
+  .select-rows-item:hover { background: none; }
+
+  .toggle-mini {
+    width: 30px; height: 17px; border-radius: 9px; border: none; cursor: pointer;
+    background: var(--border-strong); position: relative; transition: background .2s;
+    flex-shrink: 0; padding: 0;
+  }
+  .toggle-mini.on { background: var(--accent); }
+  .toggle-mini-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: #ffffff; transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  }
+  .toggle-mini.on .toggle-mini-knob { left: 15px; }
 
   /* Anchored to .toolbar (position:relative there; .filter-menu-wrap is
      deliberately static) — anchoring to the button itself pushed the
@@ -716,6 +861,41 @@
   }
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
+  .grid-row.row-selected { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+
+  .row-check {
+    width: 16px; height: 16px; padding: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 5px; border: 1.6px solid var(--border-strong);
+    background: var(--surface); transition: border-color .12s, background .12s;
+  }
+  .row-check:hover { border-color: var(--accent); }
+  .row-check.checked { background: var(--accent); border-color: var(--accent); }
+  .head-check { margin: 0; }
+
+  .bulk-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 14px; margin-bottom: 8px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    border: 1px solid var(--accent); border-radius: var(--radius-sm, 8px);
+  }
+  .bulk-count { font-size: 12.5px; font-weight: 600; color: var(--accent); margin-right: 4px; }
+  .bulk-sel, .bulk-input {
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--surface); color: var(--text);
+    font-size: 12.5px; padding: 5px 8px;
+  }
+  .bulk-input { width: 130px; }
+  .bulk-btn {
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--surface); color: var(--text);
+    font-size: 12.5px; font-weight: 500; padding: 5px 10px; cursor: pointer;
+    transition: background .12s;
+  }
+  .bulk-btn:hover { background: var(--hover); }
+  .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .bulk-btn-danger { color: var(--danger); border-color: var(--danger); }
+  .bulk-clear { margin-left: auto; }
 
   .circle {
     width: 19px; height: 19px; border-radius: 50%;

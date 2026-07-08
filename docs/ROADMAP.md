@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.4.2**. Everything below is a candidate, not a
+Current version: **v4.6.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -77,21 +77,16 @@ logic: `KanbanBoard`'s drag/drop position math, `CardDetail`'s save/diff
 logic, and `Sidebar`'s Maintenance step orchestration. **Note**: v3.6.0's
 CHANGELOG entry and the old sequencing table mis-labeled that release's
 `tests/db.test.ts` growth as "A9" — it wasn't; no real component test has
-ever landed. Scheduled for v4.13.0.
+ever landed. Scheduled for v4.12.0.
 
 ### A10. Large-dataset performance validation — OPEN
 Manual testing so far has gone up to ~150 tasks. Nothing has verified
 behavior at the scale a multi-year single-user database could realistically
 reach — 1,000–5,000 tasks, thousands of log entries. Script a one-time
 stress seed, then measure Kanban/List render time, `getDashboardData()`
-latency, and Global Search responsiveness. Scheduled for v4.8.0.
+latency, and Global Search responsiveness. Scheduled for v4.7.0.
 
-### A11. Error-handling audit, pass 2 — OPEN
-The try/catch + `showError()` invariant was last fully audited in v2.9.0,
-with a partial pass during the v4.4.2 maintenance run (fixed one real gap
-in `QuickAdd.svelte`). Every task-mutating call site added since v2.9.0
-deserves a fresh audit pass, since new features are exactly where this
-invariant tends to quietly lapse. Scheduled for v4.7.0.
+### A11. Error-handling audit, pass 2 — shipped in v4.6.0
 
 ### A12. Notification reliability audit — shipped in v4.4.0
 
@@ -122,7 +117,7 @@ Nothing currently measures whether a given release made the app faster or
 slower — A10's large-dataset validation needs measurement infrastructure
 anyway; formalize it into a small benchmark harness (Kanban/List render
 time, `getDashboardData()` latency, Global Search responsiveness) that can
-be re-run release to release. Scheduled for v4.8.0 (paired with A10).
+be re-run release to release. Scheduled for v4.7.0 (paired with A10).
 
 ### A25. Quick Add widget opened the app but not Quick Add — shipped in v3.9.8
 
@@ -155,14 +150,14 @@ Shipped items: one-line pointer only — full detail in CHANGELOG.md.
 ### B2. Filters on Kanban + saved filters — OPEN
 Search/filter exists in List only (a deliberate v2 scope cut, can be
 revisited). Add the same filter bar to Kanban, then let any filter
-combination be saved as a named view per project. Scheduled for v4.11.0.
+combination be saved as a named view per project. Scheduled for v4.10.0.
 
 ### B3. Notification actions — shipped in v3.7.0
 
 ### B4. Import/export v2 — OPEN
 Current JSON export is a raw doc dump. Add: export a single project, CSV
 export, and a guided import that previews what will be created/skipped
-before writing. Scheduled for v4.8.0.
+before writing. Scheduled for v4.7.0.
 
 ### B5. Multi-device polish — shipped in v4.2.0
 
@@ -173,27 +168,23 @@ The Agenda groups by Overdue/Today/This Week/Later as flat lists. A
 week-grid view (7 columns, tasks placed under their due date) alongside the
 existing list view gives a different, genuinely useful way to see workload
 distribution — toggle between the two, same underlying `getAllTasksDue()`
-query. Scheduled for v4.8.0.
+query. Scheduled for v4.7.0.
 
 ### B8. Project templates — OPEN
 "New from template" duplicates an existing project's status structure (and
 optionally its non-completed tasks) into a fresh project. Builds directly
 on the existing `duplicateTask()` pattern, applied at the project level.
-Scheduled for v4.12.0.
+Scheduled for v4.11.0.
 
 ### B9. Command palette — OPEN
 Ctrl+K currently does global task search only. Extend `GlobalSearch` (or a
 new overlay sharing its shortcut) to also match action commands by fuzzy
 name — "dark mode", "new project", "settings", "export". Scheduled for
-v4.10.0.
+v4.9.0.
 
 ### B10. Android quick-capture widget — shipped in v3.7.0
 
-### B11. High contrast mode — OPEN
-A third `body` theme class alongside light/dark, raising border/text
-contrast ratios throughout — same token-driven approach as the existing
-palette. Toggled from Settings → Appearance, next to dark mode. Scheduled
-for v4.6.0.
+### B11. High contrast mode — shipped in v4.6.0
 
 ### B12. Auto-reminder from due date — shipped in v4.4.0
 
@@ -206,40 +197,45 @@ v3.6.0 gave Maintenance its own modal-on-top-of-a-modal. Now that Settings
 itself has a proper category/detail structure, review whether Maintenance's
 step list, progress bar, and Run button can render directly in the
 Maintenance category's detail pane instead of a second overlay. Scheduled
-for v4.9.0.
+for v4.8.0.
 
-### B16. Custom fields — OPEN
-Tasks currently have a fixed shape — no way to add a project-specific field
-(e.g. "URL", "Estimate", "Client"). Add a per-project custom field
-definition (name + type: text/number/date/select) stored on `ProjectDoc`,
-rendered in `CardDetail`. Keep it opt-in and simple — resist ballooning into
-a mini database builder; a handful of typed fields per project is the
-ceiling, not a schema editor. Scheduled for v4.7.0.
+### B16. Custom fields — shipped in v4.6.0
+Shipped with one change from the original scope: fields are **global**
+(one shared list across every project, managed from Settings → Organize →
+Manage Custom Fields), not per-project on `ProjectDoc` — owner feedback
+during implementation was that per-project definitions plus inline
+add/remove in `CardDetail` made it too easy to end up with an unmanaged
+sprawl of one-off fields. `TaskDoc.custom_values` stays keyed by field id.
+`CardDetail` caps how many fields show by default (3), with a "show more"
+toggle, so a project with several fields defined doesn't turn every card
+into a long form.
 
 ### B17. Dashboard as a real home screen — OPEN
 `DashboardView.svelte` is already the default landing view, but it's thin.
 Concretely: a brief last-week performance summary (tasks completed,
 busiest project) and today's upcoming tasks alongside the existing
 pinned/overdue panels — Agenda stays unchanged, this is a glance-level
-preview, not a duplicate of it. Scheduled for v4.10.0.
+preview, not a duplicate of it. Scheduled for v4.9.0.
 
 ### B18. Subtasks / checklists within a task — OPEN
 `CardDetail` has free-text markdown but no structured checklist. A simple
 `checklist: { text: string; done: boolean }[]` array on `TaskDoc`, rendered
 as tappable checkboxes, with a "3/5 done" progress indicator surfaced on
-the card itself in Kanban/List. Scheduled for v4.11.0.
+the card itself in Kanban/List. Scheduled for v4.10.0.
 
-### B19. Bulk actions in List — OPEN
-Every task action today is one-at-a-time. Add multi-select (checkbox per
-row, shift-click range select) to List, with a bulk action bar for
-move-to-status, add/remove tag, and delete. Scheduled for v4.7.0.
+### B19. Bulk actions in List — shipped in v4.6.0
+Shipped with a different UX than originally scoped, after two rounds of
+owner feedback: no shift-click range-select (dropped entirely — plain
+per-row toggling only); row checkboxes are hidden by default and only
+appear once "Select" mode is turned on, merged into the existing Columns
+dropdown (a "Select rows" switch at the top of that popover) rather than
+a separate always-visible toolbar button; and the bulk action bar itself
+is trimmed to move-to-status, change-priority, and add-tag only — no
+remove-tag, no bulk delete.
 
 ### B20. Agenda widget — shipped in v4.1.0
 
-### B21. Dark mode follows OS setting — OPEN
-Dark mode is currently a manual toggle only. Add a "Follow system" option
-(default) alongside explicit Light/Dark, reading `prefers-color-scheme`,
-while keeping the manual override. Scheduled for v4.6.0.
+### B21. Dark mode follows OS setting — shipped in v4.6.0
 
 ### B22. Named clients/devices — shipped in v4.2.0
 
@@ -248,7 +244,7 @@ while keeping the manual override. Scheduled for v4.6.0.
 ### B24. Seed data: 3 spaces, not 4 — OPEN
 `seedIfEmpty()`/`wipeAndReseed()` currently create Unsorted, Personal,
 Family, and Work. Drop Family from the default seed. Down to Unsorted,
-Personal, Work. Scheduled for v4.13.0.
+Personal, Work. Scheduled for v4.12.0.
 
 ### B25. Deadline quick-suggestions on new card — shipped in v4.0.0
 
@@ -257,23 +253,23 @@ Personal, Work. Scheduled for v4.13.0.
 ### B27. Archived tasks are too hidden — OPEN
 Archived tasks are currently only reachable via a toggle inside List view
 — easy to forget exists. Surface archived-task counts somewhere more
-visible (Dashboard, project header). Scheduled for v4.9.0.
+visible (Dashboard, project header). Scheduled for v4.8.0.
 
 ### B28. Rethink "last column = done" — OPEN, needs owner design session
 The positional-done convention (`column_id === columns.at(-1)`) is a locked
 invariant (see DECISIONS.md) — but it also means a project's last status is
 *always* the done state, with no multiple terminal states. Needs a real
 design conversation before any implementation; may stay exactly as-is
-after that conversation. Scheduled for v4.14.0 (deliberately isolated).
+after that conversation. Scheduled for v4.13.0 (deliberately isolated).
 
 ### B29. Show tags on Kanban cards — OPEN
 Tags currently render in List but not on Kanban cards themselves — add
-them (compact, matching the existing chip style). Scheduled for v4.13.0.
+them (compact, matching the existing chip style). Scheduled for v4.12.0.
 
 ### B30. Notes length guardrail — OPEN
 `CardDetail`'s notes field is unbounded markdown — add a soft length
 guardrail (a visible counter past some threshold, not a hard block).
-Scheduled for v4.12.0.
+Scheduled for v4.11.0.
 
 ### B31. Third Android widget: project list — shipped in v4.1.0
 
@@ -281,13 +277,13 @@ Scheduled for v4.12.0.
 Today only individual tasks can be archived. Add a project-level archive
 action that archives the project and, by default, its non-completed tasks,
 restorable the same way individual archived tasks are. Scheduled for
-v4.9.0.
+v4.8.0.
 
 ### B33. Sub-projects — OPEN, needs its own scoping pass
 Nested project hierarchy — a project containing child projects. Genuinely
 large: touches the data model (`ProjectDoc.space_id` becomes more like
 `parent_id`), every view's project-picker UI, and Dashboard/sidebar
-nesting. Scheduled for v4.14.0 (deliberately isolated).
+nesting. Scheduled for v4.13.0 (deliberately isolated).
 
 ### B34. Project pinning — shipped in v3.9.0
 
@@ -454,34 +450,38 @@ scattered inline here.
 
 ## Sequencing suggestion
 
-Re-paired 2026-07-05 across the full remaining backlog. **Maintenance
-passes are scheduled explicitly** (owner, 2026-07-05): one ran after
-v4.4.0 (v4.4.2), one after **v4.7.0**, then every 3 releases after that
-(v4.10.0, v4.13.0, …) — tracked the same way in
-[MAINTENANCE.md](../MAINTENANCE.md). Track C runs independently of version
-numbers: **C7 (credential fix) and C2 can start any time**; **C1/C3/C5/C6
-fit naturally once the app feels "finished enough"** — realistically after
-this table's backlog has substantially landed. Track D was declined
-outright and never entered sequencing. Full shipped-release history
-(including several no-A/B-item light releases: v3.8.5, v3.9.5, v3.9.6,
-v3.9.7, v4.4.1, v4.4.2) lives in [CHANGELOG.md](CHANGELOG.md) — this table
-only shows what's still ahead.
+Re-paired 2026-07-05 across the full remaining backlog; v4.6.0/v4.7.0
+merged into one release 2026-07-08 (owner request — both were the next two
+rows up, and there was no strong reason to keep them as two separate
+version bumps). **Maintenance passes are scheduled explicitly** (owner,
+2026-07-05): one ran after v4.4.0 (v4.4.2), one after **v4.7.0**, then
+every 3 releases after that (v4.10.0, v4.13.0, …) — tracked the same way
+in [MAINTENANCE.md](../MAINTENANCE.md). The v4.6.0/v4.7.0 merge shifts
+every later release down by one version number, but by coincidence
+(release-count-based cadence, not the raw version number) the maintenance
+schedule still lands on v4.7.0/v4.10.0/v4.13.0 exactly as before — just
+different backlog content sits at each of those numbers now. Track C runs
+independently of version numbers: **C7 (credential fix) and C2 can start
+any time**; **C1/C3/C5/C6 fit naturally once the app feels "finished
+enough"** — realistically after this table's backlog has substantially
+landed. Track D was declined outright and never entered sequencing. Full
+shipped-release history (including several no-A/B-item light releases:
+v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
+[CHANGELOG.md](CHANGELOG.md) — this table only shows what's still ahead.
 
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
-| 2 | v4.6.0 | — | B21, B11 | Both are Settings → Appearance additions (system-follow dark mode, high contrast) — same screen, same review context. |
-| 3 | v4.7.0 | A11 | B16, B19 | Custom fields and bulk actions are the two largest remaining new-mutation surfaces — audit error handling while building them, not after. |
+| 2 | v4.7.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
 | — | *Maintenance pass* | — | — | Scheduled after v4.7.0 ships. |
-| 4 | v4.8.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| 5 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 6 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 3 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 4 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 5 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 7 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 8 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 9 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 6 | v4.11.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 7 | v4.12.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 8 | v4.13.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
-| 10 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release. |
 | — | (unscheduled) | — | B38 | Custom calendar/date picker — needs a scoping pass to confirm the full list of call sites before it can be sized into a release. |
