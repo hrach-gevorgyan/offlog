@@ -36,6 +36,30 @@ Produce a findings report covering:
 - Hygiene: stale TODOs, debug console.log, secrets in code (config.ts's
   hardcoded CouchDB creds are already tracked as ROADMAP Track C — note
   but don't re-litigate).
+- **Security & robustness** (owner-requested addition, 2026-07-09 — every
+  check beside the purely visual/behavioral ones above):
+  - XSS surface: grep every `{@html ...}` use and confirm the interpolated
+    value is a fixed internal constant (e.g. this codebase's own inline
+    SVG icon strings), never user-entered text (task title/notes/tags) or
+    anything derived from sync data written by another device.
+  - `npm audit`: don't just note the vulnerability *count* — check whether
+    any flagged advisory's affected code path is actually reachable from
+    the shipped bundle (dev/build-only tooling vs. a real runtime
+    dependency), and say which.
+  - Deep-link / widget-URL handling (`handleWidgetUrl()` in App.svelte,
+    `com.offlog.app://...` scheme): confirm untrusted input (a malformed
+    or hostile URL) can't reach `eval`, `Function`, or an unguarded
+    property/path lookup.
+  - `localStorage` contents: confirm nothing sensitive (sync password,
+    full task content) is written to a *readable-by-any-script-on-origin*
+    key beyond what's already an accepted, documented tradeoff (sync
+    URL/credentials — tracked separately as ROADMAP C7, don't re-litigate).
+  - Any `eval(`, `new Function(`, or `innerHTML =` outside the `{@html}`
+    cases already covered above.
+  - CouchDB sync request construction: confirm the sync URL/credentials
+    are never interpolated into something executed or logged in full
+    (credentials appearing in a thrown-error message that reaches the UI
+    would be a real leak, not just untidy).
 
 Rank each finding:
 - [SAFE] — trivial, no behavior change possible
@@ -73,12 +97,16 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 ## Phase 5 — Documentation & Handoff
 1. Update docs/TECH.md if structure changed; CLAUDE.md if a convention
    changed. Shrink stale content, don't just add (standing rule).
-2. Ship as a normal light release (like v3.8.5/v3.9.5): bump version in
-   package.json + android/app/build.gradle, add a standard row to
-   docs/CHANGELOG.md's table (prefix the row's summary with
-   "Maintenance pass"), commit + tag per the release checklist.
-3. Update the tracker below: Last pass = this version, Next pass due =
-   this minor + 3.
+2. If Phase 1/2 produced any fix at all, ship as a normal light release
+   (like v3.8.5/v3.9.5): bump version in package.json +
+   android/app/build.gradle, add a standard row to docs/CHANGELOG.md's
+   table (prefix the row's summary with "Maintenance pass"), commit + tag
+   per the release checklist. **If the pass found nothing to fix (a clean
+   report), skip the version bump entirely** — nothing changed, so there's
+   nothing to ship; just do steps 3 and 4 below.
+3. Update the tracker below: Last pass = the version just shipped (or, for
+   a clean no-fix pass, the current version at the time the pass ran),
+   Next pass due = this minor + 3.
 4. Final report: done / deferred / [RISKY] left untouched /
    recommendations for next pass.
 
@@ -91,7 +119,9 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - Long context? Summarize state and suggest a good /clear point.
 
 ## Maintenance tracker
-Last pass: v4.4.2 (2026-07-07 — second pass; see CHANGELOG.md's 4.4.2 row)
-Next pass due: **after v4.7.0 ships**, then continuing the every-3-
-releases cadence from there (v4.10.0, v4.13.0, …) — see docs/ROADMAP.md's
+Last pass: v4.7.0 (2026-07-09 — third pass, clean report, no fixes needed
+so no version was bumped for it; findings not written to CHANGELOG.md
+since nothing shipped).
+Next pass due: **after v4.10.0 ships**, then continuing the every-3-
+releases cadence from there (v4.13.0, v4.16.0, …) — see docs/ROADMAP.md's
 sequencing table, which has these same points marked inline.

@@ -54,6 +54,13 @@ narrating far more than the work needed. Concretely:
   straightforward logic fix doesn't need a live round-trip to prove itself.
 - **Read narrowly.** Use `Grep`/an `offset`+`limit` `Read` instead of
   reading a whole file when only a section is relevant.
+- **Rotating a CHANGELOG.md row into CHANGELOG-ARCHIVE.md**: don't re-read
+  either file in full every release. `Grep` for the row you're moving (or
+  the archive's table-header line) to confirm the anchor text, then use a
+  targeted `Edit` on each file — never a full-file `Read`+`Write` round
+  trip for what's a one-row move. Only touch the archive at all when
+  CHANGELOG.md's row count actually exceeds ~8; most releases don't need
+  a rotation.
 - **Keep responses terse.** State the result, not a running narration of
   intermediate steps. No restating what was just done in a summary if the
   tool output already showed it.

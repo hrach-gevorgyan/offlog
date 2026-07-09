@@ -77,7 +77,7 @@ logic: `KanbanBoard`'s drag/drop position math, `CardDetail`'s save/diff
 logic, and `Sidebar`'s Maintenance step orchestration. **Note**: v3.6.0's
 CHANGELOG entry and the old sequencing table mis-labeled that release's
 `tests/db.test.ts` growth as "A9" — it wasn't; no real component test has
-ever landed. Scheduled for v4.12.0.
+ever landed. Scheduled for v4.13.0.
 
 ### A10. Large-dataset performance validation — shipped in v4.7.0
 Validated via A24's new benchmark harness (`npm run bench`) at 3,000 tasks
@@ -152,7 +152,7 @@ Shipped items: one-line pointer only — full detail in CHANGELOG.md.
 ### B2. Filters on Kanban + saved filters — OPEN
 Search/filter exists in List only (a deliberate v2 scope cut, can be
 revisited). Add the same filter bar to Kanban, then let any filter
-combination be saved as a named view per project. Scheduled for v4.10.0.
+combination be saved as a named view per project. Scheduled for v4.11.0.
 
 ### B3. Notification actions — shipped in v3.7.0
 
@@ -178,13 +178,13 @@ list mode.
 "New from template" duplicates an existing project's status structure (and
 optionally its non-completed tasks) into a fresh project. Builds directly
 on the existing `duplicateTask()` pattern, applied at the project level.
-Scheduled for v4.11.0.
+Scheduled for v4.12.0.
 
 ### B9. Command palette — OPEN
 Ctrl+K currently does global task search only. Extend `GlobalSearch` (or a
 new overlay sharing its shortcut) to also match action commands by fuzzy
 name — "dark mode", "new project", "settings", "export". Scheduled for
-v4.9.0.
+v4.10.0.
 
 ### B10. Android quick-capture widget — shipped in v3.7.0
 
@@ -201,7 +201,7 @@ v3.6.0 gave Maintenance its own modal-on-top-of-a-modal. Now that Settings
 itself has a proper category/detail structure, review whether Maintenance's
 step list, progress bar, and Run button can render directly in the
 Maintenance category's detail pane instead of a second overlay. Scheduled
-for v4.8.0.
+for v4.9.0.
 
 ### B16. Custom fields — shipped in v4.6.0
 Shipped with one change from the original scope: fields are **global**
@@ -219,13 +219,13 @@ into a long form.
 Concretely: a brief last-week performance summary (tasks completed,
 busiest project) and today's upcoming tasks alongside the existing
 pinned/overdue panels — Agenda stays unchanged, this is a glance-level
-preview, not a duplicate of it. Scheduled for v4.9.0.
+preview, not a duplicate of it. Scheduled for v4.10.0.
 
 ### B18. Subtasks / checklists within a task — OPEN
 `CardDetail` has free-text markdown but no structured checklist. A simple
 `checklist: { text: string; done: boolean }[]` array on `TaskDoc`, rendered
 as tappable checkboxes, with a "3/5 done" progress indicator surfaced on
-the card itself in Kanban/List. Scheduled for v4.10.0.
+the card itself in Kanban/List. Scheduled for v4.11.0.
 
 ### B19. Bulk actions in List — shipped in v4.6.0
 Shipped with a different UX than originally scoped, after two rounds of
@@ -248,7 +248,7 @@ remove-tag, no bulk delete.
 ### B24. Seed data: 3 spaces, not 4 — OPEN
 `seedIfEmpty()`/`wipeAndReseed()` currently create Unsorted, Personal,
 Family, and Work. Drop Family from the default seed. Down to Unsorted,
-Personal, Work. Scheduled for v4.12.0.
+Personal, Work. Scheduled for v4.13.0.
 
 ### B25. Deadline quick-suggestions on new card — shipped in v4.0.0
 
@@ -257,23 +257,23 @@ Personal, Work. Scheduled for v4.12.0.
 ### B27. Archived tasks are too hidden — OPEN
 Archived tasks are currently only reachable via a toggle inside List view
 — easy to forget exists. Surface archived-task counts somewhere more
-visible (Dashboard, project header). Scheduled for v4.8.0.
+visible (Dashboard, project header). Scheduled for v4.9.0.
 
 ### B28. Rethink "last column = done" — OPEN, needs owner design session
 The positional-done convention (`column_id === columns.at(-1)`) is a locked
 invariant (see DECISIONS.md) — but it also means a project's last status is
 *always* the done state, with no multiple terminal states. Needs a real
 design conversation before any implementation; may stay exactly as-is
-after that conversation. Scheduled for v4.13.0 (deliberately isolated).
+after that conversation. Scheduled for v4.14.0 (deliberately isolated).
 
 ### B29. Show tags on Kanban cards — OPEN
 Tags currently render in List but not on Kanban cards themselves — add
-them (compact, matching the existing chip style). Scheduled for v4.12.0.
+them (compact, matching the existing chip style). Scheduled for v4.13.0.
 
 ### B30. Notes length guardrail — OPEN
 `CardDetail`'s notes field is unbounded markdown — add a soft length
 guardrail (a visible counter past some threshold, not a hard block).
-Scheduled for v4.11.0.
+Scheduled for v4.12.0.
 
 ### B31. Third Android widget: project list — shipped in v4.1.0
 
@@ -281,13 +281,13 @@ Scheduled for v4.11.0.
 Today only individual tasks can be archived. Add a project-level archive
 action that archives the project and, by default, its non-completed tasks,
 restorable the same way individual archived tasks are. Scheduled for
-v4.8.0.
+v4.9.0.
 
 ### B33. Sub-projects — OPEN, needs its own scoping pass
 Nested project hierarchy — a project containing child projects. Genuinely
 large: touches the data model (`ProjectDoc.space_id` becomes more like
 `parent_id`), every view's project-picker UI, and Dashboard/sidebar
-nesting. Scheduled for v4.13.0 (deliberately isolated).
+nesting. Scheduled for v4.14.0 (deliberately isolated).
 
 ### B34. Project pinning — shipped in v3.9.0
 
@@ -349,7 +349,10 @@ variations of one plain solid-color card. Needs an owner design session to
 scope concretely (per-widget visual identity, icons per row, compact vs.
 expanded size variants, light/dark host-launcher matching). Data plumbing
 (`OffologWidgetPlugin`/`widgetBridge.ts`) stays as-is — this is about what
-gets *drawn*, not how data reaches it. Unscheduled.
+gets *drawn*, not how data reaches it. Folded into v4.8.0 alongside B40/B41/
+B42 (same visual/UX-polish theme, 2026-07-09) — the design-session
+scoping still needs to happen, now as part of that release rather than
+sitting fully unscheduled.
 
 ### B38. Custom calendar/date picker instead of the native one — shipped in v4.6.5
 New `CalendarPicker.svelte` — a themed month-grid popover (+ a time-of-day
@@ -368,6 +371,38 @@ mapping (a new synced doc type, e.g. `device:<id>`, or widening `source`
 to `{id, name}`) — a real schema addition, flagged as its own item because
 it needs the same care as any schema change (see CLAUDE.md), not a quick
 patch. Unscheduled.
+
+### B40. Sidebar bottom icon rail isn't readable — OPEN
+The icon-only bottom rail (Sync/Changelog/Deleted/Settings, shipped
+v4.6.5) traded label clarity for compactness after the labeled version
+became unreadable once a 4th button was added — but bare icons plus a
+hover tooltip aren't self-explanatory at a glance either, per direct
+owner feedback (2026-07-09). Needs a redesign that keeps the compactness
+but restores at-a-glance understandability — candidates: more literal/
+distinct icon shapes, a label that only appears for the hovered/focused
+item, or a slightly taller row with short abbreviated labels. Scheduled
+for v4.8.0.
+
+### B41. Focus view — full-space floating-card redesign — OPEN
+Direction from the owner (2026-07-09): the current Focus view (B35,
+shipped v4.5.0 as a daily-commitment-lock draft) renders in the same
+capped-width single-column layout as every other view, which undersells
+its "this is a different kind of space" identity and wastes screen real
+estate. Redesign toward using the full available viewport, with
+candidate tasks shown as floating/scattered cards (varying size) —
+described as a "notepad after a brainstorm" feel — with an interaction
+to select which ones to commit to for the day, replacing or layering on
+top of the current list-style picker. This is a genuine visual/interaction
+redesign, not a fixed spec — expect it to need iteration during
+implementation, same as B35's own first draft did. Scheduled for v4.8.0.
+
+### B42. Agenda doesn't use full screen width — OPEN
+Both Agenda modes (List and the new Week grid, B7) inherit a
+`max-width: 900px` cap from Agenda's original single-column layout —
+worth revisiting now that List view (the per-project one, B36) already
+committed to full-width/no-truncation/native-horizontal-scroll as a
+deliberate design principle. Widen or remove the cap so Agenda uses the
+available space the same way. Scheduled for v4.8.0.
 
 ---
 
@@ -474,17 +509,16 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
-| — | *Maintenance pass* | — | — | **Due now — v4.7.0 has shipped.** Confirm with the owner before starting (see MAINTENANCE.md). |
-| 2 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 3 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 4 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 2 | v4.8.0 | — | B40, B41, B42, B37 | Visual/UX polish pass (owner feedback, 2026-07-09): sidebar bottom-rail readability, Focus view's full-space floating-card redesign, Agenda's width cap, and the Android widget visual pass folded in under the same theme. |
+| 3 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 4 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 5 | v4.11.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 6 | v4.12.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
-| 7 | v4.13.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
-| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
+| 5 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 6 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 7 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 8 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … (re-check: this pairing shift may nudge the exact number — re-verify against the cadence when v4.10.0 actually ships) |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
-| — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
 
 Within each release: land any Track A item first (or in the same PR as the
