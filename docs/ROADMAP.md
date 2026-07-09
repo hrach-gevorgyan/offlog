@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.6.0**. Everything below is a candidate, not a
+Current version: **v4.6.5**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.

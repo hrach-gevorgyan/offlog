@@ -8,6 +8,7 @@
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import PinStar from './PinStar.svelte';
+  import CalendarPicker from './CalendarPicker.svelte';
   import { getDefaultReminderTime } from '../config';
 
   export let task: TaskDoc;
@@ -189,7 +190,7 @@
       <button class="close-btn" on:click={() => requestClose()}>✕</button>
     </div>
 
-    <div class="fields">
+    <div class="fields-row">
       <label>
         Status
         <select bind:value={column_id}>
@@ -207,44 +208,46 @@
           <option value={3}>High</option>
         </select>
       </label>
-
-      <label>
-        Due date
-        <input type="date" bind:value={due_date} />
-        <div class="due-shortcuts">
-          {#each DUE_SHORTCUTS as s}
-            <button
-              type="button"
-              class="due-shortcut"
-              class:active={due_date === dateFromToday(s.days, s.months)}
-              on:click={() => due_date = dateFromToday(s.days, s.months)}
-            >{s.label}</button>
-          {/each}
-        </div>
-      </label>
-
-      <label>
-        Reminder
-        <input type="datetime-local" bind:value={reminder_at} disabled={remindOnDue} />
-      </label>
     </div>
 
-    <label class="remind-on-due-row">
-      <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-      Remind me on the due date{#if due_date}&nbsp;at {getDefaultReminderTime()}{/if}
+    <label>
+      Due date
+      <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
+      <div class="due-shortcuts">
+        {#each DUE_SHORTCUTS as s}
+          <button
+            type="button"
+            class="due-shortcut"
+            class:active={due_date === dateFromToday(s.days, s.months)}
+            on:click={() => due_date = dateFromToday(s.days, s.months)}
+          >{s.label}</button>
+        {/each}
+      </div>
     </label>
 
-    {#if reminder_at && $permissionState !== 'granted'}
-      <div class="reminder-hint">
-        {#if $permissionState === 'unsupported'}
-          Notifications aren't supported in this browser.
-        {:else}
-          Notifications aren't enabled yet —
-          <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
-          so this reminder can actually notify you.
-        {/if}
-      </div>
-    {/if}
+    <div class="reminder-field">
+      <label>
+        Reminder
+        <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
+      </label>
+      <label class="remind-on-due-row">
+        <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+        Remind me on the due date{#if due_date}&nbsp;at {getDefaultReminderTime()}{/if}
+      </label>
+      {#if reminder_at && $permissionState !== 'granted'}
+        <div class="reminder-hint">
+          {#if $permissionState === 'unsupported'}
+            Notifications aren't supported in this browser.
+          {:else}
+            Notifications aren't enabled yet —
+            <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
+            so this reminder can actually notify you.
+          {/if}
+        </div>
+      {/if}
+    </div>
+
+    <div class="section-divider"></div>
 
     <div class="tags-field">
       <span class="field-label">Tags</span>
@@ -307,9 +310,11 @@
       </div>
     {/if}
 
+    <div class="section-divider"></div>
+
     <label class="notes-label">
       Notes (markdown)
-      <textarea bind:value={body} rows="6" placeholder="Notes…"></textarea>
+      <textarea bind:value={body} rows="4" placeholder="Notes…"></textarea>
     </label>
 
     <div class="timestamps">
@@ -356,28 +361,28 @@
     width: min(440px, 100vw);
     height: 100dvh;
     display: flex; flex-direction: column;
-    padding: 1.5rem 1.6rem;
-    padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
-    gap: 1.1rem;
+    padding: 1.1rem 1.25rem;
+    padding-top: calc(1.1rem + env(safe-area-inset-top, 0px));
+    gap: .55rem;
     border-left: 1px solid var(--border);
     box-shadow: -20px 0 50px rgba(0,0,0,.22);
     overflow-y: auto;
     animation: slideOver .38s cubic-bezier(0.4,0,0.2,1) both;
   }
   @keyframes slideOver { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-  .panel-header { display: flex; gap: .5rem; align-items: flex-start; }
+  .panel-header { display: flex; gap: .4rem; align-items: flex-start; }
   .title-input {
-    flex: 1; font-size: 1.2rem; font-weight: 700; letter-spacing: -.01em;
+    flex: 1; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em;
     border: none; border-bottom: 1.5px solid transparent;
-    background: transparent; padding: .25rem 0;
-    color: var(--text); line-height: 1.35;
-    resize: none; overflow: hidden; min-height: 2rem;
+    background: transparent; padding: .2rem 0;
+    color: var(--text); line-height: 1.3;
+    resize: none; overflow: hidden; min-height: 1.7rem;
     font-family: inherit;
   }
   .title-input:focus { outline: none; border-bottom-color: var(--accent); }
   .pin-btn {
     background: none; border: none; cursor: pointer;
-    width: 30px; height: 30px; border-radius: var(--radius-sm);
+    width: 26px; height: 26px; border-radius: var(--radius-sm);
     color: var(--faint); padding: 0; display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: background .12s, color .12s;
   }
@@ -386,54 +391,55 @@
 
   .close-btn {
     background: var(--hover); border: none; cursor: pointer;
-    width: 30px; height: 30px; border-radius: var(--radius-sm);
-    font-size: .95rem; color: var(--muted); padding: 0;
+    width: 26px; height: 26px; border-radius: var(--radius-sm);
+    font-size: .85rem; color: var(--muted); padding: 0;
     flex-shrink: 0; transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
-  .fields { display: flex; flex-direction: column; gap: .85rem; }
+  .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
+  .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
-    display: flex; flex-direction: column; gap: .3rem;
-    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
+    display: flex; flex-direction: column; gap: .22rem;
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  select, input[type=date], input[type=datetime-local] {
-    padding: .5rem .6rem; border: 1px solid var(--border-strong);
+  select {
+    padding: .38rem .5rem; border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
-    font-size: .9rem; font-family: 'Hanken Grotesk', sans-serif;
+    font-size: .84rem; font-family: 'Hanken Grotesk', sans-serif;
   }
-  select:focus, input[type=date]:focus, input[type=datetime-local]:focus { outline: none; border-color: var(--accent); }
-  input[type=datetime-local]:disabled { opacity: .6; cursor: default; }
+  select:focus { outline: none; border-color: var(--accent); }
 
-  .due-shortcuts { display: flex; gap: 5px; flex-wrap: wrap; }
+  .due-shortcuts { display: flex; gap: 4px; flex-wrap: wrap; }
   .due-shortcut {
     background: var(--col-bg); color: var(--muted); border: 1px solid var(--border);
-    border-radius: 5px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
+    border-radius: 5px; font-size: .68rem; font-weight: 600; letter-spacing: normal;
     text-transform: none; font-family: 'Hanken Grotesk', sans-serif;
-    padding: 3px 9px; cursor: pointer; transition: background .1s, color .1s, border-color .1s;
+    padding: 2px 8px; cursor: pointer; transition: background .1s, color .1s, border-color .1s;
   }
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
   .due-shortcut.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   .reminder-hint {
-    font-size: .78rem; color: var(--faint); line-height: 1.4;
+    font-size: .72rem; color: var(--faint); line-height: 1.35;
     background: var(--col-bg); border-radius: var(--radius-sm);
-    padding: .5rem .65rem; margin-top: -.4rem;
+    padding: .4rem .55rem;
   }
 
   .remind-on-due-row {
     display: flex !important; flex-direction: row !important; align-items: center;
-    gap: .5rem; width: fit-content; max-width: 100%;
-    font-size: .8rem; color: var(--muted); font-weight: 500;
+    gap: .4rem; width: fit-content; max-width: 100%;
+    font-size: .74rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
-    margin-top: -.5rem; padding: .4rem .7rem; border-radius: var(--radius-sm);
+    padding: .3rem .55rem; border-radius: var(--radius-sm);
     background: var(--col-bg); cursor: pointer; transition: background .12s, color .12s;
   }
   .remind-on-due-row:has(input:checked) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, var(--col-bg)); }
   .remind-on-due-row:has(input:disabled) { opacity: .55; cursor: default; }
   .remind-on-due-row input[type=checkbox] {
     accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
-    width: 15px; height: 15px; margin: 0;
+    width: 13px; height: 13px; margin: 0;
   }
   .remind-on-due-row input[type=checkbox]:disabled { cursor: default; }
   .reminder-enable-btn {
@@ -441,37 +447,37 @@
     color: var(--accent); font-weight: 600; font-size: inherit;
     text-decoration: underline;
   }
-  .tags-field { display: flex; flex-direction: column; gap: .3rem; }
-  .custom-fields { display: flex; flex-direction: column; gap: .4rem; }
+  .tags-field { display: flex; flex-direction: column; gap: .22rem; }
+  .custom-fields { display: flex; flex-direction: column; gap: .3rem; }
   .custom-field-label {
-    display: flex; flex-direction: column; gap: .3rem;
-    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
+    display: flex; flex-direction: column; gap: .22rem;
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
   .custom-field-label input, .custom-field-label select {
-    padding: .45rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    background: var(--surface); color: var(--text); font-size: .9rem; font-family: inherit;
+    padding: .38rem .5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); font-size: .84rem; font-family: inherit;
     text-transform: none; letter-spacing: normal;
   }
   .add-field-btn {
     align-self: flex-start; background: none; border: none; cursor: pointer;
-    color: var(--accent); font-size: .82rem; font-weight: 500; padding: .2rem 0;
+    color: var(--accent); font-size: .76rem; font-weight: 500; padding: .15rem 0;
   }
   .field-label {
-    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
   .tags-input-row {
-    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-    padding: .45rem .6rem; border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm); background: var(--surface); min-height: 40px;
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    padding: .35rem .5rem; border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); background: var(--surface); min-height: 34px;
     cursor: text;
   }
   .tags-input-row:focus-within { border-color: var(--accent); }
   .tag-chip {
     display: inline-flex; align-items: center; gap: 4px;
     background: var(--col-bg); color: var(--accent); border-radius: 5px;
-    font-size: .8rem; font-weight: 500; padding: 2px 8px;
+    font-size: .74rem; font-weight: 500; padding: 2px 7px;
   }
   .tag-remove {
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
@@ -501,27 +507,27 @@
   }
 
   .notes-label {
-    display: flex; flex-direction: column; gap: .3rem;
-    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
+    display: flex; flex-direction: column; gap: .22rem;
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint); flex: 1;
   }
   textarea {
-    flex: 1; resize: vertical; min-height: 130px;
-    padding: .7rem .8rem; border: 1px solid var(--border);
+    flex: 1; resize: vertical; min-height: 90px;
+    padding: .55rem .65rem; border: 1px solid var(--border);
     border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
-    font-family: 'Hanken Grotesk', sans-serif; font-size: .92rem; line-height: 1.6;
+    font-family: 'Hanken Grotesk', sans-serif; font-size: .85rem; line-height: 1.5;
   }
   textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
   .actions {
     display: flex; justify-content: space-between; align-items: center;
-    padding-top: .9rem; border-top: 1px solid var(--border);
+    padding-top: .6rem; border-top: 1px solid var(--border);
   }
   .left-actions { display: flex; gap: .4rem; align-items: center; }
   .right { display: flex; gap: .5rem; }
   button {
-    padding: .45rem .95rem; border-radius: var(--radius-sm);
+    padding: .38rem .8rem; border-radius: var(--radius-sm);
     border: 1px solid var(--border-strong); cursor: pointer;
-    background: var(--surface); color: var(--text); font-size: .85rem; font-weight: 500;
+    background: var(--surface); color: var(--text); font-size: .82rem; font-weight: 500;
   }
   .save-btn { background: var(--text); color: var(--bg); border-color: var(--text); }
   .save-btn:disabled { opacity: .5; cursor: default; }

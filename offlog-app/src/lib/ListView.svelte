@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { ProjectDoc, TaskDoc } from './types';
-  import { updateTask, unarchiveTask, getArchivedTasksForProject } from './db';
+  import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
+  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs } from './db';
   import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabel, dueInk, filterTasks } from './utils';
@@ -135,12 +135,17 @@
   // everything else is optional and reorderable. Width map covers every
   // column key; order is a plain array so drag-reorder is just an array
   // splice.
-  type ColKey = 'status' | 'priority' | 'due' | 'tags' | 'created' | 'updated' | 'source';
-  const COL_LABELS: Record<ColKey, string> = {
+  // ColKey covers the 7 built-ins plus, dynamically, one per global custom
+  // field (B16) — a field's own `id` (already namespaced "field:<nanoid>",
+  // see types.ts) doubles as its column key, so it can't collide with a
+  // built-in. Widened to `string` rather than a strict union since the set
+  // of custom fields isn't known at compile time.
+  type ColKey = string;
+  const COL_LABELS: Record<string, string> = {
     status: 'Status', priority: 'Priority', due: 'Due', tags: 'Tags',
     created: 'Created', updated: 'Updated', source: 'Device',
   };
-  const COL_WIDTH: Record<ColKey, string> = {
+  const COL_WIDTH: Record<string, string> = {
     status: '120px', priority: '100px', due: '130px', tags: 'minmax(140px,200px)',
     created: '110px', updated: '110px', source: '90px',
   };
@@ -148,9 +153,23 @@
   const COLS_KEY = 'offlog_list_columns';
   const ORDER_KEY = 'offlog_list_col_order';
 
+  let customFields: CustomFieldDef[] = [];
+  function colLabel(key: ColKey): string { return COL_LABELS[key] ?? customFields.find(f => f.id === key)?.name ?? key; }
+  function colWidth(key: ColKey): string { return COL_WIDTH[key] ?? '130px'; }
+  function isCustomCol(key: ColKey): boolean { return key.startsWith('field:'); }
+
   let cols: Record<ColKey, boolean> = { status: true, priority: true, due: true, tags: true, created: false, updated: false, source: false };
   let colOrder: ColKey[] = [...DEFAULT_ORDER];
   let showColMenu = false;
+  let colMenuPos = { top: 0, left: 0 };
+  function openColMenu(e: MouseEvent) {
+    if (!showColMenu) {
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const menuWidth = 190;
+      colMenuPos = { top: r.bottom + 6, left: Math.max(8, Math.min(r.right - menuWidth, window.innerWidth - menuWidth - 8)) };
+    }
+    showColMenu = !showColMenu;
+  }
   // Drag state for column reordering. `dragOverCol`/`dragOverSide` drive
   // the visual insertion indicator (a highlighted edge on the header
   // being dragged over) — without them, dragging gave no feedback about
@@ -160,16 +179,24 @@
   let dragOverCol: ColKey | null = null;
   let dragOverSide: 'left' | 'right' | null = null;
 
-  onMount(() => {
+  onMount(async () => {
+    // Custom fields are global (not per-project) — fetched once here so
+    // their ids are known before reconciling saved column state against
+    // them. New fields default OFF (opt-in), same as created/updated/source.
+    customFields = await getCustomFieldDefs();
+    const knownKeys = [...DEFAULT_ORDER, ...customFields.map(f => f.id)];
     try {
       const saved = JSON.parse(localStorage.getItem(COLS_KEY) ?? 'null');
       if (saved) cols = { ...cols, ...saved };
     } catch {}
+    for (const f of customFields) if (!(f.id in cols)) cols = { ...cols, [f.id]: false };
     try {
       const savedOrder = JSON.parse(localStorage.getItem(ORDER_KEY) ?? 'null') as ColKey[] | null;
-      // Reconcile against DEFAULT_ORDER in case a new column key was added
-      // since this was saved — never drop or silently lose a known key.
-      if (savedOrder) colOrder = [...savedOrder.filter(k => DEFAULT_ORDER.includes(k)), ...DEFAULT_ORDER.filter(k => !savedOrder.includes(k))];
+      // Reconcile against every currently-known key (built-in + custom
+      // field) in case one was added or removed since this was saved —
+      // never drop or silently lose a known key, never keep a stale one.
+      const base = savedOrder ?? colOrder;
+      colOrder = [...base.filter(k => knownKeys.includes(k)), ...knownKeys.filter(k => !base.includes(k))];
     } catch {}
   });
 
@@ -223,7 +250,7 @@
   // (unclipped) content width and the scroll container takes over once
   // that's wider than the viewport, instead of the old responsive
   // column-hiding tiers.
-  $: gridTemplate = (selectionMode ? '20px ' : '') + '24px minmax(220px,max-content)' + visibleOrder.map(k => ` ${COL_WIDTH[k]}`).join('');
+  $: gridTemplate = (selectionMode ? '20px ' : '') + '24px minmax(220px,max-content)' + visibleOrder.map(k => ` ${colWidth(k)}`).join('');
 
   // B19 (revised, owner feedback 2026-07-09): plain checkboxes-everywhere
   // was rejected as a UI — checkboxes only appear once "Select" mode is
@@ -450,14 +477,21 @@
       </button>
 
       <div class="col-menu-wrap">
-        <button class="action-btn" class:active={showColMenu || selectionMode} on:click={() => showColMenu = !showColMenu} aria-label="Select and columns" title="Select rows / show-hide columns">
+        <button class="action-btn" class:active={showColMenu || selectionMode} on:click={openColMenu} aria-label="Select and columns" title="Select rows / show-hide columns">
           <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="3" y1="3" x2="3" y2="11"/><line x1="7" y1="3" x2="7" y2="11"/><line x1="11" y1="3" x2="11" y2="11"/>
           </svg>
           <span class="action-label">Select</span>
         </button>
         {#if showColMenu}
-          <div class="col-menu">
+          <!-- position:fixed (not the shared .col-menu's default absolute)
+               since .list-panel has overflow:hidden to clip its rounded
+               corners — an absolutely-positioned popover gets clipped by
+               that same rule once its content is tall enough (e.g. several
+               custom-field columns), even though it visually "should"
+               float above everything. Fixed + JS-computed coordinates
+               escapes that ancestor clipping entirely. -->
+          <div class="col-menu col-menu--fixed" style="top:{colMenuPos.top}px; left:{colMenuPos.left}px;">
             <label class="col-menu-item select-rows-item">
               Select rows
               <button class="toggle-mini" class:on={selectionMode} on:click={toggleSelectionMode} role="switch" aria-checked={selectionMode} aria-label="Toggle row selection">
@@ -468,7 +502,7 @@
             {#each colOrder as key (key)}
               <label class="col-menu-item">
                 <input type="checkbox" checked={cols[key]} on:change={() => toggleCol(key)} />
-                {COL_LABELS[key]}
+                {colLabel(key)}
               </label>
             {/each}
           </div>
@@ -516,7 +550,7 @@
         <span class="head-spacer"></span>
         <button class="th-btn" title="Click to sort. Shift+click to add as a secondary sort." on:click={(e) => toggleSort('title', e.shiftKey)}>Title <span class="sort-icon">{sortIcons.title}</span></button>
         {#each visibleOrder as key (key)}
-          {@const sortKey = key === 'tags' ? null : (key === 'status' ? 'column' : key)}
+          {@const sortKey = isCustomCol(key) || key === 'tags' ? null : (key === 'status' ? 'column' : key) as SortCol | null}
           <button
             class="th-btn"
             class:drag-over-left={dragOverCol === key && dragOverSide === 'left'}
@@ -529,9 +563,9 @@
             on:drop={() => onColDrop(key)}
             on:dragend={onColDragEnd}
             on:click={(e) => sortKey && toggleSort(sortKey, e.shiftKey)}
-            title={sortKey ? 'Drag to reorder. Click to sort. Shift+click to add as a secondary sort.' : 'Drag to reorder. Tags aren\'t sortable (no single order for a list of tags).'}
+            title={sortKey ? 'Drag to reorder. Click to sort. Shift+click to add as a secondary sort.' : 'Drag to reorder. Not sortable.'}
           >
-            {COL_LABELS[key]}
+            {colLabel(key)}
             {#if sortKey}<span class="sort-icon">{sortIcons[sortKey]}</span>{/if}
           </button>
         {/each}
@@ -589,6 +623,8 @@
               <span class="cell-date">{fmtDate(task.updated_at)}</span>
             {:else if key === 'source'}
               <span class="cell-date">{task.source}</span>
+            {:else if isCustomCol(key)}
+              <span class="cell-date">{task.custom_values?.[key] ?? '—'}</span>
             {/if}
           {/each}
         </div>
@@ -752,7 +788,9 @@
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 6px; min-width: 150px;
     display: flex; flex-direction: column; gap: 2px;
+    max-height: min(70vh, 420px); overflow-y: auto;
   }
+  .col-menu--fixed { position: fixed; right: auto; z-index: 210; width: 190px; }
   .col-menu-item {
     display: flex; align-items: center; gap: 8px;
     padding: .35rem .5rem; border-radius: 6px; font-size: .82rem; color: var(--text); cursor: pointer;
