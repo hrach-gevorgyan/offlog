@@ -17,6 +17,43 @@
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // B7 — week-grid view, toggled alongside the existing flat list. Same
+  // underlying getAllTasksDue() query; this just re-lays it out. Per-device
+  // preference (localStorage), same as every other view-mode toggle.
+  const VIEW_KEY = 'offlog_agenda_view';
+  let mode: 'list' | 'week' = (typeof localStorage !== 'undefined' && localStorage.getItem(VIEW_KEY) === 'week') ? 'week' : 'list';
+  function setMode(m: 'list' | 'week') { mode = m; localStorage.setItem(VIEW_KEY, m); }
+
+  let weekOffset = 0;
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function startOfOffsetWeek(offset: number): Date {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - d.getDay() + offset * 7);
+    return d;
+  }
+  function toDateStr(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  $: weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = startOfOffsetWeek(weekOffset);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  $: weekLabel = weekDays.length
+    ? `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+    : '';
+  // A reactive lookup, not a plain function called from the template — a
+  // plain `tasksOnDay(day)` call inside {#each weekDays as day} only
+  // references `tasksOnDay` and `day` in the compiler's eyes, not `all`
+  // (that's hidden inside the function body), so the grid silently never
+  // re-rendered once `all` loaded async. `$:` makes the `all` dependency
+  // explicit.
+  $: tasksByDate = all.reduce<Record<string, DueTask[]>>((acc, t) => {
+    if (t.due_date) (acc[t.due_date] ??= []).push(t);
+    return acc;
+  }, {});
+
   function startOfWeek(): string {
     const d = new Date();
     d.setDate(d.getDate() - d.getDay());
@@ -72,8 +109,42 @@
       <h1 class="dl-title">Agenda</h1>
       <span class="dl-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
     </div>
+    <div class="mode-toggle">
+      <button class="mode-btn" class:active={mode === 'list'} on:click={() => setMode('list')}>List</button>
+      <button class="mode-btn" class:active={mode === 'week'} on:click={() => setMode('week')}>Week</button>
+    </div>
   </div>
 
+  {#if mode === 'week'}
+    <div class="week-nav">
+      <button class="week-nav-btn" on:click={() => weekOffset -= 1} aria-label="Previous week">‹</button>
+      <span class="week-label">{weekLabel}{#if weekOffset !== 0}<button class="week-today-btn" on:click={() => weekOffset = 0}>Today</button>{/if}</span>
+      <button class="week-nav-btn" on:click={() => weekOffset += 1} aria-label="Next week">›</button>
+    </div>
+    <div class="week-grid">
+      {#each weekDays as day (day.toISOString())}
+        {@const dStr = toDateStr(day)}
+        <div class="week-col" class:today={dStr === today}>
+          <div class="week-col-head">
+            <span class="week-dow">{DAY_NAMES[day.getDay()]}</span>
+            <span class="week-date">{day.getDate()}</span>
+          </div>
+          <div class="week-col-body">
+            {#each tasksByDate[dStr] ?? [] as t (t._id)}
+              <button
+                class="week-task"
+                style="border-left-color:{PRIO_COLOR[t.priority]}"
+                on:click={() => openDetail(t)}
+                title={t.title}
+              >
+                <span class="week-task-title">{t.title}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/each}
+    </div>
+  {:else}
   <div class="dl-body">
     {#if all.length === 0}
       <div class="empty">No tasks with due dates across any project.</div>
@@ -165,6 +236,7 @@
 
     {/if}
   </div>
+  {/if}
 </div>
 
 {#if detailTask && detailProject}
@@ -196,6 +268,73 @@
     transition: background .12s;
   }
   .hamburger:hover { background: var(--hover); }
+
+  .mode-toggle {
+    display: flex; border: 1px solid var(--border-strong); border-radius: 8px;
+    overflow: hidden; flex-shrink: 0; margin-left: auto;
+  }
+  .mode-btn {
+    padding: 6px 14px; border: none; background: var(--surface); color: var(--muted);
+    font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .12s, color .12s;
+  }
+  .mode-btn + .mode-btn { border-left: 1px solid var(--border-strong); }
+  .mode-btn:hover { background: var(--hover); }
+  .mode-btn.active { background: var(--accent); color: #fff; }
+
+  .week-nav {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 12px 28px 4px; flex-shrink: 0;
+  }
+  .week-nav-btn {
+    background: none; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer;
+    color: var(--muted); font-size: 1rem; line-height: 1; padding: 3px 10px;
+    transition: background .12s, color .12s;
+  }
+  .week-nav-btn:hover { background: var(--hover); color: var(--text); }
+  .week-label { font-size: .85rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .week-today-btn {
+    background: none; border: none; color: var(--accent); font-size: .72rem; font-weight: 600;
+    cursor: pointer; padding: 2px 6px; border-radius: 5px;
+  }
+  .week-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+  .week-grid {
+    flex: 1; min-height: 0; overflow-y: auto; overflow-x: auto;
+    display: grid; grid-template-columns: repeat(7, minmax(96px, 1fr));
+    border: 1px solid var(--border); border-radius: 10px;
+    margin: 12px 28px 32px; width: auto;
+  }
+  .week-col {
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+  .week-col:last-child { border-right: none; }
+  .week-col.today { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .week-col-head {
+    display: flex; align-items: baseline; gap: 5px; padding: 7px 9px;
+    border-bottom: 1px solid var(--border); color: var(--faint);
+  }
+  .week-col.today .week-col-head { color: var(--accent); }
+  .week-dow { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: inherit; }
+  .week-date { font-size: .78rem; font-weight: 700; color: var(--text); }
+  .week-col.today .week-date { color: var(--accent); }
+  .week-col-body { flex: 1; display: flex; flex-direction: column; }
+  .week-task {
+    display: block; text-align: left; width: 100%;
+    background: none; border: none; border-left: 3px solid var(--faint);
+    padding: 4px 8px; cursor: pointer; transition: background .1s;
+  }
+  .week-task:hover { background: var(--hover); }
+  .week-task-title {
+    display: block; font-size: .72rem; color: var(--text); overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; line-height: 1.5;
+  }
+
+  @media (max-width: 700px) {
+    .week-grid { grid-template-columns: repeat(7, minmax(64px, 1fr)); margin: 10px 12px 24px; }
+    .week-nav { padding: 10px 12px 4px; }
+    .week-task-title { font-size: .66rem; }
+  }
 
   .dl-body {
     flex: 1; min-height: 0; overflow-y: auto;

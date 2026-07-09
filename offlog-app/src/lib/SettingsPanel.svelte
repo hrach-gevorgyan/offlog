@@ -1,11 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import db, {
-    syncState, syncNow, importJSON,
+    syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
   } from './db';
+  import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
   import { timeAgo } from './utils';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -213,8 +214,14 @@
   // just come back from the OS "Alarms & reminders" settings screen.
   onMount(() => { if (isAndroid) checkExactAlarmPermission(); });
 
+  // B4 — guided import: parse + preview counts before writing anything,
+  // instead of importing the instant a file is picked. `pendingImportDocs`
+  // holds the parsed array between "file chosen" and "user confirms."
   let importStatus = '';
-  async function handleImport() {
+  let pendingImportDocs: any[] | null = null;
+  let importPreview: { toCreate: number; toSkip: number; byType: Record<string, number> } | null = null;
+
+  function handleImport() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json,application/json';
@@ -225,10 +232,8 @@
         const text = await file.text();
         const docs = JSON.parse(text);
         if (!Array.isArray(docs)) throw new Error('Invalid format');
-        importStatus = 'Importing…';
-        const { ok, skipped } = await importJSON(docs);
-        importStatus = `Done — ${ok} imported, ${skipped} skipped`;
-        setTimeout(() => { importStatus = ''; }, 4000);
+        pendingImportDocs = docs;
+        importPreview = analyzeImport(docs);
       } catch (e: any) {
         importStatus = 'Error: ' + (e.message ?? 'invalid file');
         setTimeout(() => { importStatus = ''; }, 4000);
@@ -237,17 +242,61 @@
     input.click();
   }
 
+  function cancelImport() { pendingImportDocs = null; importPreview = null; }
+
+  async function confirmImport() {
+    if (!pendingImportDocs) return;
+    const docs = pendingImportDocs;
+    pendingImportDocs = null; importPreview = null;
+    try {
+      importStatus = 'Importing…';
+      const { ok, skipped } = await importJSON(docs);
+      importStatus = `Done — ${ok} imported, ${skipped} skipped`;
+    } catch {
+      importStatus = 'Import failed. Please try again.';
+    }
+    setTimeout(() => { importStatus = ''; }, 4000);
+  }
+
+  function downloadBlob(content: string, mime: string, filename: string) {
+    const blob = new Blob([content], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+
   async function exportJSON() {
     try {
       const all = await db.allDocs({ include_docs: true });
       const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
-      const blob = new Blob([JSON.stringify(docs, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `offlog-backup-${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
+      downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-backup-${new Date().toISOString().slice(0,10)}.json`);
     } catch {
       showError('Failed to export backup. Please try again.');
+    }
+  }
+
+  // B4 — export a single project's docs, and a spreadsheet-friendly CSV
+  // of every task. Both one-way (CSV isn't re-importable); JSON export
+  // above stays the round-trippable backup format.
+  let exportProjectId = '';
+  async function doExportProject() {
+    if (!exportProjectId) return;
+    try {
+      const docs = await exportProjectDocs(exportProjectId);
+      const name = $projectsStore.find(p => p._id === exportProjectId)?.name ?? 'project';
+      downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0,10)}.json`);
+    } catch {
+      showError('Failed to export project. Please try again.');
+    }
+  }
+
+  async function doExportCSV() {
+    try {
+      const csv = await exportTasksCSV();
+      downloadBlob(csv, 'text/csv', `offlog-tasks-${new Date().toISOString().slice(0,10)}.csv`);
+    } catch {
+      showError('Failed to export CSV. Please try again.');
     }
   }
 
@@ -443,6 +492,17 @@
                 <span class="storage-info">{storageInfo || 'Calculating…'}</span>
                 <button class="export-btn" on:click={exportJSON}>Export JSON</button>
               </div>
+              <div class="setting-row">
+                <span class="storage-info" style="color: var(--muted)">Every task, one row, for a spreadsheet</span>
+                <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
+              </div>
+              <div class="setting-row">
+                <select class="project-export-select" bind:value={exportProjectId}>
+                  <option value="">Choose a project…</option>
+                  {#each $projectsStore as p (p._id)}<option value={p._id}>{p.name}</option>{/each}
+                </select>
+                <button class="export-btn" on:click={doExportProject} disabled={!exportProjectId}>Export Project</button>
+              </div>
               {#if storageAvailable}
                 {#if storagePercent >= STORAGE_WARN_THRESHOLD}
                   <p class="setting-hint setting-hint-warn">
@@ -466,10 +526,26 @@
                   {breakdown.logEntries} history entries
                 </p>
               {/if}
-              <div class="setting-row">
-                <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
-                <button class="export-btn" on:click={handleImport}>Import JSON</button>
-              </div>
+              {#if importPreview}
+                <div class="import-preview">
+                  <p class="setting-hint">
+                    Will create <strong>{importPreview.byType.space}</strong> space{importPreview.byType.space === 1 ? '' : 's'},
+                    <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
+                    <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
+                    {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
+                    A doc whose id already exists merges instead of duplicating.
+                  </p>
+                  <div class="setting-row">
+                    <button class="export-btn" on:click={cancelImport}>Cancel</button>
+                    <button class="export-btn import-confirm-btn" on:click={confirmImport}>Import {importPreview.toCreate} item{importPreview.toCreate === 1 ? '' : 's'}</button>
+                  </div>
+                </div>
+              {:else}
+                <div class="setting-row">
+                  <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
+                  <button class="export-btn" on:click={handleImport}>Import JSON</button>
+                </div>
+              {/if}
 
             {:else if activeCategory === 'maintenance'}
               <button class="link-row" on:click={openMaintenance}>
@@ -591,6 +667,19 @@
   }
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
+
+  .project-export-select {
+    flex: 1; padding: .4rem .5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); font-size: .82rem;
+  }
+  .project-export-select:focus { outline: none; border-color: var(--accent); }
+
+  .import-preview {
+    display: flex; flex-direction: column; gap: .5rem;
+    background: var(--col-bg); border-radius: var(--radius-sm); padding: .6rem .7rem;
+  }
+  .import-confirm-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .import-confirm-btn:hover { opacity: .9; }
 
   .field-label {
     display: flex; flex-direction: column; gap: .35rem;

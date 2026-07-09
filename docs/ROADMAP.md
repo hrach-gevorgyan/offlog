@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.6.5**. Everything below is a candidate, not a
+Current version: **v4.7.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -79,12 +79,14 @@ CHANGELOG entry and the old sequencing table mis-labeled that release's
 `tests/db.test.ts` growth as "A9" — it wasn't; no real component test has
 ever landed. Scheduled for v4.12.0.
 
-### A10. Large-dataset performance validation — OPEN
-Manual testing so far has gone up to ~150 tasks. Nothing has verified
-behavior at the scale a multi-year single-user database could realistically
-reach — 1,000–5,000 tasks, thousands of log entries. Script a one-time
-stress seed, then measure Kanban/List render time, `getDashboardData()`
-latency, and Global Search responsiveness. Scheduled for v4.7.0.
+### A10. Large-dataset performance validation — shipped in v4.7.0
+Validated via A24's new benchmark harness (`npm run bench`) at 3,000 tasks
+across 8 projects: `getDashboardData()` and `searchAllTasks()` stay
+sub-millisecond (in-memory cache), `getTasksForProject()` (the one path
+that queries PouchDB's Mango index directly, uncached) sits around 10ms —
+no perf cliff found at this scale. Actual Svelte component render time
+(Kanban/List) isn't measured — that needs A9's still-open component test
+infrastructure first.
 
 ### A11. Error-handling audit, pass 2 — shipped in v4.6.0
 
@@ -112,12 +114,12 @@ latency, and Global Search responsiveness. Scheduled for v4.7.0.
 
 ### A23. Sidebar scale test with 20+ projects — shipped in v3.9.0
 
-### A24. Version-over-version performance metrics — OPEN
-Nothing currently measures whether a given release made the app faster or
-slower — A10's large-dataset validation needs measurement infrastructure
-anyway; formalize it into a small benchmark harness (Kanban/List render
-time, `getDashboardData()` latency, Global Search responsiveness) that can
-be re-run release to release. Scheduled for v4.7.0 (paired with A10).
+### A24. Version-over-version performance metrics — shipped in v4.7.0
+New `tests/perf.bench.ts` + `npm run bench` (Vitest's native `bench`,
+separate from `npm test` — benchmarks are slow and not pass/fail). Times
+`getDashboardData()`, `getTasksForProject()`, and `searchAllTasks()` at a
+3,000-task stress scale. No hardcoded thresholds (absolute timings depend
+on the machine); compare the printed numbers release to release.
 
 ### A25. Quick Add widget opened the app but not Quick Add — shipped in v3.9.8
 
@@ -154,21 +156,23 @@ combination be saved as a named view per project. Scheduled for v4.10.0.
 
 ### B3. Notification actions — shipped in v3.7.0
 
-### B4. Import/export v2 — OPEN
-Current JSON export is a raw doc dump. Add: export a single project, CSV
-export, and a guided import that previews what will be created/skipped
-before writing. Scheduled for v4.7.0.
+### B4. Import/export v2 — shipped in v4.7.0
+Export a single project (JSON), export all tasks (CSV, one-way — not
+re-importable), and a guided import: pick a file, see counts of what
+will be created per type (and what's unrecognized/skipped) before
+confirming, instead of writing on file-select.
 
 ### B5. Multi-device polish — shipped in v4.2.0
 
 ### B6. Tag management — shipped in v3.6.0
 
-### B7. Calendar / week view for Agenda — OPEN
-The Agenda groups by Overdue/Today/This Week/Later as flat lists. A
-week-grid view (7 columns, tasks placed under their due date) alongside the
-existing list view gives a different, genuinely useful way to see workload
-distribution — toggle between the two, same underlying `getAllTasksDue()`
-query. Scheduled for v4.7.0.
+### B7. Calendar / week view for Agenda — shipped in v4.7.0
+List/Week toggle (per-device, localStorage), with prev/next/Today
+navigation. Week grid uses thin priority-colored left-border task rows
+rather than individual bordered chips — an earlier boxed-chip version was
+cramped and hard to scan at 7-columns-in-900px, redone as a plain compact
+list-per-day instead. Same underlying `getAllTasksDue()` query as the
+list mode.
 
 ### B8. Project templates — OPEN
 "New from template" duplicates an existing project's status structure (and
@@ -347,13 +351,11 @@ expanded size variants, light/dark host-launcher matching). Data plumbing
 (`OffologWidgetPlugin`/`widgetBridge.ts`) stays as-is — this is about what
 gets *drawn*, not how data reaches it. Unscheduled.
 
-### B38. Custom calendar/date picker instead of the native one — OPEN, needs scoping
-Owner feedback (2026-07-05): due date/reminder inputs currently use the
-plain OS-native `<input type="date">`/`type="datetime-local">` pickers —
-inconsistent look, no visual connection to the app's design. Replace with
-a real in-app calendar component (own month-grid UI, themed). Needs a
-scoping pass to confirm the full list of call sites before implementation.
-Unscheduled.
+### B38. Custom calendar/date picker instead of the native one — shipped in v4.6.5
+New `CalendarPicker.svelte` — a themed month-grid popover (+ a time-of-day
+row when the field needs one), replacing the native `<input type="date">`/
+`type="datetime-local">` in CardDetail's Due date and Reminder fields, the
+only two call sites.
 
 ### B39. Renaming a device (B22) leaves a stale "dead" entry — OPEN, needs schema care
 Real gap found right after B22/B5 shipped (2026-07-05): "Devices seen
@@ -472,19 +474,17 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
-| 2 | v4.7.0 | A10, A24 | B4, B7 | Perf validation and the new benchmark harness (A24 formalizes what A10 needs anyway), tested against the two heaviest new features left. |
-| — | *Maintenance pass* | — | — | Scheduled after v4.7.0 ships. |
-| 3 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 4 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
-| 5 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| — | *Maintenance pass* | — | — | **Due now — v4.7.0 has shipped.** Confirm with the owner before starting (see MAINTENANCE.md). |
+| 2 | v4.8.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 3 | v4.9.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 4 | v4.10.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 6 | v4.11.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 7 | v4.12.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
-| 8 | v4.13.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| 5 | v4.11.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 6 | v4.12.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 7 | v4.13.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B37 | Android widget visual design/UX pass — needs an owner design session before it can be scoped into a release. |
-| — | (unscheduled) | — | B38 | Custom calendar/date picker — needs a scoping pass to confirm the full list of call sites before it can be sized into a release. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
 
 Within each release: land any Track A item first (or in the same PR as the

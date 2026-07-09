@@ -853,6 +853,58 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
   return { ok, skipped };
 }
 
+// B4 (import/export v2) — a lightweight, read-only pass over a parsed
+// import file so the UI can show "what will happen" before anything is
+// written. Doesn't check against the live DB (PouchDB has no clean
+// dry-run for bulkDocs) — "will be skipped" here means "malformed, not
+// one of space/project/task," which importJSON's own filter already
+// applies; a doc that collides with an existing id is still reported as
+// "created" here and resolved as a merge (status 409, counted as ok) by
+// importJSON itself, consistent with its existing behavior.
+export function analyzeImport(docs: any[]): { toCreate: number; toSkip: number; byType: Record<string, number> } {
+  const byType: Record<string, number> = { space: 0, project: 0, task: 0 };
+  let toSkip = 0;
+  for (const d of docs) {
+    if (d?._id && typeof d._id === 'string' && d.type in byType) byType[d.type]++;
+    else toSkip++;
+  }
+  return { toCreate: docs.length - toSkip, toSkip, byType };
+}
+
+// Export a single project (B4) — the project doc plus its own tasks only,
+// not the space it belongs to (the destination side is expected to already
+// have a matching space, or the user re-targets on import — keeping this
+// export minimal avoids silently duplicating spaces on re-import).
+export async function exportProjectDocs(projectId: string): Promise<any[]> {
+  const project = await db.get(projectId);
+  const tasks = (await getAllTasksRaw()).filter(t => t.project_id === projectId && !t.deleted);
+  return [project, ...tasks];
+}
+
+// CSV export (B4) — every non-deleted task across every project, one row
+// each. Status/Priority are resolved to their display names (not raw
+// column_id / 1-2-3) since a spreadsheet is a human-facing destination,
+// not a re-importable format — CSV is one-way, JSON export is the
+// round-trippable one.
+export async function exportTasksCSV(): Promise<string> {
+  const [tasks, projects] = await Promise.all([getAllTasksRaw(), getProjects()]);
+  const projById: Record<string, ProjectDoc> = Object.fromEntries(projects.map(p => [p._id, p]));
+  const PRIO_NAME: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
+  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Title', 'Project', 'Status', 'Priority', 'Due Date', 'Tags', 'Created', 'Updated'];
+  const lines = [header.map(esc).join(',')];
+  for (const t of tasks) {
+    if (t.deleted) continue;
+    const proj = projById[t.project_id];
+    const status = proj?.columns.find(c => c.id === t.column_id)?.name ?? '';
+    lines.push([
+      t.title, proj?.name ?? '', status, PRIO_NAME[t.priority] ?? '',
+      t.due_date ?? '', (t.tags ?? []).join('; '), t.created_at, t.updated_at,
+    ].map(esc).join(','));
+  }
+  return lines.join('\r\n');
+}
+
 // Optional projectId narrows to just that project's tags (B26) — used to
 // rank tag-input suggestions "used in this project" first, with the
 // unfiltered call still available as the everywhere-else fallback list.

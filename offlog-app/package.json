@@ -1,14 +1,15 @@
 {
   "name": "offlog-app",
   "private": true,
-  "version": "4.6.5",
+  "version": "4.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bench": "vitest bench"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
