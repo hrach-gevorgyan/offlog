@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { getDashboardData, subscribe } from './db';
+  import { getDashboardData, getStorageBreakdown, subscribe } from './db';
   import { reloadTasks } from './store';
   import { PRIORITY_COLOR } from './constants';
   import { dueLabelLong } from './utils';
@@ -12,8 +12,15 @@
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
+  // B27 — archived tasks previously only surfaced inside List view's own
+  // toggle, easy to forget exists; this is a glance-level count only, not
+  // a full archived-task browser (that stays in List view).
+  let archivedCount = 0;
 
-  async function load() { data = await getDashboardData(); }
+  async function load() {
+    data = await getDashboardData();
+    archivedCount = (await getStorageBreakdown()).archivedTasks;
+  }
 
   onMount(() => {
     load();
@@ -36,7 +43,10 @@
     <div class="title-block">
       <h1 class="dash-title">Dashboard</h1>
       {#if data}
-        <span class="dash-sub">{data.totalTasks} active task{data.totalTasks === 1 ? '' : 's'} across {data.allProjects.length} project{data.allProjects.length === 1 ? '' : 's'}</span>
+        <span class="dash-sub">
+          {data.totalTasks} active task{data.totalTasks === 1 ? '' : 's'} across {data.allProjects.length} project{data.allProjects.length === 1 ? '' : 's'}
+          {#if archivedCount > 0}· {archivedCount} archived{/if}
+        </span>
       {/if}
     </div>
   </div>

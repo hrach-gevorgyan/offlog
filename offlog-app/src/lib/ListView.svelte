@@ -332,12 +332,11 @@
 
   let detailTask: TaskDoc | null = null;
 
+  // B27 — loaded regardless of showArchived (not just while the section is
+  // open) so the toggle button itself can carry a count badge; previously
+  // the only way to know archived tasks existed was to open the toggle.
   let archivedTasksRaw: TaskDoc[] = [];
-  $: if (showArchived) {
-    getArchivedTasksForProject(project._id).then(t => { archivedTasksRaw = t; });
-  } else {
-    archivedTasksRaw = [];
-  }
+  $: getArchivedTasksForProject(project._id).then(t => { archivedTasksRaw = t; });
   // Same active search/status/priority/tag filters as the main list — the
   // archived section previously ignored them entirely, so narrowing the
   // main list did nothing to what showed up here.
@@ -469,11 +468,11 @@
         {/if}
       </div>
 
-      <button class="action-btn" class:active={showArchived} on:click={() => showArchived = !showArchived} aria-label="Show archived tasks" title="Show archived tasks">
+      <button class="action-btn" class:active={showArchived} on:click={() => showArchived = !showArchived} aria-label="Show archived tasks ({archivedTasksRaw.length})" title="Show archived tasks">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
         </svg>
-        <span class="action-label">Archived</span>
+        <span class="action-label">Archived{#if archivedTasksRaw.length > 0} · {archivedTasksRaw.length}{/if}</span>
       </button>
 
       <div class="col-menu-wrap">
@@ -932,7 +931,6 @@
   }
   .bulk-btn:hover { background: var(--hover); }
   .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
-  .bulk-btn-danger { color: var(--danger); border-color: var(--danger); }
   .bulk-clear { margin-left: auto; }
 
   .circle {

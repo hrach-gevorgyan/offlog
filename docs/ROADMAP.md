@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.8.0**. Everything below is a candidate, not a
+Current version: **v4.9.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -196,12 +196,11 @@ v4.10.0.
 
 ### B14. Explain the storage quota number — shipped in v4.3.0
 
-### B15. Fold Maintenance into the Settings detail pane — OPEN
-v3.6.0 gave Maintenance its own modal-on-top-of-a-modal. Now that Settings
-itself has a proper category/detail structure, review whether Maintenance's
-step list, progress bar, and Run button can render directly in the
-Maintenance category's detail pane instead of a second overlay. Scheduled
-for v4.9.0.
+### B15. Fold Maintenance into the Settings detail pane — shipped in v4.9.0
+`MaintenanceModal.svelte`'s step list/progress bar/Run button now render
+directly inside Settings → Maintenance's own detail pane — the component
+was deleted and its logic moved inline into `SettingsPanel.svelte`, no more
+modal-on-top-of-a-modal.
 
 ### B16. Custom fields — shipped in v4.6.0
 Shipped with one change from the original scope: fields are **global**
@@ -254,10 +253,12 @@ Personal, Work. Scheduled for v4.13.0.
 
 ### B26. Tag autocomplete beyond the current project — shipped in v4.0.0
 
-### B27. Archived tasks are too hidden — OPEN
-Archived tasks are currently only reachable via a toggle inside List view
-— easy to forget exists. Surface archived-task counts somewhere more
-visible (Dashboard, project header). Scheduled for v4.9.0.
+### B27. Archived tasks are too hidden — shipped in v4.9.0
+Dashboard's header now shows a DB-wide archived-task count next to the
+active-task summary. List view's own "Archived" toggle button now carries
+a live per-project count badge too (`archivedTasksRaw` loads regardless of
+whether the section is expanded), so the count is visible before you ever
+open it.
 
 ### B28. Rethink "last column = done" — OPEN, needs owner design session
 The positional-done convention (`column_id === columns.at(-1)`) is a locked
@@ -277,11 +278,20 @@ Scheduled for v4.12.0.
 
 ### B31. Third Android widget: project list — shipped in v4.1.0
 
-### B32. Archive a whole project — OPEN
-Today only individual tasks can be archived. Add a project-level archive
-action that archives the project and, by default, its non-completed tasks,
-restorable the same way individual archived tasks are. Scheduled for
-v4.9.0.
+### B32. Archive a whole project — shipped in v4.9.0
+`ProjectDoc` gets an `archived?: boolean` field. `archiveProject()` soft-
+archives the project doc and bulk-archives its non-done tasks (positional
+"done" check via `columns.at(-1)`); `getProjects()` excludes archived
+projects, `getArchivedProjects()` lists them. Deliberately **not** a
+sidebar icon — the sidebar was already called out as visually overloaded
+once (v4.6.5) — instead it's a new **Archived Projects** manager panel
+(`ArchivedProjectsManager.svelte`), opened from Settings → Organize
+alongside Manage Spaces/Tags/Custom Fields, with an archive picker, a
+restore list, and (owner-requested mid-build) a direct Delete action per
+archived project so a project doesn't have to be restored first just to
+delete it. Restoring a project only un-hides the project itself — the
+tasks it swept up restore individually via List view's existing per-task
+archive toggle, same as any other archived task.
 
 ### B33. Sub-projects — OPEN, needs its own scoping pass
 Nested project hierarchy — a project containing child projects. Genuinely
@@ -531,13 +541,12 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
-| 2 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 3 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 2 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 4 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 5 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 6 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
-| 7 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| 3 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 4 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 5 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 6 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … (re-check: this pairing shift may nudge the exact number — re-verify against the cadence when v4.10.0 actually ships) |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |

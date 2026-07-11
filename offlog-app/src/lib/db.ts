@@ -524,9 +524,18 @@ export async function deleteSpace(id: string): Promise<void> {
 
 export async function getProjects(spaceId?: string): Promise<ProjectDoc[]> {
   const r = await db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true });
-  let docs = r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted);
+  let docs = r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted && !d.archived);
   if (spaceId) docs = docs.filter(d => d.space_id === spaceId);
   return docs.sort((a, b) => a.position - b.position);
+}
+
+// B32 — archived projects are hidden from getProjects() the same way
+// archived tasks are hidden from getTasksForProject(); this is the
+// restore-list counterpart, mirroring getArchivedTasksForProject().
+export async function getArchivedProjects(): Promise<ProjectDoc[]> {
+  const r = await db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true });
+  return r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted && !!d.archived)
+    .sort((a, b) => a.position - b.position);
 }
 
 export async function createProject(spaceId: string, name: string): Promise<ProjectDoc> {
@@ -619,6 +628,29 @@ export async function deleteProject(id: string): Promise<void> {
   const all = await getAllTasksRaw();
   const projectTasks = all.filter(d => d.project_id === id);
   if (projectTasks.length) await db.bulkDocs(projectTasks.map(t => ({ ...t, _deleted: true })));
+  invalidateTaskCache();
+}
+
+// B32 — soft archive for a whole project: the project doc itself stays
+// (never db.remove()'d), and only its non-done tasks get archived: true —
+// tasks already sitting in the last column (positionally "done") are left
+// alone since they're not what a re-visit would need to see restored.
+// Restoring the project (unarchiveProject) only un-hides the project
+// itself; the tasks it swept up restore individually via the existing
+// per-task archived toggle (List view), same as any other archived task.
+export async function archiveProject(id: string): Promise<void> {
+  const doc = await db.get<ProjectDoc>(id);
+  const lastColId = doc.columns.at(-1)?.id;
+  await db.put({ ...doc, archived: true, updated_at: now(), source: SOURCE });
+  const all = await getAllTasksRaw();
+  const toArchive = all.filter(t => t.project_id === id && !t.deleted && !t.archived && t.column_id !== lastColId);
+  if (toArchive.length) await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true } as any)));
+  invalidateTaskCache();
+}
+
+export async function unarchiveProject(id: string): Promise<void> {
+  const doc = await db.get<ProjectDoc>(id);
+  await db.put({ ...doc, archived: false, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
 }
 

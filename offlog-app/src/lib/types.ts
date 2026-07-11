@@ -46,6 +46,7 @@ export interface ProjectDoc {
   // for new writes.
   default_view: 'kanban' | 'list' | 'table';
   pinned?: boolean; // B34 — same always-sorts-to-top mechanism as TaskDoc.pinned
+  archived?: boolean; // B32 — soft-archive; project stays, non-done tasks get archived: true too
   updated_at: string;
   source: Source;
 }

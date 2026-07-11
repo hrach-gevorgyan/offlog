@@ -5,6 +5,7 @@
     getConflicts, resolveConflict, type ConflictInfo,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
+    checkIntegrity, repairDatabase, pruneOldLogs, pruneOldDeletedTasks, type IntegrityIssue,
   } from './db';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
@@ -181,6 +182,14 @@
     showCustomFieldManager = true;
   }
 
+  // B32 — same lazy-modal pattern as Spaces/Tags/Custom Fields above
+  let ArchivedProjectsManagerComp: typeof import('./ArchivedProjectsManager.svelte').default | null = null;
+  let showArchivedProjectsManager = false;
+  async function openArchivedProjectsManager() {
+    if (!ArchivedProjectsManagerComp) ArchivedProjectsManagerComp = (await import('./ArchivedProjectsManager.svelte')).default;
+    showArchivedProjectsManager = true;
+  }
+
   // ── Data ────────────────────────────────────────────────────────────────
   let breakdown: StorageBreakdown | null = null;
   async function loadBreakdown() { breakdown = await getStorageBreakdown(); }
@@ -300,13 +309,74 @@
     }
   }
 
-  // ── Maintenance ─────────────────────────────────────────────────────────
-  let MaintenanceModalComp: typeof import('./MaintenanceModal.svelte').default | null = null;
-  let showMaintenance = false;
-  async function openMaintenance() {
-    if (!MaintenanceModalComp) MaintenanceModalComp = (await import('./MaintenanceModal.svelte')).default;
-    showMaintenance = true;
+  // ── Maintenance (B15 — folded into this detail pane, no longer its own
+  // modal-on-top-of-a-modal; step list/progress bar/Run button render
+  // directly under the Maintenance category like every other category) ──
+  type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
+  interface MaintStep { key: string; label: string; status: MaintStatus; note: string }
+  let maintRunning = false;
+  let maintSteps: MaintStep[] = [];
+  let maintRemainingIssues: IntegrityIssue[] = [];
+
+  function freshMaintSteps(): MaintStep[] {
+    return [
+      { key: 'check',   label: 'Checking database for problems', status: 'pending', note: '' },
+      { key: 'repair',  label: 'Repairing anything fixable',      status: 'pending', note: '' },
+      { key: 'history', label: 'Clearing old activity history',   status: 'pending', note: '' },
+      { key: 'trash',   label: 'Clearing old items from Recycle', status: 'pending', note: '' },
+      { key: 'compact', label: 'Compacting the database',         status: 'pending', note: '' },
+    ];
   }
+  maintSteps = freshMaintSteps();
+
+  function setMaintStep(i: number, patch: Partial<MaintStep>) {
+    maintSteps = maintSteps.map((s, idx) => idx === i ? { ...s, ...patch } : s);
+  }
+
+  async function runMaintenance() {
+    maintRunning = true;
+    maintSteps = freshMaintSteps();
+    maintRemainingIssues = [];
+    try {
+      setMaintStep(0, { status: 'running' });
+      const { issues, checked } = await checkIntegrity();
+      setMaintStep(0, { status: 'done', note: issues.length === 0 ? `No problems found (${checked} items checked)` : `${issues.length} issue${issues.length === 1 ? '' : 's'} found` });
+
+      if (issues.length === 0) {
+        setMaintStep(1, { status: 'skipped', note: 'Nothing to repair' });
+      } else {
+        setMaintStep(1, { status: 'running' });
+        const { fixed, skipped } = await repairDatabase();
+        setMaintStep(1, { status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
+        if (skipped > 0) {
+          const after = await checkIntegrity();
+          maintRemainingIssues = after.issues;
+        }
+      }
+
+      setMaintStep(2, { status: 'running' });
+      const prunedLogs = await pruneOldLogs();
+      setMaintStep(2, { status: 'done', note: prunedLogs > 0 ? `Removed ${prunedLogs} entr${prunedLogs === 1 ? 'y' : 'ies'} older than 6 months` : 'Nothing old enough to remove' });
+
+      setMaintStep(3, { status: 'running' });
+      const prunedTasks = await pruneOldDeletedTasks();
+      setMaintStep(3, { status: 'done', note: prunedTasks > 0 ? `Removed ${prunedTasks} item${prunedTasks === 1 ? '' : 's'} older than 3 months` : 'Nothing old enough to remove' });
+
+      setMaintStep(4, { status: 'running' });
+      await db.compact();
+      setMaintStep(4, { status: 'done', note: 'Reclaimed disk space' });
+
+      await loadBreakdown();
+    } catch {
+      const runningIdx = maintSteps.findIndex(s => s.status === 'running');
+      if (runningIdx >= 0) setMaintStep(runningIdx, { status: 'error', note: 'Failed — please try again' });
+      showError('Maintenance failed partway through. Please try again.');
+    } finally {
+      maintRunning = false;
+    }
+  }
+
+  $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
 
   function saveSettings() { setSyncUrl(syncUrl); requestClose(); location.reload(); }
 </script>
@@ -465,27 +535,25 @@
               {/if}
 
             {:else if activeCategory === 'organize'}
-              <button class="link-row" on:click={openSpaceManager}>
-                <div class="link-row-text">
-                  <span class="link-row-title">Manage Spaces</span>
-                  <span class="link-row-desc">Rename, recolor, reorder, or remove spaces</span>
-                </div>
-                <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-              </button>
-              <button class="link-row" on:click={openTagManager}>
-                <div class="link-row-text">
-                  <span class="link-row-title">Manage Tags</span>
-                  <span class="link-row-desc">Rename, merge, or delete tags across all tasks</span>
-                </div>
-                <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-              </button>
-              <button class="link-row" on:click={openCustomFieldManager}>
-                <div class="link-row-text">
-                  <span class="link-row-title">Manage Custom Fields</span>
-                  <span class="link-row-desc">Add or remove task fields shared across every project</span>
-                </div>
-                <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-              </button>
+              <div class="setting-group">
+                <div class="setting-section-title">Manage</div>
+                <button class="link-row link-row-compact" on:click={openSpaceManager}>
+                  <span class="link-row-title">Spaces</span>
+                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
+                </button>
+                <button class="link-row link-row-compact" on:click={openTagManager}>
+                  <span class="link-row-title">Tags</span>
+                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
+                </button>
+                <button class="link-row link-row-compact" on:click={openCustomFieldManager}>
+                  <span class="link-row-title">Custom Fields</span>
+                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
+                </button>
+                <button class="link-row link-row-compact" on:click={openArchivedProjectsManager}>
+                  <span class="link-row-title">Archived Projects</span>
+                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
+                </button>
+              </div>
 
             {:else if activeCategory === 'data'}
               <div class="setting-row">
@@ -548,13 +616,45 @@
               {/if}
 
             {:else if activeCategory === 'maintenance'}
-              <button class="link-row" on:click={openMaintenance}>
-                <div class="link-row-text">
-                  <span class="link-row-title">Run Maintenance</span>
-                  <span class="link-row-desc">Check for problems, repair what's fixable, and reclaim space</span>
+              <p class="setting-hint">
+                Runs a full check in order: looks for database problems, repairs what it safely can,
+                clears old activity history (6+ months) and old Recycle items (3+ months), then compacts
+                the database to reclaim the space they were using.
+              </p>
+
+              <div class="progress-track"><div class="progress-fill" style="width:{maintProgress}%"></div></div>
+
+              <div class="maint-steps">
+                {#each maintSteps as step (step.key)}
+                  <div class="maint-step" class:running={step.status === 'running'}>
+                    <span class="maint-step-icon" class:done={step.status === 'done'} class:skipped={step.status === 'skipped'} class:error={step.status === 'error'} class:running={step.status === 'running'}>
+                      {#if step.status === 'done'}✓
+                      {:else if step.status === 'skipped'}–
+                      {:else if step.status === 'error'}✕
+                      {:else if step.status === 'running'}<span class="spinner"></span>
+                      {/if}
+                    </span>
+                    <span class="maint-step-label">{step.label}</span>
+                    {#if step.note}<span class="maint-step-note">{step.note}</span>{/if}
+                  </div>
+                {/each}
+              </div>
+
+              {#if maintRemainingIssues.length > 0}
+                <div class="integrity-list">
+                  {#each maintRemainingIssues.slice(0, 8) as issue}
+                    <div class="integrity-row">{issue.description}</div>
+                  {/each}
                 </div>
-                <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-              </button>
+                <p class="setting-hint">These need manual review — not safe to fix automatically.</p>
+              {/if}
+
+              <div class="setting-row">
+                <span></span>
+                <button class="export-btn" on:click={runMaintenance} disabled={maintRunning}>
+                  {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
+                </button>
+              </div>
             {/if}
           </div>
         {/if}
@@ -578,9 +678,8 @@
 {#if showCustomFieldManager && CustomFieldManagerComp}
   <svelte:component this={CustomFieldManagerComp} on:close={() => showCustomFieldManager = false} />
 {/if}
-
-{#if showMaintenance && MaintenanceModalComp}
-  <svelte:component this={MaintenanceModalComp} on:close={() => showMaintenance = false} on:done={loadBreakdown} />
+{#if showArchivedProjectsManager && ArchivedProjectsManagerComp}
+  <svelte:component this={ArchivedProjectsManagerComp} on:close={() => showArchivedProjectsManager = false} />
 {/if}
 
 <style>
@@ -734,9 +833,9 @@
     transition: background .12s, border-color .12s;
   }
   .link-row:hover { background: var(--hover); border-color: var(--border-strong); }
-  .link-row-text { flex: 1; display: flex; flex-direction: column; gap: .15rem; }
   .link-row-title { font-size: .88rem; font-weight: 600; color: var(--text); }
-  .link-row-desc { font-size: .74rem; color: var(--faint); }
+  .link-row-compact { padding: .5rem .9rem; }
+  .link-row-compact .link-row-title { flex: 1; font-weight: 500; }
   .link-row svg { flex-shrink: 0; opacity: .5; }
 
   .conflict-item {
@@ -748,6 +847,44 @@
   .conflict-item-type { font-weight: 400; color: var(--faint); }
   .conflict-item-row { display: flex; align-items: center; gap: .75rem; }
   .conflict-item-meta { font-size: .72rem; color: var(--muted); flex: 1; }
+
+  /* B15 — Maintenance step list, folded in from the old standalone
+     MaintenanceModal.svelte overlay; styles carried over as-is. */
+  .progress-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s var(--ease); }
+
+  .maint-steps { display: flex; flex-direction: column; gap: .5rem; }
+  .maint-step { display: flex; align-items: center; gap: .6rem; padding: .4rem .1rem; border-radius: var(--radius-sm); }
+  .maint-step.running { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+  .maint-step-icon {
+    width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; font-weight: 700; color: var(--faint);
+    border: 1.5px solid var(--border-strong);
+  }
+  .maint-step-icon.done    { color: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .maint-step-icon.skipped { color: var(--faint); }
+  .maint-step-icon.error   { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .maint-step-icon.running { border-color: var(--accent); }
+
+  .spinner {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .maint-step-label { font-size: .84rem; color: var(--text); flex: 1; }
+  .maint-step-note { font-size: .72rem; color: var(--faint); text-align: right; white-space: nowrap; }
+
+  .integrity-list {
+    display: flex; flex-direction: column; gap: 3px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: .5rem .65rem; max-height: 140px; overflow-y: auto;
+  }
+  .integrity-row { font-size: .74rem; color: var(--muted); line-height: 1.4; }
 
   .settings-actions {
     display: flex; justify-content: flex-end; gap: .5rem;
