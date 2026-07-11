@@ -3,9 +3,12 @@
   import { searchAllTasks } from './db';
   import { projects } from './store';
   import type { TaskDoc, ProjectDoc } from './types';
+  import type { Command } from './commands';
   import { PRIORITY_COLOR, PRIORITY_LABEL } from './constants';
   import { closeOnBack, discardTop } from './modalStack';
   import { trapFocus } from './focusTrap';
+
+  export let commands: Command[] = [];
 
   const dispatch = createEventDispatcher<{ open: { task: TaskDoc; project: ProjectDoc }; close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -17,6 +20,15 @@
   let selectedIdx = 0;
 
   onMount(() => { inputEl?.focus(); });
+
+  // Same plain substring matching as searchAllTasks() (db.ts) — no fuzzy
+  // library, kept consistent with the rest of the app's search.
+  $: matchingCommands = query.trim()
+    ? commands.filter(c => (c.label + ' ' + c.keywords).toLowerCase().includes(query.trim().toLowerCase()))
+    : commands;
+  // Commands and task results share one keyboard-navigable list —
+  // commands first since they're instant actions, tasks below.
+  $: combinedLength = matchingCommands.length + results.length;
 
   let debounce: ReturnType<typeof setTimeout> | undefined;
   $: {
@@ -30,6 +42,7 @@
       }, 180);
     } else {
       results = [];
+      selectedIdx = 0;
       searching = false;
     }
   }
@@ -46,11 +59,21 @@
     dispatch('open', { task: r, project: proj });
   }
 
+  function runCommand(c: Command) {
+    requestClose();
+    c.run();
+  }
+
+  function selectAt(i: number) {
+    if (i < matchingCommands.length) runCommand(matchingCommands[i]);
+    else if (results[i - matchingCommands.length]) openResult(results[i - matchingCommands.length]);
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') { requestClose(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, results.length - 1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, combinedLength - 1); }
     if (e.key === 'ArrowUp')   { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); }
-    if (e.key === 'Enter' && results[selectedIdx]) openResult(results[selectedIdx]);
+    if (e.key === 'Enter' && combinedLength > 0) selectAt(selectedIdx);
   }
 
   function highlight(text: string, q: string): string {
@@ -74,7 +97,7 @@
       bind:this={inputEl}
       bind:value={query}
       class="search-input"
-      placeholder="Search all projects…"
+      placeholder="Search tasks or run a command…"
       on:keydown={onKey}
     />
     {#if query}
@@ -83,14 +106,35 @@
   </div>
 
   <!-- Keyboard interaction (arrows + Enter) is handled by the search input
-       above, listbox-style — rows themselves are mouse targets only. -->
-  <div class="results" role="listbox" aria-label="Search results">
-    {#if searching}
-      <div class="hint">Searching…</div>
-    {:else if query.trim() && results.length === 0}
-      <div class="hint">No results for "{query}"</div>
-    {:else if results.length > 0}
-      {#each results as r, i (r._id)}
+       above, listbox-style — rows themselves are mouse targets only.
+       Commands and task results share one combined index (commands first)
+       so arrow keys move through both as a single list. -->
+  <div class="results" role="listbox" aria-label="Commands and search results">
+    {#if matchingCommands.length > 0}
+      <div class="section-label">Commands</div>
+      {#each matchingCommands as c, i (c.id)}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div
+          class="result-row"
+          role="option"
+          aria-selected={i === selectedIdx}
+          tabindex="-1"
+          class:selected={i === selectedIdx}
+          on:click={() => runCommand(c)}
+          on:mouseenter={() => selectedIdx = i}
+        >
+          <span class="cmd-icon">⌘</span>
+          <div class="result-body">
+            <span class="result-title">{@html highlight(c.label, query)}</span>
+          </div>
+        </div>
+      {/each}
+    {/if}
+
+    {#if results.length > 0}
+      {#if matchingCommands.length > 0}<div class="section-label">Tasks</div>{/if}
+      {#each results as r, ri (r._id)}
+        {@const i = matchingCommands.length + ri}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div
           class="result-row"
@@ -116,8 +160,12 @@
           </div>
         </div>
       {/each}
-    {:else}
-      <div class="hint">Type to search tasks across all projects</div>
+    {/if}
+
+    {#if searching}
+      <div class="hint">Searching…</div>
+    {:else if query.trim() && combinedLength === 0}
+      <div class="hint">No results for "{query}"</div>
     {/if}
   </div>
 
@@ -159,6 +207,16 @@
   .clear-btn:hover { color: var(--text); }
 
   .results { max-height: 55vh; overflow-y: auto; }
+
+  .section-label {
+    padding: 8px 16px 4px; font-family: var(--mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--faint);
+  }
+
+  .cmd-icon {
+    width: 16px; flex-shrink: 0; text-align: center; color: var(--accent);
+    font-size: 13px;
+  }
 
   .result-row {
     display: flex; align-items: center; gap: 12px;

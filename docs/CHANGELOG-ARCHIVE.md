@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.4.1 | Light patch (A29): reworded a sync network-error message for clarity; fixed the B12 "remind on due date" checkbox rendering stacked instead of inline | `v4.4.1` |
 | 4.4.0 | Reminder-scheduling release (A12, B12): auto-derive `reminder_at` from due date + configurable default time; caught a real `catchUpWeb()` bug leaving stale reminders dangling forever | `v4.4.0` |
 | 4.3.0 | Storage-pressure release (A17, B14): explains quota, warns past 80% usage with cleanup pointers | `v4.3.0` |
 | 4.2.0 | Sync + device-identity release (A16, B13, B5, B22): free-form per-device names, "Devices seen recently," Sync on/off toggle, deterministic sync-error test coverage | `v4.2.0` |

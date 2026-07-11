@@ -247,9 +247,40 @@ export async function getDashboardData() {
     .filter(t => t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id]?.lastColId)
     .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
     .slice(0, 10);
+  const todayTasks = tasks
+    .filter(t => t.due_date === today && t.column_id !== byProject[t.project_id]?.lastColId)
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 10);
   const projCache: Record<string, string> = Object.fromEntries(allProjects.map(p => [p._id, p.name]));
 
-  return { allProjects, allSpaces, byProject, pinnedTasks, overdueTasks, projCache, totalTasks: tasks.length };
+  // B17 — "completed in the last week" for the Dashboard summary strip.
+  // No completed_at field exists; reusing updated_at + the same positional
+  // "done = last column" check already used above is simpler and more
+  // reliable than reconstructing it from log docs, since move-action logs
+  // only store the target column's *name* (not its id) — fragile against
+  // renames. Caveat worth noting: updated_at bumps on any edit, so a task
+  // completed earlier but merely edited within the window would
+  // false-positive here — acceptable for a glance-level dashboard stat.
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const completedByProject: Record<string, number> = {};
+  for (const t of tasks) {
+    const lastColId = byProject[t.project_id]?.lastColId;
+    if (lastColId && t.column_id === lastColId && t.updated_at >= sevenDaysAgo) {
+      completedByProject[t.project_id] = (completedByProject[t.project_id] ?? 0) + 1;
+    }
+  }
+  let busiestProjectId = '';
+  let completedLast7Days = 0;
+  for (const [pid, count] of Object.entries(completedByProject)) {
+    completedLast7Days += count;
+    if (count > (completedByProject[busiestProjectId] ?? 0)) busiestProjectId = pid;
+  }
+  const busiestProjectName = busiestProjectId ? (projCache[busiestProjectId] ?? null) : null;
+
+  return {
+    allProjects, allSpaces, byProject, pinnedTasks, overdueTasks, todayTasks, projCache,
+    totalTasks: tasks.length, completedLast7Days, busiestProjectName,
+  };
 }
 
 export async function searchAllTasks(query: string): Promise<(TaskDoc & { project_name: string; space_id: string })[]> {

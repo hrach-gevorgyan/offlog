@@ -47,6 +47,13 @@
           {data.totalTasks} active task{data.totalTasks === 1 ? '' : 's'} across {data.allProjects.length} project{data.allProjects.length === 1 ? '' : 's'}
           {#if archivedCount > 0}· {archivedCount} archived{/if}
         </span>
+        <span class="dash-sub dash-week">
+          {#if data.completedLast7Days > 0}
+            {data.completedLast7Days} completed this past week {#if data.busiestProjectName}· busiest: {data.busiestProjectName}{/if}
+          {:else}
+            Nothing completed in the past week yet
+          {/if}
+        </span>
       {/if}
     </div>
   </div>
@@ -90,6 +97,27 @@
 
         <!-- Right: Pinned + Overdue -->
         <div class="col-tasks">
+          {#if data.todayTasks.length > 0}
+            <section class="section">
+              <div class="section-title">Today</div>
+              <div class="task-list">
+                {#each data.todayTasks as t (t._id)}
+                  <div
+                    class="task-row"
+                    role="button"
+                    tabindex="0"
+                    on:click={() => openTask(t)}
+                    on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(t); } }}
+                  >
+                    <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
+                    <span class="task-title">{t.title}</span>
+                    <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
+                  </div>
+                {/each}
+              </div>
+            </section>
+          {/if}
+
           {#if data.pinnedTasks.length > 0}
             <section class="section">
               <div class="section-title">★ Pinned</div>
@@ -133,8 +161,8 @@
             </section>
           {/if}
 
-          {#if data.pinnedTasks.length === 0 && data.overdueTasks.length === 0}
-            <div class="all-good">All caught up — no pinned or overdue tasks.</div>
+          {#if data.todayTasks.length === 0 && data.pinnedTasks.length === 0 && data.overdueTasks.length === 0}
+            <div class="all-good">All caught up — nothing due today, pinned, or overdue.</div>
           {/if}
         </div>
 
@@ -160,7 +188,8 @@
   }
   .title-block { min-width: 0; }
   .dash-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
-  .dash-sub { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .dash-sub { font-family: var(--mono); font-size: 11px; color: var(--faint); display: block; }
+  .dash-week { margin-top: 2px; }
 
   .hamburger {
     display: none;

@@ -208,6 +208,36 @@ describe('"done" is positional (column_id === last column)', () => {
     expect(data.overdueTasks.map(t => t._id)).not.toContain(task._id);
     expect(data.byProject[project._id].overdue).toBe(0);
   });
+
+  it('getDashboardData: B17 weekly-completed count, busiest project, and today tasks', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Weekly Project');
+    const lastCol = project.columns.at(-1)!;
+    const otherProject = await createProject('space:unsorted', 'Quiet Project');
+    const otherLastCol = otherProject.columns.at(-1)!;
+
+    // Two tasks completed (moved to the last column) this week in `project`,
+    // one in `otherProject` — project should come out as busiest.
+    const t1 = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Done 1');
+    await updateTask(t1._id!, { column_id: lastCol.id });
+    const t2 = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Done 2');
+    await updateTask(t2._id!, { column_id: lastCol.id });
+    const t3 = await createTask(otherProject._id, 'space:unsorted', otherProject.columns[0].id, 'Done 3');
+    await updateTask(t3._id!, { column_id: otherLastCol.id });
+
+    // Not-done task due today should show up in todayTasks.
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayTask = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Due today');
+    await updateTask(todayTask._id!, { due_date: todayStr });
+
+    const data = await getDashboardData();
+    expect(data.completedLast7Days).toBe(3);
+    expect(data.busiestProjectName).toBe('Weekly Project');
+    expect(data.todayTasks.map(t => t._id)).toContain(todayTask._id);
+    // Completed tasks (in the last column) must not leak into todayTasks
+    // even if they happened to have today's due_date.
+    expect(data.todayTasks.map(t => t._id)).not.toContain(t1._id);
+  });
 });
 
 describe('checkIntegrity / repairDatabase', () => {

@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.9.0**. Everything below is a candidate, not a
+Current version: **v4.10.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -180,11 +180,17 @@ optionally its non-completed tasks) into a fresh project. Builds directly
 on the existing `duplicateTask()` pattern, applied at the project level.
 Scheduled for v4.12.0.
 
-### B9. Command palette — OPEN
-Ctrl+K currently does global task search only. Extend `GlobalSearch` (or a
-new overlay sharing its shortcut) to also match action commands by fuzzy
-name — "dark mode", "new project", "settings", "export". Scheduled for
-v4.10.0.
+### B9. Command palette — shipped in v4.10.0
+Folded into the existing Ctrl+K `GlobalSearch` overlay rather than a
+separate shortcut/component — a new `commands.ts` defines a small fixed
+list (go to Dashboard/Focus/Agenda, Quick Add, toggle theme, toggle high
+contrast, open Settings/Changelog/Deleted, Sync Now), matched by the same
+plain substring matching `searchAllTasks()` already uses (no fuzzy library
+added). Commands and task results share one combined keyboard-navigable
+list, commands first. Settings/Changelog/Deleted are opened via a
+`bind:this` ref into `Sidebar.svelte` rather than lifting that modal state
+up — its `openSettings`/`openChangelog`/`openTrash` functions are already
+plain top-level bindings Svelte exposes to a bound instance for free.
 
 ### B10. Android quick-capture widget — shipped in v3.7.0
 
@@ -213,12 +219,17 @@ sprawl of one-off fields. `TaskDoc.custom_values` stays keyed by field id.
 toggle, so a project with several fields defined doesn't turn every card
 into a long form.
 
-### B17. Dashboard as a real home screen — OPEN
-`DashboardView.svelte` is already the default landing view, but it's thin.
-Concretely: a brief last-week performance summary (tasks completed,
-busiest project) and today's upcoming tasks alongside the existing
-pinned/overdue panels — Agenda stays unchanged, this is a glance-level
-preview, not a duplicate of it. Scheduled for v4.10.0.
+### B17. Dashboard as a real home screen — shipped in v4.10.0
+`getDashboardData()` (db.ts) now also returns `completedLast7Days`,
+`busiestProjectName`, and `todayTasks` — surfaced as a "N completed this
+past week · busiest: X" line under the header, and a new "Today" panel
+alongside the existing Pinned/Overdue ones. "Completed" reuses the
+existing positional last-column check plus `updated_at` within 7 days,
+not log docs — the move-action log only stores the target column's
+*name*, not its id, which would be fragile against renames; the tradeoff
+noted in a code comment is that `updated_at` bumps on any edit, so a task
+completed earlier but merely edited within the window could
+false-positive, acceptable for a glance-level stat.
 
 ### B18. Subtasks / checklists within a task — OPEN
 `CardDetail` has free-text markdown but no structured checklist. A simple
@@ -541,12 +552,11 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
-| 2 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 3 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 4 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 5 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
-| 6 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| 2 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 3 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 4 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 5 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … (re-check: this pairing shift may nudge the exact number — re-verify against the cadence when v4.10.0 actually ships) |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |

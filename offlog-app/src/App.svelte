@@ -2,9 +2,10 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
-  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById } from './lib/db';
+  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow } from './lib/db';
   import { pendingOpenTaskId } from './lib/notifications';
-  import { applyTheme, watchSystemTheme } from './lib/theme';
+  import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
+  import { getCommands } from './lib/commands';
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
   import ListView from './lib/ListView.svelte';
@@ -50,6 +51,25 @@
   let showSearch = false;
   let showQuickAdd = false;
   let showShortcuts = false;
+  let sidebarRef: Sidebar;
+
+  // B9 — command palette, folded into GlobalSearch rather than a separate
+  // overlay/shortcut. Sidebar's own openSettings/openChangelog/openTrash
+  // are plain top-level functions in its instance (not `export`ed — Svelte
+  // exposes every top-level binding to a bound instance automatically), so
+  // a bind:this ref is enough to reach them without lifting that state.
+  $: commands = getCommands({
+    goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
+    goToFocus: () => { showDashboard = false; showDeadlines = false; showFocus = true; },
+    goToAgenda: () => { showDashboard = false; showFocus = false; showDeadlines = true; },
+    openQuickAdd: () => { showQuickAdd = true; },
+    toggleTheme: () => setThemeMode(isEffectivelyDark(getThemeMode()) ? 'light' : 'dark'),
+    toggleHighContrast: () => setHighContrast(!getHighContrast()),
+    openSettings: () => sidebarRef?.openSettings(),
+    openChangelog: () => sidebarRef?.openChangelog(),
+    openTrash: () => sidebarRef?.openTrash(),
+    syncNow: () => { syncNow(); },
+  });
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;
 
@@ -265,6 +285,7 @@
   <div class="status-bar-fill"></div>
   <div class="layout">
     <Sidebar
+      bind:this={sidebarRef}
       bind:showDeadlines
       bind:showDashboard
       bind:showFocus
@@ -380,6 +401,7 @@
 
 {#if showSearch}
   <GlobalSearch
+    {commands}
     on:close={() => showSearch = false}
     on:open={(e) => { searchDetailTask = e.detail.task; searchDetailProject = e.detail.project; showSearch = false; }}
   />
