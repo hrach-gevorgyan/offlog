@@ -4,10 +4,10 @@
     <string name="title_activity_main">Offlog</string>
     <string name="package_name">com.offlog.app</string>
     <string name="custom_url_scheme">com.offlog.app</string>
-    <string name="widget_quick_add_label">Quick Add</string>
-    <string name="widget_quick_add_description">Add a task without opening Offlog</string>
-    <string name="widget_agenda_label">AGENDA</string>
-    <string name="widget_agenda_description">See your next few due tasks</string>
-    <string name="widget_projects_label">PROJECTS</string>
-    <string name="widget_projects_description">Jump straight into a project</string>
+    <!-- B37 redesign (2026-07-09): one combined widget replaces the
+         previous 3 separate ones. -->
+    <string name="widget_offlog_description">Your agenda brief, plus one-tap Focus, Quick Add, and Dashboard</string>
+    <string name="widget_action_focus">Focus</string>
+    <string name="widget_action_quickadd">Quick Add</string>
+    <string name="widget_action_dashboard">Dashboard</string>
 </resources>

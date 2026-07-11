@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- B37 — matches the Focus nav icon's concentric-circle shape in
+     Sidebar.svelte. Approximated with octagons (straight segments only,
+     no arcs) for reliable vector rendering — close enough to a circle at
+     this size. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp" android:height="20dp"
+    android:viewportWidth="18" android:viewportHeight="18">
+    <path
+        android:pathData="M9,2 L12.5,3.2 L15,5.6 L16.3,9 L15,12.4 L12.5,14.8 L9,16 L5.5,14.8 L3,12.4 L1.7,9 L3,5.6 L5.5,3.2 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M9,5.6 L10.7,6.2 L11.9,7.4 L12.5,9 L11.9,10.6 L10.7,11.8 L9,12.4 L7.3,11.8 L6.1,10.6 L5.5,9 L6.1,7.4 L7.3,6.2 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000" />
+    <path android:pathData="M9,8.1 L9.9,9 L9,9.9 L8.1,9 Z" android:fillColor="#FFFFFF" />
+</vector>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- B37 — accent-filled pill for the primary "Focus" action, so it reads
+     as the catchy/primary button rather than matching the 2 secondary
+     circles' neutral surface color (owner feedback, 2026-07-09). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/colorWidgetAccent" />
+    <corners android:radius="24dp" />
+</shape>

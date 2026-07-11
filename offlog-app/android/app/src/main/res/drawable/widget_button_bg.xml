@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- B37 — the 3 round action buttons' circle background, one shade
+     lighter than the widget's own dark background so they read as
+     distinct tappable buttons rather than blending into the card. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/colorWidgetSurface" />
+</shape>

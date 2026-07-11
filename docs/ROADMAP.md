@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.7.0**. Everything below is a candidate, not a
+Current version: **v4.8.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -342,17 +342,49 @@ actually scoped.
 
 ### B36. List view power customization — shipped in v3.8.5
 
-### B37. Android widget visual design/UX pass — OPEN, needs owner design session
-Owner feedback after v4.1.0 shipped all 3 widgets: functionally working,
-but the visual design/UX needs a real pass — all 3 currently look like
-variations of one plain solid-color card. Needs an owner design session to
-scope concretely (per-widget visual identity, icons per row, compact vs.
-expanded size variants, light/dark host-launcher matching). Data plumbing
-(`OffologWidgetPlugin`/`widgetBridge.ts`) stays as-is — this is about what
-gets *drawn*, not how data reaches it. Folded into v4.8.0 alongside B40/B41/
-B42 (same visual/UX-polish theme, 2026-07-09) — the design-session
-scoping still needs to happen, now as part of that release rather than
-sitting fully unscheduled.
+### B37. Android widgets — collapsed 3 into 1 combined widget — shipped in v4.8.0
+Superseded scope: the original plan was a visual-design pass over the
+existing 3 separate widgets (Quick Add, Agenda, Project list), each
+getting its own icon/identity — a first attempt at exactly that (per-
+widget dark-theme palette + distinct icons, keeping all 3 as separate
+widgets) still looked like "3 variations of one card" once actually seen
+on a home screen (owner feedback, live screenshot, 2026-07-09), because
+the real problem was the 3-separate-cards structure, not the palette.
+
+Replaced with a full redesign, then simplified further mid-session per
+direct owner feedback: the first combined-widget draft had a tappable
+"brief" text area (overdue/due-today counts, opens Agenda) above the
+button row — owner then asked to drop all text entirely ("no text
+information, just 3 buttons"). Shipped shape: **3 static buttons, no
+dynamic data at all** — a wide accent-colored "Focus" pill (icon+label,
+primary action) plus 2 small circular buttons (Quick Add, Dashboard).
+`OffologWidgetProvider.java` replaces the 3 old provider classes; the
+entire JS→native data-push pipeline (`OffologWidgetPlugin`,
+`widgetBridge.ts`, the `store.ts` call) was deleted outright rather than
+left unused, since a fully static widget has nothing to push. Palette
+matches app.css's dark-mode tokens (colorWidgetBg/Surface/Border/Accent/
+Text in colors.xml, kept in sync with `docs/TECH.md`'s Theme System
+table). New URL hosts `focus`/`dashboard` added to `App.svelte`'s
+`handleWidgetUrl()` and the manifest's intent filter.
+
+**Real structural bug found and fixed along the way**: the widget kept
+rendering as a huge stretched card regardless of `minWidth`/`minHeight`/
+`resizeMode` tuning, because the visible card background was painted on
+the widget's full allocated frame — and a launcher's actual placed grid
+cell can be far larger than the declared minimum (Android has no way to
+force an exact size). Fixed by making the outer widget frame fully
+transparent (`match_parent`, no background) and putting the dark card on
+an *inner* `wrap_content` child instead — the "floating compact card on
+a transparent frame" pattern most polished Android widgets actually use,
+which makes the visible card size independent of whatever grid space the
+launcher grants.
+
+**Final visual sizing/spacing is an open, owner-driven polish pass** —
+blind XML tuning from chat (no emulator/build access here, per the
+standing "never run Gradle" rule) hit diminishing returns; the owner now
+has Android Studio open and can iterate on real on-device rendering far
+faster directly. Not scheduled as a future version — pick up whenever
+convenient.
 
 ### B38. Custom calendar/date picker instead of the native one — shipped in v4.6.5
 New `CalendarPicker.svelte` — a themed month-grid popover (+ a time-of-day
@@ -372,37 +404,27 @@ to `{id, name}`) — a real schema addition, flagged as its own item because
 it needs the same care as any schema change (see CLAUDE.md), not a quick
 patch. Unscheduled.
 
-### B40. Sidebar bottom icon rail isn't readable — OPEN
-The icon-only bottom rail (Sync/Changelog/Deleted/Settings, shipped
-v4.6.5) traded label clarity for compactness after the labeled version
-became unreadable once a 4th button was added — but bare icons plus a
-hover tooltip aren't self-explanatory at a glance either, per direct
-owner feedback (2026-07-09). Needs a redesign that keeps the compactness
-but restores at-a-glance understandability — candidates: more literal/
-distinct icon shapes, a label that only appears for the hovered/focused
-item, or a slightly taller row with short abbreviated labels. Scheduled
-for v4.8.0.
+### B40. Sidebar bottom icon rail isn't readable — shipped in v4.8.0
+Redesigned as a 2×2 grid (Changelog/Deleted top row, Settings/Sync bottom
+row per owner's requested order) with icon+label pairs restored — each
+cell now has enough width for a readable label again, which the earlier
+1×4 icon-only row didn't. Deleted's count moved from a floating corner
+badge into inline text ("Deleted · 9") after owner feedback that the
+badge looked inconsistent with the other buttons.
 
-### B41. Focus view — full-space floating-card redesign — OPEN
-Direction from the owner (2026-07-09): the current Focus view (B35,
-shipped v4.5.0 as a daily-commitment-lock draft) renders in the same
-capped-width single-column layout as every other view, which undersells
-its "this is a different kind of space" identity and wastes screen real
-estate. Redesign toward using the full available viewport, with
-candidate tasks shown as floating/scattered cards (varying size) —
-described as a "notepad after a brainstorm" feel — with an interaction
-to select which ones to commit to for the day, replacing or layering on
-top of the current list-style picker. This is a genuine visual/interaction
-redesign, not a fixed spec — expect it to need iteration during
-implementation, same as B35's own first draft did. Scheduled for v4.8.0.
+### B41. Focus view — full-space floating-card redesign — shipped in v4.8.0
+The picker now uses the full available width as a "corkboard" of
+flex-wrapped note cards (not literal absolute-random positioning — that
+would break click targets/tab order/responsiveness) with 3 size tiers and
+a small deterministic per-card tilt (hashed from task id, so it's stable
+across re-renders, not re-randomized every reactive update). Suggested
+tasks render at the largest size with an accent border. Locked/committed
+tasks still render as a plain list — the floating-card treatment is
+specific to the picking step, not the "now do these" step.
 
-### B42. Agenda doesn't use full screen width — OPEN
-Both Agenda modes (List and the new Week grid, B7) inherit a
-`max-width: 900px` cap from Agenda's original single-column layout —
-worth revisiting now that List view (the per-project one, B36) already
-committed to full-width/no-truncation/native-horizontal-scroll as a
-deliberate design principle. Widen or remove the cap so Agenda uses the
-available space the same way. Scheduled for v4.8.0.
+### B42. Agenda doesn't use full screen width — shipped in v4.8.0
+Removed the `max-width: 900px` cap from Agenda's list-mode body; the
+week-grid mode already had no such cap.
 
 ---
 
@@ -509,14 +531,13 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | # | Release | Track A | Track B | Why paired |
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
-| 2 | v4.8.0 | — | B40, B41, B42, B37 | Visual/UX polish pass (owner feedback, 2026-07-09): sidebar bottom-rail readability, Focus view's full-space floating-card redesign, Agenda's width cap, and the Android widget visual pass folded in under the same theme. |
-| 3 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
-| 4 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
+| 2 | v4.9.0 | — | B27, B32, B15 | Archive-adjacent cleanup: archived-task discoverability, whole-project archive, and folding Maintenance into Settings — all housekeeping surfaces. |
+| 3 | v4.10.0 | — | B17, B9 | Dashboard (now with weekly stats) and command palette — the two navigation-hub upgrades to the app's main surface. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 5 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 6 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 7 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
-| 8 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| 4 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
+| 5 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 6 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 7 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … (re-check: this pairing shift may nudge the exact number — re-verify against the cadence when v4.10.0 actually ships) |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |

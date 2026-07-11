@@ -4,8 +4,9 @@ import android.os.Bundle;
 import androidx.core.splashscreen.SplashScreen;
 import com.getcapacitor.BridgeActivity;
 
-// The Quick Add home-screen widget (QuickAddWidgetProvider, ROADMAP.md B10)
-// opens this activity with a com.offlog.app://quickadd VIEW intent. No
+// The combined home-screen widget (OffologWidgetProvider, B37) opens this
+// activity with a com.offlog.app://{quickadd,agenda,focus,dashboard} VIEW
+// intent depending on which part of the widget was tapped. No
 // custom intent handling needed here — Capacitor's own BridgeActivity
 // already forwards onCreate()/onNewIntent()'s intent to every installed
 // plugin (including @capacitor/app), which is what App.svelte's
@@ -16,13 +17,6 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // registerPlugin() must run before super.onCreate() — that's what
-        // actually initializes the Bridge and loads the WebView; Capacitor's
-        // documented pattern for a same-repo (non-npm) custom plugin like
-        // OffologWidgetPlugin (ROADMAP.md B20/B31) is to register it here
-        // rather than via package.json/auto-discovery, which only applies
-        // to real installed plugin packages.
-        registerPlugin(OffologWidgetPlugin.class);
         // Must be called before super.onCreate() — this is what actually
         // activates the androidx.core.splashscreen compat theme attributes
         // (windowSplashScreenBackground/AnimatedIcon in styles.xml) on API

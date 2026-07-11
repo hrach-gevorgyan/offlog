@@ -319,6 +319,25 @@
       </div>
     {/if}
     <div class="bottom-row">
+      <button class="icon-btn" on:click={() => { openChangelog(); dispatch('navigate'); }} title="Changelog">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
+        </svg>
+        <span class="icon-btn-label">Changelog</span>
+      </button>
+      <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Deleted{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
+        <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
+        </svg>
+        <span class="icon-btn-label">Deleted{#if breakdown && breakdown.deletedTasks > 0}<span class="icon-btn-count"> · {breakdown.deletedTasks}</span>{/if}</span>
+      </button>
+      <button class="icon-btn" on:click={() => { openSettings(); dispatch('navigate'); }} title="Settings">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="icon-btn-label">Settings</span>
+      </button>
       <button class="icon-btn icon-btn-sync" on:click={syncNow} title="{syncTooltip} — click to sync now">
         <span
           class="sync-indicator"
@@ -327,26 +346,10 @@
           class:offline={syncStatus === 'offline'}
         ></span>
         {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
-        <svg viewBox="0 0 18 18" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
         </svg>
-      </button>
-      <button class="icon-btn" on:click={() => { openChangelog(); dispatch('navigate'); }} title="Changelog">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
-        </svg>
-      </button>
-      <button class="icon-btn icon-btn-badge" on:click={() => { openTrash(); dispatch('navigate'); }} title="Deleted{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
-        <svg viewBox="0 0 14 14" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
-        </svg>
-        {#if breakdown && breakdown.deletedTasks > 0}<span class="count-badge">{breakdown.deletedTasks}</span>{/if}
-      </button>
-      <button class="icon-btn" on:click={() => { openSettings(); dispatch('navigate'); }} title="Settings">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
+        <span class="icon-btn-label">Sync</span>
       </button>
     </div>
   </div>
@@ -433,7 +436,7 @@
      list below a divider. */
   .tree-section {
     display: flex; flex-direction: column; gap: .05rem; padding-top: .3rem;
-    flex: 1; min-height: 0; overflow-y: auto;
+    flex: 1; min-height: 90px; overflow-y: auto;
   }
   .space-group { display: flex; flex-direction: column; margin-bottom: .05rem; }
   .space-header {
@@ -541,16 +544,23 @@
   /* Icon-only rail (owner feedback, 2026-07-09): 4 buttons with text
      labels squeezed into a ~200px row wrapped/truncated unreadably.
      Tooltips (title attr) carry the label instead. */
-  .bottom-row { display: flex; gap: .5rem; }
+  /* 2×2 grid (owner feedback, 2026-07-09): the earlier 1×4 icon-only row
+     was too cramped for readable labels; each cell here has enough width
+     to show icon + text together again without wrapping. */
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
   .icon-btn {
-    flex: 1; min-width: 0; position: relative;
-    display: flex; align-items: center; justify-content: center;
+    min-width: 0; position: relative;
+    display: flex; align-items: center; justify-content: center; gap: .4rem;
     background: var(--hover); border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm); cursor: pointer;
-    color: var(--muted); padding: .55rem 0;
+    color: var(--muted); padding: .5rem .4rem;
     transition: background .12s, color .12s, border-color .12s;
   }
   .icon-btn svg { flex-shrink: 0; opacity: .85; }
+  .icon-btn-label {
+    font-size: .72rem; font-weight: 500; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
   .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
 
   .icon-btn-sync .sync-indicator {
@@ -562,18 +572,30 @@
   .icon-btn-sync .sync-indicator.active { background: var(--accent); }
   .icon-btn-sync .sync-indicator.error { background: var(--danger); }
   .icon-btn-sync .sync-indicator.offline { background: var(--faint); }
-  .conflict-badge, .count-badge {
+  .conflict-badge {
     position: absolute; top: -2px; right: -2px;
     color: #fff; font-family: var(--mono); font-size: .55rem; font-weight: 700;
     min-width: 13px; height: 13px; border-radius: 7px; padding: 0 3px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 0 0 2px var(--sidebar-bg);
+    background: var(--due-soon-ink);
   }
-  .conflict-badge { background: var(--due-soon-ink); }
-  .count-badge { background: var(--faint); }
+  .icon-btn-count { color: var(--faint); font-weight: 400; }
 
   @media (max-width: 768px) {
     .proj-delete-btn { opacity: .7; }
     .proj-pin-btn:not(.pinned) { opacity: .7; }
+  }
+
+  /* Short viewports (landscape phone) — the project tree is the primary
+     navigation surface and was getting squeezed to an unusable sliver
+     while the less-essential Recent list kept its full size (real bug,
+     owner-reported 2026-07-09: "non readable sidebar" in landscape).
+     Drop Recent (its content is one tap away via Focus/search anyway)
+     and tighten spacing so the tree actually gets room. */
+  @media (max-height: 480px) {
+    .sidebar { padding-top: .7rem; padding-bottom: .7rem; gap: .2rem; }
+    .recent-section { display: none; }
+    .bottom { padding-top: .5rem; gap: .3rem; }
   }
 </style>

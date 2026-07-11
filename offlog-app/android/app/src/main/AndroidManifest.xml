@@ -20,9 +20,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Resolves all three home-screen widgets' VIEW intents back to
-                 this same activity — quickadd (B10), agenda (B20), and
-                 project?id=<id> (B31). One filter, multiple <data> hosts;
+            <!-- Resolves the single combined widget's VIEW intents back to
+                 this same activity (B37 redesign, 2026-07-09) — quickadd
+                 (B10), agenda (B20, now also the widget's "brief" tap
+                 target), focus, dashboard, and project?id=<id> (still used
+                 by in-app deep links even though the dedicated project-list
+                 widget was removed). One filter, multiple <data> hosts;
                  "project" deliberately has no android:path/pathPattern
                  constraint so its ?id= query string isn't part of the
                  manifest match, just read in JS via new URL(url). -->
@@ -32,6 +35,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.offlog.app" android:host="quickadd" />
                 <data android:scheme="com.offlog.app" android:host="agenda" />
+                <data android:scheme="com.offlog.app" android:host="focus" />
+                <data android:scheme="com.offlog.app" android:host="dashboard" />
                 <data android:scheme="com.offlog.app" android:host="project" />
             </intent-filter>
         </activity>
@@ -39,25 +44,11 @@
         <!-- exported="true": the widget picker/launcher is a different app
              and needs to bind this provider — the APPWIDGET_UPDATE broadcast
              itself is already OS-protected regardless of this flag. -->
-        <receiver android:name=".QuickAddWidgetProvider" android:exported="true">
+        <receiver android:name=".OffologWidgetProvider" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_add_widget_info" />
-        </receiver>
-
-        <receiver android:name=".AgendaWidgetProvider" android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/agenda_widget_info" />
-        </receiver>
-
-        <receiver android:name=".ProjectListWidgetProvider" android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/project_list_widget_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/offlog_widget_info" />
         </receiver>
 
         <provider

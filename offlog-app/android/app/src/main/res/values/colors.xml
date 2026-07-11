@@ -3,4 +3,19 @@
     <color name="colorPrimary">#6366f1</color>
     <color name="colorPrimaryDark">#181a20</color>
     <color name="colorAccent">#6366f1</color>
+
+    <!-- B37 — widget palette, matched to app.css's dark-mode tokens rather
+         than a flat single-accent card (the sidebar is always dark by
+         design in the app itself — see CLAUDE.md — so that's the natural
+         home-screen-widget analog, not the light-mode palette). Keep this
+         list in sync with app.css's body.dark block if the palette ever
+         changes; see docs/TECH.md's Theme System table for the source of
+         truth. -->
+    <color name="colorWidgetBg">#101218</color>      <!-- app.css sidebar-bg, dark -->
+    <color name="colorWidgetSurface">#242934</color> <!-- app.css surface, dark -->
+    <color name="colorWidgetBorder">#2F3542</color>  <!-- app.css border, dark -->
+    <color name="colorWidgetAccent">#818CF8</color>  <!-- app.css accent, dark -->
+    <color name="colorWidgetText">#F3F4F6</color>    <!-- app.css text, dark -->
+    <color name="colorWidgetMuted">#A3A9B7</color>   <!-- app.css muted, dark -->
+    <color name="colorWidgetDanger">#F87171</color>  <!-- app.css danger, dark; unused for now, kept for a future urgency-colored brief -->
 </resources>

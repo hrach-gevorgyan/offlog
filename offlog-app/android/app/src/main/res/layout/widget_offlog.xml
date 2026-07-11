@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- B37 redesign, v7 (2026-07-09) — the real fix for "always stretched":
+     v6 still painted @drawable/widget_background across the FULL widget
+     frame (match_parent), so however much grid space the launcher granted
+     (which Android/the launcher controls, not this XML — minWidth/
+     minHeight are only a *minimum*) became a giant visible card. Now the
+     outer root is fully transparent and match_parent; only an INNER
+     wrap_content card carries the background, padding, and content. The
+     visible card is always exactly its own content's size and centered
+     in whatever transparent frame the launcher gives the widget — the
+     "floating compact card on transparent bounds" pattern most modern
+     Android widgets (this app's own reference included) actually use. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="140dp"
+        android:layout_gravity="center"
+        android:background="@drawable/widget_background"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="18dp">
+
+        <LinearLayout
+            android:id="@+id/btn_focus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:background="@drawable/widget_pill_bg"
+            android:paddingStart="30dp"
+            android:paddingEnd="30dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp"
+            android:contentDescription="@string/widget_action_focus">
+            <ImageView
+                android:layout_width="19dp"
+                android:layout_height="19dp"
+                android:src="@drawable/ic_widget_focus"
+                android:layout_marginEnd="8dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_action_focus"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp">
+
+            <FrameLayout
+                android:id="@+id/btn_quickadd"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/widget_button_bg"
+                android:contentDescription="@string/widget_action_quickadd">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="+"
+                    android:textColor="#FFFFFF"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/btn_dashboard"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/widget_button_bg"
+                android:contentDescription="@string/widget_action_dashboard">
+                <ImageView
+                    android:layout_width="19dp"
+                    android:layout_height="19dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_widget_grid" />
+            </FrameLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

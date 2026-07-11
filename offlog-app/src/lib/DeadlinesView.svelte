@@ -339,7 +339,7 @@
   .dl-body {
     flex: 1; min-height: 0; overflow-y: auto;
     padding: 20px 28px 40px;
-    width: 100%; max-width: 900px; box-sizing: border-box;
+    width: 100%; box-sizing: border-box;
   }
 
   .empty { color: var(--faint); font-size: 14px; padding: 12px 0; }

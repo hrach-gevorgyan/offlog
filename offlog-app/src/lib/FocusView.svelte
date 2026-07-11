@@ -156,6 +156,32 @@
     const proj = $projects.find(p => p._id === t.project_id);
     return proj && t.column_id === proj.columns.at(-1)?.id;
   });
+
+  // B41 — the picker uses the full available space as a scattered
+  // "brainstorm corkboard" of varying-size note cards rather than a
+  // plain capped-width list, per owner direction (2026-07-09). Size and
+  // tilt are derived deterministically from the task id (a stable hash,
+  // not Math.random()) so cards don't jitter to a new size/angle on
+  // every reactive re-render — same task always looks the same until the
+  // picker itself reloads. Actual layout is still flow-based (flex-wrap),
+  // not true absolute-random positioning — real floating/overlapping
+  // cards would be unusable (unclickable overlaps, broken tab order,
+  // no responsive story), so "floating and scattered" is expressed
+  // through size variety + a few degrees of rotation, not literal chaos.
+  function hashId(id: string): number {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  const SIZES = ['note-sm', 'note-md', 'note-lg'] as const;
+  function noteSize(t: TaskDoc & { project_name?: string }): string {
+    if (suggestedReasons.has(t._id!)) return 'note-lg'; // suggested tasks are the ones worth noticing first
+    return SIZES[hashId(t._id!) % 2]; // sm/md mix for the rest — lg is reserved for suggested
+  }
+  function noteTilt(t: TaskDoc): number {
+    const h = hashId(t._id!);
+    return (h % 7) - 3; // -3..3 degrees
+  }
 </script>
 
 <div class="focus">
@@ -194,29 +220,36 @@
         </div>
       {/each}
     {:else}
-      <p class="picker-hint">Pick up to {MAX_COMMIT} tasks to commit to for today — the colored label marks the top suggestions and why. They'll stay locked here until each is done, or you reset.</p>
+      <p class="picker-hint">Pick up to {MAX_COMMIT} tasks to commit to for today — the bigger, highlighted notes are the top suggestions. They'll stay locked here until each is done, or you reset.</p>
       {#if pickerTasks.length === 0}
         <div class="empty">No open tasks to pick from.</div>
       {:else}
-        {#each pickerTasks as t (t._id)}
-          <div
-            class="task-row picker"
-            class:selected={selected.includes(t._id!)}
-            class:suggested={suggestedReasons.has(t._id!)}
-            role="button"
-            tabindex="0"
-            on:click={() => toggleSelect(t._id!)}
-            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelect(t._id!); } }}
-          >
-            <span class="check" class:checked={selected.includes(t._id!)}></span>
-            <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-            <span class="task-title">{t.title}</span>
-            <span class="proj-badge">{t.project_name ?? '—'}</span>
-            {#if suggestedReasons.has(t._id!)}
-              <span class="suggest-chip {suggestedReasons.get(t._id!)}">{SUGGEST_LABEL[suggestedReasons.get(t._id!)!]}</span>
-            {/if}
-          </div>
-        {/each}
+        <div class="board">
+          {#each pickerTasks as t (t._id)}
+            <div
+              class="note {noteSize(t)}"
+              class:selected={selected.includes(t._id!)}
+              class:suggested={suggestedReasons.has(t._id!)}
+              style="--tilt: {noteTilt(t)}deg"
+              role="button"
+              tabindex="0"
+              on:click={() => toggleSelect(t._id!)}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelect(t._id!); } }}
+            >
+              <div class="note-head">
+                <span class="check" class:checked={selected.includes(t._id!)}></span>
+                <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
+              </div>
+              <span class="note-title">{t.title}</span>
+              <div class="note-foot">
+                <span class="proj-badge">{t.project_name ?? '—'}</span>
+                {#if suggestedReasons.has(t._id!)}
+                  <span class="suggest-chip {suggestedReasons.get(t._id!)}">{SUGGEST_LABEL[suggestedReasons.get(t._id!)!]}</span>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
       {/if}
     {/if}
   </div>
@@ -270,11 +303,47 @@
   .fc-body {
     flex: 1; min-height: 0; overflow-y: auto;
     padding: 20px 28px 40px;
-    width: 100%; max-width: 900px; box-sizing: border-box;
+    width: 100%; box-sizing: border-box;
   }
 
-  .picker-hint { color: var(--faint); font-size: 13px; margin: 0 0 16px; }
+  .picker-hint { color: var(--faint); font-size: 13px; margin: 0 0 16px; max-width: 640px; }
   .empty { color: var(--faint); font-size: 14px; padding: 12px 0; }
+
+  /* B41 — the corkboard. flex-wrap, not a grid with fixed tracks, so
+     differently-sized notes can sit next to each other naturally instead
+     of being forced into uniform cells. */
+  .board {
+    display: flex; flex-wrap: wrap; align-content: flex-start;
+    gap: 18px 22px;
+  }
+  .note {
+    display: flex; flex-direction: column; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    transform: rotate(var(--tilt));
+    transition: transform .15s, box-shadow .15s, border-color .15s, background .15s;
+  }
+  .note:hover { transform: rotate(0deg) translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
+  .note.selected {
+    transform: rotate(0deg); border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .note.suggested { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .note.suggested.selected { border-color: var(--accent); }
+
+  .note-sm { width: 160px; }
+  .note-md { width: 210px; }
+  .note-lg { width: 260px; padding: 18px 20px; }
+  .note-lg .note-title { font-size: 15px; }
+
+  .note-head { display: flex; align-items: center; gap: 8px; }
+  .note-title {
+    font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .note-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
 
   .task-row {
     display: grid;
@@ -286,17 +355,6 @@
     transition: background .1s, box-shadow .1s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-  .task-row.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-  .task-row.picker { grid-template-columns: 20px 10px 1fr auto auto; }
-  .task-row.picker.suggested {
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
-  }
-  .task-row.picker.suggested.selected {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, var(--surface));
-  }
 
   .suggest-chip {
     font-family: var(--mono); font-size: 10px; font-weight: 600;
@@ -342,7 +400,7 @@
   }
 
   .commit-btn {
-    width: 100%; max-width: calc(900px - 56px); /* matches fc-body's content width minus its padding */
+    width: 100%; max-width: 480px;
     background: var(--accent); color: #fff; border: none;
     font-size: 14px; font-weight: 600; padding: 11px; border-radius: 10px;
     cursor: pointer; transition: opacity .12s;
@@ -360,7 +418,8 @@
     .fc-footer { padding: 12px 16px; }
     .fc-title  { font-size: 17px; }
     .task-row  { grid-template-columns: 20px 10px 1fr; }
-    .task-row.picker { grid-template-columns: 20px 10px 1fr auto; }
     .proj-badge { display: none; }
+    .board { gap: 14px; }
+    .note-sm, .note-md, .note-lg { width: calc(50% - 7px); }
   }
 </style>

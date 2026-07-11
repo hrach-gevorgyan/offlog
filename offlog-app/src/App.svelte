@@ -138,9 +138,10 @@
     });
   }
 
-  // The three home-screen widgets (QuickAddWidgetProvider B10,
-  // AgendaWidgetProvider B20, ProjectListWidgetProvider B31) all open
-  // MainActivity with a com.offlog.app://<host>[?query] VIEW intent. This
+  // The combined home-screen widget (OffologWidgetProvider, B37) opens
+  // MainActivity with a com.offlog.app://<host>[?query] VIEW intent,
+  // depending on which part was tapped (brief → agenda, or one of the 3
+  // action buttons). This
   // used to be forwarded via a custom native `triggerJSEvent` call in
   // MainActivity.onCreate() — but that fired synchronously during native
   // onCreate(), before the WebView had even loaded this script, let alone
@@ -158,6 +159,8 @@
     if (!url) return false;
     if (url.includes('quickadd')) { showQuickAdd = true; return false; } // an overlay, not a view change
     if (url.includes('agenda')) { showDashboard = false; showDeadlines = true; return true; }
+    if (url.includes('focus')) { showDashboard = false; showDeadlines = false; showFocus = true; return true; }
+    if (url.includes('dashboard')) { showDeadlines = false; showFocus = false; showDashboard = true; return true; }
     if (url.includes('project')) {
       // The project-list widget's row may point at a project that's since
       // been deleted — same "don't land on a broken view" caution as the
