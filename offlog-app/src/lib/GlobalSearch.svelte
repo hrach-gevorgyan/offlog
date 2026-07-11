@@ -76,10 +76,21 @@
     if (e.key === 'Enter' && combinedLength > 0) selectAt(selectedIdx);
   }
 
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // r.title is sync-derived, untrusted data (can arrive from another
+  // device) — must be HTML-escaped before the <mark> wrap, not after,
+  // since this string is rendered via {@html}. Escaping first then
+  // matching against the escaped text keeps offsets correct because
+  // escapeHtml() only ever expands '&' '<' '>', never removes/reorders
+  // characters the query could span.
   function highlight(text: string, q: string): string {
-    if (!q.trim()) return text;
-    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(re, '<mark>$1</mark>');
+    const escaped = escapeHtml(text);
+    if (!q.trim()) return escaped;
+    const re = new RegExp(`(${escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return escaped.replace(re, '<mark>$1</mark>');
   }
 
   const today = new Date().toISOString().slice(0, 10);

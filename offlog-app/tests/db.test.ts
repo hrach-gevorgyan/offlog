@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db, {
   posBetween,
-  createProject, getProjects, deleteProject, removeColumn,
+  createProject, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
   createTask, getTasksForProject, updateTask, deleteTask,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash,
   getAllTasksDue, getDashboardData,
@@ -237,6 +237,19 @@ describe('"done" is positional (column_id === last column)', () => {
     // Completed tasks (in the last column) must not leak into todayTasks
     // even if they happened to have today's due_date.
     expect(data.todayTasks.map(t => t._id)).not.toContain(t1._id);
+  });
+
+  it('archiveProject/unarchiveProject write a changelog entry (maintenance pass fix, v4.10.0)', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Log Test Project');
+
+    await archiveProject(project._id);
+    let logs = await getRecentLogs(20);
+    expect(logs.some(l => l.ref === project._id && l.action === 'update' && l.field === 'archived' && l.to === true)).toBe(true);
+
+    await unarchiveProject(project._id);
+    logs = await getRecentLogs(20);
+    expect(logs.some(l => l.ref === project._id && l.action === 'update' && l.field === 'archived' && l.to === false)).toBe(true);
   });
 });
 

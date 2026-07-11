@@ -299,7 +299,7 @@
         {/if}
         <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
         {#if (tasksByCol[col.id]?.length ?? 0) > 0}
-          <button class="col-archive" title="Archive all tasks in this column" on:click={async () => {
+          <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
             if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
             try {
               await archiveColumnTasks(project._id, col.id);

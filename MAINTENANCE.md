@@ -119,9 +119,10 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - Long context? Summarize state and suggest a good /clear point.
 
 ## Maintenance tracker
-Last pass: v4.7.0 (2026-07-09 — third pass, clean report, no fixes needed
-so no version was bumped for it; findings not written to CHANGELOG.md
-since nothing shipped).
-Next pass due: **after v4.10.0 ships**, then continuing the every-3-
-releases cadence from there (v4.13.0, v4.16.0, …) — see docs/ROADMAP.md's
-sequencing table, which has these same points marked inline.
+Last pass: v4.10.1 (2026-07-11 — fourth pass; found and fixed a real
+stored-XSS gap in GlobalSearch's highlight(), a missing logChange() on
+archiveProject()/unarchiveProject(), plus two hygiene fixes — shipped as
+v4.10.1 per Phase 5).
+Next pass due: **after v4.13.0 ships**, continuing the every-3-releases
+cadence from there (v4.16.0, …) — see docs/ROADMAP.md's sequencing table,
+which has these same points marked inline.

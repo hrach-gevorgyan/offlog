@@ -673,6 +673,7 @@ export async function archiveProject(id: string): Promise<void> {
   const doc = await db.get<ProjectDoc>(id);
   const lastColId = doc.columns.at(-1)?.id;
   await db.put({ ...doc, archived: true, updated_at: now(), source: SOURCE });
+  await logChange(id, 'update', 'archived', false, true, { project_name: doc.name });
   const all = await getAllTasksRaw();
   const toArchive = all.filter(t => t.project_id === id && !t.deleted && !t.archived && t.column_id !== lastColId);
   if (toArchive.length) await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true } as any)));
@@ -682,6 +683,7 @@ export async function archiveProject(id: string): Promise<void> {
 export async function unarchiveProject(id: string): Promise<void> {
   const doc = await db.get<ProjectDoc>(id);
   await db.put({ ...doc, archived: false, updated_at: now(), source: SOURCE });
+  await logChange(id, 'update', 'archived', true, false, { project_name: doc.name });
   invalidateTaskCache();
 }
 

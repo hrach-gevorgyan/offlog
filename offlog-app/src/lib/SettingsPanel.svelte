@@ -848,8 +848,8 @@
   .conflict-item-row { display: flex; align-items: center; gap: .75rem; }
   .conflict-item-meta { font-size: .72rem; color: var(--muted); flex: 1; }
 
-  /* B15 — Maintenance step list, folded in from the old standalone
-     MaintenanceModal.svelte overlay; styles carried over as-is. */
+  /* B15 — Maintenance step list, folded in from the deleted standalone
+     modal overlay it used to live in; styles carried over as-is. */
   .progress-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
   .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s var(--ease); }
 

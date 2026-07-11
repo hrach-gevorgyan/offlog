@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.4.2 | Second maintenance pass, clean codebase: fixed a missing try/catch+showError() gap in QuickAdd's createTask() call, documented a silent-catch write path | `v4.4.2` |
 | 4.4.1 | Light patch (A29): reworded a sync network-error message for clarity; fixed the B12 "remind on due date" checkbox rendering stacked instead of inline | `v4.4.1` |
 | 4.4.0 | Reminder-scheduling release (A12, B12): auto-derive `reminder_at` from due date + configurable default time; caught a real `catchUpWeb()` bug leaving stale reminders dangling forever | `v4.4.0` |
 | 4.3.0 | Storage-pressure release (A17, B14): explains quota, warns past 80% usage with cleanup pointers | `v4.3.0` |
