@@ -163,7 +163,7 @@ duplicating CHANGELOG.md nearly verbatim — trimmed, cutting this file from
 MAINTENANCE.md/CHANGELOG-ARCHIVE.md. CLAUDE.md itself checked for PWA-
 removal staleness — already clean, no gaps found.
 
-### A31. Full cross-platform visual/UX review — PARTIALLY DONE (v4.12.1 + since)
+### A31. Full cross-platform visual/UX review — DONE except Android (v4.12.1 + since)
 Owner-directed (2026-07-12): a systematic visual pass over every page and
 action (Dashboard, Kanban, List, Focus, Agenda, Settings, CardDetail, all
 manager panels), not a spot-check — using the browser preview tools at
@@ -173,27 +173,34 @@ understandable, compact, focused" design. Explicitly cross-platform:
 findings need to hold up consistently across web and the Android build,
 not just the desktop browser.
 
-**Done so far** (ad-hoc across the v4.12.1 session and its follow-up):
-desktop light-mode pass over Dashboard/Kanban/List/CardDetail/Agenda
-(List+Week)/Focus/Settings(Appearance,Sync,Organize)/Search/Command
-Palette/Changelog/Trash, plus a real WCAG contrast fix (`--faint`/
-`--accent`/new `--on-accent` token, 17 call sites), a design-system pass
-(consolidated `ACTION_COLOR`), scroll-shadow affordances on 3 overflowing
-containers, and — from a follow-up mobile (375px) + dark-mode pass — two
-real bugs: Dashboard's project grid overflowed and clipped titles at
-mobile widths (root cause: a bare `1fr` grid track has an implicit `auto`
-min-size that doesn't clamp to the container — needed `minmax(0, 1fr)`),
-and Focus view's fixed FAB overlapped its own Commit button footer at
-mobile widths.
+**Web coverage is now complete.** Desktop light-mode pass over Dashboard/
+Kanban/List/CardDetail/Agenda(List+Week)/Focus/Settings(all 6 tabs)/
+Search/Command Palette/Changelog/Trash/Space-Tag-CustomField managers/
+List bulk-select/FilterBar popover/ConfirmDialog (danger variant), plus a
+mobile (375px) pass and a dark-mode pass (the manager-panel/bulk-
+select/FilterBar/ConfirmDialog round was screenshotted entirely in dark
+mode). Testing used a realistic seeded dataset (10 projects with mixed
+default and custom column sets, 100+ tasks) via `offlog-app/scripts/
+seed-scenario.js` rather than a handful of sparse dummy rows.
 
-**Still open**: Settings' Notifications/Data/Maintenance tabs, Tag/Space/
-Custom-Field managers, ConfirmDialog variants, List's bulk-select mode,
-and FilterBar's popover haven't been visited at all this pass. No dark-
-mode screenshots taken beyond Dashboard/Kanban spot-checks. **Android is
-entirely unverified** — no `cap sync`, no on-device/Studio check; this
-needs the owner directly, per CLAUDE.md's Android-build rule. Not
-re-scheduled to a specific version — pick up the remaining scope whenever
-convenient, same track.
+Real bugs found and fixed along the way: a WCAG contrast failure
+(`--faint`/`--accent`, new `--on-accent` token added, 17 call sites), a
+duplicated `ACTION_COLOR` map consolidated, scroll-shadow affordances
+added to 3 overflowing containers, Dashboard's project grid overflowing
+at mobile widths (root cause: a bare `1fr` grid track's implicit `auto`
+min-size doesn't clamp to its container — needed `minmax(0, 1fr)`), and
+Focus view's fixed FAB overlapping its own Commit button footer at mobile
+widths. The `.ok-btn.danger` confirm-dialog button was independently
+verified correct (dark text via `--on-accent`, 6.29:1 contrast) — no
+further issues found in the manager-panel/bulk-select/FilterBar/
+ConfirmDialog round.
+
+**Still open: Android is entirely unverified** — no `cap sync`, no
+on-device/Studio check; this needs the owner directly, per CLAUDE.md's
+Android-build rule (the assistant never runs Gradle). Everything else in
+this item's original scope has been covered — closing web/desktop/mobile
+coverage out, leaving only the Android leg open, picked up whenever the
+owner runs a Studio check.
 
 ---
 
@@ -468,8 +475,8 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
 | 2 | v4.12.0 | A30 ✓ | — | Shipped — full codebase audit/cleanup/dead-code sweep plus a documentation-flow optimization pass, not a delta-scoped maintenance check. This release *is* the cycle's maintenance pass (merged in, not run separately). |
-| — | v4.12.1 ✓ | A31 (partial) | — | Shipped — accessibility contrast fixes, design-system token consolidation, and (in a same-day follow-up) a mobile + dark-mode pass catching two real bugs (Dashboard grid overflow, Focus FAB/Commit-button overlap). Not a full A31 close-out — see A31's own entry for remaining scope (several panels unvisited, Android unverified). |
-| 3 | v4.13.0 | A31 (remainder) | — | Whatever's left of A31 once picked back up — remaining Settings tabs/managers/dialogs, a dedicated dark-mode screenshot pass, and Android verification (needs the owner directly). Not urgent to force into its own version bump if the remaining scope turns out small enough to fold into whichever release is next. |
+| — | v4.12.1 ✓ | A31 (web/desktop/mobile) ✓ | — | Shipped — accessibility contrast fixes, design-system token consolidation, and (across same-day follow-ups) a full mobile + dark-mode pass over every page and manager panel, catching real bugs (Dashboard grid overflow, Focus FAB/Commit-button overlap) and verifying the rest clean. A31's web-side scope is done — only Android verification remains, see A31's own entry. |
+| 3 | v4.13.0 | A31 (Android leg) | — | Just the Android verification A31 still needs — owner runs `cap sync` + a Studio check whenever convenient. Small enough that it doesn't need to hold up whatever else lands in this release; fold it in opportunistically. |
 | 4 | v4.14.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
 | 5 | v4.15.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
 | 6 | v4.16.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
