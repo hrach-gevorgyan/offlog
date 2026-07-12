@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getLogsForTask } from './db';
-  import { timeAgo } from './utils';
+  import { timeAgo, fmtFullTimestamp } from './utils';
 
   export let taskId: string;
 
@@ -31,9 +31,6 @@
     return 'Updated';
   }
 
-  function fmtTs(ts: string): string {
-    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
 </script>
 
 <div class="history">
@@ -48,7 +45,7 @@
         <span class="h-desc">{describeLog(log)}</span>
         <span class="h-time-group">
           {#if log.source}<span class="h-source">{log.source}</span>{/if}
-          <span class="h-time" title={fmtTs(log.ts)}>{timeAgo(log.ts)}</span>
+          <span class="h-time" title={fmtFullTimestamp(log.ts)}>{timeAgo(log.ts)}</span>
         </span>
       </div>
     {/each}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
 
   // Native <select> renders as the bare OS picker on Android (a plain list
   // in a system sheet, no app styling at all) — jarring next to every other
@@ -34,10 +34,17 @@
     return [...groups.entries()];
   }
 
-  function openPanel() {
+  // A30 — opening via mouse click left DOM focus on the trigger button,
+  // so arrow keys did nothing until the panel was separately tabbed/
+  // clicked into (onPanelKey is wired to panelEl's keydown, not the
+  // trigger's). Moving focus into the panel on every open fixes both the
+  // mouse-click and keyboard-open paths the same way.
+  async function openPanel() {
     if (disabled) return;
     open = true;
     highlighted = Math.max(0, options.findIndex(o => o.value === value));
+    await tick();
+    panelEl?.focus();
   }
   function close() { open = false; triggerEl?.focus(); }
   function toggle() { if (open) close(); else openPanel(); }

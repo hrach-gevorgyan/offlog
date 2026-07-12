@@ -433,11 +433,13 @@
 {/if}
 
 {#if searchDetailTask && searchDetailProject}
-  <CardDetail
-    task={searchDetailTask}
-    project={searchDetailProject}
-    on:close={async () => { searchDetailTask = null; searchDetailProject = null; await reloadTasks(); }}
-  />
+  {#key searchDetailTask._id}
+    <CardDetail
+      task={searchDetailTask}
+      project={searchDetailProject}
+      on:close={async () => { searchDetailTask = null; searchDetailProject = null; await reloadTasks(); }}
+    />
+  {/key}
 {/if}
 
 {#if showShortcuts}

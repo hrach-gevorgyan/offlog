@@ -6,6 +6,7 @@
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import { timeAgo } from './utils';
   import type { TaskDoc } from './types';
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -26,20 +27,6 @@
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') requestClose();
-  }
-
-  // Deleted tasks only carry a timestamp, not a duration — this turns
-  // updated_at into the same kind of relative label used elsewhere in the
-  // app ("2h ago", "5d ago") instead of a raw ISO string.
-  function timeAgo(iso: string): string {
-    const ms = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(ms / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
   }
 
   async function restore(id: string) {

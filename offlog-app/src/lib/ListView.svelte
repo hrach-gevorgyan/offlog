@@ -598,11 +598,13 @@
 {/if}
 
 {#if detailTask}
-  <CardDetail
-    task={detailTask}
-    {project}
-    on:close={async () => { detailTask = null; await reloadTasks(); }}
-  />
+  {#key detailTask._id}
+    <CardDetail
+      task={detailTask}
+      {project}
+      on:close={async () => { detailTask = null; await reloadTasks(); }}
+    />
+  {/key}
 {/if}
 
 <style>

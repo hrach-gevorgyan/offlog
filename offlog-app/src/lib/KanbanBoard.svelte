@@ -422,11 +422,17 @@
 </div>
 
 {#if detailTask}
-  <CardDetail
-    task={detailTask}
-    {project}
-    on:close={async () => { detailTask = null; await reloadTasks(); }}
-  />
+  <!-- A30 — {#key} forces a full remount if `task` ever changes to a
+       different task while still open, so CardDetail's per-task `let`
+       state (collapsible-section flags, etc.) can't carry over stale from
+       a previous task instead of re-deriving. -->
+  {#key detailTask._id}
+    <CardDetail
+      task={detailTask}
+      {project}
+      on:close={async () => { detailTask = null; await reloadTasks(); }}
+    />
+  {/key}
 {/if}
 
 <style>

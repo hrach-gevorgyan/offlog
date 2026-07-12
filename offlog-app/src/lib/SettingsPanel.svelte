@@ -10,7 +10,7 @@
   } from './db';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
-  import { timeAgo } from './utils';
+  import { timeAgo, fmtLastSynced } from './utils';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError } from './store';
   import { closeOnBack } from './modalStack';
@@ -137,12 +137,6 @@
   }
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
-
-  function fmtLastSynced(ts: string): string {
-    const d = new Date(ts);
-    const sameDay = d.toDateString() === new Date().toDateString();
-    return sameDay ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString();
-  }
 
   let conflictList: ConflictInfo[] = [];
   let loadingConflicts = false;

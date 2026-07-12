@@ -10,6 +10,7 @@
   import PinStar from './PinStar.svelte';
   import CalendarPicker from './CalendarPicker.svelte';
   import CustomSelect from './CustomSelect.svelte';
+  import { fmtFullTimestamp } from './utils';
   import { getDefaultReminderTime } from '../config';
 
   export let task: TaskDoc;
@@ -142,10 +143,6 @@
       tagSuggestions = [];
       otherTagSuggestions = [];
     }
-  }
-
-  function fmtTs(ts: string): string {
-    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   function addTag() {
@@ -399,9 +396,9 @@
     </div>
 
     <div class="timestamps">
-      <span>Created {fmtTs(task.created_at)}</span>
+      <span>Created {fmtFullTimestamp(task.created_at)}</span>
       {#if task.updated_at !== task.created_at}
-        <span>Updated {fmtTs(task.updated_at)}</span>
+        <span>Updated {fmtFullTimestamp(task.updated_at)}</span>
       {/if}
       <button class="history-toggle" on:click={loadHistory}>
         {showHistory ? 'Hide history' : 'Show history'}

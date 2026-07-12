@@ -172,11 +172,13 @@
 </div>
 
 {#if detailTask && detailProject}
-  <CardDetail
-    task={detailTask}
-    project={detailProject}
-    on:close={async () => { detailTask = null; detailProject = null; await reloadTasks(); await load(); }}
-  />
+  {#key detailTask._id}
+    <CardDetail
+      task={detailTask}
+      project={detailProject}
+      on:close={async () => { detailTask = null; detailProject = null; await reloadTasks(); await load(); }}
+    />
+  {/key}
 {/if}
 
 <style>

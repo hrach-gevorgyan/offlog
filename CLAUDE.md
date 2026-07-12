@@ -7,9 +7,12 @@ auto-loads a CLAUDE.md found there. Everything else lives in
 [docs/ROADMAP.md](docs/ROADMAP.md) (planned work and the public-release
 path),
 [docs/DECISIONS.md](docs/DECISIONS.md) (why non-obvious choices were made),
-[docs/CHANGELOG.md](docs/CHANGELOG.md) (version history), and
-[docs/QUESTIONS.md](docs/QUESTIONS.md) (open questions). User-facing pitch
-is the root [README.md](README.md).
+[docs/CHANGELOG.md](docs/CHANGELOG.md) (version history — older releases
+compressed into [docs/CHANGELOG-ARCHIVE.md](docs/CHANGELOG-ARCHIVE.md)),
+and [docs/QUESTIONS.md](docs/QUESTIONS.md) (open questions). The
+maintenance-pass process/tracker lives in root [MAINTENANCE.md](MAINTENANCE.md)
+(checked only at a version bump, not every session — see below). User-facing
+pitch is the root [README.md](README.md).
 
 **Mandatory, not optional: read the relevant document(s) above before
 making any change or moving forward on a request, and revise whichever of

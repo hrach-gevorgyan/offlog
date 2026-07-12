@@ -6,6 +6,7 @@
     getRecentlyModifiedTasks,
   } from './db';
   import { confirmAction } from './confirm';
+  import { fmtLastSynced } from './utils';
   import type { TaskDoc, ProjectDoc } from './types';
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
@@ -78,12 +79,6 @@
   }
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
-
-  function fmtLastSynced(ts: string): string {
-    const d = new Date(ts);
-    const sameDay = d.toDateString() === new Date().toDateString();
-    return sameDay ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString();
-  }
 
   // Compact sync status (owner feedback, 2026-07-09): a full sentence in
   // a bordered row was one more heavy sidebar block — collapsed to a

@@ -119,10 +119,12 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - Long context? Summarize state and suggest a good /clear point.
 
 ## Maintenance tracker
-Last pass: v4.10.1 (2026-07-11 — fourth pass; found and fixed a real
-stored-XSS gap in GlobalSearch's highlight(), a missing logChange() on
-archiveProject()/unarchiveProject(), plus two hygiene fixes — shipped as
-v4.10.1 per Phase 5).
-Next pass due: **after v4.13.0 ships**, continuing the every-3-releases
-cadence from there (v4.16.0, …) — see docs/ROADMAP.md's sequencing table,
+Last pass: v4.12.0 (2026-07-12 — fifth pass, A30, owner-directed
+exhaustive audit rather than the usual delta-scoped one; found/fixed
+duplicated timestamp formatters, a `CardDetail` stale-collapse-state bug,
+and a `CustomSelect` focus gap; deferred `ListView.svelte`/
+`SettingsPanel.svelte` splitting — needs a shared-style-layer decision
+first. Full report in docs/ROADMAP.md's A30 entry).
+Next pass due: **after v4.15.0 ships**, continuing the every-3-releases
+cadence from there (v4.18.0, …) — see docs/ROADMAP.md's sequencing table,
 which has these same points marked inline.

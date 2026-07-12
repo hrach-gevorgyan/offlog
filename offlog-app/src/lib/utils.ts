@@ -66,6 +66,21 @@ export function dueInk(due: string | null): string {
   return 'var(--muted)';
 }
 
+// A30 — was duplicated byte-for-byte in Sidebar.svelte and SettingsPanel.svelte
+// (last-synced display). Same-day shows just the time, otherwise a short
+// date + time.
+export function fmtLastSynced(ts: string): string {
+  const d = new Date(ts);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString();
+}
+
+// A30 — was duplicated byte-for-byte in CardDetail.svelte and
+// TaskHistoryPanel.svelte (full created/updated/history timestamps).
+export function fmtFullTimestamp(ts: string): string {
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export function filterTasks<T extends { title: string; column_id: string; priority: number; tags: string[] }>(
   tasks: T[],
   search: string,

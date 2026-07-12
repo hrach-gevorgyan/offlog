@@ -1,6 +1,6 @@
 # Offlog
 
-Version 4.11.1 · A free, open-source, local-first task management app.
+Version 4.12.0 · A free, open-source, local-first task management app.
 No account, no telemetry, no subscription, ever. Runs in the browser and
 as a native Android app. Sync is optional and never required.
 
