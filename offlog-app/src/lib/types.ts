@@ -7,7 +7,11 @@
 export type Source = string;
 
 export interface SpaceDoc {
-  _id: string;          // "space:unsorted" | "space:personal" | "space:family" | "space:work"
+  // "space:unsorted" | "space:personal" | "space:work" (B24: default seed
+  // is 3 spaces, not 4) | "space:family" (no longer seeded by default, but
+  // still a valid id — old databases or a manually-recreated space can
+  // still have one; Sidebar.svelte keeps its icon mapping for that reason
+  _id: string;
   _rev?: string;
   type: 'space';
   name: string;

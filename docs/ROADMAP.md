@@ -68,16 +68,27 @@ Goal: the app stays trustworthy as data grows and devices multiply. No new
 user-visible features; every item here should be invisible when it works.
 Shipped items: one-line pointer only — full detail in CHANGELOG.md.
 
-### A9. UI component tests — OPEN
+### A9. UI component tests — FIRST SLICE SHIPPED in v4.15.0
 `tests/db.test.ts`/`modalStack.test.ts`/`sync.test.ts` cover the database
-and pure-logic layers only — every `.svelte` component has zero automated
-coverage, caught only by manual browser verification. Start with
-`@testing-library/svelte` for the components with the most non-obvious
-logic: `KanbanBoard`'s drag/drop position math, `CardDetail`'s save/diff
-logic, and `Sidebar`'s Maintenance step orchestration. **Note**: v3.6.0's
-CHANGELOG entry and the old sequencing table mis-labeled that release's
-`tests/db.test.ts` growth as "A9" — it wasn't; no real component test has
-ever landed. Scheduled for v4.15.0.
+and pure-logic layers only — every `.svelte` component had zero automated
+coverage before this, caught only by manual browser verification.
+`@testing-library/svelte` added; `CardDetail`'s save logic is the first
+component covered (`tests/CardDetail.test.ts`, 5 tests) — the highest-risk
+of the three originally-named targets since it's the one everyday-use path
+where a save silently writing the wrong thing would be easy to miss.
+Needed a real Vitest config fix to work at all: `resolve: { conditions:
+['browser'] }` in `vitest.config.ts`, without which Svelte resolved to its
+SSR build even under jsdom and any `onMount`/`onDestroy` component failed
+outright — nothing had exercised that path before this.
+
+**Still open**: `KanbanBoard`'s drag/drop position math (real HTML5 drag
+events are notoriously hard to simulate reliably in jsdom — may need a
+different testing approach, e.g. testing the position-calculation logic
+in isolation rather than through simulated drag events) and `Sidebar`'s
+Maintenance step orchestration (large dependency surface — depends on
+`checkIntegrity`/`repairDatabase`/`pruneOldLogs`/sync state/storage
+breakdown). Not re-scheduled to a specific version; same track as A9's
+original scope.
 
 ### A10. Large-dataset performance validation — shipped in v4.7.0
 Validated via A24's new benchmark harness (`npm run bench`) at 3,000 tasks
@@ -265,10 +276,7 @@ into a long form.
 
 ### B23. Sidebar: last modified cards — shipped in v3.9.0
 
-### B24. Seed data: 3 spaces, not 4 — OPEN
-`seedIfEmpty()`/`wipeAndReseed()` currently create Unsorted, Personal,
-Family, and Work. Drop Family from the default seed. Down to Unsorted,
-Personal, Work. Scheduled for v4.15.0.
+### B24. Seed data: 3 spaces, not 4 — shipped in v4.15.0
 
 ### B25. Deadline quick-suggestions on new card — shipped in v4.0.0
 
@@ -283,9 +291,7 @@ invariant (see DECISIONS.md) — but it also means a project's last status is
 design conversation before any implementation; may stay exactly as-is
 after that conversation. Scheduled for v4.16.0 (deliberately isolated).
 
-### B29. Show tags on Kanban cards — OPEN
-Tags currently render in List but not on Kanban cards themselves — add
-them (compact, matching the existing chip style). Scheduled for v4.15.0.
+### B29. Show tags on Kanban cards — shipped in v4.15.0
 
 ### B30. Notes length guardrail — shipped in v4.14.0
 
@@ -471,7 +477,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | — | v4.12.1 ✓ | A31 (web/desktop/mobile) ✓ | — | Shipped — accessibility contrast fixes, design-system token consolidation, and (across same-day follow-ups) a full mobile + dark-mode pass over every page and manager panel, catching real bugs (Dashboard grid overflow, Focus FAB/Commit-button overlap) and verifying the rest clean. A31's web-side scope is done — only Android verification remains, see A31's own entry. |
 | 3 | v4.13.0 | A31 (Android leg) | — | Just the Android verification A31 still needs — owner runs `cap sync` + a Studio check whenever convenient. Small enough that it doesn't need to hold up whatever else lands in this release; fold it in opportunistically. |
 | 4 | v4.14.0 ✓ | — | B8, B30 ✓ | Shipped — project templates ("New from template" copies a project's status structure and optionally its open tasks) and a notes-length soft counter. Shipped ahead of v4.13.0's Android leg, which is owner-paced and doesn't block anything else. |
-| 5 | v4.15.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
 | 6 | v4.16.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence, resuming after A30's merged pass: v4.12 → **v4.15** → v4.18 → … |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |

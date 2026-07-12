@@ -372,6 +372,11 @@
                 </span>
               {/if}
             </div>
+            {#if task.tags.length}
+              <div class="card-tags">
+                {#each task.tags as tag}<span class="card-tag">{tag}</span>{/each}
+              </div>
+            {/if}
           </div>
         {/each}
 
@@ -571,6 +576,15 @@
     padding: .12rem .45rem; border-radius: 6px;
   }
   .checklist-badge.complete { color: var(--success); }
+
+  /* B29: same visual treatment as ListView.svelte's .tag chip — kept as a
+     separate rule since Svelte scopes component styles per-file, not
+     shared via the class name alone. */
+  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .4rem; }
+  .card-tag {
+    font-size: 11px; color: var(--muted); background: var(--col-bg);
+    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  }
 
   .add-card-btn {
     border: none; background: none; cursor: pointer;

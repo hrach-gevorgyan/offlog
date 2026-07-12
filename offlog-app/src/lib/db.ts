@@ -480,10 +480,11 @@ export async function seedIfEmpty() {
   const existing = await getSpaces();
   if (existing.length > 0) { localStorage.setItem(SEEDED_KEY, '1'); return; }
 
+  // B24: down to 3 — Family dropped from the default seed (owner request;
+  // still creatable manually via "+ New space" for anyone who wants it).
   const SPACES = [
     { key: 'unsorted', name: 'Unsorted', color: '#6B7280' },
     { key: 'personal', name: 'Personal', color: '#10B981' },
-    { key: 'family',   name: 'Family',   color: '#F59E0B' },
     { key: 'work',     name: 'Work',     color: '#3B82F6' },
   ];
   for (let i = 0; i < SPACES.length; i++) {

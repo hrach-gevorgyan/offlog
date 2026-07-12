@@ -440,12 +440,12 @@ describe('retention pruning', () => {
 // launch. Exercising the same sequence headless catches anything that would
 // otherwise only surface as a blank/broken screen on a brand-new install.
 describe('bootstrap (seedIfEmpty smoke test)', () => {
-  it('seeds four default spaces and a Draft project into an empty database', async () => {
+  it('seeds three default spaces (B24: Family dropped) and a Draft project into an empty database', async () => {
     await initIndexes();
     await seedIfEmpty();
 
     const spaces = await getSpaces();
-    expect(spaces.map(s => s.name).sort()).toEqual(['Family', 'Personal', 'Unsorted', 'Work'].sort());
+    expect(spaces.map(s => s.name).sort()).toEqual(['Personal', 'Unsorted', 'Work'].sort());
 
     const projects = await getProjects('space:unsorted');
     expect(projects.map(p => p.name)).toContain('Draft');

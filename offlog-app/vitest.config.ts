@@ -6,6 +6,12 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 // into the shipped build.
 export default defineConfig({
   plugins: [svelte()],
+  // A9: without this, Vite/Vitest resolves `svelte` via its default
+  // (Node/SSR) export condition even under the jsdom test environment,
+  // which fails hard on any component using onMount/onDestroy ("mount(...)
+  // is not available on the server") — component tests need the browser
+  // build specifically.
+  resolve: { conditions: ['browser'] },
   test: {
     environment: 'jsdom',
     // jsdom disables localStorage for opaque origins (its default
