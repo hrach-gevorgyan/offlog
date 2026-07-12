@@ -427,7 +427,10 @@
   @media (max-width: 700px) {
     .fc-header { padding: 14px 16px 10px; }
     .fc-body   { padding: 14px 14px 32px; }
-    .fc-footer { padding: 12px 16px; }
+    /* Extra right padding so the full-width Commit button doesn't sit
+       under App.svelte's fixed FAB (bottom:24px/right:24px, 50px wide) —
+       confirmed overlapping at 375px without this. */
+    .fc-footer { padding: 12px 16px; padding-right: 74px; }
     .fc-title  { font-size: 17px; }
     .task-row  { grid-template-columns: 20px 10px 1fr; }
     .proj-badge { display: none; }

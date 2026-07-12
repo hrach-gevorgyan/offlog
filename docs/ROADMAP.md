@@ -163,7 +163,7 @@ duplicating CHANGELOG.md nearly verbatim — trimmed, cutting this file from
 MAINTENANCE.md/CHANGELOG-ARCHIVE.md. CLAUDE.md itself checked for PWA-
 removal staleness — already clean, no gaps found.
 
-### A31. Full cross-platform visual/UX review — OPEN
+### A31. Full cross-platform visual/UX review — PARTIALLY DONE (v4.12.1 + since)
 Owner-directed (2026-07-12): a systematic visual pass over every page and
 action (Dashboard, Kanban, List, Focus, Agenda, Settings, CardDetail, all
 manager panels), not a spot-check — using the browser preview tools at
@@ -171,9 +171,29 @@ desktop + mobile widths, light + dark mode, screenshotting each and
 reporting concrete issues plus suggested fixes toward "organic, readable,
 understandable, compact, focused" design. Explicitly cross-platform:
 findings need to hold up consistently across web and the Android build,
-not just the desktop browser. Scheduled for v4.13.0, right after the A30
-audit so any structural cleanup lands before a visual pass builds on top
-of it.
+not just the desktop browser.
+
+**Done so far** (ad-hoc across the v4.12.1 session and its follow-up):
+desktop light-mode pass over Dashboard/Kanban/List/CardDetail/Agenda
+(List+Week)/Focus/Settings(Appearance,Sync,Organize)/Search/Command
+Palette/Changelog/Trash, plus a real WCAG contrast fix (`--faint`/
+`--accent`/new `--on-accent` token, 17 call sites), a design-system pass
+(consolidated `ACTION_COLOR`), scroll-shadow affordances on 3 overflowing
+containers, and — from a follow-up mobile (375px) + dark-mode pass — two
+real bugs: Dashboard's project grid overflowed and clipped titles at
+mobile widths (root cause: a bare `1fr` grid track has an implicit `auto`
+min-size that doesn't clamp to the container — needed `minmax(0, 1fr)`),
+and Focus view's fixed FAB overlapped its own Commit button footer at
+mobile widths.
+
+**Still open**: Settings' Notifications/Data/Maintenance tabs, Tag/Space/
+Custom-Field managers, ConfirmDialog variants, List's bulk-select mode,
+and FilterBar's popover haven't been visited at all this pass. No dark-
+mode screenshots taken beyond Dashboard/Kanban spot-checks. **Android is
+entirely unverified** — no `cap sync`, no on-device/Studio check; this
+needs the owner directly, per CLAUDE.md's Android-build rule. Not
+re-scheduled to a specific version — pick up the remaining scope whenever
+convenient, same track.
 
 ---
 
@@ -448,7 +468,8 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
 | 2 | v4.12.0 | A30 ✓ | — | Shipped — full codebase audit/cleanup/dead-code sweep plus a documentation-flow optimization pass, not a delta-scoped maintenance check. This release *is* the cycle's maintenance pass (merged in, not run separately). |
-| 3 | v4.13.0 | A31 | — | Full cross-platform visual/UX review (owner-directed, 2026-07-12) — every page/action, desktop+mobile, light+dark, web+Android — right after A30 so structural cleanup lands before a visual pass builds on top of it. |
+| — | v4.12.1 ✓ | A31 (partial) | — | Shipped — accessibility contrast fixes, design-system token consolidation, and (in a same-day follow-up) a mobile + dark-mode pass catching two real bugs (Dashboard grid overflow, Focus FAB/Commit-button overlap). Not a full A31 close-out — see A31's own entry for remaining scope (several panels unvisited, Android unverified). |
+| 3 | v4.13.0 | A31 (remainder) | — | Whatever's left of A31 once picked back up — remaining Settings tabs/managers/dialogs, a dedicated dark-mode screenshot pass, and Android verification (needs the owner directly). Not urgent to force into its own version bump if the remaining scope turns out small enough to fold into whichever release is next. |
 | 4 | v4.14.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
 | 5 | v4.15.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
 | 6 | v4.16.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |

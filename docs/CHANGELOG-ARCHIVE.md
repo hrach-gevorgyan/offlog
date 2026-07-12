@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.8.0 | Visual/UX polish pass (B40, B41, B42, B37): sidebar 2×2 icon grid, Focus corkboard picker, Agenda full-width, Android widgets rebuilt to 3 static buttons; fixed a widget-stretch rendering bug | `v4.8.0` |
 | 4.7.0 | Perf validation + import/export v2 + Agenda week view (A10, A24, B4, B7): benchmark harness at 3,000-task scale (no perf cliff found), project/CSV export + guided import, Agenda week grid | `v4.7.0` |
 | 4.6.5 | UI polish patch: sidebar nav unified + Spaces/Projects merged into one collapsible tree, CardDetail condensed, List columns fixed, new custom CalendarPicker.svelte (B38) | `v4.6.5` |
 | 4.6.0 | Appearance + power-user pass (A11, B21, B11, B16, B19): Light/Dark/System theme, High Contrast toggle, global custom fields, revised bulk actions in List | `v4.6.0` |

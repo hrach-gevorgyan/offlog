@@ -275,7 +275,12 @@
 
   /* ── Responsive ── */
   @media (max-width: 900px) {
-    .dash-cols { grid-template-columns: 1fr; }
+    /* minmax(0, 1fr), not bare 1fr — a bare fr track's implicit minimum
+       is auto (= its content's max-content size), so it doesn't actually
+       clamp to the container width. Confirmed at 375px: this track grew
+       to 405px, wider than its own 337px container, clipping the second
+       card column with no way to reach it. */
+    .dash-cols { grid-template-columns: minmax(0, 1fr); }
     .col-tasks { gap: 16px; }
   }
   @media (max-width: 768px) {
