@@ -17,10 +17,11 @@
   /* ink */
   --text: #1f2937;
   --muted: #4b5563;
-  --faint: #9ca3af;
+  --faint: #6b7280;
 
   /* meaning */
-  --accent: #6366f1;
+  --accent: #5457e0;
+  --on-accent: #ffffff; /* text/icon color for anything sitting on --accent — see body.dark override */
   --danger: #dc2626;
   --success: #22c55e;
   --due-soon-bg: #fef3c7;
@@ -55,8 +56,9 @@ body.dark {
   --hover: #2a2f3a;
   --text: #f3f4f6;
   --muted: #a3a9b7;
-  --faint: #6b7280;
+  --faint: #8b93a5;
   --accent: #818cf8;
+  --on-accent: #181a20; /* dark accent is light — needs dark text, not white (was hardcoded #fff before, 2.98:1) */
   --danger: #f87171;
   --success: #4ade80;
   --due-soon-bg: #3a2e10;

@@ -490,7 +490,7 @@
     padding: 2px 8px; cursor: pointer; transition: background .1s, color .1s, border-color .1s;
   }
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
-  .due-shortcut.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .due-shortcut.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
   .reminder-hint {
     font-size: .72rem; color: var(--faint); line-height: 1.35;
@@ -598,7 +598,7 @@
     flex-shrink: 0; width: 17px; height: 17px; border-radius: 5px;
     border: 1.5px solid var(--border-strong); background: var(--surface);
     display: flex; align-items: center; justify-content: center;
-    font-size: .68rem; color: #fff; cursor: pointer; padding: 0;
+    font-size: .68rem; color: var(--on-accent); cursor: pointer; padding: 0;
   }
   .checklist-check.done { background: var(--accent); border-color: var(--accent); }
   .checklist-text { flex: 1; font-size: .84rem; color: var(--text); }
@@ -636,8 +636,15 @@
   }
   .save-btn { background: var(--text); color: var(--bg); border-color: var(--text); }
   .save-btn:disabled { opacity: .5; cursor: default; }
-  .delete-btn { color: var(--danger); border-color: transparent; background: transparent; font-weight: 600; }
-  .delete-btn:hover { background: var(--overdue-bg); }
+  /* Distinct resting state (not just on hover) so this reads as the
+     destructive action at a glance, not just another plain-text button
+     next to Archive/Duplicate. */
+  .delete-btn {
+    color: var(--danger); font-weight: 600;
+    border-color: transparent; background: var(--overdue-bg);
+    margin-right: .3rem;
+  }
+  .delete-btn:hover { border-color: var(--danger); }
   .archive-btn { color: var(--muted); border-color: transparent; background: transparent; }
   .archive-btn:hover { color: var(--accent); }
   .dupe-btn { color: var(--muted); border-color: transparent; background: transparent; }

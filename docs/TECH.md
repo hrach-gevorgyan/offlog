@@ -252,8 +252,9 @@ All colors are CSS custom properties in `app.css` — no hardcoded colors anywhe
 | `--hover` | `#ECEEF2` | `#2A2F3A` | row/button hover |
 | `--text` | `#1F2937` | `#F3F4F6` | primary ink |
 | `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
-| `--faint` | `#9CA3AF` | `#6B7280` | tertiary ink, placeholders |
-| `--accent` | `#6366F1` | `#818CF8` | indigo — buttons, active states, links |
+| `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
+| `--accent` | `#5457E0` | `#818CF8` | indigo — buttons, active states, links |
+| `--on-accent` | `#FFFFFF` | `#181A20` | text/icon color for anything on an `--accent` background |
 | `--danger` | `#DC2626` | `#F87171` | destructive actions |
 | `--success` | `#22C55E` | `#4ADE80` | done states, sync-ok indicator, "this week" agenda group |
 

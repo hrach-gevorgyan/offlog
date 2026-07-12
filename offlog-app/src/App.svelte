@@ -597,7 +597,7 @@
   .fab {
     position: fixed; bottom: 24px; right: 24px; z-index: 300;
     width: 50px; height: 50px; border-radius: 50%;
-    background: var(--accent); color: #fff; border: none; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     box-shadow: 0 4px 16px rgba(0,0,0,.25);
     display: flex; align-items: center; justify-content: center;
     transition: transform .15s, box-shadow .15s, opacity .15s;
@@ -658,7 +658,7 @@
   @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .toast-msg { flex: 1; }
   .toast-undo {
-    background: var(--accent); color: #fff; border: none; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
     transition: opacity .12s;
   }

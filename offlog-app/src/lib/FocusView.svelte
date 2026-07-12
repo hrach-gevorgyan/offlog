@@ -413,7 +413,7 @@
 
   .commit-btn {
     width: 100%; max-width: 480px;
-    background: var(--accent); color: #fff; border: none;
+    background: var(--accent); color: var(--on-accent); border: none;
     font-size: 14px; font-weight: 600; padding: 11px; border-radius: 10px;
     cursor: pointer; transition: opacity .12s;
   }

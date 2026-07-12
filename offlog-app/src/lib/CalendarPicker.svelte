@@ -184,7 +184,7 @@
   }
   .cal-day:hover { background: var(--hover); }
   .cal-day.today { color: var(--accent); font-weight: 700; }
-  .cal-day.selected { background: var(--accent); color: #fff; font-weight: 600; }
+  .cal-day.selected { background: var(--accent); color: var(--on-accent); font-weight: 600; }
   .cal-day-empty { aspect-ratio: 1; }
 
   .cal-time-row { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }

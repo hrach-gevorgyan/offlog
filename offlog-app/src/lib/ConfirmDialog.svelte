@@ -81,7 +81,7 @@
     transition: background .12s, opacity .12s;
   }
   .cancel-btn:hover { background: var(--hover); }
-  .ok-btn { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ok-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .ok-btn:hover { opacity: .88; }
   .ok-btn.danger { background: var(--danger); border-color: var(--danger); }
 </style>

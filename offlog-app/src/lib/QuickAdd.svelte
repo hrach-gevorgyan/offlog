@@ -120,7 +120,7 @@
   .add-btn {
     padding: .42rem .85rem; border-radius: var(--radius-sm);
     border: none; cursor: pointer;
-    background: var(--accent); color: #fff; font-size: .85rem; font-weight: 600;
+    background: var(--accent); color: var(--on-accent); font-size: .85rem; font-weight: 600;
     transition: opacity .12s;
   }
   .add-btn:disabled { opacity: .45; cursor: default; }

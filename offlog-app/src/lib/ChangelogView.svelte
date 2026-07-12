@@ -3,6 +3,7 @@
   import { getRecentLogs, clearLogs } from './db';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import { ACTION_COLOR } from './utils';
 
   const dispatch = createEventDispatcher();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -13,10 +14,6 @@
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') requestClose();
   }
-
-  const ACTION_COLOR: Record<string, string> = {
-    create: '#5f9b6a', update: '#6366f1', move: '#d99a3b', delete: '#b0432e',
-  };
 
   const FIELD_LABEL: Record<string, string> = {
     title: 'Title', body: 'Notes', priority: 'Priority',
@@ -96,7 +93,7 @@
     {:else}
       {#each logs as log (log._id)}
         <div class="log-row">
-          <span class="action-pill" style="background:{ACTION_COLOR[log.action] ?? '#a39c90'}22; color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{log.action}</span>
+          <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{log.action}</span>
           <div class="log-main">
             <span class="log-desc">{describe(log)}</span>
             {#if log.project_name}<span class="log-project">{log.project_name}</span>{/if}

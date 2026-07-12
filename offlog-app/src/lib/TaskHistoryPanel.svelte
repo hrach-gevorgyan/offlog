@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getLogsForTask } from './db';
-  import { timeAgo, fmtFullTimestamp } from './utils';
+  import { timeAgo, fmtFullTimestamp, ACTION_COLOR } from './utils';
 
   export let taskId: string;
 
@@ -8,7 +8,6 @@
   let loaded = false;
   getLogsForTask(taskId).then(h => { history = h; loaded = true; });
 
-  const ACTION_COLOR: Record<string, string> = { create: '#4ade80', update: '#6366f1', move: '#d99a3b', delete: '#f87171' };
   const FIELD_LABEL: Record<string, string> = { title: 'Title', body: 'Notes', priority: 'Priority', due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags', column_id: 'Status', pinned: 'Pinned', archived: 'Archived' };
   const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
@@ -41,7 +40,7 @@
   {:else}
     {#each history as log (log._id)}
       <div class="history-row">
-        <span class="h-pill" style="background:{ACTION_COLOR[log.action]}22; color:{ACTION_COLOR[log.action]}">{log.action}</span>
+        <span class="h-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action]} 13%, transparent); color:{ACTION_COLOR[log.action]}">{log.action}</span>
         <span class="h-desc">{describeLog(log)}</span>
         <span class="h-time-group">
           {#if log.source}<span class="h-source">{log.source}</span>{/if}

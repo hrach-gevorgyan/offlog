@@ -460,7 +460,7 @@
             aria-label="Select all visible tasks"
             on:click={() => { selected = allSelected ? new Set() : new Set(sorted.map(t => t._id!)); }}
           >
-            {#if allSelected}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+            {#if allSelected}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
           </button>
         {/if}
         <span class="head-spacer"></span>
@@ -506,7 +506,7 @@
               aria-label="Select {task.title}"
               on:click|stopPropagation={() => toggleRowSelect(task._id!)}
             >
-              {#if selected.has(task._id!)}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+              {#if selected.has(task._id!)}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
             </button>
           {/if}
           <button
@@ -705,7 +705,20 @@
      was solving a problem that no longer exists with that column gone).
      Nothing in the grid ever ellipsizes — see .cell-title/.cell-status
      below, both plain `white-space: nowrap` with no text-overflow. */
-  .grid-scroll { overflow-x: auto; }
+  .grid-scroll {
+    overflow-x: auto;
+    /* Scroll-shadow affordance (CSS-only) — see KanbanBoard.svelte's .board
+       for the same technique; --surface here since .grid-card (the only
+       child) is surface-colored, not page background. */
+    background:
+      linear-gradient(to right, var(--surface) 30%, transparent) 0 0,
+      linear-gradient(to left, var(--surface) 30%, transparent) 100% 0,
+      linear-gradient(to right, rgba(0,0,0,.1), transparent) 0 0,
+      linear-gradient(to left, rgba(0,0,0,.1), transparent) 100% 0;
+    background-repeat: no-repeat;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
 
   .grid-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 13px;
@@ -859,7 +872,7 @@
   }
   @keyframes undo-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
   .undo-btn {
-    background: var(--accent); color: #fff; border: none; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
     transition: opacity .12s;
   }

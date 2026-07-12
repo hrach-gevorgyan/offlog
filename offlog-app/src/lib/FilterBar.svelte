@@ -154,7 +154,7 @@
     position: absolute; top: -3px; right: -3px;
     min-width: 14px; height: 14px; padding: 0 3px;
     display: flex; align-items: center; justify-content: center;
-    background: var(--accent); color: #fff;
+    background: var(--accent); color: var(--on-accent);
     border-radius: 7px; font-size: 9.5px; font-weight: 700; line-height: 1;
   }
 
@@ -197,7 +197,7 @@
     border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg); color: var(--text);
   }
   .filter-save-btn {
-    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px;
     padding: .4rem .6rem; font-size: .78rem; font-weight: 600; cursor: pointer;
   }
   .filter-save-btn:disabled { opacity: .5; cursor: default; }

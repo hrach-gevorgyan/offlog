@@ -281,7 +281,7 @@
   }
   .mode-btn + .mode-btn { border-left: 1px solid var(--border-strong); }
   .mode-btn:hover { background: var(--hover); }
-  .mode-btn.active { background: var(--accent); color: #fff; }
+  .mode-btn.active { background: var(--accent); color: var(--on-accent); }
 
   .week-nav {
     display: flex; align-items: center; justify-content: center; gap: 14px;
@@ -305,6 +305,18 @@
     display: grid; grid-template-columns: repeat(7, minmax(96px, 1fr));
     border: 1px solid var(--border); border-radius: 10px;
     margin: 12px 28px 32px; width: auto;
+    /* Scroll-shadow affordance (CSS-only) — see KanbanBoard.svelte's .board
+       for the same technique. Horizontal-only since vertical scroll here
+       is unbounded content, not a fixed "there's exactly N more" edge. */
+    background:
+      linear-gradient(to right, var(--bg) 30%, transparent) 0 0,
+      linear-gradient(to left, var(--bg) 30%, transparent) 100% 0,
+      linear-gradient(to right, rgba(0,0,0,.1), transparent) 0 0,
+      linear-gradient(to left, rgba(0,0,0,.1), transparent) 100% 0;
+    background-repeat: no-repeat;
+    background-color: var(--bg);
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
   }
   .week-col {
     display: flex; flex-direction: column;

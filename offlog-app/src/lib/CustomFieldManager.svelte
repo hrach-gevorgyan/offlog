@@ -152,7 +152,7 @@
   .type-select { flex: 1; min-width: 90px; }
   .add-btn {
     padding: .45rem .8rem; border-radius: var(--radius-sm); border: 1px solid var(--accent);
-    background: var(--accent); color: #fff; font-size: .82rem; font-weight: 500; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); font-size: .82rem; font-weight: 500; cursor: pointer;
     white-space: nowrap;
   }
   .add-btn:disabled { opacity: .5; cursor: not-allowed; }

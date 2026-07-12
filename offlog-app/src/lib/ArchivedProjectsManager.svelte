@@ -142,7 +142,7 @@
   .picker-select { flex: 1; min-width: 0; }
   .archive-btn {
     flex-shrink: 0; background: var(--accent); border: none; cursor: pointer;
-    color: #fff; font-size: 13px; font-weight: 600; padding: .48rem .8rem;
+    color: var(--on-accent); font-size: 13px; font-weight: 600; padding: .48rem .8rem;
     border-radius: var(--radius-sm); transition: opacity .12s;
   }
   .archive-btn:hover:not(:disabled) { opacity: .88; }

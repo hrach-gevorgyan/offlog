@@ -445,6 +445,19 @@
     min-height: 0;
     flex: 1;
     -webkit-overflow-scrolling: touch;
+    /* Scroll-shadow affordance (CSS-only, no JS): "local" layers scroll with
+       content and cover the shadow once you've scrolled past it; "scroll"
+       layers stay fixed to the viewport and only show at an edge that still
+       has more content to reveal. */
+    background:
+      linear-gradient(to right, var(--bg) 30%, transparent) 0 0,
+      linear-gradient(to left, var(--bg) 30%, transparent) 100% 0,
+      linear-gradient(to right, rgba(0,0,0,.1), transparent) 0 0,
+      linear-gradient(to left, rgba(0,0,0,.1), transparent) 100% 0;
+    background-repeat: no-repeat;
+    background-color: var(--bg);
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
   }
   @media (max-width: 768px) {
     .board { padding: 1rem; gap: .75rem; }

@@ -658,7 +658,7 @@
 
     <div class="settings-actions">
       <button on:click={() => requestClose()}>Cancel</button>
-      <button class="save-btn" on:click={saveSettings}>Save & restart sync</button>
+      <button class="save-btn" on:click={saveSettings}>{activeCategory === 'sync' ? 'Save & restart sync' : 'Save'}</button>
     </div>
   </div>
 </div>
@@ -768,7 +768,7 @@
     display: flex; flex-direction: column; gap: .5rem;
     background: var(--col-bg); border-radius: var(--radius-sm); padding: .6rem .7rem;
   }
-  .import-confirm-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .import-confirm-btn { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   .import-confirm-btn:hover { opacity: .9; }
 
   .field-label {
@@ -793,7 +793,7 @@
   }
   .theme-seg-btn + .theme-seg-btn { border-left: 1px solid var(--border-strong); }
   .theme-seg-btn:hover { background: var(--hover); }
-  .theme-seg-btn.active { background: var(--accent); color: #fff; }
+  .theme-seg-btn.active { background: var(--accent); color: var(--on-accent); }
 
   .toggle-btn {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#6366f1</color>
+    <color name="colorPrimary">#5457e0</color>
     <color name="colorPrimaryDark">#181a20</color>
-    <color name="colorAccent">#6366f1</color>
+    <color name="colorAccent">#5457e0</color>
 
     <!-- B37 — widget palette, matched to app.css's dark-mode tokens rather
          than a flat single-accent card (the sidebar is always dark by

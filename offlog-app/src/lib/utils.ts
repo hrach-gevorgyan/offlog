@@ -1,3 +1,11 @@
+// Shared by ChangelogView and TaskHistoryPanel — both rendered the same
+// four changelog action types with independently-drifted hex values.
+// CSS var()s here (not fixed hex) so these stay correct across light/dark
+// instead of being a frozen snapshot of one theme.
+export const ACTION_COLOR: Record<string, string> = {
+  create: 'var(--success)', update: 'var(--accent)', move: 'var(--due-soon-ink)', delete: 'var(--danger)',
+};
+
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 export function daysDiff(due: string): number {
