@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.10.1**. Everything below is a candidate, not a
+Current version: **v4.11.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -149,10 +149,23 @@ Shipped items: one-line pointer only — full detail in CHANGELOG.md.
 
 ### B1. Space management — shipped in v3.6.0
 
-### B2. Filters on Kanban + saved filters — OPEN
-Search/filter exists in List only (a deliberate v2 scope cut, can be
-revisited). Add the same filter bar to Kanban, then let any filter
-combination be saved as a named view per project. Scheduled for v4.11.0.
+### B2. Filters on Kanban + saved filters — shipped in v4.11.0
+List's filter popover + saved-filters logic extracted into shared
+`FilterBar.svelte` so Kanban gets the identical feature — saved filters
+are per-project (not per-view), so one saved from List shows up in
+Kanban's popover too. Landed through two rounds of owner feedback on
+placement: a dedicated Kanban toolbar row wasted space for one button, so
+the Filters button instead lives in the shared board-header, paired with
+the existing Search (Ctrl+K) button into one compact pill (icon-only in
+that context via a new `compact` prop) rather than two loose buttons. A
+real bug was caught along the way: the popover used to rely on
+`position:absolute` anchored to a wide ancestor (`.toolbar`) for both its
+width calc and to avoid being clipped by that ancestor's `overflow:
+hidden` — extracting it into its own component broke both assumptions
+(clipped on short lists, pushed off-screen on mobile). Fixed by switching
+to `position:fixed` with coordinates computed from the button's own
+`getBoundingClientRect()` on open, the same pattern already used for
+List's Columns popover (v4.6.5).
 
 ### B3. Notification actions — shipped in v3.7.0
 
@@ -231,11 +244,13 @@ noted in a code comment is that `updated_at` bumps on any edit, so a task
 completed earlier but merely edited within the window could
 false-positive, acceptable for a glance-level stat.
 
-### B18. Subtasks / checklists within a task — OPEN
-`CardDetail` has free-text markdown but no structured checklist. A simple
-`checklist: { text: string; done: boolean }[]` array on `TaskDoc`, rendered
-as tappable checkboxes, with a "3/5 done" progress indicator surfaced on
-the card itself in Kanban/List. Scheduled for v4.11.0.
+### B18. Subtasks / checklists within a task — shipped in v4.11.0
+Shipped as scoped: `checklist?: { text: string; done: boolean }[]` on
+`TaskDoc`, flat (not nested/reorderable, deliberately simple). Edited in
+`CardDetail` with the same add/remove/toggle pattern as tags, batched into
+the existing `save()` call rather than writing per-toggle. A "☑ N/M"
+progress badge (turns `--success`-colored once complete) surfaces on both
+the Kanban card and the List row's title cell.
 
 ### B19. Bulk actions in List — shipped in v4.6.0
 Shipped with a different UX than originally scoped, after two rounds of
@@ -553,11 +568,10 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 |---|---|---|---|---|
 | 1 | v4.5.0 | — | B35 (draft) | Focus view, alone — a genuinely new global view earns an undiluted release, same reasoning as B36's own v3.8.5. Shipped as a daily-commitment-lock draft; add-task/Dashboard-link/Daily-Brief still open, see B35. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence continues: v4.4 → v4.7 → **v4.10** → v4.13 → … |
-| 2 | v4.11.0 | — | B2, B18 | Kanban filters and subtasks/checklists — both card/board-level additions, same view layer. |
-| 3 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
-| 4 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
-| 5 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
-| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … (re-check: this pairing shift may nudge the exact number — re-verify against the cadence when v4.10.0 actually ships) |
+| 2 | v4.12.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 3 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
+| 4 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
 | — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
 

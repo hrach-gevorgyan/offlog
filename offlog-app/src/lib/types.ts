@@ -77,6 +77,9 @@ export interface TaskDoc {
   // B16: keyed by CustomFieldDef.id, not name — a field rename doesn't
   // orphan existing values. Absent/undefined keys just render empty.
   custom_values?: Record<string, string | number | null>;
+  // B18: a flat checklist, not nested/reorderable — deliberately simple.
+  // Absent/undefined on old docs = no checklist, same as an empty array.
+  checklist?: { text: string; done: boolean }[];
   created_at: string;
   updated_at: string;
   source: Source;

@@ -7,6 +7,7 @@
   import { dueLabel, dueInk, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
+  import FilterBar from './FilterBar.svelte';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -96,39 +97,11 @@
     source: sortIconFor('source', sortSpec),
   };
 
-  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0);
-  function clearFilters() { search = ''; filterCol = ''; filterPrio = 0; filterTag = ''; }
-
-  // ── Saved filters (per project, per device) ────────────────────────────
-  interface SavedFilter { name: string; search: string; filterCol: string; filterPrio: number; filterTag: string }
-  $: savedFiltersKey = `offlog_saved_filters_${project._id}`;
-  let savedFilters: SavedFilter[] = [];
-  let showFilterMenu = false;
-  let newFilterName = '';
-
-  function loadSavedFilters() {
-    try { savedFilters = JSON.parse(localStorage.getItem(savedFiltersKey) ?? '[]'); }
-    catch { savedFilters = []; }
-  }
-  $: project._id, loadSavedFilters();
-
-  function saveCurrentFilter() {
-    const name = newFilterName.trim();
-    if (!name) return;
-    savedFilters = [...savedFilters.filter(f => f.name !== name), { name, search, filterCol, filterPrio, filterTag }];
-    localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
-    newFilterName = '';
-  }
-
-  function applySavedFilter(f: SavedFilter) {
-    search = f.search; filterCol = f.filterCol; filterPrio = f.filterPrio; filterTag = f.filterTag;
-    showFilterMenu = false;
-  }
-
-  function deleteSavedFilter(name: string) {
-    savedFilters = savedFilters.filter(f => f.name !== name);
-    localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
-  }
+  // B2 — the Filters button/popover + saved-filters feature moved into
+  // shared FilterBar.svelte (also used by KanbanBoard.svelte now); this
+  // view keeps only the filter *values* (search/filterCol/filterPrio/
+  // filterTag, declared above) since filterTasks() and the archived-tasks
+  // filter below both still need them directly.
 
   // ── Column selection + order ────────────────────────────────────────────
   // Title (and the mark-done circle) are always shown and always first —
@@ -238,7 +211,6 @@
   function onWindowClick(e: MouseEvent) {
     const t = e.target as HTMLElement;
     if (showColMenu && !t.closest('.col-menu-wrap')) showColMenu = false;
-    if (showFilterMenu && !t.closest('.filter-menu-wrap')) showFilterMenu = false;
   }
 
   // ── Horizontal scroll, no truncation ────────────────────────────────────
@@ -406,67 +378,7 @@
       </div>
 
     <div class="toolbar-actions">
-      <div class="filter-menu-wrap">
-        <button class="action-btn" class:active={activeFilters > 0 || showFilterMenu} on:click={() => showFilterMenu = !showFilterMenu} aria-label="Filters" title="Filters">
-          <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 2h12L8.5 7.5v4L5.5 13v-5.5z"/>
-          </svg>
-          <span class="action-label">Filters</span>
-          {#if activeFilters > 0}<span class="filter-count">{activeFilters}</span>{/if}
-        </button>
-        {#if showFilterMenu}
-          <div class="col-menu filter-menu">
-            <div class="menu-label">Status</div>
-            <select class="filter-sel" bind:value={filterCol}>
-              <option value="">All statuses</option>
-              {#each project.columns as col}
-                <option value={col.id}>{col.name}</option>
-              {/each}
-            </select>
-
-            {#if allTags.length}
-              <div class="menu-label">Tag</div>
-              <select class="filter-sel" bind:value={filterTag}>
-                <option value="">All tags</option>
-                {#each allTags as t}<option value={t}>{t}</option>{/each}
-              </select>
-            {/if}
-
-            <div class="menu-label">Priority</div>
-            <div class="prio-chips">
-              {#each [[0,'All'],[1,'Low'],[2,'Med'],[3,'High']] as [v,label]}
-                <button class="prio-chip" class:active={filterPrio === v} on:click={() => filterPrio = filterPrio === v ? 0 : v}>
-                  {#if v !== 0}<span class="chip-dot" style="background:{PRIO_COLOR[v]}"></span>{/if}
-                  {label}
-                </button>
-              {/each}
-            </div>
-
-            {#if activeFilters > 0}
-              <button class="clear-all" on:click={clearFilters}>Clear filters ({activeFilters})</button>
-            {/if}
-
-            <div class="menu-divider"></div>
-            <div class="menu-label">Saved filters</div>
-            <div class="filter-save-row">
-              <input class="filter-name-input" bind:value={newFilterName} placeholder="Name this filter…" on:keydown={(e) => { if (e.key === 'Enter') saveCurrentFilter(); }} />
-              <button class="filter-save-btn" on:click={saveCurrentFilter} disabled={!newFilterName.trim()}>Save</button>
-            </div>
-            {#if savedFilters.length}
-              <div class="filter-list">
-                {#each savedFilters as f (f.name)}
-                  <div class="filter-row">
-                    <button class="filter-apply-btn" on:click={() => applySavedFilter(f)}>{f.name}</button>
-                    <button class="filter-del-btn" on:click={() => deleteSavedFilter(f.name)} aria-label="Delete filter {f.name}">×</button>
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <div class="filter-empty">No saved filters yet</div>
-            {/if}
-          </div>
-        {/if}
-      </div>
+      <FilterBar {project} {allTags} bind:search bind:filterCol bind:filterPrio bind:filterTag />
 
       <button class="action-btn" class:active={showArchived} on:click={() => showArchived = !showArchived} aria-label="Show archived tasks ({archivedTasksRaw.length})" title="Show archived tasks">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -601,6 +513,9 @@
           ></button>
           <span class="cell-title">
             {task.title}{#if task.pinned}<span class="pin-mark"><PinStar size={10} /></span>{/if}
+            {#if task.checklist?.length}
+              <span class="checklist-mark" class:complete={task.checklist.every(i => i.done)}>☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}</span>
+            {/if}
           </span>
           {#each visibleOrder as key (key)}
             {#if key === 'status'}
@@ -702,7 +617,7 @@
      phone. Everything else lives inside the Filters popover — don't add
      inline controls back into this row without re-checking that math. */
   .toolbar {
-    position: relative; /* anchors the Filters popover (see .filter-menu) */
+    position: relative;
     display: flex; flex-wrap: nowrap; align-items: center; gap: 8px;
     border-bottom: 1px solid var(--border); padding: 10px 14px;
   }
@@ -727,38 +642,10 @@
   }
   .clear-x:hover { color: var(--text); }
 
-  /* Lives inside the Filters popover, not the toolbar row. */
-  .filter-sel {
-    width: 100%;
-    border: 1px solid var(--border-strong); border-radius: 8px;
-    background: var(--bg); color: var(--text);
-    font-size: 12.5px; padding: 6px 10px; cursor: pointer; outline: none;
-  }
-
-  .prio-chips { display: flex; gap: 3px; flex-wrap: wrap; }
-  .prio-chip {
-    display: flex; align-items: center; gap: 5px;
-    border: 1px solid var(--border-strong); border-radius: 7px;
-    background: var(--bg); color: var(--muted);
-    font-size: 12px; font-weight: 500; padding: 5px 9px;
-    cursor: pointer; transition: background .1s, color .1s, border-color .1s;
-  }
-  .prio-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
-  .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-
-  .clear-all {
-    width: 100%;
-    background: none; border: 1px solid var(--border-strong); border-radius: 7px;
-    color: var(--muted); font-size: 11.5px; padding: 5px 10px; cursor: pointer;
-    transition: color .12s, border-color .12s;
-  }
-  .clear-all:hover { color: var(--danger); border-color: var(--danger); }
-
   /* ── Icon-only action group (Filters/Archived/Columns) — fixed-size at
      every resolution, tooltips + aria-labels carry the names ── */
   .toolbar-actions { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px; }
   .col-menu-wrap { position: relative; }
-  .filter-menu-wrap { position: static; } /* its popover anchors to .toolbar instead — see .filter-menu */
   .action-btn {
     position: relative;
     display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -769,18 +656,7 @@
   }
   .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
   .action-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-  .filter-count {
-    position: absolute; top: -3px; right: -3px;
-    min-width: 14px; height: 14px; padding: 0 3px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--accent); color: #fff;
-    border-radius: 7px; font-size: 9.5px; font-weight: 700; line-height: 1;
-  }
 
-  .menu-label {
-    font-family: var(--mono); font-size: .6rem; text-transform: uppercase;
-    letter-spacing: .08em; color: var(--faint); padding: 6px 2px 2px;
-  }
   .menu-divider { height: 1px; background: var(--border); margin: 8px -6px 0; }
   .col-menu {
     position: absolute; top: calc(100% + 6px); right: 0; z-index: 20;
@@ -810,35 +686,6 @@
     background: #ffffff; transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
   }
   .toggle-mini.on .toggle-mini-knob { left: 15px; }
-
-  /* Anchored to .toolbar (position:relative there; .filter-menu-wrap is
-     deliberately static) — anchoring to the button itself pushed the
-     popover past the viewport's left edge on a phone, since the button
-     sits mid-toolbar and the popover is wider than the space left of it. */
-  .filter-menu { width: min(280px, calc(100% - 28px)); min-width: 0; right: 14px; }
-  .filter-save-row { display: flex; gap: 6px; padding: 2px; }
-  .filter-name-input {
-    flex: 1; min-width: 0; font-size: .8rem; padding: .4rem .5rem;
-    border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg); color: var(--text);
-  }
-  .filter-save-btn {
-    background: var(--accent); color: #fff; border: none; border-radius: 6px;
-    padding: .4rem .6rem; font-size: .78rem; font-weight: 600; cursor: pointer;
-  }
-  .filter-save-btn:disabled { opacity: .5; cursor: default; }
-  .filter-list { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; border-top: 1px solid var(--border); padding-top: 4px; }
-  .filter-row { display: flex; align-items: center; gap: 4px; }
-  .filter-apply-btn {
-    flex: 1; text-align: left; background: none; border: none; cursor: pointer;
-    padding: .35rem .5rem; border-radius: 6px; font-size: .8rem; color: var(--text);
-  }
-  .filter-apply-btn:hover { background: var(--hover); }
-  .filter-del-btn {
-    background: none; border: none; cursor: pointer; color: var(--faint);
-    font-size: .85rem; padding: .2rem .4rem; border-radius: 6px; flex-shrink: 0;
-  }
-  .filter-del-btn:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
-  .filter-empty { padding: .5rem; text-align: center; color: var(--faint); font-size: .78rem; }
 
   /* ── Data grid ───────────────────────────────────────────────────────── */
   /* Horizontal scroll instead of hiding/truncating columns (B36): the grid
@@ -947,6 +794,12 @@
      grid, via .grid-scroll) wider instead of hiding characters. */
   .cell-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
   .pin-mark { display: inline-flex; align-items: center; color: var(--accent); opacity: .8; vertical-align: middle; margin-left: 4px; }
+  .checklist-mark {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    color: var(--muted); background: var(--col-bg); padding: 1px 6px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .checklist-mark.complete { color: var(--success); }
 
   .cell-status { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
   .cell-prio { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 12.5px; white-space: nowrap; }

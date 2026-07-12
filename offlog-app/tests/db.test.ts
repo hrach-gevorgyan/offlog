@@ -109,6 +109,18 @@ describe('project + task CRUD', () => {
     const [moved] = await getTasksForProject(project._id);
     expect(moved.column_id).toBe(firstCol.id);
   });
+
+  it('updateTask persists a checklist array (B18)', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Checklist Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'With subtasks');
+    expect(task.checklist).toBeUndefined();
+
+    await updateTask(task._id!, { checklist: [{ text: 'Step 1', done: false }, { text: 'Step 2', done: true }] });
+    const [saved] = await getTasksForProject(project._id);
+    expect(saved.checklist).toHaveLength(2);
+    expect(saved.checklist?.filter(i => i.done)).toHaveLength(1);
+  });
 });
 
 describe('undo / Deleted (trash)', () => {

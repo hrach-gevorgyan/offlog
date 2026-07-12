@@ -65,6 +65,11 @@
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
+  // B18 — flat, not nested/reorderable. Same batched-into-save() pattern
+  // as tags/custom fields, not an immediate-write-per-toggle — consistent
+  // with every other field in this form.
+  let checklist: { text: string; done: boolean }[] = (task.checklist ?? []).map(i => ({ ...i }));
+  let checklistInput = '';
   let tagInput = '';
   let tagSuggestions: string[] = [];
   let otherTagSuggestions: string[] = [];
@@ -130,6 +135,22 @@
 
   function removeTag(tag: string) { tags = tags.filter(t => t !== tag); }
 
+  function addChecklistItem() {
+    const t = checklistInput.trim();
+    if (!t) return;
+    checklist = [...checklist, { text: t, done: false }];
+    checklistInput = '';
+  }
+  function toggleChecklistItem(i: number) {
+    checklist = checklist.map((item, idx) => idx === i ? { ...item, done: !item.done } : item);
+  }
+  function removeChecklistItem(i: number) {
+    checklist = checklist.filter((_, idx) => idx !== i);
+  }
+  function onChecklistKey(e: KeyboardEvent) {
+    if (e.key === 'Enter') { e.preventDefault(); addChecklistItem(); }
+  }
+
   function onTagKey(e: KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); }
     if (e.key === 'Backspace' && !tagInput && tags.length) { tags = tags.slice(0, -1); }
@@ -144,7 +165,7 @@
         due_date: due_date || null,
         reminder_at: reminder_at ? new Date(reminder_at).toISOString() : null,
         column_id, tags, pinned, remindOnDue,
-        custom_values: customValues,
+        custom_values: customValues, checklist,
       });
       await reloadTasks();
       requestClose();
@@ -281,6 +302,31 @@
           {/each}
         </div>
       {/if}
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="checklist-field">
+      <span class="field-label">
+        Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
+      </span>
+      {#each checklist as item, i}
+        <div class="checklist-row">
+          <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
+            {#if item.done}✓{/if}
+          </button>
+          <span class="checklist-text" class:done={item.done}>{item.text}</span>
+          <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
+        </div>
+      {/each}
+      <input
+        class="checklist-input"
+        bind:value={checklistInput}
+        placeholder="Add item…"
+        enterkeyhint="done"
+        on:keydown={onChecklistKey}
+        on:blur={() => setTimeout(addChecklistItem, 150)}
+      />
     </div>
 
     {#if customFields.length > 0}
@@ -511,6 +557,32 @@
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint); flex: 1;
   }
+
+  .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
+  .checklist-progress { color: var(--accent); font-weight: 600; }
+  .checklist-row { display: flex; align-items: center; gap: 7px; }
+  .checklist-check {
+    flex-shrink: 0; width: 17px; height: 17px; border-radius: 5px;
+    border: 1.5px solid var(--border-strong); background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .68rem; color: #fff; cursor: pointer; padding: 0;
+  }
+  .checklist-check.done { background: var(--accent); border-color: var(--accent); }
+  .checklist-text { flex: 1; font-size: .84rem; color: var(--text); }
+  .checklist-text.done { color: var(--faint); text-decoration: line-through; }
+  .checklist-remove {
+    flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;
+    color: var(--muted); background: none; border: none; padding: 0 2px;
+    transition: color .1s;
+  }
+  .checklist-remove:hover { color: var(--danger); }
+  .checklist-input {
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); outline: none;
+    font-size: .84rem; color: var(--text); padding: .35rem .5rem;
+  }
+  .checklist-input:focus { border-color: var(--accent); }
+  .checklist-input::placeholder { color: var(--faint); }
   textarea {
     flex: 1; resize: vertical; min-height: 90px;
     padding: .55rem .65rem; border: 1px solid var(--border);

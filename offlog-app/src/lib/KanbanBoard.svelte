@@ -6,9 +6,20 @@
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
+  import { filterTasks } from './utils';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
+  // B2 — the actual Filters button/popover lives in App.svelte's shared
+  // board-header now (a dedicated toolbar row for just one button wasted
+  // space, owner feedback) — these four are owned there and passed down,
+  // filtering which cards render per column without touching `tasks`
+  // itself (drag/drop, quick-add, etc. below all still operate on the
+  // full set).
+  export let search = '';
+  export let filterCol = '';
+  export let filterPrio = 0;
+  export let filterTag = '';
 
   const dispatch = createEventDispatcher();
 
@@ -19,10 +30,12 @@
     });
   }
 
+  $: visibleTasks = filterTasks(tasks, search, filterCol, filterPrio, filterTag);
+
   $: tasksByCol = Object.fromEntries(
     project.columns.map(col => [
       col.id,
-      sortTasks(tasks.filter(t => t.column_id === col.id)),
+      sortTasks(visibleTasks.filter(t => t.column_id === col.id)),
     ])
   );
 
@@ -348,6 +361,11 @@
               {#if task.pinned}<span class="card-pin" title="Pinned"><PinStar size={11} /></span>{/if}
             </div>
             <div class="card-meta">
+              {#if task.checklist?.length}
+                <span class="checklist-badge" class:complete={task.checklist.every(i => i.done)}>
+                  ☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}
+                </span>
+              {/if}
               {#if task.due_date}
                 <span class="due-badge" class:overdue={task.due_date < new Date().toISOString().slice(0,10)}>
                   {task.due_date}
@@ -527,6 +545,13 @@
     padding: .12rem .45rem; border-radius: 6px;
   }
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
+  .checklist-badge {
+    font-family: var(--mono);
+    font-size: .68rem; font-weight: 500;
+    color: var(--muted); background: var(--hover);
+    padding: .12rem .45rem; border-radius: 6px;
+  }
+  .checklist-badge.complete { color: var(--success); }
 
   .add-card-btn {
     border: none; background: none; cursor: pointer;

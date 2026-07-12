@@ -13,6 +13,7 @@
   import FocusView from './lib/FocusView.svelte';
   import DashboardView from './lib/DashboardView.svelte';
   import GlobalSearch from './lib/GlobalSearch.svelte';
+  import FilterBar from './lib/FilterBar.svelte';
   import CardDetail from './lib/CardDetail.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
@@ -52,6 +53,21 @@
   let showQuickAdd = false;
   let showShortcuts = false;
   let sidebarRef: Sidebar;
+
+  // B2 — Kanban's filter state lives here (not inside KanbanBoard) so the
+  // Filters button can sit in this shared board-header row instead of a
+  // dedicated toolbar row that, with no search box next to it, wasted a
+  // full row for one button (owner feedback). List view keeps its own
+  // filter state internal to ListView.svelte — its toolbar row already has
+  // enough content (search box, Archived, Columns) to earn its own row.
+  let kbSearch = '';
+  let kbFilterCol = '';
+  let kbFilterPrio = 0;
+  let kbFilterTag = '';
+  $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
+  // Stale filter values from a previous project shouldn't silently narrow
+  // the next project's board — reset on every genuine navigation.
+  $: $activeProjectId, (kbSearch = '', kbFilterCol = '', kbFilterPrio = 0, kbFilterTag = '');
 
   // B9 — command palette, folded into GlobalSearch rather than a separate
   // overlay/shortcut. Sidebar's own openSettings/openChangelog/openTrash
@@ -333,12 +349,17 @@
 
           <div class="spacer"></div>
 
-          <button class="search-btn" on:click={() => showSearch = true} title="Search (Ctrl+K)">
-            <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
-            </svg>
-            <span class="search-hint">Ctrl+K</span>
-          </button>
+          <div class="search-filter-group">
+            <button class="search-btn" on:click={() => showSearch = true} title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+              </svg>
+            </button>
+            {#if currentView === 'kanban'}
+              <span class="search-filter-divider"></span>
+              <FilterBar compact project={$activeProject} allTags={kbAllTags} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} />
+            {/if}
+          </div>
 
           <div class="view-seg">
             {#each VIEWS as v}
@@ -354,6 +375,10 @@
           <KanbanBoard
             project={$activeProject}
             tasks={$projectTasks}
+            search={kbSearch}
+            filterCol={kbFilterCol}
+            filterPrio={kbFilterPrio}
+            filterTag={kbFilterTag}
             on:projectUpdated={(e) => {
               projects.update(ps => ps.map(p => p._id === e.detail._id ? e.detail : p));
             }}
@@ -507,16 +532,24 @@
 
   .spacer { flex: 1; }
 
+  /* Search + Filters paired into one compact pill (owner feedback) rather
+     than two loose buttons — same grouped-pill language as .view-seg
+     below, so the two clusters read as a matched pair. */
+  .search-filter-group {
+    display: inline-flex; align-items: center; background: var(--col-bg);
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 3px; gap: 1px; flex-shrink: 0;
+  }
+  .search-filter-divider { width: 1px; height: 14px; background: var(--border-strong); flex-shrink: 0; }
   .search-btn {
-    display: flex; align-items: center; gap: 7px;
-    background: var(--col-bg); border: 1px solid var(--border-strong);
-    border-radius: 8px; padding: 6px 11px; cursor: pointer;
-    color: var(--muted); font-size: 12.5px; font-weight: 500;
-    transition: color .12s, border-color .12s, background .12s;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none;
+    border-radius: 6px; padding: 5px 8px; cursor: pointer;
+    color: var(--muted);
+    transition: color .12s, background .12s;
     flex-shrink: 0;
   }
-  .search-btn:hover { color: var(--text); border-color: var(--accent); }
-  .search-hint { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .search-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
 
   .view-seg {
     display: inline-flex; background: var(--col-bg); border: 1px solid var(--border-strong);
@@ -643,7 +676,5 @@
     .breadcrumb { display: none; }
     .view-label { display: none; }
     .view-btn { padding: 6px 9px; }
-    .search-hint { display: none; }
-    .search-btn { padding: 6px 9px; }
   }
 </style>
