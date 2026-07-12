@@ -188,10 +188,20 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 ### Generating test/dummy data
 
-When asked to add dummy records for manual testing, write directly against
-the PouchDB instance in the browser (`new PouchDB('offlog')` — it's a global,
-reachable from `preview_eval` or the browser console) rather than driving the
-UI one task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
+**For a full realistic scenario** (fresh project setup, or whenever you want
+one command to populate everything at once): `offlog-app/scripts/seed-scenario.js`
+is a ready-made, paste-into-DevTools-console script — 10 projects (1
+archived), 60 active tasks (15 archived) spread across random
+statuses/tags/priorities/deadlines, 6 soft-deleted tasks, and a small
+fraction with notes or a checklist. Usage is documented in the file's own
+header comment. Safe to re-run; every doc it creates is tagged `dummy`
+(tasks) or titled `(dummy)` (projects) for easy identification/bulk-removal,
+and it never touches pre-existing data.
+
+**For anything smaller/more targeted**, write directly against the PouchDB
+instance in the browser (`new PouchDB('offlog')` — it's a global, reachable
+from `preview_eval` or the browser console) rather than driving the UI one
+task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
 identifiable and easy to bulk-remove later. Spread across every existing
 project **and** across each project's actual statuses (fetch real column ids
 first — CLAUDE.md's `column_id` invariant applies here too: assign

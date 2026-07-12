@@ -3,7 +3,9 @@
 This file is the entry point for anyone (AI assistant or human) making
 changes — it stays at the repo root deliberately, since AI tooling only
 auto-loads a CLAUDE.md found there. Everything else lives in
-[docs/](docs/): [docs/TECH.md](docs/TECH.md) (architecture),
+[docs/](docs/): [docs/GOAL.md](docs/GOAL.md) (why this project exists and
+what it's ultimately for — deliberately has no version/timeline, see
+ROADMAP.md for that), [docs/TECH.md](docs/TECH.md) (architecture),
 [docs/ROADMAP.md](docs/ROADMAP.md) (planned work and the public-release
 path),
 [docs/DECISIONS.md](docs/DECISIONS.md) (why non-obvious choices were made),
@@ -23,6 +25,9 @@ document in this list, every session, no exceptions.
 
 **When to read which doc** (so "the relevant document(s)" isn't a blanket
 read-everything every time):
+- **GOAL.md** — before any scope/direction question ("should this be a
+  feature," "should this need an account/server," multi-user/remote-sync
+  proposals) — check it lines up with the stated mission before proposing.
 - **TECH.md** — touching architecture, the data model, sync internals, or
   Android platform behavior.
 - **ROADMAP.md** — starting a roadmap item, or making sequencing/scheduling
