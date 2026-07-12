@@ -587,6 +587,70 @@ export async function createProject(spaceId: string, name: string): Promise<Proj
   return doc;
 }
 
+// B8: "New from template" — same shape as duplicateTask(), applied at the
+// project level. Copies the template's status structure (column names,
+// fresh ids) always; open (non-deleted, non-archived, not-in-last-column —
+// same positional-"done" check as everywhere else) tasks only if
+// copyOpenTasks is set. Copied tasks get fresh ids/timestamps, reset
+// due_date/reminder_at (a template's deadlines don't apply to a new
+// instance), and reset checklist items to unchecked — everything else
+// (title, body, priority, tags) carries over as-is.
+export async function createProjectFromTemplate(
+  spaceId: string,
+  name: string,
+  templateProjectId: string,
+  copyOpenTasks: boolean,
+): Promise<ProjectDoc> {
+  const template = await db.get<ProjectDoc>(templateProjectId);
+  const existing = await getProjects(spaceId);
+  const position = existing.length ? Math.max(...existing.map(p => p.position)) + 1 : 0;
+
+  const columnIdMap = new Map<string, string>();
+  const columns = template.columns.map(c => {
+    const newId = `col:${nanoid()}`;
+    columnIdMap.set(c.id, newId);
+    return { id: newId, name: c.name };
+  });
+
+  const doc: ProjectDoc = {
+    _id: `project:${nanoid()}`, type: 'project', space_id: spaceId, name, position,
+    columns, default_view: template.default_view, updated_at: now(), source: SOURCE,
+  };
+  await db.put(doc);
+  await logChange(doc._id!, 'create', undefined, undefined, undefined, { project_name: name });
+
+  if (copyOpenTasks) {
+    const lastColId = template.columns[template.columns.length - 1]?.id;
+    const templateTasks = (await getTasksForProject(templateProjectId)).filter(t => t.column_id !== lastColId);
+    const ts = now();
+    for (const t of templateTasks) {
+      const newColId = columnIdMap.get(t.column_id);
+      if (!newColId) continue; // robustness: skip a task whose column somehow isn't in the map
+      const copy: TaskDoc = {
+        ...t,
+        _id: `task:${nanoid()}`,
+        _rev: undefined,
+        project_id: doc._id!,
+        space_id: spaceId,
+        column_id: newColId,
+        due_date: null,
+        reminder_at: null,
+        deleted: false,
+        archived: false,
+        pinned: false,
+        checklist: t.checklist?.map(item => ({ ...item, done: false })),
+        created_at: ts,
+        updated_at: ts,
+        source: SOURCE,
+      };
+      await db.put(copy);
+    }
+    invalidateTaskCache();
+  }
+
+  return doc;
+}
+
 export async function updateProject(id: string, changes: Partial<ProjectDoc>): Promise<ProjectDoc> {
   const doc = await db.get<ProjectDoc>(id);
   const updated = { ...doc, ...changes, updated_at: now(), source: SOURCE };

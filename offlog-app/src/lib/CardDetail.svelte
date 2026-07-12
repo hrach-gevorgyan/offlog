@@ -48,6 +48,11 @@
     { label: '1 month', days: 0, months: 1 },
   ];
 
+  // B30: soft guardrail only — a visible counter past this length, not a
+  // hard block. Notes are unbounded markdown; this just flags when one has
+  // grown long enough that it might belong in a separate doc instead.
+  const NOTES_SOFT_LIMIT = 500;
+
   let title = task.title;
   let body = task.body;
   let priority = task.priority;
@@ -392,6 +397,9 @@
       </button>
       {#if showNotes}
         <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
+        {#if body.length > NOTES_SOFT_LIMIT}
+          <div class="notes-counter">{body.length} characters</div>
+        {/if}
       {/if}
     </div>
 
@@ -590,6 +598,10 @@
   .section-chevron.open { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
   .notes-textarea { width: 100%; box-sizing: border-box; }
+  .notes-counter {
+    font-family: var(--mono); font-size: .68rem; color: var(--faint);
+    text-align: right; margin-top: 3px;
+  }
 
   .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
   .checklist-progress { color: var(--accent); font-weight: 600; margin-left: 4px; }

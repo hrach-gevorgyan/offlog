@@ -1,13 +1,14 @@
 <script lang="ts">
   import { spaces, projects, activeSpaceId, activeProjectId, showError, reloadTasks } from './store';
   import db, {
-    createProject, deleteProject, updateProject, syncState, syncNow,
+    createProject, createProjectFromTemplate, deleteProject, updateProject, syncState, syncNow,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     getRecentlyModifiedTasks,
   } from './db';
   import { confirmAction } from './confirm';
   import { fmtLastSynced } from './utils';
   import type { TaskDoc, ProjectDoc } from './types';
+  import CustomSelect from './CustomSelect.svelte';
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -34,6 +35,13 @@
   let conflictCount = syncState.conflictCount;
   let newProjectName = '';
   let addingProjectFor: string | null = null;
+  // B8: template mode is a separate explicit step (not folded into the
+  // blur-to-submit input above) — the template CustomSelect's own click
+  // would otherwise blur the name input and prematurely submit a blank
+  // project before the user picks a template.
+  let templateMode = false;
+  let templateProjectId = '';
+  let copyOpenTasks = false;
 
   // ChangelogView/TrashView/SettingsPanel are full separate screens only
   // opened from these buttons — loading them as dynamic imports keeps them
@@ -168,14 +176,26 @@
 
   async function doAddProject(spaceId: string) {
     const name = newProjectName.trim();
-    if (!name) { addingProjectFor = null; return; }
+    if (!name) { closeAddProject(); return; }
+    if (templateMode && !templateProjectId) return; // Create button is disabled for this case too; belt and suspenders
     try {
-      await createProject(spaceId, name);
+      if (templateMode) {
+        await createProjectFromTemplate(spaceId, name, templateProjectId, copyOpenTasks);
+      } else {
+        await createProject(spaceId, name);
+      }
       newProjectName = '';
     } catch {
       showError('Failed to create project. Please try again.');
     }
+    closeAddProject();
+  }
+
+  function closeAddProject() {
     addingProjectFor = null;
+    templateMode = false;
+    templateProjectId = '';
+    copyOpenTasks = false;
   }
 
   async function doDeleteProject(id: string, name: string) {
@@ -283,13 +303,38 @@
             {/each}
 
             {#if addingProjectFor === space._id}
-              <!-- svelte-ignore a11y-autofocus -->
-              <input autofocus class="new-project-input" bind:value={newProjectName}
-                placeholder="Project name…"
-                enterkeyhint="done"
-                on:keydown={(e) => { if (e.key === 'Enter') doAddProject(space._id); if (e.key === 'Escape') addingProjectFor = null; }}
-                on:blur={() => doAddProject(space._id)}
-              />
+              <div class="new-project-form">
+                <!-- svelte-ignore a11y-autofocus -->
+                <input autofocus class="new-project-input" bind:value={newProjectName}
+                  placeholder="Project name…"
+                  enterkeyhint="done"
+                  on:keydown={(e) => { if (e.key === 'Enter') doAddProject(space._id); if (e.key === 'Escape') closeAddProject(); }}
+                  on:blur={() => { if (!templateMode) doAddProject(space._id); }}
+                />
+                {#if !templateMode}
+                  {#if $projects.length > 0}
+                    <!-- mousedown|preventDefault: clicking this must not blur the name
+                         input first — a plain click blurs (submitting a blank project
+                         via the input's on:blur) before this button's on:click even
+                         fires, since blur precedes click in the browser's event order. -->
+                    <button type="button" class="template-toggle" on:mousedown|preventDefault on:click={() => templateMode = true}>Use a template…</button>
+                  {/if}
+                {:else}
+                  <CustomSelect
+                    options={$projects.map(p => ({ value: p._id, label: p.name }))}
+                    bind:value={templateProjectId}
+                    placeholder="Copy status structure from…"
+                  />
+                  <label class="template-checkbox">
+                    <input type="checkbox" bind:checked={copyOpenTasks} />
+                    Also copy open tasks
+                  </label>
+                  <div class="template-actions">
+                    <button type="button" on:mousedown|preventDefault on:click={closeAddProject}>Cancel</button>
+                    <button type="button" class="template-create-btn" disabled={!templateProjectId} on:mousedown|preventDefault on:click={() => doAddProject(space._id)}>Create</button>
+                  </div>
+                {/if}
+              </div>
             {:else}
               <button class="add-project-btn" on:click={() => { addingProjectFor = space._id; newProjectName = ''; }}>+ New project</button>
             {/if}
@@ -516,12 +561,33 @@
   .project-row:hover .proj-delete-btn { opacity: 1; }
   .proj-delete-btn:hover { color: var(--danger); opacity: 1; background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
+  .new-project-form { display: flex; flex-direction: column; gap: 6px; }
   .new-project-input {
     padding: .35rem .55rem; font-size: .85rem;
     border: 1.5px solid var(--accent); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); width: 100%;
   }
   .new-project-input:focus { outline: none; }
+
+  .template-toggle {
+    background: none; border: none; cursor: pointer;
+    color: var(--faint); font-size: .76rem; text-align: left; padding: 0 .1rem;
+    transition: color .12s;
+  }
+  .template-toggle:hover { color: var(--accent); }
+  .template-checkbox {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .78rem; color: var(--muted); cursor: pointer; padding: 0 .1rem;
+  }
+  .template-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .template-actions button {
+    padding: .3rem .6rem; font-size: .78rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer;
+  }
+  .template-create-btn {
+    background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+  }
+  .template-create-btn:disabled { opacity: .5; cursor: default; }
 
   .add-project-btn {
     background: none; border: none; cursor: pointer;

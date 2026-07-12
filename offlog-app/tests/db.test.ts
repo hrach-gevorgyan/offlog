@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db, {
   posBetween,
-  createProject, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
+  createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
   createTask, getTasksForProject, updateTask, deleteTask,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash,
   getAllTasksDue, getDashboardData,
@@ -120,6 +120,53 @@ describe('project + task CRUD', () => {
     const [saved] = await getTasksForProject(project._id);
     expect(saved.checklist).toHaveLength(2);
     expect(saved.checklist?.filter(i => i.done)).toHaveLength(1);
+  });
+});
+
+describe('createProjectFromTemplate (B8)', () => {
+  it('copies the template\'s status structure with fresh column ids', async () => {
+    await seedSpace();
+    const template = await createProject('space:unsorted', 'Template Project');
+    const copy = await createProjectFromTemplate('space:unsorted', 'New Project', template._id, false);
+    expect(copy.columns.map(c => c.name)).toEqual(template.columns.map(c => c.name));
+    expect(copy.columns.map(c => c.id)).not.toEqual(template.columns.map(c => c.id));
+  });
+
+  it('does not copy tasks when copyOpenTasks is false', async () => {
+    await seedSpace();
+    const template = await createProject('space:unsorted', 'Template Project');
+    await createTask(template._id, 'space:unsorted', template.columns[0].id, 'Open task');
+    const copy = await createProjectFromTemplate('space:unsorted', 'New Project', template._id, false);
+    expect(await getTasksForProject(copy._id)).toHaveLength(0);
+  });
+
+  it('copies only open (not-in-last-column) tasks, remapped to the new columns, with deadlines/reminders reset', async () => {
+    await seedSpace();
+    const template = await createProject('space:unsorted', 'Template Project');
+    const [firstCol, , , lastCol] = template.columns;
+    await createTask(template._id, 'space:unsorted', firstCol.id, 'Open task');
+    const doneTask = await createTask(template._id, 'space:unsorted', lastCol.id, 'Done task');
+    await updateTask(doneTask._id!, { due_date: '2026-01-01', reminder_at: '2026-01-01T09:00' });
+
+    const copy = await createProjectFromTemplate('space:unsorted', 'New Project', template._id, true);
+    const copiedTasks = await getTasksForProject(copy._id);
+    expect(copiedTasks).toHaveLength(1);
+    expect(copiedTasks[0].title).toBe('Open task');
+    expect(copiedTasks[0].due_date).toBeNull();
+    expect(copiedTasks[0].reminder_at).toBeNull();
+    expect(copy.columns.some(c => c.id === copiedTasks[0].column_id)).toBe(true);
+    expect(template.columns.some(c => c.id === copiedTasks[0].column_id)).toBe(false);
+  });
+
+  it('resets checklist items to unchecked on the copy', async () => {
+    await seedSpace();
+    const template = await createProject('space:unsorted', 'Template Project');
+    const task = await createTask(template._id, 'space:unsorted', template.columns[0].id, 'Checklist task');
+    await updateTask(task._id!, { checklist: [{ text: 'Step 1', done: true }] });
+
+    const copy = await createProjectFromTemplate('space:unsorted', 'New Project', template._id, true);
+    const [copiedTask] = await getTasksForProject(copy._id);
+    expect(copiedTask.checklist?.[0].done).toBe(false);
   });
 });
 

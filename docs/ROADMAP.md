@@ -224,11 +224,7 @@ Shipped items: one-line pointer only — full detail in CHANGELOG.md.
 
 ### B7. Calendar / week view for Agenda — shipped in v4.7.0
 
-### B8. Project templates — OPEN
-"New from template" duplicates an existing project's status structure (and
-optionally its non-completed tasks) into a fresh project. Builds directly
-on the existing `duplicateTask()` pattern, applied at the project level.
-Scheduled for v4.14.0.
+### B8. Project templates — shipped in v4.14.0
 
 ### B9. Command palette — shipped in v4.10.0
 
@@ -291,10 +287,7 @@ after that conversation. Scheduled for v4.16.0 (deliberately isolated).
 Tags currently render in List but not on Kanban cards themselves — add
 them (compact, matching the existing chip style). Scheduled for v4.15.0.
 
-### B30. Notes length guardrail — OPEN
-`CardDetail`'s notes field is unbounded markdown — add a soft length
-guardrail (a visible counter past some threshold, not a hard block).
-Scheduled for v4.14.0.
+### B30. Notes length guardrail — shipped in v4.14.0
 
 ### B31. Third Android widget: project list — shipped in v4.1.0
 
@@ -477,7 +470,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 2 | v4.12.0 | A30 ✓ | — | Shipped — full codebase audit/cleanup/dead-code sweep plus a documentation-flow optimization pass, not a delta-scoped maintenance check. This release *is* the cycle's maintenance pass (merged in, not run separately). |
 | — | v4.12.1 ✓ | A31 (web/desktop/mobile) ✓ | — | Shipped — accessibility contrast fixes, design-system token consolidation, and (across same-day follow-ups) a full mobile + dark-mode pass over every page and manager panel, catching real bugs (Dashboard grid overflow, Focus FAB/Commit-button overlap) and verifying the rest clean. A31's web-side scope is done — only Android verification remains, see A31's own entry. |
 | 3 | v4.13.0 | A31 (Android leg) | — | Just the Android verification A31 still needs — owner runs `cap sync` + a Studio check whenever convenient. Small enough that it doesn't need to hold up whatever else lands in this release; fold it in opportunistically. |
-| 4 | v4.14.0 | — | B8, B30 | Project templates and a notes-length guardrail — leftover cleanup, no strong shared theme. |
+| 4 | v4.14.0 ✓ | — | B8, B30 ✓ | Shipped — project templates ("New from template" copies a project's status structure and optionally its open tasks) and a notes-length soft counter. Shipped ahead of v4.13.0's Android leg, which is owner-paced and doesn't block anything else. |
 | 5 | v4.15.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
 | 6 | v4.16.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence, resuming after A30's merged pass: v4.12 → **v4.15** → v4.18 → … |
