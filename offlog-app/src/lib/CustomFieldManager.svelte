@@ -5,6 +5,7 @@
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import CustomSelect from './CustomSelect.svelte';
   import type { CustomFieldDef } from './types';
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -14,6 +15,12 @@
   let newName = '';
   let newType: CustomFieldDef['type'] = 'text';
   let newOptions = '';
+  const typeOptions = [
+    { value: 'text', label: 'Text' },
+    { value: 'number', label: 'Number' },
+    { value: 'date', label: 'Date' },
+    { value: 'select', label: 'Select' },
+  ];
 
   async function load() { fields = await getCustomFieldDefs(); }
   onMount(load);
@@ -75,12 +82,9 @@
 
   <div class="add-form">
     <input class="name-input" bind:value={newName} placeholder="Field name" enterkeyhint="done" on:keydown={(e) => e.key === 'Enter' && add()} />
-    <select class="type-select" bind:value={newType}>
-      <option value="text">Text</option>
-      <option value="number">Number</option>
-      <option value="date">Date</option>
-      <option value="select">Select</option>
-    </select>
+    <div class="type-select">
+      <CustomSelect options={typeOptions} value={newType} on:change={(e) => newType = e.detail as CustomFieldDef['type']} />
+    </div>
     {#if newType === 'select'}
       <input class="name-input" bind:value={newOptions} placeholder="Options, comma-separated" />
     {/if}
@@ -141,10 +145,11 @@
     display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
     padding: 14px 24px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
   }
-  .name-input, .type-select {
+  .name-input {
     padding: .45rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--bg); color: var(--text); font-size: .85rem; flex: 1; min-width: 90px;
   }
+  .type-select { flex: 1; min-width: 90px; }
   .add-btn {
     padding: .45rem .8rem; border-radius: var(--radius-sm); border: 1px solid var(--accent);
     background: var(--accent); color: #fff; font-size: .82rem; font-weight: 500; cursor: pointer;

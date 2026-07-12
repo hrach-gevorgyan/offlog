@@ -5,6 +5,7 @@
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import CustomSelect from './CustomSelect.svelte';
   import type { ProjectDoc } from './types';
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -13,6 +14,7 @@
   let activeProjects: ProjectDoc[] = [];
   let archivedProjects: ProjectDoc[] = [];
   let pickerId = '';
+  $: pickerOptions = [{ value: '', label: 'Choose a project…' }, ...activeProjects.map(p => ({ value: p._id!, label: p.name }))];
 
   async function load() {
     [activeProjects, archivedProjects] = await Promise.all([getProjects(), getArchivedProjects()]);
@@ -79,10 +81,9 @@
 
   <div class="item-list">
     <div class="picker-row">
-      <select class="picker-select" bind:value={pickerId}>
-        <option value="">Choose a project…</option>
-        {#each activeProjects as p (p._id)}<option value={p._id}>{p.name}</option>{/each}
-      </select>
+      <div class="picker-select">
+        <CustomSelect options={pickerOptions} bind:value={pickerId} />
+      </div>
       <button class="archive-btn" on:click={doArchive} disabled={!pickerId}>Archive</button>
     </div>
 
@@ -136,28 +137,16 @@
 
   .picker-row {
     display: flex; align-items: center; gap: 8px;
-    padding: .5rem .6rem; margin-bottom: 14px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: 14px;
   }
-  .picker-select {
-    flex: 1; min-width: 0; background: none; border: none; color: var(--text);
-    font-size: 13.5px; padding: 0; cursor: pointer;
-    /* The dropdown's open popup is OS-rendered, not themeable — it always
-       shows on a light background, so force its <option> text dark
-       (color-scheme: light) instead of inheriting --text, which is pale
-       in dark mode and was rendering as near-invisible light-on-white. */
-    color-scheme: light;
-  }
-  .picker-select:focus { outline: none; }
-  .picker-select option { color: #1a1a1a; }
+  .picker-select { flex: 1; min-width: 0; }
   .archive-btn {
-    flex-shrink: 0; background: none; border: none; cursor: pointer;
-    color: var(--accent); font-size: 13px; font-weight: 600; padding: .3rem .5rem;
-    border-radius: 6px;
+    flex-shrink: 0; background: var(--accent); border: none; cursor: pointer;
+    color: #fff; font-size: 13px; font-weight: 600; padding: .48rem .8rem;
+    border-radius: var(--radius-sm); transition: opacity .12s;
   }
-  .archive-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-  .archive-btn:disabled { color: var(--faint); cursor: default; }
-  .archive-btn:disabled:hover { background: none; }
+  .archive-btn:hover:not(:disabled) { opacity: .88; }
+  .archive-btn:disabled { opacity: .45; cursor: default; }
 
   .row {
     display: flex; align-items: center; gap: 10px;

@@ -45,6 +45,16 @@ doesn't either (a) read as suspiciously sparse to a reviewer, or (b)
 accidentally imply more data handling than actually happens (e.g. because
 of boilerplate legal language that doesn't fit a truly local-only app)?
 
+### Q6. What should a PC standalone app actually be?
+PWA support was dropped in v4.11.1 (owner decision, 2026-07-12) — the
+installable/offline-desktop story it provided is gone, and web is
+browser-only again. The owner wants a real PC standalone app eventually,
+explicitly **not** a PWA. **What's the right approach** — Tauri (thin,
+reuses the existing Svelte/Vite web build, smaller binary) vs. Electron
+(heavier, more mature/documented) vs. something else — and does it change
+anything about the current architecture (PouchDB-as-UMD-global, no
+bundler-managed PouchDB import) before that work starts?
+
 ---
 
 ## Scale

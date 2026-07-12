@@ -21,7 +21,7 @@ document in this list, every session, no exceptions.
 **When to read which doc** (so "the relevant document(s)" isn't a blanket
 read-everything every time):
 - **TECH.md** — touching architecture, the data model, sync internals, or
-  Android/PWA platform behavior.
+  Android platform behavior.
 - **ROADMAP.md** — starting a roadmap item, or making sequencing/scheduling
   decisions.
 - **DECISIONS.md** — before any "why not X instead," or touching storage/
@@ -175,8 +175,7 @@ Dev Workflows" section.
   if a new semantic color is needed, and add it to **both** light and dark
   blocks plus the table in `docs/TECH.md`.
 - Brand color changes must also propagate to: `index.html` `<meta theme-color>`,
-  `vite.config.ts` PWA manifest, `capacitor.config.ts` `iconColor`, and
-  `android/.../values/colors.xml`.
+  `capacitor.config.ts` `iconColor`, and `android/.../values/colors.xml`.
 - Known theming gotcha in `Sidebar.svelte`'s settings panel — see
   [docs/TECH.md](docs/TECH.md)'s Theme System section before touching it.
 
@@ -206,15 +205,13 @@ detection, an incomplete conflict resolution) that had been silently
 shipping. UI components have no test coverage yet; that's still manual/
 browser-preview verification.
 
-## Android / PWA gotchas (hard-won — read before touching)
+## Android gotchas (hard-won — read before touching)
 
 - **Status bar**: targetSdk 36 is edge-to-edge; `StatusBar.setBackgroundColor()`
   is a hard no-op. The working approach is the `.status-bar-fill` strip in
   App.svelte + `env(safe-area-inset-top)` padding. Details in docs/TECH.md.
 - **Notification icons** must be white silhouettes with transparency, or
   Android silently substitutes a generic triangle.
-- **Service worker is web-only** (`main.ts` gates on `Capacitor.isNativePlatform()`).
-  Never register it in the Android build — it would serve stale JS across APK updates.
 - `position: fixed` full-screen elements bypass `.layout` and need their own
   `padding-top: env(safe-area-inset-top)`.
 - Android launcher icon changes: uninstall the app before reinstalling, and

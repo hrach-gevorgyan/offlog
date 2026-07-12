@@ -1,6 +1,6 @@
 # Offlog
 
-Version 4.11.0 · A free, open-source, local-first task management app.
+Version 4.11.1 · A free, open-source, local-first task management app.
 No account, no telemetry, no subscription, ever. Runs in the browser and
 as a native Android app. Sync is optional and never required.
 
@@ -27,7 +27,7 @@ Full mission and planned work: [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Undo & Recycle** — soft-delete with undo, plus a full Recycle view with restore/delete-forever
 - **Android hardware back button** — closes whatever modal/panel is open, the way it should
 - **Accessibility** — keyboard-operable throughout, focus trapping in every modal, visible focus rings
-- **Android APK** packaged with Capacitor, and an **installable PWA** for the web build
+- **Android APK** packaged with Capacitor; the web build runs in-browser only (no installable PWA)
 - **Database maintenance** — a Check Database / Repair Issues tool scans for and fixes orphaned tasks/projects, invalid status references, and unresolved sync conflicts
 
 Full version-by-version history: [docs/CHANGELOG.md](docs/CHANGELOG.md).

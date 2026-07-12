@@ -7,6 +7,7 @@
   // localStorage key either view would have used on its own.
   import type { ProjectDoc } from './types';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
+  import CustomSelect from './CustomSelect.svelte';
 
   export let project: ProjectDoc;
   export let allTags: string[] = [];
@@ -14,6 +15,9 @@
   export let filterCol = '';
   export let filterPrio = 0;
   export let filterTag = '';
+
+  $: statusOptions = [{ value: '', label: 'All statuses' }, ...project.columns.map(col => ({ value: col.id, label: col.name }))];
+  $: tagOptions = [{ value: '', label: 'All tags' }, ...allTags.map(t => ({ value: t, label: t }))];
   // Icon-only, no "Filters" text label — used where the button sits
   // paired with other icon buttons in a tight pill (App.svelte's board
   // header) rather than List's own roomier toolbar row.
@@ -68,8 +72,12 @@
   function clearFilters() { search = ''; filterCol = ''; filterPrio = 0; filterTag = ''; }
 
   function onWindowClick(e: MouseEvent) {
-    const t = e.target as HTMLElement;
-    if (showFilterMenu && !t.closest('.filter-menu-wrap')) showFilterMenu = false;
+    if (!showFilterMenu) return;
+    // e.target isn't guaranteed to be an Element (e.g. a synthetically
+    // dispatched click can target `document` itself), and .closest() only
+    // exists on Element — guard instead of assuming, since this fires on
+    // every window click.
+    if (!(e.target instanceof Element) || !e.target.closest('.filter-menu-wrap')) showFilterMenu = false;
   }
 </script>
 
@@ -86,19 +94,11 @@
   {#if showFilterMenu}
     <div class="col-menu filter-menu" style="top:{menuPos.top}px; left:{menuPos.left}px;">
       <div class="menu-label">Status</div>
-      <select class="filter-sel" bind:value={filterCol}>
-        <option value="">All statuses</option>
-        {#each project.columns as col}
-          <option value={col.id}>{col.name}</option>
-        {/each}
-      </select>
+      <CustomSelect options={statusOptions} bind:value={filterCol} />
 
       {#if allTags.length}
         <div class="menu-label">Tag</div>
-        <select class="filter-sel" bind:value={filterTag}>
-          <option value="">All tags</option>
-          {#each allTags as t}<option value={t}>{t}</option>{/each}
-        </select>
+        <CustomSelect options={tagOptions} bind:value={filterTag} />
       {/if}
 
       <div class="menu-label">Priority</div>
@@ -169,13 +169,6 @@
     box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 6px; min-width: 150px;
     display: flex; flex-direction: column; gap: 2px;
     max-height: min(70vh, 420px); overflow-y: auto;
-  }
-
-  .filter-sel {
-    width: 100%;
-    border: 1px solid var(--border-strong); border-radius: 8px;
-    background: var(--bg); color: var(--text);
-    font-size: 12.5px; padding: 6px 10px; cursor: pointer; outline: none;
   }
 
   .prio-chips { display: flex; gap: 3px; flex-wrap: wrap; }

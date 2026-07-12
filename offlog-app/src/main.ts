@@ -32,30 +32,14 @@ if (isNative) {
     StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
   }).catch(() => {});
-} else {
-  // Register the PWA service worker on web only. Skipped on Android
-  // since Capacitor already bundles assets natively — a service
-  // worker there would only risk serving stale cached JS across
-  // APK updates.
-  import('virtual:pwa-register').then(({ registerSW }) => {
-    // registerSW()'s returned function is a no-op in 'autoUpdate' mode —
-    // it only sends a skip-waiting message in 'prompt' mode (see
-    // vite-plugin-pwa's client/build/register.js: `if (!auto)
-    // sendSkipWaitingMessage()`). Calling it here never actually asked
-    // the browser to check for a new service worker, so an installed/
-    // standalone PWA brought back to the foreground could sit on a stale
-    // build indefinitely (A18) — visibilitychange fired, but nothing it
-    // called did anything. The actual fix is forcing a real update check
-    // via the registration itself; the existing autoUpdate reload-on-
-    // activate listener (already wired up inside registerSW) then fires
-    // normally once a new worker is found and installed.
-    registerSW({ immediate: true });
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        navigator.serviceWorker?.getRegistration().then(reg => reg?.update()).catch(() => {});
-      }
-    });
-  }).catch(() => {});
+}
+
+// If a service worker from a previous PWA-enabled build is still
+// registered in someone's browser, unregister it so the web build goes
+// back to a plain, always-fresh page load — otherwise a stale cached
+// build could keep being served indefinitely with no way to force-update.
+if (!isNative && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(() => {});
 }
 
 export default app

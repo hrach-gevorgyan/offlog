@@ -316,11 +316,21 @@
     display: flex; flex-wrap: wrap; align-content: flex-start;
     gap: 18px 22px;
   }
+  /* Plain and solid — an earlier pass tried a priority-colored tint/tape
+     (too playful) then a priority-colored left stripe (redundant/confusing
+     next to the priority dot already on the card — two signals for the
+     same one fact). Color now belongs to the priority dot alone; the card
+     itself only communicates selected/suggested state, via border + a
+     touch of the accent color. */
   .note {
+    position: relative;
     display: flex; flex-direction: column; gap: 10px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 14px 16px;
-    cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.05);
     transform: rotate(var(--tilt));
     transition: transform .15s, box-shadow .15s, border-color .15s, background .15s;
   }

@@ -68,6 +68,26 @@ other people asking for it), not because this reasoning turned out wrong.
 
 ## Distribution & business model
 
+### Why PWA support was dropped entirely rather than patched further (2026-07-12)
+Shipped in v2.7.0, PWA installability (`vite-plugin-pwa` + a Workbox
+service worker) kept causing a recurring staleness problem — an installed/
+"Add to Home Screen" build repeatedly showing a stale icon/design after an
+update, even after A18's forced `registration.update()` fix (v3.8.0).
+ROADMAP.md's A26 tracked this as needing an owner decision rather than
+another patch. Resolved by removing PWA outright instead: the owner only
+uses Offlog via a plain browser tab and the Android app, so the
+installable-desktop-web path wasn't earning its complexity/staleness cost.
+`vite-plugin-pwa` was uninstalled, the manifest/service-worker generation
+removed from `vite.config.ts`, and `main.ts` now actively unregisters any
+leftover service worker from a previous PWA-enabled build on load (so a
+browser that already installed it doesn't stay stuck serving a stale
+cached build forever). The web build is a normal always-fresh page load
+again. A real PC standalone app is still wanted eventually — explicitly
+**not** a PWA next time (Tauri vs. Electron, unresolved — see
+QUESTIONS.md's Q6). Android via Capacitor is unaffected; it never used
+the service worker in the first place (CLAUDE.md's db.ts/Android
+invariants).
+
 ### Why there's no business model at all, not even an optional paid layer (2026-07-03)
 Revises the 2026-07-02 decision directly below, which still assumed some
 future paid convenience layer (most likely a hosted sync relay) would

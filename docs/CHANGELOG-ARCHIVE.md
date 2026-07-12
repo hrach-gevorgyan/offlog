@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.6.0 | Appearance + power-user pass (A11, B21, B11, B16, B19): Light/Dark/System theme, High Contrast toggle, global custom fields, revised bulk actions in List | `v4.6.0` |
 | 4.5.0 | Focus view (B35), draft: daily-commitment-lock (pick up to 3 tasks/day), round-robin-ranked picker, replaced a rejected auto-computed priority-list design | `v4.5.0` |
 | 4.4.2 | Second maintenance pass, clean codebase: fixed a missing try/catch+showError() gap in QuickAdd's createTask() call, documented a silent-catch write path | `v4.4.2` |
 | 4.4.1 | Light patch (A29): reworded a sync network-error message for clarity; fixed the B12 "remind on due date" checkbox rendering stacked instead of inline | `v4.4.1` |

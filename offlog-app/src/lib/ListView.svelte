@@ -8,6 +8,7 @@
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
   import FilterBar from './FilterBar.svelte';
+  import CustomSelect from './CustomSelect.svelte';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -232,9 +233,16 @@
   let selectionMode = false;
   let selected = new Set<string>();
   let bulkStatus = '';
-  let bulkPriority = 0;
+  let bulkPriorityStr = '';
   let bulkTagAdd = '';
   let bulkBusy = false;
+  $: bulkStatusOptions = [{ value: '', label: 'Move to status…' }, ...project.columns.map(col => ({ value: col.id, label: col.name }))];
+  const bulkPriorityOptions = [
+    { value: '', label: 'Change priority…' },
+    { value: '1', label: 'Low' },
+    { value: '2', label: 'Medium' },
+    { value: '3', label: 'High' },
+  ];
 
   function toggleSelectionMode() {
     selectionMode = !selectionMode;
@@ -270,17 +278,18 @@
   }
 
   async function bulkChangePriority() {
-    if (!bulkPriority || !selected.size) return;
+    if (!bulkPriorityStr || !selected.size) return;
     bulkBusy = true;
     try {
-      for (const id of selected) await updateTask(id, { priority: bulkPriority as 1 | 2 | 3 });
+      const priority = Number(bulkPriorityStr) as 1 | 2 | 3;
+      for (const id of selected) await updateTask(id, { priority });
       await reloadTasks();
       clearSelection();
     } catch {
       showError('Failed to update some tasks. Please try again.');
     } finally {
       bulkBusy = false;
-      bulkPriority = 0;
+      bulkPriorityStr = '';
     }
   }
 
@@ -425,16 +434,12 @@
   {#if selectionMode}
     <div class="bulk-bar">
       <span class="bulk-count">{selected.size} selected</span>
-      <select class="bulk-sel" bind:value={bulkStatus} on:change={bulkMoveStatus} disabled={bulkBusy || !selected.size}>
-        <option value="">Move to status…</option>
-        {#each project.columns as col}<option value={col.id}>{col.name}</option>{/each}
-      </select>
-      <select class="bulk-sel" bind:value={bulkPriority} on:change={bulkChangePriority} disabled={bulkBusy || !selected.size}>
-        <option value={0}>Change priority…</option>
-        <option value={1}>Low</option>
-        <option value={2}>Medium</option>
-        <option value={3}>High</option>
-      </select>
+      <div class="bulk-sel-wrap">
+        <CustomSelect options={bulkStatusOptions} bind:value={bulkStatus} on:change={bulkMoveStatus} disabled={bulkBusy || !selected.size} />
+      </div>
+      <div class="bulk-sel-wrap">
+        <CustomSelect options={bulkPriorityOptions} bind:value={bulkPriorityStr} on:change={bulkChangePriority} disabled={bulkBusy || !selected.size} />
+      </div>
       <input class="bulk-input" bind:value={bulkTagAdd} placeholder="Add tag…" on:keydown={(e) => e.key === 'Enter' && bulkAddTag()} disabled={bulkBusy || !selected.size} />
       <button class="bulk-btn" on:click={bulkAddTag} disabled={bulkBusy || !selected.size || !bulkTagAdd.trim()}>Add tag</button>
       <button class="bulk-btn bulk-clear" on:click={toggleSelectionMode} disabled={bulkBusy}>Done</button>
@@ -764,12 +769,13 @@
     border: 1px solid var(--accent); border-radius: var(--radius-sm, 8px);
   }
   .bulk-count { font-size: 12.5px; font-weight: 600; color: var(--accent); margin-right: 4px; }
-  .bulk-sel, .bulk-input {
+  .bulk-sel-wrap { width: 150px; }
+  .bulk-input {
     border: 1px solid var(--border-strong); border-radius: 6px;
     background: var(--surface); color: var(--text);
     font-size: 12.5px; padding: 5px 8px;
+    width: 130px;
   }
-  .bulk-input { width: 130px; }
   .bulk-btn {
     border: 1px solid var(--border-strong); border-radius: 6px;
     background: var(--surface); color: var(--text);

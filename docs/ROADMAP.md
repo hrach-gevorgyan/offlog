@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.11.0**. Everything below is a candidate, not a
+Current version: **v4.11.1**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -123,15 +123,12 @@ on the machine); compare the printed numbers release to release.
 
 ### A25. Quick Add widget opened the app but not Quick Add — shipped in v3.9.8
 
-### A26. PWA staleness / dev workflow needs a decision — OPEN, needs owner input
-Owner-reported: the installable PWA build repeatedly shows a stale
-icon/design after an update, even after A18's forced `registration.update()`
-call. Needs an owner decision, not just another patch: options range from
-a visible "update available, tap to refresh" banner, to `registerType:
-'prompt'` instead of `'autoUpdate'` in `vite-plugin-pwa`, to reducing what's
-precached, to reconsidering how much the installable-PWA path is worth
-versus the Android APK as the primary "real app" experience. Unscheduled —
-needs a scoping conversation before implementation.
+### A26. PWA staleness / dev workflow needs a decision — resolved by removal in v4.11.1
+The recurring staleness problem (a stale icon/design persisting after an
+update, even after A18's forced `registration.update()` call) is moot: PWA
+support was dropped outright rather than patched further (owner decision,
+2026-07-12) — web is browser-only now, no installability/service worker.
+See DECISIONS.md.
 
 ### A27. Project-view no longer force-resets to Kanban on every refresh — shipped in v3.9.8
 
@@ -493,9 +490,11 @@ pitch it against Trello/Notion/ClickUp/Jira by feature count.
 Considered and explicitly declined by the owner (2026-07-02): distribution
 stays to GitHub + a website + Google Play; no iOS. See DECISIONS.md.
 
-### C5. Public web install landing page
-A small, plain landing page (GitHub Pages is enough) with a single
-"Install" / "Add to Home Screen" button for the existing PWA build.
+### C5. Public web landing page
+A small, plain landing page (GitHub Pages is enough) linking to the web
+app (browser-only, no install step now that PWA support was dropped) and
+the Android APK download. A separate, real PC standalone app (not a PWA)
+is a future direction to scope, not this item — see DECISIONS.md.
 
 ### C6. Brand & positioning pass
 A short pass over every public-facing document — README, store copy,
@@ -572,7 +571,6 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 3 | v4.13.0 | A9 | B24, B29 | Housekeeping release: real component tests (A9, finally), tested directly against two small, low-risk feature additions landing in the same release (seed data trim, tags on Kanban cards). |
 | 4 | v4.14.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.10 → **v4.13** → v4.16 → … |
-| — | (unscheduled) | A26 | — | PWA staleness / dev workflow — needs an owner decision on direction before it can be scoped into a release at all. |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
 
 Within each release: land any Track A item first (or in the same PR as the

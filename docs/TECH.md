@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 4.11.0 · Local-first task management for browser and Android
+Version 4.11.1 · Local-first task management for browser and Android
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
@@ -22,7 +22,6 @@ Version 4.11.0 · Local-first task management for browser and Android
 | Sync Server | **CouchDB** | Self-hosted, optional. App works fully offline without it |
 | Mobile Wrapper | **Capacitor 7** | Wraps Vite build into a WebView-based Android APK |
 | Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
-| PWA | **vite-plugin-pwa** (Workbox) | Installable, offline-capable desktop/web app — see below |
 | Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
 | Fonts | Hanken Grotesk + IBM Plex Mono | Sans for UI, mono for timestamps and labels |
 
@@ -234,7 +233,7 @@ from a `beforeEach` that wipes every doc, not from a fresh instance.
 
 ## Theme System — Brand Colors (v3.0)
 
-All colors are CSS custom properties in `app.css` — no hardcoded colors anywhere else in the app, including the PWA manifest and Android native theming:
+All colors are CSS custom properties in `app.css` — no hardcoded colors anywhere else in the app, including Android native theming:
 
 - `:root` — light theme
 - `body.dark` — dark theme overrides
@@ -258,7 +257,7 @@ All colors are CSS custom properties in `app.css` — no hardcoded colors anywhe
 | `--danger` | `#DC2626` | `#F87171` | destructive actions |
 | `--success` | `#22C55E` | `#4ADE80` | done states, sync-ok indicator, "this week" agenda group |
 
-The same accent (`#6366F1`) drives the PWA `theme_color`/`background_color` (`vite.config.ts`), the `<meta name="theme-color">` in `index.html`, Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`), and the notification icon color (`capacitor.config.ts`) — one brand color across web, installed PWA, and native app, updated in one place if it ever changes again.
+The same accent (`#6366F1`) drives the `<meta name="theme-color">` in `index.html`, Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`), and the notification icon color (`capacitor.config.ts`) — one brand color across web and native app, updated in one place if it ever changes again.
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
 
@@ -304,35 +303,11 @@ Requires `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and `RECEIVE_BOOT_COMPLET
 
 There is no push backend behind this app, so genuinely-closed-browser notifications aren't possible on web without one (a deliberate scope decision — this app is local-first with an optional self-hosted CouchDB, not a hosted service that could run a push relay). What's implemented instead:
 
-- **`setTimeout`-based scheduling** while the tab/PWA process is alive (covers the common case of leaving the app open or installed and running in the background)
+- **`setTimeout`-based scheduling** while the tab is open (covers the common case of leaving the app open in the background)
 - **Catch-up on load** — `catchUpWeb()` fires notifications immediately for any reminder that became due within the last hour while the app was closed, so a missed reminder isn't silently lost forever, just delayed until next open
 - Clicking a web notification focuses the window and sets the same `pendingOpenTaskId` store used by the native path
 
 Notification permission is requested lazily — either from the inline hint shown in `CardDetail` when a reminder is set but permission isn't granted yet, or from the new **Notifications** section in Settings (`Sidebar.svelte`), never proactively on app load.
-
----
-
-## PWA (Web)
-
-`vite.config.ts` configures `vite-plugin-pwa` in `generateSW` mode, which produces at build time:
-
-- `dist/manifest.webmanifest` — app name, `theme_color`/`background_color` (`#181a20`, matching the sidebar), `display: 'standalone'`, and icons (both `any` and `maskable` purpose)
-- `dist/sw.js` + `dist/workbox-*.js` — a Workbox service worker that precaches the built JS/CSS/HTML/icons (`globPatterns: ['**/*.{js,css,html,svg,png,ico}']`) so the app shell loads instantly offline
-- `dist/registerSW.js` is **not** auto-injected (`injectRegister: false`) — registration is manual, see below
-
-### Why registration is manual and web-only
-
-`src/main.ts` checks `Capacitor.isNativePlatform()` first:
-- **Native (Android)**: skip service worker entirely. Capacitor already bundles all assets into the APK and serves them via its own virtual `https://` scheme — a service worker there is redundant and risks serving stale cached JS across APK updates instead of the freshly installed version.
-- **Web**: `import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))`. `registerType: 'autoUpdate'` means new builds activate automatically on next load rather than requiring a manual "update available" prompt.
-
-### What the service worker does *not* touch
-
-`runtimeCaching: []` — the service worker only precaches the static build shell. It never intercepts CouchDB sync requests (XHR/fetch to the configured sync URL) or any other runtime network call. PouchDB's own IndexedDB storage already provides the actual offline data layer completely independently of the service worker; the SW's only job is making the *app shell itself* (JS/CSS/HTML) installable and loadable with zero network, which browsers didn't previously get (only the Capacitor/Android build did).
-
-### Result
-
-The web build is now installable (browser "Install app" prompt / add-to-home-screen) and works fully offline on desktop, closing the gap where "local-first" previously only fully applied to the Android build.
 
 ---
 

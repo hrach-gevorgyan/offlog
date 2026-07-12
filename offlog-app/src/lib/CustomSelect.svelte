@@ -12,6 +12,7 @@
   export let value: string;
   export let placeholder = 'Select…';
   export let placement: 'up' | 'down' = 'down';
+  export let disabled = false;
 
   const dispatch = createEventDispatcher<{ change: string }>();
 
@@ -34,6 +35,7 @@
   }
 
   function openPanel() {
+    if (disabled) return;
     open = true;
     highlighted = Math.max(0, options.findIndex(o => o.value === value));
   }
@@ -75,7 +77,9 @@
   <button
     type="button"
     class="cs-trigger"
+    class:cs-disabled={disabled}
     bind:this={triggerEl}
+    {disabled}
     on:click={toggle}
     on:keydown={onTriggerKey}
     aria-haspopup="listbox"
@@ -118,6 +122,7 @@
     cursor: pointer; text-align: left; transition: border-color .12s;
   }
   .cs-trigger:hover { border-color: var(--border-strong); }
+  .cs-trigger.cs-disabled { opacity: .5; cursor: default; }
   .cs-trigger:focus-visible, .cs-trigger[aria-expanded="true"] { outline: none; border-color: var(--accent); }
   .cs-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cs-chevron { flex-shrink: 0; opacity: .6; }

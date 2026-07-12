@@ -9,6 +9,7 @@
   import { trapFocus } from './focusTrap';
   import PinStar from './PinStar.svelte';
   import CalendarPicker from './CalendarPicker.svelte';
+  import CustomSelect from './CustomSelect.svelte';
   import { getDefaultReminderTime } from '../config';
 
   export let task: TaskDoc;
@@ -49,6 +50,16 @@
   let title = task.title;
   let body = task.body;
   let priority = task.priority;
+  // CustomSelect only takes string values — priority stays 1|2|3 for
+  // save()/everything else, this is just a bound proxy for the picker.
+  let priorityStr = String(priority);
+  $: priority = (Number(priorityStr) || 1) as 1 | 2 | 3;
+  const statusOptions = project.columns.map(col => ({ value: col.id, label: col.name }));
+  const priorityOptions = [
+    { value: '1', label: 'Low' },
+    { value: '2', label: 'Medium' },
+    { value: '3', label: 'High' },
+  ];
   let due_date = task.due_date ?? '';
   let reminder_at = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
   let remindOnDue = task.remindOnDue ?? false;
@@ -84,6 +95,16 @@
   // (see types.ts), so a field rename in Settings doesn't orphan values.
   let customFields: CustomFieldDef[] = [];
   let customValues: Record<string, string | number | null> = { ...(task.custom_values ?? {}) };
+
+  // Collapsible-by-default sections (owner feedback, 2026-07-12 — the page
+  // got overloaded once Checklist landed on top of everything else).
+  // "Details" (status/priority/due/reminder/tags) stays always open —
+  // it's the core identity of a task. Checklist/Custom fields/Notes start
+  // collapsed UNLESS the task already has content there, so existing data
+  // is never hidden by default, only new/empty sections start closed.
+  let showChecklist = checklist.length > 0;
+  let showNotes = !!body.trim();
+  let showCustomFieldsSection = Object.values(customValues).some(v => v !== null && v !== '' && v !== undefined);
   // Cap how many custom fields show by default — a project with a dozen
   // fields defined shouldn't turn every card into a long form. Anything
   // past the cap is one click away, not hidden entirely.
@@ -214,20 +235,12 @@
     <div class="fields-row">
       <label>
         Status
-        <select bind:value={column_id}>
-          {#each project.columns as col}
-            <option value={col.id}>{col.name}</option>
-          {/each}
-        </select>
+        <CustomSelect options={statusOptions} bind:value={column_id} />
       </label>
 
       <label>
         Priority
-        <select bind:value={priority}>
-          <option value={1}>Low</option>
-          <option value={2}>Medium</option>
-          <option value={3}>High</option>
-        </select>
+        <CustomSelect options={priorityOptions} bind:value={priorityStr} />
       </label>
     </div>
 
@@ -306,62 +319,84 @@
 
     <div class="section-divider"></div>
 
-    <div class="checklist-field">
-      <span class="field-label">
-        Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
-      </span>
-      {#each checklist as item, i}
-        <div class="checklist-row">
-          <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
-            {#if item.done}✓{/if}
-          </button>
-          <span class="checklist-text" class:done={item.done}>{item.text}</span>
-          <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
+    <div class="collapsible-section">
+      <button type="button" class="section-toggle" on:click={() => showChecklist = !showChecklist}>
+        <svg class="section-chevron" class:open={showChecklist} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+        <span class="field-label">
+          Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
+        </span>
+      </button>
+      {#if showChecklist}
+        <div class="checklist-field">
+          {#each checklist as item, i}
+            <div class="checklist-row">
+              <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
+                {#if item.done}✓{/if}
+              </button>
+              <span class="checklist-text" class:done={item.done}>{item.text}</span>
+              <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
+            </div>
+          {/each}
+          <input
+            class="checklist-input"
+            bind:value={checklistInput}
+            placeholder="Add item…"
+            enterkeyhint="done"
+            on:keydown={onChecklistKey}
+            on:blur={() => setTimeout(addChecklistItem, 150)}
+          />
         </div>
-      {/each}
-      <input
-        class="checklist-input"
-        bind:value={checklistInput}
-        placeholder="Add item…"
-        enterkeyhint="done"
-        on:keydown={onChecklistKey}
-        on:blur={() => setTimeout(addChecklistItem, 150)}
-      />
+      {/if}
     </div>
 
     {#if customFields.length > 0}
-      <div class="custom-fields">
-        <span class="field-label">Custom fields</span>
-        {#each visibleFields as field (field.id)}
-          <label class="custom-field-label">
-            {field.name}
-            {#if field.type === 'select'}
-              <select bind:value={customValues[field.id]}>
-                <option value={null}></option>
-                {#each field.options ?? [] as opt}<option value={opt}>{opt}</option>{/each}
-              </select>
-            {:else}
-              <input
-                type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                bind:value={customValues[field.id]}
-              />
+      <div class="collapsible-section">
+        <button type="button" class="section-toggle" on:click={() => showCustomFieldsSection = !showCustomFieldsSection}>
+          <svg class="section-chevron" class:open={showCustomFieldsSection} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+          <span class="field-label">Custom fields</span>
+        </button>
+        {#if showCustomFieldsSection}
+          <div class="custom-fields">
+            {#each visibleFields as field (field.id)}
+              <label class="custom-field-label">
+                {field.name}
+                {#if field.type === 'select'}
+                  <CustomSelect
+                    options={[{ value: '', label: '—' }, ...(field.options ?? []).map(o => ({ value: o, label: o }))]}
+                    value={(customValues[field.id] as string) ?? ''}
+                    on:change={(e) => customValues[field.id] = e.detail || null}
+                  />
+                {:else if field.type === 'date'}
+                  <CalendarPicker value={(customValues[field.id] as string) ?? ''} on:change={(e) => customValues[field.id] = e.detail || null} />
+                {:else}
+                  <input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    bind:value={customValues[field.id]}
+                  />
+                {/if}
+              </label>
+            {/each}
+            {#if customFields.length > VISIBLE_FIELD_CAP}
+              <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
+                {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
+              </button>
             {/if}
-          </label>
-        {/each}
-        {#if customFields.length > VISIBLE_FIELD_CAP}
-          <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
-            {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
-          </button>
+          </div>
         {/if}
       </div>
     {/if}
 
     <div class="section-divider"></div>
 
-    <label class="notes-label">
-      Notes (markdown)
-      <textarea bind:value={body} rows="4" placeholder="Notes…"></textarea>
-    </label>
+    <div class="collapsible-section">
+      <button type="button" class="section-toggle" on:click={() => showNotes = !showNotes}>
+        <svg class="section-chevron" class:open={showNotes} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+        <span class="field-label">Notes (markdown)</span>
+      </button>
+      {#if showNotes}
+        <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
+      {/if}
+    </div>
 
     <div class="timestamps">
       <span>Created {fmtTs(task.created_at)}</span>
@@ -450,13 +485,6 @@
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  select {
-    padding: .38rem .5rem; border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
-    font-size: .84rem; font-family: 'Hanken Grotesk', sans-serif;
-  }
-  select:focus { outline: none; border-color: var(--accent); }
-
   .due-shortcuts { display: flex; gap: 4px; flex-wrap: wrap; }
   .due-shortcut {
     background: var(--col-bg); color: var(--muted); border: 1px solid var(--border);
@@ -500,7 +528,7 @@
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  .custom-field-label input, .custom-field-label select {
+  .custom-field-label input {
     padding: .38rem .5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .84rem; font-family: inherit;
     text-transform: none; letter-spacing: normal;
@@ -552,14 +580,22 @@
     text-transform: uppercase; letter-spacing: .04em; padding: 2px 2px 0;
   }
 
-  .notes-label {
-    display: flex; flex-direction: column; gap: .22rem;
-    font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
-    text-transform: uppercase; color: var(--faint); flex: 1;
+  .collapsible-section { display: flex; flex-direction: column; gap: .5rem; }
+  .section-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    cursor: pointer; padding: .5rem .65rem; width: 100%; text-align: left;
+    transition: background .12s, border-color .12s;
   }
+  .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
+  .section-toggle .field-label { flex: 1; }
+  .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
+  .section-chevron.open { transform: rotate(90deg); }
+  .section-toggle:hover .section-chevron { color: var(--text); }
+  .notes-textarea { width: 100%; box-sizing: border-box; }
 
   .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
-  .checklist-progress { color: var(--accent); font-weight: 600; }
+  .checklist-progress { color: var(--accent); font-weight: 600; margin-left: 4px; }
   .checklist-row { display: flex; align-items: center; gap: 7px; }
   .checklist-check {
     flex-shrink: 0; width: 17px; height: 17px; border-radius: 5px;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import CustomSelect from './CustomSelect.svelte';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo,
@@ -289,6 +290,7 @@
   // of every task. Both one-way (CSV isn't re-importable); JSON export
   // above stays the round-trippable backup format.
   let exportProjectId = '';
+  $: exportProjectOptions = [{ value: '', label: 'Choose a project…' }, ...$projectsStore.map(p => ({ value: p._id!, label: p.name }))];
   async function doExportProject() {
     if (!exportProjectId) return;
     try {
@@ -565,10 +567,9 @@
                 <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
               </div>
               <div class="setting-row">
-                <select class="project-export-select" bind:value={exportProjectId}>
-                  <option value="">Choose a project…</option>
-                  {#each $projectsStore as p (p._id)}<option value={p._id}>{p.name}</option>{/each}
-                </select>
+                <div class="project-export-select">
+                  <CustomSelect options={exportProjectOptions} bind:value={exportProjectId} />
+                </div>
                 <button class="export-btn" on:click={doExportProject} disabled={!exportProjectId}>Export Project</button>
               </div>
               {#if storageAvailable}
@@ -767,11 +768,7 @@
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 
-  .project-export-select {
-    flex: 1; padding: .4rem .5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    background: var(--surface); color: var(--text); font-size: .82rem;
-  }
-  .project-export-select:focus { outline: none; border-color: var(--accent); }
+  .project-export-select { flex: 1; min-width: 0; }
 
   .import-preview {
     display: flex; flex-direction: column; gap: .5rem;
