@@ -224,6 +224,49 @@ this item's original scope has been covered — closing web/desktop/mobile
 coverage out, leaving only the Android leg open, picked up whenever the
 owner runs a Studio check.
 
+### A32. Sync reports "synced" when devices aren't actually syncing — OPEN, URGENT
+Owner-reported (2026-07-13, real on-device use): PC and phone both show a
+synced/idle status with no error, but changes made on one don't appear on
+the other. This is the most serious of the owner's reported issues — a
+false-positive sync status is worse than an honest error, since it hides
+data divergence instead of surfacing it. Needs investigation before
+anything else in this batch: check whether `startSync()`'s live
+replication is actually establishing (network reachability between the
+two devices' LAN addresses, CouchDB reachable from both), whether
+`syncState.status` is being set to `'idle'` prematurely (e.g. on the
+`'paused'` event PouchDB fires between change batches, which isn't the
+same as no more changes existing), and whether writes are actually
+reaching the remote CouchDB at all (check the CouchDB server's own doc
+count against each device's local count). Likely needs the owner to
+reproduce with both devices' consoles/logcat visible.
+
+### A33. Android notifications fire silently, not fully functional — OPEN, URGENT
+Owner-reported (2026-07-13): notifications do appear on Android but
+without sound/proper behavior — "silent one, still not fully functional."
+Needs a concrete repro (which notification — reminder vs the widget? does
+it show in the shade at all, or only sometimes? does tapping it open the
+right task per `pendingOpenTaskId`?) before diagnosing. Candidates to
+check: `AndroidManifest.xml`'s exact-alarm/notification permissions
+actually granted on the test device (Settings has an "Alarms & reminders"
+status surface already, per A28 — confirm it reads granted), the
+notification channel's importance level (Android notification channels
+each have their own sound/vibration settings independent of the app;
+a channel created at low importance stays silent even if the app "sends"
+the notification correctly), and whether `numericId()`'s hash collisions
+could be silently overwriting/cancelling one reminder with another.
+
+### A34. Export JSON doesn't work on Android — OPEN, URGENT
+Owner-reported (2026-07-13). Likely a WebView file-download gap: browser
+`download` attribute / blob-URL-triggered downloads don't behave the same
+inside a Capacitor WebView as a real browser tab — probably needs
+`@capacitor/filesystem` (write to device storage) + `@capacitor/share`
+(hand off to the OS share sheet) instead of the current web-only download
+mechanism, gated behind `Capacitor.isNativePlatform()`. Same underlying
+mechanism likely needed for Export CSV/Export Project too, even though
+only JSON was reported — check all three once diagnosed. Ties into B45's
+export/import redesign below; worth fixing the native-download mechanism
+and the UX pass together rather than twice.
+
 ---
 
 ## Track B — Features
@@ -399,6 +442,89 @@ threshold), with the raw MB/quota numbers demoted to a small secondary
 line. Export rows got their own plain-language labels too, instead of
 sharing a line with the storage readout. Copy/layout only.
 
+### B45. Export/import UX redesign — OPEN (owner, 2026-07-13)
+Settings → Data currently has four separate, loosely-related actions:
+Export JSON (everything), Export CSV (everything, one-way), Export
+Project (a picker, JSON only), Import JSON. Owner feedback: this reads as
+four bolted-on buttons, not one coherent backup/restore story. Redesign
+for clarity — likely two clear groups ("Back up" vs "Restore," with
+scope — everything vs one project — as a single control rather than
+implied by which button you pick) rather than four flat rows. Tie in
+A34's native-download-mechanism fix (Android export currently doesn't
+work at all) so this isn't designed twice.
+
+### B46. First-run: ask for a device/user name — OPEN (owner, 2026-07-13)
+`config.ts`'s `getDeviceName()`/`setDeviceName()` already exist and are
+editable in Settings → Sync, but nothing prompts for a name on first
+launch — it silently defaults (`defaultDeviceName()`) until someone finds
+the field. Add a lightweight first-run prompt (name only, skippable,
+never blocks getting into the app — must stay consistent with C2's
+zero-config-first-run principle: skipping should be as valid a choice as
+naming it).
+
+### B47. Week start day + timezone setting — OPEN (owner, 2026-07-13)
+Agenda's week view and any "this week" grouping logic currently assume a
+fixed week start (check `DeadlinesView.svelte`'s date math before
+scoping). Add a Settings toggle for week-start day (Sunday/Monday, the
+common two). Timezone: **investigate whether this is actually needed
+before building it** — the app already uses the device's local time
+throughout (`new Date()`, no UTC conversion layer per existing due-date/
+reminder code) which is correct for a single-device-local personal task
+manager; a timezone *setting* would only matter if a task's due date
+needs to mean the same instant across devices in different zones, which
+may not be a real scenario here. Scope that question first, don't build
+a timezone picker speculatively.
+
+### B48. Android widget: flatter, 2-color light/dark, no border highlight — OPEN (owner, 2026-07-13)
+B37 (v4.8.0) already noted "final visual sizing/spacing remains an open,
+owner-driven polish pass." New specifics from on-device testing: remove
+the border highlight, make the widget flatter (less shadow/depth), and
+give it a genuine 2-color treatment that follows the *system* light/dark
+setting (not the in-app theme setting — Android widgets render on the
+home screen, outside the app's own theme context, and should match
+whatever the OS is in). Also reported: the widget preview (long-press →
+widget picker) renders "something abnormal" but looks correct once
+actually placed on the home screen — worth confirming whether this is a
+real bug in the preview-rendering path or just an Android OS preview
+quirk before spending time on it. Same "owner builds/tests in Android
+Studio, not the assistant" rule as all Android work.
+
+### B49. Card Detail redesign — OPEN, needs its own scoping pass (owner, 2026-07-13)
+Owner feedback: editing a task still feels complicated/overloaded despite
+v4.11.1's collapsible-sections pass (B16/B18/B30 all landed inside this
+same panel since then, adding to the density). Explicitly **visual/layout
+only — every current field and function must survive**: Status, Priority,
+Due date, Reminder, Tags, Checklist, Custom fields, Notes, pin/archive/
+delete/duplicate, history. This is a genuine redesign, not a tweak — needs
+its own scoping pass (which fields are core-identity-always-visible vs.
+progressive-disclosure, whether the collapsible-section pattern itself is
+the right one or something else reads better) rather than another
+incremental pass on top of the current layout.
+
+### B50. Custom time picker (extend B38 to reminder times) — OPEN (owner, 2026-07-13)
+B38 (v4.6.5) replaced the native date input with a themed
+`CalendarPicker.svelte` for Due date; `CardDetail`'s Reminder field
+already reuses the same component with `withTime` for date+time
+together, but B49's redesign context surfaced that this doesn't fully
+read as "solved" — the *time-only* picking experience still leans on a
+native `<input type="time">` in some contexts (check `CalendarPicker`'s
+own time row and the Notifications settings' default-reminder-time
+field). Same design language, same interaction idea as the existing date
+picker; if no clean Svelte time-picker primitive fits the existing
+component's approach, build a matching custom one rather than mixing
+native and themed pickers in the same form.
+
+### B51. Consistent animations, web vs Android — OPEN (owner, 2026-07-13)
+Owner-reported: some transitions/animations exist on one platform but not
+the other, or differ in feel. Needs an actual inventory pass first (grep
+`transition:`, `animation:`, and Svelte's `transition:`/`animate:`
+directives across every component, note which are pure-CSS — should
+already be platform-consistent — vs. anything gated by a platform check
+or relying on a capability that might not exist in the Android WebView)
+before deciding what to fix; likely candidates are anything timed against
+`prefers-reduced-motion` or relying on browser APIs with different
+WebView-vs-desktop-Chrome support.
+
 ---
 
 ## Track C — Public Release & Open Source
@@ -569,10 +695,13 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
 | 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
 | 7 | v4.17.0 ✓ | — | C8, C9 ✓ | Shipped — new icon everywhere (web favicons, Android launcher + notification icons) and self-hosted fonts (no more Google Fonts CDN call). Found and deleted 2 unreferenced leftover template files along the way (old vector-drawable launcher icon). |
-| 8 | v4.18.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
-| 9 | (unversioned) | — | C7 → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
-| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **v4.18** → … |
-| — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
+| 8 | v4.18.0 | A32, A33, A34 | — | **Bumped ahead of the plain-language pass** (owner on-device testing, 2026-07-13): 3 real functional bugs — sync silently not replicating despite showing "synced," Android notifications firing without proper behavior, Export JSON not working on Android at all. All three need investigation before a fix is even shaped; see each item's own entry. Trust/reliability bugs outrank polish. |
+| 9 | v4.19.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
+| 10 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
+| 11 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |
+| — | (unversioned) | — | C7 → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **v4.18** → v4.21 → … |
+| — | (unscheduled) | — | B39, B47, B48, B50, B51 | B39: stale device entries after a rename (needs schema-change care). B47: week-start-day setting (timezone half needs scoping first — may not be needed). B48: Android widget flatter/2-color/no-border polish. B50: extend the custom date-picker pattern to time-only fields. B51: web-vs-Android animation consistency inventory. None urgent enough to claim a version slot yet; pick up opportunistically. |
 | — | (parked) | — | B33, B28 | Sub-projects and rethinking positional-done — parked 2026-07-13 with the feature-phase wind-down; revisit post-release only if daily use demands it. |
 | — | (post-release) | — | E1 | PC standalone app + embedded sync host — GOAL.md's endgame, deliberately after going public. Scoping conversation first. |
 
