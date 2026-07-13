@@ -77,6 +77,76 @@ describe('attachSyncHandlers settle-once guard', () => {
 
     expect(onSettle).toHaveBeenCalledExactlyOnceWith(undefined);
   });
+
+  // A32 (owner-reported, 2026-07-13): status showed "synced" when devices
+  // weren't actually syncing. Root cause: PouchDB's combined db.sync()
+  // object always emits a bare 'paused' (no error) whenever either
+  // direction pauses — including pausing to retry after a connection
+  // failure under retry:true — because its internal pushPaused()/
+  // pullPaused() listeners discard whatever error the underlying push/pull
+  // sub-replication's own 'paused' event carried. These tests drive that
+  // exact shape directly against handler.push/handler.pull (which real
+  // PouchDB exposes as public instance properties on its Sync class).
+  function fakeHandlerWithSubReplications() {
+    const base = fakeHandler() as ReturnType<typeof fakeHandler> & {
+      push: ReturnType<typeof fakeHandler>;
+      pull: ReturnType<typeof fakeHandler>;
+    };
+    base.push = fakeHandler();
+    base.pull = fakeHandler();
+    return base;
+  }
+
+  it('surfaces a push sub-replication error even though the combined "paused" carries none', () => {
+    const handler = fakeHandlerWithSubReplications();
+    const onSettle = vi.fn();
+    attachSyncHandlers(handler, onSettle);
+
+    handler.push.fire('paused', new Error('unreachable'));
+    handler.fire('paused', undefined); // PouchDB's combined wrapper — always errorless
+
+    expect(onSettle).toHaveBeenCalledExactlyOnceWith(expect.any(Error));
+    expect(syncState.status).toBe('error');
+  });
+
+  it('surfaces a pull sub-replication error the same way', () => {
+    const handler = fakeHandlerWithSubReplications();
+    const onSettle = vi.fn();
+    attachSyncHandlers(handler, onSettle);
+
+    handler.pull.fire('paused', new Error('unreachable'));
+    handler.fire('paused', undefined);
+
+    expect(onSettle).toHaveBeenCalledExactlyOnceWith(expect.any(Error));
+    expect(syncState.status).toBe('error');
+  });
+
+  it('clears a stashed sub-replication error once that direction goes active again', () => {
+    const handler = fakeHandlerWithSubReplications();
+    const onSettle = vi.fn();
+    attachSyncHandlers(handler, onSettle);
+
+    handler.push.fire('paused', new Error('unreachable'));
+    handler.push.fire('active'); // reconnected
+    handler.push.fire('paused', undefined); // genuinely caught up this time
+    handler.fire('paused', undefined);
+
+    expect(onSettle).toHaveBeenCalledExactlyOnceWith(undefined);
+    expect(syncState.status).toBe('idle');
+  });
+
+  it('still marks a genuinely successful sync as synced (no regression)', () => {
+    const handler = fakeHandlerWithSubReplications();
+    const onSettle = vi.fn();
+    attachSyncHandlers(handler, onSettle);
+
+    handler.push.fire('paused', undefined);
+    handler.pull.fire('paused', undefined);
+    handler.fire('paused', undefined);
+
+    expect(onSettle).toHaveBeenCalledExactlyOnceWith(undefined);
+    expect(syncState.status).toBe('idle');
+  });
 });
 
 describe('startSync() respects the B13 pause toggle', () => {

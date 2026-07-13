@@ -396,18 +396,53 @@ if (typeof window !== 'undefined') {
 // both through one handler at a time avoids that redundant traffic and any
 // risk of the two racing to write the same doc.
 //
-// Exported for tests/sync.test.ts (A16) — takes a fake PouchDB-sync-shaped
-// object (anything with a chainable `.on(event, cb)`) so the "settle only
-// fires once even if both 'paused' and 'error' fire" dedup guard can be
-// verified without a real replication (this project has no CI-reachable
-// CouchDB to test a genuinely dropped connection against).
+// A32 (owner-reported, 2026-07-13): status showed "Connected — last synced"
+// on both devices while nothing was actually reaching the remote. Root
+// cause, traced through PouchDB's own source (node_modules/pouchdb/dist/
+// pouchdb.js): db.sync()'s combined Sync object always emits a bare
+// 'paused' (no error) whenever EITHER direction pauses — its internal
+// pushPaused()/pullPaused() listeners discard whatever argument the
+// underlying push/pull sub-replication's own 'paused' event carried. Under
+// `retry: true`, a connection failure triggers backOff(), which ALSO emits
+// 'paused' (this time *with* the error) on the sub-replication — but that
+// error never reaches the combined object, which just sees another bare
+// 'paused' and treats it identically to "genuinely caught up." The
+// combined object's own 'error' event only fires once the underlying
+// replication *promise rejects*, which never happens under `retry: true`
+// for an ordinary unreachable-host/timeout — PouchDB just retries forever,
+// silently. Net effect: any retryable connectivity failure reported as a
+// permanent "synced" success. Fixed by listening to the sub-replications
+// directly (handler.push/handler.pull — public instance properties on
+// PouchDB's Sync class) to recover the error the combined wrapper drops,
+// without giving up `retry: true`'s automatic reconnect behavior.
+//
+// Exported for tests/sync.test.ts (A16/A32) — takes a fake PouchDB-sync-
+// shaped object (chainable `.on(event, cb)`, optionally with `.push`/
+// `.pull` sub-objects of the same shape) so this can be verified without a
+// real replication (this project has no CI-reachable CouchDB to test a
+// genuinely dropped connection against).
 export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
   let settled = false;
   const settle = (err: any) => { if (!settled) { settled = true; onSettle?.(err); } };
+
+  let pushErr: any = undefined, pullErr: any = undefined;
+  if (handler.push && typeof handler.push.on === 'function') {
+    handler.push.on('paused', (err: any) => { pushErr = err ?? undefined; });
+    handler.push.on('active', () => { pushErr = undefined; });
+  }
+  if (handler.pull && typeof handler.pull.on === 'function') {
+    handler.pull.on('paused', (err: any) => { pullErr = err ?? undefined; });
+    handler.pull.on('active', () => { pullErr = undefined; });
+  }
+
   handler
     .on('change', () => { syncState.status = 'syncing'; notify(); })
     .on('active', () => { syncState.status = 'syncing'; notify(); })
-    .on('paused', (err: any) => { if (err) markError(err); else markSynced(); settle(err); })
+    .on('paused', (err: any) => {
+      const real = err ?? pushErr ?? pullErr;
+      if (real) markError(real); else markSynced();
+      settle(real);
+    })
     .on('error', (err: any) => { markError(err); settle(err); });
   return handler;
 }
