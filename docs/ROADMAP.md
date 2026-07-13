@@ -267,6 +267,29 @@ only JSON was reported — check all three once diagnosed. Ties into B45's
 export/import redesign below; worth fixing the native-download mechanism
 and the UX pass together rather than twice.
 
+### A35. Desktop sync defaults to loopback, not a rememberable LAN IP — shipped in v4.18.0
+Owner session after the A32 incident (a DHCP lease change silently broke
+sync on every device). First plan was a 3-phase "no human ever types an
+IP" system (uuid-verified server identity + automatic LAN rescan + QR
+pairing + eventually a native mDNS-discovering PC app). Owner correctly
+pushed back mid-plan: if Track E (the native PC app) is the real,
+permanent answer, building throwaway interim machinery for it isn't the
+right call — better to ship the one piece that's unconditionally correct
+regardless of that future architecture, and pull Track E forward instead
+of building a bridge to it. Landed: on desktop web, `DEFAULT_SYNC_URL`
+now defaults to `http://127.0.0.1:5984/offlog` instead of any real LAN
+address, whenever nothing was explicitly configured. This is sound in a
+way the old hardcoded-IP default never was — loopback is *structurally*
+guaranteed correct for a co-located server (this app's whole architecture
+is "the PC is the host," GOAL.md), not a guess that can go stale the way
+a remembered IP can. Android still falls back to `''` ("not configured")
+since a phone's own 127.0.0.1 is itself, not the PC — Settings already
+shows a friendly "Not connected yet" for that case (B43). Verified live:
+cleared localStorage, reloaded, Settings showed the loopback URL
+pre-filled and "Connected — last synced" with zero manual input.
+**The phone-side auto-rescan/QR-pairing phases were deliberately not
+built** — see Track E, pulled forward as the actual next priority instead.
+
 ---
 
 ## Track B — Features
@@ -525,6 +548,15 @@ before deciding what to fix; likely candidates are anything timed against
 `prefers-reduced-motion` or relying on browser APIs with different
 WebView-vs-desktop-Chrome support.
 
+### B52. QR pairing — DEFERRED (owner-directed, 2026-07-13)
+Originally scoped as an interim "no human ever types an IP" step (device
+scans a QR encoding `{url, credentials, server-uuid}`). Owner decided
+against building it: it would be throwaway work once Track E (native PC
+app) exists, since that app can generate/serve pairing info itself
+without needing this interim mechanism. Not scheduled — revisit only if
+Track E's timeline slips badly enough that an interim fix becomes worth
+the cost again.
+
 ---
 
 ## Track C — Public Release & Open Source
@@ -630,7 +662,7 @@ was open question Q6. Distinct from declined Track D: this is still
 CouchDB-protocol replication with one fixed host — the PC — not a mesh;
 the innovation is packaging, not a new sync transport.
 
-### E1. Scope the PC app + embedded sync host — OPEN, needs its own scoping pass
+### E1. Scope the PC app + embedded sync host — OPEN, PULLED FORWARD (owner-directed, 2026-07-13)
 Two halves, deliberately one item because GOAL.md treats them as one
 product: (1) a real installable PC app (not a PWA — see DECISIONS.md);
 technology question (Tauri vs Electron vs other, and whether the
@@ -639,10 +671,18 @@ Q6. (2) The app embeds a CouchDB-replication-compatible server
 (pouchdb-server/express-pouchdb class, or a Rust-side equivalent if
 Tauri) so a phone pairs to the PC with no separate CouchDB install —
 which is also what finally makes B43's human-friendly sync story fully
-true rather than just better-worded. Deliberately sequenced **after**
-going public (Path to v1.0 step 4): browser + Android + self-hosted
-CouchDB is a complete, honest v1. Not scheduled to a version; scoping
-conversation first, like B33/B28 would have needed.
+true rather than just better-worded.
+
+Originally sequenced **after** going public (Path to v1.0 step 4).
+Reprioritized during the A32/A35 sync-reliability session: once it was
+clear a native PC app with mDNS discovery (`_offlog._tcp` — a native app
+can see its own network interfaces, unlike a browser tab) is the actual
+permanent fix for LAN-IP drift, the owner chose to skip building interim
+phone-side workarounds (auto-rescan, QR pairing — see A35, B52) and move
+this item earlier instead, since those workarounds would be thrown away
+once this ships anyway. Still needs its own scoping conversation before
+a version number attaches, same as B33/B28 would have — "pulled forward"
+means next-in-line for that scoping pass, not yet scheduled to a release.
 
 ---
 
@@ -695,7 +735,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
 | 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
 | 7 | v4.17.0 ✓ | — | C8, C9 ✓ | Shipped — new icon everywhere (web favicons, Android launcher + notification icons) and self-hosted fonts (no more Google Fonts CDN call). Found and deleted 2 unreferenced leftover template files along the way (old vector-drawable launcher icon). |
-| 8 | v4.18.0 | A32, A33, A34 | — | **Bumped ahead of the plain-language pass** (owner on-device testing, 2026-07-13): 3 real functional bugs — sync silently not replicating despite showing "synced," Android notifications firing without proper behavior, Export JSON not working on Android at all. All three need investigation before a fix is even shaped; see each item's own entry. Trust/reliability bugs outrank polish. |
+| 8 | v4.18.0 | A32 ✓, A33, A34, A35 ✓ | — | **Bumped ahead of the plain-language pass** (owner on-device testing, 2026-07-13): A32 (sync falsely reporting "synced" — fixed, plus the Android cleartext-config and hardcoded-default-URL causes found live with the owner), A33 (silent Android notifications), A34 (Export JSON broken on Android). A35 shipped same-day, scope narrowed from the original self-healing-rediscovery plan to just the PC-loopback default — see A35's own entry for why the rest was deferred in favor of Track E. |
 | 9 | v4.19.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
 | 10 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
 | 11 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |

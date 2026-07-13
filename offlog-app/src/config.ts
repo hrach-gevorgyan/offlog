@@ -5,21 +5,33 @@ const envUrl = import.meta.env.VITE_COUCH_URL as string | undefined;
 const envUser = import.meta.env.VITE_COUCH_USER as string | undefined;
 const envPass = import.meta.env.VITE_COUCH_PASS as string | undefined;
 
+function isNativePlatform(): boolean {
+  return !!(window as any).Capacitor?.isNativePlatform?.();
+}
+
 // Owner-reported real bug (2026-07-13): this used to fall back to a
-// hardcoded real LAN IP. That address goes stale the moment the sync
-// host's IP changes (DHCP, router restart, new network) — and worse, a
-// fresh install or reinstall wipes localStorage, silently reverting to
-// this same wrong hardcoded address with no indication anything was
-// misconfigured (the exact failure that just happened: a phone reinstall
-// silently pointed sync at a year-old IP instead of showing "not
-// connected"). Falls back to empty now — startSync()/syncNow() treat an
-// empty URL as "not configured" and skip attempting a connection
-// entirely, and Settings' Sync tab already has a friendly "Not connected
-// to another device yet" state for exactly this (B43). Set VITE_COUCH_URL
-// in .env.local (git-ignored) for your own convenience if you want your
-// own builds to default to your current server instead of typing it in
-// once after install.
-export const DEFAULT_SYNC_URL = envUrl ?? '';
+// hardcoded real LAN IP, which goes stale the moment the sync host's IP
+// changes (DHCP, router restart, new network) — and a fresh install or
+// reinstall wipes localStorage, silently reverting to that same wrong
+// address with no indication anything was misconfigured (exactly what
+// happened: a phone reinstall silently pointed sync at a year-old IP).
+//
+// The fix has two parts. On Android/native, there's no way to guess a
+// working address — falls back to '' ("not configured"); startSync()/
+// syncNow() treat that as a no-op, and Settings' Sync tab already shows
+// a friendly "Not connected to another device yet" for it (B43).
+//
+// On desktop web, though, a real default *is* structurally guaranteed
+// correct: this app's architecture is "the PC is the host" (GOAL.md) —
+// CouchDB runs on the same machine as the browser tab — so loopback
+// (127.0.0.1) is always right, unlike a remembered LAN IP, which can
+// silently stop being this machine's address. Unlike the old bug, this
+// isn't a guess that can go stale: loopback is loopback forever,
+// regardless of DHCP, routers, or networks. Only applies when nothing
+// was explicitly configured (no VITE_COUCH_URL, no saved value) — an
+// explicit choice (e.g. syncing to a different machine's CouchDB) is
+// never overridden.
+export const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() ? 'http://127.0.0.1:5984/offlog' : '');
 export const COUCH_USER = envUser ?? 'offlog';
 export const COUCH_PASS = envPass ?? 'REDACTED_CREDENTIAL';
 
