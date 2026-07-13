@@ -179,8 +179,34 @@ export function catchUpWeb(tasks: TaskDoc[]) {
 // (Android reads the action type at schedule time, not at display time).
 const REMINDER_ACTION_TYPE = 'REMINDER_ACTIONS';
 
+// A33 (owner-reported, 2026-07-13): reminders fired but "silent, not fully
+// functional." Root cause — nothing here ever created an Android
+// notification channel, and every scheduled notification also omitted
+// channelId. Android 8+ requires a channel per notification; without an
+// explicit one, the OS/plugin falls back to an auto-created "Default"
+// channel at IMPORTANCE_DEFAULT-or-lower — no guaranteed sound, no
+// heads-up popup, and (worse) its importance is fixed forever at whatever
+// it was on first auto-creation, since apps can't alter a channel's
+// importance after creation, only the user can via system settings. An
+// explicit high-importance channel, created once up front, is the only
+// way to guarantee sound + heads-up on every install.
+const REMINDER_CHANNEL_ID = 'reminders';
+
+async function ensureReminderChannel() {
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  await LocalNotifications.createChannel({
+    id: REMINDER_CHANNEL_ID,
+    name: 'Task reminders',
+    description: 'Reminders for tasks with a due date or reminder time',
+    importance: 5, // IMPORTANCE_HIGH — sound + heads-up popup
+    visibility: 1, // VISIBILITY_PUBLIC — full content on lock screen
+    vibration: true,
+  });
+}
+
 async function scheduleNative(tasks: TaskDoc[]) {
   const { LocalNotifications } = await import('@capacitor/local-notifications');
+  await ensureReminderChannel();
   await LocalNotifications.registerActionTypes({
     types: [{
       id: REMINDER_ACTION_TYPE,
@@ -203,6 +229,7 @@ async function scheduleNative(tasks: TaskDoc[]) {
       schedule: { at: new Date(t.reminder_at!) },
       extra: { taskId: t._id },
       actionTypeId: REMINDER_ACTION_TYPE,
+      channelId: REMINDER_CHANNEL_ID,
     }));
   if (toSchedule.length) await LocalNotifications.schedule({ notifications: toSchedule });
 }
@@ -233,6 +260,7 @@ export async function initNotificationListeners(): Promise<void> {
   const perm = await LocalNotifications.checkPermissions();
   permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
   await checkExactAlarmPermission();
+  await ensureReminderChannel();
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
     const taskId = (action.notification.extra as any)?.taskId;
     if (!taskId) return;

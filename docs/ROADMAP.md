@@ -240,32 +240,36 @@ reaching the remote CouchDB at all (check the CouchDB server's own doc
 count against each device's local count). Likely needs the owner to
 reproduce with both devices' consoles/logcat visible.
 
-### A33. Android notifications fire silently, not fully functional — OPEN, URGENT
+### A33. Android notifications fire silently, not fully functional — shipped in v4.18.0
 Owner-reported (2026-07-13): notifications do appear on Android but
 without sound/proper behavior — "silent one, still not fully functional."
-Needs a concrete repro (which notification — reminder vs the widget? does
-it show in the shade at all, or only sometimes? does tapping it open the
-right task per `pendingOpenTaskId`?) before diagnosing. Candidates to
-check: `AndroidManifest.xml`'s exact-alarm/notification permissions
-actually granted on the test device (Settings has an "Alarms & reminders"
-status surface already, per A28 — confirm it reads granted), the
-notification channel's importance level (Android notification channels
-each have their own sound/vibration settings independent of the app;
-a channel created at low importance stays silent even if the app "sends"
-the notification correctly), and whether `numericId()`'s hash collisions
-could be silently overwriting/cancelling one reminder with another.
+Root cause: nothing in `notifications.ts` ever created an Android
+notification channel, and scheduled notifications didn't set a
+`channelId` either — Android 8+ requires one per notification, and
+without an explicit channel the OS/plugin falls back to an
+auto-created "Default" channel whose importance (fixed forever once
+created — only the user can change it later, in system settings) isn't
+guaranteed to include sound or a heads-up popup. Fixed by explicitly
+creating a high-importance `reminders` channel (`ensureReminderChannel()`
+in `notifications.ts`, called both at listener-init time and before
+every native schedule) and tagging every scheduled notification with it.
+Needs an owner APK build/Studio check to confirm sound+heads-up on a
+real device, per the standing Android verification rule.
 
-### A34. Export JSON doesn't work on Android — OPEN, URGENT
-Owner-reported (2026-07-13). Likely a WebView file-download gap: browser
-`download` attribute / blob-URL-triggered downloads don't behave the same
-inside a Capacitor WebView as a real browser tab — probably needs
-`@capacitor/filesystem` (write to device storage) + `@capacitor/share`
-(hand off to the OS share sheet) instead of the current web-only download
-mechanism, gated behind `Capacitor.isNativePlatform()`. Same underlying
-mechanism likely needed for Export CSV/Export Project too, even though
-only JSON was reported — check all three once diagnosed. Ties into B45's
-export/import redesign below; worth fixing the native-download mechanism
-and the UX pass together rather than twice.
+### A34. Export JSON doesn't work on Android — shipped in v4.18.0
+Owner-reported (2026-07-13). Root cause confirmed: the `<a download>` +
+blob-URL trick `downloadBlob()` used has no browser download manager to
+hand off to inside a Capacitor WebView, so it silently did nothing.
+Fixed by branching on `Capacitor.isNativePlatform()`: on native, write
+the file to app cache storage via the new `@capacitor/filesystem`
+dependency and hand it to the OS share sheet via the new
+`@capacitor/share` dependency (both newly added, owner-approved);
+web keeps the existing blob-download path unchanged. Applies to all
+three export paths (JSON backup, per-project JSON, tasks CSV) since they
+all funnel through the same `downloadBlob()`. `npx cap sync android` run
+to register the two new plugins — needs an owner Studio build to verify
+the share sheet on a real device. Ties into B45's export/import redesign
+below, which can build on this native mechanism rather than replacing it.
 
 ### A35. Desktop sync defaults to loopback, not a rememberable LAN IP — shipped in v4.18.0
 Owner session after the A32 incident (a DHCP lease change silently broke
@@ -735,7 +739,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
 | 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
 | 7 | v4.17.0 ✓ | — | C8, C9 ✓ | Shipped — new icon everywhere (web favicons, Android launcher + notification icons) and self-hosted fonts (no more Google Fonts CDN call). Found and deleted 2 unreferenced leftover template files along the way (old vector-drawable launcher icon). |
-| 8 | v4.18.0 | A32 ✓, A33, A34, A35 ✓ | — | **Bumped ahead of the plain-language pass** (owner on-device testing, 2026-07-13): A32 (sync falsely reporting "synced" — fixed, plus the Android cleartext-config and hardcoded-default-URL causes found live with the owner), A33 (silent Android notifications), A34 (Export JSON broken on Android). A35 shipped same-day, scope narrowed from the original self-healing-rediscovery plan to just the PC-loopback default — see A35's own entry for why the rest was deferred in favor of Track E. |
+| 8 | v4.18.0 | A32 ✓, A33 ✓, A34 ✓, A35 ✓ | — | **Bumped ahead of the plain-language pass** (owner on-device testing, 2026-07-13): A32 (sync falsely reporting "synced" — fixed, plus the Android cleartext-config and hardcoded-default-URL causes found live with the owner), A33 (silent Android notifications), A34 (Export JSON broken on Android). A35 shipped same-day, scope narrowed from the original self-healing-rediscovery plan to just the PC-loopback default — see A35's own entry for why the rest was deferred in favor of Track E. |
 | 9 | v4.19.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
 | 10 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
 | 11 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |

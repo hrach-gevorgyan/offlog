@@ -281,7 +281,25 @@
     setTimeout(() => { importStatus = ''; }, 4000);
   }
 
-  function downloadBlob(content: string, mime: string, filename: string) {
+  // A34 (owner-reported, 2026-07-13): the blob-URL + <a download> trick
+  // below is a no-op inside a Capacitor Android WebView — there's no
+  // browser download manager to hand it to. On native, write the file to
+  // app storage via @capacitor/filesystem and hand it to the OS share
+  // sheet via @capacitor/share instead, so the user picks where it ends
+  // up (Files, Drive, email, etc.) same as any other Android share flow.
+  async function downloadBlob(content: string, mime: string, filename: string) {
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      const written = await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8,
+      });
+      await Share.share({ title: filename, url: written.uri });
+      return;
+    }
     const blob = new Blob([content], { type: mime });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -293,7 +311,7 @@
     try {
       const all = await db.allDocs({ include_docs: true });
       const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
-      downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-backup-${new Date().toISOString().slice(0,10)}.json`);
+      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-backup-${new Date().toISOString().slice(0,10)}.json`);
     } catch {
       showError('Failed to export backup. Please try again.');
     }
@@ -309,7 +327,7 @@
     try {
       const docs = await exportProjectDocs(exportProjectId);
       const name = $projectsStore.find(p => p._id === exportProjectId)?.name ?? 'project';
-      downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0,10)}.json`);
+      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0,10)}.json`);
     } catch {
       showError('Failed to export project. Please try again.');
     }
@@ -318,7 +336,7 @@
   async function doExportCSV() {
     try {
       const csv = await exportTasksCSV();
-      downloadBlob(csv, 'text/csv', `offlog-tasks-${new Date().toISOString().slice(0,10)}.csv`);
+      await downloadBlob(csv, 'text/csv', `offlog-tasks-${new Date().toISOString().slice(0,10)}.csv`);
     } catch {
       showError('Failed to export CSV. Please try again.');
     }
