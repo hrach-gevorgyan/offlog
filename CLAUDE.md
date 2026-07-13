@@ -288,6 +288,13 @@ rather than invoking Gradle.
 - User-facing wording: statuses are called **"Status"**, never "Column"
   (internal field names still say `column_id` — that's a frozen legacy name).
 - Dates in docs are absolute (e.g. "2026-07"), not relative.
+- **Max 3 font families project-wide.** Currently 2: Hanken Grotesk (UI
+  text) and IBM Plex Mono (metadata/labels/mono contexts) — see
+  `--mono`/base `font-family` in `app.css`. Both are self-hosted from
+  `offlog-app/public/fonts/` via `@font-face` (not Google Fonts' CDN —
+  see C9 in ROADMAP.md for why), latin subset only. If a new font is ever
+  needed, download and self-host it the same way; don't reach for a CDN
+  `@import`.
 
 ## Maintenance routine (mandatory)
 - Cadence: a maintenance pass **every 3 minor versions**. The current

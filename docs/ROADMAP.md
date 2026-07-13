@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.16.0**. Everything below is a candidate, not a
+Current version: **v4.17.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -451,28 +451,25 @@ no real credentials in source at all, `.env.local`-only with no committed
 fallback; may mean publishing to GitHub as fresh history rather than
 pushing this repo's full log.
 
-### C8. New app icon, all platforms — OPEN (owner, 2026-07-13)
-One new icon — deliberately basic and simple — applied everywhere it
-appears: web favicon/`<link rel="icon">`, Android launcher icon (mind the
-hard-won gotchas: uninstall + Clean Project before reinstalling, launcher
-caches aggressively), Android notification icon (must stay a white
-silhouette with transparency or the OS substitutes a generic triangle),
-store listing assets (feeds C3), landing page (feeds C5), and eventually
-the PC app (Track E). Brand-color propagation rule in CLAUDE.md applies if
-the icon changes the palette.
+### C8. New app icon, all platforms — shipped in v4.17.0
+New interlocking-ribbon mark (owner-supplied SVG, `resources/source-
+logo.svg`) applied to web favicons, Android adaptive + legacy launcher
+icons (all densities), and the Android notification icon (regenerated as
+a proper white silhouette with transparency). `resources/generate-
+icons.cjs` (uses `sharp`) regenerates every size from the one source file
+if the logo or brand color ever changes again. Store listing assets (C3)
+and the landing page (C5) still need the icon applied when those items
+happen; the PC app (Track E) will need it too once that exists.
 
-### C9. Typography: ≤3 font families, self-hosted — OPEN (owner, 2026-07-13)
-Owner rule: the whole project uses at most 3 font families. Current state
-already complies (2: Hanken Grotesk for UI, IBM Plex Mono for
-metadata/labels) — so this item is mostly **enforcement plus one real
-fix**: both families load from Google Fonts' CDN via `@import` in
-`app.css`, meaning every app load makes a network request to Google. For
-an app whose whole promise is local-first / offline / zero telemetry,
-that's both a functional gap (no fonts offline on first uncached load) and
-a privacy smell (Google sees every user's IP on every load). Bundle the
-font files into the app (woff2 in `public/`, `@font-face` in app.css),
-drop the CDN import, and record the ≤3-families rule in CLAUDE.md's style
-conventions.
+### C9. Typography: ≤3 font families, self-hosted — shipped in v4.17.0
+Both families (Hanken Grotesk, IBM Plex Mono) are now self-hosted from
+`public/fonts/` via `@font-face`, latin subset only — no more Google
+Fonts CDN `@import`. Hanken Grotesk ships as one variable font (all 4
+weights, one file); IBM Plex Mono needed 2 static weight files. Fixes a
+real gap: fonts previously failed on an offline first launch and every
+launch phoned Google regardless, both contrary to this app's whole
+premise. The ≤3-families rule is now written into CLAUDE.md's style
+conventions. Full codebase audit confirmed no stray third font anywhere.
 
 ### C10. Plain-language pass: every string, every document — OPEN (owner, 2026-07-13)
 The sibling of C6 (which covers public-facing *branding* copy): go through
@@ -571,7 +568,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 4 | v4.14.0 ✓ | — | B8, B30 ✓ | Shipped — project templates ("New from template" copies a project's status structure and optionally its open tasks) and a notes-length soft counter. Shipped ahead of v4.13.0's Android leg, which is owner-paced and doesn't block anything else. |
 | 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
 | 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
-| 7 | v4.17.0 | — | C8, C9 | Visual identity for release: new icon everywhere + self-hosted fonts (kills the Google-CDN call every load makes). Both small, both prerequisites for C3/C5's assets. |
+| 7 | v4.17.0 ✓ | — | C8, C9 ✓ | Shipped — new icon everywhere (web favicons, Android launcher + notification icons) and self-hosted fonts (no more Google Fonts CDN call). Found and deleted 2 unreferenced leftover template files along the way (old vector-drawable launcher icon). |
 | 8 | v4.18.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
 | 9 | (unversioned) | — | C7 → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **v4.18** → … |

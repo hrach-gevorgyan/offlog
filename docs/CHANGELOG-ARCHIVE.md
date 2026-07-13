@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.11.1 | Design-kit polish + PWA removal: Focus view solid cards, every native `<select>` converted to CustomSelect, CardDetail collapsible sections, PWA support dropped entirely | `v4.11.1` |
 | 4.11.0 | Kanban filters + checklists (B2, B18): shared FilterBar.svelte for both views, flat task checklist with a progress badge on Kanban/List | `v4.11.0` |
 | 4.10.1 | Maintenance pass (fourth run): fixed a real stored-XSS gap in GlobalSearch's highlight(), a missing logChange() on archiveProject()/unarchiveProject() | `v4.10.1` |
 | 4.10.0 | Dashboard weekly stats + command palette (B17, B9): "N completed this past week" line + Today panel, Ctrl+K now matches action commands too | `v4.10.0` |
