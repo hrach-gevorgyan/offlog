@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.12.0**. Everything below is a candidate, not a
+Current version: **v4.15.1**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -32,29 +32,40 @@ just make it bigger?
 ## Path to v1.0 — the whole story, even the parts that aren't realistic yet
 
 This section exists so the destination is never buried under backlog
-detail. It's a narrative, not a schedule.
+detail. It's a narrative, not a schedule. **Rewritten 2026-07-13 after an
+owner direction-setting session**: the feature-building phase is declared
+over — "enough experimenting and making only new features." The backlog's
+big remaining architecture experiments (B33 sub-projects, B28 rethinking
+positional-done) are parked, not scheduled. From here the work is
+stabilization, human-friendliness, and shipping — see GOAL.md for what
+"shipped" means.
 
-1. **Right now (Track A + B):** keep the app trustworthy and close real
-   feature gaps, in small paired releases (see Sequencing below). This is
-   the only part of the roadmap with real short-term commitments.
-2. **In parallel, whenever there's spare attention (Track C, starting
-   now):** get honest about what "ready for a stranger to install" means —
-   fix the hardcoded credentials, verify zero-config first run actually
-   holds, prepare the public GitHub repo and a Play Store listing. Most of
-   this is documentation/audit work, not new features, and doesn't have to
-   wait for Track A/B to finish.
-3. **Once the app feels finished enough to represent well publicly:** go
-   public. GitHub repo, website, Play Store listing. This is the concrete,
-   externally-visible "we made it" milestone — everything before this
-   point is preparation for it.
-4. **After that, there's no further destination.** Offlog is a personal
-   tool, built for the owner's own use and shared as open source for
-   anyone who wants the same thing — not a product being grown toward a
-   business or a bigger platform. The plan past step 3 is just: keep
-   building whatever Track B features the owner personally still wants,
-   keep Track A's trustworthiness work going, and stop there. Mesh sync
-   and any form of monetization were both considered at length and
-   explicitly declined (2026-07-03) — see DECISIONS.md.
+1. **Now — dogfooding.** The owner starts using Offlog daily as his real
+   task manager (it was always built for that — GOAL.md). Bugs and
+   friction found in real use outrank everything in the backlog. This is
+   also the honest stability test no audit can substitute for.
+2. **Now, in parallel — make it speak human (Tracks B/C polish items).**
+   Sync settings that don't require knowing what CouchDB is (B43), storage
+   copy a non-technical person understands (B44), a proper icon (C8),
+   self-hosted fonts (C9), and a plain-language pass over every string and
+   document (C10). None of these are features; all of them are the gap
+   between "works for its developer" and "works for a person."
+3. **Then — the release gate (Track C core).** C7 credential fix
+   (mandatory, blocks everything public), C2 zero-config first-run
+   verification, then C1 GitHub, C5 landing page, C3 Play Store. This is
+   the externally-visible "we made it" milestone.
+4. **Then — the PC app as host (Track E).** GOAL.md's full vision: install
+   a real PC app from the website, and it *is* the sync host — phones
+   connect to it over home Wi-Fi with no CouchDB knowledge required. The
+   single biggest remaining engineering item, deliberately after going
+   public rather than blocking it (browser + Android + self-hosted CouchDB
+   is a complete, honest offering for a v1).
+5. **After that, there's no further destination.** Offlog stays a personal
+   tool shared as open source — not a product growing toward a business.
+   Maintenance passes continue; features return only when the owner
+   personally wants one. Mesh sync and any form of monetization were both
+   considered at length and explicitly declined (2026-07-03) — see
+   DECISIONS.md.
 
 Nothing above skips a step. A public repo with hardcoded credentials in its
 history would undermine the entire premise — so the ordering here is a
@@ -284,12 +295,14 @@ into a long form.
 
 ### B27. Archived tasks are too hidden — shipped in v4.9.0
 
-### B28. Rethink "last column = done" — OPEN, needs owner design session
+### B28. Rethink "last column = done" — PARKED (2026-07-13)
 The positional-done convention (`column_id === columns.at(-1)`) is a locked
 invariant (see DECISIONS.md) — but it also means a project's last status is
 *always* the done state, with no multiple terminal states. Needs a real
 design conversation before any implementation; may stay exactly as-is
-after that conversation. Scheduled for v4.16.0 (deliberately isolated).
+after that conversation. **Parked with the feature-phase wind-down**
+(owner, 2026-07-13 — see Path to v1.0): revisit only if daily dogfooding
+proves the current rule actually hurts, not on schedule.
 
 ### B29. Show tags on Kanban cards — shipped in v4.15.0
 
@@ -299,11 +312,14 @@ after that conversation. Scheduled for v4.16.0 (deliberately isolated).
 
 ### B32. Archive a whole project — shipped in v4.9.0
 
-### B33. Sub-projects — OPEN, needs its own scoping pass
+### B33. Sub-projects — PARKED (2026-07-13)
 Nested project hierarchy — a project containing child projects. Genuinely
 large: touches the data model (`ProjectDoc.space_id` becomes more like
 `parent_id`), every view's project-picker UI, and Dashboard/sidebar
-nesting. Scheduled for v4.16.0 (deliberately isolated).
+nesting. **Parked with the feature-phase wind-down** (owner, 2026-07-13 —
+see Path to v1.0): exactly the kind of architecture experiment the
+stabilization pivot exists to stop; revisit post-release only if real
+daily use demands it.
 
 ### B34. Project pinning — shipped in v3.9.0
 
@@ -366,6 +382,27 @@ CHANGELOG.md.
 
 ### B42. Agenda doesn't use full screen width — shipped in v4.8.0
 
+### B43. Human-friendly sync settings + Developer options — OPEN (owner, 2026-07-13)
+Settings → Sync is still written for IT people: a raw CouchDB URL field,
+credential mechanics, replication jargon. Per GOAL.md, the final user
+should only ever meet the word "CouchDB" in documentation, if at all.
+Redesign: the main Sync pane speaks plainly ("Connect to your home
+computer" / connection status / device name), and the technical machinery
+(server URL, database name, anything with a footgun) moves into a new
+**Developer options** sub-section — collapsed by default, worded so it's
+clearly not for everyday use. Developer options is also the future home
+for any other high-impact/dangerous toggles, keeping the rest of Settings
+safe to explore freely. Pure UI/copy — no sync-logic changes.
+
+### B44. Storage & quota copy, plain-language rewrite — OPEN (owner, 2026-07-13)
+B14 (v4.3.0) added an explanation of the browser quota number, but owner
+feedback says it still confuses: "quota," "MB used," and the browser-
+assigned ceiling read as developer concepts. Rewrite Settings → Data's
+storage section so a non-technical person gets the one thing that matters
+("your data is tiny; nothing to worry about — here's roughly how much room
+you're using") with the raw numbers demoted to a secondary detail, not the
+headline. Copy-only.
+
 ---
 
 ## Track C — Public Release & Open Source
@@ -418,6 +455,40 @@ no real credentials in source at all, `.env.local`-only with no committed
 fallback; may mean publishing to GitHub as fresh history rather than
 pushing this repo's full log.
 
+### C8. New app icon, all platforms — OPEN (owner, 2026-07-13)
+One new icon — deliberately basic and simple — applied everywhere it
+appears: web favicon/`<link rel="icon">`, Android launcher icon (mind the
+hard-won gotchas: uninstall + Clean Project before reinstalling, launcher
+caches aggressively), Android notification icon (must stay a white
+silhouette with transparency or the OS substitutes a generic triangle),
+store listing assets (feeds C3), landing page (feeds C5), and eventually
+the PC app (Track E). Brand-color propagation rule in CLAUDE.md applies if
+the icon changes the palette.
+
+### C9. Typography: ≤3 font families, self-hosted — OPEN (owner, 2026-07-13)
+Owner rule: the whole project uses at most 3 font families. Current state
+already complies (2: Hanken Grotesk for UI, IBM Plex Mono for
+metadata/labels) — so this item is mostly **enforcement plus one real
+fix**: both families load from Google Fonts' CDN via `@import` in
+`app.css`, meaning every app load makes a network request to Google. For
+an app whose whole promise is local-first / offline / zero telemetry,
+that's both a functional gap (no fonts offline on first uncached load) and
+a privacy smell (Google sees every user's IP on every load). Bundle the
+font files into the app (woff2 in `public/`, `@font-face` in app.css),
+drop the CDN import, and record the ≤3-families rule in CLAUDE.md's style
+conventions.
+
+### C10. Plain-language pass: every string, every document — OPEN (owner, 2026-07-13)
+The sibling of C6 (which covers public-facing *branding* copy): go through
+every in-app string (buttons, hints, empty states, error messages,
+Settings explainers) and every user-facing document (README, future
+release notes) and rewrite anything a non-technical person would stumble
+on. B43 and B44 are the two worst offenders and have their own items; this
+is the sweep for everything else, and the standing rule going forward —
+features, updates, and docs get written for humans first. Groundwork for
+any future marketing/discoverability work: the app must describe itself in
+the same plain language a stranger would search for.
+
 ---
 
 ## Track D — Mesh Sync — declined (2026-07-03)
@@ -428,6 +499,31 @@ service limits, no relay for devices never on the same network) and
 strategic (engineering cost not worth it for a single-user project with no
 multi-device-users scale to reach). **CouchDB sync remains the permanent,
 only sync transport.**
+
+---
+
+## Track E — PC standalone app as sync host (from GOAL.md, added 2026-07-13)
+
+The largest gap between GOAL.md and this roadmap: the goal describes
+"install the PC app from a website … the PC acts as the host and they sync
+automatically over home Wi-Fi," but until now the only trace of a PC app
+was open question Q6. Distinct from declined Track D: this is still
+CouchDB-protocol replication with one fixed host — the PC — not a mesh;
+the innovation is packaging, not a new sync transport.
+
+### E1. Scope the PC app + embedded sync host — OPEN, needs its own scoping pass
+Two halves, deliberately one item because GOAL.md treats them as one
+product: (1) a real installable PC app (not a PWA — see DECISIONS.md);
+technology question (Tauri vs Electron vs other, and whether the
+PouchDB-as-UMD-global architecture survives the move) is QUESTIONS.md's
+Q6. (2) The app embeds a CouchDB-replication-compatible server
+(pouchdb-server/express-pouchdb class, or a Rust-side equivalent if
+Tauri) so a phone pairs to the PC with no separate CouchDB install —
+which is also what finally makes B43's human-friendly sync story fully
+true rather than just better-worded. Deliberately sequenced **after**
+going public (Path to v1.0 step 4): browser + Android + self-hosted
+CouchDB is a complete, honest v1. Not scheduled to a version; scoping
+conversation first, like B33/B28 would have needed.
 
 ---
 
@@ -478,9 +574,14 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 3 | v4.13.0 | A31 (Android leg) | — | Just the Android verification A31 still needs — owner runs `cap sync` + a Studio check whenever convenient. Small enough that it doesn't need to hold up whatever else lands in this release; fold it in opportunistically. |
 | 4 | v4.14.0 ✓ | — | B8, B30 ✓ | Shipped — project templates ("New from template" copies a project's status structure and optionally its open tasks) and a notes-length soft counter. Shipped ahead of v4.13.0's Android leg, which is owner-paced and doesn't block anything else. |
 | 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
-| 6 | v4.16.0 | — | B33, B28 | Saved for last, deliberately isolated: sub-projects and rethinking "done = last column" are the two biggest open architecture questions left — each needs its own scoping conversation, not a feature-pairing shortcut. |
-| — | *Maintenance pass* | — | — | Every-3-releases cadence, resuming after A30's merged pass: v4.12 → **v4.15** → v4.18 → … |
+| 6 | v4.16.0 | — | B43, B44 | **Stabilization phase begins** (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). The two "still speaks IT" fixes first, since they're what the owner hits daily while dogfooding: human-friendly sync settings + Developer options, plain-language storage copy. |
+| 7 | v4.17.0 | — | C8, C9 | Visual identity for release: new icon everywhere + self-hosted fonts (kills the Google-CDN call every load makes). Both small, both prerequisites for C3/C5's assets. |
+| 8 | v4.18.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
+| 9 | (unversioned) | — | C7 → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **v4.18** → … |
 | — | (unscheduled) | — | B39 | Fix stale device entries after a rename — needs its own schema-change care (stable device id + name mapping), not a quick pairing. |
+| — | (parked) | — | B33, B28 | Sub-projects and rethinking positional-done — parked 2026-07-13 with the feature-phase wind-down; revisit post-release only if daily use demands it. |
+| — | (post-release) | — | E1 | PC standalone app + embedded sync host — GOAL.md's endgame, deliberately after going public. Scoping conversation first. |
 
 Within each release: land any Track A item first (or in the same PR as the
 Track B item it protects/enables), then the Track B items. Extend

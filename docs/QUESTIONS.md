@@ -49,11 +49,18 @@ of boilerplate legal language that doesn't fit a truly local-only app)?
 PWA support was dropped in v4.11.1 (owner decision, 2026-07-12) — the
 installable/offline-desktop story it provided is gone, and web is
 browser-only again. The owner wants a real PC standalone app eventually,
-explicitly **not** a PWA. **What's the right approach** — Tauri (thin,
-reuses the existing Svelte/Vite web build, smaller binary) vs. Electron
-(heavier, more mature/documented) vs. something else — and does it change
-anything about the current architecture (PouchDB-as-UMD-global, no
-bundler-managed PouchDB import) before that work starts?
+explicitly **not** a PWA — and per GOAL.md it's more than a wrapper: the
+PC app is meant to be the *sync host* other devices connect to over home
+Wi-Fi, with no separate CouchDB setup. Now tracked as ROADMAP.md's Track E
+(E1); this question is the still-open technology half of that item.
+**What's the right approach** — Tauri (thin, reuses the existing
+Svelte/Vite web build, smaller binary) vs. Electron (heavier, more
+mature/documented) vs. something else — and can either cleanly embed a
+CouchDB-replication-compatible server (e.g. pouchdb-server/express-pouchdb
+or a Rust equivalent) so the "PC as host" part of GOAL.md works without
+the user ever installing CouchDB? Does anything about the current
+architecture (PouchDB-as-UMD-global, no bundler-managed PouchDB import)
+need to change before that work starts?
 
 ---
 
@@ -66,22 +73,6 @@ enough data for it to matter. **Is there real-world data (from comparable
 local-first personal tools) on how large a single user's task/log dataset
 actually gets over multiple years** — informing whether A10 deserves
 priority now, or is safe to defer indefinitely?
-
----
-
-## Feature integration
-
-### Q5. Will B16 custom fields automatically appear in List's column selection (B36)?
-B36 (List view power customization, shipped v3.8.5) has a fixed `ColKey`
-union and a `COL_LABELS`/`COL_WIDTH` map in `ListView.svelte` — Status,
-Priority, Due, Tags, Created, Updated, Device. B16 (custom fields, not yet
-built) would add arbitrary per-project fields to `ProjectDoc`. **Test once
-B16 exists**: does a custom field show up in the Columns menu without
-further ListView changes, or does `ListView.svelte` need explicit new code
-per custom field (reading `project`'s custom field defs and generating
-column entries dynamically, rather than the current fixed union)? If it's
-the latter, decide during B16's implementation rather than assuming B36's
-column system already generalizes to it.
 
 ---
 
