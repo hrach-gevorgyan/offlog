@@ -373,7 +373,13 @@
   .later-label   { color: var(--faint); }
 
   .badge-count {
-    color: #fff; opacity: .9;
+    /* --on-accent, not hardcoded #fff — maintenance pass caught this
+       failing contrast badly on 3 of its 4 backgrounds in dark mode
+       (worst: 1.74:1 on --success). --on-accent's white/dark-text split
+       matches --overdue-ink/--accent/--faint's per-theme lightness swap;
+       --success needs its own override below since it's bright in both
+       themes rather than swapping. */
+    color: var(--on-accent); opacity: .9;
     font-size: 9px; padding: 1px 5px; border-radius: 8px; font-weight: 700;
   }
   /* background can't use currentColor here — that would read the badge's
@@ -381,7 +387,7 @@
      variant gets an explicit background matching its label */
   .overdue-label .badge-count { background: var(--overdue-ink); }
   .today-label   .badge-count { background: var(--accent); }
-  .week-label    .badge-count { background: var(--success); }
+  .week-label    .badge-count { background: var(--success); color: var(--ink-fixed-dark); }
   .later-label   .badge-count { background: var(--faint); }
 
   .task-row {

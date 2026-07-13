@@ -119,12 +119,15 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - Long context? Summarize state and suggest a good /clear point.
 
 ## Maintenance tracker
-Last pass: v4.12.0 (2026-07-12 — fifth pass, A30, owner-directed
-exhaustive audit rather than the usual delta-scoped one; found/fixed
-duplicated timestamp formatters, a `CardDetail` stale-collapse-state bug,
-and a `CustomSelect` focus gap; deferred `ListView.svelte`/
-`SettingsPanel.svelte` splitting — needs a shared-style-layer decision
-first. Full report in docs/ROADMAP.md's A30 entry).
-Next pass due: **after v4.15.0 ships**, continuing the every-3-releases
-cadence from there (v4.18.0, …) — see docs/ROADMAP.md's sequencing table,
+Last pass: v4.15.1 (2026-07-13 — sixth pass, delta-scoped since v4.12.0's
+A30. Found/fixed a missing `logChange()` on `createProjectFromTemplate()`
+(same bug class as the fourth pass's `archiveProject()` gap), 3 dark-mode
+contrast failures from hardcoded `#fff` instead of a token (`Sidebar`
+conflict-badge, `App.svelte` error-toast, `DeadlinesView`'s 4-variant
+badge — the last needed a new `--ink-fixed-dark` token), and an unguarded
+`new URL()` in the widget deep-link handler. Full report in this
+conversation's transcript — no dead code, no new duplication, `npm audit`
+unchanged from last pass).
+Next pass due: **after v4.18.0 ships**, continuing the every-3-releases
+cadence from there (v4.21.0, …) — see docs/ROADMAP.md's sequencing table,
 which has these same points marked inline.

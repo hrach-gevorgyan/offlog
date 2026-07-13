@@ -635,7 +635,11 @@
   .icon-btn-sync .sync-indicator.offline { background: var(--faint); }
   .conflict-badge {
     position: absolute; top: -2px; right: -2px;
-    color: #fff; font-family: var(--mono); font-size: .55rem; font-weight: 700;
+    /* --on-accent, not hardcoded #fff — maintenance pass caught this at
+       1.67:1 in dark mode (its background is --due-soon-ink, which is a
+       light amber there); --on-accent's white/dark-text split happens to
+       fit this token's per-theme lightness too. */
+    color: var(--on-accent); font-family: var(--mono); font-size: .55rem; font-weight: 700;
     min-width: 13px; height: 13px; border-radius: 7px; padding: 0 3px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 0 0 2px var(--sidebar-bg);

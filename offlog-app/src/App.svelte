@@ -201,8 +201,14 @@
       // The project-list widget's row may point at a project that's since
       // been deleted — same "don't land on a broken view" caution as the
       // localStorage view-restore below, just via a different trigger.
-      const id = new URL(url).searchParams.get('id');
-      if (id && get(projects).some(p => p._id === id)) { showDashboard = false; goToProject(id); return true; }
+      // Maintenance pass: new URL() throws on a malformed url, and this
+      // runs inside an 'appUrlOpen' listener callback with no other
+      // caller to catch it — a hostile/malformed deep link would surface
+      // as an uncaught exception instead of just failing to navigate.
+      try {
+        const id = new URL(url).searchParams.get('id');
+        if (id && get(projects).some(p => p._id === id)) { showDashboard = false; goToProject(id); return true; }
+      } catch { /* malformed url — ignore, fall through to false below */ }
     }
     return false;
   }
@@ -631,7 +637,9 @@
   /* ── Error toast ── */
   .error-toast {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    background: var(--danger); color: #fff;
+    /* --on-accent, not hardcoded #fff — maintenance pass caught this at
+       2.77:1 in dark mode (--danger is a light red-pink there). */
+    background: var(--danger); color: var(--on-accent);
     padding: 11px 18px; border-radius: 10px;
     font-size: 13.5px; font-weight: 500;
     box-shadow: 0 4px 20px rgba(0,0,0,.25);

@@ -645,6 +645,7 @@ export async function createProjectFromTemplate(
         source: SOURCE,
       };
       await db.put(copy);
+      await logChange(copy._id!, 'create', undefined, undefined, undefined, { task_title: copy.title, project_name: name });
     }
     invalidateTaskCache();
   }

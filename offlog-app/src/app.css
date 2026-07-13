@@ -22,6 +22,11 @@
   /* meaning */
   --accent: #5457e0;
   --on-accent: #ffffff; /* text/icon color for anything sitting on --accent — see body.dark override */
+  /* Fixed (not overridden in body.dark) — --success is bright in BOTH
+     themes, unlike --accent/--overdue-ink/--faint which swap light↔dark
+     lightness per theme, so it needs a text color that doesn't swap
+     either. Used by DeadlinesView.svelte's success-colored badge. */
+  --ink-fixed-dark: #181a20;
   --danger: #dc2626;
   --success: #22c55e;
   --due-soon-bg: #fef3c7;
