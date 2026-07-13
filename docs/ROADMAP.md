@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.15.1**. Everything below is a candidate, not a
+Current version: **v4.16.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -382,26 +382,22 @@ CHANGELOG.md.
 
 ### B42. Agenda doesn't use full screen width — shipped in v4.8.0
 
-### B43. Human-friendly sync settings + Developer options — OPEN (owner, 2026-07-13)
-Settings → Sync is still written for IT people: a raw CouchDB URL field,
-credential mechanics, replication jargon. Per GOAL.md, the final user
-should only ever meet the word "CouchDB" in documentation, if at all.
-Redesign: the main Sync pane speaks plainly ("Connect to your home
-computer" / connection status / device name), and the technical machinery
-(server URL, database name, anything with a footgun) moves into a new
-**Developer options** sub-section — collapsed by default, worded so it's
-clearly not for everyday use. Developer options is also the future home
-for any other high-impact/dangerous toggles, keeping the rest of Settings
-safe to explore freely. Pure UI/copy — no sync-logic changes.
+### B43. Human-friendly sync settings + Developer options — shipped in v4.16.0
+Redesigned so the main Sync pane leads with one plain-language status
+sentence (Connected/last-synced, Not connected yet, Sync paused, or the
+existing human-readable error text) instead of a raw CouchDB URL field.
+The URL field and anything else with a footgun moved into a new collapsed-
+by-default **Developer options** section (auto-expands only if a
+connection is already configured). Developer options is the intended
+future home for any other high-impact/dangerous toggles. Pure UI/copy —
+no sync-logic changed.
 
-### B44. Storage & quota copy, plain-language rewrite — OPEN (owner, 2026-07-13)
-B14 (v4.3.0) added an explanation of the browser quota number, but owner
-feedback says it still confuses: "quota," "MB used," and the browser-
-assigned ceiling read as developer concepts. Rewrite Settings → Data's
-storage section so a non-technical person gets the one thing that matters
-("your data is tiny; nothing to worry about — here's roughly how much room
-you're using") with the raw numbers demoted to a secondary detail, not the
-headline. Copy-only.
+### B44. Storage & quota copy, plain-language rewrite — shipped in v4.16.0
+Settings → Data's storage section now leads with a plain sentence ("Your
+data is tiny — nothing to worry about," or a getting-full warning past the
+threshold), with the raw MB/quota numbers demoted to a small secondary
+line. Export rows got their own plain-language labels too, instead of
+sharing a line with the storage readout. Copy/layout only.
 
 ---
 
@@ -574,7 +570,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 3 | v4.13.0 | A31 (Android leg) | — | Just the Android verification A31 still needs — owner runs `cap sync` + a Studio check whenever convenient. Small enough that it doesn't need to hold up whatever else lands in this release; fold it in opportunistically. |
 | 4 | v4.14.0 ✓ | — | B8, B30 ✓ | Shipped — project templates ("New from template" copies a project's status structure and optionally its open tasks) and a notes-length soft counter. Shipped ahead of v4.13.0's Android leg, which is owner-paced and doesn't block anything else. |
 | 5 | v4.15.0 ✓ | A9 (first slice) ✓ | B24, B29 ✓ | Shipped — real component tests begin (`CardDetail`'s save logic; `KanbanBoard`/`Sidebar` still uncovered, see A9's own entry), seed data trim, tags on Kanban cards. |
-| 6 | v4.16.0 | — | B43, B44 | **Stabilization phase begins** (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). The two "still speaks IT" fixes first, since they're what the owner hits daily while dogfooding: human-friendly sync settings + Developer options, plain-language storage copy. |
+| 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
 | 7 | v4.17.0 | — | C8, C9 | Visual identity for release: new icon everywhere + self-hosted fonts (kills the Google-CDN call every load makes). Both small, both prerequisites for C3/C5's assets. |
 | 8 | v4.18.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification — the same session naturally reads all the first-run copy anyway. Maintenance pass due after this ships. |
 | 9 | (unversioned) | — | C7 → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |

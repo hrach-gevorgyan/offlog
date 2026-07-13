@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.11.0 | Kanban filters + checklists (B2, B18): shared FilterBar.svelte for both views, flat task checklist with a progress badge on Kanban/List | `v4.11.0` |
 | 4.10.1 | Maintenance pass (fourth run): fixed a real stored-XSS gap in GlobalSearch's highlight(), a missing logChange() on archiveProject()/unarchiveProject() | `v4.10.1` |
 | 4.10.0 | Dashboard weekly stats + command palette (B17, B9): "N completed this past week" line + Today panel, Ctrl+K now matches action commands too | `v4.10.0` |
 | 4.9.0 | Archive-adjacent housekeeping (B27, B32, B15): DB-wide archived-task count, whole-project archiving, new Archived Projects manager panel; fixed a native-select dark-mode readability bug | `v4.9.0` |

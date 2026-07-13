@@ -100,6 +100,25 @@
   let syncUrl = getSyncUrl();
   let deviceName = getDeviceName();
   let syncEnabled = isSyncEnabled();
+  // B43: the CouchDB URL field and anything else with a footgun moved into
+  // a collapsed-by-default "Developer options" section — the main pane
+  // should read as "connect to your home computer," not "configure a
+  // database connection." Auto-opens if a URL is already set (someone
+  // editing an existing connection shouldn't have to hunt for it), stays
+  // closed on a fresh/never-configured install.
+  let showDevOptions = !!syncUrl;
+
+  // Plain-language connection status for the main pane — everything below
+  // already exists as syncState.status/lastSynced/error, just not
+  // surfaced as one human sentence before this.
+  $: connectionStatus =
+    !syncEnabled ? { text: 'Sync is paused.', tone: 'muted' } :
+    !syncUrl ? { text: 'Not connected to another device yet — see Developer options below to connect.', tone: 'muted' } :
+    syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'muted' } :
+    syncStatus === 'offline' ? { text: 'Offline — will resume automatically when back on your network.', tone: 'muted' } :
+    syncStatus === 'error' ? { text: syncError || 'Sync error.', tone: 'warn' } :
+    lastSynced ? { text: `Connected — last synced ${fmtLastSynced(lastSynced)}`, tone: 'ok' } :
+    { text: 'Connected — waiting for first sync…', tone: 'muted' };
 
   function toggleSyncEnabled() {
     syncEnabled = !syncEnabled;
@@ -474,15 +493,7 @@
                   <span class="toggle-knob"></span>
                 </button>
               </div>
-              <p class="setting-hint">Pausing stops replication without losing the URL below — turn it back on any time.</p>
-
-              <label class="field-label">
-                CouchDB URL
-                <input bind:value={syncUrl} placeholder="http://192.168.27.200:5984/offlog" disabled={!syncEnabled} />
-              </label>
-              {#if syncError && lastErrorAt}
-                <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
-              {/if}
+              <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
 
               <label class="field-label">
                 This device's name
@@ -530,6 +541,28 @@
                 </div>
               {/if}
 
+              <div class="section-divider"></div>
+
+              <div class="collapsible-section">
+                <button type="button" class="section-toggle" on:click={() => showDevOptions = !showDevOptions}>
+                  <svg class="section-chevron" class:open={showDevOptions} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+                  <span class="field-label">Developer options</span>
+                </button>
+                {#if showDevOptions}
+                  <p class="setting-hint">
+                    For connecting directly to a self-hosted CouchDB server — most people never need
+                    to touch this.
+                  </p>
+                  <label class="field-label">
+                    CouchDB URL
+                    <input bind:value={syncUrl} placeholder="http://192.168.27.200:5984/offlog" disabled={!syncEnabled} />
+                  </label>
+                  {#if syncError && lastErrorAt}
+                    <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
+                  {/if}
+                {/if}
+              </div>
+
             {:else if activeCategory === 'organize'}
               <div class="setting-group">
                 <div class="setting-section-title">Manage</div>
@@ -552,8 +585,40 @@
               </div>
 
             {:else if activeCategory === 'data'}
+              <!-- B44: plain-language headline first, raw MB/quota numbers
+                   demoted to a small secondary line — "quota" is browser
+                   jargon nobody asked to learn, and at personal-task-list
+                   scale there's essentially never anything to act on. -->
+              <div class="storage-summary">
+                {#if !storageAvailable}
+                  <span class="storage-headline">Storage info not available in this browser</span>
+                {:else if storagePercent >= STORAGE_WARN_THRESHOLD}
+                  <span class="storage-headline storage-headline-warn">Storage is getting full ({(storagePercent * 100).toFixed(0)}%)</span>
+                  <span class="storage-detail">{storageInfo}</span>
+                {:else}
+                  <span class="storage-headline">Your data is tiny — nothing to worry about</span>
+                  <span class="storage-detail">{storageInfo || 'Calculating…'}</span>
+                {/if}
+              </div>
+              {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
+                <p class="setting-hint setting-hint-warn">
+                  Try Maintenance's cleanup tools below (prune old history, empty Recycle), or free up
+                  space on this device — once storage is truly full, new changes would stop saving.
+                </p>
+              {/if}
+              {#if breakdown}
+                <p class="setting-hint">
+                  {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
+                  {breakdown.archivedTasks} archived ·
+                  {breakdown.deletedTasks} in Recycle ·
+                  {breakdown.logEntries} history entries
+                </p>
+              {/if}
+
+              <div class="section-divider"></div>
+
               <div class="setting-row">
-                <span class="storage-info">{storageInfo || 'Calculating…'}</span>
+                <span class="storage-info" style="color: var(--muted)">Back up everything as one file</span>
                 <button class="export-btn" on:click={exportJSON}>Export JSON</button>
               </div>
               <div class="setting-row">
@@ -566,29 +631,6 @@
                 </div>
                 <button class="export-btn" on:click={doExportProject} disabled={!exportProjectId}>Export Project</button>
               </div>
-              {#if storageAvailable}
-                {#if storagePercent >= STORAGE_WARN_THRESHOLD}
-                  <p class="setting-hint setting-hint-warn">
-                    {(storagePercent * 100).toFixed(0)}% of quota used — getting close. Try Maintenance's
-                    cleanup tools (prune old history, empty Recycle) below, or free up device storage;
-                    once truly full, new writes would start failing.
-                  </p>
-                {:else}
-                  <p class="setting-hint">
-                    "Quota" is a ceiling your browser sets based on free disk space — not a limit Offlog
-                    imposes. A personal task list's data is tiny next to typical quotas, so this number is
-                    informational; nothing to act on unless it climbs near 100%.
-                  </p>
-                {/if}
-              {/if}
-              {#if breakdown}
-                <p class="setting-hint">
-                  {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
-                  {breakdown.archivedTasks} archived ·
-                  {breakdown.deletedTasks} in Recycle ·
-                  {breakdown.logEntries} history entries
-                </p>
-              {/if}
               {#if importPreview}
                 <div class="import-preview">
                   <p class="setting-hint">
@@ -762,6 +804,14 @@
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 
+  /* B44 — headline reads as a plain sentence; the raw MB/quota numbers are
+     demoted to a small mono detail line underneath, not the first thing
+     a non-technical person sees. */
+  .storage-summary { display: flex; flex-direction: column; gap: 2px; }
+  .storage-headline { font-size: .9rem; color: var(--text); font-weight: 500; }
+  .storage-headline-warn { color: var(--danger); }
+  .storage-detail { font-family: var(--mono); font-size: .7rem; color: var(--faint); }
+
   .project-export-select { flex: 1; min-width: 0; }
 
   .import-preview {
@@ -782,6 +832,23 @@
   }
   .field-label input:focus { outline: none; border-color: var(--accent); }
   .field-label input:disabled { opacity: .5; cursor: default; }
+
+  /* B43 — Developer options, same collapsible pattern as CardDetail's
+     Checklist/Notes sections (duplicated here since Svelte scopes styles
+     per component, not shared via the class name alone). */
+  .section-divider { height: 1px; background: var(--border); margin: .3rem 0; }
+  .collapsible-section { display: flex; flex-direction: column; gap: .5rem; }
+  .section-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    cursor: pointer; padding: .5rem .65rem; width: 100%; text-align: left;
+    transition: background .12s, border-color .12s;
+  }
+  .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
+  .section-toggle .field-label { flex: 1; }
+  .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
+  .section-chevron.open { transform: rotate(90deg); }
+  .section-toggle:hover .section-chevron { color: var(--text); }
 
   .theme-segment {
     display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
