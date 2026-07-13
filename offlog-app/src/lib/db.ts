@@ -453,6 +453,12 @@ export function startSync() {
   // config.ts's isSyncEnabled() defaults to true, so existing installs
   // keep syncing exactly as before until someone opts out in Settings.
   if (!isSyncEnabled()) { syncState.status = 'idle'; notify(); return; }
+  // No server configured yet (fresh install, or DEFAULT_SYNC_URL's
+  // no-longer-hardcoded fallback) — don't attempt new PouchDB('', ...),
+  // which would create a nonsense local database instead of failing
+  // loudly. Stay 'idle'; Settings' Sync tab already shows "Not connected
+  // to another device yet" for this exact state (B43).
+  if (!getSyncUrl()) { syncState.status = 'idle'; notify(); return; }
   if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
   _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }));
 }
@@ -468,6 +474,9 @@ export function cancelSync() {
 
 export function syncNow(): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Same "nothing configured yet" guard as startSync() — resolve
+    // immediately rather than attempting new PouchDB('', ...).
+    if (!getSyncUrl()) { syncState.status = 'idle'; notify(); resolve(); return; }
     syncState.status = 'syncing'; notify();
     if (_syncHandler) _syncHandler.cancel();
     _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }), (err) => {

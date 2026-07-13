@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { describeSyncError, attachSyncHandlers, startSync, cancelSync, syncState } from '../src/lib/db';
-import { setSyncEnabled } from '../src/config';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describeSyncError, attachSyncHandlers, startSync, syncNow, cancelSync, syncState } from '../src/lib/db';
+import { setSyncEnabled, setSyncUrl, getSyncUrl } from '../src/config';
 
 // ROADMAP.md A16 — offline-queue robustness for sync. There's no CI-reachable
 // CouchDB in this project to genuinely drop mid-replication against, so this
@@ -160,5 +160,34 @@ describe('startSync() respects the B13 pause toggle', () => {
     startSync();
     expect(syncState.status).toBe('idle');
     setSyncEnabled(true); // restore default for any other test relying on it
+  });
+});
+
+// Owner-reported real bug (2026-07-13): a phone reinstall wiped
+// localStorage and silently reverted to a hardcoded stale default IP
+// instead of showing "not connected" — DEFAULT_SYNC_URL no longer falls
+// back to a real address (config.ts), and startSync()/syncNow() must
+// both treat "no URL configured" as a no-op rather than attempting
+// new PouchDB('', ...).
+describe('startSync()/syncNow() treat an unconfigured URL as "nothing to do" (no hardcoded-address fallback)', () => {
+  const originalUrl = getSyncUrl();
+  beforeEach(() => {
+    cancelSync();
+    setSyncUrl('');
+  });
+  afterEach(() => {
+    setSyncUrl(originalUrl); // restore whatever was configured before this suite ran
+  });
+
+  it('startSync() stays idle and never attaches a handler when no URL is configured', () => {
+    syncState.status = 'error'; // prove it actually short-circuits, not happening to already be idle
+    startSync();
+    expect(syncState.status).toBe('idle');
+  });
+
+  it('syncNow() resolves immediately without attempting a connection when no URL is configured', async () => {
+    syncState.status = 'error';
+    await expect(syncNow()).resolves.toBeUndefined();
+    expect(syncState.status).toBe('idle');
   });
 });

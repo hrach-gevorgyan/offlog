@@ -5,7 +5,21 @@ const envUrl = import.meta.env.VITE_COUCH_URL as string | undefined;
 const envUser = import.meta.env.VITE_COUCH_USER as string | undefined;
 const envPass = import.meta.env.VITE_COUCH_PASS as string | undefined;
 
-export const DEFAULT_SYNC_URL = envUrl ?? 'http://192.168.27.200:5984/offlog';
+// Owner-reported real bug (2026-07-13): this used to fall back to a
+// hardcoded real LAN IP. That address goes stale the moment the sync
+// host's IP changes (DHCP, router restart, new network) — and worse, a
+// fresh install or reinstall wipes localStorage, silently reverting to
+// this same wrong hardcoded address with no indication anything was
+// misconfigured (the exact failure that just happened: a phone reinstall
+// silently pointed sync at a year-old IP instead of showing "not
+// connected"). Falls back to empty now — startSync()/syncNow() treat an
+// empty URL as "not configured" and skip attempting a connection
+// entirely, and Settings' Sync tab already has a friendly "Not connected
+// to another device yet" state for exactly this (B43). Set VITE_COUCH_URL
+// in .env.local (git-ignored) for your own convenience if you want your
+// own builds to default to your current server instead of typing it in
+// once after install.
+export const DEFAULT_SYNC_URL = envUrl ?? '';
 export const COUCH_USER = envUser ?? 'offlog';
 export const COUCH_PASS = envPass ?? 'REDACTED_CREDENTIAL';
 

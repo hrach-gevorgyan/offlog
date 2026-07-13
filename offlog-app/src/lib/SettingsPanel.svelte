@@ -555,7 +555,7 @@
                   </p>
                   <label class="field-label">
                     CouchDB URL
-                    <input bind:value={syncUrl} placeholder="http://192.168.27.200:5984/offlog" disabled={!syncEnabled} />
+                    <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" disabled={!syncEnabled} />
                   </label>
                   {#if syncError && lastErrorAt}
                     <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
