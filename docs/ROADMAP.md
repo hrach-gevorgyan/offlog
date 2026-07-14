@@ -527,17 +527,34 @@ real bug in the preview-rendering path or just an Android OS preview
 quirk before spending time on it. Same "owner builds/tests in Android
 Studio, not the assistant" rule as all Android work.
 
-### B49. Card Detail redesign — OPEN, needs its own scoping pass (owner, 2026-07-13)
-Owner feedback: editing a task still feels complicated/overloaded despite
+### B49. Card Detail redesign — SHIPPED in v4.21.0
+Owner feedback: editing a task still felt complicated/overloaded despite
 v4.11.1's collapsible-sections pass (B16/B18/B30 all landed inside this
-same panel since then, adding to the density). Explicitly **visual/layout
-only — every current field and function must survive**: Status, Priority,
-Due date, Reminder, Tags, Checklist, Custom fields, Notes, pin/archive/
-delete/duplicate, history. This is a genuine redesign, not a tweak — needs
-its own scoping pass (which fields are core-identity-always-visible vs.
-progressive-disclosure, whether the collapsible-section pattern itself is
-the right one or something else reads better) rather than another
-incremental pass on top of the current layout.
+same panel since then, adding to the density). Scoped as **visual/layout
+only — every current field and function survives unchanged**. Mockup-
+validated over 4 iterations before implementation (see DECISIONS.md's
+List/Table merge precedent for why — plan file has the full iteration
+history) — final direction: Due date + Reminder collapse into one
+labeled, clickable "Schedule" row (summary text, e.g. "Wed, Jul 15 ·
+9:00 AM reminder") that expands to the exact same two fields as before;
+Checklist/Custom fields/Notes restyled as consistent bordered card-rows
+(icon + label + chevron) instead of independently-styled accordions;
+Delete/Archive/Duplicate/history consolidated from 4 competing footer
+controls into one "⋯" dropdown menu (History, Archive, Duplicate, then
+Delete set apart in red) — Created/Updated timestamps moved into the
+same menu as plain text. Reuses `CustomSelect.svelte`'s click-outside-
+to-close pattern, not a new mechanism.
+
+### B53. Kanban card quick-actions menu — SHIPPED in v4.21.0
+Folded into v4.21.0 mid-review at the owner's request, alongside B49
+(same "⋯" visual pattern). Kanban cards previously had zero quick-action
+affordances — the only way to pin/archive/duplicate/delete was opening
+the full Card Detail panel. Added a per-card "⋯" trigger (hover-reveal
+on desktop, always-visible at ≤768px matching the existing column-action
+touch fallback) opening a dropdown with Pin/Unpin, Archive, Duplicate,
+Delete. Unlike Card Detail's menu (which batches into the form's Save),
+these are immediate writes — a Kanban-level action should take effect
+the moment it's clicked, not wait on a save the user never opened.
 
 ### B50. Custom time picker (extend B38 to reminder times) — OPEN (owner, 2026-07-13)
 B38 (v4.6.5) replaced the native date input with a themed
@@ -838,7 +855,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 9 | v4.19.0 ✓ | — | E1 ✓, C7 (source), C2 (partial), C10 (partial) | Shipped — Track E working end-to-end (mDNS discovery, pairing, real installer, all verified on real hardware; installer signing deliberately deferred, see E1's own entry). C7's hardcoded-password fallback removed from current source (git history still needs C1-time handling). C2: Android's first-run message now points at "Find my computer" instead of "Developer options." C10: fixed a real "Deleted"/"Recycle" naming inconsistency, a broken aria-label, and "database" jargon in Maintenance copy — full C10 sweep ("every string, every document") not exhaustive yet, continues opportunistically. |
 | — | v4.19.1 ✓ | — | — | Shipped — maintenance pass (seventh run, first to cover `offlog-desktop/` too). See MAINTENANCE.md's tracker for full detail. |
 | 10 | v4.20.0 ✓ | — | B45 ✓, B46 ✓ | Shipped — Export/import redesigned into Back up / Restore groups with scope as one control; lightweight skippable first-run device-name prompt. |
-| 11 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |
+| 11 | v4.21.0 ✓ | — | B49 ✓, B53 ✓ | Shipped — Card Detail redesign (mockup-validated over 4 iterations: combined "Schedule" row for Due date/Reminder, card-style Checklist/Custom fields/Notes rows, "⋯" menu replacing 4 competing footer controls) plus a new Kanban-card-level "⋯" quick-actions menu (Pin/Archive/Duplicate/Delete without opening Card Detail), folded in mid-review at the owner's request. |
 | — | (unversioned) | — | C7 (git history) → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix's remaining git-history piece, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → v4.18 ✓ (**ran as v4.19.1** — first pass to cover `offlog-desktop/` too) → v4.21 → … — see MAINTENANCE.md's tracker. |
 | — | (unscheduled) | — | B39, B47, B48, B50, B51 | B39: stale device entries after a rename (needs schema-change care). B47: week-start-day setting (timezone half needs scoping first — may not be needed). B48: Android widget flatter/2-color/no-border polish. B50: extend the custom date-picker pattern to time-only fields. B51: web-vs-Android animation consistency inventory. None urgent enough to claim a version slot yet; pick up opportunistically. |

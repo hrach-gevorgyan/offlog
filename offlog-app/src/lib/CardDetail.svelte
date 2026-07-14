@@ -104,10 +104,9 @@
 
   // Collapsible-by-default sections (owner feedback, 2026-07-12 — the page
   // got overloaded once Checklist landed on top of everything else).
-  // "Details" (status/priority/due/reminder/tags) stays always open —
-  // it's the core identity of a task. Checklist/Custom fields/Notes start
-  // collapsed UNLESS the task already has content there, so existing data
-  // is never hidden by default, only new/empty sections start closed.
+  // Checklist/Custom fields/Notes start collapsed UNLESS the task already
+  // has content there, so existing data is never hidden by default, only
+  // new/empty sections start closed.
   let showChecklist = checklist.length > 0;
   let showNotes = !!body.trim();
   let showCustomFieldsSection = Object.values(customValues).some(v => v !== null && v !== '' && v !== undefined);
@@ -117,6 +116,50 @@
   const VISIBLE_FIELD_CAP = 3;
   let showAllFields = false;
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
+
+  // B49 redesign (2026-07-19, owner-directed — "still feels complicated/
+  // overloaded"): Due date and Reminder used to be two always-visible
+  // fields, each with their own shortcuts/checkbox/hint sprawl — most of
+  // the panel's density before you even reach a collapsible section.
+  // Mockup-validated (see ROADMAP.md B49): a single collapsed "Schedule"
+  // summary row expands to the exact same two fields, unchanged — nothing
+  // about *how* due date/reminder are set changed, only that both start
+  // tucked away together instead of permanently expanded. Starts open if
+  // either already has a value, same "never hide existing data" rule the
+  // other collapsible sections already use.
+  let showSchedule = !!(due_date || reminder_at);
+
+  function formatScheduleSummary(due: string, reminder: string): string {
+    if (!due && !reminder) return 'No due date or reminder';
+    const parts: string[] = [];
+    if (due) {
+      const d = new Date(`${due}T00:00:00`);
+      parts.push(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
+    }
+    if (reminder) {
+      const r = new Date(reminder);
+      parts.push(`${r.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} reminder`);
+    }
+    return parts.join(' · ');
+  }
+  $: scheduleSummary = formatScheduleSummary(due_date, reminder_at);
+
+  // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
+  // visible controls (3 flat footer buttons + a "Show history" text
+  // toggle competing with Notes for space). Consolidated into one "⋯"
+  // menu — same click-outside-closes pattern CustomSelect.svelte already
+  // uses, not a new mechanism. Created/Updated timestamps move in here
+  // too (as plain text, not an action) since they were always adjacent to
+  // the history toggle they're now grouped with.
+  let showActionsMenu = false;
+  let menuTriggerEl: HTMLButtonElement;
+  let menuPanelEl: HTMLDivElement;
+  function onWindowClick(e: MouseEvent) {
+    if (!showActionsMenu) return;
+    const t = e.target as Node;
+    if (menuTriggerEl?.contains(t) || menuPanelEl?.contains(t)) return;
+    showActionsMenu = false;
+  }
 
   // TaskHistoryPanel is only ever needed if the user clicks "Show history" —
   // loading it as a dynamic import keeps its query/formatting logic out of
@@ -210,6 +253,16 @@
     }
   }
 
+  async function archive() {
+    try {
+      await archiveTask(task._id!);
+      await reloadTasks();
+      requestClose();
+    } catch {
+      showError('Failed to archive task.');
+    }
+  }
+
   async function duplicate() {
     try {
       await duplicateTask(task._id!);
@@ -221,7 +274,7 @@
   }
 </script>
 
-<svelte:window on:keydown={onWindowKeydown}/>
+<svelte:window on:keydown={onWindowKeydown} on:click={onWindowClick} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="overlay" on:click|self={() => requestClose()}>
@@ -246,39 +299,53 @@
       </label>
     </div>
 
-    <label>
-      Due date
-      <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
-      <div class="due-shortcuts">
-        {#each DUE_SHORTCUTS as s}
-          <button
-            type="button"
-            class="due-shortcut"
-            class:active={due_date === dateFromToday(s.days, s.months)}
-            on:click={() => due_date = dateFromToday(s.days, s.months)}
-          >{s.label}</button>
-        {/each}
-      </div>
-    </label>
+    <div class="collapsible-section">
+      <span class="field-label">Due date</span>
+      <button type="button" class="schedule-toggle" on:click={() => showSchedule = !showSchedule} aria-expanded={showSchedule}>
+        <svg class="schedule-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M4.5 1.5v2M9.5 1.5v2"/></svg>
+        <span class="schedule-summary">{scheduleSummary}</span>
+        <svg class="section-chevron" class:open={showSchedule} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+      </button>
+      {#if showSchedule}
+        <div class="schedule-panel">
+          <label>
+            Due date
+            <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
+            <div class="due-shortcuts">
+              {#each DUE_SHORTCUTS as s}
+                <button
+                  type="button"
+                  class="due-shortcut"
+                  class:active={due_date === dateFromToday(s.days, s.months)}
+                  on:click={() => due_date = dateFromToday(s.days, s.months)}
+                >{s.label}</button>
+              {/each}
+            </div>
+          </label>
 
-    <div class="reminder-field">
-      <label>
-        Reminder
-        <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
-      </label>
-      <label class="remind-on-due-row">
-        <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-        Remind me on the due date{#if due_date}&nbsp;at {getDefaultReminderTime()}{/if}
-      </label>
-      {#if reminder_at && $permissionState !== 'granted'}
-        <div class="reminder-hint">
-          {#if $permissionState === 'unsupported'}
-            Notifications aren't supported in this browser.
-          {:else}
-            Notifications aren't enabled yet —
-            <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
-            so this reminder can actually notify you.
-          {/if}
+          <div class="schedule-divider"></div>
+
+          <div class="reminder-field">
+            <label>
+              Reminder
+              <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
+            </label>
+            <label class="remind-on-due-row">
+              <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+              Remind me on the due date{#if due_date}&nbsp;at {getDefaultReminderTime()}{/if}
+            </label>
+            {#if reminder_at && $permissionState !== 'granted'}
+              <div class="reminder-hint">
+                {#if $permissionState === 'unsupported'}
+                  Notifications aren't supported in this browser.
+                {:else}
+                  Notifications aren't enabled yet —
+                  <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
+                  so this reminder can actually notify you.
+                {/if}
+              </div>
+            {/if}
+          </div>
         </div>
       {/if}
     </div>
@@ -323,10 +390,11 @@
 
     <div class="collapsible-section">
       <button type="button" class="section-toggle" on:click={() => showChecklist = !showChecklist}>
-        <svg class="section-chevron" class:open={showChecklist} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+        <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="4" height="4" rx="1"/><path d="M2.5 3.5l.7.7L4.5 2.7M1.5 8.5h4M1.5 11.5h4M7.5 3.5h5M7.5 8.5h5M7.5 11.5h5"/></svg>
         <span class="field-label">
           Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
         </span>
+        <svg class="section-chevron" class:open={showChecklist} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showChecklist}
         <div class="checklist-field">
@@ -354,8 +422,9 @@
     {#if customFields.length > 0}
       <div class="collapsible-section">
         <button type="button" class="section-toggle" on:click={() => showCustomFieldsSection = !showCustomFieldsSection}>
-          <svg class="section-chevron" class:open={showCustomFieldsSection} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+          <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h10M2 7h10M2 10h6"/><circle cx="10.5" cy="10" r="1.3"/></svg>
           <span class="field-label">Custom fields</span>
+          <svg class="section-chevron" class:open={showCustomFieldsSection} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
         </button>
         {#if showCustomFieldsSection}
           <div class="custom-fields">
@@ -392,8 +461,9 @@
 
     <div class="collapsible-section">
       <button type="button" class="section-toggle" on:click={() => showNotes = !showNotes}>
-        <svg class="section-chevron" class:open={showNotes} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+        <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.5h6l2.5 2.5v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M9 1.5V4h2.5M4 7h6M4 9.5h4"/></svg>
         <span class="field-label">Notes (markdown)</span>
+        <svg class="section-chevron" class:open={showNotes} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showNotes}
         <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
@@ -403,25 +473,42 @@
       {/if}
     </div>
 
-    <div class="timestamps">
-      <span>Created {fmtFullTimestamp(task.created_at)}</span>
-      {#if task.updated_at !== task.created_at}
-        <span>Updated {fmtFullTimestamp(task.updated_at)}</span>
-      {/if}
-      <button class="history-toggle" on:click={loadHistory}>
-        {showHistory ? 'Hide history' : 'Show history'}
-      </button>
-    </div>
-
     {#if showHistory && TaskHistoryPanelComp}
       <svelte:component this={TaskHistoryPanelComp} taskId={task._id} />
     {/if}
 
     <div class="actions">
-      <div class="left-actions">
-        <button class="delete-btn" on:click={softDelete}>Delete</button>
-        <button class="archive-btn" on:click={async () => { try { await archiveTask(task._id!); await reloadTasks(); requestClose(); } catch { showError('Failed to archive task.'); } }}>Archive</button>
-        <button class="dupe-btn" on:click={duplicate} title="Duplicate task">Duplicate</button>
+      <div class="menu-wrap">
+        <button type="button" class="menu-trigger" bind:this={menuTriggerEl} on:click={() => showActionsMenu = !showActionsMenu} aria-label="More actions" aria-expanded={showActionsMenu}>
+          <svg viewBox="0 0 14 14" width="16" height="16" fill="currentColor"><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="11" cy="7" r="1.3"/></svg>
+        </button>
+        {#if showActionsMenu}
+          <div class="actions-menu" bind:this={menuPanelEl}>
+            <div class="menu-timestamps">
+              <span>Created {fmtFullTimestamp(task.created_at)}</span>
+              {#if task.updated_at !== task.created_at}
+                <span>Updated {fmtFullTimestamp(task.updated_at)}</span>
+              {/if}
+            </div>
+            <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; loadHistory(); }}>
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3l2 1.5"/></svg>
+              {showHistory ? 'Hide history' : 'Show history'}
+            </button>
+            <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; archive(); }}>
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2" width="11" height="3" rx="1"/><path d="M2.5 5v6.5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V5M5.5 8h3"/></svg>
+              Archive
+            </button>
+            <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; duplicate(); }}>
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4.5" y="4.5" width="8" height="8" rx="1"/><path d="M9.5 4.5V2.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>
+              Duplicate
+            </button>
+            <div class="menu-divider"></div>
+            <button type="button" class="menu-item menu-item-danger" on:click={() => { showActionsMenu = false; softDelete(); }}>
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 3.5h9M5.5 3.5V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M3.5 3.5l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8"/></svg>
+              Delete
+            </button>
+          </div>
+        {/if}
       </div>
       <div class="right">
         <button on:click={() => requestClose()}>Cancel</button>
@@ -585,15 +672,20 @@
     text-transform: uppercase; letter-spacing: .04em; padding: 2px 2px 0;
   }
 
-  .collapsible-section { display: flex; flex-direction: column; gap: .5rem; }
+  .collapsible-section { display: flex; flex-direction: column; gap: .35rem; }
+
+  /* B49: Checklist/Custom fields/Notes toggles now read as distinct rows
+     (icon + label + chevron, own background) instead of a bare text link,
+     so a stack of them reads as separate cards, not one long accordion. */
   .section-toggle {
     display: flex; align-items: center; gap: 8px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    cursor: pointer; padding: .5rem .65rem; width: 100%; text-align: left;
+    background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
     transition: background .12s, border-color .12s;
   }
   .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
   .section-toggle .field-label { flex: 1; }
+  .row-icon { color: var(--accent); flex-shrink: 0; }
   .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
   .section-chevron.open { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
@@ -602,6 +694,29 @@
     font-family: var(--mono); font-size: .68rem; color: var(--faint);
     text-align: right; margin-top: 3px;
   }
+
+  /* B49: the combined Due date/Reminder disclosure — same row treatment
+     as Checklist/Custom fields/Notes above, plus a small calendar icon
+     and the live summary text instead of a static label. */
+  .schedule-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
+    transition: background .12s, border-color .12s;
+  }
+  .schedule-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
+  .schedule-toggle:hover .section-chevron { color: var(--text); }
+  .schedule-icon { color: var(--accent); flex-shrink: 0; }
+  .schedule-summary {
+    flex: 1; font-family: 'Hanken Grotesk', sans-serif; font-size: .82rem;
+    text-transform: none; letter-spacing: normal; color: var(--text);
+  }
+  .schedule-panel {
+    display: flex; flex-direction: column; gap: .55rem;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: .65rem .7rem;
+  }
+  .schedule-divider { height: 1px; background: var(--border); margin: .1rem 0; }
 
   .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
   .checklist-progress { color: var(--accent); font-weight: 600; margin-left: 4px; }
@@ -639,7 +754,6 @@
     display: flex; justify-content: space-between; align-items: center;
     padding-top: .6rem; border-top: 1px solid var(--border);
   }
-  .left-actions { display: flex; gap: .4rem; align-items: center; }
   .right { display: flex; gap: .5rem; }
   button {
     padding: .38rem .8rem; border-radius: var(--radius-sm);
@@ -648,29 +762,39 @@
   }
   .save-btn { background: var(--text); color: var(--bg); border-color: var(--text); }
   .save-btn:disabled { opacity: .5; cursor: default; }
-  /* Distinct resting state (not just on hover) so this reads as the
-     destructive action at a glance, not just another plain-text button
-     next to Archive/Duplicate. */
-  .delete-btn {
-    color: var(--danger); font-weight: 600;
-    border-color: transparent; background: var(--overdue-bg);
-    margin-right: .3rem;
-  }
-  .delete-btn:hover { border-color: var(--danger); }
-  .archive-btn { color: var(--muted); border-color: transparent; background: transparent; }
-  .archive-btn:hover { color: var(--accent); }
-  .dupe-btn { color: var(--muted); border-color: transparent; background: transparent; }
-  .dupe-btn:hover { color: var(--text); }
 
-  .timestamps {
-    display: flex; flex-direction: column; gap: 3px;
-    font-family: var(--mono); font-size: .65rem; color: var(--faint);
-    padding-top: .3rem;
+  /* B49: Delete/Archive/Duplicate/history consolidated into one "⋯" menu
+     — was 3 flat footer buttons plus a text toggle competing with Notes.
+     Same click-outside-closes pattern as CustomSelect.svelte. */
+  .menu-wrap { position: relative; }
+  .menu-trigger {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0;
+    background: none; border: 1px solid transparent; color: var(--muted);
+    transition: background .12s, color .12s;
   }
-  .history-toggle {
-    background: none; border: none; cursor: pointer; padding: 0;
-    color: var(--accent); font-family: var(--mono); font-size: .65rem;
-    text-align: left; margin-top: 2px; transition: opacity .12s;
+  .menu-trigger:hover { background: var(--hover); color: var(--text); }
+  .actions-menu {
+    position: absolute; bottom: calc(100% + 6px); left: 0;
+    width: 200px; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.22);
+    padding: .35rem; display: flex; flex-direction: column; z-index: 10;
   }
-  .history-toggle:hover { opacity: .75; }
+  .menu-timestamps {
+    display: flex; flex-direction: column; gap: 2px;
+    font-family: var(--mono); font-size: .64rem; color: var(--faint);
+    padding: .3rem .6rem .45rem;
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 9px;
+    background: none; border: none; border-radius: var(--radius-sm);
+    padding: .45rem .6rem; font-size: .82rem; font-weight: 500;
+    color: var(--text); cursor: pointer; text-align: left;
+  }
+  .menu-item:hover { background: var(--hover); }
+  .menu-item svg { flex-shrink: 0; color: var(--muted); }
+  .menu-divider { height: 1px; background: var(--border); margin: .3rem .2rem; }
+  .menu-item-danger { color: var(--danger); }
+  .menu-item-danger svg { color: var(--danger); }
+  .menu-item-danger:hover { background: var(--overdue-bg); }
 </style>

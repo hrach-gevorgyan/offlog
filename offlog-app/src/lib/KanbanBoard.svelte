@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { ProjectDoc, TaskDoc } from './types';
-  import { createTask, updateTask, posBetween, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks } from './db';
+  import { createTask, updateTask, posBetween, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask } from './db';
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
@@ -121,6 +121,54 @@
 
   // ── Card detail ────────────────────────────────────────────────────────────
   let detailTask: TaskDoc | null = null;
+
+  // B53 — per-card "⋯" quick-actions menu (2026-07-19, folded into the
+  // B49 redesign at the owner's request). Immediate writes, not batched
+  // into a form save the way CardDetail's own fields are — a Kanban card
+  // action should take effect the moment it's clicked. Same click-outside
+  // pattern CustomSelect.svelte/CardDetail's own new menu use.
+  let openCardMenu: string | null = null;
+  let cardMenuTriggerEl: HTMLButtonElement | null = null;
+  let cardMenuPanelEl: HTMLDivElement | null = null;
+  function onWindowClick(e: MouseEvent) {
+    if (!openCardMenu) return;
+    const t = e.target as Node;
+    if (cardMenuTriggerEl?.contains(t) || cardMenuPanelEl?.contains(t)) return;
+    openCardMenu = null;
+  }
+  async function togglePin(task: TaskDoc) {
+    try {
+      await updateTask(task._id!, { pinned: !task.pinned });
+      await reloadTasks();
+    } catch {
+      showError('Failed to update task.');
+    }
+  }
+  async function cardArchive(task: TaskDoc) {
+    try {
+      await archiveTask(task._id!);
+      await reloadTasks();
+    } catch {
+      showError('Failed to archive task.');
+    }
+  }
+  async function cardDuplicate(task: TaskDoc) {
+    try {
+      await duplicateTask(task._id!);
+      await reloadTasks();
+    } catch {
+      showError('Failed to duplicate task.');
+    }
+  }
+  async function cardDelete(task: TaskDoc) {
+    if (!(await confirmAction('Delete this task?', { danger: true, confirmLabel: 'Delete' }))) return;
+    try {
+      await deleteTask(task._id!);
+      await reloadTasks();
+    } catch {
+      showError('Failed to delete task.');
+    }
+  }
 
   // ── Column drag (reorder) ──────────────────────────────────────────────────
   let dragCol: string | null = null;
@@ -275,6 +323,8 @@
   }
 </script>
 
+<svelte:window on:click={onWindowClick} />
+
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="board" on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd}>
   {#each project.columns as col (col.id)}
@@ -359,6 +409,40 @@
             <div class="card-top">
               <span class="card-title">{task.title}</span>
               {#if task.pinned}<span class="card-pin" title="Pinned"><PinStar size={11} /></span>{/if}
+              <div class="card-menu-wrap">
+                <button
+                  type="button"
+                  class="card-menu-trigger"
+                  bind:this={cardMenuTriggerEl}
+                  on:click|stopPropagation={() => openCardMenu = openCardMenu === task._id ? null : task._id!}
+                  aria-label="Task actions"
+                  aria-expanded={openCardMenu === task._id}
+                >
+                  <svg viewBox="0 0 14 14" width="13" height="13" fill="currentColor"><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="11" cy="7" r="1.2"/></svg>
+                </button>
+                {#if openCardMenu === task._id}
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <div class="card-menu" bind:this={cardMenuPanelEl} on:click|stopPropagation on:keydown|stopPropagation>
+                    <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; togglePin(task); }}>
+                      <PinStar size={12} filled={task.pinned} stroked />
+                      {task.pinned ? 'Unpin' : 'Pin'}
+                    </button>
+                    <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; cardArchive(task); }}>
+                      <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2" width="11" height="3" rx="1"/><path d="M2.5 5v6.5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V5M5.5 8h3"/></svg>
+                      Archive
+                    </button>
+                    <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; cardDuplicate(task); }}>
+                      <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4.5" y="4.5" width="8" height="8" rx="1"/><path d="M9.5 4.5V2.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>
+                      Duplicate
+                    </button>
+                    <div class="card-menu-divider"></div>
+                    <button type="button" class="card-menu-item card-menu-item-danger" on:click={() => { openCardMenu = null; cardDelete(task); }}>
+                      <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 3.5h9M5.5 3.5V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M3.5 3.5l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8"/></svg>
+                      Delete
+                    </button>
+                  </div>
+                {/if}
+              </div>
             </div>
             <div class="card-meta">
               {#if task.checklist?.length}
@@ -470,6 +554,7 @@
     /* These are hover-revealed on desktop, but touch has no hover state —
        without this they're effectively undiscoverable on mobile. */
     .col-rename, .col-archive, .col-remove { opacity: .55; }
+    .card-menu-trigger { opacity: .55; }
   }
   .column {
     background: var(--col-bg);
@@ -561,6 +646,34 @@
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .9rem; font-weight: 500; line-height: 1.4; color: var(--text); flex: 1; }
   .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
+  .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
+  .card-menu-trigger {
+    display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0;
+    background: none; border: none; border-radius: 5px; color: var(--faint);
+    opacity: 0; transition: opacity .15s, background .12s, color .12s;
+    cursor: pointer;
+  }
+  .card:hover .card-menu-trigger, .card-menu-trigger:focus-visible { opacity: 1; }
+  .card-menu-trigger:hover { background: var(--hover); color: var(--text); }
+  .card-menu {
+    position: absolute; top: calc(100% + 2px); right: 0;
+    width: 168px; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.22);
+    padding: .3rem; display: flex; flex-direction: column; z-index: 10;
+  }
+  .card-menu-item {
+    display: flex; align-items: center; gap: 8px;
+    background: none; border: none; border-radius: var(--radius-sm);
+    padding: .4rem .55rem; font-size: .78rem; font-weight: 500;
+    color: var(--text); cursor: pointer; text-align: left;
+  }
+  .card-menu-item:hover { background: var(--hover); }
+  .card-menu-item svg { flex-shrink: 0; color: var(--muted); }
+  .card-menu-divider { height: 1px; background: var(--border); margin: .25rem .15rem; }
+  .card-menu-item-danger { color: var(--danger); }
+  .card-menu-item-danger svg { color: var(--danger); }
+  .card-menu-item-danger:hover { background: var(--overdue-bg); }
   .card-meta { display: flex; align-items: center; gap: .5rem; margin-top: .55rem; flex-wrap: wrap; }
   .due-badge {
     font-family: var(--mono);
