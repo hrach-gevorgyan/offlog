@@ -17,28 +17,89 @@
 
   const FIELD_LABEL: Record<string, string> = {
     title: 'Title', body: 'Notes', priority: 'Priority',
-    due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags', name: 'Name', columns: 'Statuses',
+    due_date: 'Due date', reminder_at: 'Reminder', remindOnDue: 'Remind on due date',
+    tags: 'Tags', name: 'Name', columns: 'Statuses',
+    pinned: 'Pinned', archived: 'Archived', column_id: 'Status',
+    checklist: 'Checklist', custom_values: 'Custom fields',
   };
 
   const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
+  const ACTION_LABEL: Record<string, string> = { create: 'Created', update: 'Edited', move: 'Moved', delete: 'Deleted' };
 
+  // Readability fix (owner, 2026-07-19 — "some tech shit is there
+  // especially boolean logic"): this used to treat `false` the same as
+  // "no value" (both fell through to '—'), so an archived→unarchived
+  // change and a genuinely-empty field looked identical, and a field
+  // flipping to `true` fell through to raw `String(val)` ("true"
+  // printed literally). Booleans now always read as plain Yes/No.
   function fmtVal(field: string, val: any): string {
-    if (val == null || val === '' || val === false) return '—';
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (val == null || val === '') return '—';
     if (field === 'body') return 'updated';
     if (field === 'priority') return PRIO[val] ?? String(val);
-    if (field === 'tags') return Array.isArray(val) ? (val.join(', ') || '—') : String(val);
+    if (field === 'tags') return Array.isArray(val) ? (val.join(', ') || 'none') : String(val);
     if (field === 'columns') return Array.isArray(val) ? val.map((c: any) => c.name).join(', ') : String(val);
+    if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
+    if (field === 'custom_values') return 'updated';
+    if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    if (field === 'reminder_at') return new Date(val).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
+    if (typeof val === 'object') return 'updated';
     const s = String(val);
     return s.length > 40 ? s.slice(0, 40) + '…' : s;
   }
 
+  // Readability fix, round 2 (owner, 2026-07-19 — "only created task is
+  // understandable, other ones are too complicated for humans"): the old
+  // `Field: A → B` chain, joined for every field a save touched, reads
+  // like a database diff, not a sentence. Two changes:
+  // 1) drop entries where the "before" and "after" render identically
+  //    (e.g. undefined vs. explicit `false` both read "No" — not a real
+  //    change the owner did, just a form always writing every field).
+  // 2) phrase each real change as a short plain-English clause instead
+  //    of a label/arrow pair, and cap how many clauses stack into one
+  //    line before falling back to "and N more".
+  function describeField(field: string, from: any, to: any): string {
+    if (field === 'pinned') return to ? 'Pinned' : 'Unpinned';
+    if (field === 'archived') return to ? 'Archived' : 'Taken out of archive';
+    if (field === 'due_date') return from == null ? `Due date set to ${fmtVal(field, to)}` : to == null ? 'Due date removed' : `Due date moved to ${fmtVal(field, to)}`;
+    if (field === 'reminder_at') return to == null ? 'Reminder removed' : `Reminder set for ${fmtVal(field, to)}`;
+    if (field === 'remindOnDue') return to ? 'Reminder now follows the due date' : 'Reminder no longer follows the due date';
+    if (field === 'tags') return `Tags changed to ${fmtVal(field, to)}`;
+    if (field === 'priority') return `Priority changed to ${fmtVal(field, to)}`;
+    if (field === 'title' || field === 'name') return `Renamed to "${to}"`;
+    if (field === 'body') return 'Notes updated';
+    if (field === 'checklist') return 'Checklist updated';
+    if (field === 'custom_values') return 'Custom fields updated';
+    if (field === 'columns') return 'Statuses updated';
+    return `${FIELD_LABEL[field] ?? field} changed`;
+  }
+
+  // A field "really" changed if — for booleans — its truthiness flipped
+  // (so undefined vs. explicit `false` count as the same, unchanged,
+  // state), otherwise if its JSON representation differs. This must NOT
+  // reuse fmtVal for the comparison: fmtVal collapses every checklist
+  // edit to just an item count and every custom-field edit to the
+  // literal string "updated" (by design, for display) — comparing those
+  // display strings made every real checklist/custom-field change look
+  // like a no-op and get filtered out, leaving nothing but the vague
+  // "Details updated" fallback below.
+  function hasRealChange(field: string, from: any, to: any): boolean {
+    if (typeof from === 'boolean' || typeof to === 'boolean') return !!from !== !!to;
+    return JSON.stringify(from) !== JSON.stringify(to);
+  }
+
+  const MAX_CLAUSES = 3;
+
   function fmtDiffs(diffs: Record<string, any>): string {
-    return Object.entries(diffs).map(([field, d]: [string, any]) => {
-      const label = FIELD_LABEL[field] ?? field;
-      const from  = fmtVal(field, d.from);
-      const to    = fmtVal(field, d.to);
-      return from === '—' ? `${label} set to ${to}` : `${label}: ${from} → ${to}`;
-    }).join(' · ');
+    const clauses = Object.entries(diffs)
+      .filter(([field, d]: [string, any]) => hasRealChange(field, d.from, d.to))
+      .map(([field, d]: [string, any]) => describeField(field, d.from, d.to));
+    if (clauses.length === 0) return 'Details updated';
+    if (clauses.length > MAX_CLAUSES) {
+      return clauses.slice(0, MAX_CLAUSES).join(' · ') + ` · +${clauses.length - MAX_CLAUSES} more change${clauses.length - MAX_CLAUSES === 1 ? '' : 's'}`;
+    }
+    return clauses.join(' · ');
   }
 
   function fmt(ts: string) {
@@ -93,7 +154,7 @@
     {:else}
       {#each logs as log (log._id)}
         <div class="log-row">
-          <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{log.action}</span>
+          <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
           <div class="log-main">
             <span class="log-desc">{describe(log)}</span>
             {#if log.project_name}<span class="log-project">{log.project_name}</span>{/if}
