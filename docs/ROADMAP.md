@@ -579,11 +579,17 @@ someone who has never seen this project before. Audit for anything that
 assumes a local-only environment before it goes public. Blocked on **C7**
 (credential cleanup) and a real stability/security pass — see DECISIONS.md.
 
-### C2. Zero-config first run, verified
+### C2. Zero-config first run, verified — PARTIAL PROGRESS in v4.19.0
 The architecture is already local-first with no required server, but this
 needs to be *verified*: a fresh install, no CouchDB configured, should
 never prompt for setup or imply something is missing. Audit first-run copy
 (Settings → Sync especially) to state plainly that sync is optional.
+
+v4.19.0: Android's "not connected" first-run message used to point at
+"Developer options" — a technical, slightly scary label for a first-time
+non-technical user — now points at "Find my computer" (Track E's pairing
+flow) instead, the actual easy path. Rest of the audit (every first-run
+surface, not just this one message) still open.
 
 ### C3. Play Store listing
 A signed release build (proper keystore), a Play Console developer
@@ -647,7 +653,7 @@ launch phoned Google regardless, both contrary to this app's whole
 premise. The ≤3-families rule is now written into CLAUDE.md's style
 conventions. Full codebase audit confirmed no stray third font anywhere.
 
-### C10. Plain-language pass: every string, every document — OPEN (owner, 2026-07-13)
+### C10. Plain-language pass: every string, every document — PARTIAL SWEEP DONE (owner, 2026-07-13), still open
 The sibling of C6 (which covers public-facing *branding* copy): go through
 every in-app string (buttons, hints, empty states, error messages,
 Settings explainers) and every user-facing document (README, future
@@ -657,6 +663,17 @@ is the sweep for everything else, and the standing rule going forward —
 features, updates, and docs get written for humans first. Groundwork for
 any future marketing/discoverability work: the app must describe itself in
 the same plain language a stranger would search for.
+
+v4.19.0's pass covered error messages, empty states, placeholders,
+aria-labels/titles, and the Maintenance/Data tabs — found and fixed 3
+real issues: sidebar called the trash feature "Deleted" while its own
+panel is titled "Recycle" (unified to "Recycle"); a broken/ungrammatical
+aria-label ("Select and columns" → "Select rows or show/hide columns");
+and "database" jargon in Maintenance's step labels/hint text (now
+describes what each step actually does in plain terms). Not exhaustive —
+README and other docs, and every remaining component, haven't had a
+dedicated pass yet. Pick up opportunistically rather than as one more
+giant sweep.
 
 ---
 
@@ -680,7 +697,7 @@ was open question Q6. Distinct from declined Track D: this is still
 CouchDB-protocol replication with one fixed host — the PC — not a mesh;
 the innovation is packaging, not a new sync transport.
 
-### E1. PC app + embedded sync host — WORKING END-TO-END, not yet shipped (owner-directed, 2026-07-13/14)
+### E1. PC app + embedded sync host — WORKING END-TO-END, shipped in v4.19.0 (owner-directed, 2026-07-13/14)
 Two halves, deliberately one item because GOAL.md treats them as one
 product: (1) a real installable PC app (not a PWA — see DECISIONS.md).
 Technology question — QUESTIONS.md's former Q6 — is resolved: **Tauri**,
@@ -810,12 +827,11 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
 | 7 | v4.17.0 ✓ | — | C8, C9 ✓ | Shipped — new icon everywhere (web favicons, Android launcher + notification icons) and self-hosted fonts (no more Google Fonts CDN call). Found and deleted 2 unreferenced leftover template files along the way (old vector-drawable launcher icon). |
 | 8 | v4.18.0 ✓ | A32 ✓, A33 ✓, A34 ✓, A35 ✓ | — | Shipped — A32 (sync falsely reporting "synced"), A33 (silent Android notifications), A34 (Export JSON broken on Android), A35 (PC-loopback sync default). |
-| 9 | E1 — functionally done, unsigned | — | E1 | PC standalone app + embedded sync host (Track E) — working end-to-end (2026-07-14): mDNS discovery, pairing, real installer, all verified on real hardware. Installer signing deliberately deferred (owner decision, 2026-07-14 — not required, real annual cost, revisit only if it becomes real user friction). Next: real dogfooding, then the release gate below. |
-| 10 | v4.19.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification. Maintenance pass due after this ships. |
-| 11 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
-| 12 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |
-| — | (unversioned) | — | C7 → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
-| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **v4.18** → v4.21 → … |
+| 9 | v4.19.0 ✓ | — | E1 ✓, C7 (source), C2 (partial), C10 (partial) | Shipped — Track E working end-to-end (mDNS discovery, pairing, real installer, all verified on real hardware; installer signing deliberately deferred, see E1's own entry). C7's hardcoded-password fallback removed from current source (git history still needs C1-time handling). C2: Android's first-run message now points at "Find my computer" instead of "Developer options." C10: fixed a real "Deleted"/"Recycle" naming inconsistency, a broken aria-label, and "database" jargon in Maintenance copy — full C10 sweep ("every string, every document") not exhaustive yet, continues opportunistically. **A maintenance pass is now due** (tracker said "after v4.18.0 ships," which has now happened) — see MAINTENANCE.md. |
+| 10 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
+| 11 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |
+| — | (unversioned) | — | C7 (git history) → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix's remaining git-history piece, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
+| — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **due now (after v4.18, not yet run as of v4.19)** → v4.21 → … — see MAINTENANCE.md's tracker. |
 | — | (unscheduled) | — | B39, B47, B48, B50, B51 | B39: stale device entries after a rename (needs schema-change care). B47: week-start-day setting (timezone half needs scoping first — may not be needed). B48: Android widget flatter/2-color/no-border polish. B50: extend the custom date-picker pattern to time-only fields. B51: web-vs-Android animation consistency inventory. None urgent enough to claim a version slot yet; pick up opportunistically. |
 | — | (parked) | — | B33, B28 | Sub-projects and rethinking positional-done — parked 2026-07-13 with the feature-phase wind-down; revisit post-release only if daily use demands it. |
 

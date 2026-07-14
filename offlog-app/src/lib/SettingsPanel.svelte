@@ -114,9 +114,19 @@
   // Plain-language connection status for the main pane — everything below
   // already exists as syncState.status/lastSynced/error, just not
   // surfaced as one human sentence before this.
+  //
+  // C2 finding (2026-07-19): this used to point everyone at "Developer
+  // options" to connect -- a scary label for a first-time non-technical
+  // user, and no longer even the easy path once Track E's pairing flow
+  // (isAndroid's "Find my computer" section, above this in the template)
+  // shipped. Android gets pointed at that instead; anyone else (plain
+  // desktop web, no PC-app pairing available there) keeps the old
+  // wording, since Developer options really is the only path for them.
   $: connectionStatus =
     !syncEnabled ? { text: 'Sync is paused.', tone: 'muted' } :
-    !syncUrl ? { text: 'Not connected to another device yet — see Developer options below to connect.', tone: 'muted' } :
+    !syncUrl ? (isAndroid
+      ? { text: 'Not connected to another device yet — tap "Find my computer" below to connect.', tone: 'muted' }
+      : { text: 'Not connected to another device yet — see Developer options below to connect.', tone: 'muted' }) :
     syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'muted' } :
     syncStatus === 'offline' ? { text: 'Offline — will resume automatically when back on your network.', tone: 'muted' } :
     syncStatus === 'error' ? { text: syncError || 'Sync error.', tone: 'warn' } :
@@ -442,11 +452,11 @@
 
   function freshMaintSteps(): MaintStep[] {
     return [
-      { key: 'check',   label: 'Checking database for problems', status: 'pending', note: '' },
+      { key: 'check',   label: 'Checking your data for problems', status: 'pending', note: '' },
       { key: 'repair',  label: 'Repairing anything fixable',      status: 'pending', note: '' },
       { key: 'history', label: 'Clearing old activity history',   status: 'pending', note: '' },
       { key: 'trash',   label: 'Clearing old items from Recycle', status: 'pending', note: '' },
-      { key: 'compact', label: 'Compacting the database',         status: 'pending', note: '' },
+      { key: 'compact', label: 'Freeing up unused space',         status: 'pending', note: '' },
     ];
   }
   maintSteps = freshMaintSteps();
@@ -828,9 +838,9 @@
 
             {:else if activeCategory === 'maintenance'}
               <p class="setting-hint">
-                Runs a full check in order: looks for database problems, repairs what it safely can,
-                clears old activity history (6+ months) and old Recycle items (3+ months), then compacts
-                the database to reclaim the space they were using.
+                Runs a full check in order: looks for problems with your data, repairs what it safely can,
+                clears old activity history (6+ months) and old Recycle items (3+ months), then frees up
+                the space they were using.
               </p>
 
               <div class="progress-track"><div class="progress-fill" style="width:{maintProgress}%"></div></div>

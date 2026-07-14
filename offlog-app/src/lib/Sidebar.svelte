@@ -365,11 +365,11 @@
         </svg>
         <span class="icon-btn-label">Changelog</span>
       </button>
-      <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Deleted{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
+      <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Recycle{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
         </svg>
-        <span class="icon-btn-label">Deleted{#if breakdown && breakdown.deletedTasks > 0}<span class="icon-btn-count"> · {breakdown.deletedTasks}</span>{/if}</span>
+        <span class="icon-btn-label">Recycle{#if breakdown && breakdown.deletedTasks > 0}<span class="icon-btn-count"> · {breakdown.deletedTasks}</span>{/if}</span>
       </button>
       <button class="icon-btn" on:click={() => { openSettings(); dispatch('navigate'); }} title="Settings">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

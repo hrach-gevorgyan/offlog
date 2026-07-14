@@ -397,7 +397,7 @@
       </button>
 
       <div class="col-menu-wrap">
-        <button class="action-btn" class:active={showColMenu || selectionMode} on:click={openColMenu} aria-label="Select and columns" title="Select rows / show-hide columns">
+        <button class="action-btn" class:active={showColMenu || selectionMode} on:click={openColMenu} aria-label="Select rows or show/hide columns" title="Select rows / show-hide columns">
           <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="3" y1="3" x2="3" y2="11"/><line x1="7" y1="3" x2="7" y2="11"/><line x1="11" y1="3" x2="11" y2="11"/>
           </svg>
