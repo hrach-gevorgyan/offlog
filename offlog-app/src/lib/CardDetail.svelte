@@ -10,7 +10,6 @@
   import PinStar from './PinStar.svelte';
   import CalendarPicker from './CalendarPicker.svelte';
   import CustomSelect from './CustomSelect.svelte';
-  import { fmtFullTimestamp } from './utils';
   import { getDefaultReminderTime } from '../config';
 
   export let task: TaskDoc;
@@ -148,9 +147,9 @@
   // visible controls (3 flat footer buttons + a "Show history" text
   // toggle competing with Notes for space). Consolidated into one "⋯"
   // menu — same click-outside-closes pattern CustomSelect.svelte already
-  // uses, not a new mechanism. Created/Updated timestamps move in here
-  // too (as plain text, not an action) since they were always adjacent to
-  // the history toggle they're now grouped with.
+  // uses, not a new mechanism. (Created/Updated timestamps were tried
+  // here too but dropped — once History is open the panel itself shows
+  // the same info, making the static menu text redundant/confusing.)
   let showActionsMenu = false;
   let menuTriggerEl: HTMLButtonElement;
   let menuPanelEl: HTMLDivElement;
@@ -484,12 +483,6 @@
         </button>
         {#if showActionsMenu}
           <div class="actions-menu" bind:this={menuPanelEl}>
-            <div class="menu-timestamps">
-              <span>Created {fmtFullTimestamp(task.created_at)}</span>
-              {#if task.updated_at !== task.created_at}
-                <span>Updated {fmtFullTimestamp(task.updated_at)}</span>
-              {/if}
-            </div>
             <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; loadHistory(); }}>
               <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3l2 1.5"/></svg>
               {showHistory ? 'Hide history' : 'Show history'}
@@ -779,11 +772,6 @@
     width: 200px; background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.22);
     padding: .35rem; display: flex; flex-direction: column; z-index: 10;
-  }
-  .menu-timestamps {
-    display: flex; flex-direction: column; gap: 2px;
-    font-family: var(--mono); font-size: .64rem; color: var(--faint);
-    padding: .3rem .6rem .45rem;
   }
   .menu-item {
     display: flex; align-items: center; gap: 9px;
