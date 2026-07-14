@@ -17,10 +17,13 @@
   import CardDetail from './lib/CardDetail.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
+  import NamePrompt from './lib/NamePrompt.svelte';
+  import { hasShownNamePrompt, markNamePromptShown } from './config';
   import { closeOnBack } from './lib/modalStack';
 
   let ready = false;
   let initError: string | null = null;
+  let showNamePrompt = false;
   let showDeadlines = false;
   let showDashboard = true;
   let showFocus = false;
@@ -270,6 +273,14 @@
       // 'dashboard', nothing, or a stale projectId → keep showDashboard = true
     } catch {}
     ready = true;
+    // B46: asked once, ever, regardless of skip/save (markNamePromptShown()
+    // fires immediately, not only on save) — never blocks reaching the app,
+    // shown after `ready` so it layers on top of a fully usable UI rather
+    // than gating it.
+    if (!hasShownNamePrompt()) {
+      showNamePrompt = true;
+      markNamePromptShown();
+    }
     subscribeUndo(showUndoToast);
   });
 
@@ -417,6 +428,7 @@
 {/if}
 
 <ConfirmDialog />
+{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} />{/if}
 
 {#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
 <button class="fab" on:click={() => showQuickAdd = true} title="Quick add task (Ctrl+N)">

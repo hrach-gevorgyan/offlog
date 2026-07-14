@@ -144,6 +144,23 @@ export function setDeviceName(name: string) {
   localStorage.setItem(DEVICE_NAME_KEY, trimmed || defaultDeviceName());
 }
 
+// B46: a lightweight first-run prompt asks for this device's name once,
+// ever — regardless of whether the user names it or skips (skipping is as
+// valid a choice as naming it, per C2's zero-config-first-run principle,
+// so this flag is set either way, not only on save). Separate key from
+// DEVICE_NAME_KEY itself, since getDeviceName() already silently
+// auto-generates a default the first time it's called — that alone can't
+// signal "has this device actually been asked yet."
+const NAME_PROMPTED_KEY = 'offlog_name_prompted';
+
+export function hasShownNamePrompt(): boolean {
+  return localStorage.getItem(NAME_PROMPTED_KEY) === '1';
+}
+
+export function markNamePromptShown() {
+  localStorage.setItem(NAME_PROMPTED_KEY, '1');
+}
+
 // B13: explicit sync on/off, independent of the configured URL — clearing
 // the URL to "pause" sync also drops the server config, which isn't what
 // "stop syncing for a while" should mean. Defaults to enabled (true) so

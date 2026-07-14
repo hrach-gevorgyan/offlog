@@ -406,29 +406,24 @@
     a.click();
   }
 
-  async function exportJSON() {
+  // B45 — was four flat, loosely-related buttons (Export JSON, Export CSV,
+  // Export Project, Import JSON), reading as bolted-on rather than one
+  // backup/restore story. Redesigned into two groups: "Back up" (scope —
+  // everything vs one project — is a single control, not implied by which
+  // button you tap) and "Restore". CSV stays a separate, clearly-labeled
+  // one-way export (it isn't round-trippable, so it doesn't belong in the
+  // Back up / Restore pair conceptually, just alongside it).
+  let backupScope = ''; // '' = everything
+  $: backupScopeOptions = [{ value: '', label: 'Everything' }, ...$projectsStore.map(p => ({ value: p._id!, label: p.name }))];
+  async function doBackup() {
     try {
-      const all = await db.allDocs({ include_docs: true });
-      const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
-      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-backup-${new Date().toISOString().slice(0,10)}.json`);
+      const docs = backupScope
+        ? await exportProjectDocs(backupScope)
+        : (await db.allDocs({ include_docs: true })).rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+      const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
+      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${new Date().toISOString().slice(0,10)}.json`);
     } catch {
-      showError('Failed to export backup. Please try again.');
-    }
-  }
-
-  // B4 — export a single project's docs, and a spreadsheet-friendly CSV
-  // of every task. Both one-way (CSV isn't re-importable); JSON export
-  // above stays the round-trippable backup format.
-  let exportProjectId = '';
-  $: exportProjectOptions = [{ value: '', label: 'Choose a project…' }, ...$projectsStore.map(p => ({ value: p._id!, label: p.name }))];
-  async function doExportProject() {
-    if (!exportProjectId) return;
-    try {
-      const docs = await exportProjectDocs(exportProjectId);
-      const name = $projectsStore.find(p => p._id === exportProjectId)?.name ?? 'project';
-      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0,10)}.json`);
-    } catch {
-      showError('Failed to export project. Please try again.');
+      showError('Failed to back up. Please try again.');
     }
   }
 
@@ -801,40 +796,46 @@
 
               <div class="section-divider"></div>
 
-              <div class="setting-row">
-                <span class="storage-info" style="color: var(--muted)">Back up everything as one file</span>
-                <button class="export-btn" on:click={exportJSON}>Export JSON</button>
-              </div>
-              <div class="setting-row">
-                <span class="storage-info" style="color: var(--muted)">Every task, one row, for a spreadsheet</span>
-                <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
-              </div>
-              <div class="setting-row">
-                <div class="project-export-select">
-                  <CustomSelect options={exportProjectOptions} bind:value={exportProjectId} />
-                </div>
-                <button class="export-btn" on:click={doExportProject} disabled={!exportProjectId}>Export Project</button>
-              </div>
-              {#if importPreview}
-                <div class="import-preview">
-                  <p class="setting-hint">
-                    Will create <strong>{importPreview.byType.space}</strong> space{importPreview.byType.space === 1 ? '' : 's'},
-                    <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
-                    <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
-                    {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
-                    A doc whose id already exists merges instead of duplicating.
-                  </p>
-                  <div class="setting-row">
-                    <button class="export-btn" on:click={cancelImport}>Cancel</button>
-                    <button class="export-btn import-confirm-btn" on:click={confirmImport}>Import {importPreview.toCreate} item{importPreview.toCreate === 1 ? '' : 's'}</button>
+              <div class="setting-group">
+                <div class="setting-section-title">Back up</div>
+                <p class="setting-hint">Everything, or just one project — either can be restored later.</p>
+                <div class="setting-row">
+                  <div class="project-export-select">
+                    <CustomSelect options={backupScopeOptions} bind:value={backupScope} />
                   </div>
+                  <button class="export-btn" on:click={doBackup}>Back up</button>
                 </div>
-              {:else}
+                <div class="setting-row">
+                  <span class="storage-info" style="color: var(--muted)">Every task, one row, for a spreadsheet (one-way, can't be restored)</span>
+                  <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
+                </div>
+              </div>
+
+              <div class="section-divider"></div>
+
+              <div class="setting-group">
+                <div class="setting-section-title">Restore</div>
+                {#if importPreview}
+                  <div class="import-preview">
+                    <p class="setting-hint">
+                      Will create <strong>{importPreview.byType.space}</strong> space{importPreview.byType.space === 1 ? '' : 's'},
+                      <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
+                      <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
+                      {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
+                      A doc whose id already exists merges instead of duplicating.
+                    </p>
+                    <div class="setting-row">
+                      <button class="export-btn" on:click={cancelImport}>Cancel</button>
+                      <button class="export-btn import-confirm-btn" on:click={confirmImport}>Import {importPreview.toCreate} item{importPreview.toCreate === 1 ? '' : 's'}</button>
+                    </div>
+                  </div>
+                {:else}
                 <div class="setting-row">
                   <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
                   <button class="export-btn" on:click={handleImport}>Import JSON</button>
                 </div>
-              {/if}
+                {/if}
+              </div>
 
             {:else if activeCategory === 'maintenance'}
               <p class="setting-hint">

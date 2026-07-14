@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.14.0 | Project templates ("Use a template…" copies status structure + optionally open tasks) and a notes-length soft counter on CardDetail | `v4.14.0` |
 | 4.12.2 | A31 visual/UX pass part 1: fixed Dashboard project-grid mobile overflow (`minmax(0,1fr)`), Focus view's FAB/Commit-button overlap at mobile widths | `v4.12.2` |
 | 4.12.1 | UI audit fixes: WCAG AA contrast fixes for --faint/--accent, new --on-accent token applied at 17 sites, consolidated ACTION_COLOR hex maps, scroll-shadow affordances on overflowing lists | `v4.12.1` |
 | 4.12.0 | Full codebase audit + docs-flow optimization (A30): fixed duplicated fmtLastSynced/timeAgo helpers, CardDetail collapsible-state remount bug, CustomSelect focus-on-open gap | `v4.12.0` |

@@ -472,25 +472,33 @@ threshold), with the raw MB/quota numbers demoted to a small secondary
 line. Export rows got their own plain-language labels too, instead of
 sharing a line with the storage readout. Copy/layout only.
 
-### B45. Export/import UX redesign — OPEN (owner, 2026-07-13)
-Settings → Data currently has four separate, loosely-related actions:
+### B45. Export/import UX redesign — shipped in v4.20.0
+Settings → Data used to have four separate, loosely-related actions:
 Export JSON (everything), Export CSV (everything, one-way), Export
-Project (a picker, JSON only), Import JSON. Owner feedback: this reads as
-four bolted-on buttons, not one coherent backup/restore story. Redesign
-for clarity — likely two clear groups ("Back up" vs "Restore," with
-scope — everything vs one project — as a single control rather than
-implied by which button you pick) rather than four flat rows. Tie in
-A34's native-download-mechanism fix (Android export currently doesn't
-work at all) so this isn't designed twice.
+Project (a picker, JSON only), Import JSON — reading as four bolted-on
+buttons, not one coherent backup/restore story. Redesigned into two
+clear groups: **Back up** (a single scope control — "Everything" or pick
+one project — feeding one "Back up" button, replacing the old
+Export-JSON/Export-Project split; CSV kept separate right below it,
+clearly labeled "one-way, can't be restored" since it isn't part of the
+round-trippable backup/restore pair conceptually) and **Restore**
+(Import JSON, unchanged). `doBackup()` in `SettingsPanel.svelte` merges
+the old `exportJSON()`/`doExportProject()` into one function branching on
+scope. A34's native-download-mechanism fix already shipped in v4.18.0,
+so this was purely the UX/layout redesign, not new download logic.
 
-### B46. First-run: ask for a device/user name — OPEN (owner, 2026-07-13)
-`config.ts`'s `getDeviceName()`/`setDeviceName()` already exist and are
-editable in Settings → Sync, but nothing prompts for a name on first
-launch — it silently defaults (`defaultDeviceName()`) until someone finds
-the field. Add a lightweight first-run prompt (name only, skippable,
-never blocks getting into the app — must stay consistent with C2's
-zero-config-first-run principle: skipping should be as valid a choice as
-naming it).
+### B46. First-run: ask for a device/user name — shipped in v4.20.0
+`config.ts`'s `getDeviceName()`/`setDeviceName()` already existed and
+were editable in Settings → Sync, but nothing prompted for a name on
+first launch — it silently defaulted (`defaultDeviceName()`) until
+someone found the field. Added `NamePrompt.svelte`, a lightweight modal
+(reuses `ConfirmDialog.svelte`'s pattern: scrim, `trapFocus`, Escape
+closes) shown once, ever, right after `App.svelte`'s `onMount` sets
+`ready = true` — so it layers on top of a fully usable app rather than
+gating it. Skip and Save are equal-weight actions, and the "shown once"
+flag (`offlog_name_prompted`, `config.ts`) is set immediately regardless
+of which one is chosen — skipping is as valid a choice as naming it, per
+C2's zero-config-first-run principle.
 
 ### B47. Week start day + timezone setting — OPEN (owner, 2026-07-13)
 Agenda's week view and any "this week" grouping logic currently assume a
@@ -829,7 +837,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 8 | v4.18.0 ✓ | A32 ✓, A33 ✓, A34 ✓, A35 ✓ | — | Shipped — A32 (sync falsely reporting "synced"), A33 (silent Android notifications), A34 (Export JSON broken on Android), A35 (PC-loopback sync default). |
 | 9 | v4.19.0 ✓ | — | E1 ✓, C7 (source), C2 (partial), C10 (partial) | Shipped — Track E working end-to-end (mDNS discovery, pairing, real installer, all verified on real hardware; installer signing deliberately deferred, see E1's own entry). C7's hardcoded-password fallback removed from current source (git history still needs C1-time handling). C2: Android's first-run message now points at "Find my computer" instead of "Developer options." C10: fixed a real "Deleted"/"Recycle" naming inconsistency, a broken aria-label, and "database" jargon in Maintenance copy — full C10 sweep ("every string, every document") not exhaustive yet, continues opportunistically. |
 | — | v4.19.1 ✓ | — | — | Shipped — maintenance pass (seventh run, first to cover `offlog-desktop/` too). See MAINTENANCE.md's tracker for full detail. |
-| 10 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
+| 10 | v4.20.0 ✓ | — | B45 ✓, B46 ✓ | Shipped — Export/import redesigned into Back up / Restore groups with scope as one control; lightweight skippable first-run device-name prompt. |
 | 11 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |
 | — | (unversioned) | — | C7 (git history) → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix's remaining git-history piece, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → v4.18 ✓ (**ran as v4.19.1** — first pass to cover `offlog-desktop/` too) → v4.21 → … — see MAINTENANCE.md's tracker. |
