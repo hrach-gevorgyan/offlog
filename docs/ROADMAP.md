@@ -42,9 +42,10 @@ positional-done) stay parked either way.
 1. **Now — Track E, the PC app as host.** GOAL.md's full vision: a real
    PC app, downloaded and run, that *is* the sync host — phones connect
    to it over home Wi-Fi with no CouchDB knowledge required. Working
-   end-to-end already (E1) — what's left is installer signing, then
-   dogfooding it for real. All new-feature work is paused until this
-   lands.
+   end-to-end already (E1) — installer signing deliberately deferred
+   (not required, real annual cost — see E1's own entry), so what's
+   next is real dogfooding. All new-feature work is paused until this
+   track lands.
 2. **Then — the release gate (Track C core).** C7 credential fix
    (mandatory, blocks everything public — note it isn't fully closed by
    Track E's pairing handshake, see C7's own entry), C2 zero-config
@@ -735,9 +736,18 @@ data" button that clears both the PC's local PouchDB and the embedded
 server, for testing "what does a real first-run user see" without
 manually killing processes and deleting folders.
 
-**Explicitly not done yet:** installer signing (unsigned — triggers
-Windows SmartScreen on a real user's machine). The desktop-web loopback
-fallback (A35) stays as-is for the plain browser build — not removed.
+**Installer signing — deliberately deferred (owner decision, 2026-07-14),
+not blocking.** A code-signing certificate is a real annual cost
+($70-400/yr OV, ~$300-600/yr EV — EV needs a USB hardware token + wants
+a registered business for easiest verification) and isn't required for
+Track E to be functionally done. Shipping unsigned for now — Windows
+shows "protected your PC," click "More info → Run anyway," same as
+plenty of small open-source Windows apps. Revisit post-release if it
+becomes real friction for actual users, not before. Not something to
+purchase or configure without the owner's own decision to do so.
+
+The desktop-web loopback fallback (A35) stays as-is for the plain
+browser build — not removed.
 
 ---
 
@@ -791,7 +801,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 6 | v4.16.0 ✓ | — | B43, B44 ✓ | Shipped — stabilization phase begins (owner pivot, 2026-07-13 — B33/B28 parked, see their entries). Sync settings lead with a plain status sentence instead of a raw CouchDB URL, technical fields moved into a new collapsed Developer options section; storage copy leads with "your data is tiny," raw MB/quota numbers demoted. |
 | 7 | v4.17.0 ✓ | — | C8, C9 ✓ | Shipped — new icon everywhere (web favicons, Android launcher + notification icons) and self-hosted fonts (no more Google Fonts CDN call). Found and deleted 2 unreferenced leftover template files along the way (old vector-drawable launcher icon). |
 | 8 | v4.18.0 ✓ | A32 ✓, A33 ✓, A34 ✓, A35 ✓ | — | Shipped — A32 (sync falsely reporting "synced"), A33 (silent Android notifications), A34 (Export JSON broken on Android), A35 (PC-loopback sync default). |
-| 9 | (in progress, pulled forward) | — | E1 | **Current priority, ahead of everything below** — PC standalone app + embedded sync host (Track E). Working end-to-end (2026-07-14) — mDNS discovery, pairing, real installer, all verified on real hardware. All new-feature work is paused until this lands. Only remaining piece: installer signing (unsigned still triggers Windows SmartScreen). See E1's own entry and Path to v1.0 above for the reordering. |
+| 9 | E1 — functionally done, unsigned | — | E1 | PC standalone app + embedded sync host (Track E) — working end-to-end (2026-07-14): mDNS discovery, pairing, real installer, all verified on real hardware. Installer signing deliberately deferred (owner decision, 2026-07-14 — not required, real annual cost, revisit only if it becomes real user friction). Next: real dogfooding, then the release gate below. |
 | 10 | v4.19.0 | — | C10 + C2 | Plain-language sweep over every remaining string/doc, paired with zero-config first-run verification. Maintenance pass due after this ships. |
 | 11 | v4.20.0 | — | B45, B46 | Export/import UX redesign (ties in A34's native-download fix) + first-run device-name prompt. |
 | 12 | v4.21.0 | — | B49 | Card Detail redesign — deliberately isolated, needs its own scoping pass first (visual/layout only, every current function must survive). |
