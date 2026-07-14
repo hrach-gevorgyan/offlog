@@ -1,5 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { fly, fade, scale } from 'svelte/transition';
+  import { flip } from 'svelte/animate';
+  import { cubicOut } from 'svelte/easing';
+  import { popScale } from './motion';
   import type { ProjectDoc, TaskDoc } from './types';
   import { createTask, updateTask, posBetween, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask } from './db';
   import { reloadTasks, showError } from './store';
@@ -335,6 +339,9 @@
       on:dragover={(e) => onColDragOver(e, col.id)}
       on:drop={(e) => onColDrop(e, col.id)}
       on:dragend={() => { dragCol = null; dragOverCol = null; }}
+      in:scale={{ duration: 160, start: 0.95, easing: cubicOut }}
+      out:fade={{ duration: 130 }}
+      animate:flip={{ duration: 220, easing: cubicOut }}
     >
       <!-- Column header — this is the drag handle for reordering columns -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -405,10 +412,13 @@
             on:touchstart|nonpassive={(e) => onTouchStart(e, task, e.currentTarget)}
             on:click={() => { if (!touchGhost) detailTask = task; }}
             on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
+            in:scale={{ duration: 150, start: 0.92, easing: cubicOut }}
+            out:fade={{ duration: 120 }}
+            animate:flip={{ duration: 200, easing: cubicOut }}
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.pinned}<span class="card-pin" title="Pinned"><PinStar size={11} /></span>{/if}
+              {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
               <div class="card-menu-wrap">
                 <button
                   type="button"
@@ -422,7 +432,7 @@
                 </button>
                 {#if openCardMenu === task._id}
                   <!-- svelte-ignore a11y-no-static-element-interactions -->
-                  <div class="card-menu" bind:this={cardMenuPanelEl} on:click|stopPropagation on:keydown|stopPropagation>
+                  <div class="card-menu" bind:this={cardMenuPanelEl} on:click|stopPropagation on:keydown|stopPropagation transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
                     <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; togglePin(task); }}>
                       <PinStar size={12} filled={task.pinned} stroked />
                       {task.pinned ? 'Unpin' : 'Pin'}
@@ -466,7 +476,7 @@
 
         {#if quickAddCol === col.id}
           <!-- svelte-ignore a11y-autofocus -->
-          <div class="quick-add-form">
+          <div class="quick-add-form" transition:scale={{ duration: 140, start: 0.95, easing: cubicOut }}>
             <input
               autofocus
               class="quick-input"
@@ -490,7 +500,7 @@
   <!-- Add column -->
   <div class="add-col-area">
     {#if addingCol}
-      <div class="add-col-form">
+      <div class="add-col-form" transition:scale={{ duration: 140, start: 0.95, easing: cubicOut }}>
         <!-- svelte-ignore a11y-autofocus -->
         <input
           autofocus

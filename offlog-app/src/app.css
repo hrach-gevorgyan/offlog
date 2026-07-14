@@ -147,14 +147,15 @@ a { -webkit-tap-highlight-color: transparent; }
   border-radius: 4px;
 }
 
-/* shared modal scrim */
+/* shared modal scrim — B51: fade in/out is a per-usage Svelte
+   `transition:fade` now (every consumer needs its own {#if}-driven
+   mount/unmount to animate on close, which a shared CSS `animation:`
+   can't do — it only ever played once, on mount). */
 .scrim {
   position: fixed; inset: 0;
   background: rgba(0,0,0,.45);
   z-index: 400;
-  animation: scrim-fade .18s ease;
 }
-@keyframes scrim-fade { from { opacity: 0; } to { opacity: 1; } }
 
 /* calm scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

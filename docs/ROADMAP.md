@@ -500,20 +500,21 @@ flag (`offlog_name_prompted`, `config.ts`) is set immediately regardless
 of which one is chosen — skipping is as valid a choice as naming it, per
 C2's zero-config-first-run principle.
 
-### B47. Week start day + timezone setting — OPEN (owner, 2026-07-13)
-Agenda's week view and any "this week" grouping logic currently assume a
-fixed week start (check `DeadlinesView.svelte`'s date math before
-scoping). Add a Settings toggle for week-start day (Sunday/Monday, the
-common two). Timezone: **investigate whether this is actually needed
-before building it** — the app already uses the device's local time
-throughout (`new Date()`, no UTC conversion layer per existing due-date/
-reminder code) which is correct for a single-device-local personal task
-manager; a timezone *setting* would only matter if a task's due date
-needs to mean the same instant across devices in different zones, which
-may not be a real scenario here. Scope that question first, don't build
-a timezone picker speculatively.
+### B47. Week start day setting — SHIPPED in v4.22.0
+Agenda's week view and `DeadlinesView.svelte`'s "this week" grouping both
+assumed a fixed Sunday week start (`d.getDate() - d.getDay()`). Added a
+Settings → Appearance toggle (Sunday/Monday), stored per-device
+(`getWeekStartsMonday()`/`setWeekStartsMonday()` in `config.ts`, same
+pattern as the default-reminder-time setting) — a shared
+`daysSinceWeekStart()` helper in `utils.ts` makes both conventions one
+formula. **Timezone half of the original scope deliberately not
+built**: the app already uses the device's local time throughout with no
+UTC conversion layer, which is correct for a single-device-local
+personal task manager per DECISIONS.md — a timezone setting only matters
+if a due date needs to mean the same instant across devices in different
+zones, which isn't a real scenario here. Revisit only if that changes.
 
-### B48. Android widget: flatter, 2-color light/dark, no border highlight — OPEN (owner, 2026-07-13)
+### B48. Android widget: flatter, 2-color light/dark, no border highlight — OPEN, deferred to a later release (owner, 2026-07-13)
 B37 (v4.8.0) already noted "final visual sizing/spacing remains an open,
 owner-driven polish pass." New specifics from on-device testing: remove
 the border highlight, make the widget flatter (less shadow/depth), and
@@ -556,7 +557,7 @@ Delete. Unlike Card Detail's menu (which batches into the form's Save),
 these are immediate writes — a Kanban-level action should take effect
 the moment it's clicked, not wait on a save the user never opened.
 
-### B50. Custom time picker (extend B38 to reminder times) — OPEN (owner, 2026-07-13)
+### B50. Custom time picker (extend B38 to reminder times) — OPEN, deferred to a later release (owner, 2026-07-13)
 B38 (v4.6.5) replaced the native date input with a themed
 `CalendarPicker.svelte` for Due date; `CardDetail`'s Reminder field
 already reuses the same component with `withTime` for date+time
@@ -569,16 +570,47 @@ picker; if no clean Svelte time-picker primitive fits the existing
 component's approach, build a matching custom one rather than mixing
 native and themed pickers in the same form.
 
-### B51. Consistent animations, web vs Android — OPEN (owner, 2026-07-13)
-Owner-reported: some transitions/animations exist on one platform but not
-the other, or differ in feel. Needs an actual inventory pass first (grep
-`transition:`, `animation:`, and Svelte's `transition:`/`animate:`
-directives across every component, note which are pure-CSS — should
-already be platform-consistent — vs. anything gated by a platform check
-or relying on a capability that might not exist in the Android WebView)
-before deciding what to fix; likely candidates are anything timed against
-`prefers-reduced-motion` or relying on browser APIs with different
-WebView-vs-desktop-Chrome support.
+### B51. Consistent animations everywhere — SHIPPED in v4.22.0
+Owner-reported: too many actions snapped instantly with no transition at
+all, reading as "too fast and non real" — not a web-vs-Android
+inconsistency (an inventory pass confirmed the Capacitor WebView renders
+identical CSS to web, no separate native animation layer to reconcile;
+`offlog-app/android` has no `res/anim*` resources) but a real gap: things
+that *open* mostly animated already, almost nothing that *closed* did,
+and several everyday actions had no transition in either direction.
+Fixed broadly:
+- New `src/lib/motion.ts` — shared transition constants/custom functions
+  (`panelFly`, `scrimFade`, `dialogPop`, `popScale`, `searchPop`,
+  `quickAddPop`, `toastFly`) so every panel/dialog/popover/toast animates
+  with the same feel, reusing the durations/easing already established
+  ad hoc (`--ease` in `app.css`). Centered dialogs/toasts needed *custom*
+  transition functions, not Svelte's built-in `scale`/`fly` — those
+  overwrite an element's own `transform: translate(-50%,-50%)`
+  centering mid-animation, so the custom functions bake the offset into
+  every frame instead.
+- Every panel that used to `animation: slideIn` (open-only — closing
+  always snapped instantly) now uses `transition:fly`/`transition:fade`
+  (CardDetail, ChangelogView, SettingsPanel's manager panels, TrashView,
+  SpaceManager, TagManager, CustomFieldManager, ArchivedProjectsManager,
+  ConfirmDialog, NamePrompt, GlobalSearch, QuickAdd, the mobile sidebar
+  scrim, error/undo toasts, the keyboard-shortcuts dialog).
+- CardDetail's 4 collapsible sections (Schedule, Checklist, Custom
+  fields, Notes) gained `transition:slide`.
+- The two new "⋯" menus (Kanban card menu, CardDetail actions menu, both
+  new in v4.21.0 with zero animation) now match `CustomSelect`'s pop-in.
+- Kanban cards and List rows animate in/out on create/delete/archive
+  (`in:scale`/`out:fade` and `transition:slide` respectively) plus
+  `animate:flip` for reorder settling; Kanban columns get the same
+  in/out+flip treatment for add/remove.
+- Checklist checkbox toggle gained a real transition (previously none).
+- **Deliberately not done**: a Kanban↔List view crossfade — wrapping
+  either component in an extra transitioning `<div>` from the parent
+  risks breaking their internal scroll/flex layout for a low-value
+  effect; skipped rather than risk a layout regression for it.
+- New `tests/setup.ts` shim: jsdom has no Web Animations API, and
+  Svelte 5's transition directives call `Element.animate()` — a no-op
+  polyfill stops every test touching a transitioning component from
+  throwing "element.animate is not a function".
 
 ### B52. QR pairing — DEFERRED (owner-directed, 2026-07-13)
 Originally scoped as an interim "no human ever types an IP" step (device
@@ -856,6 +888,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | — | v4.19.1 ✓ | — | — | Shipped — maintenance pass (seventh run, first to cover `offlog-desktop/` too). See MAINTENANCE.md's tracker for full detail. |
 | 10 | v4.20.0 ✓ | — | B45 ✓, B46 ✓ | Shipped — Export/import redesigned into Back up / Restore groups with scope as one control; lightweight skippable first-run device-name prompt. |
 | 11 | v4.21.0 ✓ | — | B49 ✓, B53 ✓ | Shipped — Card Detail redesign (mockup-validated over 4 iterations: combined "Schedule" row for Due date/Reminder, card-style Checklist/Custom fields/Notes rows, "⋯" menu replacing 4 competing footer controls) plus a new Kanban-card-level "⋯" quick-actions menu (Pin/Archive/Duplicate/Delete without opening Card Detail), folded in mid-review at the owner's request. |
+| 12 | v4.22.0 ✓ | — | B47 ✓, B51 ✓ | Shipped — week-start-day setting (Sunday/Monday, Settings → Appearance), plus a full pass adding quick/natural open+close animation to every panel, dialog, popover, toast, card, and column that was missing one (previously many things that *opened* with a transition snapped shut instantly, and several everyday actions like checklist-toggle or card create/delete had no animation at all). B48/B50 explicitly deferred, not dropped. Also fixed a real `offlog-desktop` bug found in the same pass: Tauri's WebView defaults to intercepting native OS drag-drop, which silently disabled the Kanban board's HTML5 drag-and-drop — `dragDropEnabled: false` in `tauri.conf.json` fixes it. |
 | — | (unversioned) | — | C7 (git history) → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix's remaining git-history piece, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → v4.18 ✓ (**ran as v4.19.1** — first pass to cover `offlog-desktop/` too) → v4.21 → … — see MAINTENANCE.md's tracker. |
 | — | (unscheduled) | — | B39, B47, B48, B50, B51 | B39: stale device entries after a rename (needs schema-change care). B47: week-start-day setting (timezone half needs scoping first — may not be needed). B48: Android widget flatter/2-color/no-border polish. B50: extend the custom date-picker pattern to time-only fields. B51: web-vs-Android animation consistency inventory. None urgent enough to claim a version slot yet; pick up opportunistically. |

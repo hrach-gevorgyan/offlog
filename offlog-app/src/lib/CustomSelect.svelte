@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { popScale } from './motion';
 
   // Native <select> renders as the bare OS picker on Android (a plain list
   // in a system sheet, no app styling at all) — jarring next to every other
@@ -98,7 +100,7 @@
 
   {#if open}
     <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
-    <div class="cs-panel" class:placement-up={placement === 'up'} bind:this={panelEl} role="listbox" tabindex="-1" on:keydown={onPanelKey}>
+    <div class="cs-panel" class:placement-up={placement === 'up'} bind:this={panelEl} role="listbox" tabindex="-1" on:keydown={onPanelKey} transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
       {#each grouped as [group, opts] (group)}
         {#if group}<div class="cs-group-label">{group}</div>{/if}
         {#each opts as o (o.value)}
@@ -139,10 +141,8 @@
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     box-shadow: 0 12px 32px rgba(0,0,0,.22); max-height: 240px; overflow-y: auto;
     padding: .3rem; display: flex; flex-direction: column; gap: 1px;
-    animation: cs-pop .12s cubic-bezier(0.4,0,0.2,1) both;
   }
   .cs-panel.placement-up { top: auto; bottom: calc(100% + 6px); }
-  @keyframes cs-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   .cs-group-label {
     font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em;

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { getDeviceName, setDeviceName } from '../config';
   import { trapFocus } from './focusTrap';
+  import { dialogPop, scrimFade } from './motion';
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -28,8 +30,8 @@
 <svelte:window on:keydown={onWindowKeydown} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="prompt-scrim" on:click|self={skip}></div>
-<div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
+<div class="prompt-scrim" on:click|self={skip} transition:fade={scrimFade}></div>
+<div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus transition:dialogPop>
   <p class="prompt-title">What should we call this device?</p>
   <p class="prompt-hint">Shows up on this device's own edits when synced with others — changelog entries, task history. You can change this later in Settings, or skip for now.</p>
   <!-- svelte-ignore a11y-autofocus -->
@@ -43,9 +45,8 @@
 <style>
   .prompt-scrim {
     position: fixed; inset: 0; background: rgba(0,0,0,.45);
-    z-index: 700; animation: fade .15s ease;
+    z-index: 700;
   }
-  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
   .prompt-panel {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -53,11 +54,6 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     box-shadow: 0 20px 50px rgba(0,0,0,.3);
     padding: 1.35rem 1.5rem;
-    animation: pop .16s cubic-bezier(0.4,0,0.2,1) both;
-  }
-  @keyframes pop {
-    from { opacity: 0; transform: translate(-50%,-50%) scale(.96); }
-    to   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
   }
 
   .prompt-title { margin: 0 0 .4rem; font-size: .95rem; font-weight: 600; color: var(--text); }

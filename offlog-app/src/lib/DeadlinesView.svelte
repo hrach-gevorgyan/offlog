@@ -3,7 +3,8 @@
   import { getAllTasksDue, updateTask, subscribe } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-  import { dueLabelLong, dueRelative } from './utils';
+  import { dueLabelLong, dueRelative, daysSinceWeekStart } from './utils';
+  import { getWeekStartsMonday } from '../config';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
 
@@ -26,10 +27,12 @@
 
   let weekOffset = 0;
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekStartsMonday = getWeekStartsMonday();
+
   function startOfOffsetWeek(offset: number): Date {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - d.getDay() + offset * 7);
+    d.setDate(d.getDate() - daysSinceWeekStart(d, weekStartsMonday) + offset * 7);
     return d;
   }
   function toDateStr(d: Date): string {
@@ -56,13 +59,13 @@
 
   function startOfWeek(): string {
     const d = new Date();
-    d.setDate(d.getDate() - d.getDay());
+    d.setDate(d.getDate() - daysSinceWeekStart(d, weekStartsMonday));
     return d.toISOString().slice(0, 10);
   }
 
   function endOfWeek(): string {
     const d = new Date();
-    d.setDate(d.getDate() + (6 - d.getDay()));
+    d.setDate(d.getDate() + (6 - daysSinceWeekStart(d, weekStartsMonday)));
     return d.toISOString().slice(0, 10);
   }
 

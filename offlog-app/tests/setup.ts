@@ -34,3 +34,26 @@ Object.defineProperty(window, 'localStorage', {
   configurable: true,
   value: (globalThis as any).localStorage,
 });
+
+// B51 — jsdom has no Web Animations API, but Svelte 5's transition
+// directives (fly/fade/scale/slide, now used throughout CardDetail and
+// other panels for open/close animation) call `Element.animate()`
+// internally. Without this, any component with a transitioning element
+// throws "element.animate is not a function" the moment it mounts —
+// not a real behavior gap, just jsdom missing the API. A no-op stub
+// with the shape transitions expect is enough for tests, which only
+// care that the component renders/behaves correctly, not that the
+// animation itself plays.
+if (!Element.prototype.animate) {
+  Element.prototype.animate = function () {
+    return {
+      finished: Promise.resolve(),
+      cancel() {},
+      finish() {},
+      play() {},
+      pause() {},
+      addEventListener() {},
+      removeEventListener() {},
+    } as unknown as Animation;
+  };
+}

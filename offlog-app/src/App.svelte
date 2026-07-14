@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fade, scale } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
+  import { scrimFade, toastFly } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow } from './lib/db';
@@ -330,7 +333,7 @@
     <!-- Mobile scrim -->
     {#if sidebarOpen}
       <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-      <div class="mobile-scrim" on:click={closeSidebar}></div>
+      <div class="mobile-scrim" on:click={closeSidebar} transition:fade={scrimFade}></div>
     {/if}
 
     <main class="main">
@@ -462,8 +465,8 @@
 
 {#if showShortcuts}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="scrim" on:click|self={closeShortcuts}>
-    <div class="shortcuts-panel">
+  <div class="scrim" on:click|self={closeShortcuts} transition:fade={scrimFade}>
+    <div class="shortcuts-panel" transition:scale={{ duration: 150, start: 0.96, easing: cubicOut }}>
       <div class="shortcuts-head">
         <h3>Keyboard shortcuts</h3>
         <button class="shortcuts-close" on:click={closeShortcuts} aria-label="Close">✕</button>
@@ -480,13 +483,13 @@
 {/if}
 
 {#if $errorToast}
-  <div class="error-toast">{$errorToast}</div>
+  <div class="error-toast" transition:toastFly>{$errorToast}</div>
 {/if}
 
 {#if undoToasts.length}
   <div class="toast-stack">
     {#each undoToasts as t (t.id)}
-      <div class="toast">
+      <div class="toast" transition:toastFly>
         <span class="toast-msg">Deleted "{t.title.length > 30 ? t.title.slice(0,30)+'…' : t.title}"</span>
         <button class="toast-undo" on:click={() => handleUndo(t.id)}>Undo</button>
         <button class="toast-close" on:click={() => { clearTimeout(t.timer); undoToasts = undoToasts.filter(u => u.id !== t.id); }}>✕</button>
@@ -518,9 +521,7 @@
   .mobile-scrim {
     display: none;
     position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 199;
-    animation: scrim-in .32s cubic-bezier(0.4,0,0.2,1) both;
   }
-  @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
 
   .board-header {
     display: flex; align-items: center; gap: 16px;
@@ -656,7 +657,6 @@
     font-size: 13.5px; font-weight: 500;
     box-shadow: 0 4px 20px rgba(0,0,0,.25);
     z-index: 1000; white-space: nowrap;
-    animation: toast-in .22s cubic-bezier(0.4,0,0.2,1) both;
   }
 
   /* ── Undo toast ── */
@@ -672,10 +672,8 @@
     font-size: 13.5px; font-weight: 500;
     box-shadow: 0 4px 20px rgba(0,0,0,.25);
     pointer-events: all;
-    animation: toast-in .22s cubic-bezier(0.4,0,0.2,1) both;
     white-space: nowrap;
   }
-  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .toast-msg { flex: 1; }
   .toast-undo {
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;

@@ -10,7 +10,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, isTauri as isTauriCheck, invokeTauri } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, isTauri as isTauriCheck, invokeTauri } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -97,6 +97,18 @@
   // localStorage choices (see config.ts's getDefaultReminderTime()).
   let defaultReminderTime = getDefaultReminderTime();
   function saveDefaultReminderTime() { setDefaultReminderTime(defaultReminderTime); }
+
+  // B47 — reactively re-derives Agenda's week math on toggle; DeadlinesView
+  // itself reads getWeekStartsMonday() once at mount, so it needs a reload
+  // (route re-entry) or a live subscribe to see the new setting take
+  // effect immediately. Simplest correct fix: it's a rarely-changed
+  // display preference, not something that needs a live-reactive bridge —
+  // same tradeoff as the theme mode toggle's own page-level effect.
+  let weekStartsMonday = getWeekStartsMonday();
+  function setWeekStart(monday: boolean) {
+    weekStartsMonday = monday;
+    setWeekStartsMonday(monday);
+  }
 
   // ── Sync ────────────────────────────────────────────────────────────────
   let syncUrl = getSyncUrl();
@@ -568,6 +580,27 @@
                 </button>
               </div>
               <p class="setting-hint">Raises border and text contrast throughout, on top of Light or Dark.</p>
+
+              <div class="setting-row">
+                <div class="setting-label">Week starts on</div>
+                <div class="theme-segment" role="radiogroup" aria-label="Week starts on">
+                  <button
+                    class="theme-seg-btn"
+                    class:active={!weekStartsMonday}
+                    role="radio"
+                    aria-checked={!weekStartsMonday}
+                    on:click={() => setWeekStart(false)}
+                  >Sunday</button>
+                  <button
+                    class="theme-seg-btn"
+                    class:active={weekStartsMonday}
+                    role="radio"
+                    aria-checked={weekStartsMonday}
+                    on:click={() => setWeekStart(true)}
+                  >Monday</button>
+                </div>
+              </div>
+              <p class="setting-hint">Controls Agenda's week view and "this week" grouping.</p>
 
             {:else if activeCategory === 'notifications'}
               <div class="setting-row">

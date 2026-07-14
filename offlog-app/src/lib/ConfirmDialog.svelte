@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { fade } from 'svelte/transition';
   import { confirmRequest } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import { dialogPop, scrimFade } from './motion';
 
   // ConfirmDialog is mounted once, permanently, at the App.svelte root —
   // it never mounts/unmounts per dialog the way other overlays do, it just
@@ -39,8 +41,8 @@
 
 {#if $confirmRequest}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="confirm-scrim" on:click|self={() => respond(false)}></div>
-  <div class="confirm-panel" role="alertdialog" aria-modal="true" use:trapFocus>
+  <div class="confirm-scrim" on:click|self={() => respond(false)} transition:fade={scrimFade}></div>
+  <div class="confirm-panel" role="alertdialog" aria-modal="true" use:trapFocus transition:dialogPop>
     <p class="confirm-msg">{$confirmRequest.message}</p>
     <div class="confirm-actions">
       <button class="cancel-btn" on:click={() => respond(false)}>{$confirmRequest.cancelLabel}</button>
@@ -55,9 +57,8 @@
 <style>
   .confirm-scrim {
     position: fixed; inset: 0; background: rgba(0,0,0,.45);
-    z-index: 700; animation: fade .15s ease;
+    z-index: 700;
   }
-  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
   .confirm-panel {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -65,11 +66,6 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     box-shadow: 0 20px 50px rgba(0,0,0,.3);
     padding: 1.35rem 1.5rem;
-    animation: pop .16s cubic-bezier(0.4,0,0.2,1) both;
-  }
-  @keyframes pop {
-    from { opacity: 0; transform: translate(-50%,-50%) scale(.96); }
-    to   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
   }
 
   .confirm-msg { margin: 0 0 1.2rem; font-size: .92rem; color: var(--text); line-height: 1.5; }

@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.15.1 | Maintenance pass (sixth run): fixed a missing logChange() on createProjectFromTemplate(), 3 dark-mode contrast failures, an unguarded deep-link URL parse | `v4.15.1` |
 | 4.15.0 | Housekeeping release: real `.svelte` component test coverage begins (CardDetail save logic), seed drops from 4 spaces to 3, tags render on Kanban cards | `v4.15.0` |
 | 4.14.0 | Project templates ("Use a template…" copies status structure + optionally open tasks) and a notes-length soft counter on CardDetail | `v4.14.0` |
 | 4.12.2 | A31 visual/UX pass part 1: fixed Dashboard project-grid mobile overflow (`minmax(0,1fr)`), Focus view's FAB/Commit-button overlap at mobile widths | `v4.12.2` |

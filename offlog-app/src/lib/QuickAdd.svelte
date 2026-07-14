@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, tick } from 'svelte';
+  import { fade } from 'svelte/transition';
+  import { quickAddPop, scrimFade } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask } from './db';
   import { closeOnBack } from './modalStack';
@@ -51,9 +53,9 @@
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click={() => requestClose()}></div>
+<div class="scrim" on:click={() => requestClose()} transition:fade={scrimFade}></div>
 
-<div class="panel" use:trapFocus>
+<div class="panel" use:trapFocus transition:quickAddPop>
   <div class="panel-title">Quick add task</div>
 
   <input
@@ -88,9 +90,7 @@
     background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,.28);
     padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;
-    animation: slide-up .2s cubic-bezier(0.4,0,0.2,1) both;
   }
-  @keyframes slide-up { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
   .panel-title { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 700; }
 

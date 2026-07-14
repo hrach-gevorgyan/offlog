@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
+  import { fly, fade } from 'svelte/transition';
+  import { panelFly, scrimFade } from './motion';
   import { getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribe } from './db';
   import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
@@ -67,9 +69,9 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => requestClose()}></div>
+<div class="scrim" on:click|self={() => requestClose()} transition:fade={scrimFade}></div>
 
-<div class="panel" use:trapFocus>
+<div class="panel" use:trapFocus transition:fly={panelFly}>
   <div class="panel-head">
     <span class="panel-title">Recycle</span>
     {#if items.length > 0}
@@ -113,9 +115,7 @@
     box-shadow: -8px 0 32px rgba(0,0,0,.15); z-index: 402;
     display: flex; flex-direction: column;
     padding-top: env(safe-area-inset-top, 0px);
-    animation: slideIn .38s cubic-bezier(0.4,0,0.2,1) both;
   }
-  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
   .panel-head {
     display: flex; align-items: center; gap: 8px;

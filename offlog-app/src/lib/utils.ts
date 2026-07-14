@@ -8,6 +8,14 @@ export const ACTION_COLOR: Record<string, string> = {
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
+// B47 — `Date.getDay()` is 0-indexed from Sunday; this converts it to
+// "days since the start of the week" for either week-start convention,
+// so callers doing `d.getDate() - daysSinceWeekStart(d, monday)` get a
+// correct start-of-week regardless of the setting.
+export function daysSinceWeekStart(d: Date, mondayStart: boolean): number {
+  return mondayStart ? (d.getDay() + 6) % 7 : d.getDay();
+}
+
 export function daysDiff(due: string): number {
   return Math.round((new Date(due).getTime() - new Date(TODAY()).getTime()) / 86400000);
 }

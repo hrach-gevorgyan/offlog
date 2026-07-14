@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { fly, fade, slide } from 'svelte/transition';
+  import { panelFly, scrimFade, popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs } from './db';
   import { reloadTasks, showError, modalOpen } from './store';
@@ -276,8 +278,8 @@
 <svelte:window on:keydown={onWindowKeydown} on:click={onWindowClick} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="overlay" on:click|self={() => requestClose()}>
-  <div class="panel" use:trapFocus>
+<div class="overlay" on:click|self={() => requestClose()} transition:fade={scrimFade}>
+  <div class="panel" use:trapFocus transition:fly={{ ...panelFly, x: 440 }}>
     <div class="panel-header">
       <textarea class="title-input" bind:value={title} placeholder="Task title" rows="1" on:input={(e) => { const t = e.currentTarget; t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }}></textarea>
       <button class="pin-btn" class:pinned on:click={() => pinned = !pinned} title={pinned ? 'Unpin' : 'Pin task'}>
@@ -306,7 +308,7 @@
         <svg class="section-chevron" class:open={showSchedule} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showSchedule}
-        <div class="schedule-panel">
+        <div class="schedule-panel" transition:slide={{ duration: 180 }}>
           <label>
             Due date
             <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
@@ -396,7 +398,7 @@
         <svg class="section-chevron" class:open={showChecklist} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showChecklist}
-        <div class="checklist-field">
+        <div class="checklist-field" transition:slide={{ duration: 180 }}>
           {#each checklist as item, i}
             <div class="checklist-row">
               <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
@@ -426,7 +428,7 @@
           <svg class="section-chevron" class:open={showCustomFieldsSection} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
         </button>
         {#if showCustomFieldsSection}
-          <div class="custom-fields">
+          <div class="custom-fields" transition:slide={{ duration: 180 }}>
             {#each visibleFields as field (field.id)}
               <label class="custom-field-label">
                 {field.name}
@@ -465,10 +467,12 @@
         <svg class="section-chevron" class:open={showNotes} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showNotes}
-        <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
-        {#if body.length > NOTES_SOFT_LIMIT}
-          <div class="notes-counter">{body.length} characters</div>
-        {/if}
+        <div class="notes-wrap" transition:slide={{ duration: 180 }}>
+          <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
+          {#if body.length > NOTES_SOFT_LIMIT}
+            <div class="notes-counter">{body.length} characters</div>
+          {/if}
+        </div>
       {/if}
     </div>
 
@@ -482,7 +486,7 @@
           <svg viewBox="0 0 14 14" width="16" height="16" fill="currentColor"><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="11" cy="7" r="1.3"/></svg>
         </button>
         {#if showActionsMenu}
-          <div class="actions-menu" bind:this={menuPanelEl}>
+          <div class="actions-menu" bind:this={menuPanelEl} transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
             <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; loadHistory(); }}>
               <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3l2 1.5"/></svg>
               {showHistory ? 'Hide history' : 'Show history'}
@@ -519,9 +523,7 @@
     background: rgba(0,0,0,.45);
     display: flex; align-items: stretch; justify-content: flex-end;
     z-index: 100;
-    animation: scrim .18s ease;
   }
-  @keyframes scrim { from { opacity: 0; } to { opacity: 1; } }
   .panel {
     background: var(--surface);
     width: min(440px, 100vw);
@@ -533,9 +535,7 @@
     border-left: 1px solid var(--border);
     box-shadow: -20px 0 50px rgba(0,0,0,.22);
     overflow-y: auto;
-    animation: slideOver .38s cubic-bezier(0.4,0,0.2,1) both;
   }
-  @keyframes slideOver { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   .panel-header { display: flex; gap: .4rem; align-items: flex-start; }
   .title-input {
     flex: 1; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em;
@@ -682,6 +682,7 @@
   .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
   .section-chevron.open { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
+  .notes-wrap { display: block; }
   .notes-textarea { width: 100%; box-sizing: border-box; }
   .notes-counter {
     font-family: var(--mono); font-size: .68rem; color: var(--faint);
@@ -719,9 +720,11 @@
     border: 1.5px solid var(--border-strong); background: var(--surface);
     display: flex; align-items: center; justify-content: center;
     font-size: .68rem; color: var(--on-accent); cursor: pointer; padding: 0;
+    transition: background .12s, border-color .12s;
   }
-  .checklist-check.done { background: var(--accent); border-color: var(--accent); }
-  .checklist-text { flex: 1; font-size: .84rem; color: var(--text); }
+  .checklist-check.done { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
+  @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
+  .checklist-text { flex: 1; font-size: .84rem; color: var(--text); transition: color .15s; }
   .checklist-text.done { color: var(--faint); text-decoration: line-through; }
   .checklist-remove {
     flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;

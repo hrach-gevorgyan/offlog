@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
+  import { flip } from 'svelte/animate';
+  import { cubicOut } from 'svelte/easing';
+  import { toastFly } from './motion';
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
   import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs } from './db';
   import { reloadTasks, showError } from './store';
@@ -496,6 +500,8 @@
           tabindex="0"
           on:click={() => selectionMode ? toggleRowSelect(task._id!) : (detailTask = task)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectionMode ? toggleRowSelect(task._id!) : (detailTask = task); } }}
+          transition:slide={{ duration: 160 }}
+          animate:flip={{ duration: 200, easing: cubicOut }}
         >
           {#if selectionMode}
             <button
@@ -591,7 +597,7 @@
 </div>
 
 {#if undoMarkDone}
-  <div class="undo-toast">
+  <div class="undo-toast" transition:toastFly>
     <span>Marked "{undoMarkDone.title}" done</span>
     <button class="undo-btn" on:click={undoLastMarkDone}>Undo</button>
   </div>
@@ -868,9 +874,7 @@
     font-size: 13.5px; font-weight: 500;
     box-shadow: 0 4px 20px rgba(0,0,0,.25);
     white-space: nowrap;
-    animation: undo-toast-in .22s cubic-bezier(0.4,0,0.2,1) both;
   }
-  @keyframes undo-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
   .undo-btn {
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;

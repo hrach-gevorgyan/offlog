@@ -189,3 +189,27 @@ export function getDefaultReminderTime(): string {
 export function setDefaultReminderTime(time: string) {
   localStorage.setItem(DEFAULT_REMINDER_TIME_KEY, time);
 }
+
+// B47 — Agenda's week view and DeadlinesView's "this week" grouping
+// assumed a fixed Sunday week start (`d.getDate() - d.getDay()`, and
+// `getDay()` is 0-indexed from Sunday). Per-device, like the reminder
+// time above — this is a personal display preference, not data, so it
+// doesn't need to sync.
+//
+// Timezone was the other half of B47's original scope, deliberately
+// NOT built: the app already uses the device's local time throughout
+// (`new Date()`, no UTC conversion layer anywhere in db.ts) which is
+// correct for a single-device-local personal task manager per
+// DECISIONS.md — a timezone *setting* only matters if a due date needs
+// to mean the same instant across devices in different zones, which
+// isn't a real scenario for how this app is used. Revisit only if an
+// owner actually hits that case.
+const WEEK_STARTS_MONDAY_KEY = 'offlog_week_starts_monday';
+
+export function getWeekStartsMonday(): boolean {
+  return localStorage.getItem(WEEK_STARTS_MONDAY_KEY) === 'true';
+}
+
+export function setWeekStartsMonday(monday: boolean) {
+  localStorage.setItem(WEEK_STARTS_MONDAY_KEY, String(monday));
+}
