@@ -16,13 +16,29 @@ the bottom).
    If any fail, report and stop — fix the baseline first.
    (There is no lint config in this project — the zero-warning build IS
    the lint gate.)
+3. **Also confirm the `offlog-desktop/` (Tauri PC app, Track E — see
+   ROADMAP.md E1) baseline is green**, from `offlog-desktop/`:
+   - `cargo build --manifest-path src-tauri/Cargo.toml` — must succeed
+     with **zero warnings**
+   This is a genuine second app now, not an offshoot of `offlog-app/` —
+   see docs/TECH.md's "Desktop (Tauri)" section for the architecture.
+   Since it wraps `offlog-app/dist` unmodified, `offlog-app`'s own
+   baseline gates above already cover its frontend; this Rust build is
+   the only check specific to `offlog-desktop/` itself.
 
 ## Phase 1 — Analysis (no changes)
 Produce a findings report covering:
-- Dead code: unused files, functions, exports, components, CSS.
+- Dead code: unused files, functions, exports, components, CSS. In
+  `offlog-desktop/src-tauri/`: unused `pub fn`s/modules, and confirm
+  every `#[tauri::command]` registered in `invoke_handler!` is actually
+  called from the frontend (or intentionally dev-only, like
+  `reset_sync_data`/`is_debug_build` — see `lib.rs`'s own comments).
 - Duplicated logic: repeated patterns worth a shared utility (only if
   used 2+ times).
 - Unused/redundant dependencies in package.json; `npm audit` summary.
+  In `offlog-desktop/src-tauri/Cargo.toml`: same check for unused
+  crates, plus `cargo tree` for anything pulling in a surprisingly
+  large dependency graph.
 - Oversized files/functions (>~300 lines / >~50 lines = candidate to
   split, using judgment — db.ts and the big view components are large
   partly by design; flag only where splitting genuinely helps).
@@ -54,6 +70,15 @@ Produce a findings report covering:
     full task content) is written to a *readable-by-any-script-on-origin*
     key beyond what's already an accepted, documented tradeoff (sync
     URL/credentials — tracked separately as ROADMAP C7, don't re-litigate).
+  - **`offlog-desktop/src-tauri/`**: grep for every `unsafe` block (there
+    should only be the `TerminateJobObject` FFI declarations in `lib.rs`
+    — new ones are a real finding, not routine) and confirm none of them
+    are reachable with attacker-controlled input. Confirm
+    `pairing.rs`'s generated code/credentials are never written to a log
+    line (`log::info!`/`log::warn!` on the pairing path should log
+    outcomes, not values). The pairing endpoint's `Access-Control-Allow-
+    Origin: *` (`pairing.rs`) is an accepted, documented tradeoff (see
+    its own comment) — note but don't re-litigate, same as C7 above.
   - Any `eval(`, `new Function(`, or `innerHTML =` outside the `{@html}`
     cases already covered above.
   - CouchDB sync request construction: confirm the sync URL/credentials
@@ -86,17 +111,25 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - No new dependencies or caching layers without approval.
 
 ## Phase 4 — Verification
-1. Re-run the three baseline gates (build zero-warning / tsc / vitest).
+1. Re-run the three `offlog-app/` baseline gates (build zero-warning /
+   tsc / vitest), and `offlog-desktop/`'s `cargo build` if anything
+   under `offlog-desktop/` was touched this pass.
 2. Trace the core user flows in code and confirm logic unchanged:
    create task → edit in CardDetail → move across statuses (Kanban) →
    mark done (positional last-column rule) → delete/undo; plus sync
-   replication and reminder scheduling if touched.
+   replication and reminder scheduling if touched. If `offlog-desktop/`
+   was touched, also trace: sidecar spawn → pairing code generation →
+   `/pair` request → credentials returned (code-level trace is enough —
+   this doesn't need a live device pairing test every maintenance pass,
+   that's what Track E's own development already verified live).
 3. Justify any modified test explicitly.
 4. Summarize every changed file in one line each.
 
 ## Phase 5 — Documentation & Handoff
-1. Update docs/TECH.md if structure changed; CLAUDE.md if a convention
-   changed. Shrink stale content, don't just add (standing rule).
+1. Update docs/TECH.md if structure changed (including its "Desktop
+   (Tauri)" section, if `offlog-desktop/` changed); CLAUDE.md if a
+   convention changed. Shrink stale content, don't just add (standing
+   rule).
 2. If Phase 1/2 produced any fix at all, ship as a normal light release
    (like v3.8.5/v3.9.5): bump version in package.json +
    android/app/build.gradle, add a standard row to docs/CHANGELOG.md's
@@ -114,7 +147,10 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - No new features. No new dependencies without explicit approval.
 - No rewrites — incremental only.
 - Schema, sync logic, storage format, soft-delete, positional-"done":
-  propose only, never implement unilaterally.
+  propose only, never implement unilaterally. Same bar applies to
+  `offlog-desktop/`'s CouchDB config-generation and credential/pairing
+  logic (`sync_host.rs`, `pairing.rs`) — it's this app's own sync
+  internals, not routine Rust glue.
 - Uncertain whether something is safe? Ask, don't guess.
 - Long context? Summarize state and suggest a good /clear point.
 
