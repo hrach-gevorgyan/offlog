@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { setSyncUrl, setSyncCredentials } from '../config';
-import { startSync } from './db';
+import { startSync, clearLocalSeedBeforeFirstPair } from './db';
 
 // Android-side half of Track E's "no human ever types an IP" plan
 // (ROADMAP.md E1) — listens for the PC app's `_offlog._tcp` mDNS
@@ -99,6 +99,14 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
   });
   if (!res.ok) throw new Error('Incorrect or expired code.');
   const data = (await res.json()) as PairResponse;
+  // Real bug found live: a freshly-installed phone's own default seed
+  // (space:unsorted/personal/work, project:draft — fixed ids, not
+  // per-install-random) collides with the PC's own independently-seeded
+  // copies the moment sync starts, producing a real conflict per doc.
+  // Clearing this device's pristine (zero-task) seed first lets the
+  // upcoming pull just adopt the host's versions cleanly. See
+  // clearLocalSeedBeforeFirstPair()'s own comment in db.ts.
+  await clearLocalSeedBeforeFirstPair();
   setSyncCredentials(data.user, data.password);
   setSyncUrl(`http://${host.address}:${data.port}/offlog`);
   startSync();

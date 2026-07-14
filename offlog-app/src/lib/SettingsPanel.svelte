@@ -7,6 +7,7 @@
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
     checkIntegrity, repairDatabase, pruneOldLogs, pruneOldDeletedTasks, type IntegrityIssue,
+    wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
@@ -133,6 +134,10 @@
   // own screen for real credentials (discovery.ts's pairWithHost()).
   // Desktop/Tauri: generate that code in the first place.
   const isTauri = !!(window as any).__TAURI_INTERNALS__;
+  let isTauriDebug = false;
+  if (isTauri) {
+    (window as any).__TAURI_INTERNALS__.invoke('is_debug_build').then((v: boolean) => { isTauriDebug = v; }).catch(() => {});
+  }
 
   let selectedHost: DiscoveredHost | null = null;
   let pairingCode = '';
@@ -152,6 +157,13 @@
     try {
       await pairWithHost(selectedHost, pairingCode);
       syncUrl = getSyncUrl();
+      // Real bug found live: without this, the Developer options form
+      // still held whatever stale username/password it was mounted
+      // with -- invisible for the URL (which did refresh) but silent
+      // for the masked password field, so tapping "Save & restart
+      // sync" afterward would overwrite the just-paired credentials
+      // right back to the old ones.
+      ({ user: credentialUser, pass: credentialPass } = getSyncCredentials());
       showDevOptions = true;
       selectedHost = null;
       pairingCode = '';
@@ -172,6 +184,33 @@
       showError('Failed to generate a pairing code.');
     } finally {
       pcPairingBusy = false;
+    }
+  }
+
+  // Dev-only: wipes this PC's CouchDB data and restarts, so testing "what
+  // does a real first-run user see" on a freshly-reinstalled phone
+  // doesn't immediately sync down leftover dev/test tasks. The Rust
+  // command itself refuses outside a debug build (belt-and-suspenders —
+  // this button is also never rendered in a release build, see below).
+  let resetBusy = false;
+  async function resetPcTestData() {
+    if (!confirm('Delete all tasks/projects on this PC and restart the app?')) return;
+    resetBusy = true;
+    try {
+      // Two halves, both needed: wipeAndReseed() clears this PC's own
+      // local PouchDB (the WebView's IndexedDB) -- discovered live that
+      // the Rust-only reset below never touched this, since it's a
+      // completely separate local database from the embedded CouchDB
+      // server, same local-first split every device in this app has.
+      // Letting sync push the resulting deletion tombstones out first
+      // (before the server itself gets wiped) is what actually clears
+      // an already-paired phone's copy too, not just this PC's view.
+      await wipeAndReseed();
+      await syncNow().catch(() => {});
+      await (window as any).__TAURI_INTERNALS__.invoke('reset_sync_data');
+    } catch {
+      showError('Failed to reset test data.');
+      resetBusy = false;
     }
   }
 
@@ -568,7 +607,7 @@
               </div>
               <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
 
-              {#if isAndroid && !syncUrl}
+              {#if isAndroid}
                 <div class="setting-group">
                   <div class="setting-section-title">Connect to your computer</div>
                   {#if !selectedHost}
@@ -608,6 +647,16 @@
                   {/if}
                   <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
                     {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
+                  </button>
+                </div>
+              {/if}
+
+              {#if isTauriDebug}
+                <div class="setting-group">
+                  <div class="setting-section-title">Developer (debug build only)</div>
+                  <p class="setting-hint">Wipes every task/project on this PC and restarts — for testing what a real first-run install looks like, never shown in a release build.</p>
+                  <button class="export-btn" on:click={resetPcTestData} disabled={resetBusy}>
+                    {resetBusy ? 'Resetting…' : 'Reset test data'}
                   </button>
                 </div>
               {/if}

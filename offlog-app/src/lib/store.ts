@@ -5,6 +5,7 @@ import {
   seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs, maybePruneOldDeletedTasks,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
+import { initTauriSyncDefaults } from '../config';
 
 export const modalOpen = writable(false);
 export const errorToast = writable<string>('');
@@ -64,6 +65,11 @@ export async function init() {
   // awaits initIndexes() internally — so the two can run concurrently here
   // instead of the seed check waiting on index creation first.
   await Promise.all([initIndexes(), seedIfEmpty()]);
+  // Must resolve before startSync() -- the Tauri app's own embedded
+  // sidecar port is only knowable async (see config.ts's
+  // initTauriSyncDefaults()), and startSync() needs the real URL in
+  // localStorage already, not a stale/wrong default.
+  await initTauriSyncDefaults();
   await reload();
   startSync();
   subscribe(() => reload());

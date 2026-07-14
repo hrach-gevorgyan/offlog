@@ -21,6 +21,7 @@ Version 4.12.0 · Local-first task management for browser and Android
 | Local Database | **PouchDB 9** | IndexedDB in browser, speaks CouchDB replication protocol |
 | Sync Server | **CouchDB** | Self-hosted, optional. App works fully offline without it |
 | Mobile Wrapper | **Capacitor 7** | Wraps Vite build into a WebView-based Android APK |
+| Desktop Wrapper | **Tauri 2** (`offlog-desktop/`) | Wraps the same Vite build into a Windows app; embeds a CouchDB sync host — see "Desktop (Tauri)" below |
 | Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
 | Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
 | Fonts | Hanken Grotesk + IBM Plex Mono | Sans for UI, mono for timestamps and labels |
@@ -227,7 +228,7 @@ from a `beforeEach` that wipes every doc, not from a fresh instance.
 2. Any local write replicates to CouchDB immediately
 3. Any remote change fires a PouchDB `.changes()` event → `store.ts` reloads all data
 4. The app works fully offline; sync resumes automatically on reconnect
-5. Sync URL is set in the sidebar settings panel and stored in `localStorage`
+5. Sync URL is set in the sidebar settings panel and stored in `localStorage`; on the Tauri desktop app it's resolved automatically instead — see "Desktop (Tauri)" below for why that default differs from plain desktop web
 
 ### Sync reliability (v2.8.0)
 
@@ -341,6 +342,62 @@ npx cap sync android
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 cd android && .\gradlew assembleDebug
 # → android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+---
+
+## Desktop (Tauri) — `offlog-desktop/`
+
+Track E (ROADMAP.md E1). A sibling project to `offlog-app/`, not a
+subfolder of it — `offlog-desktop/src-tauri/tauri.conf.json`'s
+`frontendDist` points at `offlog-app/dist`, so it wraps the exact same
+build Android and the browser use, unmodified. Same PouchDB-as-UMD-global
+loading, same sync code, same UI — the only new code is Rust, and it
+never touches the frontend's own logic.
+
+**Embedded sync host** (`src-tauri/src/sync_host.rs`): on first launch,
+generates a random port + admin password + Erlang node identity, persists
+them (`app_data_dir()/sync-host.json`), rewrites the bundled CouchDB's
+`local.ini`/`local.d`/`vm.args`, and spawns it as a child process — a
+non-technical user never sees the word CouchDB. Binaries come from
+`scripts/fetch-couchdb-win.ps1` (checksum-pinned, gitignored
+`vendor/couchdb-win/`, not committed) since Apache doesn't publish
+official Windows binaries itself. A Windows Job Object
+(`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate) keeps the whole
+`couchdb.cmd` → `erl.exe` process tree tied to the app's own lifetime, on
+every exit path (normal close, crash, force-kill) — killing only the
+directly-tracked child process reliably leaves `erl.exe` orphaned,
+LAN-reachable with real credentials, since it's a grandchild, not a
+child.
+
+**Discovery + pairing** (`src-tauri/src/discovery.rs`,
+`src-tauri/src/pairing.rs`, `offlog-app/src/lib/discovery.ts`): the PC
+advertises `_offlog._tcp` over mDNS (uuid + a pairing port in the TXT
+record, deliberately zero credentials over the air) so a phone finds it
+with no typed IP. Pairing itself is a separate one-endpoint HTTP server
+(`tiny_http`) — the PC shows a 6-digit, single-use, 5-minute-expiry code;
+the phone posts it to get real credentials back once. `config.ts`'s
+`getSyncCredentials()`/`setSyncCredentials()` (localStorage-backed, same
+pattern as the sync URL) replaced the old fixed `COUCH_USER`/`COUCH_PASS`
+constants, which could never match a per-install random password.
+
+**Sync-URL resolution is genuinely three-way**, not two — easy to get
+wrong (it was, for most of a day): Android has no way to guess an
+address, defaults to `''`. Plain desktop web assumes a manually-installed
+CouchDB on the standard port, defaults to `127.0.0.1:5984`. The Tauri
+app is neither — its embedded sidecar binds a random port, never 5984 —
+so it needs `config.ts`'s `initTauriSyncDefaults()`, called at app boot
+before `startSync()`, to resolve the real address via the async
+`get_sync_info` Tauri command. Falling through to the desktop-web
+default instead silently points the Tauri app at whatever else happens
+to be listening on 5984.
+
+Build steps:
+```bash
+cd offlog-app && npm run build            # produces the dist/ offlog-desktop wraps
+cd ../offlog-desktop
+powershell -ExecutionPolicy Bypass -File scripts/fetch-couchdb-win.ps1   # once, or after bumping its pinned version
+cargo tauri build   # → src-tauri/target/release/bundle/nsis/*.exe
 ```
 
 ---

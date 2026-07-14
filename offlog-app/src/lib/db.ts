@@ -495,6 +495,35 @@ const DEFAULT_COLS = [
   { id: 'col:completed', name: 'Completed' },
 ];
 
+// Track E's pairing handshake (discovery.ts's pairWithHost()) surfaced a
+// real, repeatable bug: seedIfEmpty() below gives every fresh install its
+// own space:unsorted/personal/work + project:draft docs, using FIXED,
+// not per-install-random, ids. Two devices that each seed independently
+// before ever syncing (the exact "PC + phone, sync automatically" flow
+// this whole track exists for) are guaranteed to collide on those same 4
+// ids the moment they pair — confirmed live: pairing a freshly-seeded
+// phone against a freshly-seeded PC produced exactly 4 conflicts, one
+// per fixed id. Called from pairWithHost() right before sync starts:
+// if this device has never held real content (zero tasks — the seed
+// itself never creates any), its pristine seed is safe to discard so the
+// upcoming pull just creates the host's versions cleanly instead of
+// forking a divergent revision history for the same ids. A device
+// that's already in real use is left alone — the zero-tasks check is
+// what makes that distinction, not "is this the first pair attempt."
+export async function clearLocalSeedBeforeFirstPair(): Promise<void> {
+  const tasks = await db.allDocs({ startkey: 'task:', endkey: 'task:￰' });
+  if (tasks.rows.length > 0) return;
+  for (const id of ['space:unsorted', 'space:personal', 'space:work', 'project:draft']) {
+    try {
+      const doc = await db.get(id);
+      await db.remove(doc);
+    } catch {
+      // not present locally -- nothing to clear
+    }
+  }
+  invalidateTaskCache();
+}
+
 export async function wipeAndReseed(): Promise<void> {
   // Hard-delete every doc
   const all = await db.allDocs({ include_docs: true });

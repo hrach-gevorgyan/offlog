@@ -72,20 +72,41 @@ pub fn spawn_server(state: Arc<PairingState>, uuid: String) -> std::io::Result<u
         .map_err(|e| std::io::Error::other(format!("failed to bind pairing server: {e}")))?;
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
 
+    // Every response needs Access-Control-Allow-Origin -- discovered live
+    // debugging a real phone: curl (used for every manual verification
+    // above) doesn't enforce CORS at all, so it never caught this, but a
+    // WebView's fetch() silently rejects a cross-origin response with no
+    // CORS header, surfacing as a bare "Failed to fetch" indistinguishable
+    // from real unreachability. `*` is fine here (no credentials/cookies
+    // involved, and the actual secret is the pairing code itself, not
+    // origin-based access control) -- also answer OPTIONS defensively in
+    // case some WebView/fetch combination does send a CORS preflight.
+    fn cors_header() -> tiny_http::Header {
+        tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap()
+    }
+
     std::thread::spawn(move || {
         for mut request in server.incoming_requests() {
+            if request.method() == &tiny_http::Method::Options {
+                let response = Response::empty(204)
+                    .with_header(cors_header())
+                    .with_header(tiny_http::Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST"[..]).unwrap())
+                    .with_header(tiny_http::Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap());
+                let _ = request.respond(response);
+                continue;
+            }
             if request.method() != &tiny_http::Method::Post || request.url() != "/pair" {
-                let _ = request.respond(Response::empty(404));
+                let _ = request.respond(Response::empty(404).with_header(cors_header()));
                 continue;
             }
             let mut body = String::new();
             if std::io::Read::read_to_string(request.as_reader(), &mut body).is_err() {
-                let _ = request.respond(Response::empty(400));
+                let _ = request.respond(Response::empty(400).with_header(cors_header()));
                 continue;
             }
             let submitted = body.trim();
             if !state.try_consume(submitted) {
-                let _ = request.respond(Response::empty(403));
+                let _ = request.respond(Response::empty(403).with_header(cors_header()));
                 continue;
             }
             let payload = PairResponse {
@@ -96,7 +117,8 @@ pub fn spawn_server(state: Arc<PairingState>, uuid: String) -> std::io::Result<u
             };
             let json = serde_json::to_string(&payload).unwrap_or_default();
             let response = Response::from_string(json)
-                .with_header(tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap());
+                .with_header(tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap())
+                .with_header(cors_header());
             let _ = request.respond(response);
         }
     });

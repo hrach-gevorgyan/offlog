@@ -10,7 +10,7 @@ import db, {
   importJSON,
   pruneOldLogs, pruneOldDeletedTasks,
   invalidateTaskCache,
-  seedIfEmpty, getSpaces, initIndexes,
+  seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair,
   createSpace, updateSpace, reorderSpaces, deleteSpace,
   getTagCounts, renameTag, deleteTagEverywhere,
 } from '../src/lib/db';
@@ -566,5 +566,37 @@ describe('tag management', () => {
     const tasks = await getTasksForProject(project._id);
     expect(tasks.find(t => t._id === t1._id)!.tags).toEqual([]);
     expect(tasks.find(t => t._id === t2._id)!.tags).toEqual(['keep']);
+  });
+});
+
+// Track E pairing bug (owner-reported, 2026-07-14): seedIfEmpty()'s fixed,
+// not per-install-random, ids (space:unsorted/personal/work, project:draft)
+// collide the instant two independently-seeded devices sync together —
+// reproduced live pairing a fresh phone to a fresh PC (4 real conflicts,
+// one per fixed id). clearLocalSeedBeforeFirstPair() is the fix, called
+// from discovery.ts's pairWithHost() right before sync starts.
+describe('clearLocalSeedBeforeFirstPair()', () => {
+  it('removes the pristine seed when the device has zero tasks', async () => {
+    await seedIfEmpty();
+    expect((await getSpaces()).length).toBeGreaterThan(0);
+    await clearLocalSeedBeforeFirstPair();
+    expect(await getSpaces()).toEqual([]);
+    await expect(db.get('project:draft')).rejects.toThrow();
+  });
+
+  it('leaves everything alone once the device has real content', async () => {
+    await seedIfEmpty();
+    const [space] = await getSpaces();
+    const project = await createProject(space._id!, 'Real project');
+    await createTask(project._id!, space._id!, 'col:idea', 'A real task');
+
+    await clearLocalSeedBeforeFirstPair();
+
+    expect((await getSpaces()).length).toBeGreaterThan(0);
+    await expect(db.get('project:draft')).resolves.toBeTruthy();
+  });
+
+  it('is a no-op when nothing has ever been seeded', async () => {
+    await expect(clearLocalSeedBeforeFirstPair()).resolves.toBeUndefined();
   });
 });

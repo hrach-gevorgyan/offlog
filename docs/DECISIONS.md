@@ -192,6 +192,22 @@ delete already produces exactly that tombstone behavior for free.
 
 ## Mobile / Android
 
+### Why `android:allowBackup="false"` (2026-07-14)
+Discovered live while testing Track E's pairing flow: Android's Auto
+Backup silently uploads app data (including the local PouchDB WebView
+storage) to the user's Google account and restores it automatically on
+reinstall — which made "uninstall and reinstall" not actually produce a
+fresh install for testing, since old data kept reappearing with no
+visible cause. Beyond the testing wrinkle, this is a real product
+question: this app's entire pitch is no accounts, no telemetry, no
+implicit cloud dependency (GOAL.md) — a real user's local task data
+silently leaving the device via Google's backup infrastructure,
+without them explicitly choosing that, contradicts that stance even
+though it's a well-intentioned OS feature. Sync (self-hosted CouchDB,
+explicit and user-controlled) is the app's own backup mechanism;
+Android's implicit one isn't needed on top of it. Set in
+`AndroidManifest.xml`.
+
 ### Why an official `@capacitor/*` plugin's own mechanism beats a custom native bridge event (A25, 2026-07)
 The Quick Add home-screen widget used to forward its launch intent via a
 hand-rolled `getBridge().triggerJSEvent(...)` call in `MainActivity` — it

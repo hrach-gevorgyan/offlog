@@ -9,6 +9,10 @@ function isNativePlatform(): boolean {
   return !!(window as any).Capacitor?.isNativePlatform?.();
 }
 
+function isTauri(): boolean {
+  return !!(window as any).__TAURI_INTERNALS__;
+}
+
 // Owner-reported real bug (2026-07-13): this used to fall back to a
 // hardcoded real LAN IP, which goes stale the moment the sync host's IP
 // changes (DHCP, router restart, new network) — and a fresh install or
@@ -16,22 +20,53 @@ function isNativePlatform(): boolean {
 // address with no indication anything was misconfigured (exactly what
 // happened: a phone reinstall silently pointed sync at a year-old IP).
 //
-// The fix has two parts. On Android/native, there's no way to guess a
-// working address — falls back to '' ("not configured"); startSync()/
-// syncNow() treat that as a no-op, and Settings' Sync tab already shows
-// a friendly "Not connected to another device yet" for it (B43).
+// The fix has three parts now. On Android/native, there's no way to
+// guess a working address — falls back to '' ("not configured");
+// startSync()/syncNow() treat that as a no-op, and Settings' Sync tab
+// already shows a friendly "Not connected to another device yet" for
+// it (B43).
 //
-// On desktop web, though, a real default *is* structurally guaranteed
+// On plain desktop web, a real default *is* structurally guaranteed
 // correct: this app's architecture is "the PC is the host" (GOAL.md) —
-// CouchDB runs on the same machine as the browser tab — so loopback
-// (127.0.0.1) is always right, unlike a remembered LAN IP, which can
-// silently stop being this machine's address. Unlike the old bug, this
-// isn't a guess that can go stale: loopback is loopback forever,
-// regardless of DHCP, routers, or networks. Only applies when nothing
-// was explicitly configured (no VITE_COUCH_URL, no saved value) — an
-// explicit choice (e.g. syncing to a different machine's CouchDB) is
-// never overridden.
-export const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() ? 'http://127.0.0.1:5984/offlog' : '');
+// a manually-installed CouchDB runs on the same machine as the browser
+// tab, on its standard port — so loopback:5984 is always right there.
+//
+// The Tauri desktop app (Track E) is a THIRD case, easy to conflate
+// with plain desktop web since both are "not Capacitor" -- but its
+// embedded CouchDB sidecar (sync_host.rs) binds a random port, chosen
+// fresh per install, never 5984. Falling through to the desktop-web
+// branch above silently pointed the Tauri app at port 5984 regardless
+// -- whatever happened to be listening there (a completely unrelated,
+// separately-installed CouchDB, in the case that surfaced this) rather
+// than its own sidecar. Caught live: the Tauri app reported "synced"
+// successfully against the wrong database the whole time, since a
+// real CouchDB really was answering on 5984, just not the right one.
+// No synchronous default is possible here (the real port is only
+// knowable via the async get_sync_info Tauri command) -- falls back to
+// '' like Android, resolved by initTauriSyncDefaults() below before
+// the first sync attempt.
+export const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() && !isTauri() ? 'http://127.0.0.1:5984/offlog' : '');
+
+// Called once at app boot (store.ts's initApp(), before startSync()) --
+// if this is the Tauri desktop app and nothing has been explicitly
+// configured yet (no saved URL, meaning either a fresh install or an
+// install still carrying the old wrong 5984 default from before this
+// fix), points it at its own embedded sidecar instead of guessing.
+// Never overrides an explicit choice someone already made (e.g.
+// pairing with, or manually configuring, a different machine).
+export async function initTauriSyncDefaults(): Promise<void> {
+  if (!isTauri()) return;
+  const saved = localStorage.getItem('offlog_sync_url');
+  if (saved && saved !== 'http://127.0.0.1:5984/offlog') return;
+  try {
+    const info = await (window as any).__TAURI_INTERNALS__.invoke('get_sync_info');
+    setSyncUrl(`http://127.0.0.1:${info.port}/offlog`);
+    setSyncCredentials(info.user, info.password);
+  } catch {
+    // sidecar not ready yet or invoke failed -- leave whatever was
+    // there (possibly the stale 5984 default); next launch retries.
+  }
+}
 
 export function getSyncUrl(): string {
   return localStorage.getItem('offlog_sync_url') ?? DEFAULT_SYNC_URL;

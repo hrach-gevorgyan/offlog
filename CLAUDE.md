@@ -106,7 +106,17 @@ npx cap sync android    # copy dist/ into the Android project (run after build)
 Android APK: `cd android && .\gradlew assembleDebug` (set
 `JAVA_HOME` to Android Studio's JBR first) — **owner-only, run by them in
 Android Studio; never invoke this as the assistant** (see Release checklist
-below). Dev environment is **Windows** —
+below).
+
+**`offlog-desktop/`** is a sibling project (Tauri, Track E — ROADMAP.md
+E1), not a subfolder of `offlog-app/` — it wraps `offlog-app/dist`
+unmodified and embeds a CouchDB sync host. Its own build/architecture
+detail lives in `docs/TECH.md`'s "Desktop (Tauri)" section; don't
+duplicate it here. `cargo build`/`cargo tauri build`/`cargo tauri dev`
+are fine for the assistant to run (unlike the Android APK build above)
+— there's no equivalent "owner-only" restriction for it.
+
+Dev environment is **Windows** —
 prefer POSIX-safe commands in scripts, and expect LF→CRLF warnings from git
 (harmless, don't "fix" them).
 

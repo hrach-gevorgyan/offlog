@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -63,6 +63,17 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Track E: capacitor-zeroconf's mDNS discovery ("Find my computer" in
+         Settings -> Sync) acquires a WiFi multicast lock so mDNS broadcast
+         packets actually reach the app; Android drops multicast traffic
+         to apps by default otherwise. The plugin itself
+         (node_modules/capacitor-zeroconf) doesn't declare this permission
+         in its own manifest, so it has to live here instead; missing it
+         doesn't crash, it just makes discovery silently find nothing. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Local notifications: task reminders -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

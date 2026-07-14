@@ -32,34 +32,35 @@ just make it bigger?
 ## Path to v1.0 — the whole story, even the parts that aren't realistic yet
 
 This section exists so the destination is never buried under backlog
-detail. It's a narrative, not a schedule. **Rewritten 2026-07-13 after an
-owner direction-setting session**: the feature-building phase is declared
-over — "enough experimenting and making only new features." The backlog's
-big remaining architecture experiments (B33 sub-projects, B28 rethinking
-positional-done) are parked, not scheduled. From here the work is
-stabilization, human-friendliness, and shipping — see GOAL.md for what
-"shipped" means.
+detail. It's a narrative, not a schedule. **Rewritten 2026-07-13** after
+an owner direction-setting session declaring the feature-building phase
+over, **reordered 2026-07-14** once Track E (the PC app) was pulled
+forward — see E1's own entry for the reasoning. The backlog's big
+remaining architecture experiments (B33 sub-projects, B28 rethinking
+positional-done) stay parked either way.
 
-1. **Now — dogfooding.** The owner starts using Offlog daily as his real
-   task manager (it was always built for that — GOAL.md). Bugs and
-   friction found in real use outrank everything in the backlog. This is
-   also the honest stability test no audit can substitute for.
-2. **Now, in parallel — make it speak human (Tracks B/C polish items).**
-   Sync settings that don't require knowing what CouchDB is (B43), storage
-   copy a non-technical person understands (B44), a proper icon (C8),
-   self-hosted fonts (C9), and a plain-language pass over every string and
-   document (C10). None of these are features; all of them are the gap
-   between "works for its developer" and "works for a person."
-3. **Then — the release gate (Track C core).** C7 credential fix
-   (mandatory, blocks everything public), C2 zero-config first-run
-   verification, then C1 GitHub, C5 landing page, C3 Play Store. This is
-   the externally-visible "we made it" milestone.
-4. **Then — the PC app as host (Track E).** GOAL.md's full vision: install
-   a real PC app from the website, and it *is* the sync host — phones
-   connect to it over home Wi-Fi with no CouchDB knowledge required. The
-   single biggest remaining engineering item, deliberately after going
-   public rather than blocking it (browser + Android + self-hosted CouchDB
-   is a complete, honest offering for a v1).
+1. **Now — Track E, the PC app as host.** GOAL.md's full vision: a real
+   PC app, downloaded and run, that *is* the sync host — phones connect
+   to it over home Wi-Fi with no CouchDB knowledge required. Working
+   end-to-end already (E1) — what's left is installer signing, then
+   dogfooding it for real. All new-feature work is paused until this
+   lands.
+2. **Then — the release gate (Track C core).** C7 credential fix
+   (mandatory, blocks everything public — note it isn't fully closed by
+   Track E's pairing handshake, see C7's own entry), C2 zero-config
+   first-run verification, then C1 GitHub, C5 landing page, C3 Play
+   Store. This is the externally-visible "we made it" milestone.
+3. **In parallel wherever it doesn't compete with Track E — make it
+   speak human (Tracks B/C polish items).** Storage copy a non-technical
+   person understands (B44 — shipped), a proper icon (C8 — shipped),
+   self-hosted fonts (C9 — shipped), and a plain-language pass over every
+   remaining string and document (C10). None of these are features; all
+   of them are the gap between "works for its developer" and "works for
+   a person."
+4. **After the release gate — dogfooding at scale.** The owner using
+   Offlog daily, across both a real PC install and Android, is the
+   honest stability test no audit can substitute for. Bugs and friction
+   found in real use outrank everything in the backlog.
 5. **After that, there's no further destination.** Offlog stays a personal
    tool shared as open source — not a product growing toward a business.
    Maintenance passes continue; features return only when the owner
@@ -67,9 +68,9 @@ stabilization, human-friendliness, and shipping — see GOAL.md for what
    considered at length and explicitly declined (2026-07-03) — see
    DECISIONS.md.
 
-Nothing above skips a step. A public repo with hardcoded credentials in its
-history would undermine the entire premise — so the ordering here is a
-real constraint, not just narrative flow.
+A public repo with hardcoded credentials in its history would undermine
+the entire premise — C7 is a real, non-negotiable gate on step 2, not
+just narrative flow, regardless of what order the other steps land in.
 
 ---
 
@@ -605,13 +606,16 @@ from the Mission above comes through, written for humans discovering the
 project.
 
 ### C7. Fix hardcoded CouchDB credentials — mandatory, blocks C1
-`offlog-app/src/config.ts` hardcodes a real CouchDB password and LAN IP as
-fallback defaults, present in git history too. **This must be fixed before
-the repo goes public or any store listing goes live** — not optional. Also
-the reason the repo stays private for now (see DECISIONS.md). Fix approach:
-no real credentials in source at all, `.env.local`-only with no committed
-fallback; may mean publishing to GitHub as fresh history rather than
-pushing this repo's full log.
+`offlog-app/src/config.ts` hardcodes a real CouchDB password as a fallback
+default, present in git history too. **This must be fixed before the repo
+goes public or any store listing goes live** — not optional. Also the
+reason the repo stays private for now (see DECISIONS.md). Track E's
+pairing handshake (E1) reduces this in practice — a paired device gets
+real per-install random credentials, not this fallback — but the
+hardcoded default itself is still sitting in source, still needs its own
+fix. Fix approach: no real credentials in source at all, `.env.local`-only
+with no committed fallback; may mean publishing to GitHub as fresh history
+rather than pushing this repo's full log.
 
 ### C8. New app icon, all platforms — shipped in v4.17.0
 New interlocking-ribbon mark (owner-supplied SVG, `resources/source-
@@ -666,180 +670,74 @@ was open question Q6. Distinct from declined Track D: this is still
 CouchDB-protocol replication with one fixed host — the PC — not a mesh;
 the innovation is packaging, not a new sync transport.
 
-### E1. Scope the PC app + embedded sync host — PROTOTYPE PROVEN (owner-directed, 2026-07-13/14)
+### E1. PC app + embedded sync host — WORKING END-TO-END, not yet shipped (owner-directed, 2026-07-13/14)
 Two halves, deliberately one item because GOAL.md treats them as one
-product: (1) a real installable PC app (not a PWA — see DECISIONS.md);
-technology question (Tauri vs Electron vs other, and whether the
-PouchDB-as-UMD-global architecture survives the move) is QUESTIONS.md's
-Q6 — **now resolved: Tauri, proven working.** (2) The app embeds a
-CouchDB-replication-compatible server (a Rust sidecar, not
-pouchdb-server/express-pouchdb) so a phone pairs to the PC with no
-separate CouchDB install — which is also what finally makes B43's
-human-friendly sync story fully true rather than just better-worded.
+product: (1) a real installable PC app (not a PWA — see DECISIONS.md).
+Technology question — QUESTIONS.md's former Q6 — is resolved: **Tauri**,
+see DECISIONS.md's own entry for why. (2) The app embeds a CouchDB
+sync host so a phone pairs with no separate CouchDB install, which is
+what finally makes B43's human-friendly sync story fully true.
 
-Originally sequenced **after** going public (Path to v1.0 step 4).
-Reprioritized during the A32/A35 sync-reliability session: once it was
-clear a native PC app with mDNS discovery (`_offlog._tcp` — a native app
-can see its own network interfaces, unlike a browser tab) is the actual
-permanent fix for LAN-IP drift, the owner chose to skip building interim
-phone-side workarounds (auto-rescan, QR pairing — see A35, B52) and move
-this item earlier instead, since those workarounds would be thrown away
-once this ships anyway. All further work is paused on new app features
-until this track lands, per explicit owner direction (2026-07-14).
+Reprioritized ahead of "after going public" (Path to v1.0 step 4)
+during the A32/A35 sync-reliability session, once it was clear a native
+PC app with mDNS discovery is the actual permanent fix for LAN-IP drift
+— see A35's own entry for that reasoning. All new-feature work is
+paused until this track lands, per explicit owner direction
+(2026-07-14).
 
-**Prototype (`offlog-desktop/`, a sibling to `offlog-app/`, not yet
-committed) proved all three hardest risks work end-to-end:**
-- **Shell**: `cargo tauri init` wrapping `offlog-app/dist` unmodified —
-  confirmed via CDP that PouchDB loads and the existing UI renders real
-  data with zero frontend changes, exactly as it does in a browser tab
-  or the Capacitor Android build.
-- **Embedded sync host**: a Rust module (`src-tauri/src/sync_host.rs`)
-  generates a random port + admin credentials + Erlang node identity on
-  first launch, persists them, rewrites the bundled CouchDB's config,
-  spawns it as a child process, waits for readiness, and creates the
-  `offlog` database — all automatically, no user action. Verified live
-  by calling the app's own `get_sync_info` Tauri command from the
-  frontend and getting back working, authenticated credentials. One
-  real bug found and fixed along the way: this CouchDB build persists
-  `[admins]` into `etc/local.d/10-admins.ini` (loaded *after*
-  `local.ini`, so it silently wins) rather than back into `local.ini`
-  itself — a stale hash left there by an earlier prototype run kept
-  beating a freshly-regenerated password until traced down to a 401 a
-  manual auth test caught. Documented in `sync_host.rs` so it isn't
-  rediscovered.
-- **Discovery**: broadcasts `_offlog._tcp` via `mdns-sd`
-  (`src-tauri/src/discovery.rs`), carrying only the CouchDB server's own
-  `uuid` in the TXT record — deliberately no credentials over mDNS,
-  since it's a plaintext LAN broadcast. Verified independently (a
-  separate Node script using `bonjour-service`, not reusing any of the
-  advertiser's own code) found the service with the correct LAN IP,
-  port, and uuid.
+**What exists and is verified working, end to end, on real hardware —
+not just the dev binary:** a Tauri shell (`offlog-desktop/`) wrapping
+`offlog-app/dist` unmodified; an embedded CouchDB sidecar
+(`src-tauri/src/sync_host.rs`) that self-configures with a random
+port/credentials on first launch, self-heals its own `data`/`var`
+dirs, and is hardened with a Windows Job Object so the whole process
+tree dies with the app on any exit path (crash, force-kill, or normal
+close — all three verified live); mDNS advertising
+(`src-tauri/src/discovery.rs`, `_offlog._tcp`, no credentials on the
+wire); a single-use expiring-code pairing handshake
+(`src-tauri/src/pairing.rs` + `offlog-app/src/lib/discovery.ts`) that
+gets real credentials onto a phone safely; a real NSIS installer
+(`cargo tauri build`, per-user install, no elevation); and a
+checksum-pinned CouchDB fetch script (`scripts/fetch-couchdb-win.ps1`,
+Windows binaries aren't published by Apache itself — see the script's
+own header for the sourcing rationale). Verified by actually running
+the installed app, pairing a real Android phone to it over mDNS, and
+confirming two-way sync with zero manual configuration on either side.
 
-**Real gap found during prototyping — now fixed.** The app's
-`RunEvent::ExitRequested` handler killing the CouchDB child wasn't
-reliable — a force-killed or crashed parent left CouchDB running as an
-orphaned process, LAN-reachable with real (if random, per-install)
-credentials, indefinitely (reproduced live, twice, during earlier
-testing). Fixed with a Windows Job Object
-(`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate,
-`sync_host::spawn()`) so the entire `couchdb.cmd` -> `erl.exe` process
-tree dies the moment this app's process handle closes, for any reason —
-normal exit, crash, or an external force-kill — with no app-side cleanup
-code needing to run on that path at all. Verified live: force-killed
-`app.exe` directly (`Stop-Process -Force`, no graceful shutdown) and
-confirmed its `erl.exe` child died with it, with no new orphan left
-behind.
+**Real bugs this surfaced, all fixed** — the *why* for each lives as a
+comment at its actual fix site, not repeated here: the `local.d`
+admin-config override (`sync_host.rs`), the exit-cleanup gap
+(`sync_host.rs`/`lib.rs`, Job Object), the `msiexec /a` extraction gaps
+— missing `vm.args`, missing VC++ runtime DLLs (`sync_host.rs`,
+`fetch-couchdb-win.ps1`), the per-user-install-mode dependency
+(`sync_host.rs`), the fixed static `COUCH_USER`/`COUCH_PASS` that
+couldn't match a per-install random password — real per-device
+credentials now exist (`config.ts`), though the hardcoded fallback
+default C7 tracks is still there underneath and still needs its own
+fix, the missing Android multicast permissions
+(`AndroidManifest.xml`), the pairing endpoint's missing CORS header
+(`pairing.rs`), Android's Auto Backup silently restoring old data
+across "fresh" installs (`AndroidManifest.xml`, `allowBackup="false"`
+— see DECISIONS.md), and the two most structural ones: **every fresh
+device's default seed uses fixed, not per-install-random, ids**
+(`space:unsorted`/etc.), guaranteeing a sync conflict the instant two
+independently-seeded devices pair — fixed with
+`clearLocalSeedBeforeFirstPair()` (`db.ts`, tested); and **the Tauri
+app itself was never pointed at its own embedded sidecar** — it fell
+through to desktop-web's `127.0.0.1:5984` default (a different,
+unrelated CouchDB entirely) instead of resolving its own random port —
+fixed with `initTauriSyncDefaults()` (`config.ts`), the actual root
+cause behind most of a full day's confusing test results.
 
-**CouchDB binary sourcing — decided and scripted (2026-07-14).** Apache
-CouchDB doesn't publish official Windows binaries itself — its own
-downloads page links out to Neighbourhoodie's (a CouchDB-core-maintainer-
-founded consultancy) installer as the Windows distribution channel, and
-building CouchDB from source on Windows isn't realistic (needs a full
-Erlang/OTP + Elixir + rebar3 + SpiderMonkey toolchain). Reusing a
-developer's own already-installed copy — what the earlier prototype did —
-doesn't work for real distribution either, since a fresh clone or a real
-end user's machine won't have one. Settled on: `offlog-desktop/scripts/
-fetch-couchdb-win.ps1`, a checksum-pinned fetch (exact version + SHA256
-hardcoded, verified before use, never silently re-fetching different
-bytes) that downloads the installer, extracts it via `msiexec /a`
-(administrative install — unpacks files, makes no system changes, never
-creates the Windows service), and copies the result into a gitignored
-`vendor/couchdb-win/` (not committed — ~200MB, reproducible from the
-script). One extraction-specific gap found and fixed: `msiexec /a` skips
-the installer's custom actions, one of which normally copies
-`vm.args.dist` to `vm.args` on a real install — `write_couchdb_config()`
-now does that copy itself the first time it finds `vm.args` missing.
-Also copies the VC++ runtime DLLs the installer places in `System32`
-(`concrt140.dll`, `msvcp140*.dll`, `vcruntime140*.dll`) into CouchDB's
-own `bin/` folder, since a real end-user machine can't be assumed to
-already have that redistributable installed and Windows checks an
-executable's own directory before `System32` in its DLL search order.
-Full loop re-verified end-to-end against this scripted copy (fresh
-database creation, mDNS discovery, and the Job Object crash-cleanup
-above) — not just against the original manual copy.
+Also added, debug-build-only, never reachable in a release
+(`is_debug_build` Tauri command gates it both sides): a "Reset test
+data" button that clears both the PC's local PouchDB and the embedded
+server, for testing "what does a real first-run user see" without
+manually killing processes and deleting folders.
 
-**Installer packaging — working (2026-07-14).** `cargo tauri build`
-produces a real NSIS installer (`Offlog_0.1.0_x64-setup.exe`, ~95MB —
-the bundled CouchDB + Erlang runtime is the bulk of it) via
-`tauri.conf.json`'s `bundle.resources` mapping `vendor/couchdb-win` to a
-`couchdb/` resource folder. `sync_host::couchdb_dir()` now resolves via
-`app.path().resource_dir()` when a bundled resource is actually present,
-falling back to the `CARGO_MANIFEST_DIR`-relative vendor path for a
-plain `cargo build`/`cargo run` with no bundling step — both paths
-verified working. One real design decision made along the way: the
-installer's default NSIS `installMode` is per-user (installs under the
-user's own `%LOCALAPPDATA%`, no elevation needed), which is what lets
-the app write CouchDB's config/data directly into its own resource
-folder rather than needing a separate writable-copy step — **this
-depends on staying per-user**; switching to a per-machine install later
-would need splitting binaries (read-only, in Program Files) from
-config/data (writable, in `app_data_dir()`) — noted in `sync_host.rs`
-so it isn't a surprise if that switch ever happens. `data`/`var` are
-now created by the app itself on first run (`write_couchdb_config()`)
-rather than needing a manual `mkdir`, so a fresh install self-heals with
-no manual step.
-
-Full loop verified against the **actually-installed app**, not just the
-dev binary: ran the real installer (`/S` silent install), launched
-`%LOCALAPPDATA%\Offlog\app.exe` from its real installed location,
-confirmed CouchDB started with freshly-generated credentials (checked
-via the app's own `get_sync_info` command), confirmed CouchDB itself
-responds with a valid welcome/uuid, and confirmed mDNS discovery finds
-it — all from the installed binary, not the `cargo build` output.
-
-**Pairing handshake — working (2026-07-14).** Wiring up Android's "tap to
-connect" surfaced a real blocker: `config.ts` used to export
-`COUCH_USER`/`COUCH_PASS` as **static constants** baked into the JS
-bundle, identical on every device — incompatible with the PC app's
-per-install random password. This is also the last piece of C7 (a
-hardcoded password in source was always a public-repo blocker,
-independent of this feature). Fixed properly rather than patched around:
-
-- `offlog-desktop/src-tauri/src/pairing.rs` (new): the PC generates a
-  6-digit, single-use, 5-minute-expiry code on request (new
-  `generate_pairing_code` Tauri command, surfaced in Settings behind a
-  `window.__TAURI_INTERNALS__` check — a "Pair a device" section only
-  the desktop app shows), and runs a one-endpoint HTTP server
-  (`tiny_http`, matching `ureq`'s existing "small, blocking, no async
-  runtime" bar) — `POST /pair` with the code returns real credentials
-  once, then invalidates it. Wrong/expired/reused codes all get a bare
-  403, no information disclosure. `discovery.rs`'s mDNS TXT record grew
-  one field, `pairing_port`, so a phone that's already found the PC
-  knows where to send the code — still zero credentials over mDNS
-  itself.
-- `offlog-app/src/config.ts`: `COUCH_USER`/`COUCH_PASS` replaced with
-  `getSyncCredentials()`/`setSyncCredentials()`, localStorage-backed
-  exactly like `getSyncUrl()`/`setSyncUrl()` already are, falling back
-  to the old static values so an existing install with nothing stored
-  yet keeps syncing unchanged (same fallback shape as A35's
-  `DEFAULT_SYNC_URL`). `db.ts`'s `remote()` reads from these instead of
-  the static import. Developer options gained matching manual username/
-  password fields — a latent gap that existed even before pairing,
-  since the URL field alone was never enough to actually connect.
-- `offlog-app/src/lib/discovery.ts`: `pairWithHost()` posts the code,
-  stores the returned credentials, and starts sync — the actual
-  "connect" half of what `scanForHosts()` (mDNS discovery, already
-  proven working) finds.
-- `offlog-app/src/lib/SettingsPanel.svelte`: Android gets the real
-  "Find my computer" → code-entry → connected flow; desktop (Tauri-
-  gated) gets the "Pair a device" code-generation panel.
-- New `tests/config.test.ts` covers the credential-fallback logic (the
-  one thing that must never regress: an install with nothing stored
-  yet keeps working exactly as before this change).
-
-Verified end-to-end against the real running app (not a mock): generated
-a code via the frontend's own Tauri command, confirmed the mDNS TXT
-record carries the matching `pairing_port`, then hit the endpoint
-directly — wrong code → 403, correct code → real credentials returned,
-replaying the same code → 403 (single-use confirmed) — and confirmed
-those returned credentials actually authenticate against CouchDB (200 +
-real data) while a wrong password doesn't (401).
-
-**Explicitly not done:** installer signing (unsigned installer still
-triggers Windows SmartScreen on a real user's machine — separate,
-later step, needs a code-signing certificate). The desktop-web loopback
-fallback (A35) stays as-is for anyone still using the browser build —
-not being removed.
+**Explicitly not done yet:** installer signing (unsigned — triggers
+Windows SmartScreen on a real user's machine). The desktop-web loopback
+fallback (A35) stays as-is for the plain browser build — not removed.
 
 ---
 
@@ -900,7 +798,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → **v4.18** → v4.21 → … |
 | — | (unscheduled) | — | B39, B47, B48, B50, B51 | B39: stale device entries after a rename (needs schema-change care). B47: week-start-day setting (timezone half needs scoping first — may not be needed). B48: Android widget flatter/2-color/no-border polish. B50: extend the custom date-picker pattern to time-only fields. B51: web-vs-Android animation consistency inventory. None urgent enough to claim a version slot yet; pick up opportunistically. |
 | — | (parked) | — | B33, B28 | Sub-projects and rethinking positional-done — parked 2026-07-13 with the feature-phase wind-down; revisit post-release only if daily use demands it. |
-| — | (post-release) | — | E1 | PC standalone app + embedded sync host — GOAL.md's endgame, deliberately after going public. Scoping conversation first. |
+| — | (in progress, pulled forward) | — | E1 | PC standalone app + embedded sync host — working end-to-end (2026-07-14), not yet shipped. All new-feature work paused until this lands; see E1's own entry for what's left (installer signing). |
 
 Within each release: land any Track A item first (or in the same PR as the
 Track B item it protects/enables), then the Track B items. Extend
