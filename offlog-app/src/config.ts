@@ -9,8 +9,16 @@ function isNativePlatform(): boolean {
   return !!(window as any).Capacitor?.isNativePlatform?.();
 }
 
-function isTauri(): boolean {
+// Maintenance pass (2026-07-19): exported so SettingsPanel.svelte doesn't
+// re-declare its own copy of this check, and pairs with invokeTauri()
+// below so every `window.__TAURI_INTERNALS__.invoke(...)` call site
+// shares one `as any` cast instead of five independent ones.
+export function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
+}
+
+export function invokeTauri<T = any>(cmd: string): Promise<T> {
+  return (window as any).__TAURI_INTERNALS__.invoke(cmd);
 }
 
 // Owner-reported real bug (2026-07-13): this used to fall back to a
@@ -59,7 +67,7 @@ export async function initTauriSyncDefaults(): Promise<void> {
   const saved = localStorage.getItem('offlog_sync_url');
   if (saved && saved !== 'http://127.0.0.1:5984/offlog') return;
   try {
-    const info = await (window as any).__TAURI_INTERNALS__.invoke('get_sync_info');
+    const info = await invokeTauri<{ port: number; user: string; password: string }>('get_sync_info');
     setSyncUrl(`http://127.0.0.1:${info.port}/offlog`);
     setSyncCredentials(info.user, info.password);
   } catch {

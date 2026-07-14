@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.12.2 | A31 visual/UX pass part 1: fixed Dashboard project-grid mobile overflow (`minmax(0,1fr)`), Focus view's FAB/Commit-button overlap at mobile widths | `v4.12.2` |
 | 4.12.1 | UI audit fixes: WCAG AA contrast fixes for --faint/--accent, new --on-accent token applied at 17 sites, consolidated ACTION_COLOR hex maps, scroll-shadow affordances on overflowing lists | `v4.12.1` |
 | 4.12.0 | Full codebase audit + docs-flow optimization (A30): fixed duplicated fmtLastSynced/timeAgo helpers, CardDetail collapsible-state remount bug, CustomSelect focus-on-open gap | `v4.12.0` |
 | 4.11.1 | Design-kit polish + PWA removal: Focus view solid cards, every native `<select>` converted to CustomSelect, CardDetail collapsible sections, PWA support dropped entirely | `v4.11.1` |

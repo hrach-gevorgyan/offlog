@@ -10,7 +10,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, isTauri as isTauriCheck, invokeTauri } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -143,10 +143,10 @@
   // Android: find the PC via mDNS, then exchange a code shown on the PC's
   // own screen for real credentials (discovery.ts's pairWithHost()).
   // Desktop/Tauri: generate that code in the first place.
-  const isTauri = !!(window as any).__TAURI_INTERNALS__;
+  const isTauri = isTauriCheck();
   let isTauriDebug = false;
   if (isTauri) {
-    (window as any).__TAURI_INTERNALS__.invoke('is_debug_build').then((v: boolean) => { isTauriDebug = v; }).catch(() => {});
+    invokeTauri<boolean>('is_debug_build').then((v) => { isTauriDebug = v; }).catch(() => {});
   }
 
   let selectedHost: DiscoveredHost | null = null;
@@ -189,7 +189,7 @@
   async function generatePcPairingCode() {
     pcPairingBusy = true;
     try {
-      pcPairingCode = await (window as any).__TAURI_INTERNALS__.invoke('generate_pairing_code');
+      pcPairingCode = await invokeTauri<string>('generate_pairing_code');
     } catch {
       showError('Failed to generate a pairing code.');
     } finally {
@@ -217,7 +217,7 @@
       // an already-paired phone's copy too, not just this PC's view.
       await wipeAndReseed();
       await syncNow().catch(() => {});
-      await (window as any).__TAURI_INTERNALS__.invoke('reset_sync_data');
+      await invokeTauri('reset_sync_data');
     } catch {
       showError('Failed to reset test data.');
       resetBusy = false;

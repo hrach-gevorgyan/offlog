@@ -164,6 +164,20 @@ badge — the last needed a new `--ink-fixed-dark` token), and an unguarded
 `new URL()` in the widget deep-link handler. Full report in this
 conversation's transcript — no dead code, no new duplication, `npm audit`
 unchanged from last pass).
-Next pass due: **after v4.18.0 ships**, continuing the every-3-releases
-cadence from there (v4.21.0, …) — see docs/ROADMAP.md's sequencing table,
+Last pass: v4.19.1 (2026-07-19 — seventh run, after v4.18.0/v4.19.0 shipped.
+First pass to cover `offlog-desktop/` (Track E's Tauri PC app) alongside
+`offlog-app/` — see this file's own Phase 0/1/4/5 additions from the same
+day. Found and fixed one real duplication: `isTauri()` detection and the
+raw `window.__TAURI_INTERNALS__.invoke(...)` call pattern were each
+independently re-declared/inlined across `config.ts` and
+`SettingsPanel.svelte` (5+ call sites) — consolidated into `isTauri()`/
+`invokeTauri()`, both exported from `config.ts`. Everything else checked
+out clean — no dead code beyond one already-documented pending stub, no
+unused Track E dependencies, `npm audit` unchanged, Rust `unsafe` blocks
+limited to the expected `TerminateJobObject` FFI calls, no credential
+values in any log line. `SettingsPanel.svelte`'s size (1141 lines) flagged
+again but a split deliberately skipped — same shared-CSS blocker as the
+v4.12.0 pass.)
+Next pass due: **after v4.21.0 ships**, continuing the every-3-releases
+cadence from there (v4.24.0, …) — see docs/ROADMAP.md's sequencing table,
 which has these same points marked inline.
