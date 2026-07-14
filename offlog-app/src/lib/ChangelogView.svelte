@@ -2,6 +2,7 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { getRecentLogs, clearLogs } from './db';
+  import { showError } from './store';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { ACTION_COLOR } from './utils';
@@ -145,7 +146,7 @@
   <div class="panel-head">
     <span class="panel-title">Changelog</span>
     {#if logs.length > 0}
-      <button class="clear-btn" on:click={async () => { await clearLogs(); logs = []; }}>Clear all</button>
+      <button class="clear-btn" on:click={async () => { try { await clearLogs(); logs = []; } catch { showError('Failed to clear the changelog.'); } }}>Clear all</button>
     {/if}
     <button class="close-btn" on:click={() => requestClose()}>✕</button>
   </div>

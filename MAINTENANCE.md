@@ -178,6 +178,19 @@ limited to the expected `TerminateJobObject` FFI calls, no credential
 values in any log line. `SettingsPanel.svelte`'s size (1141 lines) flagged
 again but a split deliberately skipped — same shared-CSS blocker as the
 v4.12.0 pass.)
-Next pass due: **after v4.21.0 ships**, continuing the every-3-releases
-cadence from there (v4.24.0, …) — see docs/ROADMAP.md's sequencing table,
-which has these same points marked inline.
+Last pass: v4.22.1 (2026-07-15 — eighth run, delta-scoped since v4.19.1,
+covering v4.20.0/v4.21.0/v4.22.0's changes). Found and fixed one real gap:
+`ChangelogView.svelte`'s "Clear all" button was missing the audited
+try/catch + `showError()` invariant. Also added a Tauri window
+`minWidth`/`minHeight` floor (`offlog-desktop/src-tauri/tauri.conf.json`)
+since none existed. The `motion.ts` animation migration (v4.22.0) audited
+clean — no leftover unused `@keyframes`, all 7 exports/15 call sites
+correct. `npm audit` unchanged (4 dev-tooling-only advisories, none
+shipped). One correction to a preliminary finding: `pouchdb` npm package
+looked unused in `src/` but is actually imported by `tests/setup.ts` —
+left in place. Disabled CSP (`security.csp: null`) noted but deliberately
+deferred to the same pre-public-release pass as C7, not fixed piecemeal
+here.
+Next pass due: **after v4.25.0 ships**, continuing the every-3-releases
+cadence from there — see docs/ROADMAP.md's sequencing table, which has
+these same points marked inline.
