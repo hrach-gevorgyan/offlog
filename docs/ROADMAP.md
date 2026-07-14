@@ -832,6 +832,23 @@ purchase or configure without the owner's own decision to do so.
 The desktop-web loopback fallback (A35) stays as-is for the plain
 browser build — not removed.
 
+### E2. Re-resolve the PC host after pairing, not just at pairing time — OPEN (owner-reported, 2026-07-20)
+Root cause of the owner's "not stable yet" complaint, found while
+debugging a corrupted CouchDB shard on the dev machine: `discovery.ts`'s
+`pairWithHost()` writes a **fixed** `http://<LAN IP>:<port>/offlog` into
+`setSyncUrl()` at pairing time and never revisits it. mDNS discovery
+(E1) exists specifically to avoid hardcoding a LAN IP, but it's only
+ever used once, at the pairing handshake — every sync after that trusts
+the frozen snapshot. Any DHCP lease renewal, router reboot, or network
+switch silently breaks sync until the phone is manually re-paired; a
+port change (only from a fresh PC-side install/app-data wipe, not
+normal use) has the same effect. Fix direction: on a sync failure (or
+periodically/on app resume), re-run `scanForHosts()`-style mDNS lookup
+matched by the PC's stable node identity (`sync_host.rs`'s
+`node_name`, not its IP) and silently update the stored URL if it's
+changed, instead of surfacing a sync error the user has to notice and
+manually fix. Not yet scoped into a release.
+
 ---
 
 ## Business model — none, deliberately
