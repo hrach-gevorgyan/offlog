@@ -9,8 +9,9 @@
     checkIntegrity, repairDatabase, pruneOldLogs, pruneOldDeletedTasks, type IntegrityIssue,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
+  import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError } from './store';
   import { closeOnBack } from './modalStack';
@@ -98,6 +99,7 @@
 
   // ── Sync ────────────────────────────────────────────────────────────────
   let syncUrl = getSyncUrl();
+  let { user: credentialUser, pass: credentialPass } = getSyncCredentials();
   let deviceName = getDeviceName();
   let syncEnabled = isSyncEnabled();
   // B43: the CouchDB URL field and anything else with a footgun moved into
@@ -124,6 +126,53 @@
     syncEnabled = !syncEnabled;
     setSyncEnabled(syncEnabled);
     if (syncEnabled) startSync(); else cancelSync();
+  }
+
+  // ── Track E discovery/pairing (ROADMAP.md E1) ─────────────────────────────
+  // Android: find the PC via mDNS, then exchange a code shown on the PC's
+  // own screen for real credentials (discovery.ts's pairWithHost()).
+  // Desktop/Tauri: generate that code in the first place.
+  const isTauri = !!(window as any).__TAURI_INTERNALS__;
+
+  let selectedHost: DiscoveredHost | null = null;
+  let pairingCode = '';
+  let pairingBusy = false;
+  let pairingError = '';
+
+  function startDeviceScan() {
+    selectedHost = null;
+    pairingError = '';
+    scanForHosts();
+  }
+
+  async function submitPairingCode() {
+    if (!selectedHost) return;
+    pairingBusy = true;
+    pairingError = '';
+    try {
+      await pairWithHost(selectedHost, pairingCode);
+      syncUrl = getSyncUrl();
+      showDevOptions = true;
+      selectedHost = null;
+      pairingCode = '';
+    } catch (e) {
+      pairingError = e instanceof Error ? e.message : 'Failed to pair.';
+    } finally {
+      pairingBusy = false;
+    }
+  }
+
+  let pcPairingCode = '';
+  let pcPairingBusy = false;
+  async function generatePcPairingCode() {
+    pcPairingBusy = true;
+    try {
+      pcPairingCode = await (window as any).__TAURI_INTERNALS__.invoke('generate_pairing_code');
+    } catch {
+      showError('Failed to generate a pairing code.');
+    } finally {
+      pcPairingBusy = false;
+    }
   }
 
   // Renaming this device only affects new writes' `source` field — no
@@ -156,6 +205,7 @@
   }
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
+  onDestroy(() => stopScan());
 
   let conflictList: ConflictInfo[] = [];
   let loadingConflicts = false;
@@ -411,7 +461,12 @@
 
   $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
 
-  function saveSettings() { setSyncUrl(syncUrl); requestClose(); location.reload(); }
+  function saveSettings() {
+    setSyncUrl(syncUrl);
+    setSyncCredentials(credentialUser, credentialPass);
+    requestClose();
+    location.reload();
+  }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown}/>
@@ -513,6 +568,50 @@
               </div>
               <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
 
+              {#if isAndroid && !syncUrl}
+                <div class="setting-group">
+                  <div class="setting-section-title">Connect to your computer</div>
+                  {#if !selectedHost}
+                    <button class="export-btn" on:click={startDeviceScan} disabled={$isScanning}>
+                      {$isScanning ? 'Looking for your computer…' : 'Find my computer'}
+                    </button>
+                    {#each $discoveredHosts as host (host.uuid)}
+                      <div class="setting-row">
+                        <span class="storage-info">Found "{host.name}"</span>
+                        <button class="export-btn" on:click={() => { selectedHost = host; stopScan(); }}>Connect</button>
+                      </div>
+                    {/each}
+                  {:else}
+                    <p class="setting-hint">Enter the code shown on "{selectedHost.name}"'s screen.</p>
+                    <label class="field-label">
+                      Pairing code
+                      <input bind:value={pairingCode} placeholder="123456" inputmode="numeric" maxlength="6" disabled={pairingBusy} />
+                    </label>
+                    {#if pairingError}<p class="setting-hint setting-hint-warn">{pairingError}</p>{/if}
+                    <div class="setting-row">
+                      <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; }} disabled={pairingBusy}>Cancel</button>
+                      <button class="export-btn" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
+                        {pairingBusy ? 'Connecting…' : 'Connect'}
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+
+              {#if isTauri}
+                <div class="setting-group">
+                  <div class="setting-section-title">Pair a device</div>
+                  {#if pcPairingCode}
+                    <p class="setting-hint">Enter this code on your phone (Settings → Sync → Find my computer):</p>
+                    <p class="storage-info" style="font-size: 1.5rem; letter-spacing: 0.2em; text-align: center;">{pcPairingCode}</p>
+                    <p class="setting-hint">Valid for 5 minutes, one-time use.</p>
+                  {/if}
+                  <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
+                    {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
+                  </button>
+                </div>
+              {/if}
+
               <label class="field-label">
                 This device's name
                 <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
@@ -574,6 +673,14 @@
                   <label class="field-label">
                     CouchDB URL
                     <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" disabled={!syncEnabled} />
+                  </label>
+                  <label class="field-label">
+                    Username
+                    <input bind:value={credentialUser} placeholder="offlog" disabled={!syncEnabled} />
+                  </label>
+                  <label class="field-label">
+                    Password
+                    <input type="password" bind:value={credentialPass} disabled={!syncEnabled} />
                   </label>
                   {#if syncError && lastErrorAt}
                     <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>

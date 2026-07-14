@@ -7,7 +7,7 @@
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
-import { getSyncUrl, COUCH_USER, COUCH_PASS, getDeviceName, isSyncEnabled } from '../config';
+import { getSyncUrl, getSyncCredentials, getDeviceName, isSyncEnabled } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
 
 (PouchDB as any).plugin(PouchDBFind);
@@ -70,7 +70,8 @@ export function posBetween(before: number | null, after: number | null): number 
 }
 
 function remote() {
-  return new PouchDB(getSyncUrl(), { auth: { username: COUCH_USER, password: COUCH_PASS } });
+  const { user, pass } = getSyncCredentials();
+  return new PouchDB(getSyncUrl(), { auth: { username: user, password: pass } });
 }
 
 // ── Changelog ─────────────────────────────────────────────────────────────────

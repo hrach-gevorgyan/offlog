@@ -1,0 +1,12 @@
+# Fetched by scripts/fetch-couchdb-win.ps1 -- not committed (~200MB,
+# reproducible from the pinned version/hash in that script).
+vendor/
+
+# Manual prototype copy, superseded by vendor/couchdb-win/ -- see git log
+# if this still exists locally, safe to delete.
+couchdb-proto/
+
+target/
+gen/
+mdns-browse/node_modules/
+*.log

@@ -32,8 +32,6 @@ function isNativePlatform(): boolean {
 // explicit choice (e.g. syncing to a different machine's CouchDB) is
 // never overridden.
 export const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() ? 'http://127.0.0.1:5984/offlog' : '');
-export const COUCH_USER = envUser ?? 'offlog';
-export const COUCH_PASS = envPass ?? 'REDACTED_CREDENTIAL';
 
 export function getSyncUrl(): string {
   return localStorage.getItem('offlog_sync_url') ?? DEFAULT_SYNC_URL;
@@ -41,6 +39,31 @@ export function getSyncUrl(): string {
 
 export function setSyncUrl(url: string) {
   localStorage.setItem('offlog_sync_url', url);
+}
+
+// Track E's pairing handshake (offlog-desktop/src-tauri/src/pairing.rs):
+// the PC app generates a random password per install, so a fixed
+// COUCH_USER/COUCH_PASS baked into the JS bundle can never match every
+// PC a device might sync to. Credentials are now per-device, stored the
+// same way the URL already is, with the env-var values (this repo's own
+// dev CouchDB, or a self-hoster's manually-configured one) as the
+// fallback for any install that hasn't paired or been given credentials
+// explicitly — same fallback shape as DEFAULT_SYNC_URL above, so an
+// existing install with nothing stored yet keeps syncing exactly as
+// before this change.
+const DEFAULT_COUCH_USER = envUser ?? 'offlog';
+const DEFAULT_COUCH_PASS = envPass ?? 'REDACTED_CREDENTIAL';
+
+export function getSyncCredentials(): { user: string; pass: string } {
+  return {
+    user: localStorage.getItem('offlog_sync_user') ?? DEFAULT_COUCH_USER,
+    pass: localStorage.getItem('offlog_sync_pass') ?? DEFAULT_COUCH_PASS,
+  };
+}
+
+export function setSyncCredentials(user: string, pass: string) {
+  localStorage.setItem('offlog_sync_user', user);
+  localStorage.setItem('offlog_sync_pass', pass);
 }
 
 // B22: `source` on every doc used to be a fixed 'pc' | 'pc2' | 'mobile'

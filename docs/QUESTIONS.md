@@ -45,23 +45,6 @@ doesn't either (a) read as suspiciously sparse to a reviewer, or (b)
 accidentally imply more data handling than actually happens (e.g. because
 of boilerplate legal language that doesn't fit a truly local-only app)?
 
-### Q6. What should a PC standalone app actually be?
-PWA support was dropped in v4.11.1 (owner decision, 2026-07-12) — the
-installable/offline-desktop story it provided is gone, and web is
-browser-only again. The owner wants a real PC standalone app eventually,
-explicitly **not** a PWA — and per GOAL.md it's more than a wrapper: the
-PC app is meant to be the *sync host* other devices connect to over home
-Wi-Fi, with no separate CouchDB setup. Now tracked as ROADMAP.md's Track E
-(E1); this question is the still-open technology half of that item.
-**What's the right approach** — Tauri (thin, reuses the existing
-Svelte/Vite web build, smaller binary) vs. Electron (heavier, more
-mature/documented) vs. something else — and can either cleanly embed a
-CouchDB-replication-compatible server (e.g. pouchdb-server/express-pouchdb
-or a Rust equivalent) so the "PC as host" part of GOAL.md works without
-the user ever installing CouchDB? Does anything about the current
-architecture (PouchDB-as-UMD-global, no bundler-managed PouchDB import)
-need to change before that work starts?
-
 ---
 
 ## Scale

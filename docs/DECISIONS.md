@@ -110,6 +110,23 @@ be a separately-sold convenience layer, never a gate on the app's own
 functionality. Kept as a standing floor under any future reconsideration —
 this constraint doesn't move even if the entry above does.
 
+### Why Tauri, not Electron, for the PC standalone app (2026-07-14)
+Resolves QUESTIONS.md's former Q6. Decided by prototyping both the
+riskiest parts rather than debating on paper: a Tauri shell wrapping
+`offlog-app/dist` unmodified, a bundled CouchDB run as a managed child
+process with per-install generated credentials, and mDNS advertising —
+all proven working end-to-end (see ROADMAP.md's E1 for the full detail).
+Tauri reuses the existing Svelte/Vite build as-is (no PouchDB-as-UMD-
+global changes needed — it loads identically to a browser tab or the
+Capacitor build) and produces a far smaller installer than Electron
+would, which matters for "someone with no technical background just
+downloads and runs it." No reason found during prototyping to reconsider
+Electron. This decision covers the *shell* only — installer packaging/
+signing and the CouchDB-sidecar hardening (a Windows Job Object is still
+needed so a crashed app can't orphan a LAN-reachable CouchDB process)
+remain open engineering, tracked in ROADMAP.md's E1, not open questions
+about which framework to use.
+
 ### Why F-Droid is explicitly out of scope (2026-07-02)
 Considered and declined by the owner — Offlog isn't being positioned as
 "an app that needs to be in every store," and F-Droid's audience/process
