@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
-import { setSyncUrl, setSyncCredentials } from '../config';
-import { startSync, clearLocalSeedBeforeFirstPair } from './db';
+import { setSyncUrl, getSyncUrl, setSyncCredentials, getPairedHostUuid, setPairedHostUuid } from '../config';
+import { startSync, clearLocalSeedBeforeFirstPair, syncState } from './db';
 
 // Android-side half of Track E's "no human ever types an IP" plan
 // (ROADMAP.md E1) — listens for the PC app's `_offlog._tcp` mDNS
@@ -109,7 +109,73 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
   await clearLocalSeedBeforeFirstPair();
   setSyncCredentials(data.user, data.password);
   setSyncUrl(`http://${host.address}:${data.port}/offlog`);
+  setPairedHostUuid(data.uuid);
   startSync();
+}
+
+// E2 (ROADMAP.md) — root cause of the owner's "not stable" report: this
+// module already does a real mDNS scan at pairing time, but nothing ever
+// re-checks afterward, so a DHCP-renewed LAN IP (or, rarer, a PC-side
+// port change from a fresh install) silently breaks sync until someone
+// notices and manually re-pairs. Matching by the server's stable `uuid`
+// (not its IP) lets a fresh scan confirm "is this still the same PC I
+// paired with, just at a different address" and self-heal.
+//
+// A short one-shot scan, same 10s window as scanForHosts()'s user-facing
+// one, but headless — doesn't touch the discoveredHosts/isScanning UI
+// stores, since this runs in the background, not from the pairing screen.
+async function findPairedHostAddress(uuid: string): Promise<string | null> {
+  const { ZeroConf } = await import('capacitor-zeroconf');
+  return new Promise((resolve) => {
+    let settled = false;
+    let id: string | null = null;
+    const finish = (result: string | null) => {
+      if (settled) return;
+      settled = true;
+      if (id) ZeroConf.unwatch({ type: SERVICE_TYPE, domain: DOMAIN }).catch(() => {});
+      resolve(result);
+    };
+    ZeroConf.watch({ type: SERVICE_TYPE, domain: DOMAIN }, (result) => {
+      const { action, service } = result;
+      if (action === 'removed' || service.txtRecord?.uuid !== uuid) return;
+      const address = service.ipv4Addresses?.[0];
+      if (!address) return;
+      finish(`http://${address}:${service.port}/offlog`);
+    }).then((watchId) => { id = watchId; }).catch(() => finish(null));
+    setTimeout(() => finish(null), 10_000);
+  });
+}
+
+// Re-resolves the paired PC's current address and updates the stored
+// sync URL if it's changed. Returns whether anything was updated, so the
+// caller knows whether it's worth kicking off a fresh sync attempt.
+export async function reresolveHost(): Promise<boolean> {
+  if (!isNative()) return false;
+  const uuid = getPairedHostUuid();
+  if (!uuid) return false; // never paired via mDNS (e.g. a manually-typed URL)
+  const freshUrl = await findPairedHostAddress(uuid);
+  if (!freshUrl || freshUrl === getSyncUrl()) return false;
+  setSyncUrl(freshUrl);
+  return true;
+}
+
+// Wire once at app startup (store.ts's init()) — listens for sync
+// settling into a "can't reach the server" state and tries a re-resolve,
+// throttled so a genuinely-offline device doesn't trigger a scan on
+// every single failed sync attempt.
+const RERESOLVE_COOLDOWN_MS = 5 * 60 * 1000;
+let lastReresolveAttempt = 0;
+
+export function watchForStaleHost() {
+  if (!isNative()) return;
+  syncState.listeners.add(() => {
+    if (syncState.status !== 'error') return;
+    if (!/cannot reach sync server/i.test(syncState.error ?? '')) return;
+    const now = Date.now();
+    if (now - lastReresolveAttempt < RERESOLVE_COOLDOWN_MS) return;
+    lastReresolveAttempt = now;
+    reresolveHost().then((updated) => { if (updated) startSync(); }).catch(() => {});
+  });
 }
 
 export async function stopScan(): Promise<void> {

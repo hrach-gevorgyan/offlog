@@ -7,8 +7,8 @@ android {
         applicationId "com.offlog.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 66
-        versionName "4.22.1"
+        versionCode 67
+        versionName "4.22.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -20,6 +20,15 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        // Owner-reported, 2026-07-20: a debug build previously shared the
+        // same applicationId (com.offlog.app) as a real install, so every
+        // Android Studio test run overwrote/shared storage with whatever
+        // "real" data was already on the device -- installing side by
+        // side now instead, same fix shape as `is_debug_build`-gating on
+        // the desktop side (see offlog-desktop's lib.rs).
+        debug {
+            applicationIdSuffix ".debug"
         }
     }
 }

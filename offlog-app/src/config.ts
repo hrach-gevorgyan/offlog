@@ -213,3 +213,20 @@ export function getWeekStartsMonday(): boolean {
 export function setWeekStartsMonday(monday: boolean) {
   localStorage.setItem(WEEK_STARTS_MONDAY_KEY, String(monday));
 }
+
+// E2 (ROADMAP.md) — the CouchDB server's own `uuid` (returned by
+// pairing.rs's handshake, also broadcast unauthenticated in the mDNS TXT
+// record per discovery.rs) is a stable identity for "the PC I paired
+// with" that survives an IP/port change, unlike the frozen `sync_url`
+// itself. Persisted alongside credentials so discovery.ts can re-resolve
+// the current address for this same uuid when the stored URL stops
+// working, instead of the phone being stuck on a stale LAN IP forever.
+const PAIRED_HOST_UUID_KEY = 'offlog_paired_host_uuid';
+
+export function getPairedHostUuid(): string | null {
+  return localStorage.getItem(PAIRED_HOST_UUID_KEY);
+}
+
+export function setPairedHostUuid(uuid: string) {
+  localStorage.setItem(PAIRED_HOST_UUID_KEY, uuid);
+}

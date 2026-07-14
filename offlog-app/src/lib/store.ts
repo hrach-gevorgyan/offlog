@@ -6,6 +6,7 @@ import {
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
 import { initTauriSyncDefaults } from '../config';
+import { watchForStaleHost } from './discovery';
 
 export const modalOpen = writable(false);
 export const errorToast = writable<string>('');
@@ -72,6 +73,7 @@ export async function init() {
   await initTauriSyncDefaults();
   await reload();
   startSync();
+  watchForStaleHost();
   subscribe(() => reload());
   checkPermission();
   initNotificationListeners().catch(() => {});

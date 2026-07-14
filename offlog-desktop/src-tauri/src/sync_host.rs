@@ -4,12 +4,11 @@
 // port/credentials on first launch, persists them, and starts/stops the
 // process alongside the app's own lifecycle.
 //
-// Dev-mode prototype note: `couchdb_dir()` resolves via CARGO_MANIFEST_DIR,
-// which only works for `cargo run`/`cargo tauri dev` builds run from this
-// source tree. A real installer needs to bundle the CouchDB binaries as a
-// Tauri resource (`tauri.conf.json`'s `bundle.resources`) and resolve via
-// `app.path().resource_dir()` instead — deferred along with the rest of
-// installer packaging, per the current scoping pass.
+// `couchdb_dir()` resolves via `app.path().resource_dir()` for a real
+// installed build (bundled as a Tauri resource, `tauri.conf.json`'s
+// `bundle.resources`); `cargo tauri dev` gets its own isolated working
+// copy instead of ever running CouchDB live out of the shared
+// `vendor/couchdb-win` source dir — see that function's own comment.
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -173,10 +172,60 @@ pub fn couchdb_dir(resource_dir: Option<PathBuf>) -> PathBuf {
             return candidate;
         }
     }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let vendor = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("vendor")
-        .join("couchdb-win")
+        .join("couchdb-win");
+
+    // Owner-reported, 2026-07-20: dev testing kept ending up with "10000
+    // versions of the database" that were hard to reason about. Root
+    // cause here — `cargo tauri dev` normally resolves the `resource_dir`
+    // branch above (a per-target-dir copy Tauri's own dev asset pipeline
+    // makes), but if that copy is ever missing (e.g. `target/` got
+    // cleaned), this used to fall through to running CouchDB live,
+    // in-place, out of the one shared `vendor/couchdb-win` directory
+    // `fetch-couchdb-win.ps1` produces — the same source every dev
+    // session and every fresh installer build reads from. Any test data
+    // written there during a debug run polluted that shared source
+    // instead of living in an isolated, disposable copy. Debug builds
+    // now always get their own copy under `target/debug/couchdb-dev`,
+    // self-populated once from `vendor/` — never run CouchDB against
+    // `vendor/couchdb-win` directly.
+    if cfg!(debug_assertions) {
+        let dev_copy = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("debug")
+            .join("couchdb-dev");
+        if !dev_copy.join("bin").join("couchdb.cmd").exists() {
+            log::info!(
+                "sync_host: bootstrapping isolated dev CouchDB copy at {}",
+                dev_copy.display()
+            );
+            if let Err(e) = copy_dir_recursive(&vendor, &dev_copy) {
+                log::warn!(
+                    "sync_host: failed to bootstrap dev CouchDB copy ({e}), falling back to vendor dir directly"
+                );
+                return vendor;
+            }
+        }
+        return dev_copy;
+    }
+    vendor
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_recursive(&entry.path(), &dst_path)?;
+        } else {
+            fs::copy(entry.path(), &dst_path)?;
+        }
+    }
+    Ok(())
 }
 
 /// Prototyping this sidecar found a real gap: `couchdb.cmd` is a launcher

@@ -86,7 +86,18 @@ pub fn run() {
             }
 
             let app_data_dir = app.path().app_data_dir()?;
-            let config_path = app_data_dir.join("sync-host.json");
+            // Owner-reported, 2026-07-20: `app_data_dir()` only depends on
+            // the app identifier (com.offlog.app), not debug_assertions --
+            // so `cargo tauri dev` and a real installed build used to read
+            // and write the exact same sync-host.json (port/credentials),
+            // even though they normally run against different CouchDB
+            // data (see couchdb_dir()'s own comment). A phone paired
+            // against one build's identity would silently start talking
+            // to the other build's (different) database on next launch.
+            // Debug builds get their own config file so the two identities
+            // can never collide.
+            let config_filename = if cfg!(debug_assertions) { "sync-host.dev.json" } else { "sync-host.json" };
+            let config_path = app_data_dir.join(config_filename);
             let info = sync_host::load_or_create_info(&config_path);
 
             let resource_dir = app.path().resource_dir().ok();

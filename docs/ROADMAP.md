@@ -832,22 +832,49 @@ purchase or configure without the owner's own decision to do so.
 The desktop-web loopback fallback (A35) stays as-is for the plain
 browser build — not removed.
 
-### E2. Re-resolve the PC host after pairing, not just at pairing time — OPEN (owner-reported, 2026-07-20)
+### E2. Re-resolve the PC host after pairing, not just at pairing time — SHIPPED in v4.22.1
 Root cause of the owner's "not stable yet" complaint, found while
 debugging a corrupted CouchDB shard on the dev machine: `discovery.ts`'s
-`pairWithHost()` writes a **fixed** `http://<LAN IP>:<port>/offlog` into
-`setSyncUrl()` at pairing time and never revisits it. mDNS discovery
-(E1) exists specifically to avoid hardcoding a LAN IP, but it's only
-ever used once, at the pairing handshake — every sync after that trusts
-the frozen snapshot. Any DHCP lease renewal, router reboot, or network
-switch silently breaks sync until the phone is manually re-paired; a
-port change (only from a fresh PC-side install/app-data wipe, not
-normal use) has the same effect. Fix direction: on a sync failure (or
-periodically/on app resume), re-run `scanForHosts()`-style mDNS lookup
-matched by the PC's stable node identity (`sync_host.rs`'s
-`node_name`, not its IP) and silently update the stored URL if it's
-changed, instead of surfacing a sync error the user has to notice and
-manually fix. Not yet scoped into a release.
+`pairWithHost()` wrote a **fixed** `http://<LAN IP>:<port>/offlog` into
+`setSyncUrl()` at pairing time and never revisited it. mDNS discovery
+(E1) exists specifically to avoid hardcoding a LAN IP, but was only
+ever used once, at the pairing handshake. Fixed: the CouchDB server's
+own `uuid` (already broadcast unauthenticated in the mDNS TXT record,
+already returned by the pairing handshake) is now persisted
+(`getPairedHostUuid()`/`setPairedHostUuid()`, `config.ts`) as a stable
+identity that survives an IP/port change. `discovery.ts`'s new
+`watchForStaleHost()` (wired once at startup, `store.ts`'s `init()`)
+listens for sync settling into "Cannot reach sync server," runs a
+headless one-shot mDNS re-scan matched by that uuid, and silently
+updates the stored URL + retries sync if the address changed — no
+manual re-pair needed. Throttled to once per 5 minutes so a genuinely-
+offline device doesn't trigger a scan on every failed sync attempt.
+Android-only (needs `capacitor-zeroconf`), same as the rest of
+discovery — no equivalent gap exists on the PC side, which is always
+the fixed sync target, not a client re-resolving anything.
+
+Two related root causes fixed in the same session, since they were
+found debugging the same instability report:
+- **Dev/prod Tauri identity collision**: `app_data_dir()` only depends
+  on the app identifier, not `debug_assertions` — `cargo tauri dev` and
+  a real installed build used to read/write the exact same
+  `sync-host.json` (port/credentials), even though they normally run
+  against *different* CouchDB data. A phone paired against one build's
+  identity could silently end up talking to the other build's database.
+  Debug builds now get their own `sync-host.dev.json`
+  (`lib.rs`). `couchdb_dir()`'s fallback path also used to run CouchDB
+  live, in-place, out of the single shared `vendor/couchdb-win` source
+  directory `fetch-couchdb-win.ps1` produces, if the normal per-target
+  dev resource copy was ever missing — any test data written there
+  polluted the one shared install source instead of an isolated,
+  disposable copy. Debug builds now self-bootstrap their own copy under
+  `target/debug/couchdb-dev` instead (`sync_host.rs`).
+- **Android debug/release storage collision**: a debug APK installed
+  with the same `applicationId` (`com.offlog.app`) as a real install,
+  so every Android Studio test run shared/overwrote storage with
+  whatever "real" data was already on the device. Debug builds now get
+  `applicationIdSuffix ".debug"` (`android/app/build.gradle`), installing
+  side by side instead.
 
 ---
 
@@ -907,6 +934,7 @@ v3.8.5, v3.9.5, v3.9.6, v3.9.7, v4.4.1, v4.4.2) lives in
 | 11 | v4.21.0 ✓ | — | B49 ✓, B53 ✓ | Shipped — Card Detail redesign (mockup-validated over 4 iterations: combined "Schedule" row for Due date/Reminder, card-style Checklist/Custom fields/Notes rows, "⋯" menu replacing 4 competing footer controls) plus a new Kanban-card-level "⋯" quick-actions menu (Pin/Archive/Duplicate/Delete without opening Card Detail), folded in mid-review at the owner's request. |
 | 12 | v4.22.0 ✓ | — | B47 ✓, B51 ✓ | Shipped — week-start-day setting (Sunday/Monday, Settings → Appearance), plus a full pass adding quick/natural open+close animation to every panel, dialog, popover, toast, card, and column that was missing one (previously many things that *opened* with a transition snapped shut instantly, and several everyday actions like checklist-toggle or card create/delete had no animation at all). B48/B50 explicitly deferred, not dropped. Also fixed a real `offlog-desktop` bug found in the same pass: Tauri's WebView defaults to intercepting native OS drag-drop, which silently disabled the Kanban board's HTML5 drag-and-drop — `dragDropEnabled: false` in `tauri.conf.json` fixes it. |
 | — | v4.22.1 ✓ | — | — | Shipped — maintenance pass (eighth run, first since v4.19.1, covering v4.20.0/v4.21.0/v4.22.0). See MAINTENANCE.md's tracker for full detail. |
+| — | v4.22.2 ✓ | — | E2 ✓ | Shipped — periodic mDNS re-resolution fixes the "not stable" sync complaint (stale LAN IP after DHCP renewal), plus two related root causes found in the same debugging session: a dev/prod Tauri sync-host identity collision and an Android debug/release storage collision. See E2's own ROADMAP entry for detail. |
 | — | (unversioned) | — | C7 (git history) → C1 → C5 → C3, C6 | The release gate, in dependency order: credential fix's remaining git-history piece, then GitHub, landing page, Play Store, with the C6 branding pass alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | *Maintenance pass* | — | — | Every-3-releases cadence: v4.12 → v4.15 ✓ (ran as v4.15.1) → v4.18 ✓ (**ran as v4.19.1** — first pass to cover `offlog-desktop/` too) → v4.21 → … — see MAINTENANCE.md's tracker. |
 | — | (unscheduled) | — | B39, B47, B48, B50, B51 | B39: stale device entries after a rename (needs schema-change care). B47: week-start-day setting (timezone half needs scoping first — may not be needed). B48: Android widget flatter/2-color/no-border polish. B50: extend the custom date-picker pattern to time-only fields. B51: web-vs-Android animation consistency inventory. None urgent enough to claim a version slot yet; pick up opportunistically. |
