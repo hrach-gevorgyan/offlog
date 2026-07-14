@@ -80,14 +80,22 @@ export function setSyncUrl(url: string) {
 // the PC app generates a random password per install, so a fixed
 // COUCH_USER/COUCH_PASS baked into the JS bundle can never match every
 // PC a device might sync to. Credentials are now per-device, stored the
-// same way the URL already is, with the env-var values (this repo's own
-// dev CouchDB, or a self-hoster's manually-configured one) as the
-// fallback for any install that hasn't paired or been given credentials
-// explicitly — same fallback shape as DEFAULT_SYNC_URL above, so an
-// existing install with nothing stored yet keeps syncing exactly as
-// before this change.
-const DEFAULT_COUCH_USER = envUser ?? 'offlog';
-const DEFAULT_COUCH_PASS = envPass ?? 'REDACTED_CREDENTIAL';
+// same way the URL already is.
+//
+// C7 (ROADMAP.md Track C, mandatory release-gate item): this used to
+// fall back to a real hardcoded password when nothing was configured
+// -- present in git history too, a real public-repo blocker on its own,
+// independent of pairing. No real credential lives in source at all now
+// -- VITE_COUCH_USER/VITE_COUCH_PASS come from `.env.local` only
+// (git-ignored, never committed) for local dev against a manually-
+// configured CouchDB; anyone else gets '' until they pair or type
+// credentials in manually, same "not configured yet" semantics
+// DEFAULT_SYNC_URL already uses for native/Tauri above -- Settings
+// already shows a friendly "Not connected" for an empty URL, and an
+// empty password just fails auth cleanly (401) rather than silently
+// working against a hardcoded default that shouldn't exist.
+const DEFAULT_COUCH_USER = envUser ?? '';
+const DEFAULT_COUCH_PASS = envPass ?? '';
 
 export function getSyncCredentials(): { user: string; pass: string } {
   return {

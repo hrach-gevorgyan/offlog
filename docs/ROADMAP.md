@@ -46,11 +46,12 @@ positional-done) stay parked either way.
    (not required, real annual cost — see E1's own entry), so what's
    next is real dogfooding. All new-feature work is paused until this
    track lands.
-2. **Then — the release gate (Track C core).** C7 credential fix
-   (mandatory, blocks everything public — note it isn't fully closed by
-   Track E's pairing handshake, see C7's own entry), C2 zero-config
-   first-run verification, then C1 GitHub, C5 landing page, C3 Play
-   Store. This is the externally-visible "we made it" milestone.
+2. **Then — the release gate (Track C core).** C7 credential fix —
+   current source is clean as of 2026-07-14, but git history still
+   needs handling at C1 time (see C7's own entry, don't consider it
+   fully closed until then) — C2 zero-config first-run verification,
+   then C1 GitHub, C5 landing page, C3 Play Store. This is the
+   externally-visible "we made it" milestone.
 3. **In parallel wherever it doesn't compete with Track E — make it
    speak human (Tracks B/C polish items).** Storage copy a non-technical
    person understands (B44 — shipped), a proper icon (C8 — shipped),
@@ -606,17 +607,25 @@ landing page copy — to make sure the "not competing, just likable" framing
 from the Mission above comes through, written for humans discovering the
 project.
 
-### C7. Fix hardcoded CouchDB credentials — mandatory, blocks C1
-`offlog-app/src/config.ts` hardcodes a real CouchDB password as a fallback
-default, present in git history too. **This must be fixed before the repo
-goes public or any store listing goes live** — not optional. Also the
-reason the repo stays private for now (see DECISIONS.md). Track E's
-pairing handshake (E1) reduces this in practice — a paired device gets
-real per-install random credentials, not this fallback — but the
-hardcoded default itself is still sitting in source, still needs its own
-fix. Fix approach: no real credentials in source at all, `.env.local`-only
-with no committed fallback; may mean publishing to GitHub as fresh history
-rather than pushing this repo's full log.
+### C7. Fix hardcoded CouchDB credentials — CURRENT SOURCE FIXED (2026-07-14), git history still needs C1-time handling
+`offlog-app/src/config.ts` used to hardcode a real CouchDB password as a
+fallback default. Fixed: `DEFAULT_COUCH_USER`/`DEFAULT_COUCH_PASS` now
+fall back to `''` (not-configured), never a real value — same semantics
+`DEFAULT_SYNC_URL` already uses for native/Tauri. `VITE_COUCH_USER`/
+`VITE_COUCH_PASS` still come from `.env.local` for local dev (confirmed
+never committed, properly `.gitignore`d — `git log` on the file is
+empty). Blast radius further reduced by Track E's pairing handshake
+(E1) on top of this — a paired device gets real per-install random
+credentials, not any fallback at all.
+
+**Still open, and still blocks C1 (going public):** the *old* hardcoded
+password is recoverable from this repo's git history (past commits of
+`config.ts`) even though the current source is clean. Per the original
+fix approach here, this needs fresh history at publish time rather than
+pushing this repo's full log — a C1-time decision (rewriting history
+now, before that's actually needed, would be premature and risky to do
+unilaterally). Don't consider C7 fully closed until that's actually
+handled at C1.
 
 ### C8. New app icon, all platforms — shipped in v4.17.0
 New interlocking-ribbon mark (owner-supplied SVG, `resources/source-
@@ -713,9 +722,9 @@ admin-config override (`sync_host.rs`), the exit-cleanup gap
 `fetch-couchdb-win.ps1`), the per-user-install-mode dependency
 (`sync_host.rs`), the fixed static `COUCH_USER`/`COUCH_PASS` that
 couldn't match a per-install random password — real per-device
-credentials now exist (`config.ts`), though the hardcoded fallback
-default C7 tracks is still there underneath and still needs its own
-fix, the missing Android multicast permissions
+credentials now exist (`config.ts`; C7's fallback default is also fixed
+in current source as of 2026-07-14, see C7's own entry for what's still
+open there), the missing Android multicast permissions
 (`AndroidManifest.xml`), the pairing endpoint's missing CORS header
 (`pairing.rs`), Android's Auto Backup silently restoring old data
 across "fresh" installs (`AndroidManifest.xml`, `allowBackup="false"`
