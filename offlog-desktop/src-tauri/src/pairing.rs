@@ -14,10 +14,20 @@ use std::time::{Duration, Instant};
 use tiny_http::{Response, Server};
 
 const CODE_TTL: Duration = Duration::from_secs(5 * 60);
+// Security audit finding, 2026-07-16: try_consume() had no attempt limit --
+// a fast LAN attacker within the 5-minute window could submit unlimited
+// sequential guesses against the 6-digit (1M-value) code space with
+// nothing to stop them. Capping failed guesses per generated code bounds
+// any brute-force attempt to a handful of tries regardless of how fast
+// the attacker can send requests, without needing real rate-limiting
+// machinery -- consistent with this file's own "human-read code, not
+// TLS/PKI" threat model above.
+const MAX_ATTEMPTS: u32 = 8;
 
 struct PendingCode {
     code: String,
     expires_at: Instant,
+    attempts: u32,
 }
 
 pub struct PairingState {
@@ -38,19 +48,26 @@ impl PairingState {
     pub fn generate_code(&self) -> String {
         let code = format!("{:06}", rand::random::<u32>() % 1_000_000);
         let mut pending = self.pending.lock().unwrap();
-        *pending = Some(PendingCode { code: code.clone(), expires_at: Instant::now() + CODE_TTL });
+        *pending = Some(PendingCode { code: code.clone(), expires_at: Instant::now() + CODE_TTL, attempts: 0 });
         code
     }
 
     fn try_consume(&self, submitted: &str) -> bool {
         let mut pending = self.pending.lock().unwrap();
-        match pending.as_ref() {
-            Some(p) if p.expires_at > Instant::now() && p.code == submitted => {
-                *pending = None; // single-use
-                true
-            }
-            _ => false,
+        let Some(p) = pending.as_mut() else { return false };
+        if p.expires_at <= Instant::now() {
+            *pending = None;
+            return false;
         }
+        if p.code == submitted {
+            *pending = None; // single-use
+            return true;
+        }
+        p.attempts += 1;
+        if p.attempts >= MAX_ATTEMPTS {
+            *pending = None; // brute-force lockout -- a fresh code must be generated
+        }
+        false
     }
 }
 
