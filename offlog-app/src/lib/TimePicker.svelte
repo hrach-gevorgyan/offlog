@@ -15,7 +15,10 @@
 
   const pad = (n: number) => String(n).padStart(2, '0');
   const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: pad(h), label: pad(h) }));
-  const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5).map(m => ({ value: pad(m), label: pad(m) }));
+  // Every minute, not 5-minute steps — matches what the native <input
+  // type="time"> this replaced actually allowed (owner-reported,
+  // 2026-07-16: 5-minute steps couldn't express an exact minute).
+  const MINUTES = Array.from({ length: 60 }, (_, m) => ({ value: pad(m), label: pad(m) }));
 
   $: [h, m] = value.split(':');
 

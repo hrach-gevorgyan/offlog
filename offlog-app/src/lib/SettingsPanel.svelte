@@ -415,6 +415,20 @@
       await Share.share({ title: filename, url: written.uri });
       return;
     }
+    // Same gap A34 found on Android's WebView -- Tauri's embedded WebView2
+    // has no download manager for the blob-URL + <a download> trick either
+    // (owner-reported, 2026-07-16). A native "Save As" dialog + a real
+    // file write is the desktop equivalent of Android's Filesystem+Share
+    // fix -- lets the user pick where it actually goes, same as any other
+    // desktop app's export/save flow.
+    if (isTauri) {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+      const path = await save({ defaultPath: filename });
+      if (!path) return; // user cancelled the dialog
+      await writeTextFile(path, content);
+      return;
+    }
     const blob = new Blob([content], { type: mime });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

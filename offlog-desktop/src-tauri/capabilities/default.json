@@ -7,6 +7,9 @@
   ],
   "permissions": [
     "core:default",
-    "notification:default"
+    "notification:default",
+    "dialog:default",
+    "fs:default",
+    "fs:allow-write-text-file"
   ]
 }

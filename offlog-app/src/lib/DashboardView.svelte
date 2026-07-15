@@ -113,8 +113,10 @@
                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(t); } }}
                   >
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
-                    <span class="task-title">{t.title}</span>
-                    <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
+                    <div class="task-body">
+                      <span class="task-title">{t.title}</span>
+                      <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
+                    </div>
                   </div>
                 {/each}
               </div>
@@ -155,9 +157,10 @@
                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(t); } }}
                   >
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
-                    <span class="task-title">{t.title}</span>
-                    <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
-                    <span class="task-due overdue">{dueLabelLong(t.due_date!)}</span>
+                    <div class="task-body">
+                      <span class="task-title">{t.title}</span>
+                      <span class="task-proj">{data.projCache[t.project_id] ?? '—'} <span class="task-due overdue">· {dueLabelLong(t.due_date!)}</span></span>
+                    </div>
                   </div>
                 {/each}
               </div>
@@ -263,14 +266,20 @@
     cursor: pointer; transition: background .1s;
   }
   .task-row:hover { background: var(--hover); }
-  .prio-bar { width: 3px; height: 24px; border-radius: 2px; flex-shrink: 0; }
-  .task-title { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .prio-bar { width: 3px; height: 28px; border-radius: 2px; flex-shrink: 0; }
+  /* Used to cram title + project (max-width: 72px, hard-truncated) + due
+     date onto a single line inside the 320px right column -- badly
+     over-truncated everything ("Refact...", "Conference ...") except on
+     the shortest names (owner-reported, 2026-07-16). A second line for
+     project/date (the standard primary/secondary list-row pattern) gives
+     each its own full-width line instead of splitting one cramped one. */
+  .task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .task-title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .task-proj {
     font-family: var(--mono); font-size: 10px; color: var(--faint);
-    white-space: nowrap; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis;
-    max-width: 72px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .task-due { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .task-due { color: var(--muted); }
   .task-due.overdue { color: var(--danger); }
 
   .all-good { color: var(--faint); font-size: 13px; padding: 6px 0; }

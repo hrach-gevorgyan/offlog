@@ -101,6 +101,14 @@ pub fn run() {
         // native-OS notification mechanism (Windows toast notifications)
         // instead of fighting WebView2's broken permission model.
         .plugin(tauri_plugin_notification::init())
+        // Owner-reported, 2026-07-16: Backup/Export used the same blob-URL
+        // + <a download> trick that A34 already found broken in Android's
+        // WebView (no download manager to hand off to) -- Tauri's WebView2
+        // has the identical gap, just never extended to cover it. These
+        // two give the frontend a real native "Save As" dialog + file
+        // write, same fix category as A34's Filesystem+Share plugins.
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

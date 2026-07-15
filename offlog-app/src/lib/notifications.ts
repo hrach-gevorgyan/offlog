@@ -251,8 +251,22 @@ async function scheduleNative(tasks: TaskDoc[]) {
 }
 
 // ── Native (Tauri desktop) scheduling — real Windows toast notifications,
-// same reasoning as scheduleNative() above but via tauri-plugin-notification
-// instead of Capacitor's plugin ──
+// but on a JS timer, same mechanism as scheduleWeb() above ──
+//
+// Owner-reported, 2026-07-16: reminders never fired after enabling
+// notification permission. Root cause, confirmed by reading
+// tauri-plugin-notification's own source (desktop.rs): the desktop
+// backend's show()/notify() never reads the `schedule` field at all —
+// scheduling is only implemented on mobile (mobile.rs), where the OS
+// itself owns the wakeup. Desktop has no equivalent, so a "scheduled"
+// notification either silently did nothing or fired immediately,
+// completely ignoring the requested future time. There's no fix on the
+// plugin side to reach for — the correct desktop equivalent is exactly
+// what scheduleWeb() above already does (a JS setTimeout, since the app
+// stays running), just displaying a real native toast at fire time
+// instead of the browser Notification API. Reuses _webTimers/_firedIds
+// — mutually exclusive with the web path at runtime (one platform per
+// session), so sharing that state is safe.
 
 async function ensureReminderChannelTauri() {
   const { createChannel, Importance, Visibility } = await import('@tauri-apps/plugin-notification');
@@ -264,31 +278,60 @@ async function ensureReminderChannelTauri() {
     visibility: Visibility.Public,
     vibration: true,
   });
-}
-
-async function scheduleTauri(tasks: TaskDoc[]) {
-  const { sendNotification, Schedule, registerActionTypes, cancelAll } = await import('@tauri-apps/plugin-notification');
-  await ensureReminderChannelTauri();
-  await registerActionTypes([{
+  await (await import('@tauri-apps/plugin-notification')).registerActionTypes([{
     id: REMINDER_ACTION_TYPE,
     actions: [
       { id: 'done', title: 'Done' },
       { id: 'snooze', title: 'Snooze 1h' },
     ],
   }]);
-  await cancelAll();
+}
+
+async function fireTauriNotification(task: TaskDoc) {
+  const id = task._id!;
+  if (_firedIds.has(id)) return;
+  _firedIds.add(id);
+  const { sendNotification } = await import('@tauri-apps/plugin-notification');
+  sendNotification({
+    id: numericId(id),
+    title: task.title,
+    body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
+    extra: { taskId: id },
+    actionTypeId: REMINDER_ACTION_TYPE,
+    channelId: REMINDER_CHANNEL_ID,
+  });
+  updateTask(id, { reminder_at: null }).catch(() => {});
+}
+
+function scheduleTauriTimer(task: TaskDoc) {
+  const id = task._id!;
+  const existing = _webTimers.get(id);
+  if (existing) clearTimeout(existing);
+  if (!task.reminder_at) return;
+  const delay = new Date(task.reminder_at).getTime() - Date.now();
+  if (delay <= 0 || delay > MAX_TIMEOUT) return; // handled by catchUpTauri, or too far out for this session
+  _webTimers.set(id, setTimeout(() => { fireTauriNotification(task); _webTimers.delete(id); }, delay));
+}
+
+// Same reasoning as catchUpWeb() — a reminder due while the app wasn't
+// running has no OS-level catch-up on desktop either (see this section's
+// header comment), so fire it on load instead if it's not too stale.
+function catchUpTauri(tasks: TaskDoc[]) {
+  const now = Date.now();
+  const CATCH_UP_WINDOW_MS = 60 * 60 * 1000;
   for (const t of tasks) {
-    if (!t.reminder_at || new Date(t.reminder_at).getTime() <= Date.now()) continue;
-    sendNotification({
-      id: numericId(t._id!),
-      title: t.title,
-      body: t.due_date ? `Due ${t.due_date}` : 'Reminder',
-      schedule: Schedule.at(new Date(t.reminder_at)),
-      extra: { taskId: t._id },
-      actionTypeId: REMINDER_ACTION_TYPE,
-      channelId: REMINDER_CHANNEL_ID,
-    });
+    if (!t.reminder_at) continue;
+    const at = new Date(t.reminder_at).getTime();
+    if (at > now) continue;
+    if (now - at < CATCH_UP_WINDOW_MS) fireTauriNotification(t);
+    else updateTask(t._id!, { reminder_at: null }).catch(() => {});
   }
+}
+
+async function scheduleTauri(tasks: TaskDoc[]) {
+  for (const id of [..._webTimers.keys()]) cancelWeb(id);
+  tasks.forEach(scheduleTauriTimer);
+  catchUpTauri(tasks);
 }
 
 // Moves a task to its project's last column — the same "done" rule used
