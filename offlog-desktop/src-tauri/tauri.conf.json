@@ -43,5 +43,13 @@
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://example.invalid/offlog/latest.json"
+      ],
+      "pubkey": "PLACEHOLDER_NOT_A_REAL_KEY_REPLACE_AT_C1_WITH_cargo_tauri_signer_generate_OUTPUT"
+    }
   }
 }
