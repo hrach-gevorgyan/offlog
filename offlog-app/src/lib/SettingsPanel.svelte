@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import CustomSelect from './CustomSelect.svelte';
+  import TimePicker from './TimePicker.svelte';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo,
@@ -96,7 +97,10 @@
   // date" toggle derives reminder_at — per-device, same reasoning as B36's
   // localStorage choices (see config.ts's getDefaultReminderTime()).
   let defaultReminderTime = getDefaultReminderTime();
-  function saveDefaultReminderTime() { setDefaultReminderTime(defaultReminderTime); }
+  function saveDefaultReminderTime(e: CustomEvent<string>) {
+    defaultReminderTime = e.detail;
+    setDefaultReminderTime(defaultReminderTime);
+  }
 
   // B47 — reactively re-derives Agenda's week math on toggle; DeadlinesView
   // itself reads getWeekStartsMonday() once at mount, so it needs a reload
@@ -632,7 +636,7 @@
 
               <label class="field-label">
                 Default "remind me on the due date" time
-                <input type="time" bind:value={defaultReminderTime} on:blur={saveDefaultReminderTime} />
+                <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
               </label>
               <p class="setting-hint">Used whenever a task's "Remind me on the due date" checkbox is on, instead of picking the exact time yourself.</p>
 

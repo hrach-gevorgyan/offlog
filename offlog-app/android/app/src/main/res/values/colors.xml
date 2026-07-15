@@ -4,18 +4,20 @@
     <color name="colorPrimaryDark">#181a20</color>
     <color name="colorAccent">#5457e0</color>
 
-    <!-- B37 — widget palette, matched to app.css's dark-mode tokens rather
-         than a flat single-accent card (the sidebar is always dark by
-         design in the app itself — see CLAUDE.md — so that's the natural
-         home-screen-widget analog, not the light-mode palette). Keep this
-         list in sync with app.css's body.dark block if the palette ever
-         changes; see docs/TECH.md's Theme System table for the source of
-         truth. -->
-    <color name="colorWidgetBg">#101218</color>      <!-- app.css sidebar-bg, dark -->
-    <color name="colorWidgetSurface">#242934</color> <!-- app.css surface, dark -->
-    <color name="colorWidgetBorder">#2F3542</color>  <!-- app.css border, dark -->
-    <color name="colorWidgetAccent">#818CF8</color>  <!-- app.css accent, dark -->
-    <color name="colorWidgetText">#F3F4F6</color>    <!-- app.css text, dark -->
-    <color name="colorWidgetMuted">#A3A9B7</color>   <!-- app.css muted, dark -->
-    <color name="colorWidgetDanger">#F87171</color>  <!-- app.css danger, dark; unused for now, kept for a future urgency-colored brief -->
+    <!-- B37/B48 — widget palette, matched to app.css's tokens. This file
+         holds the LIGHT set (used whenever the OS isn't in dark mode); the
+         dark set lives in values-night/colors.xml. Originally hardcoded to
+         the dark palette unconditionally (widgets render outside the
+         app's own in-app theme setting, so they should follow the
+         *system* light/dark setting instead — owner feedback, 2026-07-13).
+         Keep both files in sync with app.css's :root / body.dark blocks if
+         the palette ever changes; see docs/TECH.md's Theme System table
+         for the source of truth. -->
+    <color name="colorWidgetBg">#FFFFFF</color>      <!-- app.css --surface, light -->
+    <color name="colorWidgetSurface">#F1F2F6</color> <!-- flat tint one step off colorWidgetBg -->
+    <color name="colorWidgetBorder">#E2E4EA</color>  <!-- app.css --border, light; unused since B48 dropped the border stroke, kept for any future outline need -->
+    <color name="colorWidgetAccent">#5457E0</color>  <!-- app.css --accent, light -->
+    <color name="colorWidgetText">#1F2937</color>    <!-- app.css --text, light -->
+    <color name="colorWidgetMuted">#4B5563</color>   <!-- app.css --muted, light -->
+    <color name="colorWidgetDanger">#DC2626</color>  <!-- app.css --danger, light; unused for now, kept for a future urgency-colored brief -->
 </resources>

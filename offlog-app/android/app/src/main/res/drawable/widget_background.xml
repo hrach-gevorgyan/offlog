@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- B37 — was a flat colorPrimary (accent) fill, which read as "just a
-     solid-color card" across all 3 widgets. Now matches the app's own
-     dark surface + hairline border (see colors.xml's colorWidget* group,
-     sourced from app.css's body.dark tokens). -->
+     solid-color card" across all 3 widgets. Matches the app's own surface
+     color (see colors.xml's colorWidget* group, sourced from app.css).
+     B48 — dropped the 1dp border stroke for a flatter look (owner
+     feedback, 2026-07-13); colorWidget* now has a values-night/ override
+     too so the widget follows the OS light/dark setting instead of being
+     hardcoded dark. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="@color/colorWidgetBg" />
-    <stroke android:width="1dp" android:color="@color/colorWidgetBorder" />
     <corners android:radius="20dp" />
 </shape>

@@ -7,7 +7,7 @@
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
-import { getSyncUrl, getSyncCredentials, getDeviceName, isSyncEnabled } from '../config';
+import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
 
 (PouchDB as any).plugin(PouchDBFind);
@@ -18,6 +18,7 @@ import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } fr
 // location.reload() the sync-URL field already does, so a fresh SOURCE is
 // picked up on next load rather than needing this to be reactive.
 const SOURCE: Source = getDeviceName();
+const SOURCE_ID: string = getDeviceId();
 const db = new PouchDB('offlog');
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ async function logChange(
   const ts = now();
   await db.put({
     _id: `log:${ts}-${nanoid(8)}`,
-    type: 'log', ts, source: SOURCE, ref, action,
+    type: 'log', ts, source: SOURCE, source_id: SOURCE_ID, ref, action,
     ...(field !== undefined ? { field, from: from ?? null, to: to ?? null } : {}),
     ...(meta ?? {}),
   });
@@ -108,14 +109,22 @@ export async function getRecentLogs(limit = 80): Promise<any[]> {
 // is already its most recent.
 export async function getDeviceLastSeen(): Promise<{ device: string; lastSeen: string }[]> {
   const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, limit: 500, include_docs: true });
+  // B39: group by the stable source_id where present (so a rename doesn't
+  // split one device into two rows) — log entries written before this
+  // field existed have no source_id, so they fall back to grouping by the
+  // literal source string, same as before.
   const seen = new Map<string, string>();
+  const names = new Map<string, string>();
   for (const row of r.rows) {
     const doc: any = row.doc;
-    if (!doc?.source || seen.has(doc.source)) continue;
-    seen.set(doc.source, doc.ts);
+    if (!doc?.source) continue;
+    const key = doc.source_id ?? doc.source;
+    if (seen.has(key)) continue;
+    seen.set(key, doc.ts);
+    names.set(key, doc.source);
   }
   return [...seen.entries()]
-    .map(([device, lastSeen]) => ({ device, lastSeen }))
+    .map(([key, lastSeen]) => ({ device: names.get(key)!, lastSeen }))
     .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
 }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import TimePicker from './TimePicker.svelte';
 
   // B38 — custom calendar/date picker instead of the native OS one.
   // Two value formats, chosen by `withTime`:
@@ -67,7 +68,8 @@
     if (!withTime) open = false;
   }
 
-  function onTimeChange() {
+  function onTimeChange(e: CustomEvent<string>) {
+    timeVal = e.detail;
     const base = selected ?? new Date();
     dispatch('change', `${fmtDate(base)}T${timeVal}`);
   }
@@ -127,7 +129,7 @@
       </div>
       {#if withTime}
         <div class="cal-time-row">
-          <input type="time" bind:value={timeVal} on:change={onTimeChange} />
+          <TimePicker value={timeVal} on:change={onTimeChange} />
         </div>
       {/if}
       <div class="cal-footer">
@@ -188,12 +190,6 @@
   .cal-day-empty { aspect-ratio: 1; }
 
   .cal-time-row { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-  .cal-time-row input {
-    width: 100%; padding: .35rem .5rem; border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
-    font-size: .82rem; font-family: 'Hanken Grotesk', sans-serif;
-  }
-  .cal-time-row input:focus { outline: none; border-color: var(--accent); }
 
   .cal-footer { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .cal-footer-btn {

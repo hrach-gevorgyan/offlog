@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.22.2**. Everything below is a candidate, not a
+Current version: **v4.23.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -194,13 +194,12 @@ pass** — pick up whenever convenient directly in Android Studio.
 
 ### B38. Custom calendar/date picker instead of the native one — shipped in v4.6.5
 
-### B39. Renaming a device (B22) leaves a stale "dead" entry — OPEN, needs schema care
-"Devices seen recently" and `CardDetail` history are derived by scanning
-changelog entries for their literal `source` string — renaming a device
-only changes *new* entries, so the old name lingers indefinitely. Needs a
-stable per-install device id separate from the editable display name,
-plus a durable id→name mapping — a real schema addition, needs the same
-care as any schema change (see CLAUDE.md). Unscheduled.
+### B39. Renaming a device (B22) leaves a stale "dead" entry — shipped in v4.23.0
+Added a stable per-install id (`getDeviceId()`, `config.ts`) stamped as a
+new `source_id` field on every log doc alongside the existing `source`
+display name. `getDeviceLastSeen()` groups by `source_id`, falling back
+to the literal `source` string for log entries written before this field
+existed — additive-only, no migration needed.
 
 ### B40. Sidebar bottom icon rail isn't readable — shipped in v4.8.0
 ### B41. Focus view — full-space floating-card redesign — shipped in v4.8.0
@@ -217,13 +216,15 @@ throughout with no UTC conversion layer, which is correct for a
 single-device-local personal task manager (see DECISIONS.md) — revisit
 only if that changes.
 
-### B48. Android widget: flatter, 2-color light/dark, no border highlight — OPEN, deferred to a later release (owner, 2026-07-13)
-Remove the border highlight, flatten the shadow/depth, and follow the
-*system* light/dark setting (not the in-app theme — widgets render
-outside the app's own theme context). Also worth confirming whether the
-widget-picker preview rendering "abnormal" is a real bug or an Android OS
-preview quirk. Same "owner builds/tests in Android Studio" rule as all
-Android work.
+### B48. Android widget: flatter, 2-color light/dark, no border highlight — shipped in v4.23.0
+Dropped `widget_background.xml`'s 1dp border stroke, and split
+`colorWidget*` into a light default (`values/colors.xml`) and a dark
+override (`values-night/colors.xml`) so the widget follows the OS's own
+light/dark setting instead of being hardcoded dark — no `values-night/`
+directory existed before this. Final visual result still needs an owner
+Studio build to confirm on a real device; the widget-picker preview
+"abnormal" rendering question was not investigated (likely an Android OS
+preview quirk, not a code bug).
 
 ### B49. Card Detail redesign — shipped in v4.21.0
 Mockup-validated over 4 iterations (see DECISIONS.md's List/Table merge
@@ -231,12 +232,11 @@ precedent for why). Due date + Reminder collapsed into one "Schedule"
 row; Checklist/Custom fields/Notes restyled as consistent card-rows;
 Delete/Archive/Duplicate/history consolidated into one "⋯" menu.
 
-### B50. Custom time picker (extend B38 to reminder times) — OPEN, deferred to a later release (owner, 2026-07-13)
-B38's themed `CalendarPicker.svelte` covers date+time together, but a
-time-only native `<input type="time">` still leaks through in some
-contexts (check `CalendarPicker`'s own time row and the Notifications
-settings' default-reminder-time field). Build a matching custom picker
-rather than mixing native and themed pickers in the same form.
+### B50. Custom time picker (extend B38 to reminder times) — shipped in v4.23.0
+New `TimePicker.svelte` — two `CustomSelect.svelte` dropdowns (hour,
+5-minute increments) — replaces the native `<input type="time">` in both
+`CalendarPicker.svelte`'s time row and the Notifications default-
+reminder-time field.
 
 ### B51. Consistent animations everywhere — shipped in v4.22.0
 New `src/lib/motion.ts` (shared transition constants/custom functions)
@@ -411,8 +411,8 @@ what's still ahead or otherwise worth a pointer.
 | # | Release | Notes |
 |---|---|---|
 | — | v4.19.0 → v4.22.2 | All shipped — see CHANGELOG.md for the per-release list. Track E (E1, E2) landed and is verified end-to-end; A32 was actually fixed pre-v4.18.0 (roadmap entry corrected 2026-07-15, was stale). |
+| — | v4.23.0 ✓ | Shipped — B39 (stable per-install device id, fixes stale entries after a rename), B50 (custom `TimePicker.svelte` replacing native time inputs), B48 (Android widget follows system light/dark, flatter — needs an owner Studio check to confirm visually). |
 | — | (unversioned) | The release gate, in dependency order: C7's remaining git-history piece → C1 (GitHub) → C5 (landing page) → C3 (Play Store), with C6 (branding pass) alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
-| — | (unscheduled) | B39 (stale device entries after rename, needs schema care), B48 (Android widget polish), B50 (custom time picker). None urgent enough to claim a version slot yet; pick up opportunistically. |
 | — | (parked) | B28, B33 — rethinking positional-done and sub-projects; revisit post-release only if daily use demands it. |
 | — | (open, unscoped) | B35's remaining draft items (Focus add-task, Dashboard link, Daily Brief); C2/C10 full sweeps; A9/A31's Android-only remainders. |
 

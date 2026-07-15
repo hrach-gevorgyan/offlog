@@ -144,6 +144,25 @@ export function setDeviceName(name: string) {
   localStorage.setItem(DEVICE_NAME_KEY, trimmed || defaultDeviceName());
 }
 
+// B39: the display name is user-editable and used to be the *only* thing
+// identifying a device — renaming it left every past log entry stamped
+// with the old name forever, so "Devices seen recently" and card history
+// showed the old and new names as if they were two separate devices.
+// This id is generated once, persisted, and never changes even if the
+// name does; logChange() stamps it alongside `source` (the display name)
+// on every new log doc as a new `source_id` field, and lookups group by
+// this id first, falling back to the literal `source` string for log
+// entries written before this field existed.
+const DEVICE_ID_KEY = 'offlog_device_id';
+
+export function getDeviceId(): string {
+  const stored = localStorage.getItem(DEVICE_ID_KEY);
+  if (stored) return stored;
+  const generated = crypto.randomUUID();
+  localStorage.setItem(DEVICE_ID_KEY, generated);
+  return generated;
+}
+
 // B46: a lightweight first-run prompt asks for this device's name once,
 // ever — regardless of whether the user names it or skips (skipping is as
 // valid a choice as naming it, per C2's zero-config-first-run principle,
