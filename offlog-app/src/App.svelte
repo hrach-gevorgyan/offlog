@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { scrimFade, toastFly } from './lib/motion';
@@ -21,7 +21,7 @@
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
-  import { hasShownNamePrompt, markNamePromptShown } from './config';
+  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri } from './config';
   import { closeOnBack } from './lib/modalStack';
 
   let ready = false;
@@ -237,6 +237,21 @@
     CapApp.addListener('appUrlOpen', ({ url }) => handleWidgetUrl(url));
   }
 
+  // The Tauri desktop window starts hidden (tauri.conf.json's
+  // `visible: false`) specifically so it never shows a blank/white shell
+  // that then pops in as things load — tick() + a rAF here wait for
+  // Svelte's actual DOM update to have painted before telling Rust to
+  // reveal the window, so what the user sees on first frame is already
+  // the finished UI (owner-reported, "make it super fast showup",
+  // 2026-07-15). A no-op everywhere else (web, Android) since isTauri()
+  // is false there. Rust also has its own 5s timeout fallback in case
+  // this is ever late or never called — see show_main_window's comment.
+  async function revealTauriWindow() {
+    if (!isTauri()) return;
+    await tick();
+    requestAnimationFrame(() => { invokeTauri('show_main_window').catch(() => {}); });
+  }
+
   onMount(async () => {
     applyTheme(); // runs the legacy-key migration once and re-applies (idempotent vs. index.html's pre-paint script)
     watchSystemTheme(); // App.svelte is a permanent root singleton, never unmounted — no cleanup needed
@@ -245,6 +260,7 @@
       await init();
     } catch (e: any) {
       initError = e?.message ?? 'The app failed to start.';
+      await revealTauriWindow(); // crash-recovery screen still needs to be visible
       return;
     }
     // Awaited (unlike setupBackButton) so the project-widget deep link's
@@ -276,6 +292,7 @@
       // 'dashboard', nothing, or a stale projectId → keep showDashboard = true
     } catch {}
     ready = true;
+    await revealTauriWindow();
     // B46: asked once, ever, regardless of skip/save (markNamePromptShown()
     // fires immediately, not only on save) — never blocks reaching the app,
     // shown after `ready` so it layers on top of a fully usable UI rather

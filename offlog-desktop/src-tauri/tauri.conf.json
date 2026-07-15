@@ -9,6 +9,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Offlog",
         "width": 800,
         "height": 600,
@@ -16,7 +17,9 @@
         "minHeight": 480,
         "resizable": true,
         "fullscreen": false,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "visible": false,
+        "backgroundColor": "#181a20"
       }
     ],
     "security": {

@@ -25,6 +25,22 @@ fn is_debug_build() -> bool {
     cfg!(debug_assertions)
 }
 
+// The main window starts hidden (tauri.conf.json's `visible: false`) so
+// there's no blank-white-then-content-pops-in flash while the frontend's
+// own onMount does its thing (theme, init(), view restore) -- App.svelte
+// calls this once `ready = true` is actually painted, revealing a
+// window that's already fully rendered instead of an empty shell
+// (owner-reported, "can we make it super fast showup", 2026-07-15).
+// `show()` is idempotent, so the setup()-side timeout fallback below
+// firing after this already ran is harmless.
+#[tauri::command]
+fn show_main_window(app: tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
 #[tauri::command]
 fn generate_pairing_code(state: tauri::State<Arc<pairing::PairingState>>) -> String {
     state.generate_code()
@@ -169,9 +185,31 @@ pub fn run() {
             });
 
             app.manage(info);
+
+            // Safety net for the hidden-until-ready window (tauri.conf.json's
+            // `visible: false`, revealed by the frontend calling
+            // show_main_window once its first render is actually painted):
+            // if that call is ever late or never arrives (a frontend JS
+            // error before `ready = true`, a slow first paint on a very
+            // underpowered machine), the window must not stay invisible
+            // forever with no way for the user to even see an error.
+            // show() is idempotent, so this firing after the frontend
+            // already revealed the window is a harmless no-op.
+            let timeout_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                // std::thread::sleep, not an async sleep -- same pattern
+                // sync_host::wait_ready already uses inside this same kind
+                // of background task, and pulling in tokio directly as a
+                // dependency just for one sleep isn't worth it.
+                std::thread::sleep(Duration::from_secs(5));
+                if let Some(w) = timeout_handle.get_webview_window("main") {
+                    let _ = w.show();
+                }
+            });
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data])
+        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
