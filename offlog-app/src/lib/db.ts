@@ -590,18 +590,18 @@ export async function getSpaces(): Promise<SpaceDoc[]> {
   return r.rows.map(r => r.doc!).sort((a, b) => a.position - b.position);
 }
 
-export async function createSpace(name: string, color: string): Promise<SpaceDoc> {
+export async function createSpace(name: string, color: string, icon?: string): Promise<SpaceDoc> {
   const existing = await getSpaces();
   const position = existing.length ? Math.max(...existing.map(s => s.position)) + 1 : 0;
   const doc: SpaceDoc = {
-    _id: `space:${nanoid()}`, type: 'space', name, color, position,
+    _id: `space:${nanoid()}`, type: 'space', name, color, ...(icon ? { icon } : {}), position,
     updated_at: now(), source: SOURCE,
   };
   await db.put(doc);
   return doc;
 }
 
-export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'name' | 'color'>>): Promise<SpaceDoc> {
+export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'name' | 'color' | 'icon'>>): Promise<SpaceDoc> {
   const doc = await db.get<SpaceDoc>(id);
   const updated = { ...doc, ...changes, updated_at: now(), source: SOURCE };
   await db.put(updated);

@@ -16,6 +16,7 @@ export interface SpaceDoc {
   type: 'space';
   name: string;
   color: string;
+  icon?: string; // key into spaceIcons.ts's SPACE_ICONS; absent = legacy/default fallback
   position: number;
   updated_at: string;
   source: Source;

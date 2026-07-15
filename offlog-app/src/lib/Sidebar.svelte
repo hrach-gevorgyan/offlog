@@ -9,6 +9,7 @@
   import { fmtLastSynced } from './utils';
   import type { TaskDoc, ProjectDoc } from './types';
   import CustomSelect from './CustomSelect.svelte';
+  import { getSpaceIconSvg } from './spaceIcons';
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -208,13 +209,10 @@
     }
   }
 
-  const SPACE_ICON: Record<string, string> = {
-    'space:unsorted': `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><polyline points="2,9 20,9"/><polyline points="6,13 10,13 10,16 14,16"/></svg>`,
-    'space:personal': `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4"/><path d="M2 18c0-4 3.6-7 8-7s8 3 8 7"/></svg>`,
-    'space:family':   `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10L10 3l7 7"/><path d="M5 8v9h4v-5h2v5h4V8"/></svg>`,
-    'space:work':     `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
-  };
-  const DEFAULT_ICON = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>`;
+  // Spaces now have a real per-space icon choice (owner-reported,
+  // 2026-07-15) instead of a hardcoded-by-id map — see spaceIcons.ts for
+  // the picker options, the legacy per-id fallback (pre-existing
+  // databases), and the generic default.
 </script>
 
 <aside class="sidebar" class:mobile-open={open}>
@@ -275,7 +273,7 @@
             <polyline points="2,1 7,5 2,9"/>
           </svg>
           <span class="space-icon" style="color:{space.color}; background:color-mix(in srgb, {space.color} 18%, transparent)">
-            {@html SPACE_ICON[space._id] ?? DEFAULT_ICON}
+            {@html getSpaceIconSvg(space)}
           </span>
           <span class="space-name">{space.name}</span>
           <span class="space-count">{spProjects.length}</span>

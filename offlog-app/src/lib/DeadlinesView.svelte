@@ -304,7 +304,17 @@
   .week-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   .week-grid {
-    flex: 1; min-height: 0; overflow-y: auto; overflow-x: auto;
+    /* Used to be flex:1 (fill all remaining viewport height) -- the grid
+       row's height (a single row of 7 columns, grid-auto-rows: auto by
+       default) was forced to stretch across that entire leftover
+       viewport space, so a week with only 1-2 tasks read as a wall of
+       near-empty columns (owner-reported, 2026-07-15). Dropping flex:1
+       lets the row size to its actual tallest column's content instead
+       (default align-items:stretch still keeps all 7 columns matching
+       each other's height, same as a real calendar) -- a per-column
+       min-height keeps empty days from collapsing to just their header,
+       and max-height + overflow-y still cap a genuinely busy week. */
+    flex: 0 1 auto; max-height: 60vh; overflow-y: auto; overflow-x: auto;
     display: grid; grid-template-columns: repeat(7, minmax(96px, 1fr));
     border: 1px solid var(--border); border-radius: 10px;
     margin: 12px 28px 32px; width: auto;
@@ -322,7 +332,7 @@
     background-attachment: local, local, scroll, scroll;
   }
   .week-col {
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; min-height: 130px;
     border-right: 1px solid var(--border);
   }
   .week-col:last-child { border-right: none; }

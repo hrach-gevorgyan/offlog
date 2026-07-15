@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fly, fade } from 'svelte/transition';
-  import { panelFly, scrimFade } from './motion';
+  import { panelFly, scrimFade, popScale } from './motion';
   import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import type { SpaceDoc } from './types';
+  import { SPACE_ICONS, DEFAULT_SPACE_ICON_KEY, getSpaceIconSvg } from './spaceIcons';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -17,7 +18,27 @@
   let editingName = '';
   let newName = '';
   let newColor = '#6366f1';
+  let newIcon = DEFAULT_SPACE_ICON_KEY;
   let adding = false;
+
+  // 'new' for the not-yet-created row, or a space's own _id — only one
+  // icon picker open at a time, closed on any outside click.
+  let iconPickerFor: string | null = null;
+  function toggleIconPicker(id: string) { iconPickerFor = iconPickerFor === id ? null : id; }
+  function onDocClick(e: MouseEvent) {
+    if (iconPickerFor && !(e.target as HTMLElement).closest('.icon-picker-wrap')) iconPickerFor = null;
+  }
+  onMount(() => document.addEventListener('click', onDocClick, true));
+  onDestroy(() => document.removeEventListener('click', onDocClick, true));
+
+  async function setIcon(s: SpaceDoc, icon: string) {
+    iconPickerFor = null;
+    try {
+      await updateSpace(s._id, { icon });
+    } catch {
+      showError('Failed to change space icon. Please try again.');
+    }
+  }
 
   async function load() { items = await getSpaces(); }
 
@@ -77,9 +98,10 @@
     const name = newName.trim();
     if (!name) { adding = false; return; }
     try {
-      await createSpace(name, newColor);
+      await createSpace(name, newColor, newIcon);
       newName = '';
       newColor = '#6366f1';
+      newIcon = DEFAULT_SPACE_ICON_KEY;
     } catch {
       showError('Failed to create space. Please try again.');
     }
@@ -105,6 +127,21 @@
           <input type="color" value={s.color} on:change={(e) => setColor(s, (e.target as HTMLInputElement).value)} />
           <span class="swatch" style="background:{s.color}"></span>
         </label>
+
+        <div class="icon-picker-wrap">
+          <button type="button" class="icon-btn" title="Change icon" aria-label="Change icon" on:click={() => toggleIconPicker(s._id)}>
+            {@html getSpaceIconSvg(s)}
+          </button>
+          {#if iconPickerFor === s._id}
+            <div class="icon-picker" transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
+              {#each SPACE_ICONS as opt (opt.key)}
+                <button type="button" class="icon-opt" class:selected={(s.icon ?? DEFAULT_SPACE_ICON_KEY) === opt.key} title={opt.key} on:click={() => setIcon(s, opt.key)}>
+                  {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg>`}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
 
         {#if editingId === s._id}
           <!-- svelte-ignore a11y-autofocus -->
@@ -136,6 +173,20 @@
           <input type="color" bind:value={newColor} />
           <span class="swatch" style="background:{newColor}"></span>
         </label>
+        <div class="icon-picker-wrap">
+          <button type="button" class="icon-btn" title="Change icon" aria-label="Change icon" on:click={() => toggleIconPicker('new')}>
+            {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SPACE_ICONS.find(i => i.key === newIcon)!.svg}</svg>`}
+          </button>
+          {#if iconPickerFor === 'new'}
+            <div class="icon-picker" transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
+              {#each SPACE_ICONS as opt (opt.key)}
+                <button type="button" class="icon-opt" class:selected={newIcon === opt.key} title={opt.key} on:click={() => { newIcon = opt.key; iconPickerFor = null; }}>
+                  {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg>`}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
         <!-- svelte-ignore a11y-autofocus -->
         <input
           class="name-input"
@@ -186,6 +237,30 @@
   .swatch-wrap { position: relative; width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
   .swatch-wrap input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .swatch { display: block; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); }
+
+  .icon-picker-wrap { position: relative; flex-shrink: 0; }
+  .icon-btn {
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    background: none; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+    color: var(--faint); transition: border-color .12s, color .12s;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--text); }
+  .icon-btn :global(svg) { width: 13px; height: 13px; }
+
+  .icon-picker {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 220;
+    display: grid; grid-template-columns: repeat(5, 32px); gap: 4px;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    box-shadow: 0 12px 32px rgba(0,0,0,.2); padding: 8px;
+  }
+  .icon-opt {
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; border-radius: 6px; cursor: pointer;
+    color: var(--muted); transition: background .1s, color .1s;
+  }
+  .icon-opt:hover { background: var(--hover); color: var(--text); }
+  .icon-opt.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .icon-opt :global(svg) { width: 16px; height: 16px; }
 
   .name-btn {
     flex: 1; text-align: left; background: none; border: none; cursor: pointer;
