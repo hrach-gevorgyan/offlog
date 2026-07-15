@@ -226,7 +226,10 @@ export function setDefaultReminderTime(time: string) {
 const WEEK_STARTS_MONDAY_KEY = 'offlog_week_starts_monday';
 
 export function getWeekStartsMonday(): boolean {
-  return localStorage.getItem(WEEK_STARTS_MONDAY_KEY) === 'true';
+  // Owner preference, 2026-07-16: default to Monday rather than Sunday
+  // (still overridable per-device in Settings -> Appearance, B47).
+  const stored = localStorage.getItem(WEEK_STARTS_MONDAY_KEY);
+  return stored === null ? true : stored === 'true';
 }
 
 export function setWeekStartsMonday(monday: boolean) {

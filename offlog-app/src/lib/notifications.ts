@@ -39,6 +39,15 @@ export async function requestExactAlarmPermission(): Promise<void> {
 }
 
 const isNative = () => !!(window as any).Capacitor?.isNativePlatform?.();
+// Desktop (Tauri) is neither Capacitor-native nor a plain browser — it
+// embeds a real WebView2, but that WebView has no default handler for the
+// browser Notification permission-prompt flow, so Notification.
+// requestPermission() silently resolved to "denied" with no real OS
+// prompt ever shown (owner-reported, 2026-07-16). tauri-plugin-
+// notification talks to real Windows toast notifications instead,
+// sidestepping WebView2's permission model entirely — same reasoning as
+// why Android needed @capacitor/local-notifications instead of the web API.
+const isTauriPlatform = () => !!(window as any).__TAURI_INTERNALS__;
 
 // Deterministic 32-bit integer id from a task's string id — Capacitor's
 // local-notifications plugin requires numeric ids.
@@ -58,6 +67,13 @@ export async function requestPermission(): Promise<PermissionState> {
     permissionState.set(state);
     return state;
   }
+  if (isTauriPlatform()) {
+    const { requestPermission: tauriRequestPermission } = await import('@tauri-apps/plugin-notification');
+    const res = await tauriRequestPermission();
+    const state: PermissionState = res === 'granted' ? 'granted' : 'denied';
+    permissionState.set(state);
+    return state;
+  }
   if (typeof Notification === 'undefined') {
     permissionState.set('unsupported');
     return 'unsupported';
@@ -69,7 +85,7 @@ export async function requestPermission(): Promise<PermissionState> {
 }
 
 export function checkPermission(): void {
-  if (isNative()) return; // resolved lazily via requestPermissions() result instead
+  if (isNative() || isTauriPlatform()) return; // resolved lazily via initNotificationListeners() instead
   if (typeof Notification === 'undefined') { permissionState.set('unsupported'); return; }
   permissionState.set(Notification.permission as PermissionState);
 }
@@ -234,6 +250,47 @@ async function scheduleNative(tasks: TaskDoc[]) {
   if (toSchedule.length) await LocalNotifications.schedule({ notifications: toSchedule });
 }
 
+// ── Native (Tauri desktop) scheduling — real Windows toast notifications,
+// same reasoning as scheduleNative() above but via tauri-plugin-notification
+// instead of Capacitor's plugin ──
+
+async function ensureReminderChannelTauri() {
+  const { createChannel, Importance, Visibility } = await import('@tauri-apps/plugin-notification');
+  await createChannel({
+    id: REMINDER_CHANNEL_ID,
+    name: 'Task reminders',
+    description: 'Reminders for tasks with a due date or reminder time',
+    importance: Importance.High,
+    visibility: Visibility.Public,
+    vibration: true,
+  });
+}
+
+async function scheduleTauri(tasks: TaskDoc[]) {
+  const { sendNotification, Schedule, registerActionTypes, cancelAll } = await import('@tauri-apps/plugin-notification');
+  await ensureReminderChannelTauri();
+  await registerActionTypes([{
+    id: REMINDER_ACTION_TYPE,
+    actions: [
+      { id: 'done', title: 'Done' },
+      { id: 'snooze', title: 'Snooze 1h' },
+    ],
+  }]);
+  await cancelAll();
+  for (const t of tasks) {
+    if (!t.reminder_at || new Date(t.reminder_at).getTime() <= Date.now()) continue;
+    sendNotification({
+      id: numericId(t._id!),
+      title: t.title,
+      body: t.due_date ? `Due ${t.due_date}` : 'Reminder',
+      schedule: Schedule.at(new Date(t.reminder_at)),
+      extra: { taskId: t._id },
+      actionTypeId: REMINDER_ACTION_TYPE,
+      channelId: REMINDER_CHANNEL_ID,
+    });
+  }
+}
+
 // Moves a task to its project's last column — the same "done" rule used
 // everywhere else in the app (see db.ts / CLAUDE.md: "Done" is positional,
 // column_id === columns.at(-1), there's no separate done boolean).
@@ -255,6 +312,27 @@ async function snoozeTaskFromNotification(taskId: string): Promise<void> {
 }
 
 export async function initNotificationListeners(): Promise<void> {
+  if (isTauriPlatform()) {
+    const { isPermissionGranted, onAction } = await import('@tauri-apps/plugin-notification');
+    permissionState.set((await isPermissionGranted()) ? 'granted' : 'denied');
+    await ensureReminderChannelTauri();
+    await onAction((notification) => {
+      // The plugin's own .d.ts types this callback's payload as the plain
+      // notification Options (no actionId field declared), but the actual
+      // runtime event needs to carry which action was clicked -- same
+      // field name Capacitor's equivalent event uses. Not yet verified
+      // against a real fired notification's click/action, since that
+      // needs a live wait-for-a-toast-to-fire test; flag if action
+      // buttons don't route correctly once actually exercised.
+      const taskId = (notification.extra as any)?.taskId;
+      const actionId = (notification as any).actionId as string | undefined;
+      if (!taskId) return;
+      if (actionId === 'done') completeTaskFromNotification(taskId).catch(() => {});
+      else if (actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => {});
+      else pendingOpenTaskId.set(taskId);
+    });
+    return;
+  }
   if (!isNative()) return;
   const { LocalNotifications } = await import('@capacitor/local-notifications');
   const perm = await LocalNotifications.checkPermissions();
@@ -278,6 +356,8 @@ export async function rescheduleAll(): Promise<void> {
   const tasks = await getAllActiveTasksWithReminders();
   if (isNative()) {
     await scheduleNative(tasks);
+  } else if (isTauriPlatform()) {
+    await scheduleTauri(tasks);
   } else {
     for (const id of [..._webTimers.keys()]) cancelWeb(id);
     tasks.forEach(scheduleWeb);

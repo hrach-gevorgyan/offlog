@@ -72,7 +72,13 @@ if ($IncludeRelease) {
     }
 }
 if (Test-Path $local) {
-    Get-ChildItem $local -Filter "*.log" -Recurse | Remove-Item -Force
+    # -Recurse also matches WebView2's own internal IndexedDB leveldb .log
+    # files (EBWebView\...\*.leveldb\*.log) -- locked while the app is
+    # running, and not something this script should ever touch anyway
+    # (that's real WebView2 state, not an Offlog-written log). Errors here
+    # are non-fatal; this step is cosmetic log cleanup, not core state.
+    Get-ChildItem $local -Filter "*.log" -Recurse -ErrorAction SilentlyContinue |
+        ForEach-Object { try { Remove-Item -Force $_.FullName -ErrorAction Stop } catch {} }
     Write-Host "Cleared logs under: $local"
 }
 

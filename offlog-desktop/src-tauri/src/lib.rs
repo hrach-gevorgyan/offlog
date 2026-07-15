@@ -91,6 +91,16 @@ fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Owner-reported, 2026-07-16: the desktop app fell through to the
+        // plain Web Notification API (same code path as a browser) for
+        // reminders -- Tauri's embedded WebView2 has no default handler
+        // for the browser permission-prompt flow, so requestPermission()
+        // silently resolved to "denied" with no real OS prompt ever
+        // shown, unlike Android's already-native @capacitor/local-
+        // notifications path. This plugin gives desktop the same real
+        // native-OS notification mechanism (Windows toast notifications)
+        // instead of fighting WebView2's broken permission model.
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

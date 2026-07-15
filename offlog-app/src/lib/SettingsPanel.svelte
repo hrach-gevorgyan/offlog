@@ -610,7 +610,7 @@
               <div class="setting-row">
                 <span class="setting-label">
                   {#if $permissionState === 'granted'}Enabled — task reminders will notify you
-                  {:else if $permissionState === 'denied'}Blocked — allow notifications for this site in your browser settings
+                  {:else if $permissionState === 'denied'}Blocked — {isTauri ? 'allow notifications for Offlog in Windows Settings → Notifications' : 'allow notifications for this site in your browser settings'}
                   {:else if $permissionState === 'unsupported'}Not supported in this browser
                   {:else}Not enabled yet{/if}
                 </span>
