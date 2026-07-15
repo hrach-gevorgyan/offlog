@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.23.0**. Everything below is a candidate, not a
+Current version: **v4.24.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -267,13 +267,18 @@ someone who has never seen this project before. Audit for anything that
 assumes a local-only environment before it goes public. Blocked on **C7**
 (credential cleanup) and a real stability/security pass — see DECISIONS.md.
 
-### C2. Zero-config first run, verified — PARTIAL PROGRESS in v4.19.0
-The architecture is already local-first with no required server, but this
-needs to be *verified*: a fresh install, no CouchDB configured, should
-never prompt for setup or imply something is missing. v4.19.0 fixed
-Android's first-run "not connected" message to point at "Find my
-computer" instead of "Developer options." Rest of the audit (every
-first-run surface) still open.
+### C2. Zero-config first run, verified — audit complete as of v4.24.0
+v4.19.0 fixed Android's first-run "not connected" message to point at
+"Find my computer" instead of "Developer options." v4.24.0's audit
+walked every screen a genuine fresh install (0 spaces/projects/tasks —
+verified by clearing both PouchDB and localStorage, not just PouchDB,
+since `SEEDED_KEY` gates the real auto-seed) would actually see: found
+and fixed two real gaps, `DashboardView.svelte`'s project grid and
+`KanbanBoard.svelte`'s board both had no empty-state message at all.
+Everything else audited (Agenda, Focus, List, Trash, Changelog, tag/
+custom-field/archived-project managers) already had reasonable copy.
+Not "reopen if something new is added" — a genuinely fresh install now
+has a plain-language message everywhere it can go.
 
 ### C3. Play Store listing
 A signed release build (proper keystore), a Play Console developer
@@ -307,13 +312,20 @@ premature to do now). Don't consider C7 fully closed until that's handled.
 ### C8. New app icon, all platforms — shipped in v4.17.0
 ### C9. Typography: ≤3 font families, self-hosted — shipped in v4.17.0
 
-### C10. Plain-language pass: every string, every document — PARTIAL SWEEP DONE (owner, 2026-07-13), still open
+### C10. Plain-language pass: every string, every document — PARTIAL SWEEP DONE, still open by design
 The sibling of C6 (which covers public-facing *branding* copy): go through
 every in-app string and every user-facing document and rewrite anything a
 non-technical person would stumble on. v4.19.0's pass covered error
-messages, empty states, and Maintenance/Data tab copy. Not exhaustive —
-README and other docs, and every remaining component, haven't had a
-dedicated pass yet. Pick up opportunistically.
+messages, empty states, and Maintenance/Data tab copy. v4.24.0's pass
+covered the Restore section's "Import JSON" button and jargon hint text,
+the crash-recovery screen's phrasing (raw error now labeled "Details:"
+rather than leading with it), an awkward pairing-code sentence, and
+desktop-web's Developer-options sync copy — all outside the deliberately-
+technical Developer options block, per B43. README.md was checked and
+deliberately left as developer-register copy (correct for its GitHub
+audience, distinct from in-app copy — see C6 if that also needs a pass).
+This item stays open by nature — pick up opportunistically as new strings
+get added, not a one-time sweep to close out.
 
 ---
 
@@ -412,6 +424,7 @@ what's still ahead or otherwise worth a pointer.
 |---|---|---|
 | — | v4.19.0 → v4.22.2 | All shipped — see CHANGELOG.md for the per-release list. Track E (E1, E2) landed and is verified end-to-end; A32 was actually fixed pre-v4.18.0 (roadmap entry corrected 2026-07-15, was stale). |
 | — | v4.23.0 ✓ | Shipped — B39 (stable per-install device id, fixes stale entries after a rename), B50 (custom `TimePicker.svelte` replacing native time inputs), B48 (Android widget follows system light/dark, flatter — needs an owner Studio check to confirm visually). |
+| — | v4.24.0 ✓ | Shipped — C2 (zero-config first-run audit complete: fixed 2 real empty-state gaps in Dashboard/Kanban), C10 (plain-language pass on Restore/crash-recovery/pairing/sync copy — stays open by nature, not a one-time close-out). |
 | — | (unversioned) | The release gate, in dependency order: C7's remaining git-history piece → C1 (GitHub) → C5 (landing page) → C3 (Play Store), with C6 (branding pass) alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | (parked) | B28, B33 — rethinking positional-done and sub-projects; revisit post-release only if daily use demands it. |
 | — | (open, unscoped) | B35's remaining draft items (Focus add-task, Dashboard link, Daily Brief); C2/C10 full sweeps; A9/A31's Android-only remainders. |

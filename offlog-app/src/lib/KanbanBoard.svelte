@@ -329,6 +329,9 @@
 
 <svelte:window on:click={onWindowClick} />
 
+{#if tasks.length === 0}
+  <div class="board-empty-hint">No tasks yet — click "+ Add card" in any column to add one.</div>
+{/if}
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="board" on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd}>
   {#each project.columns as col (col.id)}
@@ -535,6 +538,9 @@
 {/if}
 
 <style>
+  .board-empty-hint {
+    color: var(--faint); font-size: 13px; padding: .75rem 1.75rem 0;
+  }
   .board {
     display: flex;
     gap: 1rem;

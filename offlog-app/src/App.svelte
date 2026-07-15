@@ -422,8 +422,8 @@
 {:else if initError}
   <div class="crash-recovery">
     <h2>Offlog couldn't start</h2>
-    <p class="crash-msg">{initError}</p>
-    <p class="crash-hint">This usually clears up on a retry. If it keeps happening, your local database may need repair — try Export JSON as a backup from a working session first if possible.</p>
+    <p class="crash-hint">This usually clears up on a retry. If it keeps happening, back up your data from another device or an earlier working session first, if you can, before trying anything else.</p>
+    <p class="crash-msg">Details: {initError}</p>
     <button class="retry-btn" on:click={retryInit}>Retry</button>
   </div>
 {:else}

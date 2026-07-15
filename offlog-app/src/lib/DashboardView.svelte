@@ -92,6 +92,9 @@
                 </div>
               </div>
             {/each}
+            {#if data.allProjects.length === 0}
+              <div class="no-projects">No projects yet — use "+ New project" in the sidebar to create your first one.</div>
+            {/if}
           </div>
         </div>
 
@@ -271,6 +274,7 @@
   .task-due.overdue { color: var(--danger); }
 
   .all-good { color: var(--faint); font-size: 13px; padding: 6px 0; }
+  .no-projects { grid-column: 1 / -1; color: var(--faint); font-size: 13px; padding: 6px 0; }
   .loading { padding: 3rem; color: var(--faint); font-family: var(--mono); font-size: .8rem; }
 
   /* ── Responsive ── */

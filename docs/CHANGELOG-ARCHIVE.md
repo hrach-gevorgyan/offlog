@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.19.0 | Track E (PC standalone app + embedded sync host) working end-to-end: mDNS discovery, pairing handshake, NSIS installer, Job Object hardening. C7 hardcoded-credential fallback removed from current source (git history still open). C2/C10 partial progress | `v4.19.0` |
 | 4.18.0 | Sync/Android reliability release (A32, A33, A34, A35): fixed sync falsely reporting "synced" (PouchDB combined-object error-swallowing), desktop sync's loopback-vs-LAN-IP default, silent Android reminders (missing notification channel), Export JSON/CSV/Project broken on Android (blob-download trick has no download manager in a Capacitor WebView) | `v4.18.0` |
 | 4.17.0 | New app icon (C8) applied everywhere, self-hosted fonts replacing Google Fonts CDN (C9) | `v4.17.0` |
 | 4.16.0 | Stabilization phase begins (B43, B44): Settings → Sync leads with a plain-language status sentence, raw URL field moved to Developer options; storage section leads with plain language instead of MB/quota jargon | `v4.16.0` |

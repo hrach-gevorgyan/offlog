@@ -142,7 +142,7 @@
     !syncEnabled ? { text: 'Sync is paused.', tone: 'muted' } :
     !syncUrl ? (isAndroid
       ? { text: 'Not connected to another device yet — tap "Find my computer" below to connect.', tone: 'muted' }
-      : { text: 'Not connected to another device yet — see Developer options below to connect.', tone: 'muted' }) :
+      : { text: 'Not connected to another device yet — open Developer options below to connect one.', tone: 'muted' }) :
     syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'muted' } :
     syncStatus === 'offline' ? { text: 'Offline — will resume automatically when back on your network.', tone: 'muted' } :
     syncStatus === 'error' ? { text: syncError || 'Sync error.', tone: 'warn' } :
@@ -663,7 +663,7 @@
                       </div>
                     {/each}
                   {:else}
-                    <p class="setting-hint">Enter the code shown on "{selectedHost.name}"'s screen.</p>
+                    <p class="setting-hint">Enter the code shown on the "{selectedHost.name}" screen.</p>
                     <label class="field-label">
                       Pairing code
                       <input bind:value={pairingCode} placeholder="123456" inputmode="numeric" maxlength="6" disabled={pairingBusy} />
@@ -859,7 +859,7 @@
                       <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
                       <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
                       {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
-                      A doc whose id already exists merges instead of duplicating.
+                      Anything matching something you already have will be updated in place, not duplicated.
                     </p>
                     <div class="setting-row">
                       <button class="export-btn" on:click={cancelImport}>Cancel</button>
@@ -869,7 +869,7 @@
                 {:else}
                 <div class="setting-row">
                   <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
-                  <button class="export-btn" on:click={handleImport}>Import JSON</button>
+                  <button class="export-btn" on:click={handleImport}>Choose backup file</button>
                 </div>
                 {/if}
               </div>
