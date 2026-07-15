@@ -110,42 +110,63 @@ pub fn run() {
             app.manage(CouchdbDataDir(data_dir.clone()));
             sync_host::write_couchdb_config(&couchdb_dir, &data_dir, &info);
 
-            match sync_host::spawn(&couchdb_dir) {
-                Ok((child, job)) => {
-                    // The Job must stay alive for the app's lifetime — its
-                    // Drop impl closes the job handle, and closing it is
-                    // exactly what triggers JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
-                    // tauri's managed state lives until the app process
-                    // itself ends, so dropping early only happens on the
-                    // crash/force-kill path this is meant to catch anyway.
-                    app.manage(job);
-                    app.manage(CouchdbProcess(Mutex::new(Some(child))));
-                    let ready = sync_host::wait_ready(info.port, Duration::from_secs(20));
-                    log::info!("sync_host: CouchDB ready = {ready} on port {}", info.port);
-                    if ready {
-                        sync_host::ensure_database(&info);
-                        if let Some(uuid) = sync_host::fetch_uuid(info.port) {
-                            let pairing_state = Arc::new(pairing::PairingState::new(info.clone()));
-                            match pairing::spawn_server(pairing_state.clone(), uuid.clone()) {
-                                Ok(pairing_port) => {
-                                    app.manage(pairing_state);
-                                    let name = device_name();
-                                    if let Some(daemon) = discovery::advertise(info.port, &uuid, &name, pairing_port) {
-                                        app.manage(daemon);
+            // info is managed immediately (below) so get_sync_info answers
+            // right away with the sidecar's port -- config.ts's
+            // initTauriSyncDefaults() only needs that to point PouchDB at
+            // the right URL, and its `retry: true` live sync already
+            // tolerates the target not answering yet, same as any other
+            // "Cannot reach sync server" moment. Everything below that
+            // actually needs CouchDB running (spawning it, waiting for its
+            // port to answer, creating the database, starting the pairing
+            // server, mDNS advertising) used to block .setup() itself --
+            // Tauri doesn't paint the window until setup() returns, so the
+            // whole ~3-8s CouchDB/Erlang boot showed as a blank window on
+            // every launch (owner-reported, first real-install dogfooding
+            // session, 2026-07-15). Moved to a background task so the
+            // window shows immediately and sync catches up a few seconds
+            // later, the same way it already does after any transient
+            // "can't reach sync server" moment.
+            let app_handle = app.handle().clone();
+            let couchdb_dir_bg = couchdb_dir.clone();
+            let info_bg = info.clone();
+            tauri::async_runtime::spawn(async move {
+                match sync_host::spawn(&couchdb_dir_bg) {
+                    Ok((child, job)) => {
+                        // The Job must stay alive for the app's lifetime — its
+                        // Drop impl closes the job handle, and closing it is
+                        // exactly what triggers JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
+                        // tauri's managed state lives until the app process
+                        // itself ends, so dropping early only happens on the
+                        // crash/force-kill path this is meant to catch anyway.
+                        app_handle.manage(job);
+                        app_handle.manage(CouchdbProcess(Mutex::new(Some(child))));
+                        let ready = sync_host::wait_ready(info_bg.port, Duration::from_secs(20));
+                        log::info!("sync_host: CouchDB ready = {ready} on port {}", info_bg.port);
+                        if ready {
+                            sync_host::ensure_database(&info_bg);
+                            if let Some(uuid) = sync_host::fetch_uuid(info_bg.port) {
+                                let pairing_state = Arc::new(pairing::PairingState::new(info_bg.clone()));
+                                match pairing::spawn_server(pairing_state.clone(), uuid.clone()) {
+                                    Ok(pairing_port) => {
+                                        app_handle.manage(pairing_state);
+                                        let name = device_name();
+                                        if let Some(daemon) = discovery::advertise(info_bg.port, &uuid, &name, pairing_port) {
+                                            app_handle.manage(daemon);
+                                        }
                                     }
+                                    Err(e) => log::error!("pairing: failed to start server: {e}"),
                                 }
-                                Err(e) => log::error!("pairing: failed to start server: {e}"),
+                            } else {
+                                log::warn!("discovery: couldn't fetch CouchDB uuid, skipping mDNS advertise");
                             }
-                        } else {
-                            log::warn!("discovery: couldn't fetch CouchDB uuid, skipping mDNS advertise");
                         }
                     }
+                    Err(e) => {
+                        log::error!("sync_host: failed to spawn CouchDB sidecar: {e}");
+                        app_handle.manage(CouchdbProcess(Mutex::new(None)));
+                    }
                 }
-                Err(e) => {
-                    log::error!("sync_host: failed to spawn CouchDB sidecar: {e}");
-                    app.manage(CouchdbProcess(Mutex::new(None)));
-                }
-            }
+            });
 
             app.manage(info);
             Ok(())
