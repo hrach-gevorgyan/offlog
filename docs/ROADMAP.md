@@ -227,21 +227,28 @@ this item's original scope has been covered — closing web/desktop/mobile
 coverage out, leaving only the Android leg open, picked up whenever the
 owner runs a Studio check.
 
-### A32. Sync reports "synced" when devices aren't actually syncing — OPEN, URGENT
-Owner-reported (2026-07-13, real on-device use): PC and phone both show a
-synced/idle status with no error, but changes made on one don't appear on
-the other. This is the most serious of the owner's reported issues — a
-false-positive sync status is worse than an honest error, since it hides
-data divergence instead of surfacing it. Needs investigation before
-anything else in this batch: check whether `startSync()`'s live
-replication is actually establishing (network reachability between the
-two devices' LAN addresses, CouchDB reachable from both), whether
-`syncState.status` is being set to `'idle'` prematurely (e.g. on the
-`'paused'` event PouchDB fires between change batches, which isn't the
-same as no more changes existing), and whether writes are actually
-reaching the remote CouchDB at all (check the CouchDB server's own doc
-count against each device's local count). Likely needs the owner to
-reproduce with both devices' consoles/logcat visible.
+### A32. Sync reports "synced" when devices aren't actually syncing — shipped pre-v4.18.0
+Owner-reported (2026-07-13, real on-device use): PC and phone both showed a
+synced/idle status with no error, but changes made on one didn't appear on
+the other — a false-positive sync status, worse than an honest error since
+it hides data divergence instead of surfacing it. Root cause traced through
+PouchDB's own source (commit `711f804`): `db.sync()`'s combined object
+always emits a bare `'paused'` (no error) whenever either direction pauses,
+including pausing to retry after a connection failure under `retry: true`
+— its internal `pushPaused()`/`pullPaused()` listeners discard whatever
+error the underlying push/pull sub-replication's own `'paused'` event
+carried. The combined object's `'error'` event only fires once the
+replication promise rejects, which never happens under `retry: true` for
+an ordinary unreachable host — PouchDB just retries forever, silently, and
+the old status logic read every one of those retries as a successful sync.
+Fixed in `attachSyncHandlers()` (`db.ts`) by listening directly to
+`handler.push`/`handler.pull` (public instance properties on PouchDB's
+Sync class) to recover the error the combined wrapper discards, without
+giving up `retry: true`'s automatic reconnect behavior — covered by
+`tests/sync.test.ts`. A related desktop-only cause (loopback-default sync
+URL) was fixed separately in commit `15d1322`. This ROADMAP entry was left
+marked OPEN after the fix shipped; corrected 2026-07-15 — no further work
+needed here.
 
 ### A33. Android notifications fire silently, not fully functional — shipped in v4.18.0
 Owner-reported (2026-07-13): notifications do appear on Android but
