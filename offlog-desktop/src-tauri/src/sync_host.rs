@@ -84,18 +84,38 @@ pub fn load_or_create_info(config_path: &Path) -> SyncHostInfo {
 /// this instance's Erlang distribution never collides with a user's own
 /// separately-installed CouchDB (see the couchdb@127.0.0.1 collision hit
 /// during prototyping this).
-pub fn write_couchdb_config(couchdb_dir: &Path, info: &SyncHostInfo) {
-    // `data`/`var` are runtime state, deliberately excluded from both the
-    // fetch script's copy and the bundled resource (nothing to ship) --
-    // create them on whichever first run finds them missing, dev or
-    // packaged, instead of relying on a manual mkdir like early
-    // prototyping did.
-    let _ = fs::create_dir_all(couchdb_dir.join("data"));
-    let _ = fs::create_dir_all(couchdb_dir.join("var").join("log"));
-    let _ = fs::create_dir_all(couchdb_dir.join("var").join("run"));
+pub fn write_couchdb_config(couchdb_dir: &Path, data_dir: &Path, info: &SyncHostInfo) {
+    // `data`/`var` used to live inside `couchdb_dir` itself -- fine in dev,
+    // but for a real install `couchdb_dir` resolves to `resource_dir()`
+    // (the app's own Program Files-style install directory), which an
+    // uninstall/reinstall can wipe or partially wipe (e.g. a locked file
+    // NSIS's recursive delete silently skips). A reinstall then regenerates
+    // a fresh random port/node-identity/cookie (sync-host.json lives in
+    // app_data_dir, untouched by the installer) while any leftover shard
+    // files on disk were written under the *previous* install's node
+    // identity -- CouchDB can't open shards written under a different node,
+    // surfacing as "no db shards could be opened" (owner-reported, first
+    // real-install dogfooding session, 2026-07-15). Moving the actual
+    // database into `app_data_dir` (never touched by the installer, same
+    // place sync-host.json already lives) fixes this at the root: binaries
+    // in the read-only install dir, real user data outside it -- the usual
+    // Program-Files-vs-AppData split, and it means data now also survives
+    // a clean uninstall/reinstall instead of vanishing with it.
+    let _ = fs::create_dir_all(data_dir);
+    let _ = fs::create_dir_all(data_dir.join("var").join("log"));
+    let _ = fs::create_dir_all(data_dir.join("var").join("run"));
+    // CouchDB's ini format wants forward slashes even on Windows.
+    let data_dir_str = data_dir.to_string_lossy().replace('\\', "/");
 
     let local_ini = format!(
-        r#"[chttpd]
+        r#"[couchdb]
+database_dir = {data_dir}
+view_index_dir = {data_dir}
+
+[log]
+file = {data_dir}/var/log/couch.log
+
+[chttpd]
 port = {port}
 bind_address = 0.0.0.0
 
@@ -109,6 +129,7 @@ headers = accept, authorization, content-type, origin, referer
 enable_cors = true
 "#,
         port = info.port,
+        data_dir = data_dir_str,
     );
     let _ = fs::write(couchdb_dir.join("etc").join("local.ini"), local_ini);
 
@@ -245,10 +266,22 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
 #[cfg(windows)]
 pub fn spawn(couchdb_dir: &Path) -> std::io::Result<(Child, win32job::Job)> {
     use std::os::windows::io::AsRawHandle;
+    use std::os::windows::process::CommandExt;
     use win32job::{ExtendedLimitInfo, Job};
 
+    // couchdb.cmd is a batch file, and a batch file always allocates a
+    // console window on launch unless explicitly told not to -- this app's
+    // own windows_subsystem="windows" attribute (main.rs) only suppresses
+    // *its own* console, not a child's. Without CREATE_NO_WINDOW, a real
+    // visible terminal popped up alongside the app on every launch, and
+    // closing that window sent a close signal straight to cmd.exe/erl.exe,
+    // independent of this app's own lifecycle -- killing sync while the
+    // main window kept running (owner-reported, first real-install
+    // dogfooding session, 2026-07-15).
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
     let child = Command::new(couchdb_dir.join("bin").join("couchdb.cmd"))
         .current_dir(couchdb_dir)
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()?;
 
     let mut info = ExtendedLimitInfo::new();

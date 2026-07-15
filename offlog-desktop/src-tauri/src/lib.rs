@@ -30,7 +30,7 @@ fn generate_pairing_code(state: tauri::State<Arc<pairing::PairingState>>) -> Str
     state.generate_code()
 }
 
-struct CouchdbDir(std::path::PathBuf);
+struct CouchdbDataDir(std::path::PathBuf);
 
 // Dev-only convenience for testing "what does a real first-run user see"
 // without hand-killing processes and deleting folders each time (owner
@@ -50,7 +50,7 @@ unsafe extern "system" {
 }
 
 #[tauri::command]
-fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, couchdb_dir: tauri::State<CouchdbDir>) -> Result<(), String> {
+fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data_dir: tauri::State<CouchdbDataDir>) -> Result<(), String> {
     if !cfg!(debug_assertions) {
         return Err("reset_sync_data is only available in debug builds".to_string());
     }
@@ -64,8 +64,7 @@ fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, couc
     if ok == 0 {
         return Err("TerminateJobObject failed".to_string());
     }
-    let _ = std::fs::remove_dir_all(couchdb_dir.0.join("data"));
-    let _ = std::fs::remove_dir_all(couchdb_dir.0.join("var"));
+    let _ = std::fs::remove_dir_all(&data_dir.0);
     if let Ok(exe) = std::env::current_exe() {
         let _ = std::process::Command::new(exe).spawn();
     }
@@ -103,8 +102,13 @@ pub fn run() {
             let resource_dir = app.path().resource_dir().ok();
             let couchdb_dir = sync_host::couchdb_dir(resource_dir);
             log::info!("sync_host: using CouchDB dir {}", couchdb_dir.display());
-            app.manage(CouchdbDir(couchdb_dir.clone()));
-            sync_host::write_couchdb_config(&couchdb_dir, &info);
+            // Same debug/release split as config_filename above, and for the
+            // same reason -- a dev run's database must never share a
+            // directory with a real installed build's.
+            let data_dirname = if cfg!(debug_assertions) { "couchdb-data-dev" } else { "couchdb-data" };
+            let data_dir = app_data_dir.join(data_dirname);
+            app.manage(CouchdbDataDir(data_dir.clone()));
+            sync_host::write_couchdb_config(&couchdb_dir, &data_dir, &info);
 
             match sync_host::spawn(&couchdb_dir) {
                 Ok((child, job)) => {

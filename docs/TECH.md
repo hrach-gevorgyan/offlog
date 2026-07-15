@@ -216,7 +216,7 @@ literally found *because of* exactly this kind of buildup. Run a reset
 before any "does this look right for a brand-new user" check, not just
 when something looks broken:
 
-- **Desktop (`offlog-desktop`)**: `powershell -File
+- **Desktop (`offlog-desktop`)**: `powershell -ExecutionPolicy Bypass -File
   offlog-desktop/scripts/reset-dev-env.ps1` — wipes the debug build's
   isolated CouchDB copy and its `sync-host.dev.json` identity. Add
   `-IncludeRelease` only if you're deliberately testing a from-scratch

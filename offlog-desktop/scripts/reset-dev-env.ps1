@@ -13,7 +13,7 @@
 # just the pristine source binaries `fetch-couchdb-win.ps1` downloaded --
 # re-copied fresh by sync_host.rs on next launch, never modified in place).
 #
-# Usage: powershell -File scripts/reset-dev-env.ps1
+# Usage: powershell -ExecutionPolicy Bypass -File scripts/reset-dev-env.ps1
 #   -IncludeRelease   also wipe the release-build local config/CouchDB
 #                     copy (only do this if you're testing a real install
 #                     from scratch and are OK losing it)
@@ -51,16 +51,24 @@ if (Test-Path $devConfig) {
     Remove-Item -Force $devConfig
     Write-Host "Removed debug sync-host config: $devConfig"
 }
+# The actual database lives in app_data_dir too (not inside the CouchDB
+# binary copy above) as of the "no db shards could be opened" reinstall
+# fix -- see sync_host.rs's write_couchdb_config() comment.
+$devData = Join-Path $roaming "couchdb-data-dev"
+if (Test-Path $devData) {
+    Remove-Item -Recurse -Force $devData
+    Write-Host "Removed debug CouchDB data: $devData"
+}
 if ($IncludeRelease) {
     $releaseConfig = Join-Path $roaming "sync-host.json"
     if (Test-Path $releaseConfig) {
         Remove-Item -Force $releaseConfig
         Write-Host "Removed release sync-host config: $releaseConfig"
     }
-    $releaseCouch = Join-Path $Root "src-tauri\target\release\couchdb\data"
-    if (Test-Path $releaseCouch) {
-        Remove-Item -Recurse -Force $releaseCouch
-        Write-Host "Removed release CouchDB data: $releaseCouch"
+    $releaseData = Join-Path $roaming "couchdb-data"
+    if (Test-Path $releaseData) {
+        Remove-Item -Recurse -Force $releaseData
+        Write-Host "Removed release CouchDB data: $releaseData"
     }
 }
 if (Test-Path $local) {
