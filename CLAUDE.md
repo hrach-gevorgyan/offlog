@@ -288,6 +288,12 @@ rather than invoking Gradle.
 7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
 8. **Never push, sync to Android, build the APK, or commit palette/visual
    changes without the owner's explicit confirmation/request**
+9. **After any real test round (not every commit), reset to a fresh
+   state** — `offlog-desktop/scripts/reset-dev-env.ps1` for the desktop
+   dev CouchDB/config, plus the browser/Android reset steps in
+   [docs/TECH.md](docs/TECH.md)'s "Resetting to a fresh state" section.
+   Dev state silently accumulates release over release otherwise — E2's
+   dev/prod identity-collision bug was found because of exactly that.
 
 ## Style conventions
 

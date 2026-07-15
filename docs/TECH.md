@@ -207,6 +207,32 @@ identifiable and easy to bulk-remove later. Spread across every existing
 project **and** across each project's actual statuses (fetch real column ids
 first — CLAUDE.md's `column_id` invariant applies here too: assign
 `column.id`, never the whole column object). Reload the page after writing so
+
+### Resetting to a fresh state (do this after every test round)
+
+Dev/test state accumulates silently release over release if it's never
+torn down — E2's dev/prod identity-collision bug (ROADMAP.md) was
+literally found *because of* exactly this kind of buildup. Run a reset
+before any "does this look right for a brand-new user" check, not just
+when something looks broken:
+
+- **Desktop (`offlog-desktop`)**: `powershell -File
+  offlog-desktop/scripts/reset-dev-env.ps1` — wipes the debug build's
+  isolated CouchDB copy and its `sync-host.dev.json` identity. Add
+  `-IncludeRelease` only if you're deliberately testing a from-scratch
+  real install and are OK losing its local config too. Never touches
+  `vendor/couchdb-win/` itself (the pristine downloaded binaries) or any
+  real synced data.
+- **Web/browser**: in DevTools console, `new PouchDB('offlog').destroy()
+  .then(() => localStorage.clear())`, then reload — this is also the
+  right way to reproduce a genuine first-run (localStorage's `SEEDED_KEY`
+  gates the real auto-seed of 3 starter spaces; clearing PouchDB alone
+  without localStorage produces an artificial zero-spaces state that
+  doesn't happen on a real fresh install).
+- **Android**: `adb shell pm clear com.offlog.app.debug` for a debug
+  build, or uninstall/reinstall via Android Studio for a true fresh
+  install (same "owner runs Android Studio" rule as any other Android
+  verification step).
 the live `subscribe()` change feed and in-memory task cache pick it up.
 
 ### `tests/setup.ts`'s Node/localStorage workaround
