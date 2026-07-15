@@ -280,9 +280,11 @@ rather than invoking Gradle.
 2. `npx tsc --noEmit -p .` — clean
 3. `npm test` — clean
 4. Verify visually in the browser preview (light **and** dark mode)
-5. Bump version in **both** `package.json` and
-   `android/app/build.gradle` (`versionCode` +1, `versionName`) —
-   even though Android isn't being synced/built this release
+5. Bump version in `package.json`, `android/app/build.gradle`
+   (`versionCode` +1, `versionName`), **and**
+   `offlog-desktop/src-tauri/tauri.conf.json`'s `version` — even on
+   releases where Android/desktop aren't being synced/built, so all
+   three stay in sync for whenever a build actually is requested
 6. Add a new entry to `docs/CHANGELOG.md` — the single source of truth for
    version history (do not duplicate it back into TECH.md or README.md)
 7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
