@@ -48,10 +48,11 @@ global, CouchDB over any hosted backend, soft-delete-only, positional
 closed with reasons recorded there. Don't re-open them without new
 information.
 
-## Token/effort discipline (owner flagged this directly, 2026-07-03 — read this)
+## Token/effort discipline
 
-Previous sessions burned tokens rebuilding, restarting preview servers, and
-narrating far more than the work needed. Concretely:
+Standing practice, not a one-off note — previous sessions burned tokens
+rebuilding, restarting preview servers, and narrating far more than the
+work needed. Concretely:
 
 - **Batch fixes, then verify once.** Don't rebuild + restart the preview
   server + clear the service worker after every individual change. Make
@@ -134,7 +135,7 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
 - After any task mutation from a component, call `reloadTasks()` (or rely on the
   live `subscribe()` change feed if the write goes through sync).
 - Every task-mutating call site must be wrapped in `try/catch` + `showError()`.
-  No silent failures — this is an established, audited invariant (v2.9.0).
+  No silent failures — an established, audited invariant.
 
 ## Database invariants (db.ts)
 
@@ -166,11 +167,11 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
 - **Conflict info lives on `row.doc._conflicts`, never on `row.value.conflicts`.**
   The latter has never existed in PouchDB's API — `db.allDocs({conflicts:true})`
   only attaches `_conflicts` to the fetched doc (which requires
-  `include_docs: true` too). A real bug shipped in v3.1.0 checking the wrong
-  field, caught by `tests/db.test.ts`'s manufactured-conflict test in v3.4.0.
-  When resolving a conflict, every revision in `_conflicts` needs an explicit
-  `db.remove(id, rev)` — including the one whose content you adopted, since
-  adopting content by writing a new revision does not remove its old leaf.
+  `include_docs: true` too). Covered by `tests/db.test.ts`'s manufactured-
+  conflict test. When resolving a conflict, every revision in `_conflicts`
+  needs an explicit `db.remove(id, rev)` — including the one whose content
+  you adopted, since adopting content by writing a new revision does not
+  remove its old leaf.
 
 ## Generating test/dummy data
 
