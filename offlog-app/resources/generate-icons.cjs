@@ -90,7 +90,29 @@ async function main() {
   await sharp({ create: { width: 1024, height: 1024, channels: 4, background: BRAND } }).png().toFile(path.join(__dirname, 'icon-background.png'));
   await sharp(webFlattened).toFile(path.join(__dirname, 'icon.png'));
 
-  console.log('Icons generated: Android adaptive + legacy launcher icons, Android notification icon, web favicons, resources/ reference copies.');
+  // Desktop (offlog-desktop/Tauri) icon source — Windows has no adaptive-
+  // icon masking like Android's, so a hard-square source renders with
+  // sharp corners in the taskbar/Start menu (owner-reported, first real-
+  // install dogfooding session, 2026-07-15). Baking a ~22%-radius rounded
+  // rect directly into the source (Fluent/Windows-11-style squircle,
+  // roughly matching the corner ratio Windows' own built-in app icons
+  // use) is the only reliable fix since there's no OS-level mask to rely
+  // on the way Android's adaptive icon system provides one. Regenerate
+  // offlog-desktop's actual .ico/.icns/PNG set afterwards with:
+  //   cd offlog-desktop/src-tauri && cargo tauri icon
+  //     ../../offlog-app/resources/icon-512-rounded.png
+  const desktopSize = 512;
+  const desktopRadius = Math.round(desktopSize * 0.22);
+  const roundedRectMask = Buffer.from(
+    `<svg width="${desktopSize}" height="${desktopSize}"><rect width="${desktopSize}" height="${desktopSize}" rx="${desktopRadius}" ry="${desktopRadius}"/></svg>`
+  );
+  await sharp(webFlattened)
+    .resize(desktopSize, desktopSize)
+    .composite([{ input: roundedRectMask, blend: 'dest-in' }])
+    .png()
+    .toFile(path.join(__dirname, 'icon-512-rounded.png'));
+
+  console.log('Icons generated: Android adaptive + legacy launcher icons, Android notification icon, web favicons, desktop rounded-corner source, resources/ reference copies.');
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
