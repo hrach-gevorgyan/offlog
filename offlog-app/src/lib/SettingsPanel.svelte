@@ -475,6 +475,35 @@
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];
 
+  // Scaffolding ahead of C1 (open-sourcing the repo) -- the updater plugin
+  // has no endpoint/pubkey configured yet (tauri.conf.json deliberately
+  // has no plugins.updater block, see its own comment and lib.rs's), so
+  // check() below always fails with a real "not configured"-shaped error
+  // until real hosting exists. Wired up now anyway (owner request,
+  // 2026-07-16) so the UI/flow is ready the moment that config lands.
+  let updateChecking = false;
+  let updateStatus = '';
+  async function checkForUpdate() {
+    updateChecking = true;
+    updateStatus = '';
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const update = await check();
+      if (!update) {
+        updateStatus = "You're on the latest version.";
+        return;
+      }
+      updateStatus = `Downloading v${update.version}…`;
+      await update.downloadAndInstall();
+      const { relaunch } = await import('@tauri-apps/plugin-process');
+      await relaunch();
+    } catch (e: any) {
+      updateStatus = 'Could not check for updates right now.';
+    } finally {
+      updateChecking = false;
+    }
+  }
+
   function freshMaintSteps(): MaintStep[] {
     return [
       { key: 'check',   label: 'Checking your data for problems', status: 'pending', note: '' },
@@ -928,6 +957,18 @@
                   {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
                 </button>
               </div>
+
+              {#if isTauri}
+                <div class="setting-group">
+                  <div class="setting-section-title">Software updates</div>
+                  <div class="setting-row">
+                    <span class="setting-label">{updateStatus || 'Check for a newer version of Offlog'}</span>
+                    <button class="export-btn" on:click={checkForUpdate} disabled={updateChecking}>
+                      {updateChecking ? 'Checking…' : 'Check for updates'}
+                    </button>
+                  </div>
+                </div>
+              {/if}
             {/if}
           </div>
         {/if}

@@ -389,6 +389,21 @@ own isolated CouchDB copy under `target/debug/couchdb-dev`), and an
 `applicationId` and overwrote each other's storage — debug builds now get
 `applicationIdSuffix ".debug"`).
 
+### E3. Desktop auto-updater — scaffolded, blocked on C1 (owner request, 2026-07-16)
+`tauri-plugin-updater`/`tauri-plugin-process` are registered
+(`src-tauri/src/lib.rs`) and a "Check for updates" control exists in
+Settings → Maintenance (desktop-only), but `tauri.conf.json` deliberately
+has no `plugins.updater` block yet — the plugin needs a real hosted
+update manifest (GitHub Releases, once C1 makes the repo public) and a
+pubkey from the owner's own `cargo tauri signer generate` (the private
+key is password-protected; that password is the owner's to choose and
+hold, not something this assistant generates or stores). Until that
+config exists, checking for an update fails cleanly with a "couldn't
+check right now" message — harmless, not reachable by a real user since
+there's no public release to update from yet. Revisit at C1 time: add
+the config block, wire a release pipeline that signs and publishes
+`latest.json` + the installer.
+
 ---
 
 ## Business model — none, deliberately
