@@ -35,3 +35,4 @@ tiny_http = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 win32job = "2"
+tauri-winrt-notification = "0.7"

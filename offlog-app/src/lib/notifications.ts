@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
+import { invokeTauri } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
 
 // Set by a notification click (native action or web Notification.onclick).
@@ -68,11 +69,10 @@ export async function requestPermission(): Promise<PermissionState> {
     return state;
   }
   if (isTauriPlatform()) {
-    const { requestPermission: tauriRequestPermission } = await import('@tauri-apps/plugin-notification');
-    const res = await tauriRequestPermission();
-    const state: PermissionState = res === 'granted' ? 'granted' : 'denied';
-    permissionState.set(state);
-    return state;
+    // No real desktop permission model to request against (see
+    // initNotificationListeners' comment) -- 'granted' is just the truth.
+    permissionState.set('granted');
+    return 'granted';
   }
   if (typeof Notification === 'undefined') {
     permissionState.set('unsupported');
@@ -268,38 +268,28 @@ async function scheduleNative(tasks: TaskDoc[]) {
 // — mutually exclusive with the web path at runtime (one platform per
 // session), so sharing that state is safe.
 
-async function ensureReminderChannelTauri() {
-  const { createChannel, Importance, Visibility } = await import('@tauri-apps/plugin-notification');
-  await createChannel({
-    id: REMINDER_CHANNEL_ID,
-    name: 'Task reminders',
-    description: 'Reminders for tasks with a due date or reminder time',
-    importance: Importance.High,
-    visibility: Visibility.Public,
-    vibration: true,
-  });
-  await (await import('@tauri-apps/plugin-notification')).registerActionTypes([{
-    id: REMINDER_ACTION_TYPE,
-    actions: [
-      { id: 'done', title: 'Done' },
-      { id: 'snooze', title: 'Snooze 1h' },
-    ],
-  }]);
-}
-
+// Owner-reported, 2026-07-16: clicking a fired notification didn't open
+// the task. Root cause, confirmed by reading tauri-plugin-notification's
+// own source: its desktop backend never wires up any click/action
+// callback at all -- there's no event it could ever emit back to us, on
+// a bare click or an action button. isPermissionGranted()/
+// requestPermission() are also both hardcoded to always return granted
+// on desktop, unconditionally -- the plugin has no real desktop
+// permission model, so the channel/actionType concepts it offers are
+// meaningless for our purposes here. Bypassing it for reminders
+// entirely: a custom Rust command (send_task_notification, lib.rs)
+// builds the toast directly with tauri-winrt-notification, whose
+// on_activated callback genuinely works, and emits a real Tauri event
+// we can listen for below.
 async function fireTauriNotification(task: TaskDoc) {
   const id = task._id!;
   if (_firedIds.has(id)) return;
   _firedIds.add(id);
-  const { sendNotification } = await import('@tauri-apps/plugin-notification');
-  sendNotification({
-    id: numericId(id),
+  invokeTauri('send_task_notification', {
     title: task.title,
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
-    extra: { taskId: id },
-    actionTypeId: REMINDER_ACTION_TYPE,
-    channelId: REMINDER_CHANNEL_ID,
-  });
+    taskId: id,
+  }).catch(() => {});
   updateTask(id, { reminder_at: null }).catch(() => {});
 }
 
@@ -356,23 +346,20 @@ async function snoozeTaskFromNotification(taskId: string): Promise<void> {
 
 export async function initNotificationListeners(): Promise<void> {
   if (isTauriPlatform()) {
-    const { isPermissionGranted, onAction } = await import('@tauri-apps/plugin-notification');
-    permissionState.set((await isPermissionGranted()) ? 'granted' : 'denied');
-    await ensureReminderChannelTauri();
-    await onAction((notification) => {
-      // The plugin's own .d.ts types this callback's payload as the plain
-      // notification Options (no actionId field declared), but the actual
-      // runtime event needs to carry which action was clicked -- same
-      // field name Capacitor's equivalent event uses. Not yet verified
-      // against a real fired notification's click/action, since that
-      // needs a live wait-for-a-toast-to-fire test; flag if action
-      // buttons don't route correctly once actually exercised.
-      const taskId = (notification.extra as any)?.taskId;
-      const actionId = (notification as any).actionId as string | undefined;
+    // tauri-plugin-notification's isPermissionGranted()/requestPermission()
+    // are hardcoded to always return granted on desktop (confirmed by
+    // reading its source) -- there's no real desktop permission model
+    // behind them at all, so checking it here would be theater. Desktop
+    // notification display isn't actually gated on anything we can
+    // observe; 'granted' is the honest answer.
+    permissionState.set('granted');
+    const { listen } = await import('@tauri-apps/api/event');
+    await listen<[string, string]>('notification-action', (event) => {
+      const [actionId, taskId] = event.payload;
       if (!taskId) return;
       if (actionId === 'done') completeTaskFromNotification(taskId).catch(() => {});
       else if (actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => {});
-      else pendingOpenTaskId.set(taskId);
+      else pendingOpenTaskId.set(taskId); // bare click (no action button) -- lib.rs emits '' for this case
     });
     return;
   }

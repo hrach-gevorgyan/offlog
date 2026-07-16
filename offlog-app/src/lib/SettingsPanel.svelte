@@ -422,9 +422,23 @@
     // fix -- lets the user pick where it actually goes, same as any other
     // desktop app's export/save flow.
     if (isTauri) {
+      // Owner-reported, 2026-07-16: defaultPath as a bare filename (no
+      // directory) didn't reliably pre-fill the dialog's filename field --
+      // the plugin's own docs note a non-existing-directory path only
+      // populates the filename input when it's actually resolvable as
+      // "some directory + a name," which a directory-less relative string
+      // isn't guaranteed to satisfy. An absolute path (Documents + name)
+      // works correctly. `filters` also gets the right extension
+      // pre-selected instead of the user having to type it themselves.
       const { save } = await import('@tauri-apps/plugin-dialog');
       const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-      const path = await save({ defaultPath: filename });
+      const { documentDir, join } = await import('@tauri-apps/api/path');
+      const ext = filename.split('.').pop() ?? 'txt';
+      const defaultPath = await join(await documentDir(), filename).catch(() => filename);
+      const path = await save({
+        defaultPath,
+        filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+      });
       if (!path) return; // user cancelled the dialog
       await writeTextFile(path, content);
       return;

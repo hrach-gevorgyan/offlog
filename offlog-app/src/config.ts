@@ -17,8 +17,8 @@ export function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
 }
 
-export function invokeTauri<T = any>(cmd: string): Promise<T> {
-  return (window as any).__TAURI_INTERNALS__.invoke(cmd);
+export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  return (window as any).__TAURI_INTERNALS__.invoke(cmd, args);
 }
 
 // Owner-reported real bug (2026-07-13): this used to fall back to a

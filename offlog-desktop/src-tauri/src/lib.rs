@@ -4,7 +4,7 @@ mod sync_host;
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 struct CouchdbProcess(Mutex<Option<std::process::Child>>);
 
@@ -23,6 +23,39 @@ fn get_sync_info(info: tauri::State<sync_host::SyncHostInfo>) -> sync_host::Sync
 #[tauri::command]
 fn is_debug_build() -> bool {
     cfg!(debug_assertions)
+}
+
+// Owner-reported, 2026-07-16: clicking a fired reminder notification
+// didn't open the task. Root cause, confirmed by reading
+// tauri-plugin-notification's own source: its desktop backend never
+// wires up a click/action callback at all -- show()/notify() just fire
+// the toast and return, with zero event emitted back to the frontend on
+// interaction (grepped the entire crate for `emit`/`listen`/`on_action`:
+// nothing). The underlying tauri-winrt-notification crate it depends on
+// *does* support this (Toast::on_activated, a real WinRT callback) --
+// the plugin just doesn't expose it. Bypassing the plugin's own
+// sendNotification() for reminders specifically and building the toast
+// directly with this crate (already a transitive dependency, now also a
+// direct one) is the only way to get a working click/action callback on
+// desktop. Not used for anything else the plugin already handles fine
+// (channel creation, the notification's actual visual appearance).
+#[tauri::command]
+fn send_task_notification(app: tauri::AppHandle, title: String, body: String, task_id: String) -> Result<(), String> {
+    use tauri_winrt_notification::Toast;
+    let app_id = app.config().identifier.clone();
+    let emit_id = task_id.clone();
+    Toast::new(&app_id)
+        .title(&title)
+        .text1(&body)
+        .add_button("Done", "done")
+        .add_button("Snooze 1h", "snooze")
+        .on_activated(move |action| {
+            let action_id = action.unwrap_or_default();
+            let _ = app.emit("notification-action", (action_id, emit_id.clone()));
+            Ok(())
+        })
+        .show()
+        .map_err(|e| format!("failed to show notification: {e}"))
 }
 
 // The main window starts hidden (tauri.conf.json's `visible: false`) so
@@ -240,7 +273,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window])
+        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
