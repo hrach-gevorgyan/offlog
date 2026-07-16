@@ -63,6 +63,30 @@ if ($LASTEXITCODE -ge 8) {
     exit 1
 }
 
+# Owner-reported, 2026-07-16: is the full bundle actually needed, or can
+# the installed app be lighter? Two genuinely unused pieces, both safe to
+# drop -- confirmed by reading the bundled etc\default.ini directly:
+#   - share\www (Fauxton, CouchDB's own web admin UI, ~24MB): Offlog never
+#     serves or links to it -- the app has its own completely separate
+#     frontend, nothing ever navigates a user to /_utils.
+#   - nouveau\ (a Lucene-based full-text search engine, ~39MB): disabled
+#     by default (`;enable = true`, commented out, under default.ini's
+#     [nouveau] section) and never turned on by write_couchdb_config --
+#     CouchDB doesn't start this application at boot unless explicitly
+#     enabled, so removing the directory doesn't risk a missing-file
+#     startup failure the way removing an always-loaded OTP app would.
+# Cuts roughly 60MB off the installed size (~222MB -> ~160MB) for zero
+# functional loss. share\docs (~2MB, bundled man pages/docs, never
+# served by this app either) trimmed for the same reason, smaller win.
+$trimPaths = @("share\www", "share\docs", "nouveau")
+foreach ($rel in $trimPaths) {
+    $full = Join-Path $VendorDir $rel
+    if (Test-Path $full) {
+        Remove-Item -Recurse -Force $full
+        Write-Host "Trimmed unused $rel"
+    }
+}
+
 # The VC++ runtime DLLs the installer places in System32 -- a fresh end-
 # user machine may not already have the redistributable installed, and
 # this app must never require a separate system-wide install. Windows'
