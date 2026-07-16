@@ -191,6 +191,18 @@ looked unused in `src/` but is actually imported by `tests/setup.ts` —
 left in place. Disabled CSP (`security.csp: null`) noted but deliberately
 deferred to the same pre-public-release pass as C7, not fixed piecemeal
 here.
-Next pass due: **after v4.25.0 ships**, continuing the every-3-releases
+Last pass: v4.25.0 (2026-07-16 — ninth run, covering the first real
+desktop-dogfooding round: v4.23.0-v4.25.0's rapid iteration on
+`offlog-desktop`'s notification/backup/startup fixes). Found and fixed
+one real gap: `@tauri-apps/plugin-notification` (the npm package) had
+zero remaining JS import sites after click/schedule logic was rebuilt on
+a custom Rust command — removed from `package.json`. The Rust crate
+`tauri-plugin-notification` stays (still registered for its
+permission-check compatibility). Everything else audited clean: no dead
+code from the several notifications.ts rewrites, all 6 new npm packages
+and 6 new Rust crates from this arc genuinely used, `cargo check` zero
+warnings, `npm audit --production` unchanged (same known uuid/pouchdb
+advisory), no stray debug/temp files.
+Next pass due: **after v4.28.0 ships**, continuing the every-3-releases
 cadence from there — see docs/ROADMAP.md's sequencing table, which has
 these same points marked inline.
