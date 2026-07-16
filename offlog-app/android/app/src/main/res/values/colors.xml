@@ -12,9 +12,15 @@
          *system* light/dark setting instead — owner feedback, 2026-07-13).
          Keep both files in sync with app.css's :root / body.dark blocks if
          the palette ever changes; see docs/TECH.md's Theme System table
-         for the source of truth. -->
-    <color name="colorWidgetBg">#FFFFFF</color>      <!-- app.css surface token, light -->
-    <color name="colorWidgetSurface">#F1F2F6</color> <!-- flat tint one step off colorWidgetBg -->
+         for the source of truth.
+         colorWidgetBg/colorWidgetSurface deliberately deviate from
+         app.css's exact --surface/--bg light values (#FFFFFF/#F6F7F9) —
+         owner feedback 2026-07-17 that the widget's pure white read as
+         too stark against a real home-screen wallpaper. Warmed to a
+         slight cream tint; dark mode (values-night) is unaffected and
+         intentionally still the exact app.css values. -->
+    <color name="colorWidgetBg">#FBF8F2</color>      <!-- warm cream, not app.css's exact --surface -->
+    <color name="colorWidgetSurface">#F1EDE3</color> <!-- flat tint one step off colorWidgetBg -->
     <color name="colorWidgetBorder">#E2E4EA</color>  <!-- app.css border token, light; unused since B48 dropped the border stroke, kept for any future outline need -->
     <color name="colorWidgetAccent">#5457E0</color>  <!-- app.css accent token, light -->
     <color name="colorWidgetText">#1F2937</color>    <!-- app.css text token, light -->

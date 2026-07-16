@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- minWidth/minHeight (owner-reported, 2026-07-17): the widget picker's
+     preview (previewLayout, API 31+) renders widget_offlog.xml AT these
+     declared dimensions, not at whatever size a real launcher grants —
+     they were 110x110dp while the actual wrap_content card (18dp padding
+     + the Focus pill + the 52dp button row + its 10dp gap, see
+     widget_offlog.xml's own comment) needs roughly 195x150dp, so the
+     preview clipped/overlapped ("damaged") even though a real home
+     screen's 2x2 grid cell is normally bigger than the bare declared
+     minimum and hid the mismatch. Sized to comfortably fit the actual
+     content instead of guessing. maxResizeWidth/maxResizeHeight dropped
+     entirely -- both are inert when resizeMode="none" (no resize handles
+     are ever shown), so they were dead config, not a real constraint. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="110dp"
-    android:minHeight="110dp"
-    android:maxResizeWidth="110dp"
-    android:maxResizeHeight="130dp"
-    android:targetCellWidth="2"
+    android:minWidth="200dp"
+    android:minHeight="160dp"
+    android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_offlog"

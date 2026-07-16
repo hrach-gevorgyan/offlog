@@ -43,7 +43,21 @@ export function closeOnBack(close: CloseFn): CloseFn {
   ensureListening();
   history.pushState({ offlogLayer: true }, '');
   stack.push({ close });
-  return () => { history.back(); };
+  // Guarded against firing twice for the same layer: every overlay can
+  // reach requestClose() from more than one path (Escape, a scrim click,
+  // a Cancel/Save button), and history.back() resolves asynchronously via
+  // 'popstate' -- a second call before that resolves (a fast double-tap,
+  // or a click landing on a still-fading scrim right after Enter/Save
+  // already triggered one) issues a second history.back() against a stack
+  // that only ever had one entry pushed for this layer, over-navigating
+  // into whatever was underneath it (owner-reported, 2026-07-17: quick add
+  // "sometimes not working" after repeated fast use -- exactly this).
+  let requested = false;
+  return () => {
+    if (requested) return;
+    requested = true;
+    history.back();
+  };
 }
 
 // For an overlay that's being immediately replaced by another one opening
