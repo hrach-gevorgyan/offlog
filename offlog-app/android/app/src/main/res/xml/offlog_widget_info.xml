@@ -9,8 +9,8 @@
      screen's 2x2 grid cell is normally bigger than the bare declared
      minimum and hid the mismatch. Sized to comfortably fit the actual
      content instead of guessing. maxResizeWidth/maxResizeHeight dropped
-     entirely -- both are inert when resizeMode="none" (no resize handles
-     are ever shown), so they were dead config, not a real constraint. -->
+     entirely, since both are inert when resizeMode="none" (no resize
+     handles are ever shown) — dead config, not a real constraint. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="200dp"
     android:minHeight="160dp"
