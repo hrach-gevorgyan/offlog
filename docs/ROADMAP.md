@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.24.0**. Everything below is a candidate, not a
+Current version: **v4.25.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -440,6 +440,7 @@ what's still ahead or otherwise worth a pointer.
 | — | v4.19.0 → v4.22.2 | All shipped — see CHANGELOG.md for the per-release list. Track E (E1, E2) landed and is verified end-to-end; A32 was actually fixed pre-v4.18.0 (roadmap entry corrected 2026-07-15, was stale). |
 | — | v4.23.0 ✓ | Shipped — B39 (stable per-install device id, fixes stale entries after a rename), B50 (custom `TimePicker.svelte` replacing native time inputs), B48 (Android widget follows system light/dark, flatter — needs an owner Studio check to confirm visually). |
 | — | v4.24.0 ✓ | Shipped — C2 (zero-config first-run audit complete: fixed 2 real empty-state gaps in Dashboard/Kanban), C10 (plain-language pass on Restore/crash-recovery/pairing/sync copy — stays open by nature, not a one-time close-out). |
+| — | v4.25.0 ✓ | Shipped — first real desktop dogfooding round. A long list of real bugs found and fixed (startup console window, blank-window delay, reinstall data corruption, notification scheduling/click-routing/permission-reporting, backup's broken save flow), E3 (updater) scaffolded but blocked on C1, a full security audit (one real fix — pairing brute-force lockout), and ~64MB trimmed off the bundled CouchDB. See CHANGELOG.md for the full breakdown — too much for one line here. |
 | — | (unversioned) | The release gate, in dependency order: C7's remaining git-history piece → C1 (GitHub) → C5 (landing page) → C3 (Play Store), with C6 (branding pass) alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
 | — | (parked) | B28, B33 — rethinking positional-done and sub-projects; revisit post-release only if daily use demands it. |
 | — | (open, unscoped) | B35's remaining draft items (Focus add-task, Dashboard link, Daily Brief); C2/C10 full sweeps; A9/A31's Android-only remainders. |
