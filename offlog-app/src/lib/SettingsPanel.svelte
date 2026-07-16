@@ -191,10 +191,17 @@
   let pairingCode = '';
   let pairingBusy = false;
   let pairingError = '';
+  // Owner-reported, 2026-07-17: on success the modal just reset back to
+  // its initial "Find my computer" screen with no confirmation at all --
+  // read as "stuck," since nothing visibly acknowledged the pairing had
+  // actually worked. A distinct success state instead of silently
+  // reverting to the scan screen.
+  let pairSuccessName: string | null = null;
 
   function startDeviceScan() {
     selectedHost = null;
     pairingError = '';
+    pairSuccessName = null;
     scanForHosts();
   }
 
@@ -203,6 +210,7 @@
     pairingBusy = true;
     pairingError = '';
     try {
+      const pairedName = selectedHost.name;
       await pairWithHost(selectedHost, pairingCode);
       syncUrl = getSyncUrl();
       // Real bug found live: without this, the Advanced tab's form still
@@ -214,6 +222,7 @@
       ({ user: credentialUser, pass: credentialPass } = getSyncCredentials());
       selectedHost = null;
       pairingCode = '';
+      pairSuccessName = pairedName;
     } catch (e) {
       pairingError = e instanceof Error ? e.message : 'Failed to pair.';
     } finally {
@@ -223,16 +232,43 @@
 
   let pcPairingCode = '';
   let pcPairingBusy = false;
+  // Owner-reported, 2026-07-17: same "stuck, no confirmation" gap as the
+  // phone side above, but the PC has no direct signal that pairing
+  // finished -- the phone drives that handshake entirely. Polling
+  // getDeviceLastSeen() for a name that wasn't there when the code was
+  // generated is the only way this side can tell; 3s is frequent enough
+  // to feel live without hammering the local DB read.
+  let pcPairedDeviceName: string | null = null;
+  let pcPollTimer: ReturnType<typeof setInterval> | null = null;
+  function stopPcPairPoll() {
+    if (pcPollTimer) { clearInterval(pcPollTimer); pcPollTimer = null; }
+  }
+  async function startPcPairPoll() {
+    stopPcPairPoll();
+    const before = new Set((await getDeviceLastSeen()).map(d => d.device));
+    pcPollTimer = setInterval(async () => {
+      const now = await getDeviceLastSeen();
+      const found = now.find(d => !before.has(d.device));
+      if (found) { pcPairedDeviceName = found.device; stopPcPairPoll(); }
+    }, 3000);
+  }
   async function generatePcPairingCode() {
     pcPairingBusy = true;
+    pcPairedDeviceName = null;
     try {
       pcPairingCode = await invokeTauri<string>('generate_pairing_code');
+      startPcPairPoll();
     } catch {
       showError('Failed to generate a pairing code.');
     } finally {
       pcPairingBusy = false;
     }
   }
+  // Stop polling (and clear any stale success message on either side)
+  // once the modal closes, so it doesn't keep running in the background
+  // or show last time's result if it's reopened.
+  $: if (!showConnectModal) { stopPcPairPoll(); pcPairedDeviceName = null; pairSuccessName = null; }
+  onDestroy(stopPcPairPoll);
 
   // Dev-only: wipes this PC's CouchDB data and restarts, so testing "what
   // does a real first-run user see" on a freshly-reinstalled phone
@@ -947,7 +983,12 @@
       </div>
       <div class="mini-modal-body">
         {#if isAndroid}
-          {#if !selectedHost}
+          {#if pairSuccessName}
+            <p class="setting-hint success-hint">✓ Connected to "{pairSuccessName}" — syncing now.</p>
+            <div class="setting-row-end">
+              <button class="btn-primary" on:click={() => showConnectModal = false}>Done</button>
+            </div>
+          {:else if !selectedHost}
             <button class="export-btn" on:click={startDeviceScan} disabled={$isScanning}>
               {$isScanning ? 'Looking for your computer…' : 'Find my computer'}
             </button>
@@ -972,10 +1013,12 @@
             </div>
           {/if}
         {:else if isTauri}
-          {#if pcPairingCode}
+          {#if pcPairedDeviceName}
+            <p class="setting-hint success-hint">✓ Connected to "{pcPairedDeviceName}" — syncing now.</p>
+          {:else if pcPairingCode}
             <p class="setting-hint">Enter this code on your phone (Settings → Sync → Find my computer):</p>
             <p class="storage-info" style="font-size: 1.5rem; letter-spacing: 0.2em; text-align: center;">{pcPairingCode}</p>
-            <p class="setting-hint">Valid for 5 minutes, one-time use.</p>
+            <p class="setting-hint">Valid for 5 minutes, one-time use — this updates automatically once your phone connects.</p>
           {/if}
           <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
             {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
@@ -1213,6 +1256,10 @@
   .setting-hint-warn {
     color: var(--due-soon-ink); background: var(--due-soon-bg);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 500;
+  }
+  .success-hint {
+    color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent);
+    padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 600;
   }
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }

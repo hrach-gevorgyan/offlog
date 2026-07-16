@@ -57,6 +57,13 @@
             android:orientation="horizontal"
             android:layout_marginTop="10dp">
 
+            <!-- textColor/fillColor on this button and btn_dashboard's icon
+                 use colorWidgetText, not a hardcoded white — both sit on
+                 colorWidgetSurface, which is light in light mode, so a
+                 fixed white glyph was nearly invisible there (owner-
+                 reported, 2026-07-17). btn_focus's pill text above stays
+                 hardcoded white on purpose — it sits on colorWidgetAccent,
+                 which is dark/saturated in both themes. -->
             <FrameLayout
                 android:id="@+id/btn_quickadd"
                 android:layout_width="52dp"
@@ -69,7 +76,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:text="+"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/colorWidgetText"
                     android:textSize="21sp"
                     android:textStyle="bold" />
             </FrameLayout>

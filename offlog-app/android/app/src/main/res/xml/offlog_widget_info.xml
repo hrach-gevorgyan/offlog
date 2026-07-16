@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- minWidth/minHeight (owner-reported, 2026-07-17): the widget picker's
-     preview (previewLayout, API 31+) renders widget_offlog.xml AT these
-     declared dimensions, not at whatever size a real launcher grants —
-     they were 110x110dp while the actual wrap_content card (18dp padding
-     + the Focus pill + the 52dp button row + its 10dp gap, see
-     widget_offlog.xml's own comment) needs roughly 195x150dp, so the
-     preview clipped/overlapped ("damaged") even though a real home
-     screen's 2x2 grid cell is normally bigger than the bare declared
-     minimum and hid the mismatch. Sized to comfortably fit the actual
-     content instead of guessing. maxResizeWidth/maxResizeHeight dropped
-     entirely, since both are inert when resizeMode="none" (no resize
-     handles are ever shown) — dead config, not a real constraint. -->
+<!-- minWidth/minHeight reverted to the original 110x110dp / 2x2 cells
+     (owner-reported, 2026-07-17): the previous attempt to fix the widget
+     picker's clipped preview by growing these to 200x160dp/4x2 also grew
+     the REAL on-device widget footprint to 3x3 — the picker preview issue
+     is cosmetic (previewLayout, API 31+, rendering this RemoteViews layout
+     shrunk into a small thumbnail frame), the real 2x2 placement was
+     already correct and shouldn't have been changed to chase it. Left as
+     a known, accepted preview-thumbnail quirk rather than distorting the
+     real widget size again. maxResizeWidth/maxResizeHeight stay dropped —
+     both are inert when resizeMode="none" (no resize handles are ever
+     shown), so removing them was a real cleanup, unrelated to the size
+     revert above. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="200dp"
-    android:minHeight="160dp"
-    android:targetCellWidth="4"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_offlog"

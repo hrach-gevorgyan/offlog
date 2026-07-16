@@ -555,11 +555,15 @@ export async function wipeAndReseed(): Promise<void> {
 const SEEDED_KEY = 'offlog_seeded';
 
 export async function seedIfEmpty() {
-  // Once we know the database has been seeded, skip the getSpaces() read
-  // entirely on every future launch instead of re-querying it — this scan
-  // is small (4 docs) but it's on the startup critical path of every app
-  // open, forever, for a check that's only ever relevant once.
-  if (localStorage.getItem(SEEDED_KEY)) return;
+  // getSpaces() always runs -- the SEEDED_KEY flag used to skip it entirely
+  // once set, which is a real risk if the DB is ever legitimately empty
+  // again while the flag survives (a wipe that doesn't also clear
+  // localStorage, a corrupted/partial first run, etc.): a stale "already
+  // seeded" flag would then leave the app silently empty forever with no
+  // obvious way back short of manually creating a space (owner-reported,
+  // 2026-07-17, PC first launch). The scan itself is small (4 docs) and
+  // only relevant while genuinely empty, so paying for it unconditionally
+  // is cheap insurance, not a real cost.
   const existing = await getSpaces();
   if (existing.length > 0) { localStorage.setItem(SEEDED_KEY, '1'); return; }
 
