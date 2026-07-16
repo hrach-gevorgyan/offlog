@@ -18,20 +18,35 @@
   import { showError } from './store';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
-  import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, type ThemeMode } from './theme';
+  import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from './theme';
+  import { fade } from 'svelte/transition';
+  import { dialogPop, scrimFade } from './motion';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
 
-  type Category = 'appearance' | 'notifications' | 'sync' | 'organize' | 'data' | 'maintenance';
+  // Every tab follows one visual language: a plain-language intro line
+  // (optional), rows of .setting-row (a label + a toggle/value/button),
+  // and .link-row for anything that opens a modal. Anything genuinely
+  // multi-step (device pairing, conflict resolution, the maintenance
+  // run, import preview) opens as a small modal instead of living
+  // permanently in the tab -- keeps every tab's default view the same
+  // shape regardless of how much a feature actually needs underneath.
+  // Exactly one tab (Advanced) is allowed to be technical.
+  type Category = 'appearance' | 'notifications' | 'sync' | 'organize' | 'data' | 'advanced';
   const CATEGORIES: { key: Category; label: string; icon: string }[] = [
-    { key: 'appearance',    label: 'Appearance',    icon: '<circle cx="9" cy="9" r="4"/><path d="M9 1v2M9 15v2M17 9h-2M3 9H1M14.7 3.3l-1.4 1.4M4.7 13.3l-1.4 1.4M14.7 14.7l-1.4-1.4M4.7 4.7 3.3 3.3"/>' },
-    { key: 'notifications', label: 'Notifications', icon: '<path d="M9 2a4 4 0 0 0-4 4v3l-1.5 3h11L13 9V6a4 4 0 0 0-4-4z"/><path d="M7 15a2 2 0 0 0 4 0"/>' },
-    { key: 'sync',          label: 'Sync',           icon: '<path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>' },
-    { key: 'organize',      label: 'Organize',       icon: '<rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/>' },
-    { key: 'data',          label: 'Data',           icon: '<path d="M2 4c0-1.1 3.1-2 7-2s7 .9 7 2-3.1 2-7 2-7-.9-7-2z"/><path d="M2 4v10c0 1.1 3.1 2 7 2s7-.9 7-2V4"/><path d="M2 9c0 1.1 3.1 2 7 2s7-.9 7-2"/>' },
-    { key: 'maintenance',   label: 'Maintenance',    icon: '<path d="M11.5 2.5a3 3 0 0 1 4 4l-8 8-4.5 1 1-4.5 7.5-7.5z"/>' },
+    { key: 'appearance',    label: 'View & Accessibility', icon: '<circle cx="9" cy="9" r="4"/><path d="M9 1v2M9 15v2M17 9h-2M3 9H1M14.7 3.3l-1.4 1.4M4.7 13.3l-1.4 1.4M14.7 14.7l-1.4-1.4M4.7 4.7 3.3 3.3"/>' },
+    { key: 'notifications', label: 'Notifications',        icon: '<path d="M9 2a4 4 0 0 0-4 4v3l-1.5 3h11L13 9V6a4 4 0 0 0-4-4z"/><path d="M7 15a2 2 0 0 0 4 0"/>' },
+    { key: 'sync',          label: 'Sync',                 icon: '<path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>' },
+    { key: 'organize',      label: 'Organize',             icon: '<rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/>' },
+    { key: 'data',          label: 'Backup & Storage',     icon: '<path d="M2 4c0-1.1 3.1-2 7-2s7 .9 7 2-3.1 2-7 2-7-.9-7-2z"/><path d="M2 4v10c0 1.1 3.1 2 7 2s7-.9 7-2V4"/><path d="M2 9c0 1.1 3.1 2 7 2s7-.9 7-2"/>' },
+    { key: 'advanced',      label: 'Advanced',             icon: '<path d="M2 5h6M11 5h5M2 13h9M14 13h2"/><circle cx="9" cy="5" r="2"/><circle cx="12" cy="13" r="2"/>' },
   ];
+
+  // Multi-step flows open as a modal instead of living inline in a tab.
+  let showConnectModal = false;
+  let showConflictsModal = false;
+  let showMaintenanceModal = false;
 
   // Mobile (narrow viewport): show the category list first, then a
   // full-width detail view on selection, with an on-screen Back button —
@@ -71,6 +86,10 @@
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
+    if (showConnectModal) { showConnectModal = false; return; }
+    if (showConflictsModal) { showConflictsModal = false; return; }
+    if (showMaintenanceModal) { showMaintenanceModal = false; return; }
+    if (pendingImportDocs) { cancelImport(); return; }
     if (isNarrow && activeCategory) backToList();
     else requestClose();
   }
@@ -89,6 +108,16 @@
   function toggleHighContrast() {
     highContrast = !highContrast;
     setHighContrast(highContrast);
+  }
+
+  // Manual override on top of OS-level prefers-reduced-motion (see
+  // theme.ts's prefersReducedMotion(), read live by motion.ts) — for
+  // anyone who finds motion distracting but hasn't touched that system
+  // setting. Takes effect on the next transition trigger, no reload needed.
+  let reduceMotion = getReduceMotion();
+  function toggleReduceMotion() {
+    reduceMotion = !reduceMotion;
+    setReduceMotion(reduceMotion);
   }
 
   // ── Notifications ───────────────────────────────────────────────────────
@@ -119,13 +148,6 @@
   let { user: credentialUser, pass: credentialPass } = getSyncCredentials();
   let deviceName = getDeviceName();
   let syncEnabled = isSyncEnabled();
-  // B43: the CouchDB URL field and anything else with a footgun moved into
-  // a collapsed-by-default "Developer options" section — the main pane
-  // should read as "connect to your home computer," not "configure a
-  // database connection." Auto-opens if a URL is already set (someone
-  // editing an existing connection shouldn't have to hunt for it), stays
-  // closed on a fresh/never-configured install.
-  let showDevOptions = !!syncUrl;
 
   // Plain-language connection status for the main pane — everything below
   // already exists as syncState.status/lastSynced/error, just not
@@ -137,12 +159,12 @@
   // (isAndroid's "Find my computer" section, above this in the template)
   // shipped. Android gets pointed at that instead; anyone else (plain
   // desktop web, no PC-app pairing available there) keeps the old
-  // wording, since Developer options really is the only path for them.
+  // wording, since the Advanced tab really is the only path for them.
   $: connectionStatus =
     !syncEnabled ? { text: 'Sync is paused.', tone: 'muted' } :
     !syncUrl ? (isAndroid
       ? { text: 'Not connected to another device yet — tap "Find my computer" below to connect.', tone: 'muted' }
-      : { text: 'Not connected to another device yet — open Developer options below to connect one.', tone: 'muted' }) :
+      : { text: 'Not connected to another device yet — open the Advanced tab to connect one.', tone: 'muted' }) :
     syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'muted' } :
     syncStatus === 'offline' ? { text: 'Offline — will resume automatically when back on your network.', tone: 'muted' } :
     syncStatus === 'error' ? { text: syncError || 'Sync error.', tone: 'warn' } :
@@ -183,14 +205,13 @@
     try {
       await pairWithHost(selectedHost, pairingCode);
       syncUrl = getSyncUrl();
-      // Real bug found live: without this, the Developer options form
-      // still held whatever stale username/password it was mounted
-      // with -- invisible for the URL (which did refresh) but silent
-      // for the masked password field, so tapping "Save & restart
-      // sync" afterward would overwrite the just-paired credentials
-      // right back to the old ones.
+      // Real bug found live: without this, the Advanced tab's form still
+      // held whatever stale username/password it was mounted with --
+      // invisible for the URL (which did refresh) but silent for the
+      // masked password field, so tapping "Save & restart sync"
+      // afterward would overwrite the just-paired credentials right
+      // back to the old ones.
       ({ user: credentialUser, pass: credentialPass } = getSyncCredentials());
-      showDevOptions = true;
       selectedHost = null;
       pairingCode = '';
     } catch (e) {
@@ -480,9 +501,10 @@
     }
   }
 
-  // ── Maintenance (B15 — folded into this detail pane, no longer its own
-  // modal-on-top-of-a-modal; step list/progress bar/Run button render
-  // directly under the Maintenance category like every other category) ──
+  // ── Maintenance (owner request 2026-07-16: folded into Advanced as a
+  // "Run maintenance" modal, rather than its own always-visible tab —
+  // the step list/progress bar is the one genuinely multi-step flow in
+  // this file, so it's the clearest case for the modal pattern) ──
   type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
   interface MaintStep { key: string; label: string; status: MaintStatus; note: string }
   let maintRunning = false;
@@ -616,156 +638,140 @@
 
           <div class="detail-content">
             {#if activeCategory === 'appearance'}
-              <div class="setting-row">
-                <div class="setting-label">Theme</div>
-                <div class="theme-segment" role="radiogroup" aria-label="Theme">
-                  {#each (['light', 'dark', 'system'] as ThemeMode[]) as mode}
+              <div class="setting-group">
+                <div class="setting-section-title">Display</div>
+                <div class="setting-row">
+                  <div class="setting-label">Theme</div>
+                  <div class="theme-segment" role="radiogroup" aria-label="Theme">
+                    {#each (['light', 'dark', 'system'] as ThemeMode[]) as mode}
+                      <button
+                        class="theme-seg-btn"
+                        class:active={themeMode === mode}
+                        role="radio"
+                        aria-checked={themeMode === mode}
+                        on:click={() => selectThemeMode(mode)}
+                      >
+                        {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'System'}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+                <p class="setting-hint">"System" follows your device's light/dark setting automatically.</p>
+
+                <div class="setting-row">
+                  <div class="setting-label">Week starts on</div>
+                  <div class="theme-segment" role="radiogroup" aria-label="Week starts on">
                     <button
                       class="theme-seg-btn"
-                      class:active={themeMode === mode}
+                      class:active={!weekStartsMonday}
                       role="radio"
-                      aria-checked={themeMode === mode}
-                      on:click={() => selectThemeMode(mode)}
-                    >
-                      {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'System'}
-                    </button>
-                  {/each}
+                      aria-checked={!weekStartsMonday}
+                      on:click={() => setWeekStart(false)}
+                    >Sunday</button>
+                    <button
+                      class="theme-seg-btn"
+                      class:active={weekStartsMonday}
+                      role="radio"
+                      aria-checked={weekStartsMonday}
+                      on:click={() => setWeekStart(true)}
+                    >Monday</button>
+                  </div>
                 </div>
+                <p class="setting-hint">Controls Agenda's week view and "this week" grouping.</p>
               </div>
-              <p class="setting-hint">"System" follows your device's light/dark setting automatically.</p>
 
-              <div class="setting-row">
-                <div class="setting-label">High contrast</div>
-                <button class="toggle-btn" class:on={highContrast} on:click={toggleHighContrast} aria-label="Toggle high contrast" role="switch" aria-checked={highContrast}>
-                  <span class="toggle-knob"></span>
-                </button>
-              </div>
-              <p class="setting-hint">Raises border and text contrast throughout, on top of Light or Dark.</p>
-
-              <div class="setting-row">
-                <div class="setting-label">Week starts on</div>
-                <div class="theme-segment" role="radiogroup" aria-label="Week starts on">
-                  <button
-                    class="theme-seg-btn"
-                    class:active={!weekStartsMonday}
-                    role="radio"
-                    aria-checked={!weekStartsMonday}
-                    on:click={() => setWeekStart(false)}
-                  >Sunday</button>
-                  <button
-                    class="theme-seg-btn"
-                    class:active={weekStartsMonday}
-                    role="radio"
-                    aria-checked={weekStartsMonday}
-                    on:click={() => setWeekStart(true)}
-                  >Monday</button>
+              <div class="setting-group">
+                <div class="setting-section-title">Accessibility</div>
+                <div class="setting-row">
+                  <div class="setting-label">High contrast</div>
+                  <button class="toggle-btn" class:on={highContrast} on:click={toggleHighContrast} aria-label="Toggle high contrast" role="switch" aria-checked={highContrast}>
+                    <span class="toggle-knob"></span>
+                  </button>
                 </div>
+                <p class="setting-hint">Raises border and text contrast throughout, on top of Light or Dark.</p>
+
+                <div class="setting-row">
+                  <div class="setting-label">Reduce motion</div>
+                  <button class="toggle-btn" class:on={reduceMotion} on:click={toggleReduceMotion} aria-label="Toggle reduce motion" role="switch" aria-checked={reduceMotion}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                <p class="setting-hint">Turns off panel/dialog slide and fade animations throughout the app.</p>
               </div>
-              <p class="setting-hint">Controls Agenda's week view and "this week" grouping.</p>
 
             {:else if activeCategory === 'notifications'}
-              <div class="setting-row">
-                <span class="setting-label">
-                  {#if $permissionState === 'granted'}Enabled — task reminders will notify you
-                  {:else if $permissionState === 'denied'}Blocked — {isTauri ? 'allow notifications for Offlog in Windows Settings → Notifications' : 'allow notifications for this site in your browser settings'}
-                  {:else if $permissionState === 'unsupported'}Not supported in this browser
-                  {:else}Not enabled yet{/if}
-                </span>
-                {#if $permissionState !== 'granted' && $permissionState !== 'unsupported'}
-                  <button class="export-btn" on:click={() => requestPermission()}>Enable</button>
-                {/if}
-              </div>
-              {#if isAndroid}
+              <div class="setting-group">
+                <div class="setting-section-title">Permission</div>
                 <div class="setting-row">
                   <span class="setting-label">
-                    {#if $exactAlarmState === 'granted'}Precise timing enabled — reminders fire exactly on time
-                    {:else if $exactAlarmState === 'denied'}Not enabled — reminders may arrive a few minutes late
-                    {:else}Checking…{/if}
+                    {#if $permissionState === 'granted'}Enabled — task reminders will notify you
+                    {:else if $permissionState === 'denied'}Blocked — {isTauri ? 'allow notifications for Offlog in Windows Settings → Notifications' : 'allow notifications for this site in your browser settings'}
+                    {:else if $permissionState === 'unsupported'}Not supported in this browser
+                    {:else}Not enabled yet{/if}
                   </span>
-                  {#if $exactAlarmState === 'denied'}
-                    <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Enable</button>
+                  {#if $permissionState !== 'granted' && $permissionState !== 'unsupported'}
+                    <button class="export-btn" on:click={() => requestPermission()}>Enable</button>
                   {/if}
                 </div>
-                <p class="setting-hint">
-                  This is a separate Android permission from notifications themselves ("Alarms & reminders", since Android 12) — it's a system settings toggle with no in-app prompt, so it's easy to miss. Without it, reminders still arrive, just batched into the OS's next low-power wakeup window instead of at the exact minute you set.
-                </p>
-              {/if}
+                {#if isAndroid}
+                  <div class="setting-row">
+                    <span class="setting-label">
+                      {#if $exactAlarmState === 'granted'}Precise timing enabled — reminders fire exactly on time
+                      {:else if $exactAlarmState === 'denied'}Not enabled — reminders may arrive a few minutes late
+                      {:else}Checking…{/if}
+                    </span>
+                    {#if $exactAlarmState === 'denied'}
+                      <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Enable</button>
+                    {/if}
+                  </div>
+                  <p class="setting-hint">
+                    This is a separate Android permission from notifications themselves ("Alarms & reminders", since Android 12) — it's a system settings toggle with no in-app prompt, so it's easy to miss. Without it, reminders still arrive, just batched into the OS's next low-power wakeup window instead of at the exact minute you set.
+                  </p>
+                {/if}
+              </div>
 
-              <label class="field-label">
-                Default "remind me on the due date" time
-                <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
-              </label>
-              <p class="setting-hint">Used whenever a task's "Remind me on the due date" checkbox is on, instead of picking the exact time yourself.</p>
+              <div class="setting-group">
+                <div class="setting-section-title">Reminder timing</div>
+                <label class="field-label">
+                  Default "remind me on the due date" time
+                  <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
+                </label>
+                <p class="setting-hint">Used whenever a task's "Remind me on the due date" checkbox is on, instead of picking the exact time yourself.</p>
+              </div>
 
             {:else if activeCategory === 'sync'}
-              <div class="setting-row">
-                <span class="setting-label">{syncEnabled ? 'Sync enabled' : 'Sync paused'}</span>
-                <button class="toggle-btn" class:on={syncEnabled} on:click={toggleSyncEnabled} aria-label="Toggle sync" role="switch" aria-checked={syncEnabled}>
-                  <span class="toggle-knob"></span>
-                </button>
+              <div class="setting-group">
+                <div class="setting-section-title">Status</div>
+                <div class="setting-row">
+                  <span class="setting-label">{syncEnabled ? 'Sync enabled' : 'Sync paused'}</span>
+                  <button class="toggle-btn" class:on={syncEnabled} on:click={toggleSyncEnabled} aria-label="Toggle sync" role="switch" aria-checked={syncEnabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
               </div>
-              <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
 
-              {#if isAndroid}
-                <div class="setting-group">
-                  <div class="setting-section-title">Connect to your computer</div>
-                  {#if !selectedHost}
-                    <button class="export-btn" on:click={startDeviceScan} disabled={$isScanning}>
-                      {$isScanning ? 'Looking for your computer…' : 'Find my computer'}
-                    </button>
-                    {#each $discoveredHosts as host (host.uuid)}
-                      <div class="setting-row">
-                        <span class="storage-info">Found "{host.name}"</span>
-                        <button class="export-btn" on:click={() => { selectedHost = host; stopScan(); }}>Connect</button>
-                      </div>
-                    {/each}
-                  {:else}
-                    <p class="setting-hint">Enter the code shown on the "{selectedHost.name}" screen.</p>
-                    <label class="field-label">
-                      Pairing code
-                      <input bind:value={pairingCode} placeholder="123456" inputmode="numeric" maxlength="6" disabled={pairingBusy} />
-                    </label>
-                    {#if pairingError}<p class="setting-hint setting-hint-warn">{pairingError}</p>{/if}
-                    <div class="setting-row">
-                      <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; }} disabled={pairingBusy}>Cancel</button>
-                      <button class="export-btn" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
-                        {pairingBusy ? 'Connecting…' : 'Connect'}
-                      </button>
-                    </div>
-                  {/if}
-                </div>
-              {/if}
-
-              {#if isTauri}
-                <div class="setting-group">
-                  <div class="setting-section-title">Pair a device</div>
-                  {#if pcPairingCode}
-                    <p class="setting-hint">Enter this code on your phone (Settings → Sync → Find my computer):</p>
-                    <p class="storage-info" style="font-size: 1.5rem; letter-spacing: 0.2em; text-align: center;">{pcPairingCode}</p>
-                    <p class="setting-hint">Valid for 5 minutes, one-time use.</p>
-                  {/if}
-                  <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
-                    {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
+              <div class="setting-group">
+                <div class="setting-section-title">Connect a device</div>
+                {#if isAndroid || isTauri}
+                  <button class="link-row link-row-compact" on:click={() => showConnectModal = true}>
+                    <span class="link-row-title">Connect a device</span>
+                    <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
                   </button>
-                </div>
-              {/if}
+                {:else}
+                  <p class="setting-hint">Happens from the Android app (Settings → Sync → "Find my computer") or the PC app (Settings → Sync → "Generate a code") — not from a plain web browser.</p>
+                {/if}
+              </div>
 
-              {#if isTauriDebug}
-                <div class="setting-group">
-                  <div class="setting-section-title">Developer (debug build only)</div>
-                  <p class="setting-hint">Wipes every task/project on this PC and restarts — for testing what a real first-run install looks like, never shown in a release build.</p>
-                  <button class="export-btn" on:click={resetPcTestData} disabled={resetBusy}>
-                    {resetBusy ? 'Resetting…' : 'Reset test data'}
-                  </button>
-                </div>
-              {/if}
-
-              <label class="field-label">
-                This device's name
-                <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
-                  on:keydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
-              </label>
-              <p class="setting-hint">Shown on this device's own edits from now on — changelog entries, task history, and the list below.</p>
+              <div class="setting-group">
+                <div class="setting-section-title">This device</div>
+                <label class="field-label">
+                  Name
+                  <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
+                    on:keydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
+                </label>
+                <p class="setting-hint">Shown on this device's own edits from now on — changelog entries, task history, and the list below.</p>
+              </div>
 
               {#if deviceLastSeen.length}
                 <div class="setting-group">
@@ -782,59 +788,12 @@
               {#if conflictCount > 0 || conflictList.length > 0}
                 <div class="setting-group">
                   <div class="setting-section-title">Conflicts</div>
-                  <div class="setting-row">
-                    <span class="storage-info" style="color: var(--muted)">
-                      {#if loadingConflicts}Loading…
-                      {:else if conflictList.length}{conflictList.length} document{conflictList.length === 1 ? '' : 's'} with unresolved edits
-                      {:else}{conflictCount} conflict{conflictCount === 1 ? '' : 's'} detected{/if}
-                    </span>
-                    <button class="export-btn" on:click={loadConflicts} disabled={loadingConflicts}>Refresh</button>
-                  </div>
-                  {#each conflictList as c (c.docId)}
-                    <div class="conflict-item">
-                      <div class="conflict-item-title">{c.label} <span class="conflict-item-type">({c.type})</span></div>
-                      <div class="conflict-item-row">
-                        <span class="conflict-item-meta">Current — updated {fmtLastSynced(c.current.updated_at ?? c.current.created_at ?? '')}</span>
-                        <button class="export-btn" on:click={() => resolve(c, 'current')}>Keep this</button>
-                      </div>
-                      <div class="conflict-item-row">
-                        <span class="conflict-item-meta">Other — updated {fmtLastSynced(c.other.doc.updated_at ?? c.other.doc.created_at ?? '')}</span>
-                        <button class="export-btn" on:click={() => resolve(c, 'other')}>Keep this</button>
-                      </div>
-                    </div>
-                  {/each}
+                  <button class="link-row link-row-compact" on:click={() => showConflictsModal = true}>
+                    <span class="link-row-title">Resolve conflicts</span>
+                    <span class="nav-badge">{conflictList.length || conflictCount}</span>
+                  </button>
                 </div>
               {/if}
-
-              <div class="section-divider"></div>
-
-              <div class="collapsible-section">
-                <button type="button" class="section-toggle" on:click={() => showDevOptions = !showDevOptions}>
-                  <svg class="section-chevron" class:open={showDevOptions} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-                  <span class="field-label">Developer options</span>
-                </button>
-                {#if showDevOptions}
-                  <p class="setting-hint">
-                    For connecting directly to a self-hosted CouchDB server — most people never need
-                    to touch this.
-                  </p>
-                  <label class="field-label">
-                    CouchDB URL
-                    <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" disabled={!syncEnabled} />
-                  </label>
-                  <label class="field-label">
-                    Username
-                    <input bind:value={credentialUser} placeholder="offlog" disabled={!syncEnabled} />
-                  </label>
-                  <label class="field-label">
-                    Password
-                    <input type="password" bind:value={credentialPass} disabled={!syncEnabled} />
-                  </label>
-                  {#if syncError && lastErrorAt}
-                    <p class="setting-hint">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
-                  {/if}
-                {/if}
-              </div>
 
             {:else if activeCategory === 'organize'}
               <div class="setting-group">
@@ -858,37 +817,38 @@
               </div>
 
             {:else if activeCategory === 'data'}
-              <!-- B44: plain-language headline first, raw MB/quota numbers
-                   demoted to a small secondary line — "quota" is browser
-                   jargon nobody asked to learn, and at personal-task-list
-                   scale there's essentially never anything to act on. -->
-              <div class="storage-summary">
-                {#if !storageAvailable}
-                  <span class="storage-headline">Storage info not available in this browser</span>
-                {:else if storagePercent >= STORAGE_WARN_THRESHOLD}
-                  <span class="storage-headline storage-headline-warn">Storage is getting full ({(storagePercent * 100).toFixed(0)}%)</span>
-                  <span class="storage-detail">{storageInfo}</span>
-                {:else}
-                  <span class="storage-headline">Your data is tiny — nothing to worry about</span>
-                  <span class="storage-detail">{storageInfo || 'Calculating…'}</span>
+              <div class="setting-group">
+                <div class="setting-section-title">Storage</div>
+                <!-- B44: plain-language headline first, raw MB/quota numbers
+                     demoted to a small secondary line — "quota" is browser
+                     jargon nobody asked to learn, and at personal-task-list
+                     scale there's essentially never anything to act on. -->
+                <div class="storage-summary">
+                  {#if !storageAvailable}
+                    <span class="storage-headline">Storage info not available in this browser</span>
+                  {:else if storagePercent >= STORAGE_WARN_THRESHOLD}
+                    <span class="storage-headline storage-headline-warn">Storage is getting full ({(storagePercent * 100).toFixed(0)}%)</span>
+                    <span class="storage-detail">{storageInfo}</span>
+                  {:else}
+                    <span class="storage-headline">Your data is tiny — nothing to worry about</span>
+                    <span class="storage-detail">{storageInfo || 'Calculating…'}</span>
+                  {/if}
+                </div>
+                {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
+                  <p class="setting-hint setting-hint-warn">
+                    Try the maintenance tools in Advanced (prune old history, empty Recycle), or free up
+                    space on this device — once storage is truly full, new changes would stop saving.
+                  </p>
+                {/if}
+                {#if breakdown}
+                  <p class="setting-hint">
+                    {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
+                    {breakdown.archivedTasks} archived ·
+                    {breakdown.deletedTasks} in Recycle ·
+                    {breakdown.logEntries} history entries
+                  </p>
                 {/if}
               </div>
-              {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
-                <p class="setting-hint setting-hint-warn">
-                  Try Maintenance's cleanup tools below (prune old history, empty Recycle), or free up
-                  space on this device — once storage is truly full, new changes would stop saving.
-                </p>
-              {/if}
-              {#if breakdown}
-                <p class="setting-hint">
-                  {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
-                  {breakdown.archivedTasks} archived ·
-                  {breakdown.deletedTasks} in Recycle ·
-                  {breakdown.logEntries} history entries
-                </p>
-              {/if}
-
-              <div class="section-divider"></div>
 
               <div class="setting-group">
                 <div class="setting-section-title">Back up</div>
@@ -905,71 +865,22 @@
                 </div>
               </div>
 
-              <div class="section-divider"></div>
-
               <div class="setting-group">
                 <div class="setting-section-title">Restore</div>
-                {#if importPreview}
-                  <div class="import-preview">
-                    <p class="setting-hint">
-                      Will create <strong>{importPreview.byType.space}</strong> space{importPreview.byType.space === 1 ? '' : 's'},
-                      <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
-                      <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
-                      {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
-                      Anything matching something you already have will be updated in place, not duplicated.
-                    </p>
-                    <div class="setting-row">
-                      <button class="export-btn" on:click={cancelImport}>Cancel</button>
-                      <button class="export-btn import-confirm-btn" on:click={confirmImport}>Import {importPreview.toCreate} item{importPreview.toCreate === 1 ? '' : 's'}</button>
-                    </div>
-                  </div>
-                {:else}
                 <div class="setting-row">
                   <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
                   <button class="export-btn" on:click={handleImport}>Choose backup file</button>
                 </div>
-                {/if}
               </div>
 
-            {:else if activeCategory === 'maintenance'}
-              <p class="setting-hint">
-                Runs a full check in order: looks for problems with your data, repairs what it safely can,
-                clears old activity history (6+ months) and old Recycle items (3+ months), then frees up
-                the space they were using.
-              </p>
-
-              <div class="progress-track"><div class="progress-fill" style="width:{maintProgress}%"></div></div>
-
-              <div class="maint-steps">
-                {#each maintSteps as step (step.key)}
-                  <div class="maint-step" class:running={step.status === 'running'}>
-                    <span class="maint-step-icon" class:done={step.status === 'done'} class:skipped={step.status === 'skipped'} class:error={step.status === 'error'} class:running={step.status === 'running'}>
-                      {#if step.status === 'done'}✓
-                      {:else if step.status === 'skipped'}–
-                      {:else if step.status === 'error'}✕
-                      {:else if step.status === 'running'}<span class="spinner"></span>
-                      {/if}
-                    </span>
-                    <span class="maint-step-label">{step.label}</span>
-                    {#if step.note}<span class="maint-step-note">{step.note}</span>{/if}
-                  </div>
-                {/each}
-              </div>
-
-              {#if maintRemainingIssues.length > 0}
-                <div class="integrity-list">
-                  {#each maintRemainingIssues.slice(0, 8) as issue}
-                    <div class="integrity-row">{issue.description}</div>
-                  {/each}
-                </div>
-                <p class="setting-hint">These need manual review — not safe to fix automatically.</p>
-              {/if}
-
-              <div class="setting-row">
-                <span></span>
-                <button class="export-btn" on:click={runMaintenance} disabled={maintRunning}>
-                  {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
+            {:else if activeCategory === 'advanced'}
+              <div class="setting-group">
+                <div class="setting-section-title">Maintenance</div>
+                <button class="link-row link-row-compact" on:click={() => showMaintenanceModal = true}>
+                  <span class="link-row-title">Run maintenance</span>
+                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
                 </button>
+                <p class="setting-hint">Checks your data for problems, repairs what it safely can, and clears old history.</p>
               </div>
 
               {#if isTauri}
@@ -983,6 +894,36 @@
                   </div>
                 </div>
               {/if}
+
+              <div class="setting-group">
+                <div class="setting-section-title">Self-hosted CouchDB connection</div>
+                <p class="setting-hint">Most people never need to touch this — it's for connecting directly to a self-hosted CouchDB server instead of pairing through the Sync tab.</p>
+                <label class="field-label">
+                  CouchDB URL
+                  <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" disabled={!syncEnabled} />
+                </label>
+                <label class="field-label">
+                  Username
+                  <input bind:value={credentialUser} placeholder="offlog" disabled={!syncEnabled} />
+                </label>
+                <label class="field-label">
+                  Password
+                  <input type="password" bind:value={credentialPass} disabled={!syncEnabled} />
+                </label>
+                {#if syncError && lastErrorAt}
+                  <p class="setting-hint setting-hint-warn">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
+                {/if}
+              </div>
+
+              {#if isTauriDebug}
+                <div class="setting-group">
+                  <div class="setting-section-title">Debug build only</div>
+                  <p class="setting-hint">Wipes every task/project on this PC and restarts — for testing what a real first-run install looks like, never shown in a release build.</p>
+                  <button class="export-btn" on:click={resetPcTestData} disabled={resetBusy}>
+                    {resetBusy ? 'Resetting…' : 'Reset test data'}
+                  </button>
+                </div>
+              {/if}
             {/if}
           </div>
         {/if}
@@ -991,10 +932,170 @@
 
     <div class="settings-actions">
       <button on:click={() => requestClose()}>Cancel</button>
-      <button class="save-btn" on:click={saveSettings}>{activeCategory === 'sync' ? 'Save & restart sync' : 'Save'}</button>
+      <button class="save-btn" on:click={saveSettings}>{activeCategory === 'sync' || activeCategory === 'advanced' ? 'Save & restart sync' : 'Save'}</button>
     </div>
   </div>
 </div>
+
+{#if showConnectModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="mini-modal-scrim" on:click|self={() => showConnectModal = false} transition:fade={scrimFade}>
+    <div class="mini-modal" transition:dialogPop>
+      <div class="mini-modal-head">
+        <span class="mini-modal-title">Connect a device</span>
+        <button class="mini-modal-close" on:click={() => showConnectModal = false} aria-label="Close">✕</button>
+      </div>
+      <div class="mini-modal-body">
+        {#if isAndroid}
+          {#if !selectedHost}
+            <button class="export-btn" on:click={startDeviceScan} disabled={$isScanning}>
+              {$isScanning ? 'Looking for your computer…' : 'Find my computer'}
+            </button>
+            {#each $discoveredHosts as host (host.uuid)}
+              <div class="setting-row">
+                <span class="storage-info">Found "{host.name}"</span>
+                <button class="export-btn" on:click={() => { selectedHost = host; stopScan(); }}>Connect</button>
+              </div>
+            {/each}
+          {:else}
+            <p class="setting-hint">Enter the code shown on the "{selectedHost.name}" screen.</p>
+            <label class="field-label">
+              Pairing code
+              <input bind:value={pairingCode} placeholder="123456" inputmode="numeric" maxlength="6" disabled={pairingBusy} />
+            </label>
+            {#if pairingError}<p class="setting-hint setting-hint-warn">{pairingError}</p>{/if}
+            <div class="setting-row-end">
+              <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; }} disabled={pairingBusy}>Cancel</button>
+              <button class="btn-primary" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
+                {pairingBusy ? 'Connecting…' : 'Connect'}
+              </button>
+            </div>
+          {/if}
+        {:else if isTauri}
+          {#if pcPairingCode}
+            <p class="setting-hint">Enter this code on your phone (Settings → Sync → Find my computer):</p>
+            <p class="storage-info" style="font-size: 1.5rem; letter-spacing: 0.2em; text-align: center;">{pcPairingCode}</p>
+            <p class="setting-hint">Valid for 5 minutes, one-time use.</p>
+          {/if}
+          <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
+            {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
+          </button>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showConflictsModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="mini-modal-scrim" on:click|self={() => showConflictsModal = false} transition:fade={scrimFade}>
+    <div class="mini-modal" transition:dialogPop>
+      <div class="mini-modal-head">
+        <span class="mini-modal-title">Resolve conflicts</span>
+        <button class="mini-modal-close" on:click={() => showConflictsModal = false} aria-label="Close">✕</button>
+      </div>
+      <div class="mini-modal-body">
+        <div class="setting-row">
+          <span class="storage-info" style="color: var(--muted)">
+            {#if loadingConflicts}Loading…
+            {:else if conflictList.length}{conflictList.length} document{conflictList.length === 1 ? '' : 's'} with unresolved edits
+            {:else}{conflictCount} conflict{conflictCount === 1 ? '' : 's'} detected{/if}
+          </span>
+          <button class="export-btn" on:click={loadConflicts} disabled={loadingConflicts}>Refresh</button>
+        </div>
+        {#each conflictList as c (c.docId)}
+          <div class="conflict-item">
+            <div class="conflict-item-title">{c.label} <span class="conflict-item-type">({c.type})</span></div>
+            <div class="conflict-item-row">
+              <span class="conflict-item-meta">Current — updated {fmtLastSynced(c.current.updated_at ?? c.current.created_at ?? '')}</span>
+              <button class="export-btn" on:click={() => resolve(c, 'current')}>Keep this</button>
+            </div>
+            <div class="conflict-item-row">
+              <span class="conflict-item-meta">Other — updated {fmtLastSynced(c.other.doc.updated_at ?? c.other.doc.created_at ?? '')}</span>
+              <button class="export-btn" on:click={() => resolve(c, 'other')}>Keep this</button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showMaintenanceModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="mini-modal-scrim" on:click|self={() => showMaintenanceModal = false} transition:fade={scrimFade}>
+    <div class="mini-modal" transition:dialogPop>
+      <div class="mini-modal-head">
+        <span class="mini-modal-title">Maintenance</span>
+        <button class="mini-modal-close" on:click={() => showMaintenanceModal = false} aria-label="Close">✕</button>
+      </div>
+      <div class="mini-modal-body">
+        <p class="setting-hint">
+          Runs a full check in order: looks for problems with your data, repairs what it safely can,
+          clears old activity history (6+ months) and old Recycle items (3+ months), then frees up
+          the space they were using.
+        </p>
+
+        <div class="progress-track"><div class="progress-fill" style="width:{maintProgress}%"></div></div>
+
+        <div class="maint-steps">
+          {#each maintSteps as step (step.key)}
+            <div class="maint-step" class:running={step.status === 'running'}>
+              <span class="maint-step-icon" class:done={step.status === 'done'} class:skipped={step.status === 'skipped'} class:error={step.status === 'error'} class:running={step.status === 'running'}>
+                {#if step.status === 'done'}✓
+                {:else if step.status === 'skipped'}–
+                {:else if step.status === 'error'}✕
+                {:else if step.status === 'running'}<span class="spinner"></span>
+                {/if}
+              </span>
+              <span class="maint-step-label">{step.label}</span>
+              {#if step.note}<span class="maint-step-note">{step.note}</span>{/if}
+            </div>
+          {/each}
+        </div>
+
+        {#if maintRemainingIssues.length > 0}
+          <div class="integrity-list">
+            {#each maintRemainingIssues.slice(0, 8) as issue}
+              <div class="integrity-row">{issue.description}</div>
+            {/each}
+          </div>
+          <p class="setting-hint">These need manual review — not safe to fix automatically.</p>
+        {/if}
+      </div>
+      <div class="mini-modal-actions">
+        <button class="btn-primary" on:click={runMaintenance} disabled={maintRunning}>
+          {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if importPreview}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="mini-modal-scrim" on:click|self={cancelImport} transition:fade={scrimFade}>
+    <div class="mini-modal" transition:dialogPop>
+      <div class="mini-modal-head">
+        <span class="mini-modal-title">Restore from backup</span>
+        <button class="mini-modal-close" on:click={cancelImport} aria-label="Close">✕</button>
+      </div>
+      <div class="mini-modal-body">
+        <p class="setting-hint">
+          Will create <strong>{importPreview.byType.space}</strong> space{importPreview.byType.space === 1 ? '' : 's'},
+          <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
+          <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
+          {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
+          Anything matching something you already have will be updated in place, not duplicated.
+        </p>
+      </div>
+      <div class="mini-modal-actions">
+        <button class="export-btn" on:click={cancelImport}>Cancel</button>
+        <button class="btn-primary" on:click={confirmImport}>Import {importPreview.toCreate} item{importPreview.toCreate === 1 ? '' : 's'}</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if showSpaceManager && SpaceManagerComp}
   <svelte:component this={SpaceManagerComp} on:close={() => showSpaceManager = false} />
@@ -1024,6 +1125,11 @@
     width: min(640px, 92vw);
     display: flex; flex-direction: column;
     box-shadow: 0 20px 50px rgba(0,0,0,.18);
+    /* Height fits content (not fixed) -- a short tab like Organize or the
+       mobile category list shouldn't leave a wall of empty space just to
+       match a longer tab's height. Capped so a tab that outgrows this
+       (future settings) scrolls inside .detail-content instead of the
+       whole modal growing past a sane size. */
     max-height: min(85vh, 640px);
     overflow: hidden;
   }
@@ -1080,11 +1186,27 @@
     .chevron { display: block; }
   }
 
-  .setting-group { display: flex; flex-direction: column; gap: .5rem; }
+  /* Every group of related rows is a card -- gives each tab real visual
+     structure instead of loose rows floating directly on the panel
+     background (owner feedback 2026-07-16: "too plain/bland"). A flat
+     var(--bg) fill looked right in light mode but reads as a heavy dark
+     block in dark mode, since --bg (#181a20) is *darker* than the panel's
+     own --surface (#242934) there -- a subtle tint off --text stays a
+     gentle, barely-there card in both themes instead of a hole. */
+  .setting-group {
+    display: flex; flex-direction: column; gap: .6rem;
+    background: color-mix(in srgb, var(--text) 4%, transparent);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: .85rem .9rem;
+  }
   .setting-section-title {
+    display: flex; align-items: center; gap: .4rem;
     font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
-    letter-spacing: .08em; color: var(--faint); padding-bottom: .2rem;
-    border-bottom: 1px solid var(--border);
+    letter-spacing: .08em; color: var(--muted); font-weight: 600;
+  }
+  .setting-section-title::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
   }
   .setting-row { display: flex; align-items: center; gap: .75rem; }
   .setting-hint { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
@@ -1105,12 +1227,19 @@
 
   .project-export-select { flex: 1; min-width: 0; }
 
-  .import-preview {
-    display: flex; flex-direction: column; gap: .5rem;
-    background: var(--col-bg); border-radius: var(--radius-sm); padding: .6rem .7rem;
+  /* Shared primary-action style for the main CTA inside a modal (Connect,
+     Import, Run Maintenance) -- consistent accent treatment instead of
+     each modal inventing its own "important button" look. */
+  .btn-primary {
+    padding: .35rem .8rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--accent); cursor: pointer;
+    background: var(--accent); color: var(--on-accent); font-size: .8rem; font-weight: 600;
+    white-space: nowrap;
   }
-  .import-confirm-btn { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-  .import-confirm-btn:hover { opacity: .9; }
+  .btn-primary:hover { opacity: .9; }
+  .btn-primary:disabled { opacity: .5; cursor: default; }
+
+  .setting-row-end { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; }
 
   .field-label {
     display: flex; flex-direction: column; gap: .35rem;
@@ -1123,23 +1252,6 @@
   }
   .field-label input:focus { outline: none; border-color: var(--accent); }
   .field-label input:disabled { opacity: .5; cursor: default; }
-
-  /* B43 — Developer options, same collapsible pattern as CardDetail's
-     Checklist/Notes sections (duplicated here since Svelte scopes styles
-     per component, not shared via the class name alone). */
-  .section-divider { height: 1px; background: var(--border); margin: .3rem 0; }
-  .collapsible-section { display: flex; flex-direction: column; gap: .5rem; }
-  .section-toggle {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    cursor: pointer; padding: .5rem .65rem; width: 100%; text-align: left;
-    transition: background .12s, border-color .12s;
-  }
-  .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
-  .section-toggle .field-label { flex: 1; }
-  .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
-  .section-chevron.open { transform: rotate(90deg); }
-  .section-toggle:hover .section-chevron { color: var(--text); }
 
   .theme-segment {
     display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
@@ -1177,19 +1289,20 @@
 
   .link-row {
     display: flex; align-items: center; gap: .75rem;
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .75rem .9rem; cursor: pointer; text-align: left; width: 100%;
     transition: background .12s, border-color .12s;
   }
   .link-row:hover { background: var(--hover); border-color: var(--border-strong); }
-  .link-row-title { font-size: .88rem; font-weight: 600; color: var(--text); }
+  .link-row-title { flex: 1; font-size: .88rem; font-weight: 600; color: var(--text); }
   .link-row-compact { padding: .5rem .9rem; }
-  .link-row-compact .link-row-title { flex: 1; font-weight: 500; }
+  .link-row-compact .link-row-title { font-weight: 500; }
   .link-row svg { flex-shrink: 0; opacity: .5; }
+  .link-row .nav-badge { flex-shrink: 0; }
 
   .conflict-item {
     display: flex; flex-direction: column; gap: .3rem;
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .5rem .65rem;
   }
   .conflict-item-title { font-size: .8rem; font-weight: 600; color: var(--text); }
@@ -1230,7 +1343,7 @@
 
   .integrity-list {
     display: flex; flex-direction: column; gap: 3px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .5rem .65rem; max-height: 140px; overflow-y: auto;
   }
   .integrity-row { font-size: .74rem; color: var(--muted); line-height: 1.4; }
@@ -1245,4 +1358,36 @@
     background: var(--surface); color: var(--text); font-size: .85rem; font-weight: 500;
   }
   .save-btn { background: var(--text) !important; color: var(--bg) !important; border-color: var(--text) !important; }
+
+  /* Multi-step flows (device pairing, conflicts, maintenance run, import
+     preview) open here instead of living permanently in a tab -- .mini-modal
+     is `position: fixed` itself (not flex-centered by its scrim parent) so
+     dialogPop's `translate(-50%,-50%)` positions it correctly, same
+     convention as ConfirmDialog/NamePrompt's sibling scrim+panel pattern. */
+  .mini-modal-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 300; }
+  .mini-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 301; width: min(420px, 90vw); max-height: min(80vh, 560px);
+    display: flex; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  }
+  .mini-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .mini-modal-title { font-weight: 700; font-size: .95rem; }
+  .mini-modal-close {
+    background: none; border: none; cursor: pointer; color: var(--faint);
+    font-size: .85rem; padding: .2rem .4rem; border-radius: var(--radius-sm);
+  }
+  .mini-modal-close:hover { background: var(--hover); color: var(--text); }
+  .mini-modal-body {
+    flex: 1; overflow-y: auto; padding: 1.1rem;
+    display: flex; flex-direction: column; gap: .75rem;
+  }
+  .mini-modal-actions {
+    display: flex; justify-content: flex-end; gap: .5rem;
+    padding: .85rem 1.1rem; border-top: 1px solid var(--border); flex-shrink: 0;
+  }
 </style>

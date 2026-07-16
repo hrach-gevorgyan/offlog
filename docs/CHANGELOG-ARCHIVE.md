@@ -10,6 +10,7 @@ history, not the only remaining record.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 4.20.0 | Export/import redesign into Back up (scope selector) + Restore groups (B45); first-run device-name prompt via NamePrompt.svelte, skip and save equal-weight (B46) | `v4.20.0` |
 | 4.19.1 | Maintenance pass (seventh run, first to cover offlog-desktop/): consolidated duplicated isTauri()/invoke() detection into config.ts; everything else checked out clean | `v4.19.1` |
 | 4.19.0 | Track E (PC standalone app + embedded sync host) working end-to-end: mDNS discovery, pairing handshake, NSIS installer, Job Object hardening. C7 hardcoded-credential fallback removed from current source (git history still open). C2/C10 partial progress | `v4.19.0` |
 | 4.18.0 | Sync/Android reliability release (A32, A33, A34, A35): fixed sync falsely reporting "synced" (PouchDB combined-object error-swallowing), desktop sync's loopback-vs-LAN-IP default, silent Android reminders (missing notification channel), Export JSON/CSV/Project broken on Android (blob-download trick has no download manager in a Capacitor WebView) | `v4.18.0` |

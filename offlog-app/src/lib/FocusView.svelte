@@ -215,8 +215,10 @@
         >
           <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
           <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-          <span class="task-title">{t.title}</span>
-          <span class="proj-badge">{$projects.find(p => p._id === t.project_id)?.name ?? '—'}</span>
+          <div class="task-body">
+            <span class="task-title">{t.title}</span>
+            <span class="proj-badge">{$projects.find(p => p._id === t.project_id)?.name ?? '—'}</span>
+          </div>
         </div>
       {/each}
     {:else}
@@ -277,7 +279,10 @@
   .focus { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .fc-header {
-    display: flex; align-items: center; gap: 10px;
+    /* flex-start, not center -- see DashboardView.svelte's .dash-header
+       comment for why (consistent hamburger position across pages with
+       a different number of subtitle lines, owner-reported 2026-07-16). */
+    display: flex; align-items: flex-start; gap: 10px;
     padding: 20px 28px 14px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -289,7 +294,7 @@
   .hamburger {
     display: none;
     background: none; border: none; cursor: pointer;
-    color: var(--text); padding: 4px; border-radius: 6px;
+    color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
     transition: background .12s;
   }
@@ -299,6 +304,9 @@
     background: none; border: 1px solid var(--border); color: var(--faint);
     font-size: 12px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
     flex-shrink: 0; transition: background .12s, color .12s;
+    /* header is align-items:flex-start now (see .fc-header comment) --
+       this button still wants to sit centered against the row. */
+    align-self: center;
   }
   .reset-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -394,9 +402,21 @@
 
   .prio-dot { width: 8px; height: 8px; border-radius: 50%; }
 
+  /* Locked task-row's title + project stacked (same primary/secondary
+     pattern as DashboardView/DeadlinesView's .task-body) instead of a
+     same-line project chip that used to just vanish below 700px
+     (owner-reported, 2026-07-16) -- survives at every width now. The
+     corkboard note's own .proj-badge (in .note-foot below) keeps its
+     chip look; that one has room to spare and pairs visually with
+     .suggest-chip, so it's left as-is. */
+  .task-row .task-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title {
     font-size: 14px; font-weight: 500; color: var(--text);
     min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .task-row .proj-badge {
+    font-family: var(--mono); font-size: 10px; color: var(--faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
   .proj-badge {
@@ -432,8 +452,6 @@
        confirmed overlapping at 375px without this. */
     .fc-footer { padding: 12px 16px; padding-right: 74px; }
     .fc-title  { font-size: 17px; }
-    .task-row  { grid-template-columns: 20px 10px 1fr; }
-    .proj-badge { display: none; }
     .board { gap: 14px; }
     .note-sm, .note-md, .note-lg { width: calc(50% - 7px); }
   }

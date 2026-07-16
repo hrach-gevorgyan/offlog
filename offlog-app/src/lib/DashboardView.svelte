@@ -136,8 +136,10 @@
                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(t); } }}
                   >
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
-                    <span class="task-title">{t.title}</span>
-                    <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
+                    <div class="task-body">
+                      <span class="task-title">{t.title}</span>
+                      <span class="task-proj">{data.projCache[t.project_id] ?? '—'}</span>
+                    </div>
                   </div>
                 {/each}
               </div>
@@ -191,7 +193,13 @@
   .dash { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .dash-header {
-    display: flex; align-items: center; gap: 10px;
+    /* flex-start, not center -- centering against the whole title-block
+       put the hamburger at a different vertical spot depending on how
+       many subtitle lines a page has (Dashboard's 3 vs Agenda/Focus's 1),
+       which read as inconsistent/misaligned across pages (owner-reported,
+       2026-07-16). Top-aligning plus the hamburger's own small top
+       margin below lines it up with the title's own first line instead. */
+    display: flex; align-items: flex-start; gap: 10px;
     padding: 20px 28px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
   .title-block { min-width: 0; }
@@ -202,7 +210,7 @@
   .hamburger {
     display: none;
     background: none; border: none; cursor: pointer;
-    color: var(--text); padding: 4px; border-radius: 6px;
+    color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
     transition: background .12s;
   }
@@ -303,6 +311,5 @@
     .dash-header { padding: 14px 16px 10px; }
     .dash-body { padding: 14px 14px 32px; }
     .project-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-    .task-proj { display: none; }
   }
 </style>

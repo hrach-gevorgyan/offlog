@@ -7,6 +7,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 const MODE_KEY = 'theme_mode';
 const LEGACY_DARK_KEY = 'dark'; // pre-B21: presence alone meant "dark"
 const CONTRAST_KEY = 'high_contrast';
+const REDUCE_MOTION_KEY = 'reduce_motion';
 
 function prefersDark(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -37,6 +38,23 @@ export function setHighContrast(on: boolean): void {
   if (on) localStorage.setItem(CONTRAST_KEY, '1');
   else localStorage.removeItem(CONTRAST_KEY);
   applyTheme();
+}
+
+// Manual override on top of the OS-level `prefers-reduced-motion` media
+// query, for someone who finds motion distracting but hasn't (or can't)
+// change that system setting. motion.ts's transition exports read this to
+// zero out their durations.
+export function getReduceMotion(): boolean {
+  return !!localStorage.getItem(REDUCE_MOTION_KEY);
+}
+
+export function setReduceMotion(on: boolean): void {
+  if (on) localStorage.setItem(REDUCE_MOTION_KEY, '1');
+  else localStorage.removeItem(REDUCE_MOTION_KEY);
+}
+
+export function prefersReducedMotion(): boolean {
+  return getReduceMotion() || (typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 }
 
 export function isEffectivelyDark(mode: ThemeMode = getThemeMode()): boolean {

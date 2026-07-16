@@ -166,8 +166,10 @@
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-              <span class="task-title">{t.title}</span>
-              <span class="proj-badge">{t.project_name ?? '—'}</span>
+              <div class="task-body">
+                <span class="task-title">{t.title}</span>
+                <span class="proj-badge">{t.project_name ?? '—'}</span>
+              </div>
               <span class="due-chip overdue">{dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
@@ -187,8 +189,10 @@
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-              <span class="task-title">{t.title}</span>
-              <span class="proj-badge">{t.project_name ?? '—'}</span>
+              <div class="task-body">
+                <span class="task-title">{t.title}</span>
+                <span class="proj-badge">{t.project_name ?? '—'}</span>
+              </div>
               <span class="due-chip today">Today</span>
             </div>
           {/each}
@@ -208,8 +212,10 @@
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-              <span class="task-title">{t.title}</span>
-              <span class="proj-badge">{t.project_name ?? '—'}</span>
+              <div class="task-body">
+                <span class="task-title">{t.title}</span>
+                <span class="proj-badge">{t.project_name ?? '—'}</span>
+              </div>
               <span class="due-chip week">{dueRelative(t.due_date!)} · {dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
@@ -229,8 +235,10 @@
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
               <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-              <span class="task-title">{t.title}</span>
-              <span class="proj-badge">{t.project_name ?? '—'}</span>
+              <div class="task-body">
+                <span class="task-title">{t.title}</span>
+                <span class="proj-badge">{t.project_name ?? '—'}</span>
+              </div>
               <span class="due-chip later">{dueLabelLong(t.due_date!)}</span>
             </div>
           {/each}
@@ -256,7 +264,10 @@
   .deadlines { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .dl-header {
-    display: flex; align-items: center; gap: 10px;
+    /* flex-start, not center -- see DashboardView.svelte's .dash-header
+       comment for why (consistent hamburger position across pages with
+       a different number of subtitle lines, owner-reported 2026-07-16). */
+    display: flex; align-items: flex-start; gap: 10px;
     padding: 20px 28px 14px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -268,7 +279,7 @@
   .hamburger {
     display: none;
     background: none; border: none; cursor: pointer;
-    color: var(--text); padding: 4px; border-radius: 6px;
+    color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
     transition: background .12s;
   }
@@ -277,6 +288,10 @@
   .mode-toggle {
     display: flex; border: 1px solid var(--border-strong); border-radius: 8px;
     overflow: hidden; flex-shrink: 0; margin-left: auto;
+    /* header is align-items:flex-start now (see .dl-header comment) --
+       this control cluster still wants to sit centered against the row,
+       not pinned to the top like the title block. */
+    align-self: center;
   }
   .mode-btn {
     padding: 6px 14px; border: none; background: var(--surface); color: var(--muted);
@@ -405,7 +420,7 @@
 
   .task-row {
     display: grid;
-    grid-template-columns: 20px 10px 1fr auto auto;
+    grid-template-columns: 20px 10px 1fr auto;
     align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--surface);
@@ -424,6 +439,11 @@
 
   .prio-dot { width: 8px; height: 8px; border-radius: 50%; }
 
+  /* Title + project stacked (same primary/secondary pattern as
+     DashboardView's .task-body) instead of a same-line project chip that
+     used to just vanish below 700px (owner-reported, 2026-07-16) --
+     project context now survives at every width, no breakpoint needed. */
+  .task-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title {
     font-size: 14px; font-weight: 500; color: var(--text);
     min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -431,8 +451,7 @@
 
   .proj-badge {
     font-family: var(--mono); font-size: 10px; color: var(--faint);
-    background: var(--col-bg); padding: 2px 8px; border-radius: 6px;
-    white-space: nowrap;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
   .due-chip {
@@ -448,13 +467,10 @@
     .hamburger { display: flex; }
   }
 
-  /* Medium — hide proj badge */
   @media (max-width: 700px) {
     .dl-header { padding: 14px 16px 10px; }
     .dl-body   { padding: 14px 14px 32px; }
     .dl-title  { font-size: 17px; }
-    .task-row  { grid-template-columns: 20px 10px 1fr auto; }
-    .proj-badge { display: none; }
   }
 
   /* Small — collapse chip to short form */

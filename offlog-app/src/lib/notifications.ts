@@ -359,7 +359,13 @@ export async function initNotificationListeners(): Promise<void> {
       if (!taskId) return;
       if (actionId === 'done') completeTaskFromNotification(taskId).catch(() => {});
       else if (actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => {});
-      else pendingOpenTaskId.set(taskId); // bare click (no action button) -- lib.rs emits '' for this case
+      else {
+        // bare click (no action button) -- lib.rs emits '' for this case.
+        // Windows brings no window forward on a toast click by itself, so
+        // the app can stay behind other windows even though the card opens.
+        invokeTauri('show_main_window').catch(() => {});
+        pendingOpenTaskId.set(taskId);
+      }
     });
     return;
   }
