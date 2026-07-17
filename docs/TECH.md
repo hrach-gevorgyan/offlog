@@ -453,6 +453,27 @@ powershell -ExecutionPolicy Bypass -File scripts/fetch-couchdb-win.ps1   # once,
 cargo tauri build   # → src-tauri/target/release/bundle/nsis/*.exe
 ```
 
+**Content Security Policy** (`tauri.conf.json`'s `app.security.csp`, enabled
+2026-07-17, previously `null`): `script-src 'self'` (the one inline
+`<script>` `index.html` used to have, for pre-paint dark-mode flash
+prevention, moved to `public/theme-init.js` so it stays same-origin
+instead of needing `'unsafe-inline'`); `style-src 'self' 'unsafe-inline'`
+(`'unsafe-inline'` is required — several components set dynamic
+`style="background:{color}"` attributes for per-space/per-priority
+colors, e.g. `DashboardView.svelte`'s `.prio-bar`, and CSP has no way to
+allow only those); `connect-src 'self' http://*` (`http://*` is required,
+not just a convenience — sync/pairing targets are LAN addresses/ports
+discovered at runtime via mDNS or the embedded sidecar's random port, and
+CSP source lists don't support CIDR ranges, so there's no way to scope
+this tighter than "any host over plain HTTP" without breaking the
+LAN-discovery model the app is built around); `img-src 'self'`,
+`font-src 'self'` (self-hosted fonts only, no CDN); `object-src 'none'`,
+`frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. Net
+effect: blocks loading/executing any remote script, blocks embedding in
+a frame, blocks form submission or `<base>` hijacking to another origin
+— contained even if something managed to inject markup, while still
+allowing the app's genuine dynamic behavior (LAN sync, per-item colors).
+
 ---
 
 ## Version History
