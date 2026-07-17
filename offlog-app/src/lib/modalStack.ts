@@ -21,16 +21,68 @@
 // itself) desyncs it from the pending history navigation — the popstate
 // that follows would then fire for whatever's now on top instead of the
 // layer that actually asked to close, silently closing the wrong thing.
+//
+// MANDATORY for every consumer, found the hard way (2026-07-17): a
+// component that calls closeOnBack() must be mounted behind a {#key} that
+// changes on every real open, not just `{#if showX}`. A fast
+// close-then-reopen of the same overlay can toggle showX false→true
+// again while Svelte's outro transition for the previous show is still
+// in flight — Svelte then *reverses* that outro into a fresh intro on
+// the SAME component instance rather than destroying and recreating it.
+// closeOnBack() only runs once, at that instance's setup, so the revived
+// instance's requestClose is the ORIGINAL one — already spent (the
+// single-fire guard below) — and no new stack entry exists for it either.
+// Nothing can ever close it again: stuck open, permanently, with a
+// working Escape/scrim/back that silently no-ops. This is NOT something
+// this module can detect or fix from here (it never sees Svelte's
+// mount/unmount, only the requestClose calls) — every consumer must key
+// its own remount. See Sidebar.svelte's changelogSession/trashSession/
+// settingsSession and KanbanBoard.svelte / ListView.svelte / App.svelte's
+// detailOpenSession / searchDetailSession for the pattern: bump a
+// counter on every open, fold it into the {#key} expression alongside
+// whatever the key would otherwise be (e.g. a task id).
 
 type CloseFn = () => void;
-interface Entry { close: CloseFn }
+interface Entry { close: CloseFn; id: number }
 
 const stack: Entry[] = [];
 let listening = false;
+let nextId = 1;
 
-function onPopState() {
-  const entry = stack.pop();
-  entry?.close();
+// popstate fires once per *browser navigation*, not once per history.back()
+// call -- if two closeOnBack layers each call requestClose() in quick
+// succession (owner-reported 2026-07-17: rapid Changelog open/close/open
+// left it "stuck, can't get back to main screen"), the browser can
+// coalesce the two back() calls into a single navigation and fire only
+// one popstate. Popping exactly one stack entry per popstate (the old
+// behavior) then leaves a stale entry behind: its component is still
+// mounted, but its requestClose was already spent (guarded to fire once),
+// so nothing can ever close it again -- permanently stuck.
+//
+// A first fix (2026-07-17, same day) stamped each push with its stack
+// *depth* and compared depths on landing. That still broke after a page
+// reload: `stack`/`nextId` reset to empty on every fresh module load, but
+// real browser session history (and therefore its current depth) survives
+// a reload -- so a depth comparison against a freshly-empty stack was
+// comparing two numbers that no longer meant the same thing, and the
+// panel could refuse to open, or get stuck again, after a refresh
+// following an earlier stuck session.
+//
+// Fix: stamp each push with a globally unique id instead of a depth, and
+// on popstate, match by *identity* against the current stack rather than
+// by count. If the landed state's id is present in `stack`, close and pop
+// every entry above it. If it's absent -- including the common case of a
+// stale id from before a reload, or no offlog state at all -- there is no
+// layer we can still vouch for, so close and pop everything currently
+// tracked. This is correct regardless of whether real browser depth and
+// `stack.length` agree, which a reload can never change.
+function onPopState(e: PopStateEvent) {
+  const landedId = (e.state as { offlogId?: number } | null)?.offlogId;
+  const idx = landedId === undefined ? -1 : stack.findIndex((entry) => entry.id === landedId);
+  while (stack.length > idx + 1) {
+    const entry = stack.pop();
+    entry?.close();
+  }
 }
 
 function ensureListening() {
@@ -41,8 +93,9 @@ function ensureListening() {
 
 export function closeOnBack(close: CloseFn): CloseFn {
   ensureListening();
-  history.pushState({ offlogLayer: true }, '');
-  stack.push({ close });
+  const id = nextId++;
+  stack.push({ close, id });
+  history.pushState({ offlogLayer: true, offlogId: id }, '');
   // Guarded against firing twice for the same layer: every overlay can
   // reach requestClose() from more than one path (Escape, a scrim click,
   // a Cancel/Save button), and history.back() resolves asynchronously via
@@ -71,8 +124,10 @@ export function closeOnBack(close: CloseFn): CloseFn {
 // (confirmed live: this silently prevented the new overlay from ever
 // appearing). discardTop() instead removes the entry immediately with no
 // navigation — the pushed history entry becomes an inert no-op; a later
-// back press just closes whatever replaced this layer, one level up,
-// rather than retracing the exact transition.
+// back press closes whatever replaced this layer, one level up, rather
+// than retracing the exact transition. That discarded entry's physical
+// history slot is still there, unused — the layer above it may need one
+// extra back press to unwind past it, which is fine, it's inert either way.
 export function discardTop(): void {
   stack.pop();
 }

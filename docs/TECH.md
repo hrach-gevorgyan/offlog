@@ -301,14 +301,15 @@ All colors are CSS custom properties in `app.css` — no hardcoded colors anywhe
 - `:root` — light theme
 - `body.dark` — dark theme overrides
 - `color: var(--text)` is set on `body` so it cascades everywhere
-- Component-local overrides (e.g. `Sidebar.svelte`'s `.sidebar`, which is always dark regardless of page theme) redeclare the same variable names in their own scope rather than hardcoding values, so they stay in sync with any future palette change
+- `Sidebar.svelte`'s `.sidebar` follows the page theme via `--sidebar-bg` like every other surface (used to be pinned dark regardless of theme; changed 2026-07-17 on owner feedback that light mode deserved a light sidebar, not a dark panel stapled onto a light page)
 - Derived tints (hover states, translucent highlights, badge backgrounds) use `color-mix(in srgb, var(--accent) X%, transparent)` instead of separately hardcoded rgba() values tied to whatever the accent used to be
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
 | `--bg` | `#F6F7F9` | `#181A20` | page background |
 | `--surface` | `#FFFFFF` | `#242934` | cards, panels |
-| `--sidebar-bg` | `#181A20` | `#101218` | sidebar (always dark) |
+| `--sidebar-bg` | `#FBFBFC` | `#101218` | sidebar (theme-aware since 2026-07-17; was pinned dark before) |
+| `--statusbar-fill` | `#101218` | `#101218` | Android status-bar strip fill only — fixed dark in both themes, paired with `main.ts`'s unconditional light-icon status bar style; do not point this at `--sidebar-bg` |
 | `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
 | `--border` | `#E2E4EA` | `#2F3542` | hairlines |
 | `--border-strong` | `#C7CBD6` | `#3F4657` | scrollbar thumb, stronger dividers |
@@ -326,12 +327,16 @@ The same accent (`#6366F1`) drives the `<meta name="theme-color">` in `index.htm
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
 
-**Gotcha**: `SettingsPanel.svelte`'s `.settings-panel` (a standalone panel
-since the v4.26.0 redesign — it used to live inside `Sidebar.svelte`) is a
-DOM **sibling** of the sidebar, not a descendant — it inherits page-level
-tokens, not the sidebar's dark overrides (the sidebar itself is pinned
-always-dark by design). Don't "fix" this by adding local palette overrides
-there; it's already correctly reading the page theme, not a bug.
+**Gotcha (historical)**: `SettingsPanel.svelte`'s `.settings-panel` (a
+standalone panel since the v4.26.0 redesign — it used to live inside
+`Sidebar.svelte`) is a DOM **sibling** of the sidebar, not a descendant.
+Before 2026-07-17 this meant it read page-level tokens while the sidebar
+had its own pinned-dark overrides — worth documenting then, since a fix
+attempt could easily have gone the wrong direction. Now that the sidebar
+also just follows the page theme, both surfaces behave the same way and
+this is no longer a special case — noted here only so the DOM
+relationship itself (sibling, not descendant) isn't rediscovered as a
+surprise later.
 
 ---
 
@@ -461,12 +466,17 @@ instead of needing `'unsafe-inline'`); `style-src 'self' 'unsafe-inline'`
 (`'unsafe-inline'` is required — several components set dynamic
 `style="background:{color}"` attributes for per-space/per-priority
 colors, e.g. `DashboardView.svelte`'s `.prio-bar`, and CSP has no way to
-allow only those); `connect-src 'self' http://*` (`http://*` is required,
-not just a convenience — sync/pairing targets are LAN addresses/ports
-discovered at runtime via mDNS or the embedded sidecar's random port, and
-CSP source lists don't support CIDR ranges, so there's no way to scope
-this tighter than "any host over plain HTTP" without breaking the
-LAN-discovery model the app is built around); `img-src 'self'`,
+allow only those); `connect-src 'self' http://*:*` (required, not just a
+convenience — sync/pairing targets are LAN addresses/ports discovered at
+runtime via mDNS or the embedded sidecar's random port; CSP source lists
+don't support CIDR ranges, so there's no way to scope the host tighter
+than "any host over plain HTTP" without breaking the LAN-discovery model
+the app is built around. **The `:*` matters and was originally missing**:
+a bare `http://*` in CSP means "any host, default port (80) only" — it
+does not imply "any port." Since every real sync target uses a
+non-default port, that first version silently broke all sync while
+looking otherwise correct, caught by a live post-enable click-through,
+not by any static check); `img-src 'self'`,
 `font-src 'self'` (self-hosted fonts only, no CDN); `object-src 'none'`,
 `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. Net
 effect: blocks loading/executing any remote script, blocks embedding in

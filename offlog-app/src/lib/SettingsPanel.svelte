@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import CustomSelect from './CustomSelect.svelte';
   import TimePicker from './TimePicker.svelte';
   import db, {
@@ -63,6 +63,7 @@
   let isNarrow = false;
   let activeCategory: Category | null = null;
   let popDetailLayer: (() => void) | null = null;
+  let panelEl: HTMLDivElement;
 
   onMount(() => {
     const mq = window.matchMedia('(max-width: 640px)');
@@ -73,11 +74,32 @@
     return () => mq.removeEventListener('change', onChange);
   });
 
-  function selectCategory(key: Category) {
+  async function selectCategory(key: Category) {
+    if (key === activeCategory) return;
+    // Measured FLIP, not a CSS `transition: height` -- the panel's height
+    // is otherwise auto (content-fit, capped by max-height), and auto
+    // can't be transitioned directly. See the .settings-panel CSS comment.
+    const fromHeight = panelEl?.getBoundingClientRect().height;
     activeCategory = key;
     if (isNarrow && !popDetailLayer) {
       popDetailLayer = closeOnBack(() => { activeCategory = null; popDetailLayer = null; });
     }
+    if (!panelEl || !fromHeight) return;
+    await tick();
+    const toHeight = panelEl.getBoundingClientRect().height;
+    if (Math.abs(toHeight - fromHeight) < 1) return;
+    panelEl.style.transition = 'none';
+    panelEl.style.height = fromHeight + 'px';
+    panelEl.getBoundingClientRect(); // force reflow before re-enabling the transition
+    panelEl.style.transition = 'height .28s var(--ease)';
+    requestAnimationFrame(() => { panelEl.style.height = toHeight + 'px'; });
+    const onEnd = (e: TransitionEvent) => {
+      if (e.propertyName !== 'height') return;
+      panelEl.style.height = '';
+      panelEl.style.transition = '';
+      panelEl.removeEventListener('transitionend', onEnd);
+    };
+    panelEl.addEventListener('transitionend', onEnd);
   }
   function backToList() {
     if (popDetailLayer) popDetailLayer();
@@ -648,7 +670,7 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="settings-overlay" on:click|self={() => requestClose()}>
-  <div class="settings-panel" use:trapFocus>
+  <div class="settings-panel" bind:this={panelEl} use:trapFocus>
     <div class="settings-body" class:detail-open={activeCategory !== null}>
       <nav class="settings-nav">
         <h3 class="nav-title">Settings</h3>
@@ -673,6 +695,8 @@
           </div>
 
           <div class="detail-content">
+            {#key activeCategory}
+            <div class="detail-fade" in:fade={{ duration: 140 }}>
             {#if activeCategory === 'appearance'}
               <div class="setting-group">
                 <div class="setting-section-title">Display</div>
@@ -961,6 +985,8 @@
                 </div>
               {/if}
             {/if}
+            </div>
+            {/key}
           </div>
         {/if}
       </div>
@@ -1172,7 +1198,15 @@
        mobile category list shouldn't leave a wall of empty space just to
        match a longer tab's height. Capped so a tab that outgrows this
        (future settings) scrolls inside .detail-content instead of the
-       whole modal growing past a sane size. */
+       whole modal growing past a sane size. The actual tab-to-tab resize
+       is animated from script.ts's selectCategory() (owner feedback,
+       2026-07-17: switching tabs "jumping" from one size to another read
+       as broken) -- a plain CSS `transition: height` can't animate an
+       otherwise-auto-sized element, so it's done as a measured FLIP
+       (capture old height, let Svelte re-render, measure new height,
+       animate between the two pixel values, then release back to auto).
+       This keeps the "fits content" behavior; it just makes the jump
+       smooth instead of instant. */
     max-height: min(85vh, 640px);
     overflow: hidden;
   }
@@ -1213,6 +1247,14 @@
   }
   .detail-content {
     flex: 1; overflow-y: auto; padding: 1.25rem 1.4rem;
+    display: flex; flex-direction: column;
+  }
+  /* Wraps each tab's content so switching tabs fades it in (owner
+     feedback, 2026-07-17: the outer panel resize was smooth but the
+     content itself popped instantly, reading as disjointed) -- same
+     flex/gap the content used to have directly on .detail-content,
+     since this wrapper is now the thing actually holding it. */
+  .detail-fade {
     display: flex; flex-direction: column; gap: 1rem;
   }
 

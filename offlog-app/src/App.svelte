@@ -94,6 +94,15 @@
   });
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;
+  // See KanbanBoard.svelte's identical detailOpenSession for why this
+  // exists -- {#key searchDetailTask._id} alone doesn't change value on a
+  // fast close-then-reopen of the same task.
+  let searchDetailSession = 0;
+  function openSearchDetail(task: import('./lib/types').TaskDoc, project: import('./lib/types').ProjectDoc) {
+    searchDetailSession++;
+    searchDetailTask = task;
+    searchDetailProject = project;
+  }
 
   // The shortcuts panel is a plain boolean toggled within this
   // always-mounted component, not a separate component that mounts/
@@ -145,8 +154,7 @@
     const task = await getTaskById(taskId);
     const proj = task ? $projects.find(p => p._id === task.project_id) ?? null : null;
     if (task && proj) {
-      searchDetailTask = task;
-      searchDetailProject = proj;
+      openSearchDetail(task, proj);
     }
     pendingOpenTaskId.set(null);
   }
@@ -344,7 +352,7 @@
       bind:showFocus
       bind:open={sidebarOpen}
       on:navigate={() => { closeSidebar(); currentView = 'kanban'; }}
-      on:openTask={(e) => { searchDetailTask = e.detail.task; searchDetailProject = e.detail.project; closeSidebar(); }}
+      on:openTask={(e) => { openSearchDetail(e.detail.task, e.detail.project); closeSidebar(); }}
     />
 
     <!-- Mobile scrim -->
@@ -466,12 +474,12 @@
   <GlobalSearch
     {commands}
     on:close={() => showSearch = false}
-    on:open={(e) => { searchDetailTask = e.detail.task; searchDetailProject = e.detail.project; showSearch = false; }}
+    on:open={(e) => { openSearchDetail(e.detail.task, e.detail.project); showSearch = false; }}
   />
 {/if}
 
 {#if searchDetailTask && searchDetailProject}
-  {#key searchDetailTask._id}
+  {#key searchDetailTask._id + ':' + searchDetailSession}
     <CardDetail
       task={searchDetailTask}
       project={searchDetailProject}
@@ -521,7 +529,11 @@
   .status-bar-fill {
     position: fixed; top: 0; left: 0; right: 0;
     height: env(safe-area-inset-top, 0px);
-    background: var(--sidebar-bg);
+    /* --statusbar-fill, not --sidebar-bg -- main.ts pins the Android
+       status bar's icon style to Style.Dark (white icons) unconditionally,
+       so this strip must stay dark in both themes even now that
+       --sidebar-bg itself follows the page theme (2026-07-17). */
+    background: var(--statusbar-fill);
     z-index: 10000;
   }
 

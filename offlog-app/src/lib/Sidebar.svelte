@@ -47,24 +47,91 @@
   // ChangelogView/TrashView/SettingsPanel are full separate screens only
   // opened from these buttons — loading them as dynamic imports keeps them
   // out of the main bundle.
+  //
+  // Each has an *active* flag, not just the showX boolean the {#if} reads.
+  // active goes true the instant the button is clicked and only goes false
+  // once the component has actually finished closing (its on:close fired,
+  // meaning modalStack's popstate round-trip resolved) -- opening is
+  // refused entirely while active is true, even though showX itself would
+  // briefly go false-then-true-again under rapid clicking. Without this,
+  // clicking the button again while a close is still in flight (its
+  // history.back() hasn't resolved yet) could mount a second instance
+  // before Svelte finished tearing down the first: two overlapping
+  // scrim/panel elements briefly coexist, and if the stale one intercepts
+  // a later click (document.querySelector always finds the first match),
+  // its own requestClose() fires an extra history.back() beyond what the
+  // live instance needed -- draining real browser history faster than
+  // legitimate opens replenish it. Once history bottoms out, back() stops
+  // firing popstate at all (browsers silently no-op there), and the
+  // instance still waiting on that never-arriving popstate is stuck open
+  // forever with no working close control (owner-reported 2026-07-17,
+  // reproduced live after the first coalescing fix: a lingering
+  // opacity:0 scrim + panel that neither Escape, another scrim click, nor
+  // a manual history.back() could dismiss). Refusing to open a second
+  // instance until the first is fully gone makes that overlap impossible
+  // instead of trying to reconcile it after the fact.
   let ChangelogViewComp: typeof import('./ChangelogView.svelte').default | null = null;
-  async function openChangelog() {
-    if (!ChangelogViewComp) ChangelogViewComp = (await import('./ChangelogView.svelte')).default;
-    showChangelog = true;
+  let changelogActive = false;
+  let changelogSession = 0;
+  // export, not just a plain top-level function: App.svelte calls these
+  // via sidebarRef.openChangelog()/openTrash()/openSettings() (bound
+  // through bind:this for the keyboard-shortcut/command-palette paths,
+  // not the on-screen buttons below which call them directly). Svelte 5
+  // does not expose a component's plain top-level functions through
+  // bind:this the way Svelte 3/4 did -- without export, sidebarRef.
+  // openChangelog is undefined and calling it throws, caught nowhere,
+  // so Ctrl+K's "Open Changelog"/"Open Settings"/"Open Deleted" silently
+  // did nothing (found 2026-07-18 auditing Ctrl+K end-to-end; this
+  // predates today's other fixes -- unrelated latent bug, not a
+  // regression from them).
+  export async function openChangelog() {
+    if (changelogActive) return;
+    changelogActive = true;
+    try {
+      if (!ChangelogViewComp) ChangelogViewComp = (await import('./ChangelogView.svelte')).default;
+      changelogSession++;
+      showChangelog = true;
+    } catch (e) {
+      changelogActive = false;
+      showError('Could not open Changelog — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onChangelogClosed() { showChangelog = false; changelogActive = false; }
 
   let showTrash = false;
   let TrashViewComp: typeof import('./TrashView.svelte').default | null = null;
-  async function openTrash() {
-    if (!TrashViewComp) TrashViewComp = (await import('./TrashView.svelte')).default;
-    showTrash = true;
+  let trashActive = false;
+  let trashSession = 0;
+  export async function openTrash() {
+    if (trashActive) return;
+    trashActive = true;
+    try {
+      if (!TrashViewComp) TrashViewComp = (await import('./TrashView.svelte')).default;
+      trashSession++;
+      showTrash = true;
+    } catch (e) {
+      trashActive = false;
+      showError('Could not open Recycle — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onTrashClosed() { showTrash = false; trashActive = false; }
 
   let SettingsPanelComp: typeof import('./SettingsPanel.svelte').default | null = null;
-  async function openSettings() {
-    if (!SettingsPanelComp) SettingsPanelComp = (await import('./SettingsPanel.svelte')).default;
-    showSettings = true;
+  let settingsActive = false;
+  let settingsSession = 0;
+  export async function openSettings() {
+    if (settingsActive) return;
+    settingsActive = true;
+    try {
+      if (!SettingsPanelComp) SettingsPanelComp = (await import('./SettingsPanel.svelte')).default;
+      settingsSession++;
+      showSettings = true;
+    } catch (e) {
+      settingsActive = false;
+      showError('Could not open Settings — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onSettingsClosed() { showSettings = false; settingsActive = false; }
 
   // Storage breakdown — just for the "Deleted N" count badge in the bottom
   // nav row. Kept live (not just loaded when Settings opens) so the badge
@@ -394,34 +461,47 @@
 </aside>
 
 {#if showChangelog && ChangelogViewComp}
-  <svelte:component this={ChangelogViewComp} on:close={() => showChangelog = false} />
+  <!-- {#key}, not just the showChangelog boolean: without it, a fast
+       close-then-reopen can land while Svelte's outro transition for the
+       previous show is still in flight, and Svelte *reverses* that outro
+       into a fresh intro on the SAME component instance instead of
+       destroying and recreating it (2026-07-17, root cause of the "stuck,
+       can't get back to main screen" bug after rapid clicking -- traced
+       via a manual step-by-step repro, not fixable by changelogActive
+       above alone, which only stops a second *attempt* from starting,
+       not Svelte reviving the still-alive one). A revived instance never
+       re-runs its own closeOnBack() call (that only happens once, at
+       component setup) -- its `requestClose` is the original, already
+       spent one, and no new stack entry exists for it either: nothing
+       can ever close it again. changelogSession increments on every
+       real open, forcing Svelte to always fully tear down and remount
+       rather than ever reuse a mid-transition instance. -->
+  {#key changelogSession}
+    <svelte:component this={ChangelogViewComp} on:close={onChangelogClosed} />
+  {/key}
 {/if}
 
 {#if showTrash && TrashViewComp}
-  <svelte:component this={TrashViewComp} on:close={() => showTrash = false} />
+  {#key trashSession}
+    <svelte:component this={TrashViewComp} on:close={onTrashClosed} />
+  {/key}
 {/if}
 
 {#if showSettings && SettingsPanelComp}
-  <svelte:component this={SettingsPanelComp} on:close={() => showSettings = false} />
+  {#key settingsSession}
+    <svelte:component this={SettingsPanelComp} on:close={onSettingsClosed} />
+  {/key}
 {/if}
 
 <style>
   .sidebar {
     width: 224px; flex-shrink: 0;
-    background: var(--sidebar-bg); border-right: 1px solid rgba(255,255,255,.06);
+    background: var(--sidebar-bg); border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     padding: 1.1rem .75rem; gap: .35rem; overflow: hidden;
-    /* Sidebar is always dark regardless of the page's light/dark toggle,
-       so its surface tones are pinned here rather than following
-       --bg/--surface. */
-    --text: #f3f4f6;
-    --muted: #a3a9b7;
-    --faint: #6b7280;
-    --hover: rgba(255,255,255,.07);
-    --surface: #242934;
-    --border: rgba(255,255,255,.07);
-    --border-strong: rgba(255,255,255,.13);
-    --accent: #818cf8;
+    /* Follows the page theme via --sidebar-bg (light/dark in app.css) —
+       used to be pinned dark regardless of theme; owner feedback
+       2026-07-17 asked for a real light-mode sidebar instead. */
   }
 
   @media (max-width: 768px) {
@@ -458,10 +538,13 @@
     padding: .42rem .55rem; border-radius: var(--radius-sm);
     background: none; color: var(--muted);
     font-weight: 600; font-size: .85rem; letter-spacing: -.01em;
-    transition: background .12s, color .12s;
+    transition: background .12s, color .12s, box-shadow .12s;
   }
   .nav-btn svg { flex-shrink: 0; opacity: .85; }
-  .nav-btn:hover { background: var(--hover); color: var(--text); }
+  /* Subtle hover shadow (owner reference, 2026-07-17), not just a flat
+     background swap -- same treatment applied to .space-header,
+     .project-row and .recent-btn below for one consistent feel. */
+  .nav-btn:hover { background: var(--hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   .nav-btn.active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
   .nav-btn.active svg { opacity: 1; }
 
@@ -482,9 +565,9 @@
     background: none; border: none; cursor: pointer;
     padding: .4rem .5rem; border-radius: var(--radius-sm);
     color: var(--muted); text-align: left; width: 100%;
-    transition: background .12s, color .12s;
+    transition: background .12s, color .12s, box-shadow .12s;
   }
-  .space-header:hover { background: var(--hover); color: var(--text); }
+  .space-header:hover { background: var(--hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   .space-header.active { color: var(--text); background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .space-chevron { flex-shrink: 0; color: var(--faint); transition: transform .18s ease, color .12s; }
   .space-chevron.open { transform: rotate(90deg); }
@@ -511,11 +594,11 @@
     background: none; border: none; cursor: pointer; text-align: left; width: 100%;
     padding: .32rem .55rem; border-radius: var(--radius-sm);
     color: var(--muted); font-size: .8rem;
-    transition: color .12s, background .12s;
+    transition: color .12s, background .12s, box-shadow .12s;
   }
   .recent-btn svg { flex-shrink: 0; opacity: .7; }
   .recent-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .recent-btn:hover { color: var(--text); background: var(--hover); }
+  .recent-btn:hover { color: var(--text); background: var(--hover); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
 
   .section-label {
     font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
@@ -536,9 +619,9 @@
     display: flex; align-items: center;
     border-radius: var(--radius-sm);
     padding-right: .3rem;
-    transition: background .12s;
+    transition: background .12s, box-shadow .12s;
   }
-  .project-row:hover { background: var(--hover); }
+  .project-row:hover { background: var(--hover); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   .project-row.active { background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.05); }
 
   .project-btn {

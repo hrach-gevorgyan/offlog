@@ -62,7 +62,26 @@
   }
 
   function runCommand(c: Command) {
-    requestClose();
+    // discardTop() for commands that open another closeOnBack()-tracked
+    // overlay (QuickAdd/Settings/Changelog/Trash) -- same reasoning as
+    // openResult() above: requestClose()'s real history.back() races the
+    // new overlay's own pushState and can silently swallow it. Plain
+    // requestClose() for everything else (navigation, toggles, Sync Now),
+    // which don't open anything and need a real, proper close.
+    //
+    // Unlike openResult() though, discardTop() alone isn't enough here:
+    // openResult()'s dispatch('open', ...) is caught by App.svelte's
+    // on:open handler, which explicitly sets showSearch = false itself.
+    // Commands have no equivalent payload to piggyback that on, so this
+    // dispatches 'close' directly (the same event requestClose()'s
+    // popstate→close() chain would eventually dispatch) -- discardTop()
+    // already handles the stack/history bookkeeping; this just tells the
+    // parent to actually clear showSearch, which nothing else did
+    // (2026-07-18: without this, running "Open Changelog" left the
+    // search palette still mounted/visible while Changelog opened
+    // underneath it).
+    if (c.opensOverlay) { discardTop(); dispatch('close'); }
+    else requestClose();
     c.run();
   }
 

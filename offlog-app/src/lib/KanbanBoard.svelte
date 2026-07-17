@@ -125,6 +125,17 @@
 
   // ── Card detail ────────────────────────────────────────────────────────────
   let detailTask: TaskDoc | null = null;
+  // Bumped every time a card is opened, including reopening the *same*
+  // card -- {#key detailTask._id} alone doesn't change value on a
+  // close-then-reopen of the same task, so a fast reopen could land while
+  // Svelte's outro for the previous CardDetail instance is still
+  // in-flight, and get reversed into an intro on that same (already
+  // closed-once) instance instead of a real remount -- same root cause as
+  // modalStack.ts's 2026-07-17 stuck-panel bug: the revived instance's
+  // own closeOnBack() never re-runs, so its requestClose is a stale,
+  // already-spent closure that can never close it again.
+  let detailOpenSession = 0;
+  function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; }
 
   // B53 — per-card "⋯" quick-actions menu (2026-07-19, folded into the
   // B49 redesign at the owner's request). Immediate writes, not batched
@@ -413,8 +424,8 @@
             on:drop={(e) => onCardListDrop(e, col.id)}
             on:dragend={onCardDragEnd}
             on:touchstart|nonpassive={(e) => onTouchStart(e, task, e.currentTarget)}
-            on:click={() => { if (!touchGhost) detailTask = task; }}
-            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); detailTask = task; } }}
+            on:click={() => { if (!touchGhost) openDetail(task); }}
+            on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(task); } }}
             in:scale={{ duration: 150, start: 0.92, easing: cubicOut }}
             out:fade={{ duration: 120 }}
             animate:flip={{ duration: 200, easing: cubicOut }}
@@ -527,8 +538,13 @@
   <!-- A30 — {#key} forces a full remount if `task` ever changes to a
        different task while still open, so CardDetail's per-task `let`
        state (collapsible-section flags, etc.) can't carry over stale from
-       a previous task instead of re-deriving. -->
-  {#key detailTask._id}
+       a previous task instead of re-deriving. detailOpenSession is
+       included (2026-07-17) so reopening the *same* task quickly also
+       forces a remount -- _id alone doesn't change value then, which
+       risked Svelte reversing an in-flight outro into an intro on the
+       same (already-closed-once) instance instead of a real remount; see
+       the stuck-Changelog fix in Sidebar.svelte for the full story. -->
+  {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
       {project}

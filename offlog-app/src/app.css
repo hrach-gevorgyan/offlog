@@ -39,7 +39,13 @@
   /* soft neutral gray + indigo palette */
   --bg: #f6f7f9;
   --surface: #ffffff;
-  --sidebar-bg: #181a20;
+  --sidebar-bg: #fbfbfc;
+  /* Fixed (not overridden in body.dark), unlike --sidebar-bg above --
+     Android's status-bar-fill strip (App.svelte) pairs this with an
+     unconditional Style.Dark (white icons) in main.ts, so it must stay
+     dark in both themes even though the sidebar itself is now
+     theme-aware (2026-07-17). */
+  --statusbar-fill: #101218;
   --col-bg: #eceef2;
 
   /* lines */
@@ -50,7 +56,12 @@
   /* ink */
   --text: #1f2937;
   --muted: #4b5563;
-  --faint: #6b7280;
+  /* Darkened from #6b7280 (owner feedback, 2026-07-17: light-theme text
+     readability) -- the old value measured 4.16:1 against --hover, under
+     WCAG AA's 4.5:1 for normal text; this clears AA (4.5:1+) against
+     every light-mode surface --faint is used on (--bg/--surface/
+     --sidebar-bg/--hover/--border), same hue, just darker. */
+  --faint: #5f6674;
 
   /* meaning */
   --accent: #5457e0;

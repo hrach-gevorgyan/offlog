@@ -12,19 +12,49 @@ import { closeOnBack, discardTop } from '../src/lib/modalStack';
 // a real fix, just an OOM waiting to happen. Each test instead pushes and
 // pops exactly the entries it creates, which is self-balancing regardless
 // of whatever depth earlier tests in the file left behind.
+//
+// Tests dispatch synthetic PopStateEvents rather than relying on real
+// history.back() timing (jsdom doesn't fire popstate from it reliably) —
+// but unlike before 2026-07-17, the dispatched event's `state` now has to
+// carry a real offlogDepth, since that's what onPopState uses to decide
+// how many layers to close. `history.state` right after a given
+// closeOnBack() call IS that layer's real stamped state (pushState is
+// synchronous in jsdom even though back() isn't), so tests capture it
+// there rather than constructing it by hand.
 describe('modalStack', () => {
   it('closes the top layer (LIFO) on back, leaving lower layers untouched', () => {
     const closeA = vi.fn();
     const closeB = vi.fn();
     closeOnBack(closeA);
+    const stateAfterA = history.state;
     closeOnBack(closeB);
 
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.dispatchEvent(new PopStateEvent('popstate', { state: stateAfterA }));
     expect(closeB).toHaveBeenCalledOnce();
     expect(closeA).not.toHaveBeenCalled();
 
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
     expect(closeA).toHaveBeenCalledOnce();
+  });
+
+  it('closes every skipped layer when the browser coalesces multiple back() calls into one popstate (2026-07-17 regression)', () => {
+    // The bug this guards: rapid open/close/open on the same overlay (or
+    // any two closeOnBack layers) can issue two history.back() calls
+    // close enough together that the browser fires only one popstate,
+    // landing straight past an intermediate layer's own state. The old
+    // "pop exactly one stack entry per popstate" logic left that skipped
+    // layer's component mounted forever with an already-spent
+    // requestClose — stuck, no way to close it. A single landed-past-both
+    // popstate must now close both, in LIFO order.
+    const closeA = vi.fn();
+    const closeB = vi.fn();
+    closeOnBack(closeA);
+    closeOnBack(closeB);
+
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    expect(closeB).toHaveBeenCalledOnce();
+    expect(closeA).toHaveBeenCalledOnce();
+    expect(closeB.mock.invocationCallOrder[0]).toBeLessThan(closeA.mock.invocationCallOrder[0]);
   });
 
   it('requestClose() (the returned function) is exactly history.back(), never a direct stack pop', () => {
@@ -48,13 +78,21 @@ describe('modalStack', () => {
     const closeA = vi.fn();
     const closeB = vi.fn();
     closeOnBack(closeA);
+    const stateAfterA = history.state;
     closeOnBack(closeB);
 
     discardTop(); // simulates B's overlay being replaced by a new one, not dismissed
 
-    // A later back press should now close A (one level up), not B —
-    // and B's close callback must never have fired.
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    // B's own pushed history entry is still physically there (inert) --
+    // landing back on A's own state (one real back press from here)
+    // correctly leaves A open rather than closing it, since A is still
+    // the (only) live layer at that point.
+    window.dispatchEvent(new PopStateEvent('popstate', { state: stateAfterA }));
+    expect(closeA).not.toHaveBeenCalled();
+    expect(closeB).not.toHaveBeenCalled();
+
+    // A further back press (past B's now-unwound orphaned slot) closes A.
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
     expect(closeA).toHaveBeenCalledOnce();
     expect(closeB).not.toHaveBeenCalled();
   });

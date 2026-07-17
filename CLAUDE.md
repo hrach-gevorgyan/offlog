@@ -136,6 +136,22 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
   live `subscribe()` change feed if the write goes through sync).
 - Every task-mutating call site must be wrapped in `try/catch` + `showError()`.
   No silent failures — an established, audited invariant.
+- **Any component that calls `closeOnBack()` (see `modalStack.ts`) must be
+  mounted behind a `{#key}` that changes on every real open** — not just
+  gated by `{#if showX}`. A fast close-then-reopen of the same overlay can
+  toggle `showX` false→true again while Svelte's outro for the previous
+  show is still animating; Svelte then *reverses* that outro into a fresh
+  intro on the same component instance instead of destroying and
+  recreating it. `closeOnBack()` only runs once, at that instance's setup,
+  so the revived instance's `requestClose` is the original — already
+  spent — one, and no new history-stack entry exists for it either:
+  permanently stuck open, with a working-looking Escape/scrim/back that
+  silently does nothing (found 2026-07-17 in Changelog under rapid
+  clicking; see `modalStack.ts`'s own header comment for the full trace).
+  Bump a counter on every open and fold it into the key, e.g.
+  `{#key task._id + ':' + openSession}` — see `Sidebar.svelte`'s
+  `changelogSession`/`trashSession`/`settingsSession` or
+  `KanbanBoard.svelte`'s `detailOpenSession` for the pattern.
 
 ## Database invariants (db.ts)
 
@@ -184,9 +200,11 @@ Dev Workflows" section.
 - **All colors are CSS custom properties** in `src/app.css` (`:root` light,
   `body.dark` dark). The full token table is in `docs/TECH.md` → "Theme System"
   — this is the only copy; don't duplicate it into README.md.
-- **Never hardcode a hex/rgba color in a component**, with two exceptions:
-  pure-black shadows/scrims (`rgba(0,0,0,.x)`) and the sidebar's local
-  translucent white overrides (it is pinned always-dark by design).
+- **Never hardcode a hex/rgba color in a component** — the one exception
+  is pure-black shadows/scrims (`rgba(0,0,0,.x)`). `Sidebar.svelte`
+  follows the page theme via `--sidebar-bg` like everything else (used
+  to be pinned always-dark; changed 2026-07-17 on owner feedback) —
+  don't reintroduce a local dark override there.
 - Derived tints use `color-mix(in srgb, var(--token) X%, transparent)` —
   never a separately hardcoded rgba of the token's current value.
 - Semantic tokens: `--accent` (indigo), `--danger`, `--success`,

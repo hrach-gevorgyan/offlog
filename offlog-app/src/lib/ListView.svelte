@@ -316,6 +316,11 @@
   }
 
   let detailTask: TaskDoc | null = null;
+  // See KanbanBoard.svelte's identical detailOpenSession for why this
+  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // close-then-reopen of the same task.
+  let detailOpenSession = 0;
+  function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; }
 
   // B27 — loaded regardless of showArchived (not just while the section is
   // open) so the toggle button itself can carry a count badge; previously
@@ -498,8 +503,8 @@
           style="--prio-color:{PRIO_COLOR[task.priority]}; grid-template-columns:{gridTemplate}"
           role="button"
           tabindex="0"
-          on:click={() => selectionMode ? toggleRowSelect(task._id!) : (detailTask = task)}
-          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectionMode ? toggleRowSelect(task._id!) : (detailTask = task); } }}
+          on:click={() => selectionMode ? toggleRowSelect(task._id!) : openDetail(task)}
+          on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectionMode ? toggleRowSelect(task._id!) : openDetail(task); } }}
           transition:slide={{ duration: 160 }}
           animate:flip={{ duration: 200, easing: cubicOut }}
         >
@@ -604,7 +609,7 @@
 {/if}
 
 {#if detailTask}
-  {#key detailTask._id}
+  {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
       {project}
