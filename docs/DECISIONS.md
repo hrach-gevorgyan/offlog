@@ -64,6 +64,58 @@ already works, not going anywhere. If mesh sync is ever revisited, it
 should be because a genuinely new reason to want it shows up (e.g. real
 other people asking for it), not because this reasoning turned out wrong.
 
+### Why automatic 3-way conflict merge was explored, then declined (2026-07-18)
+Prompted by reading Neighbourhoodie's CouchDB/Svelte blog series (a
+real-time multi-user kanban board built on the same PouchDB/CouchDB
+replication model Offlog uses) — their second post implements automatic
+field-level 3-way merge: diff both conflicting revisions against their
+common ancestor, auto-adopt any field only one side touched, and only
+surface a real conflict when both sides changed the *same* field. It's a
+genuinely good technique, and it looked like a plausible upgrade to
+`resolveConflict()`'s current pick-a-winner-wholesale UI. It doesn't fit
+Offlog, for a reason specific to how Offlog's conflicts actually arise,
+not a general flaw in the technique itself:
+
+**A 3-way merge needs the common ancestor's document body, and
+replication never sends it.** CouchDB/PouchDB replication only transfers
+leaf revisions — the current winner and whatever's in `_conflicts` — never
+the ancestor they diverged from. Neighbourhoodie's own conflicts come from
+two browser tabs hitting one live CouchDB server directly (an immediate
+409 on a concurrent PUT, where the ancestor is still sitting right there
+in the same database) — their own post says as much, explicitly scoping
+the technique to that case and excluding "deferred conflicts from offline
+replication." Offlog's conflicts are structurally the excluded case:
+they come from two devices editing the same task while apart, then
+syncing later — by definition the ancestor was never transferred to
+whichever side receives the conflict, so there is no local ancestor body
+to diff against, ever, for this app's actual conflict shape. This isn't a
+"sometimes it works" edge case worth a fallback path; it's close to
+"essentially never applies," which would make a merge subsystem mostly
+dead code — not acceptable for something meant to ship once and never
+revisit.
+
+A second angle considered: reconstruct each side's changed fields from
+Offlog's own `log:` docs (which do fully replicate, independent of the
+revision tree) instead of the CouchDB ancestor. Rejected too — the
+Changelog view has a user-facing "Clear all" button and a 6-month
+auto-prune, so a merge subsystem's correctness would silently depend on
+data the user is explicitly invited to delete. That fails quietly for
+exactly the user who tidied their history, which is worse than the
+current explicit manual-resolution UI, not better.
+
+**What shipped instead** (same session): the conflict resolution modal
+now shows which device made each competing change and when, using
+`ConflictInfo`'s existing `current`/`other` docs' own `source`/
+`updated_at` fields — a genuine improvement to the existing pick-a-winner
+flow with no new failure modes, unlike merge. PouchDB's own deterministic
+conflict resolution (a stable, real winner is always chosen automatically
+underneath) plus manual override for anyone who wants to look — see
+TECH.md's "Sync reliability" section — remains the permanent model.
+Revisit only if Offlog's conflict *source* changes fundamentally (e.g. a
+future live multi-device-on-one-server mode where ancestors genuinely are
+available locally) — not by re-attempting either variant above against
+the same replication-only conflict shape.
+
 ---
 
 ## Distribution & business model

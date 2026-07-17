@@ -1128,11 +1128,11 @@
           <div class="conflict-item">
             <div class="conflict-item-title">{c.label} <span class="conflict-item-type">({c.type})</span></div>
             <div class="conflict-item-row">
-              <span class="conflict-item-meta">Current — updated {fmtLastSynced(c.current.updated_at ?? c.current.created_at ?? '')}</span>
+              <span class="conflict-item-meta">Current — {c.current.source ? `${c.current.source}, ` : ''}updated {fmtLastSynced(c.current.updated_at ?? c.current.created_at ?? '')}</span>
               <button class="export-btn" on:click={() => resolve(c, 'current')}>Keep this</button>
             </div>
             <div class="conflict-item-row">
-              <span class="conflict-item-meta">Other — updated {fmtLastSynced(c.other.doc.updated_at ?? c.other.doc.created_at ?? '')}</span>
+              <span class="conflict-item-meta">Other — {c.other.doc.source ? `${c.other.doc.source}, ` : ''}updated {fmtLastSynced(c.other.doc.updated_at ?? c.other.doc.created_at ?? '')}</span>
               <button class="export-btn" on:click={() => resolve(c, 'other')}>Keep this</button>
             </div>
           </div>
