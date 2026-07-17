@@ -1,6 +1,6 @@
 # Offlog — Technical Documentation
 
-Version 4.12.0 · Local-first task management for browser and Android
+Version 4.28.0 · Local-first task management for browser, Android, and PC (Tauri)
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
@@ -36,12 +36,14 @@ Version 4.12.0 · Local-first task management for browser and Android
 │  App.svelte                                        │
 │    ├── Sidebar.svelte   (spaces / project nav)     │
 │    ├── DashboardView    (home — overview)          │
+│    ├── FocusView        (daily commitment lock)    │
 │    ├── KanbanBoard      (drag-and-drop columns)    │
 │    ├── ListView         (sortable + filterable)    │
-│    ├── DeadlinesView    (agenda by due date)       │
+│    ├── DeadlinesView    (agenda: list + week grid) │
 │    ├── CardDetail       (task editor modal)        │
 │    ├── QuickAdd         (Ctrl+N fast-add)          │
 │    ├── GlobalSearch     (Ctrl+K cross-project)     │
+│    ├── SettingsPanel    (6-tab settings)           │
 │    └── ChangelogView    (full activity log)        │
 └────────────────────┬──────────────────────────────┘
                      │
@@ -87,17 +89,41 @@ src/
     types.ts              TypeScript interfaces: SpaceDoc, ProjectDoc, TaskDoc, Column
     constants.ts          Priority colors, priority labels, default column definitions
     utils.ts              Shared pure functions: dueLabel, dueState, dueInk, filterTasks
+    theme.ts              Light/Dark/System mode, high contrast, reduce motion
+    motion.ts             Shared Svelte transition params/functions (panels, popovers, toasts)
+    modalStack.ts         Back-button/Escape close ordering for every overlay (closeOnBack())
+    discovery.ts          Track E: mDNS host discovery + pairing handshake (Android side)
+    confirm.ts            confirmAction() — promise-based wrapper around ConfirmDialog
+    commands.ts           Command palette (Ctrl+K) action list
+    spaceIcons.ts          The 25-icon space-icon picker set + resolver
+    focusTrap.ts           use:trapFocus action shared by every modal/panel
     PinStar.svelte        The shared task-pin star icon (used by CardDetail/Kanban/List)
 
-    Sidebar.svelte         Left nav: spaces, projects, sync indicator, dark toggle
-    DashboardView.svelte   Home screen: project cards grid + pinned/overdue panels
-    KanbanBoard.svelte     Drag-and-drop kanban (mouse + touch)
-    ListView.svelte        List view with search, filter, sort, archive
-    DeadlinesView.svelte   Agenda grouped by: Overdue / Today / This Week / Later
-    CardDetail.svelte      Full task editor modal with history
-    QuickAdd.svelte        Ctrl+N fast-add modal (Space / Project selector)
-    GlobalSearch.svelte    Ctrl+K debounced search across all tasks
-    ChangelogView.svelte   Full activity log (last 80 entries)
+    Sidebar.svelte              Left nav: spaces, projects, sync indicator, dark toggle
+    DashboardView.svelte        Home screen: project cards grid + pinned/overdue panels
+    FocusView.svelte            Daily commitment lock (pick up to 3 tasks) + corkboard picker
+    KanbanBoard.svelte          Drag-and-drop kanban (mouse + touch)
+    ListView.svelte             List/Table view with search, filter, sort, archive
+    FilterBar.svelte            Shared Kanban/List search+filter row
+    DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + week-grid view
+    CardDetail.svelte           Full task editor modal with history
+    TaskHistoryPanel.svelte     Lazy-loaded change history for one task
+    QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector)
+    GlobalSearch.svelte         Ctrl+K debounced search across all tasks
+    ChangelogView.svelte        Full activity log (last 80 entries)
+    SettingsPanel.svelte        Settings — 6 tabs (View & Accessibility, Notifications, Sync,
+                                 Organize, Backup & Storage, Advanced), standalone panel (moved
+                                 out of Sidebar.svelte in the v4.26.0 redesign)
+    TrashView.svelte            Recycle bin for soft-deleted tasks
+    SpaceManager.svelte         Manage spaces (Settings → Organize)
+    TagManager.svelte           Manage tags (Settings → Organize)
+    CustomFieldManager.svelte   Manage global custom fields (Settings → Organize)
+    ArchivedProjectsManager.svelte  Manage archived projects (Settings → Organize)
+    CustomSelect.svelte         Themed dropdown, replaces every native <select>
+    CalendarPicker.svelte       Themed date picker, replaces native <input type="date">
+    TimePicker.svelte           Themed time picker, replaces native <input type="time">
+    ConfirmDialog.svelte        Themed confirm() replacement, driven by confirm.ts
+    NamePrompt.svelte           First-run "name this device" prompt
 ```
 
 ---
@@ -166,7 +192,7 @@ New in `db.ts`: `checkIntegrity()` scans every document and reports:
 
 `repairDatabase()` applies safe, well-understood fixes for everything except the zero-statuses case: orphaned tasks/projects get reassigned to the Unsorted space (or archived if even that's missing), invalid status references reset to the project's first status, and conflicts are resolved by removing the losing revisions.
 
-Both are exposed as **Check Database** / **Repair Issues** buttons in a new Maintenance section of Settings (`Sidebar.svelte`) — report only by default, repair requires an explicit confirm.
+Both are exposed as **Check Database** / **Repair Issues** buttons in a new Maintenance section of Settings (`SettingsPanel.svelte`) — report only by default, repair requires an explicit confirm.
 
 ---
 
@@ -300,11 +326,12 @@ The same accent (`#6366F1`) drives the `<meta name="theme-color">` in `index.htm
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
 
-**Gotcha**: `Sidebar.svelte`'s `.settings-panel` is a DOM **sibling** of the
-sidebar, not a descendant — it inherits page-level tokens, not the
-sidebar's dark overrides (the sidebar itself is pinned always-dark by
-design). Don't "fix" this by adding local palette overrides there; it's
-already correctly reading the page theme, not a bug.
+**Gotcha**: `SettingsPanel.svelte`'s `.settings-panel` (a standalone panel
+since the v4.26.0 redesign — it used to live inside `Sidebar.svelte`) is a
+DOM **sibling** of the sidebar, not a descendant — it inherits page-level
+tokens, not the sidebar's dark overrides (the sidebar itself is pinned
+always-dark by design). Don't "fix" this by adding local palette overrides
+there; it's already correctly reading the page theme, not a bug.
 
 ---
 
@@ -346,7 +373,7 @@ There is no push backend behind this app, so genuinely-closed-browser notificati
 - **Catch-up on load** — `catchUpWeb()` fires notifications immediately for any reminder that became due within the last hour while the app was closed, so a missed reminder isn't silently lost forever, just delayed until next open
 - Clicking a web notification focuses the window and sets the same `pendingOpenTaskId` store used by the native path
 
-Notification permission is requested lazily — either from the inline hint shown in `CardDetail` when a reminder is set but permission isn't granted yet, or from the new **Notifications** section in Settings (`Sidebar.svelte`), never proactively on app load.
+Notification permission is requested lazily — either from the inline hint shown in `CardDetail` when a reminder is set but permission isn't granted yet, or from the new **Notifications** section in Settings (`SettingsPanel.svelte`), never proactively on app load.
 
 ---
 

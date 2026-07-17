@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
-import { invokeTauri } from '../config';
+import { invokeTauri, isTauri as isTauriPlatform } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
 
 // Set by a notification click (native action or web Notification.onclick).
@@ -48,8 +48,6 @@ const isNative = () => !!(window as any).Capacitor?.isNativePlatform?.();
 // notification talks to real Windows toast notifications instead,
 // sidestepping WebView2's permission model entirely — same reasoning as
 // why Android needed @capacitor/local-notifications instead of the web API.
-const isTauriPlatform = () => !!(window as any).__TAURI_INTERNALS__;
-
 // Deterministic 32-bit integer id from a task's string id — Capacitor's
 // local-notifications plugin requires numeric ids.
 function numericId(taskId: string): number {
