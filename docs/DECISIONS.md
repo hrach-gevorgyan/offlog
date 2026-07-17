@@ -227,6 +227,44 @@ code, not just when debugging one that's already broken.
 
 ---
 
+## Public release
+
+### Why BFG Repo-Cleaner over `git filter-branch`/`git filter-repo` for C7's git-history purge (2026-07-17)
+C7 required scrubbing a real leaked CouchDB password (and, found during
+the same pass, a second username+password pair that had separately
+leaked into a committed `.claude/settings.local.json`) from every commit
+in the repo's history before it could go public. `git filter-repo` was
+the nominally-recommended tool but needs Python, which wasn't installed
+and couldn't be added without a heavier system change; hand-rolled `git
+filter-branch --index-filter` scripting was tried first (no extra
+dependency) and failed twice in ways worth recording so they aren't
+repeated — first with `--tree-filter`, which checks out the *entire*
+working tree per commit and was still running after 3+ minutes on a
+127-commit repo; then with `--index-filter`, where `git rev-parse
+"HEAD:$path"` silently resolved against the wrong tree inside filter-
+branch's rewrite context (the correct form is `:$path`, reading the
+in-progress commit's index, not `HEAD:$path`) — the fixed version still
+missed several commits for reasons never fully root-caused. BFG (Java,
+already available via Android Studio's JBR) did the entire rewrite,
+correctly, across all 127 commits and 71 tags, in under a second, and
+needed only one extra flag once discovered: `--no-blob-protection`,
+since BFG deliberately skips the *latest* commit on each ref by default
+(a safety feature, not a bug) and the leaked `.claude/settings.local.json`
+line was still present in the tip commit. **Lesson for any future
+history rewrite**: reach for BFG first, and verify completion by
+exhaustively grepping every remaining blob in the object database
+(`git rev-list --objects --all` → `git cat-file -p` each blob) — spot-
+checking specific commits or trusting a tool's own "done" output isn't
+sufficient; this pass caught real gaps in its own first two rewrite
+attempts exactly that way. Also worth noting: `git clone` from a bundle
+does not preserve repo-local config (`user.name`/`user.email`, and it
+will *add* a `remote.origin` pointing at whatever bundle file was
+cloned from) — both had to be fixed by hand after swapping the rewritten
+`.git` into place; check `git config --list --local` after any clone-
+based rewrite for exactly this.
+
+---
+
 ## Process
 
 ### Why CLAUDE.md invariants get written in the same commit as the bug that caused them

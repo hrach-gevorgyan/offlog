@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.25.0**. Everything below is a candidate, not a
+Current version: **v4.28.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -39,10 +39,10 @@ detail. It's a narrative, not a schedule.
    PC app that *is* the sync host, phones connect over home Wi-Fi with no
    CouchDB knowledge required) is working end-to-end and shipped (E1, E2)
    — installer signing deliberately deferred, real annual cost, see E1.
-2. **Now — the release gate (Track C core).** C7's git-history piece,
-   then C2 zero-config first-run verification, then C1 GitHub, C5 landing
-   page, C3 Play Store. This is the externally-visible "we made it"
-   milestone.
+2. **Now — the release gate (Track C core).** C7 (credential cleanup,
+   including its git-history piece) and C2 (zero-config first-run) are
+   both done — next up is C1 GitHub, C5 landing page, C3 Play Store. This
+   is the externally-visible "we made it" milestone.
 3. **In parallel wherever it doesn't compete with the release gate — make
    it speak human (Tracks B/C polish items).** A plain-language pass over
    every remaining string and document (C10) is the only piece still open
@@ -58,9 +58,9 @@ detail. It's a narrative, not a schedule.
    considered at length and explicitly declined (2026-07-03) — see
    DECISIONS.md.
 
-A public repo with hardcoded credentials in its history would undermine
-the entire premise — C7 is a real, non-negotiable gate on step 2, not
-just narrative flow.
+A public repo with hardcoded credentials in its history would have
+undermined the entire premise — C7 was a real, non-negotiable gate on
+step 2, not just narrative flow. Now closed.
 
 ---
 
@@ -260,12 +260,13 @@ Goal: the mission above, made concrete. Unlike Track A/B, these aren't
 paired into a version bump each — they're mostly one-time setup work, and
 several can start independently of whatever A/B release is in flight.
 
-### C1. Open-source the repository on GitHub
+### C1. Open-source the repository on GitHub — unblocked, not yet started
 Push the existing local repo public: pick a license (leaning MIT), add
 `LICENSE`, a `CONTRIBUTING.md`, issue templates, and a README written for
 someone who has never seen this project before. Audit for anything that
-assumes a local-only environment before it goes public. Blocked on **C7**
-(credential cleanup) and a real stability/security pass — see DECISIONS.md.
+assumes a local-only environment before it goes public. **C7 (credential
+cleanup) is done** — this can start whenever the owner wants; still worth
+a final security-audit pass first, see DECISIONS.md.
 
 ### C2. Zero-config first run, verified — audit complete as of v4.24.0
 v4.19.0 fixed Android's first-run "not connected" message to point at
@@ -301,13 +302,16 @@ landing page copy — to make sure the "not competing, just likable" framing
 from the Mission above comes through, written for humans discovering the
 project.
 
-### C7. Fix hardcoded CouchDB credentials — current source fixed (2026-07-14), git history still needs C1-time handling
+### C7. Fix hardcoded CouchDB credentials — fully closed, shipped 2026-07-17
 `offlog-app/src/config.ts` used to hardcode a real CouchDB password as a
 fallback default; `DEFAULT_COUCH_USER`/`DEFAULT_COUCH_PASS` now fall back
-to `''`. **Still open, and still blocks C1:** the *old* password is
-recoverable from this repo's git history even though current source is
-clean — needs fresh history at publish time (a C1-time decision, not
-premature to do now). Don't consider C7 fully closed until that's handled.
+to `''` (fixed 2026-07-14). The git-history piece was the remaining
+blocker on C1: the old password (and, found in the same pass, a second
+username+password pair that had separately leaked into a committed
+`.claude/settings.local.json`) was purged from every one of the repo's
+127 commits and 71 tags using BFG Repo-Cleaner, then verified by
+exhaustively scanning every remaining git object for both strings
+(zero hits). Full record in DECISIONS.md. **C7 no longer blocks C1.**
 
 ### C8. New app icon, all platforms — shipped in v4.17.0
 ### C9. Typography: ≤3 font families, self-hosted — shipped in v4.17.0
@@ -428,9 +432,9 @@ scattered inline here.
 
 **Maintenance passes run every 3 releases** — tracked in
 [MAINTENANCE.md](../MAINTENANCE.md), not restated here. Track C runs
-independently of version numbers: **C7 (credential fix) and C2 can start
-any time**; **C1/C3/C5/C6 fit naturally once the app feels "finished
-enough."** Track D was declined outright and never entered sequencing.
+independently of version numbers: **C7 and C2 are both done**;
+**C1/C3/C5/C6 fit naturally once the app feels "finished enough."**
+Track D was declined outright and never entered sequencing.
 Full shipped-release history lives in [CHANGELOG.md](CHANGELOG.md) /
 [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHIVE.md) — this table only shows
 what's still ahead or otherwise worth a pointer.
@@ -441,7 +445,8 @@ what's still ahead or otherwise worth a pointer.
 | — | v4.23.0 ✓ | Shipped — B39 (stable per-install device id, fixes stale entries after a rename), B50 (custom `TimePicker.svelte` replacing native time inputs), B48 (Android widget follows system light/dark, flatter — needs an owner Studio check to confirm visually). |
 | — | v4.24.0 ✓ | Shipped — C2 (zero-config first-run audit complete: fixed 2 real empty-state gaps in Dashboard/Kanban), C10 (plain-language pass on Restore/crash-recovery/pairing/sync copy — stays open by nature, not a one-time close-out). |
 | — | v4.25.0 ✓ | Shipped — first real desktop dogfooding round. A long list of real bugs found and fixed (startup console window, blank-window delay, reinstall data corruption, notification scheduling/click-routing/permission-reporting, backup's broken save flow), E3 (updater) scaffolded but blocked on C1, a full security audit (one real fix — pairing brute-force lockout), and ~64MB trimmed off the bundled CouchDB. See CHANGELOG.md for the full breakdown — too much for one line here. |
-| — | (unversioned) | The release gate, in dependency order: C7's remaining git-history piece → C1 (GitHub) → C5 (landing page) → C3 (Play Store), with C6 (branding pass) alongside the public-facing assets. Not version-numbered work — mostly setup/audit outside the app. |
+| — | v4.26.0 → v4.28.0 ✓ | Shipped — Settings full redesign, mobile info-loss/header fixes, Android widget polish, a real modalStack.ts double-close bug, seedIfEmpty() hardening. **C7 fully closed** (2026-07-17): both the source-level fix and the git-history purge (BFG Repo-Cleaner, 127 commits/71 tags, verified) — see CHANGELOG.md for the per-release list. |
+| — | (unversioned) | The release gate, remaining in dependency order: C1 (GitHub) → C5 (landing page) → C3 (Play Store), with C6 (branding pass) alongside the public-facing assets. C7 and C2 are both done. Not version-numbered work — mostly setup/audit outside the app. |
 | — | (parked) | B28, B33 — rethinking positional-done and sub-projects; revisit post-release only if daily use demands it. |
 | — | (open, unscoped) | B35's remaining draft items (Focus add-task, Dashboard link, Daily Brief); C2/C10 full sweeps; A9/A31's Android-only remainders. |
 

@@ -203,6 +203,27 @@ code from the several notifications.ts rewrites, all 6 new npm packages
 and 6 new Rust crates from this arc genuinely used, `cargo check` zero
 warnings, `npm audit --production` unchanged (same known uuid/pouchdb
 advisory), no stray debug/temp files.
-Next pass due: **after v4.28.0 ships**, continuing the every-3-releases
+Last pass: v4.28.0 (2026-07-17 — tenth run, delta-scoped since v4.25.0,
+covering v4.26.0-v4.28.0's settings redesign, Android widget polish, and
+the modalStack.ts/seedIfEmpty fixes). Baselines all green (build/tsc/
+test/cargo build). Found and fixed two real [SAFE] gaps: `notifications.ts`
+re-declared its own inline Tauri-detection check instead of importing
+`isTauri()` from `config.ts` (same duplication pattern the seventh pass
+already consolidated elsewhere); `docs/TECH.md` was stale since v4.12.0
+(version header, and its source file map was missing ~20 files added
+since, including `SettingsPanel.svelte` itself after the v4.26.0
+redesign pulled it out of `Sidebar.svelte`) — both fixed. Security
+checklist all clean: XSS surface, deep-link handling, `unsafe` blocks,
+credential logging, `npm audit` (20 vulns, all in build-tooling or the
+test-only `pouchdb` package, none shipped) all unchanged/clean.
+**Also completed alongside this pass, not part of the routine itself**:
+C7's git-history piece (owner-directed) — two real credentials
+(`offlog-app/src/config.ts`'s old hardcoded CouchDB password, and a
+second username+password pair that had leaked into a committed
+`.claude/settings.local.json`) purged from every one of the repo's 127
+commits/71 tags via BFG Repo-Cleaner, verified by exhaustively scanning
+every remaining git object afterward. See DECISIONS.md/ROADMAP.md C7 for
+the full record.
+Next pass due: **after v4.31.0 ships**, continuing the every-3-releases
 cadence from there — see docs/ROADMAP.md's sequencing table, which has
 these same points marked inline.
