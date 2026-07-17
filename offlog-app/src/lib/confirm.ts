@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 interface ConfirmRequest {
   message: string;
@@ -20,6 +20,18 @@ export function confirmAction(
   opts: { confirmLabel?: string; cancelLabel?: string; danger?: boolean } = {},
 ): Promise<boolean> {
   return new Promise((resolve) => {
+    // A fast double-click on the same (or two different) confirm-gated
+    // buttons before the dialog can render, or any other path calling
+    // confirmAction() again while a previous request hasn't been
+    // answered yet, used to silently overwrite confirmRequest -- the
+    // first caller's `await confirmAction(...)` then hung forever,
+    // leaked, since nothing ever resolved its promise (ConfirmDialog.
+    // svelte only ever reads/resolves the store's *current* value, not
+    // whichever one it was first mounted for). Resolving the stale
+    // pending request false first (treated as an implicit cancel) means
+    // no caller is ever left hanging (2026-07-18 audit finding).
+    const prev = get(confirmRequest);
+    if (prev) prev.resolve(false);
     confirmRequest.set({
       message,
       confirmLabel: opts.confirmLabel ?? 'Confirm',
