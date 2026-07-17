@@ -112,12 +112,24 @@ const MAX_TIMEOUT = 2_147_483_647; // setTimeout's 32-bit signed int limit (~24.
 // setTimeout can both fire for the same task before the DB write that
 // clears reminder_at has round-tripped back through the reactive
 // reload chain, producing 2-3 duplicate notifications for one reminder.
+//
+// Keyed by `${id}:${reminder_at}`, not just the task id -- a task id
+// alone meant that once ANY reminder on a task fired, _firedIds (never
+// cleared) would permanently block every future reminder ever set on
+// that same task again for the rest of the session, silently, since the
+// guard couldn't tell a brand-new reminder_at apart from the one that
+// already fired (2026-07-18 audit finding). Keying by the exact instant
+// still blocks the original race (both paths would compute the identical
+// key for the same still-pending reminder_at) while correctly treating a
+// later, different reminder_at on the same task as fireable again.
 const _firedIds = new Set<string>();
+function firedKey(task: TaskDoc): string { return `${task._id}:${task.reminder_at}`; }
 
 function fireWebNotification(task: TaskDoc) {
   const id = task._id!;
-  if (_firedIds.has(id)) return;
-  _firedIds.add(id);
+  const key = firedKey(task);
+  if (_firedIds.has(key)) return;
+  _firedIds.add(key);
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   const n = new Notification(task.title, {
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
@@ -281,8 +293,9 @@ async function scheduleNative(tasks: TaskDoc[]) {
 // we can listen for below.
 async function fireTauriNotification(task: TaskDoc) {
   const id = task._id!;
-  if (_firedIds.has(id)) return;
-  _firedIds.add(id);
+  const key = firedKey(task);
+  if (_firedIds.has(key)) return;
+  _firedIds.add(key);
   invokeTauri('send_task_notification', {
     title: task.title,
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',

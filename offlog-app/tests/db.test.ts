@@ -396,6 +396,27 @@ describe('importJSON', () => {
     const imported = await db.get('space:imported');
     expect(imported).toBeTruthy();
   });
+
+  // 2026-07-18 audit finding: a doc whose id already exists locally used
+  // to be silently rejected by PouchDB (no _rev attached, so it read as
+  // "create over an existing doc" -> 409) and counted as "ok" anyway --
+  // the existing local doc was never actually touched, despite the
+  // Restore tab's own UI copy promising it "merges instead of
+  // duplicating." Regression coverage for actually overwriting it.
+  it('overwrites an existing doc with the imported content when ids collide', async () => {
+    const now = new Date().toISOString();
+    await db.put({ _id: 'space:existing', type: 'space', name: 'Old Name', color: '#111', position: 0, updated_at: now, source: 'pc' });
+
+    const { ok, skipped } = await importJSON([
+      { _id: 'space:existing', type: 'space', name: 'New Name From Backup', color: '#222', position: 0, updated_at: now, source: 'pc' },
+    ]);
+
+    expect(ok).toBe(1);
+    expect(skipped).toBe(0);
+    const after = await db.get('space:existing') as any;
+    expect(after.name).toBe('New Name From Backup');
+    expect(after.color).toBe('#222');
+  });
 });
 
 describe('retention pruning', () => {

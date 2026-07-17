@@ -1092,12 +1092,31 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
     d._id && typeof d._id === 'string' &&
     ['space', 'project', 'task'].includes(d.type)
   );
-  // strip _rev so we don't cause conflicts — PouchDB will merge
-  const clean = valid.map(({ _rev, ...d }) => d);
+  // A doc whose id already exists locally is meant to overwrite it with
+  // the backup's content ("merges instead of duplicating" -- the Restore
+  // tab's own UI copy) -- fetch each existing doc's current _rev first
+  // and attach it, so bulkDocs treats a collision as a real update
+  // instead of a rejected create. Previously this stripped _rev
+  // unconditionally on every doc and let PouchDB reject every collision
+  // with a 409 -- counted as "ok" here, but silently leaving the
+  // existing (possibly stale/different) local doc completely untouched.
+  // A real gap between documented restore behavior and what actually
+  // happened (2026-07-18 audit) -- restoring a backup over data that had
+  // since diverged locally did nothing for every doc that collided,
+  // while reporting success.
+  const existing = await db.allDocs({ keys: valid.map(d => d._id) });
+  const revById = new Map<string, string>();
+  for (const row of existing.rows as any[]) {
+    if (!row.error && row.value?.rev) revById.set(row.id, row.value.rev);
+  }
+  const clean = valid.map(({ _rev, ...d }) => {
+    const rev = revById.get(d._id);
+    return rev ? { ...d, _rev: rev } : d;
+  });
   const results = await db.bulkDocs(clean);
   invalidateTaskCache();
-  const ok = results.filter((r: any) => !r.error || r.status === 409).length;
-  const skipped = results.filter((r: any) => r.error && r.status !== 409).length;
+  const ok = results.filter((r: any) => !r.error).length;
+  const skipped = results.filter((r: any) => r.error).length;
   return { ok, skipped };
 }
 
@@ -1107,8 +1126,8 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
 // dry-run for bulkDocs) — "will be skipped" here means "malformed, not
 // one of space/project/task," which importJSON's own filter already
 // applies; a doc that collides with an existing id is still reported as
-// "created" here and resolved as a merge (status 409, counted as ok) by
-// importJSON itself, consistent with its existing behavior.
+// "created" here and genuinely overwritten (adopting the correct current
+// _rev first) by importJSON itself, consistent with its actual behavior.
 export function analyzeImport(docs: any[]): { toCreate: number; toSkip: number; byType: Record<string, number> } {
   const byType: Record<string, number> = { space: 0, project: 0, task: 0 };
   let toSkip = 0;
