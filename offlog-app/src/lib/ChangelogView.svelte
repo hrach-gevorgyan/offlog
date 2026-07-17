@@ -111,11 +111,35 @@
       + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function describe(log: any): string {
-    const who = log.task_title ? `"${log.task_title}"` : log.project_name ? `"${log.project_name}"` : null;
+  // create/delete used to always say "task" regardless of what was
+  // actually created/deleted -- harmless while only createTask/deleteTask
+  // logged those actions, but createProject/createSpace/deleteProject/
+  // deleteSpace/custom-field create+delete all log the same actions too
+  // (2026-07-18 audit closed several missing-logChange() gaps for these),
+  // so a project or space deletion was reading as "Deleted task X".
+  // Derived from the ref id's own prefix, same convention CLAUDE.md
+  // documents db.ts relying on everywhere else.
+  function entityLabel(log: any): string {
+    if (typeof log.ref !== 'string') return 'task';
+    if (log.ref.startsWith('project:')) return 'project';
+    if (log.ref.startsWith('space:')) return 'space';
+    if (log.ref.startsWith('field:')) return 'field';
+    return 'task';
+  }
 
-    if (log.action === 'create') return `Created task ${who ?? ''}`.trim();
-    if (log.action === 'delete') return `Deleted task ${who ?? ''}`.trim();
+  function describe(log: any): string {
+    // task_title is only ever set alongside a task-ref log entry, so
+    // checking it first is enough to pick the task's own name over its
+    // project's (which is also present, as context, on every task log —
+    // shown separately in the UI, not as the primary "who" here).
+    const who = log.task_title ? `"${log.task_title}"`
+      : log.project_name ? `"${log.project_name}"`
+      : log.space_name ? `"${log.space_name}"`
+      : log.field_name ? `"${log.field_name}"`
+      : null;
+
+    if (log.action === 'create') return `Created ${entityLabel(log)} ${who ?? ''}`.trim();
+    if (log.action === 'delete') return `Deleted ${entityLabel(log)} ${who ?? ''}`.trim();
 
     if (log.action === 'move') {
       let text = `Moved ${who ?? 'task'} from "${log.from ?? '?'}" → "${log.to ?? '?'}"`;
@@ -160,7 +184,10 @@
           <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
           <div class="log-main">
             <span class="log-desc">{describe(log)}</span>
-            {#if log.project_name}<span class="log-project">{log.project_name}</span>{/if}
+            <!-- Skipped for a project's own create/delete entry -- its
+                 name is already the main description's subject, this
+                 badge would just repeat it right below. -->
+            {#if log.project_name && entityLabel(log) !== 'project'}<span class="log-project">{log.project_name}</span>{/if}
           </div>
           <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
           <span class="log-time">{fmt(log.ts)}</span>

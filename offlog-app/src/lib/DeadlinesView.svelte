@@ -15,6 +15,10 @@
   let all: DueTask[] = [];
   let detailTask: DueTask | null = null;
   let detailProject: ProjectDoc | null = null;
+  // See KanbanBoard.svelte's identical detailOpenSession for why this
+  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // close-then-reopen of the same task.
+  let detailOpenSession = 0;
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -83,6 +87,7 @@
   $: later     = all.filter(t => t.due_date! > endOfWeek());
 
   function openDetail(t: DueTask) {
+    detailOpenSession++;
     detailTask = t;
     detailProject = $projects.find(p => p._id === t.project_id) ?? null;
   }
@@ -251,7 +256,7 @@
 </div>
 
 {#if detailTask && detailProject}
-  {#key detailTask._id}
+  {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
       project={detailProject}

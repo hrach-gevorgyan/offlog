@@ -3,6 +3,7 @@ import type { SpaceDoc, ProjectDoc, TaskDoc } from './types';
 import {
   getSpaces, getProjects, getTasksForProject,
   seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs, maybePruneOldDeletedTasks,
+  scanConflicts,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
 import { initTauriSyncDefaults } from '../config';
@@ -73,6 +74,11 @@ export async function init() {
   await initTauriSyncDefaults();
   await reload();
   startSync();
+  // Not just after the next sync settles (markSynced()/resolveConflict()
+  // already call this) — a session that starts with sync paused, or
+  // genuinely offline, should still surface conflicts left over from a
+  // previous session instead of showing no badge until sync resumes.
+  scanConflicts().catch(() => {});
   watchForStaleHost();
   subscribe(() => reload());
   checkPermission();

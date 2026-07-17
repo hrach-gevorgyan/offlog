@@ -374,7 +374,10 @@ function markError(err: any) {
   notify();
 }
 
-async function scanConflicts(): Promise<number> {
+// Exported for store.ts's init() — conflict state should be visible from
+// a cold start too, not only after the next sync settles (see its own
+// call site comment).
+export async function scanConflicts(): Promise<number> {
   // PouchDB only ever attaches conflict info to the fetched doc's own
   // _conflicts field, never to row.value — so include_docs is required, and
   // row.doc._conflicts (not row.value.conflicts) is the field to read. A
@@ -602,6 +605,9 @@ export async function createSpace(name: string, color: string, icon?: string): P
     updated_at: now(), source: SOURCE,
   };
   await db.put(doc);
+  // Spaces had zero changelog coverage at all (create/update/delete) —
+  // every other entity type (project, task) logs create+update.
+  await logChange(doc._id!, 'create', undefined, undefined, undefined, { space_name: name });
   return doc;
 }
 
@@ -609,9 +615,18 @@ export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'n
   const doc = await db.get<SpaceDoc>(id);
   const updated = { ...doc, ...changes, updated_at: now(), source: SOURCE };
   await db.put(updated);
+  const skip = new Set(['updated_at', 'source']);
+  for (const key of Object.keys(changes) as (keyof SpaceDoc)[]) {
+    if (skip.has(key)) continue;
+    if (JSON.stringify(doc[key]) === JSON.stringify(changes[key])) continue;
+    await logChange(id, 'update', key, doc[key], changes[key], { space_name: doc.name });
+  }
   return updated;
 }
 
+// Position-only reordering, same as why task drag-reorder within a column
+// isn't logged either (updateTask's diff skip set excludes `position`) —
+// changelog noise for a pure display-order tweak, not a real edit.
 export async function reorderSpaces(spaceIds: string[]): Promise<void> {
   const all = await getSpaces();
   const byId = new Map(all.map(s => [s._id, s]));
@@ -637,6 +652,7 @@ export async function deleteSpace(id: string): Promise<void> {
     await db.bulkDocs(projects.map(p => ({ ...p, space_id: 'space:unsorted', updated_at: now(), source: SOURCE })));
   }
   await db.remove(doc);
+  await logChange(id, 'delete', undefined, undefined, undefined, { space_name: doc.name });
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────
@@ -789,6 +805,7 @@ export async function addCustomFieldDef(name: string, type: CustomFieldDef['type
   try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { doc = { _id: CUSTOM_FIELDS_DOC_ID, type: 'meta' }; }
   const fields = [...(doc.fields ?? []), field];
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
+  await logChange(field.id, 'create', undefined, undefined, undefined, { field_name: name });
   return fields;
 }
 
@@ -800,19 +817,27 @@ export async function addCustomFieldDef(name: string, type: CustomFieldDef['type
 export async function removeCustomFieldDef(fieldId: string): Promise<CustomFieldDef[]> {
   let doc: any;
   try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
+  const removed = (doc.fields ?? []).find((f: CustomFieldDef) => f.id === fieldId);
   const fields = (doc.fields ?? []).filter((f: CustomFieldDef) => f.id !== fieldId);
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
+  if (removed) await logChange(fieldId, 'delete', undefined, undefined, undefined, { field_name: removed.name });
   return fields;
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const doc = await db.get(id);
+  const doc = await db.get<ProjectDoc>(id);
   await db.remove(doc);
   // hard-delete all tasks in this project
   const all = await getAllTasksRaw();
   const projectTasks = all.filter(d => d.project_id === id);
   if (projectTasks.length) await db.bulkDocs(projectTasks.map(t => ({ ...t, _deleted: true })));
   invalidateTaskCache();
+  // Was the only project-level mutation with no changelog entry at all
+  // (create/update/archive/unarchive all log) -- logged after the doc is
+  // already gone, same as deleteTask logging against a soft-deleted doc;
+  // the ref just won't resolve to a live project if anyone ever clicks
+  // through from this entry, same as any other deleted-item log row.
+  await logChange(id, 'delete', undefined, undefined, undefined, { project_name: doc.name });
 }
 
 // B32 — soft archive for a whole project: the project doc itself stays
@@ -1000,6 +1025,9 @@ export async function undoDelete(id: string): Promise<void> {
   if (!current.deleted) return;
   await db.put({ ...current, deleted: false, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
+  let projName: string | undefined;
+  try { projName = (await db.get<ProjectDoc>(current.project_id)).name; } catch {}
+  await logChange(id, 'update', 'deleted', true, false, { task_title: current.title, project_name: projName });
   _undoListeners.forEach(fn => fn());
 }
 
@@ -1041,9 +1069,11 @@ export async function getArchivedTasksForProject(projectId: string): Promise<Tas
 }
 
 export async function unarchiveTask(id: string): Promise<void> {
-  const doc = await db.get<TaskDoc>(id);
-  await db.put({ ...doc, archived: false, updated_at: now(), source: SOURCE });
-  invalidateTaskCache();
+  // Routed through updateTask() (like archiveTask() below), not a direct
+  // db.put(), so it logs a changelog entry the same way archiving already
+  // does -- was a direct put with no logChange() call, the only one of
+  // the archive/unarchive pair that didn't log.
+  await updateTask(id, { archived: false } as any);
 }
 
 export async function archiveTask(id: string): Promise<void> {

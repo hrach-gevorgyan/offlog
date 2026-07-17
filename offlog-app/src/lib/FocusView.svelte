@@ -96,11 +96,19 @@
   }
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
+  // See KanbanBoard.svelte's identical detailOpenSession for why this
+  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // close-then-reopen of the same task.
+  let detailOpenSession = 0;
 
   async function loadLockedTasks() {
     if (!lock) { lockedTasks = []; return; }
     const fetched = await Promise.all(lock.taskIds.map(id => getTaskById(id)));
-    lockedTasks = fetched.filter((t): t is TaskDoc => !!t && !t.deleted);
+    // !archived too, not just !deleted -- every other read path in the
+    // app (getOpenTasksForFocusPicker, getAllTasksDue, etc.) excludes
+    // both; a task archived elsewhere while locked as one of today's 3
+    // commitments used to stay visible/actionable here regardless.
+    lockedTasks = fetched.filter((t): t is TaskDoc => !!t && !t.deleted && !t.archived);
   }
 
   async function loadPicker() { pickerTasks = rankPicker(await getOpenTasksForFocusPicker()); }
@@ -135,6 +143,7 @@
   }
 
   function openDetail(t: TaskDoc) {
+    detailOpenSession++;
     detailTask = t;
     detailProject = $projects.find(p => p._id === t.project_id) ?? null;
   }
@@ -266,7 +275,7 @@
 </div>
 
 {#if detailTask && detailProject}
-  {#key detailTask._id}
+  {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
       project={detailProject}

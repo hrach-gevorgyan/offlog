@@ -12,6 +12,10 @@
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
+  // See KanbanBoard.svelte's identical detailOpenSession for why this
+  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // close-then-reopen of the same task.
+  let detailOpenSession = 0;
   // B27 — archived tasks previously only surfaced inside List view's own
   // toggle, easy to forget exists; this is a glance-level count only, not
   // a full archived-task browser (that stays in List view).
@@ -28,6 +32,7 @@
   });
 
   function openTask(t: TaskDoc) {
+    detailOpenSession++;
     detailTask = t;
     detailProject = data?.allProjects.find(p => p._id === t.project_id) ?? null;
   }
@@ -180,7 +185,7 @@
 </div>
 
 {#if detailTask && detailProject}
-  {#key detailTask._id}
+  {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
       project={detailProject}

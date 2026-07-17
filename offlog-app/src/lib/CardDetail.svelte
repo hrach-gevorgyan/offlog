@@ -166,6 +166,7 @@
   // loading it as a dynamic import keeps its query/formatting logic out of
   // the main bundle for the common case where nobody opens it.
   let TaskHistoryPanelComp: typeof import('./TaskHistoryPanel.svelte').default | null = null;
+  let loadingHistory = false;
 
   onMount(async () => {
     modalOpen.set(true);
@@ -175,8 +176,18 @@
 
   async function loadHistory() {
     if (showHistory) { showHistory = false; return; }
-    if (!TaskHistoryPanelComp) TaskHistoryPanelComp = (await import('./TaskHistoryPanel.svelte')).default;
-    showHistory = true;
+    if (loadingHistory) return;
+    try {
+      if (!TaskHistoryPanelComp) {
+        loadingHistory = true;
+        TaskHistoryPanelComp = (await import('./TaskHistoryPanel.svelte')).default;
+      }
+      showHistory = true;
+    } catch (e) {
+      showError('Could not load task history — ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      loadingHistory = false;
+    }
   }
 
   // B26: tags already used in *this* project are the most likely match,
