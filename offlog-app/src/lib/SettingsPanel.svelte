@@ -369,34 +369,86 @@
   $: if (activeCategory === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
   // ── Organize (Manage Spaces / Manage Tags) ─────────────────────────────
+  // All four managers below get the same two fixes (2026-07-18 audit):
+  // an error-handled, reentrancy-guarded lazy import (matching Sidebar.
+  // svelte's openChangelog/openTrash/openSettings -- an unguarded import
+  // that rejects used to leave showX stuck false with no feedback), and
+  // an *Session counter folded into their {#key} in the template below
+  // (matching CardDetail/Changelog/Trash/Settings/QuickAdd/GlobalSearch
+  // -- all four call closeOnBack(), so all four were exposed to the same
+  // stuck-panel bug a fast reopen could trigger).
   let SpaceManagerComp: typeof import('./SpaceManager.svelte').default | null = null;
   let showSpaceManager = false;
+  let spaceManagerActive = false;
+  let spaceManagerSession = 0;
   async function openSpaceManager() {
-    if (!SpaceManagerComp) SpaceManagerComp = (await import('./SpaceManager.svelte')).default;
-    showSpaceManager = true;
+    if (spaceManagerActive) return;
+    spaceManagerActive = true;
+    try {
+      if (!SpaceManagerComp) SpaceManagerComp = (await import('./SpaceManager.svelte')).default;
+      spaceManagerSession++;
+      showSpaceManager = true;
+    } catch (e) {
+      spaceManagerActive = false;
+      showError('Could not open Spaces — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onSpaceManagerClosed() { showSpaceManager = false; spaceManagerActive = false; }
 
   let TagManagerComp: typeof import('./TagManager.svelte').default | null = null;
   let showTagManager = false;
+  let tagManagerActive = false;
+  let tagManagerSession = 0;
   async function openTagManager() {
-    if (!TagManagerComp) TagManagerComp = (await import('./TagManager.svelte')).default;
-    showTagManager = true;
+    if (tagManagerActive) return;
+    tagManagerActive = true;
+    try {
+      if (!TagManagerComp) TagManagerComp = (await import('./TagManager.svelte')).default;
+      tagManagerSession++;
+      showTagManager = true;
+    } catch (e) {
+      tagManagerActive = false;
+      showError('Could not open Tags — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onTagManagerClosed() { showTagManager = false; tagManagerActive = false; }
 
   let CustomFieldManagerComp: typeof import('./CustomFieldManager.svelte').default | null = null;
   let showCustomFieldManager = false;
+  let customFieldManagerActive = false;
+  let customFieldManagerSession = 0;
   async function openCustomFieldManager() {
-    if (!CustomFieldManagerComp) CustomFieldManagerComp = (await import('./CustomFieldManager.svelte')).default;
-    showCustomFieldManager = true;
+    if (customFieldManagerActive) return;
+    customFieldManagerActive = true;
+    try {
+      if (!CustomFieldManagerComp) CustomFieldManagerComp = (await import('./CustomFieldManager.svelte')).default;
+      customFieldManagerSession++;
+      showCustomFieldManager = true;
+    } catch (e) {
+      customFieldManagerActive = false;
+      showError('Could not open Custom Fields — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
 
   // B32 — same lazy-modal pattern as Spaces/Tags/Custom Fields above
   let ArchivedProjectsManagerComp: typeof import('./ArchivedProjectsManager.svelte').default | null = null;
   let showArchivedProjectsManager = false;
+  let archivedProjectsManagerActive = false;
+  let archivedProjectsManagerSession = 0;
   async function openArchivedProjectsManager() {
-    if (!ArchivedProjectsManagerComp) ArchivedProjectsManagerComp = (await import('./ArchivedProjectsManager.svelte')).default;
-    showArchivedProjectsManager = true;
+    if (archivedProjectsManagerActive) return;
+    archivedProjectsManagerActive = true;
+    try {
+      if (!ArchivedProjectsManagerComp) ArchivedProjectsManagerComp = (await import('./ArchivedProjectsManager.svelte')).default;
+      archivedProjectsManagerSession++;
+      showArchivedProjectsManager = true;
+    } catch (e) {
+      archivedProjectsManagerActive = false;
+      showError('Could not open Archived Projects — ' + (e instanceof Error ? e.message : String(e)));
+    }
   }
+  function onArchivedProjectsManagerClosed() { showArchivedProjectsManager = false; archivedProjectsManagerActive = false; }
 
   // ── Data ────────────────────────────────────────────────────────────────
   let breakdown: StorageBreakdown | null = null;
@@ -569,12 +621,12 @@
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];
 
-  // Scaffolding ahead of C1 (open-sourcing the repo) -- the updater plugin
-  // has no endpoint/pubkey configured yet (tauri.conf.json deliberately
-  // has no plugins.updater block, see its own comment and lib.rs's), so
-  // check() below always fails with a real "not configured"-shaped error
-  // until real hosting exists. Wired up now anyway (owner request,
-  // 2026-07-16) so the UI/flow is ready the moment that config lands.
+  // Scaffolding ahead of C1 (open-sourcing the repo) -- tauri.conf.json's
+  // plugins.updater block exists but points at a placeholder endpoint
+  // (https://example.invalid/...) and pubkey, not real hosting, so
+  // check() below always fails until C1 provides a real update feed and
+  // the owner generates a real signing key. Wired up now anyway (owner
+  // request, 2026-07-16) so the UI/flow is ready the moment that lands.
   let updateChecking = false;
   let updateStatus = '';
   async function checkForUpdate() {
@@ -1167,17 +1219,25 @@
 {/if}
 
 {#if showSpaceManager && SpaceManagerComp}
-  <svelte:component this={SpaceManagerComp} on:close={() => showSpaceManager = false} />
+  {#key spaceManagerSession}
+    <svelte:component this={SpaceManagerComp} on:close={onSpaceManagerClosed} />
+  {/key}
 {/if}
 
 {#if showTagManager && TagManagerComp}
-  <svelte:component this={TagManagerComp} on:close={() => showTagManager = false} />
+  {#key tagManagerSession}
+    <svelte:component this={TagManagerComp} on:close={onTagManagerClosed} />
+  {/key}
 {/if}
 {#if showCustomFieldManager && CustomFieldManagerComp}
-  <svelte:component this={CustomFieldManagerComp} on:close={() => showCustomFieldManager = false} />
+  {#key customFieldManagerSession}
+    <svelte:component this={CustomFieldManagerComp} on:close={onCustomFieldManagerClosed} />
+  {/key}
 {/if}
 {#if showArchivedProjectsManager && ArchivedProjectsManagerComp}
-  <svelte:component this={ArchivedProjectsManagerComp} on:close={() => showArchivedProjectsManager = false} />
+  {#key archivedProjectsManagerSession}
+    <svelte:component this={ArchivedProjectsManagerComp} on:close={onArchivedProjectsManagerClosed} />
+  {/key}
 {/if}
 
 <style>
