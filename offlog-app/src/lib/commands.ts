@@ -23,6 +23,7 @@ export interface CommandContext {
   goToDashboard: () => void;
   goToFocus: () => void;
   goToAgenda: () => void;
+  goToTimeTravel: () => void;
   openQuickAdd: () => void;
   toggleTheme: () => void;
   toggleHighContrast: () => void;
@@ -37,6 +38,7 @@ export function getCommands(ctx: CommandContext): Command[] {
     { id: 'dashboard', label: 'Go to Dashboard', keywords: 'home view', run: ctx.goToDashboard },
     { id: 'focus', label: 'Go to Focus', keywords: 'view commitment', run: ctx.goToFocus },
     { id: 'agenda', label: 'Go to Agenda', keywords: 'deadlines calendar view week', run: ctx.goToAgenda },
+    { id: 'timetravel', label: 'Go to Time Travel', keywords: 'journal history retrospective activity log view', run: ctx.goToTimeTravel },
     { id: 'quickadd', label: 'Quick Add Task', keywords: 'new task create', run: ctx.openQuickAdd, opensOverlay: true },
     { id: 'theme', label: 'Toggle Dark / Light Mode', keywords: 'appearance dark light theme', run: ctx.toggleTheme },
     { id: 'contrast', label: 'Toggle High Contrast', keywords: 'appearance accessibility', run: ctx.toggleHighContrast },

@@ -15,6 +15,7 @@
   import DeadlinesView from './lib/DeadlinesView.svelte';
   import FocusView from './lib/FocusView.svelte';
   import DashboardView from './lib/DashboardView.svelte';
+  import TimeTravelView from './lib/TimeTravelView.svelte';
   import GlobalSearch from './lib/GlobalSearch.svelte';
   import FilterBar from './lib/FilterBar.svelte';
   import CardDetail from './lib/CardDetail.svelte';
@@ -30,6 +31,7 @@
   let showDeadlines = false;
   let showDashboard = true;
   let showFocus = false;
+  let showTimeTravel = false;
   let sidebarOpen = false;
 
   type View = 'kanban' | 'list';
@@ -42,11 +44,11 @@
 
   function saveView() {
     if (!ready) return;
-    const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showDeadlines ? 'agenda' : 'project';
+    const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showDeadlines ? 'agenda' : showTimeTravel ? 'timetravel' : 'project';
     localStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
   }
 
-  $: if (ready) { showDashboard; showDeadlines; showFocus; $activeProjectId; currentView; saveView(); }
+  $: if (ready) { showDashboard; showDeadlines; showFocus; showTimeTravel; $activeProjectId; currentView; saveView(); }
 
   // The one place `activeProjectId` should reset the view to Kanban —
   // called from deliberate "go to this project" actions (sidebar project/
@@ -85,13 +87,15 @@
 
   // B9 — command palette, folded into GlobalSearch rather than a separate
   // overlay/shortcut. Sidebar's own openSettings/openChangelog/openTrash
-  // are plain top-level functions in its instance (not `export`ed — Svelte
-  // exposes every top-level binding to a bound instance automatically), so
-  // a bind:this ref is enough to reach them without lifting that state.
+  // are `export`ed top-level functions in its instance -- required for
+  // Svelte 5's bind:this to reach them at all (see CLAUDE.md's Layer
+  // rules) -- so a bind:this ref is enough to reach them without lifting
+  // that state.
   $: commands = getCommands({
-    goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
-    goToFocus: () => { showDashboard = false; showDeadlines = false; showFocus = true; },
-    goToAgenda: () => { showDashboard = false; showFocus = false; showDeadlines = true; },
+    goToDashboard: () => { showDeadlines = false; showFocus = false; showTimeTravel = false; showDashboard = true; },
+    goToFocus: () => { showDashboard = false; showDeadlines = false; showTimeTravel = false; showFocus = true; },
+    goToAgenda: () => { showDashboard = false; showFocus = false; showTimeTravel = false; showDeadlines = true; },
+    goToTimeTravel: () => { showDashboard = false; showFocus = false; showDeadlines = false; showTimeTravel = true; },
     openQuickAdd,
     toggleTheme: () => setThemeMode(isEffectivelyDark(getThemeMode()) ? 'light' : 'dark'),
     toggleHighContrast: () => setHighContrast(!getHighContrast()),
@@ -297,8 +301,9 @@
       const projectStillExists = saved.projectId && get(projects).some(p => p._id === saved.projectId);
       if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
       else if (saved.view === 'focus') { showDashboard = false; showFocus = true; }
+      else if (saved.view === 'timetravel') { showDashboard = false; showTimeTravel = true; }
       else if (saved.view === 'project' && projectStillExists) {
-        showDashboard = false; showDeadlines = false; showFocus = false;
+        showDashboard = false; showDeadlines = false; showFocus = false; showTimeTravel = false;
         // Restore via the plain store, not goToProject() — this is state
         // restoration on reload, not a deliberate navigation, so the
         // in-progress Kanban/List choice (below) must survive too.
@@ -358,6 +363,7 @@
       bind:showDeadlines
       bind:showDashboard
       bind:showFocus
+      bind:showTimeTravel
       bind:open={sidebarOpen}
       on:navigate={() => { closeSidebar(); currentView = 'kanban'; }}
       on:openTask={(e) => { openSearchDetail(e.detail.task, e.detail.project); closeSidebar(); }}
@@ -382,6 +388,8 @@
         <FocusView on:menu={() => sidebarOpen = true} />
       {:else if showDeadlines}
         <DeadlinesView on:menu={() => sidebarOpen = true} />
+      {:else if showTimeTravel}
+        <TimeTravelView on:menu={() => sidebarOpen = true} />
       {:else if $activeProject}
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">

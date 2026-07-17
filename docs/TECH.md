@@ -40,6 +40,7 @@ Version 4.28.0 · Local-first task management for browser, Android, and PC (Taur
 │    ├── KanbanBoard      (drag-and-drop columns)    │
 │    ├── ListView         (sortable + filterable)    │
 │    ├── DeadlinesView    (agenda: list + week grid) │
+│    ├── TimeTravelView   (journal: log: by day)     │
 │    ├── CardDetail       (task editor modal)        │
 │    ├── QuickAdd         (Ctrl+N fast-add)          │
 │    ├── GlobalSearch     (Ctrl+K cross-project)     │
@@ -97,6 +98,8 @@ src/
     commands.ts           Command palette (Ctrl+K) action list
     spaceIcons.ts          The 25-icon space-icon picker set + resolver
     focusTrap.ts           use:trapFocus action shared by every modal/panel
+    logFormat.ts           Plain-English log: doc formatting (describeLog/fmt/entityLabel),
+                            shared by ChangelogView.svelte and TimeTravelView.svelte
     PinStar.svelte        The shared task-pin star icon (used by CardDetail/Kanban/List)
 
     Sidebar.svelte              Left nav: spaces, projects, sync indicator, dark toggle
@@ -106,6 +109,9 @@ src/
     ListView.svelte             List/Table view with search, filter, sort, archive
     FilterBar.svelte            Shared Kanban/List search+filter row
     DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + week-grid view
+    TimeTravelView.svelte       Journal: log: docs grouped by local calendar day, most recent
+                                 first, click a task entry to open it — a retrospective view
+                                 over the same changelog data ChangelogView reads
     CardDetail.svelte           Full task editor modal with history
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
     QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector)

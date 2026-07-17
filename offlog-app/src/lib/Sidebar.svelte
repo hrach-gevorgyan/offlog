@@ -17,6 +17,7 @@
   export let showDeadlines = false;
   export let showDashboard = false;
   export let showFocus = false;
+  export let showTimeTravel = false;
   export let open = false;
 
   // Settings' own Escape handling (including its mobile back-vs-close
@@ -215,7 +216,7 @@
   }
 
   function goToProject(project: ProjectDoc) {
-    showDeadlines = false; showDashboard = false; showFocus = false;
+    showDeadlines = false; showDashboard = false; showFocus = false; showTimeTravel = false;
     activeSpaceId.set(project.space_id);
     activeProjectId.set(project._id);
     dispatch('navigate');
@@ -289,7 +290,7 @@
     <button
       class="nav-btn"
       class:active={showDashboard}
-      on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; dispatch('navigate'); }}
+      on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; showTimeTravel = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <rect x="2" y="2" width="6" height="6" rx="1"/>
@@ -303,7 +304,7 @@
     <button
       class="nav-btn"
       class:active={showFocus}
-      on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; dispatch('navigate'); }}
+      on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; showTimeTravel = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <circle cx="9" cy="9" r="7"/>
@@ -316,7 +317,7 @@
     <button
       class="nav-btn"
       class:active={showDeadlines}
-      on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; dispatch('navigate'); }}
+      on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; showTimeTravel = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <rect x="2" y="3" width="14" height="12" rx="2"/>
@@ -326,6 +327,19 @@
         <line x1="6" y1="11" x2="12" y2="11"/>
       </svg>
       Agenda
+    </button>
+
+    <button
+      class="nav-btn"
+      class:active={showTimeTravel}
+      on:click={() => { showTimeTravel = true; showDashboard = false; showFocus = false; showDeadlines = false; dispatch('navigate'); }}
+    >
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+        <circle cx="9" cy="9.5" r="6.5"/>
+        <polyline points="9,6 9,9.5 12,11.5"/>
+        <path d="M4 2.5 2 4.5M14 2.5l2 2"/>
+      </svg>
+      Time Travel
     </button>
   </nav>
   <div class="spaces-divider"></div>
