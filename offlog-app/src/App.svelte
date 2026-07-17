@@ -59,6 +59,14 @@
   let showQuickAdd = false;
   let showShortcuts = false;
   let sidebarRef: Sidebar;
+  // See modalStack.ts's mandatory {#key} pattern for any closeOnBack()
+  // consumer -- QuickAdd/GlobalSearch are reachable from multiple rapid
+  // triggers (FAB + Ctrl+N, search button + Ctrl+K), same risk class as
+  // Changelog/Trash/Settings/CardDetail had before 2026-07-18's fix.
+  let quickAddSession = 0;
+  let searchSession = 0;
+  function openQuickAdd() { quickAddSession++; showQuickAdd = true; }
+  function openSearch() { searchSession++; showSearch = true; }
 
   // B2 — Kanban's filter state lives here (not inside KanbanBoard) so the
   // Filters button can sit in this shared board-header row instead of a
@@ -84,7 +92,7 @@
     goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
     goToFocus: () => { showDashboard = false; showDeadlines = false; showFocus = true; },
     goToAgenda: () => { showDashboard = false; showFocus = false; showDeadlines = true; },
-    openQuickAdd: () => { showQuickAdd = true; },
+    openQuickAdd,
     toggleTheme: () => setThemeMode(isEffectivelyDark(getThemeMode()) ? 'light' : 'dark'),
     toggleHighContrast: () => setHighContrast(!getHighContrast()),
     openSettings: () => sidebarRef?.openSettings(),
@@ -162,8 +170,8 @@
   $: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);
 
   function onKeydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); showSearch = true; return; }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); showQuickAdd = true; return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openQuickAdd(); return; }
     // Don't hijack "?" while the user is typing in a field.
     const el = e.target as HTMLElement;
     const typing = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;
@@ -207,7 +215,7 @@
   // and clobber a deliberate widget-driven navigation.
   function handleWidgetUrl(url: string | undefined | null): boolean {
     if (!url) return false;
-    if (url.includes('quickadd')) { showQuickAdd = true; return false; } // an overlay, not a view change
+    if (url.includes('quickadd')) { openQuickAdd(); return false; } // an overlay, not a view change
     if (url.includes('agenda')) { showDashboard = false; showDeadlines = true; return true; }
     if (url.includes('focus')) { showDashboard = false; showDeadlines = false; showFocus = true; return true; }
     if (url.includes('dashboard')) { showDeadlines = false; showFocus = false; showDashboard = true; return true; }
@@ -395,7 +403,7 @@
           <div class="spacer"></div>
 
           <div class="search-filter-group">
-            <button class="search-btn" on:click={() => showSearch = true} title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">
+            <button class="search-btn" on:click={openSearch} title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">
               <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
                 <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
               </svg>
@@ -459,7 +467,7 @@
 {#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} />{/if}
 
 {#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
-<button class="fab" on:click={() => showQuickAdd = true} title="Quick add task (Ctrl+N)">
+<button class="fab" on:click={openQuickAdd} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
   </svg>
@@ -467,15 +475,19 @@
 {/if}
 
 {#if showQuickAdd}
-  <QuickAdd on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
+  {#key quickAddSession}
+    <QuickAdd on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
+  {/key}
 {/if}
 
 {#if showSearch}
-  <GlobalSearch
-    {commands}
-    on:close={() => showSearch = false}
-    on:open={(e) => { openSearchDetail(e.detail.task, e.detail.project); showSearch = false; }}
-  />
+  {#key searchSession}
+    <GlobalSearch
+      {commands}
+      on:close={() => showSearch = false}
+      on:open={(e) => { openSearchDetail(e.detail.task, e.detail.project); showSearch = false; }}
+    />
+  {/key}
 {/if}
 
 {#if searchDetailTask && searchDetailProject}
