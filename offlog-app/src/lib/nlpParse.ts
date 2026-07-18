@@ -8,6 +8,15 @@
 // left alone in the title rather than guessed at — a wrong silent guess
 // is worse than no parse for a task manager (the whole point of the due
 // date is trusting it).
+//
+// Two escape hatches for text that legitimately needs a sigil character
+// or a date-like word (owner, 2026-07-19 — "how about escapechars if I
+// want to miss this nlp"):
+//   - `\#`, `\@`, `\!` keep that one character literal (e.g. "Reply to
+//     ticket \#42") while the rest of the title still gets parsed.
+//   - Wrapping the WHOLE title in double quotes turns off parsing
+//     entirely, for a title that happens to contain a real date/time
+//     word ("Tomorrow Land festival budget") rather than just a sigil.
 
 import type { ProjectDoc } from './types';
 
@@ -19,6 +28,7 @@ export interface ParsedQuickAdd {
   tags: string[];
   projectId: string | null;
   matchedProjectLabel: string | null; // for showing what matched, e.g. "Fitness Tracker"
+  raw: boolean; // true when the whole-title quote escape was used -- caller can show "parsing off" instead of chips
 }
 
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -38,6 +48,26 @@ function isoDate(d: Date): string { return `${d.getFullYear()}-${pad2(d.getMonth
 
 function stripMatch(text: string, match: RegExpExecArray): string {
   return (text.slice(0, match.index) + ' ' + text.slice(match.index + match[0].length)).replace(/\s+/g, ' ').trim();
+}
+
+// `\#`/`\@`/`\!` -> sentinel chars before extraction (so none of the
+// sigil regexes below can ever match an escaped one), then back to the
+// literal character afterwards. \uXXXX escapes (private-use-area code
+// points, never occur in ordinary typed text) keep this file itself
+// plain ASCII rather than relying on a pasted-in literal character
+// surviving every future edit/diff/encoding round-trip unchanged.
+const HASH_SENTINEL = '';
+const AT_SENTINEL = '';
+const BANG_SENTINEL = '';
+const SIGIL_ESCAPE: Record<string, string> = { '#': HASH_SENTINEL, '@': AT_SENTINEL, '!': BANG_SENTINEL };
+const SIGIL_UNESCAPE: Record<string, string> = { [HASH_SENTINEL]: '#', [AT_SENTINEL]: '@', [BANG_SENTINEL]: '!' };
+const SENTINEL_RE = new RegExp(`[${HASH_SENTINEL}${AT_SENTINEL}${BANG_SENTINEL}]`, 'g');
+
+function protectEscapedSigils(text: string): string {
+  return text.replace(/\\([#@!])/g, (_, ch: string) => SIGIL_ESCAPE[ch]);
+}
+function restoreEscapedSigils(text: string): string {
+  return text.replace(SENTINEL_RE, (ch) => SIGIL_UNESCAPE[ch]);
 }
 
 // Tries each date pattern in order, first hit wins -- explicit dates before
@@ -173,7 +203,21 @@ function extractProject(text: string, projects: ProjectDoc[]): { projectId: stri
 }
 
 export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date = new Date()): ParsedQuickAdd {
-  let rest = input;
+  const trimmed = input.trim();
+
+  // Whole-title escape: wrap the entire text in double quotes to skip
+  // parsing completely (the individual \#/\@/\! escapes below can't help
+  // with a real date/time WORD like "tomorrow" appearing legitimately).
+  const quoteMatch = /^"([\s\S]*)"$/.exec(trimmed);
+  if (quoteMatch) {
+    return {
+      title: quoteMatch[1].trim(),
+      due_date: null, reminder_at: null, priority: null, tags: [],
+      projectId: null, matchedProjectLabel: null, raw: true,
+    };
+  }
+
+  let rest = protectEscapedSigils(input);
 
   const tagResult = extractTags(rest); rest = tagResult.rest;
   const prioResult = extractPriority(rest); rest = prioResult.rest;
@@ -191,12 +235,13 @@ export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date =
   }
 
   return {
-    title: rest.trim(),
+    title: restoreEscapedSigils(rest.trim()),
     due_date,
     reminder_at,
     priority: prioResult.priority,
     tags: tagResult.tags,
     projectId: projResult.projectId,
     matchedProjectLabel: projResult.label,
+    raw: false,
   };
 }

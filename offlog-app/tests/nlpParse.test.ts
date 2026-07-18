@@ -164,3 +164,42 @@ describe('parseQuickAdd() -- title stripping', () => {
     expect(r.tags).toEqual([]);
   });
 });
+
+describe('parseQuickAdd() -- escape hatches', () => {
+  it('keeps an individually escaped # literal while still parsing the rest', () => {
+    const r = parseQuickAdd('Reply to ticket \\#42 tomorrow', [], NOW);
+    expect(r.title).toBe('Reply to ticket #42');
+    expect(r.due_date).toBe('2026-07-16');
+    expect(r.tags).toEqual([]);
+  });
+
+  it('keeps an individually escaped @ literal', () => {
+    const r = parseQuickAdd('Email \\@bob', projects, NOW);
+    expect(r.title).toBe('Email @bob');
+    expect(r.projectId).toBeNull();
+  });
+
+  it('keeps an individually escaped ! literal', () => {
+    const r = parseQuickAdd('Say hi\\!', [], NOW);
+    expect(r.title).toBe('Say hi!');
+    expect(r.priority).toBeNull();
+  });
+
+  it('does not confuse an escaped sigil with an unescaped one elsewhere in the title', () => {
+    const r = parseQuickAdd('Ticket \\#42 #urgent', [], NOW);
+    expect(r.title).toBe('Ticket #42');
+    expect(r.tags).toEqual(['urgent']);
+  });
+
+  it('a whole title wrapped in quotes skips parsing entirely', () => {
+    const r = parseQuickAdd('"Tomorrow Land festival budget #stage"', projects, NOW);
+    expect(r.title).toBe('Tomorrow Land festival budget #stage');
+    expect(r.raw).toBe(true);
+    expect(r.due_date).toBeNull();
+    expect(r.tags).toEqual([]);
+  });
+
+  it('raw is false for a normal parse', () => {
+    expect(parseQuickAdd('Buy milk tomorrow', [], NOW).raw).toBe(false);
+  });
+});

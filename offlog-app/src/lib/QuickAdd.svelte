@@ -122,6 +122,7 @@
         <dt>Priority</dt><dd><code>!high</code>, <code>!low</code>, <code>!!</code>, <code>!!!</code></dd>
         <dt>Tag</dt><dd><code>#errand</code> — repeat for more than one</dd>
         <dt>Project</dt><dd><code>@fitness</code> — matches a project by name</dd>
+        <dt>Escape</dt><dd><code>\#</code> <code>\@</code> <code>\!</code> keep one character literal; wrap the whole title in <code>"quotes"</code> to turn parsing off entirely</dd>
       </dl>
       <div class="help-example">"Log workout tomorrow at 6am !high #fitness @fitness"</div>
     </div>
@@ -136,7 +137,11 @@
     on:keydown={onKey}
   />
 
-  {#if parsed.due_date || parsed.priority || parsed.tags.length || parsed.matchedProjectLabel}
+  {#if parsed.raw}
+    <div class="parsed-chips">
+      <span class="chip chip-raw">Quoted — parsing off</span>
+    </div>
+  {:else if parsed.due_date || parsed.priority || parsed.tags.length || parsed.matchedProjectLabel}
     <div class="parsed-chips">
       {#if parsed.due_date}
         <span class="chip chip-date">
@@ -223,6 +228,7 @@
   .chip-priority { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
   .chip-tag { background: var(--col-bg); color: var(--muted); }
   .chip-project { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+  .chip-raw { background: var(--col-bg); color: var(--faint); font-style: italic; }
 
   .row { display: flex; align-items: center; gap: 10px; }
 
