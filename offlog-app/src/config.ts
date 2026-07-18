@@ -251,6 +251,69 @@ export function setTimeFormat24h(is24h: boolean) {
   localStorage.setItem(TIME_FORMAT_24H_KEY, String(is24h));
 }
 
+// App lock: a PIN gate on the UI, not data encryption -- see DECISIONS.md
+// for why. Per-device, like every other setting in this file: the PIN
+// itself never syncs, so a phone and a PC can have different PINs, or one
+// locked and the other not. Stores a salted hash, not the plaintext PIN --
+// this isn't a real cryptographic secret either way (it only gates the
+// UI), but there's no reason to leave the literal PIN sitting in
+// localStorage when a random salt + SHA-256 costs nothing.
+const APP_LOCK_HASH_KEY = 'offlog_app_lock_hash';
+const APP_LOCK_SALT_KEY = 'offlog_app_lock_salt';
+const APP_LOCK_TIMEOUT_KEY = 'offlog_app_lock_timeout_minutes';
+
+// crypto.subtle needs a secure context -- true for the dev server, the
+// deployed HTTPS site, and Capacitor/Tauri's own WebView schemes, but
+// falls back to a plain (much weaker, still not plaintext) hash rather
+// than making the whole feature throw if some embedding context doesn't
+// have it. Given the UI-gate-only threat model this protects, that
+// fallback is an acceptable degradation, not a security hole.
+async function hashWithSalt(salt: string, pin: string): Promise<string> {
+  if (crypto.subtle) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + pin));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  let h = 0;
+  const s = salt + pin;
+  for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+  return String(h >>> 0);
+}
+
+export function isAppLockEnabled(): boolean {
+  return !!localStorage.getItem(APP_LOCK_HASH_KEY);
+}
+
+export async function setAppLockPin(pin: string): Promise<void> {
+  const salt = crypto.randomUUID ? crypto.randomUUID() : String(Math.random());
+  const hash = await hashWithSalt(salt, pin);
+  localStorage.setItem(APP_LOCK_SALT_KEY, salt);
+  localStorage.setItem(APP_LOCK_HASH_KEY, hash);
+}
+
+export function clearAppLockPin(): void {
+  localStorage.removeItem(APP_LOCK_HASH_KEY);
+  localStorage.removeItem(APP_LOCK_SALT_KEY);
+}
+
+export async function verifyAppLockPin(pin: string): Promise<boolean> {
+  const salt = localStorage.getItem(APP_LOCK_SALT_KEY);
+  const storedHash = localStorage.getItem(APP_LOCK_HASH_KEY);
+  if (!salt || !storedHash) return false;
+  return (await hashWithSalt(salt, pin)) === storedHash;
+}
+
+// Idle/background timeout before the lock screen reappears -- launch
+// (fresh page load / cold app start) always locks regardless of this,
+// see App.svelte's onMount.
+export function getAppLockTimeoutMinutes(): number {
+  const stored = localStorage.getItem(APP_LOCK_TIMEOUT_KEY);
+  return stored ? Number(stored) : 5;
+}
+
+export function setAppLockTimeoutMinutes(minutes: number): void {
+  localStorage.setItem(APP_LOCK_TIMEOUT_KEY, String(minutes));
+}
+
 // E2 (ROADMAP.md) — the CouchDB server's own `uuid` (returned by
 // pairing.rs's handshake, also broadcast unauthenticated in the mDNS TXT
 // record per discovery.rs) is a stable identity for "the PC I paired

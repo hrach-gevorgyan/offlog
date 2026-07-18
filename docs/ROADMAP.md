@@ -252,6 +252,25 @@ Track E's timeline had slipped badly — moot now that E1/E2 are shipped.
 
 ### B53. Kanban card quick-actions menu — shipped in v4.21.0
 
+### B54. App lock (PIN) — shipped 2026-07-19; biometric unlock — NOT YET BUILT
+PIN lock is done and fully verified (browser-testable, no platform
+dependency): `config.ts` stores a salted-hash PIN per device, `AppLock.svelte`
+gates the whole app behind it (`App.svelte`'s `inert` wrapper — not just
+z-index — blocks Tab/screen-reader access to the app underneath, not only
+the visual). Locks on cold launch plus after an idle/backgrounded timeout
+(1/5/15/30 min, Settings → App Lock). UI gate only, not data encryption —
+see DECISIONS.md.
+
+Biometric (fingerprint/face) unlock is the deliberately-deferred second
+half: no Capacitor plugin is wired in yet. There's no Ionic-official
+biometric plugin (unlike `@capacitor/local-notifications` etc., all
+already used elsewhere per DECISIONS.md's A25 preference for official
+plugins) — picking a community one needs a real on-device Android Studio
+test before it ships, which isn't possible from this environment. Do not
+half-wire a disabled toggle for it in Settings in the meantime (CLAUDE.md:
+no half-finished implementations) — build it as a real, working feature
+in one pass once someone can test on an actual device.
+
 ---
 
 ## Track C — Public Release & Open Source

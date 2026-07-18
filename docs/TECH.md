@@ -143,6 +143,11 @@ src/
     TimePicker.svelte           Themed time picker, replaces native <input type="time">
     ConfirmDialog.svelte        Themed confirm() replacement, driven by confirm.ts
     NamePrompt.svelte           First-run "name this device" prompt
+    AppLock.svelte              PIN lock screen (B54) -- mounted at App.svelte's root,
+                                 gated by config.ts's isAppLockEnabled(). Deliberately
+                                 does NOT use modalStack.ts's closeOnBack() (Escape must
+                                 not dismiss a lock screen); App.svelte makes the rest of
+                                 the app `inert` (not just visually covered) while locked
 ```
 
 ---

@@ -21,8 +21,9 @@
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
-  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri } from './config';
+  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes } from './config';
   import { closeOnBack } from './lib/modalStack';
+  import AppLock from './lib/AppLock.svelte';
 
   let ready = false;
   let initError: string | null = null;
@@ -321,6 +322,51 @@
     subscribeUndo(showUndoToast);
   });
 
+  // App lock: locks on every fresh page load (a reload/cold start always
+  // re-checks isAppLockEnabled() below) plus after `timeout` minutes of
+  // being backgrounded or idle while foregrounded -- see config.ts and
+  // DECISIONS.md for why this is a UI gate, not encryption.
+  let locked = false;
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  let hiddenAt: number | null = null;
+
+  function resetIdleTimer() {
+    if (idleTimer) clearTimeout(idleTimer);
+    if (locked || !isAppLockEnabled()) return;
+    idleTimer = setTimeout(() => { locked = true; }, getAppLockTimeoutMinutes() * 60000);
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) {
+      hiddenAt = Date.now();
+      if (idleTimer) clearTimeout(idleTimer);
+    } else {
+      if (hiddenAt !== null && isAppLockEnabled() && (Date.now() - hiddenAt) / 60000 >= getAppLockTimeoutMinutes()) {
+        locked = true;
+      }
+      hiddenAt = null;
+      resetIdleTimer();
+    }
+  }
+
+  function onUnlocked() {
+    locked = false;
+    resetIdleTimer();
+  }
+
+  onMount(() => {
+    if (isAppLockEnabled()) locked = true;
+    const activityEvents = ['click', 'keydown', 'touchstart', 'mousemove'] as const;
+    activityEvents.forEach(ev => window.addEventListener(ev, resetIdleTimer, { passive: true }));
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    resetIdleTimer();
+    return () => {
+      activityEvents.forEach(ev => window.removeEventListener(ev, resetIdleTimer));
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (idleTimer) clearTimeout(idleTimer);
+    };
+  });
+
   function retryInit() { location.reload(); }
 
   async function setView(v: View) {
@@ -351,7 +397,16 @@
 
 <svelte:window on:keydown={onKeydown}/>
 
+{#if locked}
+  <AppLock on:unlocked={onUnlocked} />
+{/if}
+
 {#if ready}
+  <!-- inert (not just visually covered by AppLock's z-index) so a
+       keyboard user can't Tab past the lock screen into the app behind
+       it, and so screen readers don't expose it either -- display:contents
+       keeps this wrapper out of the flex/layout tree it sits inside. -->
+  <div inert={locked} style="display:contents">
   <div class="status-bar-fill"></div>
   <div class="layout">
     <Sidebar
@@ -452,6 +507,7 @@
         </div>
       {/if}
     </main>
+  </div>
   </div>
 {:else if initError}
   <div class="crash-recovery">

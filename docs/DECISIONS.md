@@ -261,6 +261,39 @@ delete already produces exactly that tombstone behavior for free.
 
 ---
 
+## Security
+
+### Why the App Lock PIN gates the UI, not the data (2026-07-19)
+App Lock (B54, ROADMAP.md) blocks the app behind a PIN, but doesn't
+encrypt the local PouchDB database — someone with direct filesystem/
+IndexedDB access to the device could still read task data without the
+PIN. This was a deliberate, owner-confirmed scope choice (via
+AskUserQuestion, not assumed): full at-rest encryption is a much bigger
+effort — key management, sync implications (every replicating device
+would need to agree on how ciphertext moves through CouchDB), and a real
+"what if I forget my PIN" recovery story with actual stakes (permanent
+data loss, not just inconvenience) — squarely the kind of scope-creep
+"security minimal by design, not yet audited" already commits this
+project to avoiding until it's actually asked for again. The PIN's job is
+narrower and matches most task-manager app locks (Things, Todoist): stop
+a passer-by from casually opening the app, not withstand someone who
+already has the device and is willing to dig.
+
+That narrower threat model is also why `AppLock.svelte`'s "Forgot PIN"
+flow is a plain confirm-and-clear, not a fake recovery flow with no real
+secondary factor behind it (no accounts, no email — see GOAL.md, there's
+nothing to verify identity against). Whoever has the device already has
+the data either way once the PIN gates only the UI; the reset just
+removes an inconvenience for its rightful owner, honestly, rather than
+performing security theater around a lock that was never protecting the
+data in the first place.
+
+Revisit only if the project's no-accounts/no-server stance itself changes
+(unlikely — see DECISIONS.md's other closed entries on that), since real
+encryption needs *something* to hold/recover keys against.
+
+---
+
 ## Mobile / Android
 
 ### Why `android:allowBackup="false"` (2026-07-14)
