@@ -170,16 +170,17 @@
               on:keydown={(e) => { if (clickable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openEntry(log); } }}
             >
               <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
-              <span class="entry-desc">
-                {describeLog(log)}
-                <!-- Skipped for a project's own create/delete entry -- its
-                     name is already the main description's subject. Inline
-                     with the description (not its own row) so the common
-                     single-line case doesn't cost an extra line. -->
-                {#if log.project_name && entityLabel(log) !== 'project'}<span class="entry-project">· {log.project_name}</span>{/if}
-              </span>
+              <span class="entry-desc">{describeLog(log)}</span>
               <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
               <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+              <!-- Skipped for a project's own create/delete entry -- its
+                   name is already the main description's subject. Own
+                   grid row (not an inline suffix) so it never wraps mid-
+                   sentence or lands split across two lines depending on
+                   description length (owner-reported 2026-07-18). -->
+              {#if log.project_name && entityLabel(log) !== 'project'}
+                <span class="entry-project">{log.project_name}</span>
+              {/if}
             </div>
           {/each}
         </div>
@@ -248,10 +249,17 @@
      ("Created" vs "Edited" vs "Moved" vs "Deleted"), so nothing lined up
      (owner feedback, 2026-07-18: "make all text start from same line").
      Fixed first/third/fourth columns pin every description to the same
-     x position regardless of pill/device-name length. */
+     x position regardless of pill/device-name length.
+     .entry-project is an optional second grid row, column 2 only -- it
+     used to be an inline "· ProjectName" suffix appended to entry-desc,
+     which wrapped unpredictably: sometimes staying on the description's
+     line, sometimes splitting across two depending on description length
+     (owner-reported 2026-07-18: "part on first row and part on second").
+     A dedicated row always lands in the same place regardless of how long
+     the description is. */
   .entry {
     display: grid; grid-template-columns: 60px 1fr 56px 46px; column-gap: 8px;
-    align-items: baseline;
+    row-gap: 1px; align-items: baseline;
     padding: 3px 5px; border-radius: 5px; font-size: 12.5px; line-height: 1.35;
   }
   .entry.clickable { cursor: pointer; }
@@ -266,11 +274,13 @@
 
   /* Wraps normally -- this used to be truncated with an ellipsis
      (owner-reported 2026-07-18), which defeats the point of a view
-     meant to be read. Project name is an inline suffix on the same span
-     (not its own row) so the common single-line case costs one line, not
-     two (owner feedback, 2026-07-18: too much vertical space per entry). */
-  .entry-desc { min-width: 0; color: var(--text); white-space: normal; word-break: break-word; }
-  .entry-project { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+     meant to be read. */
+  .entry-desc { grid-column: 2; min-width: 0; color: var(--text); white-space: normal; word-break: break-word; }
+  /* Own row directly under the description, column 2 only -- see the
+     .entry comment above for why this isn't an inline suffix anymore. */
+  .entry-project {
+    grid-column: 2; font-family: var(--mono); font-size: 10px; color: var(--faint);
+  }
 
   .source-pill {
     font-family: var(--mono); font-size: 9px; font-weight: 600;
