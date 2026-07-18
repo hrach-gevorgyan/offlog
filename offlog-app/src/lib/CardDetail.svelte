@@ -533,7 +533,14 @@
     position: fixed; inset: 0;
     background: rgba(0,0,0,.45);
     display: flex; align-items: stretch; justify-content: flex-end;
-    z-index: 100;
+    /* Above every panel that can open a card while staying visible itself
+       (TrashView/TimeTravelView z:402, GlobalSearch z:401, SettingsPanel
+       z:301, QuickAdd z:501) -- was z:100, which put CardDetail BEHIND
+       TimeTravelView specifically, since that view deliberately doesn't
+       close itself when opening a card (so "back" returns to it). Not
+       just >402: still below ConfirmDialog's z:700/701, since CardDetail's
+       own Delete button opens one on top of itself. */
+    z-index: 600;
   }
   .panel {
     background: var(--surface);

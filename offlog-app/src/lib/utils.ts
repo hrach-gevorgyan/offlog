@@ -1,4 +1,4 @@
-// Shared by ChangelogView and TaskHistoryPanel — both rendered the same
+// Shared by TimeTravelView and TaskHistoryPanel — both render the same
 // four changelog action types with independently-drifted hex values.
 // CSS var()s here (not fixed hex) so these stay correct across light/dark
 // instead of being a frozen snapshot of one theme.

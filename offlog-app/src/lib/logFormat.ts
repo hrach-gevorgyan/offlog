@@ -1,8 +1,9 @@
 // Shared plain-English formatting for `log:` changelog docs — extracted
-// from ChangelogView.svelte (2026-07-18) so the new Time Travel journal
-// view can render the exact same descriptions instead of re-deriving
-// its own, drifting copy over time. See ChangelogView.svelte's own git
-// history for the readability passes that shaped this logic.
+// from the old ChangelogView.svelte (2026-07-18, since replaced by
+// TimeTravelView.svelte) so the Time Travel journal view can render the
+// exact same descriptions instead of re-deriving its own, drifting copy
+// over time. See git history predating the rename for the readability
+// passes that shaped this logic.
 
 export const FIELD_LABEL: Record<string, string> = {
   title: 'Title', body: 'Notes', priority: 'Priority',
@@ -49,12 +50,24 @@ function describeField(field: string, from: any, to: any): string {
   return `${FIELD_LABEL[field] ?? field} changed`;
 }
 
-// See ChangelogView.svelte's own comment history for why this can't
+// See the pre-rename ChangelogView.svelte's own comment history for why this can't
 // reuse fmtVal for the comparison (fmtVal collapses checklist/custom-
 // field edits to a fixed display string, which would make every real
 // edit there look like a no-op).
+//
+// undefined/null and an empty object/array count as the same "nothing
+// here" state -- same fix as db.ts's updateTask() (2026-07-18), kept
+// here too as a display-layer filter so log docs written before that fix
+// (which already have a stored {from: undefined, to: {}}-shaped diff)
+// also stop showing a false "Custom fields updated"/"Checklist updated"
+// clause, not just newly-written ones.
+function isEmpty(v: any): boolean {
+  return v == null || (typeof v === 'object' && Object.keys(v).length === 0);
+}
+
 function hasRealChange(field: string, from: any, to: any): boolean {
   if (typeof from === 'boolean' || typeof to === 'boolean') return !!from !== !!to;
+  if (isEmpty(from) && isEmpty(to)) return false;
   return JSON.stringify(from) !== JSON.stringify(to);
 }
 

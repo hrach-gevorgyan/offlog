@@ -40,12 +40,11 @@ Version 4.28.0 · Local-first task management for browser, Android, and PC (Taur
 │    ├── KanbanBoard      (drag-and-drop columns)    │
 │    ├── ListView         (sortable + filterable)    │
 │    ├── DeadlinesView    (agenda: list + week grid) │
-│    ├── TimeTravelView   (journal: log: by day)     │
 │    ├── CardDetail       (task editor modal)        │
 │    ├── QuickAdd         (Ctrl+N fast-add)          │
 │    ├── GlobalSearch     (Ctrl+K cross-project)     │
 │    ├── SettingsPanel    (6-tab settings)           │
-│    └── ChangelogView    (full activity log)        │
+│    └── TimeTravelView   (journal: log: by day)     │
 └────────────────────┬──────────────────────────────┘
                      │
 ┌────────────────────▼──────────────────────────────┐
@@ -99,7 +98,8 @@ src/
     spaceIcons.ts          The 25-icon space-icon picker set + resolver
     focusTrap.ts           use:trapFocus action shared by every modal/panel
     logFormat.ts           Plain-English log: doc formatting (describeLog/fmt/entityLabel),
-                            shared by ChangelogView.svelte and TimeTravelView.svelte
+                            used by TimeTravelView.svelte (extracted from the old
+                            ChangelogView.svelte, which it replaced — see its own git history)
     PinStar.svelte        The shared task-pin star icon (used by CardDetail/Kanban/List)
 
     Sidebar.svelte              Left nav: spaces, projects, sync indicator, dark toggle
@@ -109,14 +109,20 @@ src/
     ListView.svelte             List/Table view with search, filter, sort, archive
     FilterBar.svelte            Shared Kanban/List search+filter row
     DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + week-grid view
-    TimeTravelView.svelte       Journal: log: docs grouped by local calendar day, most recent
-                                 first, click a task entry to open it — a retrospective view
-                                 over the same changelog data ChangelogView reads
     CardDetail.svelte           Full task editor modal with history
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
     QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector)
     GlobalSearch.svelte         Ctrl+K debounced search across all tasks
-    ChangelogView.svelte        Full activity log (last 80 entries)
+    TimeTravelView.svelte       Log: docs grouped by local calendar day, most recent first,
+                                 click a task entry to open it — replaced the old
+                                 ChangelogView.svelte (2026-07-18: two views reading the same
+                                 log: data was redundant; this kept the richer one — day
+                                 grouping, further-back pagination, click-to-open — and folded
+                                 in ChangelogView's per-row detail (project name, device/
+                                 source pill, Clear all) that the day-grouped version launched
+                                 without). Opened from Sidebar's bottom icon row, same slot
+                                 Changelog used to occupy — not a primary Dashboard/Focus/
+                                 Agenda-style view, it's a history *utility*.
     SettingsPanel.svelte        Settings — 6 tabs (View & Accessibility, Notifications, Sync,
                                  Organize, Backup & Storage, Advanced), standalone panel (moved
                                  out of Sidebar.svelte in the v4.26.0 redesign)

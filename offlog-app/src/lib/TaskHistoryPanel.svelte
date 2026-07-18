@@ -41,7 +41,7 @@
 
   // Readability fix, round 2 (owner, 2026-07-19 — "only created task is
   // understandable, other ones are too complicated for humans"): same
-  // fix as ChangelogView.svelte's fmtDiffs — drop no-op diff entries
+  // fix as logFormat.ts's fmtDiffs — drop no-op diff entries
   // (before/after render identically) and phrase each real change as a
   // short plain-English clause instead of "Field changed from A to B".
   function describeField(field: string, from: any, to: any): string {

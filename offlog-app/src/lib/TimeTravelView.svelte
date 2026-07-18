@@ -1,21 +1,33 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { getRecentLogs, getTaskById, subscribe } from './db';
+  import { fly, fade } from 'svelte/transition';
+  import { getRecentLogs, getTaskById, clearLogs, subscribe } from './db';
   import { projects, showError } from './store';
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from './logFormat';
   import { ACTION_COLOR } from './utils';
+  import { closeOnBack } from './modalStack';
+  import { trapFocus } from './focusTrap';
+  import { panelFly, scrimFade } from './motion';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
 
+  // Replaces the old ChangelogView.svelte (2026-07-18, owner feedback:
+  // "both almost doing same thing") -- a flat 80-entry activity log and a
+  // day-grouped, clickable, further-back journal over the exact same
+  // log: docs were two surfaces doing one job. This is the merged one:
+  // ChangelogView's per-row detail (project badge, device/source pill,
+  // Clear all) plus the day grouping/pagination/click-to-open that made
+  // this worth keeping instead of just deleting it.
   const dispatch = createEventDispatcher();
+  const requestClose = closeOnBack(() => dispatch('close'));
 
-  // Retrospective view over the same log: docs ChangelogView already
-  // reads — "what did I actually do this week/month" is data Offlog
-  // already keeps (6-month retention, see db.ts's pruneOldLogs) that
-  // most task managers throw away entirely. Deliberately reuses
-  // getRecentLogs() with a growing limit rather than a new date-range
-  // query -- simplest correct thing at personal-task-manager scale, no
-  // new query surface to get wrong.
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') requestClose();
+  }
+
+  // Reuses getRecentLogs() with a growing limit rather than a new
+  // date-range query -- simplest correct thing at personal-task-manager
+  // scale, no new query surface to get wrong.
   const PAGE_SIZE = 150;
   let limit = PAGE_SIZE;
   let logs: any[] = [];
@@ -110,17 +122,18 @@
   }
 </script>
 
-<div class="tt">
-  <div class="tt-header">
-    <button class="hamburger" on:click={() => dispatch('menu')} aria-label="Menu">
-      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-        <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
-      </svg>
-    </button>
-    <div class="title-block">
-      <h1 class="tt-title">Time Travel</h1>
-      <span class="tt-sub">Everything you've done, day by day</span>
-    </div>
+<svelte:window on:keydown={onWindowKeydown}/>
+
+<!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
+<div class="scrim" on:click|self={() => requestClose()} transition:fade={scrimFade}></div>
+
+<div class="panel" use:trapFocus transition:fly={panelFly}>
+  <div class="panel-head">
+    <span class="panel-title">Time Travel</span>
+    {#if logs.length > 0}
+      <button class="clear-btn" on:click={async () => { try { await clearLogs(); logs = []; } catch { showError('Failed to clear history.'); } }}>Clear all</button>
+    {/if}
+    <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
   <div class="tt-body">
@@ -146,8 +159,16 @@
               on:keydown={(e) => { if (clickable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openEntry(log); } }}
             >
               <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
-              <span class="entry-desc">{describeLog(log)}</span>
-              <span class="entry-time">{new Date(log.ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+              <span class="entry-desc">
+                {describeLog(log)}
+                <!-- Skipped for a project's own create/delete entry -- its
+                     name is already the main description's subject. Inline
+                     with the description (not its own row) so the common
+                     single-line case doesn't cost an extra line. -->
+                {#if log.project_name && entityLabel(log) !== 'project'}<span class="entry-project">· {log.project_name}</span>{/if}
+              </span>
+              <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
+              <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
             </div>
           {/each}
         </div>
@@ -170,52 +191,86 @@
 {/if}
 
 <style>
-  .tt { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  /* .scrim is defined globally in app.css */
 
-  .tt-header {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 20px 28px 14px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+  .panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw);
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -8px 0 32px rgba(0,0,0,.15); z-index: 402;
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top, 0px);
   }
-  .title-block { min-width: 0; flex: 1; }
-  .tt-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
-  .tt-sub { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 
-  .hamburger {
-    display: none;
-    background: none; border: none; cursor: pointer;
-    color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
-    flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
+  .panel-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
-  .hamburger:hover { background: var(--hover); }
+  .panel-title { font-size: 16px; font-weight: 700; flex: 1; letter-spacing: -.015em; }
 
-  .tt-body { flex: 1; overflow-y: auto; padding: 20px 28px 32px; }
-  .empty { color: var(--faint); font-size: 14px; padding: 24px 0; }
+  .clear-btn {
+    background: none; border: 1px solid var(--border-strong); border-radius: 6px;
+    cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--muted);
+    padding: 4px 10px; transition: color .12s, border-color .12s;
+  }
+  .clear-btn:hover { color: var(--danger); border-color: var(--danger); }
 
-  .day-group { margin-bottom: 22px; }
+  .close-btn {
+    background: none; border: none; cursor: pointer; font-size: 14px;
+    color: var(--faint); padding: 4px 6px; border-radius: 6px;
+    transition: color .12s, background .12s;
+  }
+  .close-btn:hover { color: var(--text); background: var(--hover); }
+
+  .tt-body { flex: 1; overflow-y: auto; padding: 8px 20px 20px; }
+  .empty { padding: 3rem; text-align: center; color: var(--faint); font-size: .88rem; }
+
+  .day-group { margin-bottom: 10px; }
   .day-head {
     display: flex; align-items: baseline; gap: 10px;
-    padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border);
+    padding-bottom: 3px; margin-bottom: 2px; border-bottom: 1px solid var(--border);
   }
-  .day-label { font-weight: 700; font-size: 14px; }
-  .day-summary { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .day-label { font-weight: 700; font-size: 12.5px; }
+  .day-summary { font-family: var(--mono); font-size: 10px; color: var(--faint); }
 
+  /* Grid, not flex -- with flex, the description's start position shifted
+     per row depending on how wide that row's own action-pill text was
+     ("Created" vs "Edited" vs "Moved" vs "Deleted"), so nothing lined up
+     (owner feedback, 2026-07-18: "make all text start from same line").
+     Fixed first/third/fourth columns pin every description to the same
+     x position regardless of pill/device-name length. */
   .entry {
-    display: flex; align-items: center; gap: 10px;
-    padding: 6px 8px; border-radius: var(--radius-sm);
-    transition: background .1s;
+    display: grid; grid-template-columns: 60px 1fr 56px 46px; column-gap: 8px;
+    align-items: baseline;
+    padding: 3px 5px; border-radius: 5px; font-size: 12.5px; line-height: 1.35;
   }
   .entry.clickable { cursor: pointer; }
   .entry.clickable:hover { background: var(--hover); }
 
   .action-pill {
-    font-family: var(--mono); font-size: 10px; font-weight: 700;
-    padding: 2px 7px; border-radius: 5px; flex-shrink: 0; white-space: nowrap;
+    font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+    letter-spacing: .03em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 4px;
+    justify-self: start; width: fit-content;
   }
-  .entry-desc { flex: 1; min-width: 0; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .entry-time { font-family: var(--mono); font-size: 10.5px; color: var(--faint); flex-shrink: 0; }
+
+  /* Wraps normally -- this used to be truncated with an ellipsis
+     (owner-reported 2026-07-18), which defeats the point of a view
+     meant to be read. Project name is an inline suffix on the same span
+     (not its own row) so the common single-line case costs one line, not
+     two (owner feedback, 2026-07-18: too much vertical space per entry). */
+  .entry-desc { min-width: 0; color: var(--text); white-space: normal; word-break: break-word; }
+  .entry-project { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+  .source-pill {
+    font-family: var(--mono); font-size: 9px; font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 4px;
+    background: var(--col-bg); color: var(--muted);
+    justify-self: start; width: fit-content;
+  }
+  .source-pill.source-mobile { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+
+  .entry-time { font-family: var(--mono); font-size: 10px; color: var(--faint); }
 
   .load-more-btn {
     display: block; margin: 8px auto 0;
@@ -226,8 +281,4 @@
   }
   .load-more-btn:hover:not(:disabled) { background: var(--hover); }
   .load-more-btn:disabled { opacity: .6; cursor: default; }
-
-  @media (max-width: 768px) {
-    .hamburger { display: flex; }
-  }
 </style>

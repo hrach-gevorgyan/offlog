@@ -63,7 +63,7 @@
 
   function runCommand(c: Command) {
     // discardTop() for commands that open another closeOnBack()-tracked
-    // overlay (QuickAdd/Settings/Changelog/Trash) -- same reasoning as
+    // overlay (QuickAdd/Settings/Time Travel/Trash) -- same reasoning as
     // openResult() above: requestClose()'s real history.back() races the
     // new overlay's own pushState and can silently swallow it. Plain
     // requestClose() for everything else (navigation, toggles, Sync Now),
@@ -77,8 +77,8 @@
     // popstate→close() chain would eventually dispatch) -- discardTop()
     // already handles the stack/history bookkeeping; this just tells the
     // parent to actually clear showSearch, which nothing else did
-    // (2026-07-18: without this, running "Open Changelog" left the
-    // search palette still mounted/visible while Changelog opened
+    // (2026-07-18: without this, running "Open Time Travel" left the
+    // search palette still mounted/visible while it opened
     // underneath it).
     if (c.opensOverlay) { discardTop(); dispatch('close'); }
     else requestClose();

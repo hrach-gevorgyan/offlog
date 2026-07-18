@@ -36,7 +36,7 @@
 // working Escape/scrim/back that silently no-ops. This is NOT something
 // this module can detect or fix from here (it never sees Svelte's
 // mount/unmount, only the requestClose calls) — every consumer must key
-// its own remount. See Sidebar.svelte's changelogSession/trashSession/
+// its own remount. See Sidebar.svelte's timeTravelSession/trashSession/
 // settingsSession and KanbanBoard.svelte / ListView.svelte / App.svelte's
 // detailOpenSession / searchDetailSession for the pattern: bump a
 // counter on every open, fold it into the {#key} expression alongside
@@ -51,7 +51,7 @@ let nextId = 1;
 
 // popstate fires once per *browser navigation*, not once per history.back()
 // call -- if two closeOnBack layers each call requestClose() in quick
-// succession (owner-reported 2026-07-17: rapid Changelog open/close/open
+// succession (owner-reported 2026-07-17: rapid Changelog [now Time Travel] open/close/open
 // left it "stuck, can't get back to main screen"), the browser can
 // coalesce the two back() calls into a single navigation and fire only
 // one popstate. Popping exactly one stack entry per popstate (the old

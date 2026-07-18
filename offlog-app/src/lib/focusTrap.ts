@@ -1,7 +1,7 @@
 // Svelte action: `use:trapFocus` on a modal/panel's outer container.
 //
 // Every overlay in the app (ConfirmDialog, Settings and its sub-panels,
-// Maintenance, Trash, Changelog, CardDetail, QuickAdd, GlobalSearch) is a
+// Maintenance, Trash, Time Travel, CardDetail, QuickAdd, GlobalSearch) is a
 // real modal that visually blocks the rest of the app — but none of them
 // trapped keyboard focus before this: Tab could cycle out into the dimmed
 // page behind the scrim, and closing a modal never returned focus to

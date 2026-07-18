@@ -928,11 +928,24 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
 
   // Collect genuinely changed fields (excluding position/meta)
   const skip = new Set(['updated_at', 'source', 'position', 'column_id']);
+  // undefined/null and an empty object/array both mean "nothing here" --
+  // CardDetail.save() always sends the full custom_values/checklist
+  // shape (defaulting to {}/[] when the task never had one), while a
+  // task that's never had either stores the field as undefined on the
+  // doc itself. Without this, every single save on such a task logged a
+  // false "Custom fields updated"/"Checklist updated" diff alongside
+  // whatever was actually changed (owner-reported 2026-07-18) --
+  // JSON.stringify(undefined) is the JS value undefined, not the string
+  // "undefined", which never equals "{}" or "[]" even though nothing was
+  // ever touched.
+  const isEmpty = (v: any) => v == null || (typeof v === 'object' && Object.keys(v).length === 0);
   const diffs: Record<string, { from: any; to: any }> = {};
   for (const key of Object.keys(changes) as (keyof TaskDoc)[]) {
     if (skip.has(key)) continue;
-    if (JSON.stringify(doc[key]) !== JSON.stringify(changes[key])) {
-      diffs[key] = { from: doc[key], to: changes[key] };
+    const from = doc[key], to = changes[key];
+    if (isEmpty(from) && isEmpty(to)) continue;
+    if (JSON.stringify(from) !== JSON.stringify(to)) {
+      diffs[key] = { from, to };
     }
   }
 

@@ -17,7 +17,6 @@
   export let showDeadlines = false;
   export let showDashboard = false;
   export let showFocus = false;
-  export let showTimeTravel = false;
   export let open = false;
 
   // Settings' own Escape handling (including its mobile back-vs-close
@@ -28,7 +27,7 @@
   // (see modalStack.ts / ROADMAP.md A14), not set `open = false` directly
   // here, which would desync the pushed history entry from what's visible.
 
-  let showChangelog = false;
+  let showTimeTravel = false;
   let showSettings = false;
   let syncStatus = syncState.status;
   let lastSynced = syncState.lastSynced;
@@ -45,7 +44,7 @@
   let templateProjectId = '';
   let copyOpenTasks = false;
 
-  // ChangelogView/TrashView/SettingsPanel are full separate screens only
+  // TimeTravelView/TrashView/SettingsPanel are full separate screens only
   // opened from these buttons — loading them as dynamic imports keeps them
   // out of the main bundle.
   //
@@ -71,33 +70,33 @@
   // a manual history.back() could dismiss). Refusing to open a second
   // instance until the first is fully gone makes that overlap impossible
   // instead of trying to reconcile it after the fact.
-  let ChangelogViewComp: typeof import('./ChangelogView.svelte').default | null = null;
-  let changelogActive = false;
-  let changelogSession = 0;
+  let TimeTravelViewComp: typeof import('./TimeTravelView.svelte').default | null = null;
+  let timeTravelActive = false;
+  let timeTravelSession = 0;
   // export, not just a plain top-level function: App.svelte calls these
-  // via sidebarRef.openChangelog()/openTrash()/openSettings() (bound
+  // via sidebarRef.openTimeTravel()/openTrash()/openSettings() (bound
   // through bind:this for the keyboard-shortcut/command-palette paths,
   // not the on-screen buttons below which call them directly). Svelte 5
   // does not expose a component's plain top-level functions through
   // bind:this the way Svelte 3/4 did -- without export, sidebarRef.
-  // openChangelog is undefined and calling it throws, caught nowhere,
-  // so Ctrl+K's "Open Changelog"/"Open Settings"/"Open Deleted" silently
+  // openTimeTravel is undefined and calling it throws, caught nowhere,
+  // so Ctrl+K's "Open Time Travel"/"Open Settings"/"Open Deleted" silently
   // did nothing (found 2026-07-18 auditing Ctrl+K end-to-end; this
   // predates today's other fixes -- unrelated latent bug, not a
   // regression from them).
-  export async function openChangelog() {
-    if (changelogActive) return;
-    changelogActive = true;
+  export async function openTimeTravel() {
+    if (timeTravelActive) return;
+    timeTravelActive = true;
     try {
-      if (!ChangelogViewComp) ChangelogViewComp = (await import('./ChangelogView.svelte')).default;
-      changelogSession++;
-      showChangelog = true;
+      if (!TimeTravelViewComp) TimeTravelViewComp = (await import('./TimeTravelView.svelte')).default;
+      timeTravelSession++;
+      showTimeTravel = true;
     } catch (e) {
-      changelogActive = false;
-      showError('Could not open Changelog — ' + (e instanceof Error ? e.message : String(e)));
+      timeTravelActive = false;
+      showError('Could not open Time Travel — ' + (e instanceof Error ? e.message : String(e)));
     }
   }
-  function onChangelogClosed() { showChangelog = false; changelogActive = false; }
+  function onTimeTravelClosed() { showTimeTravel = false; timeTravelActive = false; }
 
   let showTrash = false;
   let TrashViewComp: typeof import('./TrashView.svelte').default | null = null;
@@ -216,7 +215,7 @@
   }
 
   function goToProject(project: ProjectDoc) {
-    showDeadlines = false; showDashboard = false; showFocus = false; showTimeTravel = false;
+    showDeadlines = false; showDashboard = false; showFocus = false;
     activeSpaceId.set(project.space_id);
     activeProjectId.set(project._id);
     dispatch('navigate');
@@ -290,7 +289,7 @@
     <button
       class="nav-btn"
       class:active={showDashboard}
-      on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; showTimeTravel = false; dispatch('navigate'); }}
+      on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <rect x="2" y="2" width="6" height="6" rx="1"/>
@@ -304,7 +303,7 @@
     <button
       class="nav-btn"
       class:active={showFocus}
-      on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; showTimeTravel = false; dispatch('navigate'); }}
+      on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <circle cx="9" cy="9" r="7"/>
@@ -317,7 +316,7 @@
     <button
       class="nav-btn"
       class:active={showDeadlines}
-      on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; showTimeTravel = false; dispatch('navigate'); }}
+      on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <rect x="2" y="3" width="14" height="12" rx="2"/>
@@ -327,19 +326,6 @@
         <line x1="6" y1="11" x2="12" y2="11"/>
       </svg>
       Agenda
-    </button>
-
-    <button
-      class="nav-btn"
-      class:active={showTimeTravel}
-      on:click={() => { showTimeTravel = true; showDashboard = false; showFocus = false; showDeadlines = false; dispatch('navigate'); }}
-    >
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
-        <circle cx="9" cy="9.5" r="6.5"/>
-        <polyline points="9,6 9,9.5 12,11.5"/>
-        <path d="M4 2.5 2 4.5M14 2.5l2 2"/>
-      </svg>
-      Time Travel
     </button>
   </nav>
   <div class="spaces-divider"></div>
@@ -438,11 +424,11 @@
       </div>
     {/if}
     <div class="bottom-row">
-      <button class="icon-btn" on:click={() => { openChangelog(); dispatch('navigate'); }} title="Changelog">
+      <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="Time Travel">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
         </svg>
-        <span class="icon-btn-label">Changelog</span>
+        <span class="icon-btn-label">Time Travel</span>
       </button>
       <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Recycle{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -474,24 +460,24 @@
   </div>
 </aside>
 
-{#if showChangelog && ChangelogViewComp}
-  <!-- {#key}, not just the showChangelog boolean: without it, a fast
+{#if showTimeTravel && TimeTravelViewComp}
+  <!-- {#key}, not just the showTimeTravel boolean: without it, a fast
        close-then-reopen can land while Svelte's outro transition for the
        previous show is still in flight, and Svelte *reverses* that outro
        into a fresh intro on the SAME component instance instead of
        destroying and recreating it (2026-07-17, root cause of the "stuck,
        can't get back to main screen" bug after rapid clicking -- traced
-       via a manual step-by-step repro, not fixable by changelogActive
+       via a manual step-by-step repro, not fixable by timeTravelActive
        above alone, which only stops a second *attempt* from starting,
        not Svelte reviving the still-alive one). A revived instance never
        re-runs its own closeOnBack() call (that only happens once, at
        component setup) -- its `requestClose` is the original, already
        spent one, and no new stack entry exists for it either: nothing
-       can ever close it again. changelogSession increments on every
+       can ever close it again. timeTravelSession increments on every
        real open, forcing Svelte to always fully tear down and remount
        rather than ever reuse a mid-transition instance. -->
-  {#key changelogSession}
-    <svelte:component this={ChangelogViewComp} on:close={onChangelogClosed} />
+  {#key timeTravelSession}
+    <svelte:component this={TimeTravelViewComp} on:close={onTimeTravelClosed} />
   {/key}
 {/if}
 

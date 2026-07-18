@@ -371,10 +371,10 @@
   // ── Organize (Manage Spaces / Manage Tags) ─────────────────────────────
   // All four managers below get the same two fixes (2026-07-18 audit):
   // an error-handled, reentrancy-guarded lazy import (matching Sidebar.
-  // svelte's openChangelog/openTrash/openSettings -- an unguarded import
+  // svelte's openTimeTravel/openTrash/openSettings -- an unguarded import
   // that rejects used to leave showX stuck false with no feedback), and
   // an *Session counter folded into their {#key} in the template below
-  // (matching CardDetail/Changelog/Trash/Settings/QuickAdd/GlobalSearch
+  // (matching CardDetail/Time Travel/Trash/Settings/QuickAdd/GlobalSearch
   // -- all four call closeOnBack(), so all four were exposed to the same
   // stuck-panel bug a fast reopen could trigger).
   let SpaceManagerComp: typeof import('./SpaceManager.svelte').default | null = null;

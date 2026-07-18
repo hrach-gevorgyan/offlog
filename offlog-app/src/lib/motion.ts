@@ -14,7 +14,7 @@ import { prefersReducedMotion } from './theme';
 // elements left behind, just instant.
 function d(base: number): number { return prefersReducedMotion() ? 0 : base; }
 
-// Right-docked panels (ChangelogView, SettingsPanel-style managers, CardDetail).
+// Right-docked panels (TimeTravelView, SettingsPanel-style managers, CardDetail).
 // `duration` is a getter (not a plain field) so every consumer -- direct
 // reads, spreads like `{...panelFly, x: 440}`, destructuring -- picks up
 // the current Reduce Motion state without needing its own call site change.

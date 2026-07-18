@@ -543,7 +543,7 @@
        forces a remount -- _id alone doesn't change value then, which
        risked Svelte reversing an in-flight outro into an intro on the
        same (already-closed-once) instance instead of a real remount; see
-       the stuck-Changelog fix in Sidebar.svelte for the full story. -->
+       the stuck-Time-Travel (née Changelog) fix in Sidebar.svelte for the full story. -->
   {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
