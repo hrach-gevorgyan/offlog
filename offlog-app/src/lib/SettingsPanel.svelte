@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, isTauri as isTauriCheck, invokeTauri } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -163,6 +163,16 @@
   function setWeekStart(monday: boolean) {
     weekStartsMonday = monday;
     setWeekStartsMonday(monday);
+  }
+
+  // Same rarely-changed-display-preference tradeoff as weekStartsMonday
+  // above -- every clock-time display in the app reads getTimeFormat24h()
+  // fresh via utils.ts's fmtTime(), so a reactive bridge isn't needed for
+  // already-open views; a reopen/reload picks it up.
+  let timeFormat24h = getTimeFormat24h();
+  function setTimeFormat(is24h: boolean) {
+    timeFormat24h = is24h;
+    setTimeFormat24h(is24h);
   }
 
   // ── Sync ────────────────────────────────────────────────────────────────
@@ -790,6 +800,27 @@
                   </div>
                 </div>
                 <p class="setting-hint">Controls Agenda's week view and "this week" grouping.</p>
+
+                <div class="setting-row">
+                  <div class="setting-label">Time format</div>
+                  <div class="theme-segment" role="radiogroup" aria-label="Time format">
+                    <button
+                      class="theme-seg-btn"
+                      class:active={timeFormat24h}
+                      role="radio"
+                      aria-checked={timeFormat24h}
+                      on:click={() => setTimeFormat(true)}
+                    >24h</button>
+                    <button
+                      class="theme-seg-btn"
+                      class:active={!timeFormat24h}
+                      role="radio"
+                      aria-checked={!timeFormat24h}
+                      on:click={() => setTimeFormat(false)}
+                    >12h</button>
+                  </div>
+                </div>
+                <p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>
               </div>
 
               <div class="setting-group">

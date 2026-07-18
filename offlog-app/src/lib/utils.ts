@@ -1,3 +1,5 @@
+import { getTimeFormat24h } from '../config';
+
 // Shared by TimeTravelView and TaskHistoryPanel — both render the same
 // four changelog action types with independently-drifted hex values.
 // CSS var()s here (not fixed hex) so these stay correct across light/dark
@@ -5,6 +7,16 @@
 export const ACTION_COLOR: Record<string, string> = {
   create: 'var(--success)', update: 'var(--accent)', move: 'var(--due-soon-ink)', delete: 'var(--danger)',
 };
+
+// Single source of truth for "how does a clock time render" across the
+// whole app (Time Travel, reminders, last-synced, task history) so the
+// Settings -> Appearance 24h/12h toggle (config.ts's getTimeFormat24h,
+// same per-device-override pattern as week-start-day) actually covers
+// every display site instead of just whichever one someone remembered
+// to update.
+export function fmtTime(d: Date): string {
+  return d.toLocaleTimeString(undefined, { hour: getTimeFormat24h() ? '2-digit' : 'numeric', minute: '2-digit', hour12: !getTimeFormat24h() });
+}
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
@@ -88,13 +100,14 @@ export function dueInk(due: string | null): string {
 export function fmtLastSynced(ts: string): string {
   const d = new Date(ts);
   const sameDay = d.toDateString() === new Date().toDateString();
-  return sameDay ? d.toLocaleTimeString() : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString();
+  return sameDay ? fmtTime(d) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + fmtTime(d);
 }
 
 // A30 — was duplicated byte-for-byte in CardDetail.svelte and
 // TaskHistoryPanel.svelte (full created/updated/history timestamps).
 export function fmtFullTimestamp(ts: string): string {
-  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d);
 }
 
 export function filterTasks<T extends { title: string; column_id: string; priority: number; tags: string[] }>(

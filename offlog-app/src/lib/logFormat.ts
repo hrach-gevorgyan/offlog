@@ -5,6 +5,8 @@
 // over time. See git history predating the rename for the readability
 // passes that shaped this logic.
 
+import { fmtTime } from './utils';
+
 export const FIELD_LABEL: Record<string, string> = {
   title: 'Title', body: 'Notes', priority: 'Priority',
   due_date: 'Due date', reminder_at: 'Reminder', remindOnDue: 'Remind on due date',
@@ -28,7 +30,7 @@ function fmtVal(field: string, val: any): string {
   if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
   if (field === 'custom_values') return 'updated';
   if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  if (field === 'reminder_at') return new Date(val).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (field === 'reminder_at') { const d = new Date(val); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
   if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
   if (typeof val === 'object') return 'updated';
   const s = String(val);
@@ -88,7 +90,7 @@ function fmtDiffs(diffs: Record<string, any>): string {
 export function fmt(ts: string) {
   const d = new Date(ts);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    + ' · ' + fmtTime(d);
 }
 
 // Derived from the ref id's own prefix, same convention CLAUDE.md

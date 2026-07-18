@@ -13,6 +13,7 @@
   import CalendarPicker from './CalendarPicker.svelte';
   import CustomSelect from './CustomSelect.svelte';
   import { getDefaultReminderTime } from '../config';
+  import { fmtTime } from './utils';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -139,7 +140,7 @@
     }
     if (reminder) {
       const r = new Date(reminder);
-      parts.push(`${r.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} reminder`);
+      parts.push(`${fmtTime(r)} reminder`);
     }
     return parts.join(' · ');
   }

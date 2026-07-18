@@ -236,6 +236,21 @@ export function setWeekStartsMonday(monday: boolean) {
   localStorage.setItem(WEEK_STARTS_MONDAY_KEY, String(monday));
 }
 
+// Same per-device override pattern as WEEK_STARTS_MONDAY_KEY above.
+// Owner preference, 2026-07-18: default to 24h display rather than
+// following the browser/OS locale (unlike most locale-driven formatting
+// elsewhere in the app) -- 12h AM/PM is the override, not the default.
+const TIME_FORMAT_24H_KEY = 'offlog_time_format_24h';
+
+export function getTimeFormat24h(): boolean {
+  const stored = localStorage.getItem(TIME_FORMAT_24H_KEY);
+  return stored === null ? true : stored === 'true';
+}
+
+export function setTimeFormat24h(is24h: boolean) {
+  localStorage.setItem(TIME_FORMAT_24H_KEY, String(is24h));
+}
+
 // E2 (ROADMAP.md) — the CouchDB server's own `uuid` (returned by
 // pairing.rs's handshake, also broadcast unauthenticated in the mDNS TXT
 // record per discovery.rs) is a stable identity for "the PC I paired

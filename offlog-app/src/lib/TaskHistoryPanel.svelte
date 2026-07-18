@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getLogsForTask } from './db';
-  import { timeAgo, fmtFullTimestamp, ACTION_COLOR } from './utils';
+  import { timeAgo, fmtFullTimestamp, fmtTime, ACTION_COLOR } from './utils';
 
   export let taskId: string;
 
@@ -30,7 +30,7 @@
     if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
     if (field === 'custom_values') return 'updated';
     if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    if (field === 'reminder_at') return new Date(val).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    if (field === 'reminder_at') { const d = new Date(val); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
     if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
     if (typeof val === 'object') return 'updated';
     const s = String(val);

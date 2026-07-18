@@ -236,10 +236,10 @@
   .tt-body { flex: 1; overflow-y: auto; padding: 8px 20px 20px; }
   .empty { padding: 3rem; text-align: center; color: var(--faint); font-size: .88rem; }
 
-  .day-group { margin-bottom: 10px; }
+  .day-group { margin-bottom: 16px; }
   .day-head {
     display: flex; align-items: baseline; gap: 10px;
-    padding-bottom: 3px; margin-bottom: 2px; border-bottom: 1px solid var(--border);
+    padding-bottom: 5px; margin-bottom: 5px; border-bottom: 1px solid var(--border);
   }
   .day-label { font-weight: 700; font-size: 12.5px; }
   .day-summary { font-family: var(--mono); font-size: 10px; color: var(--faint); }
@@ -258,9 +258,9 @@
      A dedicated row always lands in the same place regardless of how long
      the description is. */
   .entry {
-    display: grid; grid-template-columns: 60px 1fr 56px 54px; column-gap: 8px;
-    row-gap: 2px; align-items: start;
-    padding: 4px 5px; border-radius: 5px; font-size: 12.5px; line-height: 1.35;
+    display: grid; grid-template-columns: 60px 1fr 56px 54px; column-gap: 10px;
+    row-gap: 4px; align-items: start;
+    padding: 7px 8px; margin-bottom: 1px; border-radius: 5px; font-size: 12.5px; line-height: 1.45;
   }
   .entry.clickable { cursor: pointer; }
   .entry.clickable:hover { background: var(--hover); }
