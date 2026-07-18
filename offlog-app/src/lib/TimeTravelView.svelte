@@ -33,13 +33,24 @@
   let logs: any[] = [];
   let loading = true;
   let hasMore = true;
+  let bodyEl: HTMLDivElement;
 
+  // subscribe() is db.ts's single global change feed -- it fires on
+  // *every* doc write app-wide, not just log: docs, so leaving this panel
+  // open while working elsewhere reruns getRecentLogs(limit) constantly.
+  // Preserve scroll position across the reload (a full-array replace
+  // otherwise snaps a scrolled-down reader back to the top on someone
+  // else's unrelated edit) and skip overlapping reloads if one is
+  // already in flight.
   async function load() {
+    if (loading && logs.length > 0) return; // already loading, not the initial mount
     loading = true;
+    const scrollTop = bodyEl?.scrollTop ?? 0;
     const fetched = await getRecentLogs(limit);
     hasMore = fetched.length === limit; // exactly the cap -> there may be more
     logs = fetched;
     loading = false;
+    if (bodyEl) requestAnimationFrame(() => { bodyEl.scrollTop = scrollTop; });
   }
 
   function loadMore() { limit += PAGE_SIZE; load(); }
@@ -136,7 +147,7 @@
     <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
-  <div class="tt-body">
+  <div class="tt-body" bind:this={bodyEl}>
     {#if loading && logs.length === 0}
       <div class="empty">Loading…</div>
     {:else if groups.length === 0}

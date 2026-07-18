@@ -955,15 +955,20 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
   const projName = proj?.name;
   const taskTitle = (changes.title as string | undefined) ?? doc.title;
 
-  if (isMove) {
+  // isDelete checked first: only one log entry is written per call, and a
+  // delete matters more than a same-call column move -- no current call
+  // site combines them (deleteTask() only ever sends { deleted: true }),
+  // but if one ever did, silently logging "moved" while dropping the
+  // delete from history would be a worse bug than the reverse.
+  if (isDelete) {
+    await logChange(id, 'delete', undefined, undefined, undefined, { task_title: doc.title, project_name: projName });
+  } else if (isMove) {
     const fromName = proj?.columns.find(c => c.id === doc.column_id)?.name ?? doc.column_id;
     const toName   = proj?.columns.find(c => c.id === changes.column_id)?.name ?? changes.column_id!;
     await logChange(id, 'move', 'column_id', fromName, toName, {
       task_title: taskTitle, project_name: projName,
       diffs: Object.keys(diffs).length ? diffs : undefined,
     });
-  } else if (isDelete) {
-    await logChange(id, 'delete', undefined, undefined, undefined, { task_title: doc.title, project_name: projName });
   } else if (Object.keys(diffs).length) {
     await logChange(id, 'update', undefined, undefined, undefined, { task_title: taskTitle, project_name: projName, diffs });
   }
