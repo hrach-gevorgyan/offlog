@@ -24,7 +24,7 @@ Version 4.28.0 · Local-first task management for browser, Android, and PC (Taur
 | Desktop Wrapper | **Tauri 2** (`offlog-desktop/`) | Wraps the same Vite build into a Windows app; embeds a CouchDB sync host — see "Desktop (Tauri)" below |
 | Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
 | Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
-| Fonts | Hanken Grotesk + IBM Plex Mono | Sans for UI, mono for timestamps and labels |
+| Fonts | Hanken Grotesk (only) | IBM Plex Mono removed 2026-07-19; `--mono` (labels/timestamps' uppercase treatment) now points at the same face |
 
 ---
 
