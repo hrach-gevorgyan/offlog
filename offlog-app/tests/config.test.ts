@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes } from '../src/config';
+import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -85,5 +85,33 @@ describe('App lock (PIN)', () => {
   it('returns a stored custom timeout', () => {
     setAppLockTimeoutMinutes(15);
     expect(getAppLockTimeoutMinutes()).toBe(15);
+  });
+
+  it('has no hint by default', () => {
+    expect(getAppLockHint()).toBeNull();
+  });
+
+  it('stores and returns a hint set alongside the PIN', async () => {
+    await setAppLockPin('1234', 'my old street name');
+    expect(getAppLockHint()).toBe('my old street name');
+  });
+
+  it('trims the hint and drops it if blank', async () => {
+    await setAppLockPin('1234', '   ');
+    expect(getAppLockHint()).toBeNull();
+    await setAppLockPin('1234', '  spaced out  ');
+    expect(getAppLockHint()).toBe('spaced out');
+  });
+
+  it('clearAppLockPin() also clears the hint', async () => {
+    await setAppLockPin('1234', 'a hint');
+    clearAppLockPin();
+    expect(getAppLockHint()).toBeNull();
+  });
+
+  it('changing the PIN without passing a hint clears the old one', async () => {
+    await setAppLockPin('1234', 'a hint');
+    await setAppLockPin('5678');
+    expect(getAppLockHint()).toBeNull();
   });
 });

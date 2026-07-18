@@ -265,6 +265,13 @@ export function setTimeFormat24h(is24h: boolean) {
 const APP_LOCK_HASH_KEY = 'offlog_app_lock_hash';
 const APP_LOCK_SALT_KEY = 'offlog_app_lock_salt';
 const APP_LOCK_TIMEOUT_KEY = 'offlog_app_lock_timeout_minutes';
+// A self-written reminder ("my old street address"), not a secret
+// question with a verified answer -- there's no server to check an
+// answer against, so a real Q&A flow would just be a second PIN typed
+// in plaintext for no extra security. Optional, shown on the lock
+// screen so someone who forgot their PIN can jog their own memory
+// before reaching for "Forgot PIN"'s full reset (owner, 2026-07-19).
+const APP_LOCK_HINT_KEY = 'offlog_app_lock_hint';
 
 // crypto.subtle needs a secure context -- true for the dev server, the
 // deployed HTTPS site, and Capacitor/Tauri's own WebView schemes, but
@@ -287,16 +294,23 @@ export function isAppLockEnabled(): boolean {
   return !!localStorage.getItem(APP_LOCK_HASH_KEY);
 }
 
-export async function setAppLockPin(pin: string): Promise<void> {
+export async function setAppLockPin(pin: string, hint?: string): Promise<void> {
   const salt = crypto.randomUUID ? crypto.randomUUID() : String(Math.random());
   const hash = await hashWithSalt(salt, pin);
   localStorage.setItem(APP_LOCK_SALT_KEY, salt);
   localStorage.setItem(APP_LOCK_HASH_KEY, hash);
+  if (hint?.trim()) localStorage.setItem(APP_LOCK_HINT_KEY, hint.trim());
+  else localStorage.removeItem(APP_LOCK_HINT_KEY);
+}
+
+export function getAppLockHint(): string | null {
+  return localStorage.getItem(APP_LOCK_HINT_KEY);
 }
 
 export function clearAppLockPin(): void {
   localStorage.removeItem(APP_LOCK_HASH_KEY);
   localStorage.removeItem(APP_LOCK_SALT_KEY);
+  localStorage.removeItem(APP_LOCK_HINT_KEY);
 }
 
 export async function verifyAppLockPin(pin: string): Promise<boolean> {

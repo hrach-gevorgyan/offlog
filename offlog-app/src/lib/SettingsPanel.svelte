@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, isNativePlatform } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -199,11 +199,13 @@
   let showPinForm = false;
   let newPin = '';
   let confirmPin = '';
+  let pinHint = '';
   let pinError = '';
   let pinSaving = false;
 
   function openPinForm() {
     newPin = ''; confirmPin = ''; pinError = '';
+    pinHint = getAppLockHint() ?? ''; // pre-fill so changing the PIN doesn't silently drop an existing hint
     showPinForm = true;
   }
 
@@ -211,9 +213,10 @@
     if (newPin.length < 4) { pinError = 'PIN must be at least 4 digits.'; return; }
     if (!/^\d+$/.test(newPin)) { pinError = 'PIN can only contain digits.'; return; }
     if (newPin !== confirmPin) { pinError = "PINs don't match."; return; }
+    if (pinHint.trim() && pinHint.includes(newPin)) { pinError = "The hint can't contain the PIN itself."; return; }
     pinSaving = true;
     try {
-      await setAppLockPin(newPin);
+      await setAppLockPin(newPin, pinHint);
       appLockEnabled = true;
       showPinForm = false;
     } catch {
@@ -1096,6 +1099,10 @@
                       Confirm PIN
                       <input type="password" inputmode="numeric" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
                     </label>
+                    <label class="field-label">
+                      Hint (optional)
+                      <input type="text" maxlength="60" bind:value={pinHint} placeholder="A reminder only you'd understand" />
+                    </label>
                     {#if pinError}<p class="setting-hint setting-hint-warn">{pinError}</p>{/if}
                     <div class="setting-row">
                       <button class="export-btn" on:click={() => showPinForm = false}>Cancel</button>
@@ -1118,6 +1125,10 @@
                   <label class="field-label">
                     Confirm PIN
                     <input type="password" inputmode="numeric" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
+                  </label>
+                  <label class="field-label">
+                    Hint (optional)
+                    <input type="text" maxlength="60" bind:value={pinHint} placeholder="A reminder only you'd understand" />
                   </label>
                   {#if pinError}<p class="setting-hint setting-hint-warn">{pinError}</p>{/if}
                   <div class="setting-row">
