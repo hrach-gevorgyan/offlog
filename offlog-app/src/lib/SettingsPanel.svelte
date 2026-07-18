@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, isNativePlatform } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -185,7 +185,17 @@
   // panel uses.
   let appLockEnabled = isAppLockEnabled();
   let appLockTimeout = getAppLockTimeoutMinutes();
-  const LOCK_TIMEOUT_OPTIONS = [1, 5, 15, 30];
+  // A dropdown, not the segmented control Theme/Week-starts-on use --
+  // those read fine at 2-3 short options, but 4 numeric ones ("1m 5m 15m
+  // 30m") in a row felt cramped (owner feedback, 2026-07-19). Same
+  // CustomSelect pattern as CardDetail's Repeat picker.
+  const LOCK_TIMEOUT_OPTIONS = [
+    { value: '1', label: '1 minute' },
+    { value: '5', label: '5 minutes' },
+    { value: '15', label: '15 minutes' },
+    { value: '30', label: '30 minutes' },
+  ];
+  let lockTimeoutStr = String(appLockTimeout);
   let showPinForm = false;
   let newPin = '';
   let confirmPin = '';
@@ -223,9 +233,9 @@
     appLockEnabled = false;
   }
 
-  function setLockTimeout(minutes: number) {
-    appLockTimeout = minutes;
-    setAppLockTimeoutMinutes(minutes);
+  function onLockTimeoutChange(v: string) {
+    appLockTimeout = Number(v);
+    setAppLockTimeoutMinutes(appLockTimeout);
   }
 
   // ── Sync ────────────────────────────────────────────────────────────────
@@ -1088,7 +1098,7 @@
                     </label>
                     {#if pinError}<p class="setting-hint setting-hint-warn">{pinError}</p>{/if}
                     <div class="setting-row">
-                      <button on:click={() => showPinForm = false}>Cancel</button>
+                      <button class="export-btn" on:click={() => showPinForm = false}>Cancel</button>
                       <button class="export-btn" on:click={savePin} disabled={pinSaving}>{pinSaving ? 'Saving…' : 'Save PIN'}</button>
                     </div>
                   {/if}
@@ -1097,7 +1107,7 @@
                     <span class="setting-label">PIN is set</span>
                     <div class="setting-row">
                       <button class="export-btn" on:click={openPinForm}>Change PIN</button>
-                      <button on:click={removePin}>Remove PIN</button>
+                      <button class="export-btn" on:click={removePin}>Remove PIN</button>
                     </div>
                   </div>
                 {:else}
@@ -1111,7 +1121,7 @@
                   </label>
                   {#if pinError}<p class="setting-hint setting-hint-warn">{pinError}</p>{/if}
                   <div class="setting-row">
-                    <button on:click={() => showPinForm = false}>Cancel</button>
+                    <button class="export-btn" on:click={() => showPinForm = false}>Cancel</button>
                     <button class="export-btn" on:click={savePin} disabled={pinSaving}>{pinSaving ? 'Saving…' : 'Save PIN'}</button>
                   </div>
                 {/if}
@@ -1120,25 +1130,20 @@
               {#if appLockEnabled}
                 <div class="setting-group">
                   <div class="setting-section-title">Lock after</div>
-                  <div class="theme-segment" role="radiogroup" aria-label="Lock after">
-                    {#each LOCK_TIMEOUT_OPTIONS as m}
-                      <button
-                        class="theme-seg-btn"
-                        class:active={appLockTimeout === m}
-                        role="radio"
-                        aria-checked={appLockTimeout === m}
-                        on:click={() => setLockTimeout(m)}
-                      >{m}m</button>
-                    {/each}
-                  </div>
+                  <label class="field-label">
+                    Lock after this much idle/background time
+                    <CustomSelect options={LOCK_TIMEOUT_OPTIONS} bind:value={lockTimeoutStr} on:change={(e) => onLockTimeoutChange(e.detail)} />
+                  </label>
                   <p class="setting-hint">Also locks whenever Offlog is closed and reopened, regardless of this setting.</p>
                 </div>
               {/if}
 
-              <div class="setting-group">
-                <div class="setting-section-title">Biometric unlock</div>
-                <p class="setting-hint">Fingerprint/face unlock is planned but not built yet — PIN is the only way in for now. See ROADMAP.md.</p>
-              </div>
+              {#if isNativePlatform()}
+                <div class="setting-group">
+                  <div class="setting-section-title">Biometric unlock</div>
+                  <p class="setting-hint">Fingerprint/face unlock is planned but not built yet — PIN is the only way in for now. See ROADMAP.md.</p>
+                </div>
+              {/if}
 
             {:else if activeCategory === 'advanced'}
               <div class="setting-group">

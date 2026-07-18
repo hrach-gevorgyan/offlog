@@ -5,7 +5,11 @@ const envUrl = import.meta.env.VITE_COUCH_URL as string | undefined;
 const envUser = import.meta.env.VITE_COUCH_USER as string | undefined;
 const envPass = import.meta.env.VITE_COUCH_PASS as string | undefined;
 
-function isNativePlatform(): boolean {
+// Exported (was module-private) so SettingsPanel.svelte can gate the
+// biometric-unlock note to Android only -- this project ships no other
+// Capacitor-native platform (see GOAL.md/DECISIONS.md: no iOS), so
+// "native platform" and "Android" are the same thing here in practice.
+export function isNativePlatform(): boolean {
   return !!(window as any).Capacitor?.isNativePlatform?.();
 }
 
