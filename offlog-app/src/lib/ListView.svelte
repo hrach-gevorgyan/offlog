@@ -340,13 +340,26 @@
 
   // A22: the mark-done circle is a single click with no confirmation — an
   // accidental click previously had no way back short of reopening the
-  // card and changing status manually. Remember the task's prior
-  // column_id briefly so a mis-click can be undone with one tap, matching
-  // the undo pattern already used for deletion (App.svelte's undo toast).
-  let undoMarkDone: { id: string; title: string; fromColId: string; timer: any } | null = null;
+  // card and changing status manually. Remember the task's prior state
+  // briefly so a mis-click can be undone with one tap, matching the undo
+  // pattern already used for deletion (App.svelte's undo toast).
+  //
+  // Snapshotting more than just column_id (also due_date/reminder_at/
+  // checklist) since a recurring task's completion now resets those too
+  // in the same write (db.ts's updateTask() -- one task object per
+  // series, not a new card per completion) -- restoring only column_id
+  // on undo would leave the due date/checklist changes stuck even though
+  // the task visually looks "undone" (found while implementing recurring
+  // tasks, 2026-07-19).
+  let undoMarkDone: {
+    id: string; title: string;
+    fromColId: string; fromDueDate: string | null; fromReminderAt: string | null;
+    fromChecklist: { text: string; done: boolean }[] | undefined;
+    timer: any;
+  } | null = null;
 
   async function markDone(task: TaskDoc) {
-    const fromColId = task.column_id;
+    const { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist } = task;
     try {
       await updateTask(task._id!, { column_id: lastColId() });
       await reloadTasks();
@@ -356,16 +369,16 @@
     }
     if (undoMarkDone) clearTimeout(undoMarkDone.timer);
     const timer = setTimeout(() => { undoMarkDone = null; }, 5000);
-    undoMarkDone = { id: task._id!, title: task.title, fromColId, timer };
+    undoMarkDone = { id: task._id!, title: task.title, fromColId, fromDueDate, fromReminderAt, fromChecklist, timer };
   }
 
   async function undoLastMarkDone() {
     if (!undoMarkDone) return;
-    const { id, fromColId, timer } = undoMarkDone;
+    const { id, fromColId, fromDueDate, fromReminderAt, fromChecklist, timer } = undoMarkDone;
     clearTimeout(timer);
     undoMarkDone = null;
     try {
-      await updateTask(id, { column_id: fromColId });
+      await updateTask(id, { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist });
       await reloadTasks();
     } catch {
       showError('Failed to undo. Please try again.');

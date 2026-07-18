@@ -945,19 +945,22 @@ function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly'): str
   return localDateStr(d);
 }
 
-// Fires once, from inside updateTask() below, when a recurring task is
-// moved into its project's last column (this app's positional definition
-// of "done" -- see CLAUDE.md). The completed instance is left exactly
-// where it landed, untouched -- soft-delete-only and the whole point of
-// Time Travel is a real trail, so recurrence creates a fresh task rather
-// than mutating/reviving the old one. Advances from the ORIGINAL due_date,
-// not from today, so a task due every Monday stays on Monday even if
-// actually completed on a Wednesday -- advancing from "today" would drift
-// the schedule forward every time a task is completed late.
-async function spawnNextRecurrence(doc: TaskDoc, proj: ProjectDoc): Promise<void> {
+// Computes the reset-in-place fields for a recurring task that just got
+// completed -- one task object for the whole series, matching how
+// Todoist/Google Tasks/Microsoft To Do/Apple Reminders all model
+// recurrence, instead of the kanban-native instinct to spawn a second
+// card (tried first, owner feedback 2026-07-19: "now we have two task
+// with same name"). The completion itself is recorded only in the log
+// entry updateTask() writes below -- there is never a second persisted
+// card sitting in the done column.
+function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc> | null {
   const firstColId = proj.columns[0]?.id;
-  if (!firstColId || !doc.recurrence) return;
+  if (!firstColId || !doc.recurrence) return null;
 
+  // Advances from the task's ORIGINAL due_date, not from today, so a
+  // task due every Monday stays on Monday even if actually completed on
+  // a Wednesday -- advancing from "today" would drift the schedule
+  // forward every time a task is completed late.
   const baseDate = doc.due_date ?? localDateStr(new Date());
   const nextDate = advanceDate(baseDate, doc.recurrence);
 
@@ -975,25 +978,41 @@ async function spawnNextRecurrence(doc: TaskDoc, proj: ProjectDoc): Promise<void
   }
 
   // Checklist structure carries over, but every item starts unchecked --
-  // a fresh occurrence hasn't had any of its steps done yet.
+  // the new occurrence hasn't had any of its steps done yet.
   const resetChecklist = doc.checklist?.map(i => ({ text: i.text, done: false }));
 
-  await createTask(doc.project_id, doc.space_id, firstColId, doc.title, {
-    priority: doc.priority, due_date: nextDate, reminder_at: nextReminder, tags: doc.tags,
-    body: doc.body, custom_values: doc.custom_values, checklist: resetChecklist,
-    recurrence: doc.recurrence,
-  });
+  return { column_id: firstColId, due_date: nextDate, reminder_at: nextReminder, checklist: resetChecklist };
 }
 
 export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(id);
-  await db.put({ ...doc, ...changes, updated_at: now(), source: SOURCE });
+
+  // Resolve project once -- needed both to detect "moved into the last
+  // column" (this app's positional definition of "done") and, if so,
+  // to compute the recurrence reset below.
+  let proj: ProjectDoc | null = null;
+  try { proj = await db.get<ProjectDoc>(doc.project_id); } catch {}
+
+  const isMove      = changes.column_id !== undefined && changes.column_id !== doc.column_id;
+  const isDelete    = !!changes.deleted;
+  const isCompleting = isMove && !!proj && changes.column_id === proj.columns.at(-1)?.id;
+
+  // recurrenceReset's fields win over `changes` on conflict (e.g. a
+  // recurring task can't be simultaneously "completed" and manually
+  // moved somewhere else in the same call -- completion takes priority),
+  // but everything else the caller sent (title/tags/priority edited in
+  // the same CardDetail save, say) still applies normally.
+  const recurrenceReset = isCompleting && doc.recurrence && proj ? computeRecurrenceReset(doc, proj) : null;
+  const finalChanges: Partial<TaskDoc> = recurrenceReset ? { ...changes, ...recurrenceReset } : changes;
+
+  await db.put({ ...doc, ...finalChanges, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
 
-  const isMove   = changes.column_id !== undefined && changes.column_id !== doc.column_id;
-  const isDelete = !!changes.deleted;
-
-  // Collect genuinely changed fields (excluding position/meta)
+  // Collect genuinely changed fields (excluding position/meta) -- always
+  // against `changes` (what the caller asked for), not finalChanges, so
+  // a completed recurring task's diff list still reads as "what actually
+  // changed" (due date moved, checklist reset) rather than being
+  // swallowed by comparing against itself.
   const skip = new Set(['updated_at', 'source', 'position', 'column_id']);
   // undefined/null and an empty object/array both mean "nothing here" --
   // CardDetail.save() always sends the full custom_values/checklist
@@ -1007,18 +1026,15 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
   // ever touched.
   const isEmpty = (v: any) => v == null || (typeof v === 'object' && Object.keys(v).length === 0);
   const diffs: Record<string, { from: any; to: any }> = {};
-  for (const key of Object.keys(changes) as (keyof TaskDoc)[]) {
+  for (const key of Object.keys(finalChanges) as (keyof TaskDoc)[]) {
     if (skip.has(key)) continue;
-    const from = doc[key], to = changes[key];
+    const from = doc[key], to = finalChanges[key];
     if (isEmpty(from) && isEmpty(to)) continue;
     if (JSON.stringify(from) !== JSON.stringify(to)) {
       diffs[key] = { from, to };
     }
   }
 
-  // Resolve project once
-  let proj: ProjectDoc | null = null;
-  try { proj = await db.get<ProjectDoc>(doc.project_id); } catch {}
   const projName = proj?.name;
   const taskTitle = (changes.title as string | undefined) ?? doc.title;
 
@@ -1030,24 +1046,22 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
   if (isDelete) {
     await logChange(id, 'delete', undefined, undefined, undefined, { task_title: doc.title, project_name: projName });
   } else if (isMove) {
+    // Logs the transition the user actually triggered (Backlog -> Done),
+    // not the auto-reset resting state (back in Backlog) -- diffs still
+    // shows the real due-date/checklist changes so the log entry reads as
+    // "moved to Done, due date advanced to <next>" even though the task
+    // itself never stays there.
     const fromName = proj?.columns.find(c => c.id === doc.column_id)?.name ?? doc.column_id;
     const toName   = proj?.columns.find(c => c.id === changes.column_id)?.name ?? changes.column_id!;
     await logChange(id, 'move', 'column_id', fromName, toName, {
       task_title: taskTitle, project_name: projName,
       diffs: Object.keys(diffs).length ? diffs : undefined,
     });
-    // Only on a genuine move INTO the last column -- moving a done task
-    // back OUT (undo, drag back to an earlier column) must never spawn a
-    // duplicate, and this only runs once per move since isMove requires
-    // column_id to actually change.
-    if (doc.recurrence && proj && changes.column_id === proj.columns.at(-1)?.id) {
-      await spawnNextRecurrence(doc, proj);
-    }
   } else if (Object.keys(diffs).length) {
     await logChange(id, 'update', undefined, undefined, undefined, { task_title: taskTitle, project_name: projName, diffs });
   }
 
-  return { ...doc, ...changes, updated_at: now(), source: SOURCE } as TaskDoc;
+  return { ...doc, ...finalChanges, updated_at: now(), source: SOURCE } as TaskDoc;
 }
 
 // ── Undo (recently deleted, sourced from the database) ────────────────────────
