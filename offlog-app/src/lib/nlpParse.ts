@@ -63,6 +63,17 @@ const SIGIL_ESCAPE: Record<string, string> = { '#': HASH_SENTINEL, '@': AT_SENTI
 const SIGIL_UNESCAPE: Record<string, string> = { [HASH_SENTINEL]: '#', [AT_SENTINEL]: '@', [BANG_SENTINEL]: '!' };
 const SENTINEL_RE = new RegExp(`[${HASH_SENTINEL}${AT_SENTINEL}${BANG_SENTINEL}]`, 'g');
 
+// A separate sentinel for an @mention that didn't match any project --
+// extractProject deliberately leaves it in the title untouched (so a
+// typo is visible, not silently eaten), but that means the "@" is gone
+// from around it by the time extractDate/extractTime run, leaving a
+// clean \b boundary that can misread "@friday" or "@august 3" as a real
+// date (found in a 2026-07-19 audit). Hiding the whole mention behind one
+// placeholder char until after date/time extraction, then swapping the
+// original text back in, keeps the "leave typos visible" behavior
+// without exposing them to the date/time regexes.
+const MENTION_SENTINEL = String.fromCharCode(0xE003);
+
 function protectEscapedSigils(text: string): string {
   return text.replace(/\\([#@!])/g, (_, ch: string) => SIGIL_ESCAPE[ch]);
 }
@@ -81,7 +92,11 @@ function extractDate(text: string, today: Date): { date: Date | null; rest: stri
     if (!isNaN(d.getTime())) return { date: d, rest: stripMatch(text, m) };
   }
 
-  // Slash: 7/25 or 7/25/2026
+  // Slash: 7/25 or 7/25/2026. Known ambiguity, accepted deliberately
+  // rather than guessed around: "went 8/10 today" (a fraction/ratio) also
+  // matches this and gets misread as Aug 10 -- same tradeoff every
+  // Todoist-style quick-add parser makes for this syntax. The whole-title
+  // quote escape is the fix for a title that hits this.
   m = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/.exec(text);
   if (m) {
     const year = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : today.getFullYear();
@@ -190,16 +205,24 @@ function extractTags(text: string): { tags: string[]; rest: string } {
   return { tags, rest };
 }
 
-function extractProject(text: string, projects: ProjectDoc[]): { projectId: string | null; label: string | null; rest: string } {
+function extractProject(text: string, projects: ProjectDoc[]): { projectId: string | null; label: string | null; rest: string; unmatchedMention: string | null } {
   const m = /(?:^|\s)@([a-z0-9_-]+)/i.exec(text);
-  if (!m) return { projectId: null, label: null, rest: text };
+  if (!m) return { projectId: null, label: null, rest: text, unmatchedMention: null };
   const needle = m[1].toLowerCase();
   // Whole-name match first, then "starts with a word in the name" -- lets
   // "@fitness" hit "Fitness Tracker" without requiring the full name.
   const hit = projects.find(p => p.name.toLowerCase().replace(/\s+/g, '') === needle)
     ?? projects.find(p => p.name.toLowerCase().split(/\s+/).some(w => w.startsWith(needle)));
-  if (!hit) return { projectId: null, label: null, rest: text }; // unmatched @word -- leave it in the title untouched
-  return { projectId: hit._id, label: hit.name, rest: stripMatch(text, m) };
+  if (!hit) {
+    // Unmatched @word stays in the title (a typo should be visible, not
+    // silently eaten) but gets hidden behind a sentinel until after
+    // date/time extraction -- see MENTION_SENTINEL's comment above.
+    const raw = m[0].trim();
+    const placeholder = (text.slice(0, m.index) + ' ' + MENTION_SENTINEL + ' ' + text.slice(m.index + m[0].length))
+      .replace(/\s+/g, ' ').trim();
+    return { projectId: null, label: null, rest: placeholder, unmatchedMention: raw };
+  }
+  return { projectId: hit._id, label: hit.name, rest: stripMatch(text, m), unmatchedMention: null };
 }
 
 export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date = new Date()): ParsedQuickAdd {
@@ -233,6 +256,8 @@ export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date =
     reminder_at = d.toISOString();
     if (!due_date) due_date = isoDate(base);
   }
+
+  if (projResult.unmatchedMention) rest = rest.replace(MENTION_SENTINEL, projResult.unmatchedMention);
 
   return {
     title: restoreEscapedSigils(rest.trim()),

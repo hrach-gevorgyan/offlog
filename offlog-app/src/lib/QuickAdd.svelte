@@ -110,11 +110,12 @@
       on:click={toggleHelp}
       aria-label="Quick add syntax help"
       aria-expanded={showHelp}
+      aria-controls="quickadd-help-panel"
     >?</button>
   </div>
 
   {#if showHelp}
-    <div class="help-panel" bind:this={helpPanelEl} transition:fade={{ duration: 100 }}>
+    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl} transition:fade={{ duration: 100 }}>
       <div class="help-title">Type it in plain text — Quick Add picks these out automatically:</div>
       <dl class="help-list">
         <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>

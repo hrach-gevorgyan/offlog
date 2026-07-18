@@ -147,6 +147,22 @@ describe('parseQuickAdd() -- project matching', () => {
     expect(r.projectId).toBeNull();
     expect(r.title).toBe('Email @bob about launch');
   });
+
+  it('does not let an unmatched @mention that spells a weekday leak into date parsing', () => {
+    // "@friday" doesn't match any project name, so it should stay literal
+    // text -- but once extractProject leaves it untouched, extractDate's
+    // bare-weekday regex has a clean \b boundary right after "@" and can
+    // misread "friday" as a real date if not specifically guarded against.
+    const r = parseQuickAdd('Call @friday', projects, NOW);
+    expect(r.due_date).toBeNull();
+    expect(r.title).toBe('Call @friday');
+  });
+
+  it('does not let an unmatched @mention that spells a month leak into date parsing', () => {
+    const r = parseQuickAdd('Ping @august about the launch', projects, NOW);
+    expect(r.due_date).toBeNull();
+    expect(r.title).toBe('Ping @august about the launch');
+  });
 });
 
 describe('parseQuickAdd() -- title stripping', () => {
