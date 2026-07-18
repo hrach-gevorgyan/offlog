@@ -116,7 +116,9 @@ src/
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
     QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector); live-parses
                                  the title via nlpParse.ts for dates/times/#tags/!priority/
-                                 @project, shown as chips, stripped from the saved title
+                                 @project, shown as chips, stripped from the saved title; a "?"
+                                 button opens an inline syntax cheat-sheet (a local popover
+                                 like CustomSelect's dropdown, not a closeOnBack()-tracked modal)
     GlobalSearch.svelte         Ctrl+K debounced search across all tasks
     TimeTravelView.svelte       Log: docs grouped by local calendar day, most recent first,
                                  click a task entry to open it — replaced the old

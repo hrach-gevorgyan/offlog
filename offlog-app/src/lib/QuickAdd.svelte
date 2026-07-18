@@ -39,10 +39,32 @@
 
   const PRIORITY_LABEL: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
+  // Syntax cheat-sheet popover -- a lightweight local popover (outside-
+  // click + its own Escape handling), not a closeOnBack()-tracked overlay:
+  // it's inline help anchored to a button, the same class of UI as
+  // CustomSelect's own dropdown, not a real modal blocking the rest of the
+  // app. Mirrors CustomSelect.svelte's onWindowClick/Escape pattern.
+  let showHelp = false;
+  let helpTriggerEl: HTMLButtonElement;
+  let helpPanelEl: HTMLDivElement;
+  function toggleHelp() { showHelp = !showHelp; }
+  function onWindowClickForHelp(e: MouseEvent) {
+    if (!showHelp) return;
+    const t = e.target as Node;
+    if (helpTriggerEl?.contains(t) || helpPanelEl?.contains(t)) return;
+    showHelp = false;
+  }
+  // Escape closes the help popover even when focus isn't in the title
+  // input (e.g. it's on the ? button itself) -- the input's own onKey
+  // below covers the common case where focus stayed put while typing.
+  function onWindowKeyForHelp(e: KeyboardEvent) {
+    if (showHelp && e.key === 'Escape') showHelp = false;
+  }
+
   onMount(async () => { await tick(); inputEl?.focus(); });
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') requestClose();
+    if (e.key === 'Escape') { if (showHelp) { showHelp = false; return; } requestClose(); }
     if (e.key === 'Enter') doAdd();
   }
 
@@ -73,11 +95,37 @@
   }
 </script>
 
+<svelte:window on:click={onWindowClickForHelp} on:keydown={onWindowKeyForHelp} />
+
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 <div class="scrim" on:click={() => requestClose()} transition:fade={scrimFade}></div>
 
 <div class="panel" use:trapFocus transition:quickAddPop>
-  <div class="panel-title">Quick add task</div>
+  <div class="panel-head">
+    <div class="panel-title">Quick add task</div>
+    <button
+      bind:this={helpTriggerEl}
+      class="help-btn"
+      class:active={showHelp}
+      on:click={toggleHelp}
+      aria-label="Quick add syntax help"
+      aria-expanded={showHelp}
+    >?</button>
+  </div>
+
+  {#if showHelp}
+    <div class="help-panel" bind:this={helpPanelEl} transition:fade={{ duration: 100 }}>
+      <div class="help-title">Type it in plain text — Quick Add picks these out automatically:</div>
+      <dl class="help-list">
+        <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>
+        <dt>Time</dt><dd><code>at 5pm</code>, <code>17:30</code> — sets a reminder</dd>
+        <dt>Priority</dt><dd><code>!high</code>, <code>!low</code>, <code>!!</code>, <code>!!!</code></dd>
+        <dt>Tag</dt><dd><code>#errand</code> — repeat for more than one</dd>
+        <dt>Project</dt><dd><code>@fitness</code> — matches a project by name</dd>
+      </dl>
+      <div class="help-example">"Log workout tomorrow at 6am !high #fitness @fitness"</div>
+    </div>
+  {/if}
 
   <input
     bind:this={inputEl}
@@ -127,7 +175,30 @@
     padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;
   }
 
+  .panel-head { display: flex; align-items: center; justify-content: space-between; }
   .panel-title { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 700; }
+
+  .help-btn {
+    width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong);
+    background: none; color: var(--faint); font-size: 11px; font-weight: 700;
+    line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: color .12s, border-color .12s, background .12s;
+  }
+  .help-btn:hover, .help-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+  .help-panel {
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--bg); padding: 10px 12px; font-size: 12px;
+  }
+  .help-title { color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+  .help-list { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; }
+  .help-list dt { color: var(--faint); font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; align-self: baseline; }
+  .help-list dd { margin: 0; color: var(--text); }
+  .help-list code {
+    font-family: var(--mono); font-size: 11px; background: var(--col-bg);
+    padding: 1px 5px; border-radius: 4px; color: var(--accent);
+  }
+  .help-example { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--faint); font-style: italic; font-size: 11px; }
 
   .title-input {
     width: 100%; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
