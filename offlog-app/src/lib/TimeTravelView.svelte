@@ -258,9 +258,9 @@
      A dedicated row always lands in the same place regardless of how long
      the description is. */
   .entry {
-    display: grid; grid-template-columns: 60px 1fr 56px 46px; column-gap: 8px;
-    row-gap: 1px; align-items: baseline;
-    padding: 3px 5px; border-radius: 5px; font-size: 12.5px; line-height: 1.35;
+    display: grid; grid-template-columns: 60px 1fr 56px 54px; column-gap: 8px;
+    row-gap: 2px; align-items: start;
+    padding: 4px 5px; border-radius: 5px; font-size: 12.5px; line-height: 1.35;
   }
   .entry.clickable { cursor: pointer; }
   .entry.clickable:hover { background: var(--hover); }
@@ -291,7 +291,18 @@
   }
   .source-pill.source-mobile { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 
-  .entry-time { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+  /* nowrap + a wide-enough column -- "09:53 AM" used to wrap onto two
+     lines in a 46px column, which silently inflated the whole row's
+     height (grid rows size to their tallest cell) and left a stray gap
+     between the description and the project-name row below it even
+     though neither of those had actually grown (owner-reported
+     2026-07-18: "empty rows between log and project name"). */
+  .entry-time { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; }
+
+  /* align-items: start (not baseline) on .entry means these two sit
+     flush with the top of the row; nudge down slightly to align with
+     the description text's cap-height instead of its extra line-height. */
+  .action-pill, .source-pill, .entry-time { margin-top: 2px; }
 
   .load-more-btn {
     display: block; margin: 8px auto 0;
