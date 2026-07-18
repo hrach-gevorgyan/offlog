@@ -7,12 +7,15 @@
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
+  import { parseQuickAdd } from './nlpParse';
+  import { fmtTime } from './utils';
 
   const dispatch = createEventDispatcher<{ close: void; created: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
 
   let title = '';
   let projectId = '';
+  let projectManuallyChosen = false;
   let inputEl: HTMLInputElement;
   let saving = false;
 
@@ -24,6 +27,18 @@
     return { value: p._id, label: p.name, group: sp?.name ?? '' };
   });
 
+  // Live parse on every keystroke -- pure/cheap regex work, no debounce
+  // needed. Only affects the dropdown's *selection*, never removes a
+  // project the user picked by hand (projectManuallyChosen below), so
+  // typing "@fitness" after already choosing a project from the dropdown
+  // doesn't fight the user's explicit choice.
+  $: parsed = parseQuickAdd(title, $projects);
+  $: if (parsed.projectId && !projectManuallyChosen) projectId = parsed.projectId;
+
+  function onProjectChange() { projectManuallyChosen = true; }
+
+  const PRIORITY_LABEL: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
+
   onMount(async () => { await tick(); inputEl?.focus(); });
 
   function onKey(e: KeyboardEvent) {
@@ -32,16 +47,22 @@
   }
 
   async function doAdd() {
-    const t = title.trim();
+    const t = parsed.title;
     if (!t || !projectId) return;
     saving = true;
     const proj = $projects.find(p => p._id === projectId);
     if (!proj) { saving = false; return; }
     const firstCol = proj.columns[0].id;
     try {
-      await createTask(projectId, proj.space_id, firstCol, t);
+      await createTask(projectId, proj.space_id, firstCol, t, {
+        priority: parsed.priority ?? undefined,
+        due_date: parsed.due_date,
+        reminder_at: parsed.reminder_at,
+        tags: parsed.tags.length ? parsed.tags : undefined,
+      });
       await reloadTasks();
       title = '';
+      projectManuallyChosen = false;
       dispatch('created');
       requestClose();
     } catch {
@@ -62,19 +83,33 @@
     bind:this={inputEl}
     bind:value={title}
     class="title-input"
-    placeholder="Task title…"
+    placeholder="Task title… try “tomorrow 5pm !high #errand @project”"
     enterkeyhint="done"
     on:keydown={onKey}
   />
 
+  {#if parsed.due_date || parsed.priority || parsed.tags.length || parsed.matchedProjectLabel}
+    <div class="parsed-chips">
+      {#if parsed.due_date}
+        <span class="chip chip-date">
+          {new Date(`${parsed.due_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {#if parsed.reminder_at}· {fmtTime(new Date(parsed.reminder_at))}{/if}
+        </span>
+      {/if}
+      {#if parsed.priority}<span class="chip chip-priority">{PRIORITY_LABEL[parsed.priority]}</span>{/if}
+      {#each parsed.tags as tag}<span class="chip chip-tag">#{tag}</span>{/each}
+      {#if parsed.matchedProjectLabel}<span class="chip chip-project">→ {parsed.matchedProjectLabel}</span>{/if}
+    </div>
+  {/if}
+
   <div class="row">
     <div class="proj-select-wrap">
-      <CustomSelect options={projectOptions} bind:value={projectId} placement="up" />
+      <CustomSelect options={projectOptions} bind:value={projectId} placement="up" on:change={onProjectChange} />
     </div>
 
     <div class="actions">
       <button class="cancel-btn" on:click={() => requestClose()}>Cancel</button>
-      <button class="add-btn" on:click={doAdd} disabled={!title.trim() || saving}>
+      <button class="add-btn" on:click={doAdd} disabled={!parsed.title || saving}>
         {saving ? 'Adding…' : 'Add task'}
       </button>
     </div>
@@ -103,6 +138,20 @@
   }
   .title-input:focus { border-color: var(--accent); background: var(--surface); }
   .title-input::placeholder { color: var(--faint); }
+
+  /* Live preview of what nlpParse.ts picked out of the title -- only
+     rendered when something was actually recognized, so a plain-text
+     quick add (the common case) shows nothing extra. */
+  .parsed-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
+  .chip {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .02em; padding: 3px 8px; border-radius: 20px;
+    background: var(--col-bg); color: var(--muted);
+  }
+  .chip-date { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .chip-priority { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .chip-tag { background: var(--col-bg); color: var(--muted); }
+  .chip-project { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
 
   .row { display: flex; align-items: center; gap: 10px; }
 

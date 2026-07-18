@@ -100,6 +100,9 @@ src/
     logFormat.ts           Plain-English log: doc formatting (describeLog/fmt/entityLabel),
                             used by TimeTravelView.svelte (extracted from the old
                             ChangelogView.svelte, which it replaced — see its own git history)
+    nlpParse.ts             parseQuickAdd() — local regex-based NLP for QuickAdd.svelte
+                            (dates/times/#tags/!priority/@project out of free-typed text,
+                            no network call — see DECISIONS.md for why not an LLM call)
     PinStar.svelte        The shared task-pin star icon (used by CardDetail/Kanban/List)
 
     Sidebar.svelte              Left nav: spaces, projects, sync indicator, dark toggle
@@ -111,7 +114,9 @@ src/
     DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + week-grid view
     CardDetail.svelte           Full task editor modal with history
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
-    QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector)
+    QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector); live-parses
+                                 the title via nlpParse.ts for dates/times/#tags/!priority/
+                                 @project, shown as chips, stripped from the saved title
     GlobalSearch.svelte         Ctrl+K debounced search across all tasks
     TimeTravelView.svelte       Log: docs grouped by local calendar day, most recent first,
                                  click a task entry to open it — replaced the old

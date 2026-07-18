@@ -221,6 +221,25 @@ a daily commitment lock — not a re-split of this merge.
 
 ---
 
+### Why Quick Add's NLP parsing is local regex, not an LLM call (2026-07-19)
+Quick Add (Ctrl+N) parses free-typed text ("tomorrow 5pm !high #errand
+@project") into due_date/reminder_at/priority/tags/project as the user
+types, via `nlpParse.ts`'s `parseQuickAdd()`. This stays a small,
+enumerable set of regex patterns — never a call to an external LLM API —
+for the same reason the project has no accounts, no telemetry, and no
+backend at all (GOAL.md): a network call on every keystroke of a task
+title would be a real network dependency and a real privacy leak (task
+titles are often the most sensitive text in the whole app) for a feature
+whose actual job — recognizing "tomorrow", "#tag", "!high" — doesn't need
+one. A wrong parse is also silent in a way a missed reminder makes
+expensive, so ambiguous phrasing is deliberately left as plain text in
+the title rather than guessed at (see `nlpParse.ts`'s own header comment)
+— a rule-based parser can promise that; an LLM's phrasing-sensitive
+output can't. Revisit only if the project's no-backend stance itself
+changes, which DECISIONS.md's other entries treat as a closed question.
+
+---
+
 ## Data model
 
 ### Why "done" is positional (last column), not a boolean field

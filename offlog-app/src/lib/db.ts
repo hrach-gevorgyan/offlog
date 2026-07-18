@@ -897,7 +897,14 @@ export async function getTasksForProject(projectId: string): Promise<TaskDoc[]> 
   }
 }
 
-export async function createTask(projectId: string, spaceId: string, columnId: string, title: string): Promise<TaskDoc> {
+// `overrides` lets a caller (Quick Add's NLP parser) set priority/due_date/
+// reminder_at/tags in the same write as creation, instead of a create()
+// immediately followed by an update() -- that would double up as two log
+// entries ("Created" then "Edited") for what a user experienced as one action.
+export async function createTask(
+  projectId: string, spaceId: string, columnId: string, title: string,
+  overrides?: Partial<Pick<TaskDoc, 'priority' | 'due_date' | 'reminder_at' | 'tags'>>,
+): Promise<TaskDoc> {
   const existing = await getTasksForProject(projectId);
   const colTasks = existing.filter(t => t.column_id === columnId);
   const maxPos = colTasks.length ? Math.max(...colTasks.map(t => t.position)) : 0;
@@ -905,8 +912,9 @@ export async function createTask(projectId: string, spaceId: string, columnId: s
   const doc: TaskDoc = {
     _id: `task:${nanoid()}`, type: 'task',
     project_id: projectId, space_id: spaceId, column_id: columnId,
-    title, body: '', priority: 1,
-    due_date: null, reminder_at: null, tags: [],
+    title, body: '', priority: overrides?.priority ?? 1,
+    due_date: overrides?.due_date ?? null, reminder_at: overrides?.reminder_at ?? null,
+    tags: overrides?.tags ?? [],
     position: maxPos + 1024,
     deleted: false, created_at: ts, updated_at: ts, source: SOURCE,
   };
