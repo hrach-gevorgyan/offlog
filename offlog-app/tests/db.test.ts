@@ -312,6 +312,132 @@ describe('"done" is positional (column_id === last column)', () => {
   });
 });
 
+describe('recurring tasks', () => {
+  it('spawns a fresh occurrence in the first column when a daily task is moved to the last column', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Water plants');
+    await updateTask(task._id!, { due_date: '2026-07-15', recurrence: 'daily' });
+
+    await updateTask(task._id!, { column_id: lastCol });
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks).toHaveLength(2);
+    const next = tasks.find(t => t._id !== task._id)!;
+    expect(next.column_id).toBe(firstCol);
+    expect(next.title).toBe('Water plants');
+    expect(next.due_date).toBe('2026-07-16');
+    expect(next.recurrence).toBe('daily');
+  });
+
+  it('advances weekly by 7 days and monthly by 1 month', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+
+    const weekly = await createTask(project._id, 'space:unsorted', firstCol, 'Weekly');
+    await updateTask(weekly._id!, { due_date: '2026-07-15', recurrence: 'weekly' });
+    await updateTask(weekly._id!, { column_id: lastCol });
+
+    const monthly = await createTask(project._id, 'space:unsorted', firstCol, 'Monthly');
+    await updateTask(monthly._id!, { due_date: '2026-07-15', recurrence: 'monthly' });
+    await updateTask(monthly._id!, { column_id: lastCol });
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks.find(t => t.title === 'Weekly' && t._id !== weekly._id)?.due_date).toBe('2026-07-22');
+    expect(tasks.find(t => t.title === 'Monthly' && t._id !== monthly._id)?.due_date).toBe('2026-08-15');
+  });
+
+  it('advances from the original due date, not from today, so a late completion does not drift the schedule', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    // A task that was due last week (completed late) should still advance
+    // relative to ITS due date, landing on next week's occurrence of the
+    // same weekday -- not "today + 1 week".
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Standup');
+    await updateTask(task._id!, { due_date: '2026-07-01', recurrence: 'weekly' });
+    await updateTask(task._id!, { column_id: lastCol });
+
+    const tasks = await getTasksForProject(project._id);
+    const next = tasks.find(t => t._id !== task._id)!;
+    expect(next.due_date).toBe('2026-07-08');
+  });
+
+  it('does not spawn a duplicate when a non-recurring task is completed', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'One-off');
+    await updateTask(task._id!, { due_date: '2026-07-15' });
+
+    await updateTask(task._id!, { column_id: lastCol });
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks).toHaveLength(1);
+  });
+
+  it('does not spawn a duplicate when a recurring task is moved back out of the last column', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Water plants');
+    await updateTask(task._id!, { due_date: '2026-07-15', recurrence: 'daily' });
+    await updateTask(task._id!, { column_id: lastCol });
+
+    // undo: move it back out of the last column
+    await updateTask(task._id!, { column_id: firstCol });
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks).toHaveLength(2); // still just the original + the one spawned on completion
+  });
+
+  it('carries over tags, priority, and custom values, and resets the checklist to unchecked', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Weekly review');
+    await updateTask(task._id!, {
+      due_date: '2026-07-15', recurrence: 'weekly', priority: 3, tags: ['work', 'urgent'],
+      checklist: [{ text: 'Check inbox', done: true }, { text: 'Plan week', done: false }],
+    });
+
+    await updateTask(task._id!, { column_id: lastCol });
+
+    const tasks = await getTasksForProject(project._id);
+    const next = tasks.find(t => t._id !== task._id)!;
+    expect(next.priority).toBe(3);
+    expect(next.tags).toEqual(['work', 'urgent']);
+    expect(next.checklist).toEqual([{ text: 'Check inbox', done: false }, { text: 'Plan week', done: false }]);
+  });
+
+  it('falls back to today as the base date when due_date is missing', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    // Directly write a recurrence rule without a due_date -- shouldn't
+    // normally happen via the UI (CardDetail clears recurrence when
+    // due_date is cleared), but db.ts must not crash if it does.
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'No due date');
+    await updateTask(task._id!, { recurrence: 'daily' });
+
+    await updateTask(task._id!, { column_id: lastCol });
+
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks).toHaveLength(2);
+    const next = tasks.find(t => t._id !== task._id)!;
+    expect(next.due_date).not.toBeNull();
+  });
+});
+
 describe('checkIntegrity / repairDatabase', () => {
   it('detects an orphaned task pointing at a missing project', async () => {
     await seedSpace();

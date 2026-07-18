@@ -433,6 +433,11 @@
             <div class="card-top">
               <span class="card-title">{task.title}</span>
               {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
+              {#if task.recurrence}
+                <span class="card-recur" title="Repeats {task.recurrence}">
+                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
+                </span>
+              {/if}
               <div class="card-menu-wrap">
                 <button
                   type="button"
@@ -678,6 +683,7 @@
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .9rem; font-weight: 500; line-height: 1.4; color: var(--text); flex: 1; }
   .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
+  .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
   .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
   .card-menu-trigger {
     display: flex; align-items: center; justify-content: center;

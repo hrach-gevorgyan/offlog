@@ -155,7 +155,7 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 |---|---|---|
 | `space:` | SpaceDoc | `name`, `color`, `position` |
 | `project:` | ProjectDoc | `space_id`, `name`, `columns[]`, `default_view` |
-| `task:` | TaskDoc | `project_id`, `column_id` (status), `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived` |
+| `task:` | TaskDoc | `project_id`, `column_id` (status), `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived`, `recurrence` |
 | `log:` | LogEntry | `ref` (task id), `action`, `diffs`, `timestamp` |
 
 ### Key conventions
@@ -167,6 +167,7 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 - **Pinned**: always sorts to top of any view
 - **Source**: `'pc'` or `'mobile'` — set on write, used in changelog
 - **"Status" vs "Column"**: internally, a project's stages are stored as `Column[]` on `columns` and each task references one via `column_id` — this is a legacy internal name. Every user-facing label calls it "Status" (e.g. "+ Status", "Rename status"); only variable/field names still say "column"
+- **Recurrence**: `recurrence?: 'daily' | 'weekly' | 'monthly' | null` on TaskDoc — no custom interval by design (v1 scope). `db.ts`'s `updateTask()` fires `spawnNextRecurrence()` when (and only when) a move lands a recurring task in its project's last column (the positional "done" check) — creates a fresh task in the first column with the due date advanced from the *original* due_date (not from today, so a late completion doesn't drift the schedule), checklist items reset to unchecked, everything else carried over. The completed instance is left untouched (soft-delete-only, real audit trail in Time Travel) rather than mutated/revived.
 
 ---
 

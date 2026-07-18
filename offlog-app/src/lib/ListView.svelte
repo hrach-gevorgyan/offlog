@@ -529,6 +529,11 @@
           ></button>
           <span class="cell-title">
             {task.title}{#if task.pinned}<span class="pin-mark"><PinStar size={10} /></span>{/if}
+            {#if task.recurrence}
+              <span class="recur-mark" title="Repeats {task.recurrence}">
+                <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
+              </span>
+            {/if}
             {#if task.checklist?.length}
               <span class="checklist-mark" class:complete={task.checklist.every(i => i.done)}>☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}</span>
             {/if}
@@ -826,6 +831,7 @@
      grid, via .grid-scroll) wider instead of hiding characters. */
   .cell-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
   .pin-mark { display: inline-flex; align-items: center; color: var(--accent); opacity: .8; vertical-align: middle; margin-left: 4px; }
+  .recur-mark { display: inline-flex; align-items: center; color: var(--muted); opacity: .75; vertical-align: middle; margin-left: 4px; }
   .checklist-mark {
     display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
     color: var(--muted); background: var(--col-bg); padding: 1px 6px; border-radius: 6px;

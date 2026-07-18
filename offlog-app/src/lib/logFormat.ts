@@ -13,7 +13,7 @@ export const FIELD_LABEL: Record<string, string> = {
   tags: 'Tags', name: 'Name', columns: 'Statuses',
   pinned: 'Pinned', archived: 'Archived', column_id: 'Status',
   checklist: 'Checklist', custom_values: 'Custom fields',
-  color: 'Color', icon: 'Icon',
+  color: 'Color', icon: 'Icon', recurrence: 'Repeat',
 };
 
 const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
@@ -29,6 +29,7 @@ function fmtVal(field: string, val: any): string {
   if (field === 'columns') return Array.isArray(val) ? val.map((c: any) => c.name).join(', ') : String(val);
   if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
   if (field === 'custom_values') return 'updated';
+  if (field === 'recurrence') return val === 'daily' ? 'Daily' : val === 'weekly' ? 'Weekly' : val === 'monthly' ? 'Monthly' : String(val);
   if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   if (field === 'reminder_at') { const d = new Date(val); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
   if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
@@ -43,6 +44,7 @@ function describeField(field: string, from: any, to: any): string {
   if (field === 'due_date') return from == null ? `Due date set to ${fmtVal(field, to)}` : to == null ? 'Due date removed' : `Due date moved to ${fmtVal(field, to)}`;
   if (field === 'reminder_at') return to == null ? 'Reminder removed' : `Reminder set for ${fmtVal(field, to)}`;
   if (field === 'remindOnDue') return to ? 'Reminder now follows the due date' : 'Reminder no longer follows the due date';
+  if (field === 'recurrence') return to == null ? 'Repeat turned off' : `Set to repeat ${fmtVal(field, to).toLowerCase()}`;
   if (field === 'tags') return `Tags changed to ${fmtVal(field, to)}`;
   if (field === 'priority') return `Priority changed to ${fmtVal(field, to)}`;
   if (field === 'title' || field === 'name') return `Renamed to "${to}"`;

@@ -12,7 +12,7 @@
     title: 'Title', body: 'Notes', priority: 'Priority', due_date: 'Due date',
     reminder_at: 'Reminder', remindOnDue: 'Remind on due date', tags: 'Tags',
     column_id: 'Status', pinned: 'Pinned', archived: 'Archived',
-    checklist: 'Checklist', custom_values: 'Custom fields',
+    checklist: 'Checklist', custom_values: 'Custom fields', recurrence: 'Repeat',
   };
   const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
@@ -31,6 +31,7 @@
     if (field === 'custom_values') return 'updated';
     if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     if (field === 'reminder_at') { const d = new Date(val); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
+    if (field === 'recurrence') return val === 'daily' ? 'Daily' : val === 'weekly' ? 'Weekly' : val === 'monthly' ? 'Monthly' : String(val);
     if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
     if (typeof val === 'object') return 'updated';
     const s = String(val);
@@ -50,6 +51,7 @@
     if (field === 'due_date') return from == null ? `Due date set to ${fmtLogVal(field, to)}` : to == null ? 'Due date removed' : `Due date moved to ${fmtLogVal(field, to)}`;
     if (field === 'reminder_at') return to == null ? 'Reminder removed' : `Reminder set for ${fmtLogVal(field, to)}`;
     if (field === 'remindOnDue') return to ? 'Reminder now follows the due date' : 'Reminder no longer follows the due date';
+    if (field === 'recurrence') return to == null ? 'Repeat turned off' : `Set to repeat ${fmtLogVal(field, to).toLowerCase()}`;
     if (field === 'tags') return `Tags changed to ${fmtLogVal(field, to)}`;
     if (field === 'priority') return `Priority changed to ${fmtLogVal(field, to)}`;
     if (field === 'title') return `Renamed to "${to}"`;

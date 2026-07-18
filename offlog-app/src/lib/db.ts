@@ -7,7 +7,7 @@
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
-import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled } from '../config';
+import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled, getDefaultReminderTime } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
 
 (PouchDB as any).plugin(PouchDBFind);
@@ -62,6 +62,13 @@ export function invalidateTaskCache(): void { _taskCache = null; }
 
 function now() { return new Date().toISOString(); }
 function nanoid(len = 8) { return Math.random().toString(36).slice(2, 2 + len); }
+
+// Local calendar date (not toISOString().slice(0,10), which is UTC and can
+// land on the wrong day for anyone west of UTC) -- same convention due_date
+// is stored in everywhere else in this file and in nlpParse.ts.
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export function posBetween(before: number | null, after: number | null): number {
   if (before === null && after === null) return 1024;
@@ -739,6 +746,7 @@ export async function createProjectFromTemplate(
         column_id: newColId,
         due_date: null,
         reminder_at: null,
+        recurrence: null, // needs a due_date to advance from -- cleared same as due_date above
         deleted: false,
         archived: false,
         pinned: false,
@@ -897,13 +905,14 @@ export async function getTasksForProject(projectId: string): Promise<TaskDoc[]> 
   }
 }
 
-// `overrides` lets a caller (Quick Add's NLP parser) set priority/due_date/
-// reminder_at/tags in the same write as creation, instead of a create()
-// immediately followed by an update() -- that would double up as two log
-// entries ("Created" then "Edited") for what a user experienced as one action.
+// `overrides` lets a caller (Quick Add's NLP parser, or the recurring-task
+// spawner below) set more than just the title in the same write as
+// creation, instead of a create() immediately followed by an update() --
+// that would double up as two log entries ("Created" then "Edited") for
+// what should read as one action.
 export async function createTask(
   projectId: string, spaceId: string, columnId: string, title: string,
-  overrides?: Partial<Pick<TaskDoc, 'priority' | 'due_date' | 'reminder_at' | 'tags'>>,
+  overrides?: Partial<Pick<TaskDoc, 'priority' | 'due_date' | 'reminder_at' | 'tags' | 'body' | 'custom_values' | 'checklist' | 'recurrence'>>,
 ): Promise<TaskDoc> {
   const existing = await getTasksForProject(projectId);
   const colTasks = existing.filter(t => t.column_id === columnId);
@@ -912,9 +921,11 @@ export async function createTask(
   const doc: TaskDoc = {
     _id: `task:${nanoid()}`, type: 'task',
     project_id: projectId, space_id: spaceId, column_id: columnId,
-    title, body: '', priority: overrides?.priority ?? 1,
+    title, body: overrides?.body ?? '', priority: overrides?.priority ?? 1,
     due_date: overrides?.due_date ?? null, reminder_at: overrides?.reminder_at ?? null,
     tags: overrides?.tags ?? [],
+    custom_values: overrides?.custom_values, checklist: overrides?.checklist,
+    recurrence: overrides?.recurrence ?? null,
     position: maxPos + 1024,
     deleted: false, created_at: ts, updated_at: ts, source: SOURCE,
   };
@@ -924,6 +935,54 @@ export async function createTask(
   try { projName = (await db.get<ProjectDoc>(projectId)).name; } catch {}
   await logChange(doc._id!, 'create', undefined, undefined, undefined, { task_title: title, project_name: projName });
   return doc;
+}
+
+function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly'): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (freq === 'daily') d.setDate(d.getDate() + 1);
+  else if (freq === 'weekly') d.setDate(d.getDate() + 7);
+  else d.setMonth(d.getMonth() + 1);
+  return localDateStr(d);
+}
+
+// Fires once, from inside updateTask() below, when a recurring task is
+// moved into its project's last column (this app's positional definition
+// of "done" -- see CLAUDE.md). The completed instance is left exactly
+// where it landed, untouched -- soft-delete-only and the whole point of
+// Time Travel is a real trail, so recurrence creates a fresh task rather
+// than mutating/reviving the old one. Advances from the ORIGINAL due_date,
+// not from today, so a task due every Monday stays on Monday even if
+// actually completed on a Wednesday -- advancing from "today" would drift
+// the schedule forward every time a task is completed late.
+async function spawnNextRecurrence(doc: TaskDoc, proj: ProjectDoc): Promise<void> {
+  const firstColId = proj.columns[0]?.id;
+  if (!firstColId || !doc.recurrence) return;
+
+  const baseDate = doc.due_date ?? localDateStr(new Date());
+  const nextDate = advanceDate(baseDate, doc.recurrence);
+
+  let nextReminder: string | null = null;
+  if (doc.remindOnDue) {
+    const [h, m] = getDefaultReminderTime().split(':').map(Number);
+    const d = new Date(`${nextDate}T00:00:00`);
+    d.setHours(h, m, 0, 0);
+    nextReminder = d.toISOString();
+  } else if (doc.reminder_at) {
+    // Shift the reminder by the same wall-clock delta the due date moved,
+    // so a reminder set for "the evening before" stays the evening before.
+    const deltaMs = new Date(`${nextDate}T00:00:00`).getTime() - new Date(`${baseDate}T00:00:00`).getTime();
+    nextReminder = new Date(new Date(doc.reminder_at).getTime() + deltaMs).toISOString();
+  }
+
+  // Checklist structure carries over, but every item starts unchecked --
+  // a fresh occurrence hasn't had any of its steps done yet.
+  const resetChecklist = doc.checklist?.map(i => ({ text: i.text, done: false }));
+
+  await createTask(doc.project_id, doc.space_id, firstColId, doc.title, {
+    priority: doc.priority, due_date: nextDate, reminder_at: nextReminder, tags: doc.tags,
+    body: doc.body, custom_values: doc.custom_values, checklist: resetChecklist,
+    recurrence: doc.recurrence,
+  });
 }
 
 export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
@@ -977,6 +1036,13 @@ export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise
       task_title: taskTitle, project_name: projName,
       diffs: Object.keys(diffs).length ? diffs : undefined,
     });
+    // Only on a genuine move INTO the last column -- moving a done task
+    // back OUT (undo, drag back to an earlier column) must never spawn a
+    // duplicate, and this only runs once per move since isMove requires
+    // column_id to actually change.
+    if (doc.recurrence && proj && changes.column_id === proj.columns.at(-1)?.id) {
+      await spawnNextRecurrence(doc, proj);
+    }
   } else if (Object.keys(diffs).length) {
     await logChange(id, 'update', undefined, undefined, undefined, { task_title: taskTitle, project_name: projName, diffs });
   }

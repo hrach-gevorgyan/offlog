@@ -81,6 +81,22 @@
     return `${date}T${h}:${m}`;
   }
   $: if (remindOnDue && due_date) reminder_at = dueDateToReminderInput(due_date);
+  // Recurrence needs a due_date to advance from -- see db.ts's
+  // spawnNextRecurrence() comment. Clearing the due date while a repeat
+  // rule is set would leave a rule nothing can act on, so clear it too
+  // rather than silently keep a rule the UI no longer shows a control for.
+  // recurrenceStr (bound to the picker) is the single source of truth;
+  // recurrence is a pure derived value, not independently mutable --
+  // two reactive statements both assigning the same variable would race.
+  const recurrenceOptions = [
+    { value: '', label: 'Does not repeat' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
+  ];
+  let recurrenceStr = task.recurrence ?? '';
+  $: if (!due_date && recurrenceStr) recurrenceStr = '';
+  $: recurrence = (recurrenceStr || null) as 'daily' | 'weekly' | 'monthly' | null;
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
@@ -131,7 +147,8 @@
   // other collapsible sections already use.
   let showSchedule = !!(due_date || reminder_at);
 
-  function formatScheduleSummary(due: string, reminder: string): string {
+  const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
+  function formatScheduleSummary(due: string, reminder: string, repeat: string | null): string {
     if (!due && !reminder) return 'No due date or reminder';
     const parts: string[] = [];
     if (due) {
@@ -142,9 +159,10 @@
       const r = new Date(reminder);
       parts.push(`${fmtTime(r)} reminder`);
     }
+    if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
     return parts.join(' · ');
   }
-  $: scheduleSummary = formatScheduleSummary(due_date, reminder_at);
+  $: scheduleSummary = formatScheduleSummary(due_date, reminder_at, recurrence);
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -244,7 +262,7 @@
         due_date: due_date || null,
         reminder_at: reminder_at ? new Date(reminder_at).toISOString() : null,
         column_id, tags, pinned, remindOnDue,
-        custom_values: customValues, checklist,
+        custom_values: customValues, checklist, recurrence,
       });
       await reloadTasks();
       requestClose();
@@ -334,6 +352,12 @@
                 >{s.label}</button>
               {/each}
             </div>
+          </label>
+
+          <label class="repeat-field">
+            Repeat
+            <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
+            {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
           </label>
 
           <div class="schedule-divider"></div>
@@ -603,6 +627,12 @@
     font-size: .72rem; color: var(--faint); line-height: 1.35;
     background: var(--col-bg); border-radius: var(--radius-sm);
     padding: .4rem .55rem;
+  }
+
+  .repeat-field { gap: .35rem; }
+  .repeat-hint {
+    font-size: .72rem; color: var(--faint); font-weight: 500;
+    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
   }
 
   .remind-on-due-row {
