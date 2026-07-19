@@ -281,6 +281,44 @@ full scope and reasoning. Still needs a live on-device confirmation in
 Android Studio (fingerprint/face prompt itself can't be exercised from
 this environment) before considering it fully verified.
 
+### B55. Privacy Screen — hide app content in the recent-apps switcher
+`@capacitor/privacy-screen` (official plugin). Without it, App Lock's PIN
+still leaks a full screenshot preview of open tasks in Android's
+recent-apps/multitasking view — the OS snapshots whatever was on screen
+the moment the app backgrounds, before the lock screen even has a chance
+to cover it. Complements B54 directly rather than standing alone. Easy:
+install, register, call `enable()` once at startup (or tie it to
+`isAppLockEnabled()` so it only activates when a PIN is actually set,
+consistent with "the lock adds friction, not the whole app").
+
+### B56. Clipboard — one-tap copy on the recovery code
+`@capacitor/clipboard` (official plugin). The recovery-code modal
+(`SettingsPanel.svelte`, B54) currently expects the user to manually
+select the code text. A "Copy" button next to it removes that friction —
+genuinely small, a few lines in one component, no new architectural
+surface.
+
+### B57. App Launcher — deep-link to biometric enrollment
+`@capacitor/app-launcher` (official plugin). When B54's biometric toggle
+finds nothing enrolled, it currently just tells the user to go find
+Android's fingerprint/face settings themselves. `AppLauncher.openUrl()`
+with the right Android settings intent (needs the specific
+`android.settings.BIOMETRIC_ENROLL` or `SECURITY_SETTINGS` action string,
+confirmed at implementation time) can jump straight there. Small, but
+depends on which Android settings-intent string actually works reliably
+across OEM skins — verify on a real device before considering this done,
+same caveat as biometric itself.
+
+### B58. Haptics — tactile feedback on checkbox/drag/swipe
+`@capacitor/haptics` (official plugin). Subtle vibration feedback on
+checkbox toggle (Kanban/List/Dashboard), drag-reorder start/drop, and
+swipe actions. Same category as B51's animation pass — a polish item,
+not a functional gap. Slightly bigger than B55-B57 only because it touches
+more call sites (every checkbox toggle + every drag handler across
+Kanban/List/Agenda), not because any individual call is hard — each is a
+one-line `Haptics.impact({ style: ImpactStyle.Light })` added next to an
+existing handler.
+
 ---
 
 ## Track C — Public Release & Open Source
