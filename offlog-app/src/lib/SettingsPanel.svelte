@@ -242,6 +242,11 @@
   let biometricEnabled = isAppLockBiometricEnabled();
   let biometricError = '';
   let biometricBusy = false;
+  // B57 (ROADMAP.md): distinguishes "nothing enrolled" from any other
+  // failure so the "Open Settings" deep-link only shows when it'd
+  // actually help -- a wrong-fingerprint or cancelled prompt isn't fixed
+  // by visiting enrollment settings.
+  let biometricNoneEnrolled = false;
 
   // Enabling requires a live device check + a real successful prompt --
   // not just flipping a flag -- so a device with no fingerprint/face
@@ -251,6 +256,7 @@
   // turns the faster path back off; the PIN keeps working either way.
   async function toggleBiometric() {
     biometricError = '';
+    biometricNoneEnrolled = false;
     if (biometricEnabled) {
       setAppLockBiometricEnabled(false);
       biometricEnabled = false;
@@ -262,6 +268,7 @@
       const available = await NativeBiometric.isAvailable();
       if (!available.isAvailable) {
         biometricError = 'No fingerprint or face is enrolled on this device yet -- add one in your phone\'s system settings first.';
+        biometricNoneEnrolled = true;
         return;
       }
       await NativeBiometric.verifyIdentity({ reason: 'Enable biometric unlock for Offlog', title: 'Confirm it\'s you' });
@@ -271,6 +278,25 @@
       biometricError = 'Could not confirm your fingerprint/face. Try again.';
     } finally {
       biometricBusy = false;
+    }
+  }
+
+  // Android's Settings.ACTION_BIOMETRIC_ENROLL needs API 30+; a device
+  // between this app's minSdk (24) and 30 doesn't have that action at
+  // all, so falls back to the generic (API-1-old) Security settings
+  // screen instead of silently doing nothing. @capacitor/app-launcher's
+  // openUrl() falls through to `new Intent(url)` when the string isn't a
+  // URL or package name, which Android's Intent(String action)
+  // constructor treats as a genuine intent action -- not documented
+  // behavior of the plugin, but confirmed by reading its Android source
+  // (AppLauncherPlugin.java) rather than assumed.
+  async function openBiometricEnrollment() {
+    try {
+      const { AppLauncher } = await import('@capacitor/app-launcher');
+      const result = await AppLauncher.openUrl({ url: 'android.settings.BIOMETRIC_ENROLL' });
+      if (!result.completed) await AppLauncher.openUrl({ url: 'android.settings.SECURITY_SETTINGS' });
+    } catch {
+      // Best-effort -- the inline error message already explains what to do manually.
     }
   }
 
@@ -1245,6 +1271,9 @@
                   </div>
                   <p class="setting-hint">A faster path on top of your PIN, not a replacement — the PIN still works, and is still the only way to change or recover the lock.</p>
                   {#if biometricError}<p class="setting-hint setting-hint-error">{biometricError}</p>{/if}
+                  {#if biometricNoneEnrolled}
+                    <button class="export-btn" on:click={openBiometricEnrollment}>Open enrollment settings</button>
+                  {/if}
                 </div>
               {/if}
 

@@ -296,16 +296,24 @@ one-time setup modal (`SettingsPanel.svelte`), with a 2s "Copied"
 confirmation. Falls back silently on failure — the code is still visible
 on screen either way.
 
-### B57. App Launcher — deep-link to biometric enrollment
-`@capacitor/app-launcher` (official plugin). When B54's biometric toggle
-finds nothing enrolled, it currently just tells the user to go find
-Android's fingerprint/face settings themselves. `AppLauncher.openUrl()`
-with the right Android settings intent (needs the specific
-`android.settings.BIOMETRIC_ENROLL` or `SECURITY_SETTINGS` action string,
-confirmed at implementation time) can jump straight there. Small, but
-depends on which Android settings-intent string actually works reliably
-across OEM skins — verify on a real device before considering this done,
-same caveat as biometric itself.
+### B57. App Launcher — deep-link to biometric enrollment — shipped 2026-07-20, pending on-device confirmation
+`@capacitor/app-launcher`. `SettingsPanel.svelte`'s `openBiometricEnrollment()`
+tries `android.settings.BIOMETRIC_ENROLL` (API 30+) first, falls back to
+the generic `android.settings.SECURITY_SETTINGS` (available since API 1)
+if that fails — covers this app's minSdk 24 floor, since
+`BIOMETRIC_ENROLL` doesn't exist on API 24-29. Only shown when the
+biometric toggle's failure reason is specifically "nothing enrolled"
+(`biometricNoneEnrolled`), not any other failure a settings trip wouldn't
+fix. Technical note: `AppLauncher.openUrl()`'s documented API is "a known
+URLScheme or an app package name," but its Android implementation
+(`AppLauncherPlugin.java`) falls through to `new Intent(url)` when
+neither matches — Android's `Intent(String action)` constructor treats
+that string as a genuine intent action, so passing a raw Settings action
+string works even though it's not what the plugin's docs describe.
+Confirmed by reading the plugin's Android source, not assumed. Still
+needs a live on-device check to confirm the actual screen opens
+correctly across real OEM skins, same caveat noted when this item was
+scoped.
 
 ### B58. Haptics — tactile feedback on checkbox/drag — shipped 2026-07-20
 `@capacitor/haptics`. Shared `src/lib/haptics.ts` (`hapticToggle()`,
