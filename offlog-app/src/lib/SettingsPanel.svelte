@@ -1215,7 +1215,7 @@
                 </div>
               {/if}
 
-              {#if isNativePlatform()}
+              {#if isNativePlatform() && appLockEnabled}
                 <div class="setting-group">
                   <div class="setting-section-title">Biometric unlock</div>
                   <div class="setting-row">
