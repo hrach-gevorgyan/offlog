@@ -2,8 +2,6 @@
 <resources>
     <string name="app_name">Offlog</string>
     <string name="title_activity_main">Offlog</string>
-    <string name="package_name">com.offlog.app</string>
-    <string name="custom_url_scheme">com.offlog.app</string>
     <!-- B37 redesign (2026-07-09): one combined widget replaces the
          previous 3 separate ones. -->
     <string name="widget_offlog_description">Your agenda brief, plus one-tap Focus, Quick Add, and Dashboard</string>

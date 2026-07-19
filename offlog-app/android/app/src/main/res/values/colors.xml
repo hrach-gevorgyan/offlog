@@ -21,9 +21,7 @@
          intentionally still the exact app.css values. -->
     <color name="colorWidgetBg">#FBF8F2</color>      <!-- warm cream, not app.css's exact surface token -->
     <color name="colorWidgetSurface">#F1EDE3</color> <!-- flat tint one step off colorWidgetBg -->
-    <color name="colorWidgetBorder">#E2E4EA</color>  <!-- app.css border token, light; unused since B48 dropped the border stroke, kept for any future outline need -->
     <color name="colorWidgetAccent">#5457E0</color>  <!-- app.css accent token, light -->
     <color name="colorWidgetText">#1F2937</color>    <!-- app.css text token, light -->
     <color name="colorWidgetMuted">#4B5563</color>   <!-- app.css muted token, light -->
-    <color name="colorWidgetDanger">#DC2626</color>  <!-- app.css danger token, light; unused for now, kept for a future urgency-colored brief -->
 </resources>
