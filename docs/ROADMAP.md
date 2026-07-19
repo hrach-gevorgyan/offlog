@@ -281,22 +281,20 @@ full scope and reasoning. Still needs a live on-device confirmation in
 Android Studio (fingerprint/face prompt itself can't be exercised from
 this environment) before considering it fully verified.
 
-### B55. Privacy Screen — hide app content in the recent-apps switcher
-`@capacitor/privacy-screen` (official plugin). Without it, App Lock's PIN
-still leaks a full screenshot preview of open tasks in Android's
-recent-apps/multitasking view — the OS snapshots whatever was on screen
-the moment the app backgrounds, before the lock screen even has a chance
-to cover it. Complements B54 directly rather than standing alone. Easy:
-install, register, call `enable()` once at startup (or tie it to
-`isAppLockEnabled()` so it only activates when a PIN is actually set,
-consistent with "the lock adds friction, not the whole app").
+### B55. Privacy Screen — hide app content in the recent-apps switcher — shipped 2026-07-20
+`@capacitor/privacy-screen`. Tied to `isAppLockEnabled()` via
+`config.ts`'s `syncPrivacyScreen()` — only dims the app-switcher preview
+when a PIN is actually set, not unconditionally. Called once at launch
+(`App.svelte`) and again whenever the PIN is set/removed
+(`SettingsPanel.svelte`'s `savePin()`/`removePin()`) so it never drifts
+out of sync mid-session. Best-effort (wrapped in try/catch) since it's a
+hardening layer on top of the PIN, not the PIN itself.
 
-### B56. Clipboard — one-tap copy on the recovery code
-`@capacitor/clipboard` (official plugin). The recovery-code modal
-(`SettingsPanel.svelte`, B54) currently expects the user to manually
-select the code text. A "Copy" button next to it removes that friction —
-genuinely small, a few lines in one component, no new architectural
-surface.
+### B56. Clipboard — one-tap copy on the recovery code — shipped 2026-07-20
+`@capacitor/clipboard`. A "Copy" button next to the recovery code in its
+one-time setup modal (`SettingsPanel.svelte`), with a 2s "Copied"
+confirmation. Falls back silently on failure — the code is still visible
+on screen either way.
 
 ### B57. App Launcher — deep-link to biometric enrollment
 `@capacitor/app-launcher` (official plugin). When B54's biometric toggle
@@ -317,7 +315,10 @@ not a functional gap. Slightly bigger than B55-B57 only because it touches
 more call sites (every checkbox toggle + every drag handler across
 Kanban/List/Agenda), not because any individual call is hard — each is a
 one-line `Haptics.impact({ style: ImpactStyle.Light })` added next to an
-existing handler.
+existing handler. Owner-scoped, 2026-07-20: needs its own Settings
+toggle (same Accessibility group pattern as Reduce Motion), not wired
+in silently -- default state (on vs. off) still open, decide at
+implementation time.
 
 ---
 

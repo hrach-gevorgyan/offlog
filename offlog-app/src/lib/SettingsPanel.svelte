@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -212,6 +212,23 @@
   // chance the user gets to see and save it.
   let newRecoveryCode: string | null = null;
   let recoveryCodeSavedAck = false;
+  let recoveryCopied = false;
+
+  // B56 (ROADMAP.md): the code is dense and easy to mistype re-copying by
+  // hand -- Clipboard removes that risk entirely. Falls back to
+  // navigator.clipboard on web/desktop, where @capacitor/clipboard's web
+  // implementation already wraps it.
+  async function copyRecoveryCode() {
+    if (!newRecoveryCode) return;
+    try {
+      const { Clipboard } = await import('@capacitor/clipboard');
+      await Clipboard.write({ string: newRecoveryCode });
+      recoveryCopied = true;
+      setTimeout(() => { recoveryCopied = false; }, 2000);
+    } catch {
+      // Best-effort -- the code is still visible on screen either way.
+    }
+  }
 
   let biometricEnabled = isAppLockBiometricEnabled();
   let biometricError = '';
@@ -264,7 +281,8 @@
       const result = await setAppLockPin(newPin, pinHint);
       appLockEnabled = true;
       showPinForm = false;
-      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; }
+      syncPrivacyScreen();
+      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; recoveryCopied = false; }
     } catch {
       pinError = 'Could not save PIN. Please try again.';
     } finally {
@@ -281,6 +299,7 @@
     clearAppLockPin();
     appLockEnabled = false;
     biometricEnabled = false;
+    syncPrivacyScreen();
   }
 
   function onLockTimeoutChange(v: string) {
@@ -1461,6 +1480,7 @@
           written down). It will not be shown again.
         </p>
         <div class="recovery-code">{newRecoveryCode}</div>
+        <button class="export-btn recovery-copy-btn" on:click={copyRecoveryCode}>{recoveryCopied ? 'Copied' : 'Copy'}</button>
         <label class="recovery-ack-row">
           <input type="checkbox" bind:checked={recoveryCodeSavedAck} />
           I've saved this code somewhere safe
@@ -1803,6 +1823,7 @@
     border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     padding: .8rem; margin: .6rem 0;
   }
+  .recovery-copy-btn { display: block; margin: 0 auto .8rem; }
   .recovery-ack-row {
     display: flex !important; flex-direction: row !important; align-items: center; gap: .5rem;
     font-size: .82rem; color: var(--text); text-transform: none; letter-spacing: normal;

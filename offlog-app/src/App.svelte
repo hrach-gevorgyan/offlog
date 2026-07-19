@@ -21,7 +21,7 @@
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
-  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes } from './config';
+  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
   import { closeOnBack } from './lib/modalStack';
   import AppLock from './lib/AppLock.svelte';
 
@@ -356,6 +356,7 @@
 
   onMount(() => {
     if (isAppLockEnabled()) locked = true;
+    syncPrivacyScreen();
     const activityEvents = ['click', 'keydown', 'touchstart', 'mousemove'] as const;
     activityEvents.forEach(ev => window.addEventListener(ev, resetIdleTimer, { passive: true }));
     document.addEventListener('visibilitychange', onVisibilityChange);

@@ -24,6 +24,8 @@ Version 4.28.0 · Local-first task management for browser, Android, and PC (Taur
 | Desktop Wrapper | **Tauri 2** (`offlog-desktop/`) | Wraps the same Vite build into a Windows app; embeds a CouchDB sync host — see "Desktop (Tauri)" below |
 | Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
 | Biometric unlock | **capacitor-native-biometric** | Android-only, opt-in fast path alongside the PIN lock — see AppLock.svelte below |
+| Privacy screen | **@capacitor/privacy-screen** | Dims the app-switcher preview while App Lock is on (`config.ts`'s `syncPrivacyScreen()`) |
+| Clipboard | **@capacitor/clipboard** | Copy button on the App Lock recovery code |
 | Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
 | Fonts | Hanken Grotesk (only) | IBM Plex Mono removed 2026-07-19; `--mono` (labels/timestamps' uppercase treatment) now points at the same face |
 

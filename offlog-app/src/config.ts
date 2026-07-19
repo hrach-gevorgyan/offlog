@@ -404,6 +404,30 @@ export function setAppLockTimeoutMinutes(minutes: number): void {
   localStorage.setItem(APP_LOCK_TIMEOUT_KEY, String(minutes));
 }
 
+// B55 (ROADMAP.md): a PIN on the lock screen still leaks a full
+// screenshot preview of open tasks in Android's recent-apps switcher --
+// the OS snapshots whatever was on screen the instant the app
+// backgrounds, before AppLock.svelte gets a chance to cover it. Privacy
+// Screen (@capacitor/privacy-screen) closes that gap by dimming the
+// content in that snapshot instead. Tied to whether a PIN is actually
+// set, not always-on -- the lock adds friction only when the owner opted
+// into it, this shouldn't dim the app switcher for someone who never
+// turned App Lock on at all. Call after any change to the PIN (set,
+// remove) as well as once at launch, so it never drifts out of sync with
+// isAppLockEnabled() mid-session.
+export async function syncPrivacyScreen(): Promise<void> {
+  if (!isNativePlatform()) return;
+  try {
+    const { PrivacyScreen } = await import('@capacitor/privacy-screen');
+    if (isAppLockEnabled()) await PrivacyScreen.enable();
+    else await PrivacyScreen.disable();
+  } catch {
+    // Best-effort -- privacy screen is a hardening layer on top of the
+    // PIN, not the PIN itself, so a plugin failure here shouldn't block
+    // using the app.
+  }
+}
+
 // E2 (ROADMAP.md) — the CouchDB server's own `uuid` (returned by
 // pairing.rs's handshake, also broadcast unauthenticated in the mDNS TXT
 // record per discovery.rs) is a stable identity for "the PC I paired
