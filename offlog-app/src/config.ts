@@ -270,8 +270,32 @@ const APP_LOCK_TIMEOUT_KEY = 'offlog_app_lock_timeout_minutes';
 // answer against, so a real Q&A flow would just be a second PIN typed
 // in plaintext for no extra security. Optional, shown on the lock
 // screen so someone who forgot their PIN can jog their own memory
-// before reaching for "Forgot PIN"'s full reset (owner, 2026-07-19).
+// before reaching for full recovery below (owner, 2026-07-19).
 const APP_LOCK_HINT_KEY = 'offlog_app_lock_hint';
+
+// Recovery code: a random code shown to the user exactly ONCE, at the
+// moment they first set a PIN -- they save it themselves (password
+// manager, notes, written down). "Forgot PIN" on the lock screen requires
+// this code, not a button click. First version just let "Forgot PIN"
+// clear the lock outright with a plain confirm dialog -- owner feedback,
+// 2026-07-19: "it is just removing pin... like when there is wall as
+// block of road but in middle there is door u just open and go". That's
+// right: a bypass reachable with zero knowledge isn't a lock at all. This
+// is the closest thing to a real recovery *route* achievable with no
+// accounts/server (see GOAL.md) -- it requires possessing a secret that
+// was only ever shown once, not just intent. Only the salted hash is
+// ever stored, same as the PIN itself; the plaintext code is returned
+// once from setAppLockPin() below and never persisted anywhere.
+const APP_LOCK_RECOVERY_HASH_KEY = 'offlog_app_lock_recovery_hash';
+const APP_LOCK_RECOVERY_SALT_KEY = 'offlog_app_lock_recovery_salt';
+
+// Excludes visually-ambiguous characters (0/O, 1/I/L) since this gets
+// hand-copied onto paper or typed back in under pressure.
+function randomRecoveryCode(): string {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const part = () => Array.from({ length: 5 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  return `${part()}-${part()}`;
+}
 
 // crypto.subtle needs a secure context -- true for the dev server, the
 // deployed HTTPS site, and Capacitor/Tauri's own WebView schemes, but
@@ -294,23 +318,44 @@ export function isAppLockEnabled(): boolean {
   return !!localStorage.getItem(APP_LOCK_HASH_KEY);
 }
 
-export async function setAppLockPin(pin: string, hint?: string): Promise<void> {
+// Returns the plaintext recovery code ONLY the first time a PIN is set
+// (transitioning disabled -> enabled) -- a "Change PIN" on an
+// already-enabled lock reuses the existing recovery code rather than
+// silently invalidating whatever the user already saved. Returns null
+// when no new code was generated (nothing new for the caller to show).
+export async function setAppLockPin(pin: string, hint?: string): Promise<{ recoveryCode: string | null }> {
   const salt = crypto.randomUUID ? crypto.randomUUID() : String(Math.random());
   const hash = await hashWithSalt(salt, pin);
   localStorage.setItem(APP_LOCK_SALT_KEY, salt);
   localStorage.setItem(APP_LOCK_HASH_KEY, hash);
   if (hint?.trim()) localStorage.setItem(APP_LOCK_HINT_KEY, hint.trim());
   else localStorage.removeItem(APP_LOCK_HINT_KEY);
+
+  let recoveryCode: string | null = null;
+  if (!localStorage.getItem(APP_LOCK_RECOVERY_HASH_KEY)) {
+    recoveryCode = randomRecoveryCode();
+    const rSalt = crypto.randomUUID ? crypto.randomUUID() : String(Math.random());
+    const rHash = await hashWithSalt(rSalt, recoveryCode);
+    localStorage.setItem(APP_LOCK_RECOVERY_SALT_KEY, rSalt);
+    localStorage.setItem(APP_LOCK_RECOVERY_HASH_KEY, rHash);
+  }
+  return { recoveryCode };
 }
 
 export function getAppLockHint(): string | null {
   return localStorage.getItem(APP_LOCK_HINT_KEY);
 }
 
+export function hasAppLockRecoveryCode(): boolean {
+  return !!localStorage.getItem(APP_LOCK_RECOVERY_HASH_KEY);
+}
+
 export function clearAppLockPin(): void {
   localStorage.removeItem(APP_LOCK_HASH_KEY);
   localStorage.removeItem(APP_LOCK_SALT_KEY);
   localStorage.removeItem(APP_LOCK_HINT_KEY);
+  localStorage.removeItem(APP_LOCK_RECOVERY_HASH_KEY);
+  localStorage.removeItem(APP_LOCK_RECOVERY_SALT_KEY);
 }
 
 export async function verifyAppLockPin(pin: string): Promise<boolean> {
@@ -318,6 +363,13 @@ export async function verifyAppLockPin(pin: string): Promise<boolean> {
   const storedHash = localStorage.getItem(APP_LOCK_HASH_KEY);
   if (!salt || !storedHash) return false;
   return (await hashWithSalt(salt, pin)) === storedHash;
+}
+
+export async function verifyAppLockRecoveryCode(code: string): Promise<boolean> {
+  const salt = localStorage.getItem(APP_LOCK_RECOVERY_SALT_KEY);
+  const storedHash = localStorage.getItem(APP_LOCK_RECOVERY_HASH_KEY);
+  if (!salt || !storedHash) return false;
+  return (await hashWithSalt(salt, code.trim().toUpperCase())) === storedHash;
 }
 
 // Idle/background timeout before the lock screen reappears -- launch

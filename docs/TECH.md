@@ -147,7 +147,10 @@ src/
                                  gated by config.ts's isAppLockEnabled(). Deliberately
                                  does NOT use modalStack.ts's closeOnBack() (Escape must
                                  not dismiss a lock screen); App.svelte makes the rest of
-                                 the app `inert` (not just visually covered) while locked
+                                 the app `inert` (not just visually covered) while locked.
+                                 "Forgot PIN" requires the one-time recovery code shown at
+                                 PIN setup (config.ts's verifyAppLockRecoveryCode()), not a
+                                 confirm-and-clear button -- see DECISIONS.md for why
 ```
 
 ---

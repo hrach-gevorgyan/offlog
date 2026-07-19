@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint } from '../src/config';
+import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -113,5 +113,64 @@ describe('App lock (PIN)', () => {
     await setAppLockPin('1234', 'a hint');
     await setAppLockPin('5678');
     expect(getAppLockHint()).toBeNull();
+  });
+});
+
+// Recovery code: the real route back in if the PIN is forgotten (see
+// DECISIONS.md/config.ts's own comments for why this replaced a plain
+// "Forgot PIN -> clear it" button -- that was a bypass reachable with no
+// knowledge at all, not a lock). Only the salted hash is ever stored;
+// these tests go through setAppLockPin()'s returned plaintext code and
+// verifyAppLockRecoveryCode() rather than asserting a raw localStorage value.
+describe('App lock recovery code', () => {
+  beforeEach(() => {
+    clearAppLockPin();
+  });
+
+  it('has no recovery code before a PIN is ever set', () => {
+    expect(hasAppLockRecoveryCode()).toBe(false);
+  });
+
+  it('generates a recovery code the first time a PIN is set', async () => {
+    const result = await setAppLockPin('1234');
+    expect(result.recoveryCode).not.toBeNull();
+    expect(hasAppLockRecoveryCode()).toBe(true);
+  });
+
+  it('the generated code verifies correctly', async () => {
+    const { recoveryCode } = await setAppLockPin('1234');
+    expect(await verifyAppLockRecoveryCode(recoveryCode!)).toBe(true);
+  });
+
+  it('rejects an incorrect recovery code', async () => {
+    await setAppLockPin('1234');
+    expect(await verifyAppLockRecoveryCode('WRONG-CODE')).toBe(false);
+  });
+
+  it('is case-insensitive', async () => {
+    const { recoveryCode } = await setAppLockPin('1234');
+    expect(await verifyAppLockRecoveryCode(recoveryCode!.toLowerCase())).toBe(true);
+  });
+
+  it('changing the PIN does not generate a new recovery code or invalidate the old one', async () => {
+    const first = await setAppLockPin('1234');
+    const second = await setAppLockPin('5678');
+    expect(second.recoveryCode).toBeNull(); // nothing new to show the user
+    expect(await verifyAppLockRecoveryCode(first.recoveryCode!)).toBe(true);
+  });
+
+  it('clearAppLockPin() removes the recovery code entirely', async () => {
+    const { recoveryCode } = await setAppLockPin('1234');
+    clearAppLockPin();
+    expect(hasAppLockRecoveryCode()).toBe(false);
+    expect(await verifyAppLockRecoveryCode(recoveryCode!)).toBe(false);
+  });
+
+  it('setting a PIN again after a full clear generates a fresh code', async () => {
+    const first = await setAppLockPin('1234');
+    clearAppLockPin();
+    const second = await setAppLockPin('1234');
+    expect(second.recoveryCode).not.toBeNull();
+    expect(second.recoveryCode).not.toBe(first.recoveryCode);
   });
 });

@@ -110,6 +110,10 @@
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
+    // No Escape-to-dismiss while the one-time recovery code is showing --
+    // it must be acknowledged via the explicit button below, or someone
+    // reflexively hitting Escape loses their only chance to see it.
+    if (newRecoveryCode) return;
     if (showConnectModal) { showConnectModal = false; return; }
     if (showConflictsModal) { showConflictsModal = false; return; }
     if (showMaintenanceModal) { showMaintenanceModal = false; return; }
@@ -202,6 +206,12 @@
   let pinHint = '';
   let pinError = '';
   let pinSaving = false;
+  // Shown once, right after setAppLockPin() actually generates a new one
+  // (only the very first time a PIN is set -- see config.ts) -- the
+  // plaintext code is never persisted anywhere, so this is the only
+  // chance the user gets to see and save it.
+  let newRecoveryCode: string | null = null;
+  let recoveryCodeSavedAck = false;
 
   function openPinForm() {
     newPin = ''; confirmPin = ''; pinError = '';
@@ -216,9 +226,10 @@
     if (pinHint.trim() && pinHint.includes(newPin)) { pinError = "The hint can't contain the PIN itself."; return; }
     pinSaving = true;
     try {
-      await setAppLockPin(newPin, pinHint);
+      const result = await setAppLockPin(newPin, pinHint);
       appLockEnabled = true;
       showPinForm = false;
+      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; }
     } catch {
       pinError = 'Could not save PIN. Please try again.';
     } finally {
@@ -1389,6 +1400,36 @@
   </div>
 {/if}
 
+{#if newRecoveryCode}
+  <!-- No click-outside-to-close (no on:click|self here) and Escape is
+       blocked in onWindowKeydown above -- this can ONLY be dismissed via
+       the explicit checkbox + button below. The code is shown exactly
+       once; there's no "view it again later" since only its hash is
+       ever stored (config.ts). -->
+  <div class="mini-modal-scrim" transition:fade={scrimFade}>
+    <div class="mini-modal recovery-modal" transition:dialogPop>
+      <div class="mini-modal-head">
+        <span class="mini-modal-title">Save your recovery code</span>
+      </div>
+      <div class="mini-modal-body">
+        <p class="setting-hint">
+          If you forget your PIN, this code is the only way back into Offlog — there's no
+          account to reset it through. Save it somewhere safe now (a password manager, a note,
+          written down). It will not be shown again.
+        </p>
+        <div class="recovery-code">{newRecoveryCode}</div>
+        <label class="recovery-ack-row">
+          <input type="checkbox" bind:checked={recoveryCodeSavedAck} />
+          I've saved this code somewhere safe
+        </label>
+      </div>
+      <div class="mini-modal-actions">
+        <button class="btn-primary" on:click={() => newRecoveryCode = null} disabled={!recoveryCodeSavedAck}>Continue</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 {#if showSpaceManager && SpaceManagerComp}
   {#key spaceManagerSession}
     <svelte:component this={SpaceManagerComp} on:close={onSpaceManagerClosed} />
@@ -1710,4 +1751,18 @@
     display: flex; justify-content: flex-end; gap: .5rem;
     padding: .85rem 1.1rem; border-top: 1px solid var(--border); flex-shrink: 0;
   }
+
+  .recovery-modal { max-width: 420px; }
+  .recovery-code {
+    font-family: var(--mono); font-size: 1.3rem; font-weight: 700; letter-spacing: .08em;
+    text-align: center; color: var(--accent); background: var(--col-bg);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: .8rem; margin: .6rem 0;
+  }
+  .recovery-ack-row {
+    display: flex !important; flex-direction: row !important; align-items: center; gap: .5rem;
+    font-size: .82rem; color: var(--text); text-transform: none; letter-spacing: normal;
+    font-family: 'Hanken Grotesk', sans-serif; cursor: pointer;
+  }
+  .recovery-ack-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; width: 15px; height: 15px; margin: 0; }
 </style>

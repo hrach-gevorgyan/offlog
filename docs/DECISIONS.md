@@ -279,14 +279,25 @@ narrower and matches most task-manager app locks (Things, Todoist): stop
 a passer-by from casually opening the app, not withstand someone who
 already has the device and is willing to dig.
 
-That narrower threat model is also why `AppLock.svelte`'s "Forgot PIN"
-flow is a plain confirm-and-clear, not a fake recovery flow with no real
-secondary factor behind it (no accounts, no email — see GOAL.md, there's
-nothing to verify identity against). Whoever has the device already has
-the data either way once the PIN gates only the UI; the reset just
-removes an inconvenience for its rightful owner, honestly, rather than
-performing security theater around a lock that was never protecting the
-data in the first place.
+First version shipped `AppLock.svelte`'s "Forgot PIN" as a plain
+confirm-and-clear (reasoning: no accounts/email — see GOAL.md — so
+there's nothing to verify identity against, and the PIN only gates the
+UI anyway). Owner feedback the same day: "it is just removing pin...
+like when there is wall as block of road but in middle there is door u
+just open and go" — correct. A bypass reachable by anyone with zero
+knowledge isn't a lock at all, regardless of how narrow the threat model
+is; it's not "recovery for the forgetful owner," it's "no lock." Replaced
+with a one-time recovery code (config.ts's `setAppLockPin()`/
+`verifyAppLockRecoveryCode()`): a random code shown exactly once, the
+moment a PIN is first set, that the user must save themselves (password
+manager, notes, written down) — same pattern disk encryption and 2FA
+apps use for backup codes. "Forgot PIN" now requires possessing that
+code, not just intent. Still no server/account to verify identity
+against — this is the strongest recovery route achievable without one,
+short of full at-rest encryption's much bigger tradeoffs (still declined,
+see above). If no recovery code exists for a device (state predating
+this fix), the lock screen says so plainly rather than pretending a
+reset is possible.
 
 Revisit only if the project's no-accounts/no-server stance itself changes
 (unlikely — see DECISIONS.md's other closed entries on that), since real

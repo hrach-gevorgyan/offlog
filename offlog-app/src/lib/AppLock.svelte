@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { createEventDispatcher, onMount, tick } from 'svelte';
-  import { verifyAppLockPin, clearAppLockPin, getAppLockHint } from '../config';
+  import { verifyAppLockPin, clearAppLockPin, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode } from '../config';
   import { trapFocus } from './focusTrap';
 
   // Deliberately does NOT use modalStack.ts's closeOnBack() -- every other
@@ -16,8 +16,12 @@
   let cooldown = false;
   let inputEl: HTMLInputElement;
   let showHint = false;
-  let showForgotConfirm = false;
+  let showRecovery = false;
+  let recoveryCode = '';
+  let recoveryError = '';
+  let recoverySaving = false;
   const hint = getAppLockHint();
+  const recoveryExists = hasAppLockRecoveryCode();
 
   onMount(async () => { await tick(); inputEl?.focus(); });
 
@@ -52,35 +56,64 @@
     pin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8);
   }
 
-  // No secondary auth factor exists to verify identity before resetting
-  // (no accounts, no email -- see GOAL.md) -- since the PIN only gates the
-  // UI and never encrypts anything, the honest design is a plain confirm,
-  // not a fake security theater flow. Whoever has the device already has
-  // the data either way; this just removes the inconvenience for its
-  // rightful owner who forgot their own PIN.
-  //
-  // Deliberately NOT confirm.ts's shared confirmAction()/ConfirmDialog --
-  // that renders at z-index 701, far below .lock-screen's 10001, so the
-  // dialog opened correctly but was invisible underneath the lock screen
-  // (owner-reported 2026-07-19: "forgot pin is not working"). An inline
-  // confirm inside this same component is guaranteed to stack correctly.
-  function confirmForgot() {
+  // v1 shipped this as a plain confirm-and-clear -- owner feedback,
+  // 2026-07-19: "it is just removing pin... like when there is wall as
+  // block of road but in middle there is door u just open and go". Right:
+  // a bypass reachable with zero knowledge isn't a lock. Now requires the
+  // one-time recovery code shown at PIN setup (config.ts) -- a real
+  // route back in, not a button. Still no server/account to verify
+  // identity against (see GOAL.md), so this is the strongest recovery
+  // achievable without one: possessing a secret only ever shown once.
+  async function submitRecovery() {
+    if (recoverySaving || !recoveryCode.trim()) return;
+    recoverySaving = true;
+    const ok = await verifyAppLockRecoveryCode(recoveryCode);
+    recoverySaving = false;
+    if (!ok) {
+      recoveryError = 'That code doesn’t match.';
+      return;
+    }
     clearAppLockPin();
     dispatch('unlocked');
+  }
+
+  function onRecoveryKey(e: KeyboardEvent) {
+    if (e.key === 'Enter') submitRecovery();
   }
 </script>
 
 <div class="lock-screen" use:trapFocus transition:fade={{ duration: 150 }}>
-  {#if showForgotConfirm}
-    <div class="lock-card">
-      <div class="lock-title">Remove the PIN lock?</div>
-      <div class="lock-sub lock-sub-wide">
-        This removes the PIN lock so you can get back into Offlog. Your tasks are not affected — you can set a new PIN afterward in Settings.
-      </div>
-      <div class="lock-confirm-row">
-        <button class="lock-cancel" on:click={() => showForgotConfirm = false}>Cancel</button>
-        <button class="lock-submit lock-danger" on:click={confirmForgot}>Remove PIN</button>
-      </div>
+  {#if showRecovery}
+    <div class="lock-card" class:shake={!!recoveryError}>
+      <div class="lock-title">Enter your recovery code</div>
+      {#if recoveryExists}
+        <div class="lock-sub lock-sub-wide">
+          This is the code you saved when you first set your PIN. Entering it correctly removes
+          the PIN lock — your tasks are not affected, and you can set a new PIN afterward in
+          Settings.
+        </div>
+        <input
+          type="text"
+          autocomplete="off"
+          class="lock-input lock-input-code"
+          placeholder="XXXXX-XXXXX"
+          bind:value={recoveryCode}
+          on:keydown={onRecoveryKey}
+          aria-label="Recovery code"
+        />
+        {#if recoveryError}<div class="lock-hint lock-hint-error">{recoveryError}</div>{/if}
+        <div class="lock-confirm-row">
+          <button class="lock-cancel" on:click={() => { showRecovery = false; recoveryError = ''; recoveryCode = ''; }}>Cancel</button>
+          <button class="lock-submit" on:click={submitRecovery} disabled={!recoveryCode.trim() || recoverySaving}>Continue</button>
+        </div>
+      {:else}
+        <div class="lock-sub lock-sub-wide">
+          No recovery code was ever saved for this device, so there's no way to remove the PIN
+          lock without it. Double-check the hint above, or ask on another device if this data
+          also syncs there.
+        </div>
+        <button class="lock-cancel" on:click={() => showRecovery = false}>Back</button>
+      {/if}
     </div>
   {:else}
     <div class="lock-card" class:shake={error}>
@@ -117,7 +150,7 @@
           <button class="lock-forgot" on:click={() => showHint = true}>Show hint</button>
         {/if}
       {/if}
-      <button class="lock-forgot" on:click={() => showForgotConfirm = true}>Forgot PIN?</button>
+      <button class="lock-forgot" on:click={() => showRecovery = true}>Forgot PIN?</button>
     </div>
   {/if}
 </div>
@@ -151,6 +184,7 @@
   }
   .lock-input:focus { border-color: var(--accent); }
   .lock-input:disabled { opacity: .6; }
+  .lock-input-code { letter-spacing: .1em; font-size: 1.05rem; text-transform: uppercase; font-family: var(--mono); }
   .lock-hint { font-size: .78rem; margin-top: 10px; text-align: center; }
   .lock-hint-error { color: var(--danger); }
   .lock-submit {
@@ -168,12 +202,11 @@
 
   .lock-sub-wide { max-width: 280px; line-height: 1.5; margin-bottom: 22px; }
   .lock-confirm-row { display: flex; gap: 10px; width: 100%; }
-  .lock-confirm-row .lock-submit { margin-top: 0; }
+  .lock-confirm-row .lock-submit { flex: 1; margin-top: 0; }
   .lock-cancel {
     flex: 1; padding: .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .9rem; font-weight: 600;
     cursor: pointer; transition: background .12s;
   }
   .lock-cancel:hover { background: var(--hover); }
-  .lock-danger { flex: 1; background: var(--danger); }
 </style>
