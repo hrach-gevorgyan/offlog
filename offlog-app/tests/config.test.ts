@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode } from '../src/config';
+import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -172,5 +172,34 @@ describe('App lock recovery code', () => {
     const second = await setAppLockPin('1234');
     expect(second.recoveryCode).not.toBeNull();
     expect(second.recoveryCode).not.toBe(first.recoveryCode);
+  });
+});
+
+// Biometric: an opt-in flag only, alongside the PIN -- see DECISIONS.md's
+// "Biometric unlock sits alongside the PIN" entry. No new secret to store
+// here (the OS itself holds the enrolled biometric), just whether this
+// device opted in.
+describe('App lock biometric flag', () => {
+  beforeEach(() => {
+    clearAppLockPin();
+  });
+
+  it('is off by default', () => {
+    expect(isAppLockBiometricEnabled()).toBe(false);
+  });
+
+  it('can be turned on and off independently of the PIN', async () => {
+    await setAppLockPin('1234');
+    setAppLockBiometricEnabled(true);
+    expect(isAppLockBiometricEnabled()).toBe(true);
+    setAppLockBiometricEnabled(false);
+    expect(isAppLockBiometricEnabled()).toBe(false);
+  });
+
+  it('clearAppLockPin() also turns biometric off', async () => {
+    await setAppLockPin('1234');
+    setAppLockBiometricEnabled(true);
+    clearAppLockPin();
+    expect(isAppLockBiometricEnabled()).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { createEventDispatcher, onMount, tick } from 'svelte';
-  import { verifyAppLockPin, clearAppLockPin, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode } from '../config';
+  import { verifyAppLockPin, clearAppLockPin, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, isNativePlatform } from '../config';
   import { trapFocus } from './focusTrap';
 
   // Deliberately does NOT use modalStack.ts's closeOnBack() -- every other
@@ -22,8 +22,35 @@
   let recoverySaving = false;
   const hint = getAppLockHint();
   const recoveryExists = hasAppLockRecoveryCode();
+  const biometricEnabled = isNativePlatform() && isAppLockBiometricEnabled();
+  let biometricBusy = false;
 
-  onMount(async () => { await tick(); inputEl?.focus(); });
+  onMount(async () => {
+    await tick();
+    inputEl?.focus();
+    if (biometricEnabled) tryBiometric();
+  });
+
+  // Fires automatically on mount, and again from the "Try again" link --
+  // a cancelled/failed attempt is not a wrong PIN, so it never triggers
+  // the shake/error state below. The PIN input stays usable the whole
+  // time; biometric is just a faster path on top of it, never a
+  // replacement (owner, 2026-07-20 -- see config.ts's own comment).
+  async function tryBiometric() {
+    if (biometricBusy) return;
+    biometricBusy = true;
+    try {
+      const { NativeBiometric } = await import('capacitor-native-biometric');
+      const available = await NativeBiometric.isAvailable();
+      if (!available.isAvailable) return;
+      await NativeBiometric.verifyIdentity({ reason: 'Unlock Offlog', title: 'Unlock Offlog' });
+      dispatch('unlocked');
+    } catch {
+      // Cancelled, failed, or lockout -- fall through to the PIN screen.
+    } finally {
+      biometricBusy = false;
+    }
+  }
 
   async function submit() {
     if (cooldown || !pin) return;
@@ -143,6 +170,9 @@
 
       <button class="lock-submit" on:click={submit} disabled={!pin || cooldown}>Unlock</button>
 
+      {#if biometricEnabled}
+        <button class="lock-forgot" on:click={tryBiometric} disabled={biometricBusy}>Try biometrics again</button>
+      {/if}
       {#if hint}
         {#if showHint}
           <div class="lock-hint">Hint: {hint}</div>

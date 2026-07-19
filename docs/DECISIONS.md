@@ -303,6 +303,28 @@ Revisit only if the project's no-accounts/no-server stance itself changes
 (unlikely — see DECISIONS.md's other closed entries on that), since real
 encryption needs *something* to hold/recover keys against.
 
+### Biometric unlock sits alongside the PIN, never replaces it (2026-07-20)
+Once the owner had the app installed on an actual phone, B54's deferred
+second half became buildable — a real device is required to test any
+biometric plugin (see B54's original entry above for why it couldn't ship
+in the first pass). Scoped via AskUserQuestion before building: uses
+`capacitor-native-biometric` (the closest thing to a de facto standard
+among community Capacitor biometric plugins — there's no Ionic-official
+one, unlike this project's other plugins, per A25's preference), Android
+only (no iOS build, see GOAL.md), opt-in (off by default, a new toggle in
+Settings → App Lock that only appears once a PIN exists), and — this is
+the load-bearing constraint — it is *only* a faster unlock path on top of
+the PIN, never a replacement for it. The PIN remains the only thing that
+can set/change/remove the lock or drive "Forgot PIN" recovery; biometric
+never touches either. Enabling the toggle requires a real successful
+`verifyIdentity()` prompt, not just flipping a flag, so a device with
+nothing enrolled can't end up "enabled" with no way to actually unlock.
+On the lock screen (`AppLock.svelte`), the OS prompt fires automatically
+on mount when enabled — no extra tap — but the PIN input stays visible
+and usable the whole time; a cancelled/failed biometric attempt falls
+through silently to the PIN screen (not a wrong-PIN shake, since
+cancelling isn't a wrong guess).
+
 ---
 
 ## Mobile / Android

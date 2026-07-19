@@ -289,6 +289,16 @@ const APP_LOCK_HINT_KEY = 'offlog_app_lock_hint';
 const APP_LOCK_RECOVERY_HASH_KEY = 'offlog_app_lock_recovery_hash';
 const APP_LOCK_RECOVERY_SALT_KEY = 'offlog_app_lock_recovery_salt';
 
+// Biometric unlock: sits alongside the PIN, never replaces it (owner,
+// 2026-07-20) -- the PIN stays the only thing that can set/change/remove
+// the lock or drive recovery. This is just a faster unlock path on top,
+// opt-in per device via Settings (Android only -- no Capacitor biometric
+// plugin ships an iOS build here since this project doesn't ship iOS, see
+// GOAL.md/DECISIONS.md). No new secret to store -- the OS itself holds
+// the enrolled biometric, this flag only remembers whether the user opted
+// in on this device.
+const APP_LOCK_BIOMETRIC_KEY = 'offlog_app_lock_biometric_enabled';
+
 // Excludes visually-ambiguous characters (0/O, 1/I/L) since this gets
 // hand-copied onto paper or typed back in under pressure.
 function randomRecoveryCode(): string {
@@ -356,6 +366,16 @@ export function clearAppLockPin(): void {
   localStorage.removeItem(APP_LOCK_HINT_KEY);
   localStorage.removeItem(APP_LOCK_RECOVERY_HASH_KEY);
   localStorage.removeItem(APP_LOCK_RECOVERY_SALT_KEY);
+  localStorage.removeItem(APP_LOCK_BIOMETRIC_KEY);
+}
+
+export function isAppLockBiometricEnabled(): boolean {
+  return localStorage.getItem(APP_LOCK_BIOMETRIC_KEY) === 'true';
+}
+
+export function setAppLockBiometricEnabled(enabled: boolean): void {
+  if (enabled) localStorage.setItem(APP_LOCK_BIOMETRIC_KEY, 'true');
+  else localStorage.removeItem(APP_LOCK_BIOMETRIC_KEY);
 }
 
 export async function verifyAppLockPin(pin: string): Promise<boolean> {

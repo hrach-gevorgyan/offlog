@@ -252,7 +252,7 @@ Track E's timeline had slipped badly — moot now that E1/E2 are shipped.
 
 ### B53. Kanban card quick-actions menu — shipped in v4.21.0
 
-### B54. App lock (PIN) — shipped 2026-07-19; biometric unlock — NOT YET BUILT
+### B54. App lock (PIN + biometric) — shipped 2026-07-19; biometric added 2026-07-20
 PIN lock is done and fully verified (browser-testable, no platform
 dependency): `config.ts` stores a salted-hash PIN per device, `AppLock.svelte`
 gates the whole app behind it (`App.svelte`'s `inert` wrapper — not just
@@ -270,15 +270,16 @@ there is door u just open and go"). Replaced with a genuine one-time
 recovery code (shown once at PIN setup, salted-hash stored like the PIN
 itself) — see DECISIONS.md for the full reasoning.
 
-Biometric (fingerprint/face) unlock is the deliberately-deferred second
-half: no Capacitor plugin is wired in yet. There's no Ionic-official
-biometric plugin (unlike `@capacitor/local-notifications` etc., all
-already used elsewhere per DECISIONS.md's A25 preference for official
-plugins) — picking a community one needs a real on-device Android Studio
-test before it ships, which isn't possible from this environment. Do not
-half-wire a disabled toggle for it in Settings in the meantime (CLAUDE.md:
-no half-finished implementations) — build it as a real, working feature
-in one pass once someone can test on an actual device.
+Biometric (fingerprint/face) unlock — the previously-deferred second
+half — shipped 2026-07-20 once the app was actually installed on a phone
+(a real device is required to test any biometric plugin). Uses
+`capacitor-native-biometric` (no Ionic-official plugin exists for this,
+unlike the rest of this project's plugins per A25). Sits alongside the
+PIN, opt-in via a Settings → App Lock toggle, Android only — see
+DECISIONS.md's "Biometric unlock sits alongside the PIN" entry for the
+full scope and reasoning. Still needs a live on-device confirmation in
+Android Studio (fingerprint/face prompt itself can't be exercised from
+this environment) before considering it fully verified.
 
 ---
 

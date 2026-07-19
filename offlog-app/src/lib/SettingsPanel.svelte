@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -213,6 +213,41 @@
   let newRecoveryCode: string | null = null;
   let recoveryCodeSavedAck = false;
 
+  let biometricEnabled = isAppLockBiometricEnabled();
+  let biometricError = '';
+  let biometricBusy = false;
+
+  // Enabling requires a live device check + a real successful prompt --
+  // not just flipping a flag -- so a device with no fingerprint/face
+  // enrolled never silently ends up "enabled" with no way to actually
+  // unlock (owner scope, 2026-07-20: biometric sits alongside the PIN,
+  // opt-in, Android only). Disabling never needs the device, it just
+  // turns the faster path back off; the PIN keeps working either way.
+  async function toggleBiometric() {
+    biometricError = '';
+    if (biometricEnabled) {
+      setAppLockBiometricEnabled(false);
+      biometricEnabled = false;
+      return;
+    }
+    biometricBusy = true;
+    try {
+      const { NativeBiometric } = await import('capacitor-native-biometric');
+      const available = await NativeBiometric.isAvailable();
+      if (!available.isAvailable) {
+        biometricError = 'No fingerprint or face is enrolled on this device yet -- add one in your phone\'s system settings first.';
+        return;
+      }
+      await NativeBiometric.verifyIdentity({ reason: 'Enable biometric unlock for Offlog', title: 'Confirm it\'s you' });
+      setAppLockBiometricEnabled(true);
+      biometricEnabled = true;
+    } catch {
+      biometricError = 'Could not confirm your fingerprint/face. Try again.';
+    } finally {
+      biometricBusy = false;
+    }
+  }
+
   function openPinForm() {
     newPin = ''; confirmPin = ''; pinError = '';
     pinHint = getAppLockHint() ?? ''; // pre-fill so changing the PIN doesn't silently drop an existing hint
@@ -245,6 +280,7 @@
     if (!ok) return;
     clearAppLockPin();
     appLockEnabled = false;
+    biometricEnabled = false;
   }
 
   function onLockTimeoutChange(v: string) {
@@ -1163,7 +1199,14 @@
               {#if isNativePlatform()}
                 <div class="setting-group">
                   <div class="setting-section-title">Biometric unlock</div>
-                  <p class="setting-hint">Fingerprint/face unlock is planned but not built yet — PIN is the only way in for now. See ROADMAP.md.</p>
+                  <div class="setting-row">
+                    <div class="setting-label">Unlock with fingerprint/face</div>
+                    <button class="toggle-btn" class:on={biometricEnabled} on:click={toggleBiometric} disabled={biometricBusy} aria-label="Toggle biometric unlock" role="switch" aria-checked={biometricEnabled}>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <p class="setting-hint">A faster path on top of your PIN, not a replacement — the PIN still works, and is still the only way to change or recover the lock.</p>
+                  {#if biometricError}<p class="setting-hint setting-hint-error">{biometricError}</p>{/if}
                 </div>
               {/if}
 
@@ -1567,6 +1610,7 @@
   }
   .setting-row { display: flex; align-items: center; gap: .75rem; }
   .setting-hint { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
+  .setting-hint-error { color: var(--danger); }
   .setting-hint-warn {
     color: var(--due-soon-ink); background: var(--due-soon-bg);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 500;

@@ -79,4 +79,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- App Lock: biometric unlock, opt-in fast path alongside the PIN -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 </manifest>
