@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -146,6 +146,15 @@
   function toggleReduceMotion() {
     reduceMotion = !reduceMotion;
     setReduceMotion(reduceMotion);
+  }
+
+  // B58 — Android only (haptics.ts itself also checks isNativePlatform(),
+  // this toggle just decides whether to show the control at all). Defaults
+  // on, see config.ts's own comment for why.
+  let hapticsEnabled = isHapticsEnabled();
+  function toggleHaptics() {
+    hapticsEnabled = !hapticsEnabled;
+    setHapticsEnabled(hapticsEnabled);
   }
 
   // ── Notifications ───────────────────────────────────────────────────────
@@ -972,6 +981,16 @@
                   </button>
                 </div>
                 <p class="setting-hint">Turns off panel/dialog slide and fade animations throughout the app.</p>
+
+                {#if isNativePlatform()}
+                  <div class="setting-row">
+                    <div class="setting-label">Haptic feedback</div>
+                    <button class="toggle-btn" class:on={hapticsEnabled} on:click={toggleHaptics} aria-label="Toggle haptic feedback" role="switch" aria-checked={hapticsEnabled}>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <p class="setting-hint">A small vibration on checkbox toggles and drag-and-drop.</p>
+                {/if}
               </div>
 
             {:else if activeCategory === 'notifications'}

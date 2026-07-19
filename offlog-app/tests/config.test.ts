@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled } from '../src/config';
+import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -201,5 +201,24 @@ describe('App lock biometric flag', () => {
     setAppLockBiometricEnabled(true);
     clearAppLockPin();
     expect(isAppLockBiometricEnabled()).toBe(false);
+  });
+});
+
+// B58: pure polish, defaults on unlike App Lock's biometric (no security
+// implication to defaulting a vibration on) -- see config.ts's own comment.
+describe('Haptics setting', () => {
+  beforeEach(() => {
+    localStorage.removeItem('offlog_haptics_enabled');
+  });
+
+  it('defaults to on', () => {
+    expect(isHapticsEnabled()).toBe(true);
+  });
+
+  it('can be turned off and back on', () => {
+    setHapticsEnabled(false);
+    expect(isHapticsEnabled()).toBe(false);
+    setHapticsEnabled(true);
+    expect(isHapticsEnabled()).toBe(true);
   });
 });

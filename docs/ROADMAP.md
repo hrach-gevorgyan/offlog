@@ -307,18 +307,20 @@ depends on which Android settings-intent string actually works reliably
 across OEM skins — verify on a real device before considering this done,
 same caveat as biometric itself.
 
-### B58. Haptics — tactile feedback on checkbox/drag/swipe
-`@capacitor/haptics` (official plugin). Subtle vibration feedback on
-checkbox toggle (Kanban/List/Dashboard), drag-reorder start/drop, and
-swipe actions. Same category as B51's animation pass — a polish item,
-not a functional gap. Slightly bigger than B55-B57 only because it touches
-more call sites (every checkbox toggle + every drag handler across
-Kanban/List/Agenda), not because any individual call is hard — each is a
-one-line `Haptics.impact({ style: ImpactStyle.Light })` added next to an
-existing handler. Owner-scoped, 2026-07-20: needs its own Settings
-toggle (same Accessibility group pattern as Reduce Motion), not wired
-in silently -- default state (on vs. off) still open, decide at
-implementation time.
+### B58. Haptics — tactile feedback on checkbox/drag — shipped 2026-07-20
+`@capacitor/haptics`. Shared `src/lib/haptics.ts` (`hapticToggle()`,
+`hapticDragStart()`, `hapticDragDrop()`) centralizes the
+`isNativePlatform()`/`isHapticsEnabled()` gate in one place rather than
+re-checking at every call site. Wired into: mark-done in List/Focus/
+Deadlines, checklist-item toggle in CardDetail, pin toggle in Kanban, and
+Kanban's card drag (both the HTML5 desktop path and the touch-based
+mobile path — mobile is the one that actually matters on Android). No
+swipe actions exist in this codebase yet, so that part of the original
+scope note didn't apply. New Settings → View & Accessibility toggle
+("Haptic feedback"), Android only, **defaults on** — unlike biometric's
+opt-in default, there's no security tradeoff to a vibration, so it ships
+the way most native apps do and lets the minority who find it distracting
+turn it off (config.ts's own comment has the full reasoning).
 
 ---
 

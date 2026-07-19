@@ -11,6 +11,7 @@
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
   import { filterTasks } from './utils';
+  import { hapticToggle, hapticDragStart, hapticDragDrop } from './haptics';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -69,6 +70,7 @@
     dragTask = task;
     (e.dataTransfer as DataTransfer).effectAllowed = 'move';
     e.stopPropagation();   // don't let column header's drag fire
+    hapticDragStart();
   }
 
   function onCardListDragOver(e: DragEvent, colId: string) {
@@ -109,6 +111,7 @@
     try {
       await updateTask(dragTask._id!, { column_id: colId, position: newPos });
       await reloadTasks();
+      hapticDragDrop();
     } catch {
       showError('Failed to move task. Please try again.');
     }
@@ -153,6 +156,7 @@
   }
   async function togglePin(task: TaskDoc) {
     try {
+      hapticToggle();
       await updateTask(task._id!, { pinned: !task.pinned });
       await reloadTasks();
     } catch {
@@ -286,6 +290,7 @@
     touchGhost = el.cloneNode(true) as HTMLElement;
     touchGhost.style.cssText = `position:fixed;pointer-events:none;z-index:9999;width:${rect.width}px;opacity:.8;box-shadow:0 8px 24px rgba(0,0,0,.18);border-radius:12px;left:${rect.left}px;top:${rect.top}px;transition:none;transform:rotate(1.5deg);`;
     document.body.appendChild(touchGhost);
+    hapticDragStart();
   }
 
   function onTouchMove(e: TouchEvent) {
@@ -327,6 +332,7 @@
       try {
         await updateTask(touchTask._id!, { column_id: colId, position: newPos });
         await reloadTasks();
+        hapticDragDrop();
       } catch {
         showError('Failed to move task. Please try again.');
       }

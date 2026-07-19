@@ -5,6 +5,7 @@
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
+  import { hapticToggle } from './haptics';
 
   const dispatch = createEventDispatcher<{ menu: void }>();
 
@@ -154,6 +155,7 @@
     const lastCol = proj.columns.at(-1)?.id;
     if (!lastCol || t.column_id === lastCol) return;
     try {
+      hapticToggle();
       await updateTask(t._id!, { column_id: lastCol });
       await refresh();
     } catch {

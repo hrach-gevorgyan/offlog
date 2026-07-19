@@ -255,6 +255,25 @@ export function setTimeFormat24h(is24h: boolean) {
   localStorage.setItem(TIME_FORMAT_24H_KEY, String(is24h));
 }
 
+// B58 (ROADMAP.md): tactile feedback on checkbox/drag/toggle actions.
+// Defaults ON (unlike App Lock's biometric, which defaults off because
+// it's a security-relevant opt-in) -- this is pure polish with no
+// downside to a first-time user, matching how haptics ship by default in
+// most native apps; the toggle exists for the minority who find it
+// distracting, same role as Reduce Motion for animation. Android only --
+// haptics.ts checks isNativePlatform() itself, this flag alone doesn't
+// gate platform.
+const HAPTICS_KEY = 'offlog_haptics_enabled';
+
+export function isHapticsEnabled(): boolean {
+  const stored = localStorage.getItem(HAPTICS_KEY);
+  return stored === null ? true : stored === 'true';
+}
+
+export function setHapticsEnabled(enabled: boolean): void {
+  localStorage.setItem(HAPTICS_KEY, String(enabled));
+}
+
 // App lock: a PIN gate on the UI, not data encryption -- see DECISIONS.md
 // for why. Per-device, like every other setting in this file: the PIN
 // itself never syncs, so a phone and a PC can have different PINs, or one

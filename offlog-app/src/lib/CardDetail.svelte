@@ -14,6 +14,7 @@
   import CustomSelect from './CustomSelect.svelte';
   import { getDefaultReminderTime } from '../config';
   import { fmtTime } from './utils';
+  import { hapticToggle } from './haptics';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -239,6 +240,7 @@
     checklistInput = '';
   }
   function toggleChecklistItem(i: number) {
+    hapticToggle();
     checklist = checklist.map((item, idx) => idx === i ? { ...item, done: !item.done } : item);
   }
   function removeChecklistItem(i: number) {

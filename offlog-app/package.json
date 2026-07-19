@@ -1,7 +1,7 @@
 {
   "name": "offlog-app",
   "private": true,
-  "version": "5.2.2",
+  "version": "5.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -33,6 +33,7 @@
     "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/haptics": "^8.0.2",
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/privacy-screen": "^2.0.1",
     "@capacitor/share": "^8.0.1",

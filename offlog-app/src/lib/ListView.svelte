@@ -13,6 +13,7 @@
   import PinStar from './PinStar.svelte';
   import FilterBar from './FilterBar.svelte';
   import CustomSelect from './CustomSelect.svelte';
+  import { hapticToggle } from './haptics';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -361,6 +362,7 @@
   async function markDone(task: TaskDoc) {
     const { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist } = task;
     try {
+      hapticToggle();
       await updateTask(task._id!, { column_id: lastColId() });
       await reloadTasks();
     } catch {

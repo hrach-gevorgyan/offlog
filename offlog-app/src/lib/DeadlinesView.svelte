@@ -7,6 +7,7 @@
   import { getWeekStartsMonday } from '../config';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
+  import { hapticToggle } from './haptics';
 
   const dispatch = createEventDispatcher<{ menu: void }>();
 
@@ -98,6 +99,7 @@
     const lastCol = proj.columns.at(-1)?.id;
     if (!lastCol || t.column_id === lastCol) return;
     try {
+      hapticToggle();
       await updateTask(t._id!, { column_id: lastCol });
       await load();
     } catch {
