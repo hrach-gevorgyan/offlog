@@ -13,6 +13,7 @@ history, not the only remaining record.
 | 4.22.1 | Maintenance pass (eighth run): missing try/catch on ChangelogView's "Clear all"; Tauri window minWidth/minHeight floor added; everything else audited clean | `v4.22.1` |
 | 4.22.2 | Sync stability (E2): phone re-resolves the PC's stable CouchDB uuid instead of a fixed IP:port; dev/prod Tauri identity collision fixed; Android debug/release storage collision fixed via applicationIdSuffix | `v4.22.2` |
 | 4.22.0 | Week-start-day setting (B47, Sunday/Monday toggle for Agenda/DeadlinesView); full open/close animation pass (B51, new motion.ts); Tauri drag-drop fix (dragDropEnabled: false) | `v4.22.0` |
+| 4.23.0 | B39 stable per-device id for history/device-list continuity across renames; B50 themed TimePicker replacing native time input; B48 Android widget light/dark split | `v4.23.0` |
 | 4.21.0 | Card Detail redesign (B49): Due/Reminder collapsed into one "Schedule" row, Checklist/Custom fields/Notes as consistent card-rows, footer actions into one "⋯" menu; Kanban per-card quick-actions menu (B53) | `v4.21.0` |
 | 4.20.0 | Export/import redesign into Back up (scope selector) + Restore groups (B45); first-run device-name prompt via NamePrompt.svelte, skip and save equal-weight (B46) | `v4.20.0` |
 | 4.19.1 | Maintenance pass (seventh run, first to cover offlog-desktop/): consolidated duplicated isTauri()/invoke() detection into config.ts; everything else checked out clean | `v4.19.1` |

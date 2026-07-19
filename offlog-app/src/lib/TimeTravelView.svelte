@@ -164,8 +164,8 @@
             <div
               class="entry"
               class:clickable
-              role={clickable ? 'button' : undefined}
-              tabindex={clickable ? 0 : undefined}
+              role={clickable ? 'button' : 'listitem'}
+              tabindex={clickable ? 0 : -1}
               on:click={() => openEntry(log)}
               on:keydown={(e) => { if (clickable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openEntry(log); } }}
             >

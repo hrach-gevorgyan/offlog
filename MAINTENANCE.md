@@ -224,6 +224,24 @@ second username+password pair that had leaked into a committed
 commits/71 tags via BFG Repo-Cleaner, verified by exhaustively scanning
 every remaining git object afterward. See DECISIONS.md/ROADMAP.md C7 for
 the full record.
-Next pass due: **after v4.31.0 ships**, continuing the every-3-releases
+Last pass: v5.0.0 (2026-07-20 — eleventh run, delta-scoped since v4.28.0,
+covering v4.29.0/v4.30.0's pre-release audit batches plus the unreleased
+Time Travel/NLP Quick Add/recurring-tasks/font-consolidation/App Lock work
+bundled into this 5.0.0 cut). Baselines all green (build/tsc/test/cargo
+build) after one real fix found at Phase 0: `TimeTravelView.svelte` had a
+non-static `tabindex`/`role` pairing the Svelte a11y checker couldn't
+verify at compile time, producing a build warning — fixed by giving the
+non-clickable branch a static `role="listitem" tabindex="-1"` instead of
+conditional `undefined`s. Phase 1 delta audit otherwise clean: no dangling
+references survived the ChangelogView→TimeTravelView swap, Tauri CSP is
+genuinely enabled (not just claimed — confirmed a real restrictive policy
+in tauri.conf.json), App Lock/recovery-code secrets are salted-hashed and
+never logged or stored in plaintext, no new `eval`/`Function`/raw
+`innerHTML`, `{@html}` sites all either fixed internal constants or
+properly escaped, and the audited try/catch+showError() invariant holds
+across every new mutation call site (QuickAdd, Time Travel, recurring-task
+reset path in db.ts). No dead code, no new duplication, no npm dependency
+changes to reassess.
+Next pass due: **after v5.3.0 ships**, continuing the every-3-releases
 cadence from there — see docs/ROADMAP.md's sequencing table, which has
 these same points marked inline.

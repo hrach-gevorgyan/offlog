@@ -1,6 +1,6 @@
 # Offlog Roadmap
 
-Current version: **v4.28.0**. Everything below is a candidate, not a
+Current version: **v5.0.0**. Everything below is a candidate, not a
 commitment. Items are ordered roughly by value-for-effort within each
 track. Before starting any item, re-check it against the current code —
 this document describes intent, not state.
@@ -260,6 +260,15 @@ z-index — blocks Tab/screen-reader access to the app underneath, not only
 the visual). Locks on cold launch plus after an idle/backgrounded timeout
 (1/5/15/30 min, Settings → App Lock). UI gate only, not data encryption —
 see DECISIONS.md.
+
+"Forgot PIN" went through two revisions after shipping (2026-07-19, owner
+feedback): v1's confirm-and-clear button was invisible (a z-index bug —
+the shared `ConfirmDialog` renders below the lock screen), and once fixed
+was still a real bypass reachable with zero PIN knowledge ("it is just
+removing pin... like when there is wall as block of road but in middle
+there is door u just open and go"). Replaced with a genuine one-time
+recovery code (shown once at PIN setup, salted-hash stored like the PIN
+itself) — see DECISIONS.md for the full reasoning.
 
 Biometric (fingerprint/face) unlock is the deliberately-deferred second
 half: no Capacitor plugin is wired in yet. There's no Ionic-official
