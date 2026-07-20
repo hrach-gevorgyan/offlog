@@ -81,11 +81,22 @@ hitting the wall?** If not communicated, that's a C10 (plain-language)
 gap, not a new engineering question.
 
 ### S4. Host machine wiped or replaced — do paired phones silently orphan?
-**Resolved (code-read, 2026-07-20)**: identity (`sync-host.json`) and the
-actual CouchDB data both live under `app_data_dir`, and both already
-survive a normal uninstall/reinstall (moved there specifically to fix
-this in an earlier pass) — only a full OS-profile wipe takes out both
-together. Separately, a real bug was found and fixed in the same session:
+**Fully closed, verified live (2026-07-20)**: identity (`sync-host.json`)
+and the actual CouchDB data both live under `app_data_dir`. Simulated a
+real uninstall/reinstall — deleted the ~152 MB resource-dir binary bundle
+entirely (the exact thing an NSIS uninstall removes), left `app_data_dir`
+untouched, relaunched. Result: **byte-for-byte identical** `_all_docs`
+response before and after (180 docs, 112 tasks, nothing lost/regenerated),
+and identical identity (same port/password/node name/cookie) — a
+previously-paired phone needs zero re-pairing after a normal reinstall.
+The relaunch happened to exercise `couchdb_dir()`'s own documented
+fallback path (bootstrapping a fresh binary copy when the resource-dir
+copy is missing), an even stronger test than a plain reinstall would be,
+and it still worked correctly. Only a full wipe of the Windows user's
+roaming profile itself (not a normal uninstall/reinstall) can still
+orphan a paired phone.
+
+Separately, a real bug was found and fixed in the same overall review:
 when a phone's stored host `uuid` no longer matches anything on the LAN
 (the host genuinely was wiped, or the phone paired with the wrong
 device), `discovery.ts`'s `findPairedHostAddress()` used to silently
@@ -94,10 +105,7 @@ ignore any non-matching advertisement and just time out to `null` forever
 all. Now `reresolveHost()` surfaces a `staleHostAlert` store the moment it
 sees a *different* Offlog host but can't find the paired one, shown as an
 actionable "re-pair?" tooltip/badge on the Sidebar sync button instead of
-the generic "cannot reach sync server" message. **Still open**: no live
-test of an actual `offlog-desktop` reinstall exists yet — the code-level
-persistence claim above should get a real end-to-end check before relying
-on it further.
+the generic "cannot reach sync server" message.
 
 ### S5. Intentional host migration (user buys a new PC) — no guided flow exists
 Today's only answer is presumably `offlog-desktop/scripts/reset-dev-env.ps1`-

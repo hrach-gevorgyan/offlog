@@ -73,8 +73,14 @@ nicer for its owner to use, or does it just make it bigger?
   copies. `scanConflicts()` now auto-resolves those specific conflicts
   whenever one side is still provably the untouched default — see
   IDEAS.md's S2 entry (closed) for the full writeup.
-- **Still open**: S4's identity-persistence claim needs a live reinstall
-  test, S3/S5 are docs-only gaps — see IDEAS.md.
+- **S4 verified live — done 2026-07-20.** Simulated a real uninstall/
+  reinstall (deleted the resource-dir binary bundle, kept `app_data_dir`);
+  identity and data both survived byte-for-byte identical — a previously-
+  paired phone needs zero re-pairing after a normal reinstall. See
+  IDEAS.md's S4 entry (closed) for the full writeup.
+- **Still open**: S3/S5 are docs-only gaps — see IDEAS.md. All of this
+  session's sync-topology scenarios (S1-S6) are now either fixed,
+  verified, or reduced to a documentation task.
 - **Next up:** the still-open verification/docs items above, then a
   final bug/cleanup sweep before the actual GitHub push.
 
