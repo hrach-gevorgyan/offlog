@@ -294,6 +294,14 @@ goes — confirm it compiles/looks right by reading the code and running
 `cap sync`, then say a Studio rebuild is needed to actually test it,
 rather than invoking Gradle.
 
+**The Android `release` build type's `signingConfig` currently points at
+AGP's public debug keystore** (set in v5.4.4 purely so Android Studio's Run
+button can install a `release`-type build locally) — this is not a real
+release signing key. Before any actual Play Store packaging/distribution,
+a real key must be generated and wired in first (tracked in
+docs/ROADMAP.md's Track C, item C3 — Play Store); don't let a
+debug-keystore-signed `release` APK go out as a real release build.
+
 1. `npm run build` — must succeed with **zero warnings**
 2. `npx tsc --noEmit -p .` — clean
 3. `npm test` — clean

@@ -984,7 +984,24 @@ function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc
   return { column_id: firstColId, due_date: nextDate, reminder_at: nextReminder, checklist: resetChecklist };
 }
 
-export async function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
+// Serializes concurrent updateTask() calls on the same doc id. Without this,
+// two overlapping get-then-put calls (e.g. notifications.ts's fire-and-forget
+// reminder_at clear racing a real edit on the same task) can both read the
+// same starting rev and one loses to "Document update conflict" -- caught
+// intermittently by tests/notifications.test.ts. Chaining onto the previous
+// call's promise (success or failure) makes every writer see the previous
+// writer's result before starting its own get(), regardless of whether
+// callers await updateTask() themselves.
+const _taskWriteQueues = new Map<string, Promise<unknown>>();
+
+export function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
+  const prev = _taskWriteQueues.get(id) ?? Promise.resolve();
+  const run = prev.then(() => updateTaskImpl(id, changes), () => updateTaskImpl(id, changes));
+  _taskWriteQueues.set(id, run.catch(() => {}));
+  return run;
+}
+
+async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(id);
 
   // Resolve project once -- needed both to detect "moved into the last

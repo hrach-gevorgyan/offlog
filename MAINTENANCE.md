@@ -264,6 +264,25 @@ clears the biometric flag too, no new `{@html}`/`eval`/`innerHTML`, `npm
 audit` unchanged from prior passes (same dev-tooling/test-only
 advisories). `SettingsPanel.svelte` flagged again at 1881 lines (was 1141
 three passes ago) — same shared-CSS blocker, still deliberately deferred.
+Last pass: v5.4.6 (2026-07-20 — thirteenth run, delta-scoped since v5.4.0,
+covering v5.4.1-v5.4.5's rapid live-device bugfix batches). Baselines all
+green (build/tsc/test/cargo build). Found and fixed one real race:
+`notifications.ts`'s `fireWebNotification()` cleared `reminder_at` via an
+un-awaited `updateTask(...).catch(()=>{})`; since `updateTask` was a plain
+get-then-put with no compare-and-swap, a second concurrent `updateTask` on
+the same task could read a stale rev and throw "Document update conflict"
+— reproduced intermittently (~1/4 runs) in `tests/notifications.test.ts`.
+Fixed at the root in `db.ts` by serializing all `updateTask()` calls per
+task id through a small write queue (`updateTask` now chains onto
+`updateTaskImpl` via `_taskWriteQueues`), rather than patching just the
+one call site — 5/5 clean reruns of the previously-flaky test afterward.
+Also extracted `KanbanBoard.svelte`'s repeated touch-drag-state reset into
+one `resetTouchDragState()` helper, and added a release-checklist note in
+CLAUDE.md flagging that the Android `release` build type is currently
+signed with AGP's debug keystore (v5.4.4, local-dev convenience only) and
+must not ship as a real Play Store build before C3's real signing key
+exists. No dead code, no dependency changes, security checklist and `npm
+audit` unchanged from prior passes.
 Next pass due: **after v5.7.0 ships**, continuing the every-3-releases
 cadence from there — see docs/ROADMAP.md's sequencing table, which has
 these same points marked inline.

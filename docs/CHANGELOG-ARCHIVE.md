@@ -85,3 +85,8 @@ history, not the only remaining record.
 | 2.5.0 | Brighter/higher-contrast palette, `duplicateTask()` + Duplicate button, consistent "Status" wording, FAB visibility fix | `v2.5.0` |
 | 2.4.1 | Extracted shared `utils.ts`, removed dead code, global `.scrim` class, error toast on failed DB writes | `v2.4.1` |
 | 2.4 | Dashboard set as home screen, responsive layouts, last-view persistence, first Android APK | `v2.4` |
+
+<!-- New rows appended below by rotation from CHANGELOG.md; not chronological with the table above yet — fine, git tag is the source of truth -->
+| 5.2.2 | Android cleanup, 6 items from a heavy audit: dead google-services classpath, unadapted scaffold tests, orphaned activity_main.xml, unused Gradle vars, unused widget color/string resources | `v5.2.2` |
+| 5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets | `v5.2.1` |
+| 5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) | `v5.2.0` |

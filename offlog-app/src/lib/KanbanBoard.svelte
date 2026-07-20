@@ -314,6 +314,13 @@
     }
   }
 
+  function resetTouchDragState() {
+    touchTask = null;
+    dragTask = null;
+    dragOverColId = null;
+    dragOverIndex = null;
+  }
+
   async function onTouchEnd() {
     if (touchGhost) { touchGhost.remove(); touchGhost = null; }
     if (!touchTask) return;
@@ -337,10 +344,7 @@
         showError('Failed to move task. Please try again.');
       }
     }
-    touchTask = null;
-    dragTask = null;
-    dragOverColId = null;
-    dragOverIndex = null;
+    resetTouchDragState();
   }
 
   // v5.4.2 bug (owner-reported live testing, 2026-07-21): "shadow of old
@@ -354,10 +358,7 @@
   // state without committing whatever column it happened to be over.
   function onTouchCancel() {
     if (touchGhost) { touchGhost.remove(); touchGhost = null; }
-    touchTask = null;
-    dragTask = null;
-    dragOverColId = null;
-    dragOverIndex = null;
+    resetTouchDragState();
   }
 
   // Belt-and-suspenders for the same bug: touchGhost is appended straight
