@@ -243,10 +243,19 @@ export async function getStorageBreakdown(): Promise<StorageBreakdown> {
   return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length };
 }
 
+// v5.6.2 cleanup: getDashboardData()/searchAllTasks()/getRecentlyModifiedTasks()
+// each independently built this identical Set to exclude an archived
+// project's leaked done tasks (see archiveProject()'s own comment for why
+// those can still carry archived:false) -- one shared helper instead of
+// three copies of the same line.
+function getActiveProjectIds(allProjects: ProjectDoc[]): Set<string> {
+  return new Set(allProjects.map(p => p._id!));
+}
+
 export async function getDashboardData() {
   const [allProjects, allSpaces] = await Promise.all([getProjects(), getSpaces()]);
   const all = await getAllTasksRaw();
-  const activeProjectIds = new Set(allProjects.map(p => p._id!));
+  const activeProjectIds = getActiveProjectIds(allProjects);
   // archiveProject() only sweeps a project's non-done tasks into
   // archived:true (done tasks are deliberately left alone -- see its own
   // comment), so without this a done task from an archived project would
@@ -311,7 +320,7 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
   if (!query.trim()) return [];
   const q = query.trim().toLowerCase();
   const [all, allProjects, allSpaces] = await Promise.all([getAllTasksRaw(), getProjects(), getSpaces()]);
-  const activeProjectIds = new Set(allProjects.map(p => p._id!));
+  const activeProjectIds = getActiveProjectIds(allProjects);
   // Excludes an archived project's leftover done tasks the same way
   // getDashboardData() does -- see its comment for why they'd otherwise
   // still be findable here.
@@ -1255,7 +1264,7 @@ export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return (
 // cross-project query rather than reusing what's already loaded.
 export async function getRecentlyModifiedTasks(limit = 3): Promise<TaskDoc[]> {
   const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
-  const activeProjectIds = new Set(allProjects.map(p => p._id!));
+  const activeProjectIds = getActiveProjectIds(allProjects);
   // Same archived-project leak as getDashboardData() -- a task from an
   // archived project can stay archived:false (see archiveProject()'s
   // comment) and would otherwise still show up in Sidebar's Recent list.
