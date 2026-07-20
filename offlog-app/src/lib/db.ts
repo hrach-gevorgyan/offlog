@@ -381,10 +381,86 @@ function markError(err: any) {
   notify();
 }
 
+// Content shape a still-untouched default doc from seedIfEmpty() has —
+// compared field-by-field (ignoring _id/_rev/updated_at/source, which
+// always legitimately differ between two independently-seeded installs)
+// to tell a genuinely pristine copy apart from one the user actually
+// edited (renamed, recolored, reordered, or customized statuses on).
+const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
+  'space:unsorted': (d) => d.name === 'Unsorted' && d.color === '#6B7280' && d.position === 0,
+  'space:personal': (d) => d.name === 'Personal' && d.color === '#10B981' && d.position === 1,
+  'space:work':     (d) => d.name === 'Work' && d.color === '#3B82F6' && d.position === 2,
+  'project:draft':  (d) => d.name === 'Draft' && d.space_id === 'space:unsorted' && d.position === 0
+                         && d.default_view === 'kanban' && JSON.stringify(d.columns) === JSON.stringify(DEFAULT_COLS),
+};
+
+// S2 (docs/IDEAS.md's sync-topology questions, 2026-07-20): confirmed live
+// against a real 180-doc dataset — clearLocalSeedBeforeFirstPair() only
+// helps when THIS device's own copy of a fixed default id is still
+// pristine; it can't know or fix the *other* side's copy. A phone with
+// real accumulated history (which skips that guard, since it has real
+// tasks) pairing against a PC whose own defaults were never touched still
+// forks genuine, un-mergeable revision trees on these same fixed ids the
+// moment they sync — the same bug clearLocalSeedBeforeFirstPair() was
+// built for, just from the opposite direction, and CouchDB's deterministic
+// winner isn't guaranteed to prefer the real content over the pristine
+// throwaway. Rather than trying to pre-empt every ordering before pairing,
+// this cleans up *after* the fact, symmetrically, regardless of which side
+// ends up holding the pristine loser (or winner) — a revision on one of
+// these 4 known ids that still exactly matches seedIfEmpty()'s pristine
+// shape is provably worthless, so it's discarded with no user interaction.
+// A revision that's been genuinely customized is never guessed at — this
+// only recognizes "nobody ever touched this one," never merges two real
+// edits, matching this app's existing declined-3-way-merge stance (see
+// DECISIONS.md).
+async function autoResolvePristineDefaultConflicts(): Promise<void> {
+  for (const id of Object.keys(PRISTINE_DEFAULTS)) {
+    let doc: any;
+    try { doc = await db.get(id, { conflicts: true } as any); } catch { continue; }
+    const losingRevs: string[] = doc._conflicts ?? [];
+    if (!losingRevs.length) continue;
+    const isPristine = PRISTINE_DEFAULTS[id];
+
+    if (isPristine(doc)) {
+      // The kept revision is the untouched default — if exactly one
+      // losing revision is a real edit, adopt it as the new current
+      // instead of silently keeping the throwaway one just because
+      // PouchDB's deterministic pick happened to favor it. More than one
+      // genuinely different edit is left alone — same "don't guess
+      // between two real edits" rule as everywhere else in this app.
+      const edited: string[] = [];
+      for (const rev of losingRevs) {
+        try {
+          const losing = await db.get(id, { rev } as any) as any;
+          if (!isPristine(losing)) edited.push(rev);
+        } catch { /* already gone — ignore */ }
+      }
+      if (edited.length === 1) {
+        const winning = await db.get(id, { rev: edited[0] } as any) as any;
+        await db.put({ ...winning, _id: id, _rev: doc._rev });
+        for (const rev of losingRevs) { try { await db.remove(id, rev); } catch {} }
+      } else if (edited.length === 0) {
+        // every side is still pristine — doesn't matter which one "wins"
+        for (const rev of losingRevs) { try { await db.remove(id, rev); } catch {} }
+      }
+    } else {
+      // The kept revision already has real content — just discard
+      // whichever losing revisions are still provably untouched.
+      for (const rev of losingRevs) {
+        try {
+          const losing = await db.get(id, { rev } as any) as any;
+          if (isPristine(losing)) await db.remove(id, rev);
+        } catch { /* already gone — ignore */ }
+      }
+    }
+  }
+}
+
 // Exported for store.ts's init() — conflict state should be visible from
 // a cold start too, not only after the next sync settles (see its own
 // call site comment).
 export async function scanConflicts(): Promise<number> {
+  await autoResolvePristineDefaultConflicts();
   // PouchDB only ever attaches conflict info to the fetched doc's own
   // _conflicts field, never to row.value — so include_docs is required, and
   // row.doc._conflicts (not row.value.conflicts) is the field to read. A

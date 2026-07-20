@@ -10,7 +10,7 @@ import db, {
   importJSON,
   pruneOldLogs, pruneOldDeletedTasks,
   invalidateTaskCache,
-  seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair,
+  seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair, scanConflicts,
   createSpace, updateSpace, reorderSpaces, deleteSpace,
   getTagCounts, renameTag, deleteTagEverywhere,
 } from '../src/lib/db';
@@ -767,5 +767,53 @@ describe('clearLocalSeedBeforeFirstPair()', () => {
 
   it('is a no-op when nothing has ever been seeded', async () => {
     await expect(clearLocalSeedBeforeFirstPair()).resolves.toBeUndefined();
+  });
+});
+
+// S2 (docs/IDEAS.md's sync-topology questions, 2026-07-20): confirmed live
+// against a real 180-doc dataset — clearLocalSeedBeforeFirstPair() only
+// protects the side that's still pristine; a phone with real accumulated
+// history (which skips that guard) pairing against a PC whose own
+// defaults were never touched still forks real conflicts on the fixed
+// seed ids. scanConflicts() now auto-resolves those specific conflicts
+// when one side is provably still the untouched default.
+describe('scanConflicts() auto-resolving pristine default conflicts', () => {
+  it('normalizes a pristine-vs-real-edit conflict on a fixed default id to the real edit, regardless of which revision PouchDB initially favored', async () => {
+    await seedIfEmpty();
+    const pristine = await db.get<any>('space:unsorted');
+    const parentGen = parseInt(pristine._rev.split('-')[0], 10);
+    const nextGen = parentGen + 1;
+    await db.bulkDocs(
+      [
+        { ...pristine, _rev: `${nextGen}-11111111111111111111111111111111` }, // still pristine
+        { ...pristine, name: 'Errands', color: '#000000', _rev: `${nextGen}-22222222222222222222222222222222` }, // real edit
+      ],
+      { new_edits: false } as any,
+    );
+
+    await scanConflicts();
+
+    const doc = await db.get<any>('space:unsorted', { conflicts: true } as any);
+    expect(doc._conflicts ?? []).toHaveLength(0);
+    expect(doc.name).toBe('Errands');
+  });
+
+  it('leaves two genuinely different real edits as a real, unresolved conflict', async () => {
+    await seedIfEmpty();
+    const pristine = await db.get<any>('space:unsorted');
+    const parentGen = parseInt(pristine._rev.split('-')[0], 10);
+    const nextGen = parentGen + 1;
+    await db.bulkDocs(
+      [
+        { ...pristine, name: 'Errands', _rev: `${nextGen}-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` },
+        { ...pristine, name: 'Chores', _rev: `${nextGen}-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` },
+      ],
+      { new_edits: false } as any,
+    );
+
+    await scanConflicts();
+
+    const doc = await db.get<any>('space:unsorted', { conflicts: true } as any);
+    expect(doc._conflicts ?? []).toHaveLength(1);
   });
 });

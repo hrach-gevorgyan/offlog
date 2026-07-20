@@ -63,10 +63,18 @@ nicer for its owner to use, or does it just make it bigger?
   paired one; now surfaces an actionable "re-pair?" state instead.
   Neither touches the actual replication path (`db.ts`'s `sync()` call) —
   see DECISIONS.md for why a bigger rethink (a new sync protocol, a
-  client/host election system) isn't the right call here. **Still open**:
-  S2 needs a live pairing test with real data, S4's identity-persistence
-  claim needs a live reinstall test, S3/S5 are docs-only gaps — see
-  IDEAS.md.
+  client/host election system) isn't the right call here.
+- **S2 verified live + a real bug fixed — done 2026-07-20.** Paired a real
+  `offlog-desktop` host against a realistic 180-doc dataset; replication
+  itself is sound (zero data loss). Found and fixed a real gap:
+  `clearLocalSeedBeforeFirstPair()` only protected a device with zero
+  tasks, so a phone with real history still forked genuine conflicts on
+  the 4 fixed default-seed ids against a host's own independently-seeded
+  copies. `scanConflicts()` now auto-resolves those specific conflicts
+  whenever one side is still provably the untouched default — see
+  IDEAS.md's S2 entry (closed) for the full writeup.
+- **Still open**: S4's identity-persistence claim needs a live reinstall
+  test, S3/S5 are docs-only gaps — see IDEAS.md.
 - **Next up:** the still-open verification/docs items above, then a
   final bug/cleanup sweep before the actual GitHub push.
 

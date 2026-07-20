@@ -43,14 +43,34 @@ block) — and the full "join as client" mode remains a real option if
 actual demand ever shows up.
 
 ### S2. Mobile-only for weeks, then install a PC later — does history merge cleanly?
-Mechanically this is probably fine: the freshly-installed host starts
-with an empty CouchDB, and PouchDB's `sync()` (bidirectional, not a
-one-way push) should just replicate the phone's entire existing history
-up to the empty host with no real conflict (empty vs. populated isn't a
-conflict, it's a one-sided fast-forward). **This has never been tested
-live end-to-end — is that assumption actually correct, and does the
-pairing UI make it obvious to the user that "everything I already have"
-is what's about to get copied up, not lost?**
+**Verified live, 2026-07-20**: a real `offlog-desktop` host (fresh
+embedded CouchDB, own auto-seeded defaults) paired against a realistic
+180-doc dataset (112 tasks, 13 projects, 4 spaces, 49 log entries — one
+default space at revision 15, i.e. genuinely heavily edited). Every task,
+project, log entry, and space replicated correctly both ways with zero
+data loss, content verified byte-for-byte identical on both sides.
+
+**Real bug found and fixed in the same session**: `clearLocalSeedBeforeFirstPair()`
+only clears a device's own copy of the 4 fixed default-seed ids
+(`space:unsorted`/`personal`/`work`, `project:draft`) when that device has
+*zero* tasks — so a phone with real accumulated history (exactly this
+scenario) skips the guard, and its independently-created copies of those
+same fixed ids genuinely conflict with the host's own freshly-seeded
+copies. Confirmed live: 3 real conflicts, correctly reported by the app's
+own `scanConflicts()`. Not data loss (CouchDB's deterministic winner
+happened to pick the real content over the throwaway default every time
+in this run, and the existing conflict-resolution UI already handles it),
+but not guaranteed either — a coin-flip that just happened to land right.
+
+Fixed at the root: `scanConflicts()` now auto-resolves conflicts on those
+4 known ids whenever one side is provably still the untouched pristine
+default (matches `seedIfEmpty()`'s exact shape) — discarding a pristine
+loser, or adopting a real edit that lost to a still-pristine "winner."
+Two genuinely different real edits on both sides are still left as a real
+conflict for manual resolution, same as always — this never guesses
+between two real edits, only recognizes "nobody ever touched this one."
+Covered by 2 new tests in `tests/db.test.ts`. **Closed** — no longer an
+open question.
 
 ### S3. Two phones, no PC, want a shared workspace — already an accepted gap
 Per DECISIONS.md's mesh-sync-declined entry, this is intentional, not a
