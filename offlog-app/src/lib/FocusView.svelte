@@ -163,10 +163,17 @@
     }
   }
 
-  $: allDone = lock !== null && lockedTasks.length > 0 && lockedTasks.every(t => {
+  // v5.4.1 bug (owner-reported live testing, 2026-07-20): markDone() was
+  // correctly updating the task (confirmed via Time Travel) but the row
+  // itself never reflected it -- no isDone check anywhere in the
+  // template, so a "done" task looked identical to an untouched one and
+  // stayed clickable forever. allDone already computed this per-task
+  // inline; extracted so the row template can reuse it too.
+  function isDone(t: TaskDoc): boolean {
     const proj = $projects.find(p => p._id === t.project_id);
-    return proj && t.column_id === proj.columns.at(-1)?.id;
-  });
+    return !!proj && t.column_id === proj.columns.at(-1)?.id;
+  }
+  $: allDone = lock !== null && lockedTasks.length > 0 && lockedTasks.every(isDone);
 
   // B41 — the picker uses the full available space as a scattered
   // "brainstorm corkboard" of varying-size note cards rather than a
@@ -217,6 +224,7 @@
         <div class="empty">All {lockedTasks.length} committed today — nicely done. Come back tomorrow, or reset to pick more.</div>
       {/if}
       {#each lockedTasks as t (t._id)}
+        {@const done = isDone(t)}
         <div
           class="task-row"
           role="button"
@@ -224,10 +232,10 @@
           on:click={() => openDetail(t)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
         >
-          <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
+          <button class="circle" class:done on:click|stopPropagation={() => markDone(t)} title={done ? 'Done' : 'Mark done'} aria-label={done ? 'Done' : 'Mark done'} disabled={done}></button>
           <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
           <div class="task-body">
-            <span class="task-title">{t.title}</span>
+            <span class="task-title" class:done>{t.title}</span>
             <span class="proj-badge">{$projects.find(p => p._id === t.project_id)?.name ?? '—'}</span>
           </div>
         </div>
@@ -403,6 +411,8 @@
     transition: border-color .12s, background .12s; display: block;
   }
   .circle:hover { border-color: var(--accent); background: var(--hover); }
+  .circle.done { background: var(--success); border-color: var(--success); cursor: default; }
+  .task-title.done { text-decoration: line-through; color: var(--muted); }
 
   .check {
     width: 18px; height: 18px; border-radius: 5px;

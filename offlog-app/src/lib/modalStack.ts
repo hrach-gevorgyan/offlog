@@ -94,7 +94,8 @@ function ensureListening() {
 export function closeOnBack(close: CloseFn): CloseFn {
   ensureListening();
   const id = nextId++;
-  stack.push({ close, id });
+  const entry: Entry = { close, id };
+  stack.push(entry);
   history.pushState({ offlogLayer: true, offlogId: id }, '');
   // Guarded against firing twice for the same layer: every overlay can
   // reach requestClose() from more than one path (Escape, a scrim click,
@@ -110,6 +111,25 @@ export function closeOnBack(close: CloseFn): CloseFn {
     if (requested) return;
     requested = true;
     history.back();
+    // Fallback (owner-reported live testing, 2026-07-20: multiple X/Cancel
+    // buttons across different overlays stopped closing anything in the
+    // same session, requiring a full app restart to recover). history.back()
+    // is a request, not a guarantee -- Android WebView has been seen to
+    // occasionally not deliver the resulting 'popstate' at all, and this
+    // guard's own single-fire design means a stuck entry could never be
+    // retried. If popstate hasn't removed this entry shortly after asking
+    // it to, close it directly instead of waiting forever on an event that
+    // may never arrive. No effect on the normal case: by the time this
+    // fires, popstate has almost always already removed the entry, so
+    // stack.indexOf finds nothing and this is a no-op.
+    setTimeout(() => {
+      const idx = stack.indexOf(entry);
+      if (idx === -1) return;
+      while (stack.length > idx) {
+        const e = stack.pop();
+        e?.close();
+      }
+    }, 400);
   };
 }
 

@@ -15,7 +15,7 @@
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
-  import { showError } from './store';
+  import { showError, modalOpen } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -660,6 +660,14 @@
   // just come back from the OS "Alarms & reminders" settings screen.
   onMount(() => { if (isAndroid) checkExactAlarmPermission(); });
 
+  // v5.4.1 bug (owner-reported live testing, 2026-07-20): the floating
+  // Quick Add button only hides for CardDetail's modalOpen store (see
+  // CardDetail.svelte) -- Settings never set it, so the FAB stayed
+  // visible and clickable on top of the Settings overlay on every
+  // platform. Same on/off pattern as CardDetail.
+  onMount(() => modalOpen.set(true));
+  onDestroy(() => modalOpen.set(false));
+
   // B4 — guided import: parse + preview counts before writing anything,
   // instead of importing the instant a file is picked. `pendingImportDocs`
   // holds the parsed array between "file chosen" and "user confirms."
@@ -887,11 +895,28 @@
 
   $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
 
+  // v5.4.1 bug (owner-reported live testing, 2026-07-20): this was
+  // unconditional -- every tab shares one footer Save button, but every
+  // OTHER tab's settings already apply live on interaction (theme,
+  // reminders, App Lock, etc. all call their own setters directly, no
+  // buffering). Only syncUrl/credentialUser/credentialPass are buffered
+  // in local state waiting for Save. Reloading unconditionally meant
+  // clicking Save on e.g. Appearance forced a full page reload for no
+  // reason -- and with App Lock on, a reload re-triggers the cold-start
+  // lock check, which read as "Save opens the PIN screen" even though
+  // nothing PIN-related was touched. Now only reloads if the sync
+  // URL/credentials actually changed.
   function saveSettings() {
-    setSyncUrl(syncUrl);
-    setSyncCredentials(credentialUser, credentialPass);
+    const { user: storedUser, pass: storedPass } = getSyncCredentials();
+    const syncChanged = syncUrl !== getSyncUrl() || credentialUser !== storedUser || credentialPass !== storedPass;
+    if (syncChanged) {
+      setSyncUrl(syncUrl);
+      setSyncCredentials(credentialUser, credentialPass);
+      requestClose();
+      location.reload();
+      return;
+    }
     requestClose();
-    location.reload();
   }
 </script>
 
@@ -1204,11 +1229,11 @@
                   {:else}
                     <label class="field-label">
                       New PIN
-                      <input type="password" inputmode="numeric" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
+                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
                     </label>
                     <label class="field-label">
                       Confirm PIN
-                      <input type="password" inputmode="numeric" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
+                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
                     </label>
                     <label class="field-label">
                       Hint (optional)
@@ -1231,11 +1256,11 @@
                 {:else}
                   <label class="field-label">
                     New PIN
-                    <input type="password" inputmode="numeric" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
+                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
                   </label>
                   <label class="field-label">
                     Confirm PIN
-                    <input type="password" inputmode="numeric" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
+                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
                   </label>
                   <label class="field-label">
                     Hint (optional)

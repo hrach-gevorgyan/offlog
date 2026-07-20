@@ -20,7 +20,16 @@
          slight cream tint; dark mode (values-night) is unaffected and
          intentionally still the exact app.css values. -->
     <color name="colorWidgetBg">#FBF8F2</color>      <!-- warm cream, not app.css's exact surface token -->
-    <color name="colorWidgetSurface">#F1EDE3</color> <!-- flat tint one step off colorWidgetBg -->
+    <!-- v5.4.1 bug (owner-reported live testing, 2026-07-20): "light mode
+         still has contrast issues, dark is good". Root cause wasn't icon
+         color (already fixed, B48/v4.28.0) -- it was this token being
+         only ~10/255 per channel off colorWidgetBg, so the two round
+         action buttons barely stood out from the card itself in light
+         mode. Dark mode's equivalent gap (colorWidgetBg #101218 vs this
+         token #242934) is 2-3x bigger in relative terms, which is why
+         only light mode read as flat. Deepened to a real, visible step
+         while staying in the same warm-cream family. -->
+    <color name="colorWidgetSurface">#E6DCC8</color>
     <color name="colorWidgetAccent">#5457E0</color>  <!-- app.css accent token, light -->
     <color name="colorWidgetText">#1F2937</color>    <!-- app.css text token, light -->
     <color name="colorWidgetMuted">#4B5563</color>   <!-- app.css muted token, light -->

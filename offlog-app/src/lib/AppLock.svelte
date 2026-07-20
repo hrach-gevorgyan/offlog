@@ -211,6 +211,13 @@
     border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); outline: none;
     transition: border-color .12s;
+    /* text-align:center visually centers the typed dots, but leaves the
+       blinking text caret jumping to the middle of the field as you type
+       -- reads as broken (owner-reported, 2026-07-20). Hiding the caret
+       is the standard fix for centered PIN/OTP-style inputs; the digits
+       themselves are still the only visible feedback, same as any native
+       PIN screen. */
+    caret-color: transparent;
   }
   .lock-input:focus { border-color: var(--accent); }
   .lock-input:disabled { opacity: .6; }

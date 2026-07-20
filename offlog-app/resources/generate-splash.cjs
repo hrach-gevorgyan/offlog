@@ -38,6 +38,30 @@ async function splashAt(width, height) {
     .png().toBuffer();
 }
 
+// v5.4.1 bug (owner-reported live testing, 2026-07-20): "logo is shrunk"
+// on the REAL splash screen -- API 31+ (targetSdk 36, nearly every real
+// device) doesn't use drawable*/splash.png at all, it uses styles.xml's
+// windowSplashScreenAnimatedIcon, which pointed at @mipmap/ic_launcher_
+// foreground. That asset is correctly sized FOR THE LAUNCHER (mark at
+// 66% of canvas, generate-icons.cjs -- the safe-zone convention adaptive
+// icons need so the OS's own circular/squircle mask never clips the
+// mark). But AndroidX's SplashScreen API applies its own additional
+// inset on top of whatever icon it's given, assuming the same
+// safe-zone convention -- stacking two rounds of padding shrinks an
+// already-padded foreground-only image well below where it reads as a
+// normal logo. Fix: a dedicated splash-only icon, transparent background
+// (the system composites it over windowSplashScreenBackground itself),
+// mark filling nearly the whole canvas instead of the 66% launcher ratio,
+// so after the API's own inset it lands at a normal, legible size.
+async function splashIcon(size) {
+  const markSize = Math.round(size * 0.92);
+  const mark = await whiteSilhouette(markSize);
+  const offset = Math.round((size - markSize) / 2);
+  return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: mark, left: offset, top: offset }])
+    .png().toBuffer();
+}
+
 async function main() {
   const dirs = fs.readdirSync(ANDROID_RES).filter(d => fs.existsSync(path.join(ANDROID_RES, d, 'splash.png')));
   for (const dir of dirs) {
@@ -46,7 +70,11 @@ async function main() {
     const buf = await splashAt(width, height);
     await sharp(buf).toFile(file);
   }
-  console.log(`Regenerated ${dirs.length} legacy splash.png variants from source-logo.svg.`);
+
+  const iconBuf = await splashIcon(480);
+  await sharp(iconBuf).toFile(path.join(ANDROID_RES, 'drawable', 'splash_icon.png'));
+
+  console.log(`Regenerated ${dirs.length} legacy splash.png variants and drawable/splash_icon.png from source-logo.svg.`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
