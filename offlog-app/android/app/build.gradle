@@ -7,8 +7,8 @@ android {
         applicationId "com.offlog.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 85
-        versionName "5.4.3"
+        versionCode 86
+        versionName "5.4.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,14 +17,27 @@ android {
         }
     }
     buildTypes {
+        // signingConfig points at AGP's built-in debug keystore (owner
+        // request, 2026-07-21: "only main version" — release had no
+        // signingConfig at all, so Android Studio's Run button couldn't
+        // install it ("Activity class ... does not exist" was really an
+        // unsigned/uninstallable build, not a real missing-activity
+        // problem). This is the standard local-dev pattern for running
+        // the release build type directly without a production signing
+        // key — NOT what a real Play Store release build should ship
+        // with; a real release needs its own signing key when that's
+        // actually being prepared (see ROADMAP.md's C1/public-release
+        // items). applicationId here has no suffix — unlike debug's
+        // .debug suffix (see below), so this installs as com.offlog.app.
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
         // Owner-reported, 2026-07-20: a debug build previously shared the
         // same applicationId (com.offlog.app) as a real install, so every
         // Android Studio test run overwrote/shared storage with whatever
-        // "real" data was already on the device -- installing side by
+        // "real" data was already on the device — installing side by
         // side now instead, same fix shape as `is_debug_build`-gating on
         // the desktop side (see offlog-desktop's lib.rs).
         debug {
