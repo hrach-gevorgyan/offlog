@@ -1,9 +1,11 @@
 # Offlog
 
-Version 4.28.0 · A free, open-source, local-first task manager. No account,
-no telemetry, no subscription, ever. Runs in the browser, as a native
-Android app, and as a Windows desktop app — all three share the exact
-same codebase and sync with each other over your own network.
+A free, open-source, local-first task manager. No account, no telemetry,
+no subscription, ever. Runs in the browser, as a native Android app, and
+as a Windows desktop app — all three share the exact same codebase and
+sync with each other over your own network. (Current version:
+[docs/CHANGELOG.md](docs/CHANGELOG.md) — not restated here so this page
+doesn't go stale every release.)
 
 ---
 
@@ -59,7 +61,7 @@ vision — the same workflow this project was built with.
 
 ## Features
 
-Built up over hundreds of commits of real daily use — some features
+Built up over 170+ commits of real daily use — some features
 came from the original plan, plenty came from just noticing something
 was missing while using the app for real. Full detail on all of it:
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent releases) and
@@ -93,7 +95,14 @@ was missing while using the app for real. Full detail on all of it:
 
 Local phone-to-PC (and PC-to-PC) sync was the entire reason this project
 started: one task list, always current, on every device you own, without
-handing it to a cloud provider.
+handing it to a cloud provider. Most self-hosted, local-first apps stop at
+"sync is possible if you set up your own server" — that's a real barrier
+for anyone who isn't comfortable running one. Offlog's Windows app *is*
+the server: it bundles CouchDB, configures itself on first launch, and
+your phone finds it on the network automatically. The technical pieces
+(CouchDB replication, mDNS discovery, a paired-handshake credential
+exchange) aren't novel on their own — packaging all three together so a
+non-technical person never sees any of them is the actual point.
 
 - Live bidirectional replication over CouchDB's protocol — a write on
   one device shows up on the other in real time whenever both are

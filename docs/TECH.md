@@ -1,6 +1,8 @@
 # Offlog — Technical Documentation
 
-Version 4.28.0 · Local-first task management for browser, Android, and PC (Tauri)
+Local-first task management for browser, Android, and PC (Tauri) — see
+[CHANGELOG.md](CHANGELOG.md) for the current version, not restated here
+since this file doesn't change every release.
 
 > Contributor conventions, invariants, and the release checklist live in
 > [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
