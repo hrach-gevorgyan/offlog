@@ -98,6 +98,7 @@ see the "Maintenance pass log" section at the bottom.
 <!-- New rows appended below by rotation from CHANGELOG.md; not chronological with the table above yet — fine, git tag is the source of truth -->
 | 5.2.2 | Android cleanup, 6 items from a heavy audit: dead google-services classpath, unadapted scaffold tests, orphaned activity_main.xml, unused Gradle vars, unused widget color/string resources | `v5.2.2` |
 | 5.4.0 | App Launcher (B57) — biometric "nothing enrolled" now jumps straight to Android's enrollment settings screen instead of just telling the user to go find it | `v5.4.0` |
+| 5.4.1 | Maintenance pass (twelfth run) — fixed `hapticToggle()` firing before the task mutation was confirmed in 4 places (List/Focus/Deadlines/Kanban) | `v5.4.1` |
 | 5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets | `v5.2.1` |
 | 5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) | `v5.2.0` |
 | 5.3.0 | Haptics (B58) — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, new shared `src/lib/haptics.ts` | `v5.3.0` |

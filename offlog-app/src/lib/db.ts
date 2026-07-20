@@ -246,7 +246,13 @@ export async function getStorageBreakdown(): Promise<StorageBreakdown> {
 export async function getDashboardData() {
   const [allProjects, allSpaces] = await Promise.all([getProjects(), getSpaces()]);
   const all = await getAllTasksRaw();
-  const tasks = all.filter(d => !d.deleted && !d.archived);
+  const activeProjectIds = new Set(allProjects.map(p => p._id!));
+  // archiveProject() only sweeps a project's non-done tasks into
+  // archived:true (done tasks are deliberately left alone -- see its own
+  // comment), so without this a done task from an archived project would
+  // still show up here as pinned/overdue/today with no project to resolve
+  // its name against (owner-reported "dash" bug, 2026-07-21).
+  const tasks = all.filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id));
   const today = new Date().toISOString().slice(0, 10);
 
   const byProject: Record<string, { total: number; pinned: number; overdue: number; lastColId: string }> = {};
@@ -304,13 +310,15 @@ export async function getDashboardData() {
 export async function searchAllTasks(query: string): Promise<(TaskDoc & { project_name: string; space_id: string })[]> {
   if (!query.trim()) return [];
   const q = query.trim().toLowerCase();
-  const all = await getAllTasksRaw();
+  const [all, allProjects, allSpaces] = await Promise.all([getAllTasksRaw(), getProjects(), getSpaces()]);
+  const activeProjectIds = new Set(allProjects.map(p => p._id!));
+  // Excludes an archived project's leftover done tasks the same way
+  // getDashboardData() does -- see its comment for why they'd otherwise
+  // still be findable here.
   const tasks = all.filter(d =>
-    !d.deleted && !d.archived &&
+    !d.deleted && !d.archived && activeProjectIds.has(d.project_id) &&
     (d.title.toLowerCase().includes(q) || d.tags?.some((t: string) => t.includes(q)) || d.body?.toLowerCase().includes(q))
   );
-  const allProjects = await getProjects();
-  const allSpaces = await getSpaces();
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
   const spaceCache: Record<string, SpaceDoc> = Object.fromEntries(allSpaces.map(s => [s._id!, s]));
   // Owner-requested (2026-07-20, after a real same-name-different-space
@@ -1246,9 +1254,13 @@ export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return (
 // store.ts only hold the active project's tasks, so this needs its own
 // cross-project query rather than reusing what's already loaded.
 export async function getRecentlyModifiedTasks(limit = 3): Promise<TaskDoc[]> {
-  const all = await getAllTasksRaw();
+  const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
+  const activeProjectIds = new Set(allProjects.map(p => p._id!));
+  // Same archived-project leak as getDashboardData() -- a task from an
+  // archived project can stay archived:false (see archiveProject()'s
+  // comment) and would otherwise still show up in Sidebar's Recent list.
   return all
-    .filter(d => !d.deleted && !d.archived)
+    .filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id))
     .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
     .slice(0, limit);
 }
@@ -1519,11 +1531,14 @@ export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: stri
   const result = [];
   for (const t of tasks) {
     const proj = projCache[t.project_id];
-    const lastColId = proj?.columns.at(-1)?.id;
+    // Project archived (or missing) -- fully hidden from the agenda, same
+    // as everywhere else; archived project details live in Settings only.
+    if (!proj) continue;
+    const lastColId = proj.columns.at(-1)?.id;
     // Already marked done (sitting in the last/"Completed" column) — leave
     // it off the agenda instead of showing it forever after "Mark done".
     if (lastColId && t.column_id === lastColId) continue;
-    result.push({ ...t, project_name: proj?.name });
+    result.push({ ...t, project_name: proj.name });
   }
   return result.sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
 }
@@ -1540,7 +1555,10 @@ export async function getOpenTasksForFocusPicker(): Promise<(TaskDoc & { project
   const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
   const lastColOf = (pid: string) => projCache[pid]?.columns.at(-1)?.id;
-  const notDone = (t: TaskDoc) => !t.deleted && !t.archived && t.column_id !== lastColOf(t.project_id);
+  // Requires the project to still be active (in projCache) -- otherwise an
+  // archived project's leftover done tasks would resolve lastColOf() to
+  // undefined and read as "not done" here, making them pickable in Focus.
+  const notDone = (t: TaskDoc) => !t.deleted && !t.archived && !!projCache[t.project_id] && t.column_id !== lastColOf(t.project_id);
   return all
     .filter(notDone)
     .map(t => ({ ...t, project_name: projCache[t.project_id]?.name }))
@@ -1557,8 +1575,14 @@ export async function getAllActiveTasksWithReminders(): Promise<TaskDoc[]> {
   const lastColByProject: Record<string, string | undefined> = Object.fromEntries(
     allProjects.map(p => [p._id, p.columns.at(-1)?.id])
   );
+  // hasOwnProperty (not just an undefined check on the value) distinguishes
+  // "project exists but has zero columns" (key present, value undefined --
+  // keep the reminder) from "project doesn't exist or is archived" (key
+  // absent -- an archived project's leftover done tasks must not still
+  // fire reminders).
   return all.filter(d =>
     !d.deleted && !d.archived && d.reminder_at &&
+    Object.prototype.hasOwnProperty.call(lastColByProject, d.project_id) &&
     d.column_id !== lastColByProject[d.project_id]
   );
 }
