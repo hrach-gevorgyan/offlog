@@ -3,7 +3,7 @@
   import { fly, fade, slide } from 'svelte/transition';
   import { panelFly, scrimFade, popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs } from './db';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes } from './db';
   import { reloadTasks, showError, modalOpen } from './store';
   import { requestPermission, permissionState } from './notifications';
   import { confirmAction } from './confirm';
@@ -13,7 +13,7 @@
   import CalendarPicker from './CalendarPicker.svelte';
   import CustomSelect from './CustomSelect.svelte';
   import { getDefaultReminderTime } from '../config';
-  import { fmtTime } from './utils';
+  import { fmtTime, findDuplicateChecklistItems } from './utils';
   import { hapticToggle } from './haptics';
 
   export let task: TaskDoc;
@@ -58,6 +58,25 @@
 
   let title = task.title;
   let body = task.body;
+
+  // Owner-requested (2026-07-20) duplicate nudges — never block saving,
+  // see utils.ts's own header comment for the full reasoning.
+  let duplicateTitleHint = '';
+  $: checkTitleDuplicate(title, project._id, task._id);
+  async function checkTitleDuplicate(t: string, projectId: string, excludeId?: string) {
+    if (!t.trim()) { duplicateTitleHint = ''; return; }
+    const matches = await findTasksByTitleInProject(projectId, t, excludeId);
+    duplicateTitleHint = matches.length ? `Another task titled "${t.trim()}" already exists in this project.` : '';
+  }
+
+  let similarNotesHint = '';
+  $: checkNotesSimilarity(body, task._id);
+  async function checkNotesSimilarity(text: string, excludeId?: string) {
+    const matches = await findSimilarNotes(excludeId ?? null, text);
+    similarNotesHint = matches.length
+      ? `This looks similar to notes on "${matches[0].title}" (${Math.round(matches[0].similarity * 100)}% word overlap).`
+      : '';
+  }
   let priority = task.priority;
   // CustomSelect only takes string values — priority stays 1|2|3 for
   // save()/everything else, this is just a bound proxy for the picker.
@@ -106,6 +125,7 @@
   // with every other field in this form.
   let checklist: { text: string; done: boolean }[] = (task.checklist ?? []).map(i => ({ ...i }));
   let checklistInput = '';
+  $: duplicateChecklistItems = findDuplicateChecklistItems(checklist);
   let tagInput = '';
   let tagSuggestions: string[] = [];
   let otherTagSuggestions: string[] = [];
@@ -319,6 +339,7 @@
       </button>
       <button class="close-btn" on:click={() => requestClose()}>✕</button>
     </div>
+    {#if duplicateTitleHint}<p class="dup-name-hint">{duplicateTitleHint}</p>{/if}
 
     <div class="fields-row">
       <label>
@@ -454,6 +475,9 @@
             on:keydown={onChecklistKey}
             on:blur={() => setTimeout(addChecklistItem, 150)}
           />
+          {#if duplicateChecklistItems.length}
+            <p class="dup-name-hint">Repeated item{duplicateChecklistItems.length > 1 ? 's' : ''}: {duplicateChecklistItems.join(', ')}</p>
+          {/if}
         </div>
       {/if}
     </div>
@@ -510,6 +534,7 @@
           {#if body.length > NOTES_SOFT_LIMIT}
             <div class="notes-counter">{body.length} characters</div>
           {/if}
+          {#if similarNotesHint}<p class="dup-name-hint">{similarNotesHint}</p>{/if}
         </div>
       {/if}
     </div>
@@ -739,6 +764,7 @@
     font-family: var(--mono); font-size: .68rem; color: var(--faint);
     text-align: right; margin-top: 3px;
   }
+  .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
   /* B49: the combined Due date/Reminder disclosure — same row treatment
      as Checklist/Custom fields/Notes above, plus a small calendar icon

@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { panelFly, scrimFade, popScale } from './motion';
-  import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe } from './db';
+  import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe, findSpacesByName } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
@@ -20,6 +20,15 @@
   let newColor = '#6366f1';
   let newIcon = DEFAULT_SPACE_ICON_KEY;
   let adding = false;
+  // Owner-requested (2026-07-20) duplicate-name nudge — never blocks, see
+  // db.ts's findSpacesByName() for the full reasoning.
+  let duplicateSpaceHint = '';
+  async function checkSpaceNameDuplicate(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) { duplicateSpaceHint = ''; return; }
+    const matches = await findSpacesByName(trimmed);
+    duplicateSpaceHint = matches.length ? `A space named "${trimmed}" already exists.` : '';
+  }
 
   // 'new' for the not-yet-created row, or a space's own _id — only one
   // icon picker open at a time, closed on any outside click.
@@ -94,7 +103,15 @@
     }
   }
 
+  // Same real race found in Sidebar.svelte's project-add flow
+  // (2026-07-20): Escape can also blur the input, and blur fires its own
+  // submit independently of the Escape keydown handler's cancel — whichever
+  // the browser runs first, the other still executes after. Set before
+  // cancelling so a genuine cancel always wins over a same-tick blur-submit.
+  let cancellingAddSpace = false;
+
   async function addSpace() {
+    if (cancellingAddSpace) return;
     const name = newName.trim();
     if (!name) { adding = false; return; }
     try {
@@ -106,6 +123,7 @@
       showError('Failed to create space. Please try again.');
     }
     adding = false;
+    duplicateSpaceHint = '';
   }
 </script>
 
@@ -193,12 +211,14 @@
           autofocus
           placeholder="Space name…"
           bind:value={newName}
-          on:keydown={(e) => { if (e.key === 'Enter') addSpace(); if (e.key === 'Escape') adding = false; }}
+          on:input={() => checkSpaceNameDuplicate(newName)}
+          on:keydown={(e) => { if (e.key === 'Enter') addSpace(); if (e.key === 'Escape') { cancellingAddSpace = true; adding = false; duplicateSpaceHint = ''; } }}
           on:blur={addSpace}
         />
       </div>
+      {#if duplicateSpaceHint}<p class="dup-name-hint">{duplicateSpaceHint}</p>{/if}
     {:else}
-      <button class="add-btn" on:click={() => { adding = true; newName = ''; newColor = '#6366f1'; }}>+ New space</button>
+      <button class="add-btn" on:click={() => { adding = true; newName = ''; newColor = '#6366f1'; cancellingAddSpace = false; }}>+ New space</button>
     {/if}
   </div>
 </div>
@@ -273,6 +293,7 @@
     flex: 1; font-size: 14px; padding: .3rem .4rem; border-radius: 6px;
     border: 1.5px solid var(--accent); background: var(--bg); color: var(--text);
   }
+  .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: -4px 0 8px; line-height: 1.3; }
 
   .reorder-btns { display: flex; gap: 2px; flex-shrink: 0; }
   .reorder-btns button {

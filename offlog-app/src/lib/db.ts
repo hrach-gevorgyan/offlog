@@ -9,6 +9,7 @@
 import PouchDBFind from 'pouchdb-find';
 import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled, getDefaultReminderTime } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
+import { wordOverlapSimilarity } from './utils';
 
 (PouchDB as any).plugin(PouchDBFind);
 
@@ -309,8 +310,25 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
     (d.title.toLowerCase().includes(q) || d.tags?.some((t: string) => t.includes(q)) || d.body?.toLowerCase().includes(q))
   );
   const allProjects = await getProjects();
+  const allSpaces = await getSpaces();
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
-  return tasks.map(t => ({ ...t, project_name: projCache[t.project_id]?.name ?? '—' }));
+  const spaceCache: Record<string, SpaceDoc> = Object.fromEntries(allSpaces.map(s => [s._id!, s]));
+  // Owner-requested (2026-07-20, after a real same-name-different-space
+  // "Draft" project caused real confusion): disambiguate with the space
+  // name whenever more than one project shares a name — a flat
+  // cross-project list like this is exactly where that collision is
+  // otherwise invisible.
+  const nameCounts = new Map<string, number>();
+  for (const p of allProjects) {
+    const key = p.name.trim().toLowerCase();
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+  }
+  return tasks.map(t => {
+    const proj = projCache[t.project_id];
+    const isDup = proj && (nameCounts.get(proj.name.trim().toLowerCase()) ?? 0) > 1;
+    const spaceName = isDup ? spaceCache[proj.space_id]?.name : undefined;
+    return { ...t, project_name: proj ? (spaceName ? `${proj.name} · ${spaceName}` : proj.name) : '—' };
+  });
 }
 
 export async function clearLogs(): Promise<void> {
@@ -680,6 +698,17 @@ export async function getSpaces(): Promise<SpaceDoc[]> {
   return r.rows.map(r => r.doc!).sort((a, b) => a.position - b.position);
 }
 
+// Owner-requested (2026-07-20) duplicate-name nudge — see utils.ts's own
+// header comment for the full reasoning. Case-insensitive/trimmed match,
+// never blocking; the caller (Sidebar's "+ New space") decides whether to
+// show a dismissible hint.
+export async function findSpacesByName(name: string, excludeId?: string): Promise<SpaceDoc[]> {
+  const key = name.trim().toLowerCase();
+  if (!key) return [];
+  const all = await getSpaces();
+  return all.filter(s => s._id !== excludeId && s.name.trim().toLowerCase() === key);
+}
+
 export async function createSpace(name: string, color: string, icon?: string): Promise<SpaceDoc> {
   const existing = await getSpaces();
   const position = existing.length ? Math.max(...existing.map(s => s.position)) + 1 : 0;
@@ -754,6 +783,17 @@ export async function getArchivedProjects(): Promise<ProjectDoc[]> {
   const r = await db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true });
   return r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted && !!d.archived)
     .sort((a, b) => a.position - b.position);
+}
+
+// Owner-requested (2026-07-20) duplicate-name nudge — cross-space on
+// purpose (the exact "two 'Draft' projects" case that prompted this was
+// two different spaces), so the caller can show which space(s) already
+// have this name rather than silently letting it happen unremarked.
+export async function findProjectsByName(name: string, excludeId?: string): Promise<ProjectDoc[]> {
+  const key = name.trim().toLowerCase();
+  if (!key) return [];
+  const all = await getProjects();
+  return all.filter(p => p._id !== excludeId && p.name.trim().toLowerCase() === key);
 }
 
 export async function createProject(spaceId: string, name: string): Promise<ProjectDoc> {
@@ -979,6 +1019,41 @@ export async function getTasksForProject(projectId: string): Promise<TaskDoc[]> 
     const all = await getAllTasksRaw();
     return all.filter(d => d.project_id === projectId && !d.deleted && !d.archived);
   }
+}
+
+// Owner-requested (2026-07-20) duplicate-name nudge — scoped to *within
+// one project* on purpose, unlike findProjectsByName/findSpacesByName:
+// task titles repeat far more often and far less meaningfully across a
+// whole workspace ("Follow up", "Review") than project/space names do, so
+// a global check would just be noise. Same title, same project is a much
+// stronger accidental-duplicate signal.
+export async function findTasksByTitleInProject(projectId: string, title: string, excludeId?: string): Promise<TaskDoc[]> {
+  const key = title.trim().toLowerCase();
+  if (!key) return [];
+  const tasks = await getTasksForProject(projectId);
+  return tasks.filter(t => t._id !== excludeId && t.title.trim().toLowerCase() === key);
+}
+
+// Owner-requested (2026-07-20) fuzzy duplicate-notes nudge — global scan
+// (unlike the task-title check above), since notes worth flagging as
+// accidental duplicates plausibly live in a different project than where
+// they were first written (e.g. a task copy-pasted into the wrong
+// project). Skips short bodies (<20 chars) — word-overlap similarity is
+// meaningless noise on a one-liner, everything looks "similar" to
+// everything else at that length. Local word-overlap only (utils.ts's
+// wordOverlapSimilarity) -- no network call, same reasoning as
+// nlpParse.ts's local-regex stance (see DECISIONS.md).
+export async function findSimilarNotes(taskId: string | null, body: string, threshold = 0.6): Promise<{ taskId: string; title: string; similarity: number }[]> {
+  const text = body.trim();
+  if (text.length < 20) return [];
+  const all = await getAllTasksRaw();
+  const out: { taskId: string; title: string; similarity: number }[] = [];
+  for (const t of all) {
+    if (t._id === taskId || t.deleted || !t.body || t.body.trim().length < 20) continue;
+    const sim = wordOverlapSimilarity(text, t.body);
+    if (sim >= threshold) out.push({ taskId: t._id!, title: t.title, similarity: sim });
+  }
+  return out.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
 }
 
 // `overrides` lets a caller (Quick Add's NLP parser, or the recurring-task

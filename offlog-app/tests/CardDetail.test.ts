@@ -17,6 +17,8 @@ vi.mock('../src/lib/db', () => ({
   duplicateTask: (...args: unknown[]) => duplicateTask(...args),
   getAllTags: vi.fn().mockResolvedValue([]),
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
+  findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
+  findSimilarNotes: vi.fn().mockResolvedValue([]),
 }));
 
 const reloadTasks = vi.fn().mockResolvedValue(undefined);

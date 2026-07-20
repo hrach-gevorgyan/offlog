@@ -3,7 +3,7 @@
   import db, {
     createProject, createProjectFromTemplate, deleteProject, updateProject, syncState, syncNow,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
-    getRecentlyModifiedTasks,
+    getRecentlyModifiedTasks, findProjectsByName,
   } from './db';
   import { confirmAction } from './confirm';
   import { staleHostAlert } from './discovery';
@@ -37,6 +37,20 @@
   let conflictCount = syncState.conflictCount;
   let newProjectName = '';
   let addingProjectFor: string | null = null;
+  // Owner-requested (2026-07-20) duplicate-name nudge — never blocks
+  // creation, just a dismissible-by-typing-something-else hint. Checked
+  // on every keystroke rather than debounced: findProjectsByName() is a
+  // single in-memory array scan (getProjects() is already cached-cheap
+  // at this app's scale), not worth debouncing.
+  let duplicateProjectHint = '';
+  async function checkProjectNameDuplicate(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) { duplicateProjectHint = ''; return; }
+    const matches = await findProjectsByName(trimmed);
+    if (!matches.length) { duplicateProjectHint = ''; return; }
+    const spaceNames = matches.map(p => $spaces.find(s => s._id === p.space_id)?.name ?? 'another space');
+    duplicateProjectHint = `A project named "${trimmed}" already exists in ${[...new Set(spaceNames)].join(', ')}.`;
+  }
   // B8: template mode is a separate explicit step (not folded into the
   // blur-to-submit input above) — the template CustomSelect's own click
   // would otherwise blur the name input and prematurely submit a blank
@@ -245,7 +259,19 @@
     dispatch('openTask', { task, project });
   }
 
+  // Real bug found live (2026-07-20, while testing the duplicate-name
+  // hint below): Escape's own keydown handler calls closeAddProject(),
+  // but Escape also blurs the input in some browsers, and blur fires
+  // its own doAddProject() call independently -- whichever one the
+  // browser happens to run first, the *other* still executes after,
+  // so "Escape to cancel" could still silently create a project (a real
+  // empty duplicate got created this way testing this exact feature).
+  // Set synchronously in the Escape handler before closeAddProject()
+  // runs, checked by the blur handler so a cancel always wins.
+  let cancellingAddProject = false;
+
   async function doAddProject(spaceId: string) {
+    if (cancellingAddProject) return;
     const name = newProjectName.trim();
     if (!name) { closeAddProject(); return; }
     if (templateMode && !templateProjectId) return; // Create button is disabled for this case too; belt and suspenders
@@ -263,6 +289,7 @@
   }
 
   function closeAddProject() {
+    duplicateProjectHint = '';
     addingProjectFor = null;
     templateMode = false;
     templateProjectId = '';
@@ -376,9 +403,11 @@
                 <input autofocus class="new-project-input" bind:value={newProjectName}
                   placeholder="Project name…"
                   enterkeyhint="done"
-                  on:keydown={(e) => { if (e.key === 'Enter') doAddProject(space._id); if (e.key === 'Escape') closeAddProject(); }}
+                  on:input={() => checkProjectNameDuplicate(newProjectName)}
+                  on:keydown={(e) => { if (e.key === 'Enter') doAddProject(space._id); if (e.key === 'Escape') { cancellingAddProject = true; closeAddProject(); } }}
                   on:blur={() => { if (!templateMode) doAddProject(space._id); }}
                 />
+                {#if duplicateProjectHint}<p class="dup-name-hint">{duplicateProjectHint}</p>{/if}
                 {#if !templateMode}
                   {#if $projects.length > 0}
                     <!-- mousedown|preventDefault: clicking this must not blur the name
@@ -404,7 +433,7 @@
                 {/if}
               </div>
             {:else}
-              <button class="add-project-btn" on:click={() => { addingProjectFor = space._id; newProjectName = ''; }}>+ New project</button>
+              <button class="add-project-btn" on:click={() => { addingProjectFor = space._id; newProjectName = ''; cancellingAddProject = false; }}>+ New project</button>
             {/if}
           </div>
         {/if}
@@ -653,6 +682,7 @@
     background: var(--surface); color: var(--text); width: 100%;
   }
   .new-project-input:focus { outline: none; }
+  .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 0; line-height: 1.3; }
 
   .template-toggle {
     background: none; border: none; cursor: pointer;

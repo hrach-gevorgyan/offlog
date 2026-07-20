@@ -110,6 +110,43 @@ export function fmtFullTimestamp(ts: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d);
 }
 
+// Owner-requested (2026-07-20, after spotting a real duplicate "Draft"
+// project from two independently-seeded devices merging): a lightweight
+// "did you mean to do this" nudge for accidental duplicates, never a
+// blocking rule — same-name projects/spaces/tasks and similar notes are
+// all legitimate, this only helps notice when they weren't intentional.
+
+// Pure, local word-overlap similarity (Jaccard over normalized word sets)
+// — no network call, no new dependency, same reasoning as nlpParse.ts's
+// local-regex-not-an-LLM stance (see DECISIONS.md): notes are often the
+// most sensitive text in the app, and "is this similar to that" doesn't
+// need a network round-trip to answer well enough for a soft hint.
+export function wordOverlapSimilarity(a: string, b: string): number {
+  const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+  const setA = words(a), setB = words(b);
+  if (!setA.size || !setB.size) return 0;
+  let shared = 0;
+  for (const w of setA) if (setB.has(w)) shared++;
+  return shared / new Set([...setA, ...setB]).size;
+}
+
+// Exact-duplicate check for a task's checklist — cheap, unambiguous
+// (unlike notes, a checklist item is short enough that "similar" isn't
+// a useful signal, only "identical" is). Returns the duplicated text
+// values (case-insensitive, trimmed), not indices, since CardDetail just
+// needs to know *what* text repeats to show a hint.
+export function findDuplicateChecklistItems(items: { text: string }[]): string[] {
+  const seen = new Set<string>();
+  const dupes = new Set<string>();
+  for (const item of items) {
+    const key = item.text.trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) dupes.add(item.text.trim());
+    seen.add(key);
+  }
+  return [...dupes];
+}
+
 export function filterTasks<T extends { title: string; column_id: string; priority: number; tags: string[] }>(
   tasks: T[],
   search: string,

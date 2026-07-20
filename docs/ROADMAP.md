@@ -130,6 +130,23 @@ topology questions for the broader context this came out of). Low-risk,
 self-contained UX fix: either hide the button until a host is paired, or
 swap it for a "Set up sync" CTA when unpaired. Not yet implemented.
 
+### B60. Duplicate-name/content nudges — shipped 2026-07-20
+Owner-reported after spotting a real duplicate "Draft" project. Non-
+blocking hints (never a hard rule) for: duplicate project/space names
+(Sidebar's "+ New project", SpaceManager's "+ New space", cross-space on
+purpose), duplicate task titles within one project (Quick Add,
+CardDetail), exact-duplicate checklist items (CardDetail), and fuzzy
+similar-notes detection via a local word-overlap check, no network call
+(CardDetail). Global Search now disambiguates same-named projects with a
+space qualifier; Quick Add's project picker already grouped by space.
+Also fixed a real, separate bug found while testing this: Escape on the
+new-project/new-space inputs could still silently create an empty
+project/space because Escape's cancel and the input's blur-triggered
+auto-save could both fire independently.
+**Not built, could be a follow-up**: Command Palette doesn't yet
+disambiguate same-named projects the way Global Search now does — lower
+priority since it's a smaller, less-often-flat-listed surface.
+
 **Parked** (revisit post-release only if daily use demands it):
 B28 (rethink "last column = done"), B33 (sub-projects) — both touch the
 data model/UI broadly enough to need a real design conversation first;

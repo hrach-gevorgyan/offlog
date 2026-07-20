@@ -13,17 +13,34 @@ import db, {
   seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair, scanConflicts,
   createSpace, updateSpace, reorderSpaces, deleteSpace,
   getTagCounts, renameTag, deleteTagEverywhere,
+  findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
 } from '../src/lib/db';
+import { findDuplicateChecklistItems, wordOverlapSimilarity } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
 
 // Full wipe between tests — db.ts's `db` is a module-level singleton (real
 // app behavior: one database for the whole session), so test isolation has
 // to come from clearing it out rather than from a fresh instance per test.
+//
+// Found live (2026-07-20) while adding the duplicate-name-detection tests:
+// a conflict-manufacturing test (`new_edits: false`) leaves losing leaf
+// revisions behind that `db.allDocs({ include_docs: true })` never sees
+// (it only returns each doc's current winner) — bulkDocs-deleting just
+// that winner leaves the loser alive, so the next test's plain `db.put()`
+// on the same fixed id (no `_rev`, since it thinks the doc doesn't exist)
+// throws "Document update conflict". Explicitly removing every
+// `_conflicts` revision too, not just the winner, closes that gap for any
+// future conflict test, not just the one that happened to trip it.
 beforeEach(async () => {
   localStorage.clear();
-  const all = await db.allDocs({ include_docs: true });
+  const all = await db.allDocs({ include_docs: true, conflicts: true });
   const dels = all.rows.map(r => ({ ...(r.doc as any), _deleted: true }));
   if (dels.length) await db.bulkDocs(dels);
+  for (const row of all.rows as any[]) {
+    for (const rev of row.doc?._conflicts ?? []) {
+      try { await db.remove(row.id, rev); } catch { /* already gone */ }
+    }
+  }
   invalidateTaskCache();
 });
 
@@ -815,5 +832,71 @@ describe('scanConflicts() auto-resolving pristine default conflicts', () => {
 
     const doc = await db.get<any>('space:unsorted', { conflicts: true } as any);
     expect(doc._conflicts ?? []).toHaveLength(1);
+  });
+});
+
+// Owner-requested (2026-07-20, after spotting a real duplicate "Draft"
+// project from two independently-seeded devices merging): a non-blocking
+// "did you mean to do this" nudge for accidental duplicates across
+// spaces/projects/tasks/checklist items/notes — never a hard rule, see
+// utils.ts's own header comment.
+describe('duplicate-name detection helpers', () => {
+  it('findSpacesByName matches case-insensitively and trims, excluding a given id', async () => {
+    const space = await seedSpace();
+    await createSpace('Work', '#000');
+    expect(await findSpacesByName('  work ')).toHaveLength(1);
+    expect(await findSpacesByName('Work', (await findSpacesByName('Work'))[0]._id)).toHaveLength(0);
+    expect(await findSpacesByName('Nonexistent')).toHaveLength(0);
+    expect(await findSpacesByName(space.name)).toHaveLength(1);
+  });
+
+  it('findProjectsByName matches across different spaces (the real "Draft" scenario)', async () => {
+    await seedSpace();
+    const work = await createSpace('Work', '#000');
+    const p1 = await createProject('space:unsorted', 'Draft');
+    await createProject(work._id!, 'Draft');
+    const matches = await findProjectsByName('draft');
+    expect(matches).toHaveLength(2);
+    expect(await findProjectsByName('draft', p1._id)).toHaveLength(1);
+  });
+
+  it('findTasksByTitleInProject is scoped to one project, not global', async () => {
+    await seedSpace();
+    const p1 = await createProject('space:unsorted', 'A');
+    const p2 = await createProject('space:unsorted', 'B');
+    await createTask(p1._id!, 'space:unsorted', p1.columns[0].id, 'Follow up');
+    await createTask(p2._id!, 'space:unsorted', p2.columns[0].id, 'Follow up');
+    expect(await findTasksByTitleInProject(p1._id!, 'follow up')).toHaveLength(1);
+    expect(await findTasksByTitleInProject(p1._id!, 'something else')).toHaveLength(0);
+  });
+
+  it('findSimilarNotes skips short bodies and flags similar-but-not-identical text', async () => {
+    await seedSpace();
+    const proj = await createProject('space:unsorted', 'A');
+    const t1 = await createTask(proj._id!, 'space:unsorted', proj.columns[0].id, 'Task one');
+    await updateTask(t1._id!, { body: 'Call the plumber about the leaking kitchen sink before Friday' });
+    const t2 = await createTask(proj._id!, 'space:unsorted', proj.columns[0].id, 'Task two');
+
+    // Too short to be meaningful — must not flag.
+    expect(await findSimilarNotes(t2._id!, 'short note')).toHaveLength(0);
+
+    // Similar (shares most words) but not identical — should flag t1.
+    const similar = await findSimilarNotes(t2._id!, 'Call the plumber about the leaking kitchen sink before Monday');
+    expect(similar.some(m => m.taskId === t1._id)).toBe(true);
+
+    // Excluding the task's own id must never flag itself.
+    const self = await findSimilarNotes(t1._id!, 'Call the plumber about the leaking kitchen sink before Friday');
+    expect(self.some(m => m.taskId === t1._id)).toBe(false);
+  });
+
+  it('wordOverlapSimilarity is 0 for disjoint text and 1 for identical text', () => {
+    expect(wordOverlapSimilarity('hello world', 'goodbye moon')).toBe(0);
+    expect(wordOverlapSimilarity('hello world', 'hello world')).toBe(1);
+  });
+
+  it('findDuplicateChecklistItems finds case-insensitive/trimmed repeats only', () => {
+    const items = [{ text: 'Buy milk' }, { text: '  buy milk  ' }, { text: 'Buy eggs' }];
+    expect(findDuplicateChecklistItems(items)).toEqual(['buy milk']);
+    expect(findDuplicateChecklistItems([{ text: 'A' }, { text: 'B' }])).toEqual([]);
   });
 });

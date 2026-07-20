@@ -3,7 +3,7 @@
   import { fade } from 'svelte/transition';
   import { quickAddPop, scrimFade } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
-  import { createTask } from './db';
+  import { createTask, findTasksByTitleInProject } from './db';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
@@ -34,6 +34,18 @@
   // doesn't fight the user's explicit choice.
   $: parsed = parseQuickAdd(title, $projects);
   $: if (parsed.projectId && !projectManuallyChosen) projectId = parsed.projectId;
+
+  // Owner-requested (2026-07-20) duplicate-title nudge — never blocks
+  // Quick Add's fast create-and-close flow, just a dismissible-by-typing
+  // hint. Scoped to the target project only, same reasoning as
+  // findTasksByTitleInProject()'s own comment in db.ts.
+  let duplicateTitleHint = '';
+  $: checkTitleDuplicate(parsed.title, projectId);
+  async function checkTitleDuplicate(t: string, pid: string) {
+    if (!t || !pid) { duplicateTitleHint = ''; return; }
+    const matches = await findTasksByTitleInProject(pid, t);
+    duplicateTitleHint = matches.length ? `A task titled "${t}" already exists in this project.` : '';
+  }
 
   function onProjectChange() { projectManuallyChosen = true; }
 
@@ -156,6 +168,8 @@
     </div>
   {/if}
 
+  {#if duplicateTitleHint}<p class="dup-name-hint">{duplicateTitleHint}</p>{/if}
+
   <div class="row">
     <div class="proj-select-wrap">
       <CustomSelect options={projectOptions} bind:value={projectId} placement="up" on:change={onProjectChange} />
@@ -220,6 +234,7 @@
      rendered when something was actually recognized, so a plain-text
      quick add (the common case) shows nothing extra. */
   .parsed-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
+  .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: -4px 0 0; line-height: 1.3; }
   .chip {
     font-family: var(--mono); font-size: 10.5px; font-weight: 600;
     letter-spacing: .02em; padding: 3px 8px; border-radius: 20px;
