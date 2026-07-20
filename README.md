@@ -24,13 +24,14 @@ trusted, co-located group: a family, a small team, or one office sharing
 a single board over the same network. It is **not** a remote/multi-tenant
 product — there are no accounts, no per-user permissions, and syncing
 only ever happens on the same local network. See
-[docs/GOAL.md](docs/GOAL.md) for the exact scope and why it stops there.
+[docs/DECISIONS.md](docs/DECISIONS.md)'s opening manifesto for the exact
+scope and why it stops there.
 
 It's also built in the open, on purpose. Every decision — including the
 ones that got reversed — is written down:
-[docs/GOAL.md](docs/GOAL.md) (the mission), [docs/DECISIONS.md](docs/DECISIONS.md)
-(why the non-obvious choices were made, including the ones an outsider
-would reasonably ask "why not just—"), [docs/ROADMAP.md](docs/ROADMAP.md)
+[docs/DECISIONS.md](docs/DECISIONS.md) (the mission, plus why the
+non-obvious choices were made, including the ones an outsider would
+reasonably ask "why not just—"), [docs/ROADMAP.md](docs/ROADMAP.md)
 (what's planned and why), [docs/TECH.md](docs/TECH.md) (the real
 architecture), and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) going
 back to the first release.
@@ -58,12 +59,12 @@ vision — the same workflow this project was built with.
 
 ## Features
 
-Built up over 4.28.0 and 127+ commits of real daily use — some features
+Built up over hundreds of commits of real daily use — some features
 came from the original plan, plenty came from just noticing something
 was missing while using the app for real. Full detail on all of it:
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent releases) and
-[docs/CHANGELOG-ARCHIVE.md](docs/CHANGELOG-ARCHIVE.md) (everything
-older, one line per release).
+[docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)
+(everything older, one line per release).
 
 **Core task management**
 - Spaces & Projects — organize work into colored spaces, each holding
@@ -147,7 +148,7 @@ light — dead code removed, unused dependencies dropped, ~64MB of unused
 CouchDB internals stripped from the bundled binaries, bundle-size checks
 as part of the release routine. This isn't accidental; a maintenance
 pass runs every few releases specifically to catch bloat and regressions
-before they ship (see [MAINTENANCE.md](MAINTENANCE.md)).
+before they ship (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
 
 **Data, backup, and integrity**
 - Full Back up (with a scope selector) / Restore flow, JSON and CSV
@@ -166,7 +167,7 @@ before they ship (see [MAINTENANCE.md](MAINTENANCE.md)).
 - WCAG AA contrast audited and fixed across the palette
 
 No paid tier, no feature ever held back behind one — see
-[docs/GOAL.md](docs/GOAL.md) for why.
+[docs/DECISIONS.md](docs/DECISIONS.md)'s manifesto for why.
 
 ## Which build is "the app" for you
 
@@ -195,7 +196,7 @@ full automated test suite, and manual verification in both light and
 dark mode. On top of that, a dedicated maintenance pass runs every few
 releases specifically to catch dead code, missing error handling,
 accessibility regressions, and security gaps — logged in
-[MAINTENANCE.md](MAINTENANCE.md). Before the codebase's public release,
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md). Before the codebase's public release,
 it went through a full security audit and a complete git-history
 credential purge (see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public
 release" section for exactly what was found and how it was fixed) — this
@@ -256,13 +257,13 @@ Everything beyond this pitch lives in [docs/](docs/):
 
 | Document | What's in it |
 |---|---|
-| [docs/GOAL.md](docs/GOAL.md) | Why this project exists and what it's for |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Manifesto (why this project exists) + why non-obvious choices were made |
 | [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Planned work and the public-release path |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Why non-obvious architectural choices were made |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Current status and still-open planned work |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Recent version history in full detail |
-| [docs/CHANGELOG-ARCHIVE.md](docs/CHANGELOG-ARCHIVE.md) | Older releases, one line each |
-| [docs/QUESTIONS.md](docs/QUESTIONS.md) | Open questions worth outside input |
+| [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md) | Older releases, one line each, plus the full maintenance-pass log |
+| [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
+| [docs/IDEAS.md](docs/IDEAS.md) | Open questions and un-committed ideas worth outside input |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
 ## Contributing

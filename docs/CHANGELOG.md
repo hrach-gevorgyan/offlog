@@ -7,12 +7,16 @@ complete). Consolidated here 2026-07 as part of the documentation cleanup;
 both `README.md` and `docs/TECH.md` now link here instead of keeping their
 own copy. New entries go at the top, one row per released version.
 
-This table keeps the newest ~8 releases in full detail. Older releases are
-compressed to one line each in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHIVE.md)
-(git still has every full diff) — split out 2026-07 once this file's
-default-loaded size grew large enough to matter. When adding a new entry,
-move the oldest row here into the archive (compressed to one line) so this
-table stays roughly the same length release over release.
+This table keeps the newest **10** releases in full detail. Older releases
+are compressed to one line each in
+[archive/changelog-archive.md](archive/changelog-archive.md) (git still has
+every full diff; that folder also holds the full maintenance-pass log,
+moved out of MAINTENANCE.md 2026-07-20) — split out 2026-07 once this
+file's default-loaded size grew large enough to matter. When adding a new
+entry, move the oldest row here into the archive (compressed to one line)
+once this table exceeds 10 rows, so it stays roughly the same length
+release over release. Archive weekly, or whenever it's due, not on a fixed
+per-release schedule.
 
 | Version | Changes |
 |---|---|
@@ -24,4 +28,4 @@ table stays roughly the same length release over release.
 | **5.4.1** | **Maintenance pass (twelfth run)**, delta-scoped since v5.0.0 — covering biometric unlock, Privacy Screen, Clipboard, Haptics, App Launcher, and the Android cleanup. Found and fixed one real inconsistency: `hapticToggle()` fired *before* the task mutation was confirmed in 4 places (List/Focus/Deadlines' `markDone`, Kanban's `togglePin`) — a buzz would fire even if the save then failed, unlike the drag-drop haptic calls (already correct, firing only after `updateTask` succeeds). All 4 moved after the `await`. Everything else audited clean: all 5 new plugins from this arc genuinely used, no plaintext secrets in the 2 new localStorage flags, `clearAppLockPin()` correctly clears the biometric flag too, `npm audit` unchanged from prior passes. `SettingsPanel.svelte` flagged again at 1881 lines (was 1141 three passes ago) — same shared-CSS blocker, still deliberately deferred |
 | **5.4.0** | **App Launcher (B57)** — when App Lock's biometric toggle finds nothing enrolled, an "Open enrollment settings" button now jumps straight to Android's biometric enrollment screen (`android.settings.BIOMETRIC_ENROLL`, API 30+) instead of just telling the user to go find it themselves, falling back to the generic Security settings screen on older devices (API 24-29, this app's minSdk floor, where `BIOMETRIC_ENROLL` doesn't exist). Only shown for the specific "nothing enrolled" failure, not any other biometric error a settings trip wouldn't fix. Technical note: `@capacitor/app-launcher`'s `openUrl()` isn't documented to accept raw Settings intent-action strings, but its Android implementation falls through to `new Intent(url)` when the input isn't a URL or package name — confirmed by reading the plugin's own Android source rather than assumed. Still needs a live on-device check to confirm the right screen actually opens across real OEM skins |
 | **5.3.0** | **Haptics (B58)** — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, via a new shared `src/lib/haptics.ts` (centralizes the platform/setting gate in one place instead of re-checking at every call site). Wired into List/Focus/Deadlines' mark-done, CardDetail's checklist toggle, Kanban's pin toggle, and both Kanban drag paths — the HTML5 desktop one and, more importantly, the touch-based mobile one that's what actually runs on Android. No swipe actions exist in this codebase, so that part of the original scope didn't apply. New Settings → View & Accessibility toggle, Android only, **defaults on** — unlike biometric's security-driven opt-in default, there's no tradeoff to a vibration defaulting on, so it ships the way most native apps do |
-Older releases (v5.2.2 and earlier): [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHIVE.md).
+Older releases (v5.2.2 and earlier): [archive/changelog-archive.md](archive/changelog-archive.md).

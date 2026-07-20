@@ -3,18 +3,24 @@
 This file is the entry point for anyone (AI assistant or human) making
 changes — it stays at the repo root deliberately, since AI tooling only
 auto-loads a CLAUDE.md found there. Everything else lives in
-[docs/](docs/): [docs/GOAL.md](docs/GOAL.md) (why this project exists and
-what it's ultimately for — deliberately has no version/timeline, see
-ROADMAP.md for that), [docs/TECH.md](docs/TECH.md) (architecture),
-[docs/ROADMAP.md](docs/ROADMAP.md) (planned work and the public-release
-path),
-[docs/DECISIONS.md](docs/DECISIONS.md) (why non-obvious choices were made),
-[docs/CHANGELOG.md](docs/CHANGELOG.md) (version history — older releases
-compressed into [docs/CHANGELOG-ARCHIVE.md](docs/CHANGELOG-ARCHIVE.md)),
-and [docs/QUESTIONS.md](docs/QUESTIONS.md) (open questions). The
-maintenance-pass process/tracker lives in root [MAINTENANCE.md](MAINTENANCE.md)
-(checked only at a version bump, not every session — see below). User-facing
-pitch is the root [README.md](README.md).
+[docs/](docs/): [docs/DECISIONS.md](docs/DECISIONS.md) (opens with the
+project's manifesto — why this project exists and what it's ultimately
+for, deliberately no version/timeline, see ROADMAP.md for that — then a
+log of why non-obvious choices were made; merged GOAL.md into this file
+2026-07-20), [docs/TECH.md](docs/TECH.md) (architecture),
+[docs/ROADMAP.md](docs/ROADMAP.md) (current status and still-open work
+only — shipped/declined/parked history lives in
+[docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md)),
+[docs/CHANGELOG.md](docs/CHANGELOG.md) (newest ~10 releases — older ones
+plus the full maintenance-pass log compressed into
+[docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)),
+and [docs/IDEAS.md](docs/IDEAS.md) (open questions and un-committed ideas;
+merged the old QUESTIONS.md 2026-07-20). The maintenance-pass process
+lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
+its one-line current-pointer is checked at a version bump, not every
+session — see below; the full pass-by-pass history lives in
+docs/archive/changelog-archive.md). User-facing pitch is the root
+[README.md](README.md).
 
 **Mandatory, not optional: read the relevant document(s) above before
 making any change or moving forward on a request, and revise whichever of
@@ -25,21 +31,27 @@ document in this list, every session, no exceptions.
 
 **When to read which doc** (so "the relevant document(s)" isn't a blanket
 read-everything every time):
-- **GOAL.md** — before any scope/direction question ("should this be a
-  feature," "should this need an account/server," multi-user/remote-sync
-  proposals) — check it lines up with the stated mission before proposing.
+- **DECISIONS.md's manifesto** — before any scope/direction question
+  ("should this be a feature," "should this need an account/server,"
+  multi-user/remote-sync proposals) — check it lines up with the stated
+  mission before proposing.
 - **TECH.md** — touching architecture, the data model, sync internals, or
   Android platform behavior.
 - **ROADMAP.md** — starting a roadmap item, or making sequencing/scheduling
-  decisions.
-- **DECISIONS.md** — before any "why not X instead," or touching storage/
-  sync/business-model/distribution choices.
-- **QUESTIONS.md** — only when the task is itself one of the open
-  questions.
+  decisions. Archive shipped items into `docs/archive/roadmap-archive.md`
+  roughly weekly, or whenever the still-open section starts accumulating
+  shipped items again — don't let it regrow into a wall of history.
+- **DECISIONS.md's decisions log** — before any "why not X instead," or
+  touching storage/sync/business-model/distribution choices.
+- **IDEAS.md** — only when the task is itself one of the open
+  questions/ideas, or a new one worth recording comes up.
 - **CHANGELOG.md** — only at release time (the version-bump step), not per
-  code change.
+  code change. Move the oldest row into `docs/archive/changelog-archive.md`
+  once the table exceeds 10 rows.
 - **MAINTENANCE.md** — only when running an actual maintenance pass, or
-  checking whether one is due at a version bump.
+  checking whether one is due at a version bump (its current-pointer line
+  says last pass/next due — don't re-read the archive's full history for
+  this check).
 
 **Before proposing "why not just do X differently" — check
 docs/DECISIONS.md first.** Several non-obvious choices (PouchDB-as-UMD-
@@ -63,13 +75,15 @@ work needed. Concretely:
   straightforward logic fix doesn't need a live round-trip to prove itself.
 - **Read narrowly.** Use `Grep`/an `offset`+`limit` `Read` instead of
   reading a whole file when only a section is relevant.
-- **Rotating a CHANGELOG.md row into CHANGELOG-ARCHIVE.md**: don't re-read
-  either file in full every release. `Grep` for the row you're moving (or
-  the archive's table-header line) to confirm the anchor text, then use a
-  targeted `Edit` on each file — never a full-file `Read`+`Write` round
-  trip for what's a one-row move. Only touch the archive at all when
-  CHANGELOG.md's row count actually exceeds ~8; most releases don't need
-  a rotation.
+- **Rotating a CHANGELOG.md row into docs/archive/changelog-archive.md**:
+  don't re-read either file in full every release. `Grep` for the row
+  you're moving (or the archive's table-header line) to confirm the
+  anchor text, then use a targeted `Edit` on each file — never a full-file
+  `Read`+`Write` round trip for what's a one-row move. Only touch the
+  archive at all when CHANGELOG.md's row count actually exceeds 10; most
+  releases don't need a rotation. Same pattern for
+  docs/ROADMAP.md ↔ docs/archive/roadmap-archive.md, done roughly weekly
+  rather than per-release.
 - **Keep responses terse.** State the result, not a running narration of
   intermediate steps. No restating what was just done in a summary if the
   tool output already showed it.
@@ -348,15 +362,18 @@ debug-keystore-signed `release` APK go out as a real release build.
 ## Maintenance routine (mandatory)
 - Cadence: a maintenance pass **every 3 minor versions**. The current
   Last-pass/Next-pass-due state lives **only** in
-  [MAINTENANCE.md](MAINTENANCE.md)'s tracker (process lives there too) —
-  don't restate specific version numbers here, they'll drift out of sync.
-- Check the tracker **when bumping the version during a release**
+  [docs/MAINTENANCE.md](docs/MAINTENANCE.md)'s one-line current-pointer
+  (process/phases live there too; full pass-by-pass narrative history is
+  in docs/archive/changelog-archive.md, not restated here) — don't restate
+  specific version numbers here, they'll drift out of sync.
+- Check the pointer **when bumping the version during a release**
   (checklist step 5) — not on every session start, that's wasted tokens.
   If the release just shipped matches "Next pass due," tell the owner:
   "A maintenance pass is due (last: vX, current: vY). Run it now? (see
-  MAINTENANCE.md)" — and don't start one without confirmation.
-- When a pass completes, update MAINTENANCE.md's tracker (Last pass =
-  current version, Next pass due = next scheduled point).
+  docs/MAINTENANCE.md)" — and don't start one without confirmation.
+- When a pass completes, update docs/MAINTENANCE.md's current-pointer line
+  (Last pass = current version, Next pass due = next scheduled point), and
+  append the pass's narrative to docs/archive/changelog-archive.md.
 - Maintenance passes never add features and never touch doc schema,
   PouchDB/CouchDB sync logic, storage format, soft-delete semantics, or
   the positional-"done" rule without explicit owner approval.

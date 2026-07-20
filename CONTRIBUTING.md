@@ -1,8 +1,8 @@
 # Contributing to Offlog
 
 Offlog is a single-maintainer, self-hosted personal task manager — see
-[docs/GOAL.md](docs/GOAL.md) for the mission and
-[docs/DECISIONS.md](docs/DECISIONS.md) for why certain choices (no
+[docs/DECISIONS.md](docs/DECISIONS.md)'s manifesto for the mission and
+the rest of that same file for why certain choices (no
 accounts, no hosted backend, no F-Droid/iOS, no monetization) are closed
 questions rather than open ones. Read those before proposing anything
 that touches them.

@@ -1,10 +1,39 @@
-# Offlog — Architectural Decisions
+# Offlog — Manifesto & Architectural Decisions
 
-A log of settled choices and why the debate is closed, so future sessions
-(AI or human) don't re-litigate them. CLAUDE.md says *what the rules are*;
-this file says *why*. Add an entry whenever a real "why not X instead"
-question gets settled — not for routine feature work, only for decisions
-that would otherwise get re-asked.
+## Manifesto
+
+A task manager any non-technical person can pick up and use, with zero
+knowledge of backends, servers, or databases required. Install the PC app
+from a website, install the Android app from Google Play, use either one
+completely on its own. When someone has both, the PC acts as the host and
+they sync automatically over home Wi-Fi — private, not public, secure
+enough on its own. A small, trusted, co-located group (family, a small
+team, one office) can also share one local workspace by connecting their
+own devices to the same host — a shared board, not individual accounts or
+permissions.
+
+The core app stays free, always, with no feature ever paywalled — open
+source, self-hostable, forkable. Integrations and automation are
+deliberately not part of the free core. Phone-as-host, remote/away-from-
+home sync, and per-user accounts or permissions are explicitly not part of
+this goal — the PC is the host, sync stays local, and the shared workspace
+has no individual boundaries. This section states *why* and *what*,
+deliberately not *when* — that's [ROADMAP.md](ROADMAP.md). For anything
+this implies but doesn't resolve, see [IDEAS.md](IDEAS.md) rather than
+assuming an answer here.
+
+---
+
+## About this document
+
+Below this point: a log of settled choices (decisions) and closed
+questions, so future sessions (AI or human) don't re-litigate them.
+CLAUDE.md says *what the rules are*; this file says *why*. Add an entry
+whenever a real "why not X instead" question gets settled, or a
+previously-open question in [IDEAS.md](IDEAS.md) gets a real answer — not
+for routine feature work, only for decisions that would otherwise get
+re-asked. Keep entries compact — the goal is a fast "has this already
+been settled" check, not a full retelling.
 
 ---
 
@@ -136,7 +165,7 @@ browser that already installed it doesn't stay stuck serving a stale
 cached build forever). The web build is a normal always-fresh page load
 again. A real PC standalone app is still wanted eventually — explicitly
 **not** a PWA next time (Tauri vs. Electron, unresolved — see
-QUESTIONS.md's Q6). Android via Capacitor is unaffected; it never used
+IDEAS.md's former Q6). Android via Capacitor is unaffected; it never used
 the service worker in the first place (CLAUDE.md's db.ts/Android
 invariants).
 
@@ -151,7 +180,7 @@ Chasing a business model before there's evidence anyone besides the owner
 wants this app puts the cart before the horse. The app stays free and
 open-source permanently; if it ever gets real outside usage and a genuine
 support need emerges, a donation link is the appropriate scale of
-response, not a product line. This also resolves QUESTIONS.md's former
+response, not a product line. This also resolves IDEAS.md's former
 "is a hosted relay worth building" / "what number would sustain this"
 questions — both removed as moot rather than left open.
 
@@ -163,7 +192,7 @@ functionality. Kept as a standing floor under any future reconsideration —
 this constraint doesn't move even if the entry above does.
 
 ### Why Tauri, not Electron, for the PC standalone app (2026-07-14)
-Resolves QUESTIONS.md's former Q6. Decided by prototyping both the
+Resolves IDEAS.md's former Q6. Decided by prototyping both the
 riskiest parts rather than debating on paper: a Tauri shell wrapping
 `offlog-app/dist` unmodified, a bundled CouchDB run as a managed child
 process with per-install generated credentials, and mDNS advertising —
@@ -227,7 +256,7 @@ Quick Add (Ctrl+N) parses free-typed text ("tomorrow 5pm !high #errand
 types, via `nlpParse.ts`'s `parseQuickAdd()`. This stays a small,
 enumerable set of regex patterns — never a call to an external LLM API —
 for the same reason the project has no accounts, no telemetry, and no
-backend at all (GOAL.md): a network call on every keystroke of a task
+backend at all (this file's manifesto): a network call on every keystroke of a task
 title would be a real network dependency and a real privacy leak (task
 titles are often the most sensitive text in the whole app) for a feature
 whose actual job — recognizing "tomorrow", "#tag", "!high" — doesn't need
@@ -280,7 +309,7 @@ a passer-by from casually opening the app, not withstand someone who
 already has the device and is willing to dig.
 
 First version shipped `AppLock.svelte`'s "Forgot PIN" as a plain
-confirm-and-clear (reasoning: no accounts/email — see GOAL.md — so
+confirm-and-clear (reasoning: no accounts/email — see this file's manifesto — so
 there's nothing to verify identity against, and the PIN only gates the
 UI anyway). Owner feedback the same day: "it is just removing pin...
 like when there is wall as block of road but in middle there is door u
@@ -311,7 +340,7 @@ in the first pass). Scoped via AskUserQuestion before building: uses
 `capacitor-native-biometric` (the closest thing to a de facto standard
 among community Capacitor biometric plugins — there's no Ionic-official
 one, unlike this project's other plugins, per A25's preference), Android
-only (no iOS build, see GOAL.md), opt-in (off by default, a new toggle in
+only (no iOS build, see this file's manifesto), opt-in (off by default, a new toggle in
 Settings → App Lock that only appears once a PIN exists), and — this is
 the load-bearing constraint — it is *only* a faster unlock path on top of
 the PIN, never a replacement for it. The PIN remains the only thing that
@@ -337,7 +366,7 @@ reinstall — which made "uninstall and reinstall" not actually produce a
 fresh install for testing, since old data kept reappearing with no
 visible cause. Beyond the testing wrinkle, this is a real product
 question: this app's entire pitch is no accounts, no telemetry, no
-implicit cloud dependency (GOAL.md) — a real user's local task data
+implicit cloud dependency (this file's manifesto) — a real user's local task data
 silently leaving the device via Google's backup infrastructure,
 without them explicitly choosing that, contradicts that stance even
 though it's a well-intentioned OS feature. Sync (self-hosted CouchDB,

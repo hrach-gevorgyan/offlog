@@ -2,11 +2,20 @@
 
 Older releases, compressed to one line each (full detail lives in git —
 each row references its tag, e.g. `git show v3.9.8`). Split out of
-[CHANGELOG.md](CHANGELOG.md) 2026-07 once that file's recent-version table
-grew large enough that loading it by default got expensive; CHANGELOG.md
-keeps the newest releases in full detail and points here for anything
-older. Nothing is lost — this is a compression of an already-complete git
-history, not the only remaining record.
+[../CHANGELOG.md](../CHANGELOG.md) 2026-07 once that file's recent-version
+table grew large enough that loading it by default got expensive;
+CHANGELOG.md keeps the newest ~10 releases in full detail and points here
+for anything older. Nothing is lost — this is a compression of an
+already-complete git history, not the only remaining record. Moved into
+`docs/archive/` alongside `roadmap-archive.md` during the 2026-07-20 docs
+restructuring (see DECISIONS.md) — this folder is where anything long-form
+but no longer "current" goes, archived roughly weekly rather than left to
+balloon the live docs.
+
+This file also holds the full maintenance-pass history (moved from
+MAINTENANCE.md's old in-file tracker, which is now docs/MAINTENANCE.md and
+carries only the process instructions plus a one-line current pointer) —
+see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
@@ -90,3 +99,149 @@ history, not the only remaining record.
 | 5.2.2 | Android cleanup, 6 items from a heavy audit: dead google-services classpath, unadapted scaffold tests, orphaned activity_main.xml, unused Gradle vars, unused widget color/string resources | `v5.2.2` |
 | 5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets | `v5.2.1` |
 | 5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) | `v5.2.0` |
+
+---
+
+## Maintenance pass log
+
+Full narrative history of every maintenance pass (process defined in
+[../MAINTENANCE.md](../MAINTENANCE.md)), moved here from that file's old
+in-place tracker so the instructions file stays instructions-only. Current
+pointer (last pass / next due) lives at the top of MAINTENANCE.md, not
+here — this is history, not state.
+
+Last pass: v4.15.1 (2026-07-13 — sixth pass, delta-scoped since v4.12.0's
+A30. Found/fixed a missing `logChange()` on `createProjectFromTemplate()`
+(same bug class as the fourth pass's `archiveProject()` gap), 3 dark-mode
+contrast failures from hardcoded `#fff` instead of a token (`Sidebar`
+conflict-badge, `App.svelte` error-toast, `DeadlinesView`'s 4-variant
+badge — the last needed a new `--ink-fixed-dark` token), and an unguarded
+`new URL()` in the widget deep-link handler. Full report in this
+conversation's transcript — no dead code, no new duplication, `npm audit`
+unchanged from last pass).
+
+Last pass: v4.19.1 (2026-07-19 — seventh run, after v4.18.0/v4.19.0 shipped.
+First pass to cover `offlog-desktop/` (Track E's Tauri PC app) alongside
+`offlog-app/` — see MAINTENANCE.md's own Phase 0/1/4/5 additions from the
+same day. Found and fixed one real duplication: `isTauri()` detection and
+the raw `window.__TAURI_INTERNALS__.invoke(...)` call pattern were each
+independently re-declared/inlined across `config.ts` and
+`SettingsPanel.svelte` (5+ call sites) — consolidated into `isTauri()`/
+`invokeTauri()`, both exported from `config.ts`. Everything else checked
+out clean — no dead code beyond one already-documented pending stub, no
+unused Track E dependencies, `npm audit` unchanged, Rust `unsafe` blocks
+limited to the expected `TerminateJobObject` FFI calls, no credential
+values in any log line. `SettingsPanel.svelte`'s size (1141 lines) flagged
+again but a split deliberately skipped — same shared-CSS blocker as the
+v4.12.0 pass.)
+
+Last pass: v4.22.1 (2026-07-15 — eighth run, delta-scoped since v4.19.1,
+covering v4.20.0/v4.21.0/v4.22.0's changes). Found and fixed one real gap:
+`ChangelogView.svelte`'s "Clear all" button was missing the audited
+try/catch + `showError()` invariant. Also added a Tauri window
+`minWidth`/`minHeight` floor (`offlog-desktop/src-tauri/tauri.conf.json`)
+since none existed. The `motion.ts` animation migration (v4.22.0) audited
+clean — no leftover unused `@keyframes`, all 7 exports/15 call sites
+correct. `npm audit` unchanged (4 dev-tooling-only advisories, none
+shipped). One correction to a preliminary finding: `pouchdb` npm package
+looked unused in `src/` but is actually imported by `tests/setup.ts` —
+left in place. Disabled CSP (`security.csp: null`) noted but deliberately
+deferred to the same pre-public-release pass as C7, not fixed piecemeal
+here.
+
+Last pass: v4.25.0 (2026-07-16 — ninth run, covering the first real
+desktop-dogfooding round: v4.23.0-v4.25.0's rapid iteration on
+`offlog-desktop`'s notification/backup/startup fixes). Found and fixed
+one real gap: `@tauri-apps/plugin-notification` (the npm package) had
+zero remaining JS import sites after click/schedule logic was rebuilt on
+a custom Rust command — removed from `package.json`. The Rust crate
+`tauri-plugin-notification` stays (still registered for its
+permission-check compatibility). Everything else audited clean: no dead
+code from the several notifications.ts rewrites, all 6 new npm packages
+and 6 new Rust crates from this arc genuinely used, `cargo check` zero
+warnings, `npm audit --production` unchanged (same known uuid/pouchdb
+advisory), no stray debug/temp files.
+
+Last pass: v4.28.0 (2026-07-17 — tenth run, delta-scoped since v4.25.0,
+covering v4.26.0-v4.28.0's settings redesign, Android widget polish, and
+the modalStack.ts/seedIfEmpty fixes). Baselines all green (build/tsc/
+test/cargo build). Found and fixed two real [SAFE] gaps: `notifications.ts`
+re-declared its own inline Tauri-detection check instead of importing
+`isTauri()` from `config.ts` (same duplication pattern the seventh pass
+already consolidated elsewhere); `docs/TECH.md` was stale since v4.12.0
+(version header, and its source file map was missing ~20 files added
+since, including `SettingsPanel.svelte` itself after the v4.26.0
+redesign pulled it out of `Sidebar.svelte`) — both fixed. Security
+checklist all clean: XSS surface, deep-link handling, `unsafe` blocks,
+credential logging, `npm audit` (20 vulns, all in build-tooling or the
+test-only `pouchdb` package, none shipped) all unchanged/clean.
+**Also completed alongside this pass, not part of the routine itself**:
+C7's git-history piece (owner-directed) — two real credentials
+(`offlog-app/src/config.ts`'s old hardcoded CouchDB password, and a
+second username+password pair that had leaked into a committed
+`.claude/settings.local.json`) purged from every one of the repo's 127
+commits/71 tags via BFG Repo-Cleaner, verified by exhaustively scanning
+every remaining git object afterward. See DECISIONS.md/ROADMAP.md C7 for
+the full record.
+
+Last pass: v5.0.0 (2026-07-20 — eleventh run, delta-scoped since v4.28.0,
+covering v4.29.0/v4.30.0's pre-release audit batches plus the unreleased
+Time Travel/NLP Quick Add/recurring-tasks/font-consolidation/App Lock work
+bundled into this 5.0.0 cut). Baselines all green (build/tsc/test/cargo
+build) after one real fix found at Phase 0: `TimeTravelView.svelte` had a
+non-static `tabindex`/`role` pairing the Svelte a11y checker couldn't
+verify at compile time, producing a build warning — fixed by giving the
+non-clickable branch a static `role="listitem" tabindex="-1"` instead of
+conditional `undefined`s. Phase 1 delta audit otherwise clean: no dangling
+references survived the ChangelogView→TimeTravelView swap, Tauri CSP is
+genuinely enabled (not just claimed — confirmed a real restrictive policy
+in tauri.conf.json), App Lock/recovery-code secrets are salted-hashed and
+never logged or stored in plaintext, no new `eval`/`Function`/raw
+`innerHTML`, `{@html}` sites all either fixed internal constants or
+properly escaped, and the audited try/catch+showError() invariant holds
+across every new mutation call site (QuickAdd, Time Travel, recurring-task
+reset path in db.ts). No dead code, no new duplication, no npm dependency
+changes to reassess.
+
+Last pass: v5.4.0 (2026-07-20 — twelfth run, delta-scoped since v5.0.0,
+covering App Lock's biometric unlock (B54 second half), Privacy Screen +
+Clipboard (B55/B56), a real bug fix (biometric toggle reachable with no
+PIN set — now gated on `appLockEnabled` too), an Android splash-logo fix
+(stale pre-rebrand mark on legacy pre-API-31 devices, new
+`resources/generate-splash.cjs`), a 6-item Android cleanup (dead
+google-services classpath, unadapted scaffold test files, orphaned
+`activity_main.xml`, unused Gradle version vars, unused widget color/
+string resources — all confirmed safe and removed), Haptics (B58), and
+App Launcher (B57). Found and fixed one real [REVIEW] item: `hapticToggle()`
+fired *before* the task mutation was confirmed in 4 places (List/Focus/
+Deadlines' `markDone`, Kanban's `togglePin`) — inconsistent with the
+drag-drop haptic calls, which correctly fire only after `updateTask`
+succeeds; moved all 4 to fire after the `await` instead. Everything else
+clean: all 5 new npm dependencies (`@capacitor/privacy-screen`,
+`@capacitor/clipboard`, `@capacitor/haptics`, `@capacitor/app-launcher`,
+`capacitor-native-biometric`) confirmed genuinely used, no plaintext
+secrets in the 2 new localStorage flags, `clearAppLockPin()` correctly
+clears the biometric flag too, no new `{@html}`/`eval`/`innerHTML`, `npm
+audit` unchanged from prior passes (same dev-tooling/test-only
+advisories). `SettingsPanel.svelte` flagged again at 1881 lines (was 1141
+three passes ago) — same shared-CSS blocker, still deliberately deferred.
+
+Last pass: v5.4.6 (2026-07-20 — thirteenth run, delta-scoped since v5.4.0,
+covering v5.4.1-v5.4.5's rapid live-device bugfix batches). Baselines all
+green (build/tsc/test/cargo build). Found and fixed one real race:
+`notifications.ts`'s `fireWebNotification()` cleared `reminder_at` via an
+un-awaited `updateTask(...).catch(()=>{})`; since `updateTask` was a plain
+get-then-put with no compare-and-swap, a second concurrent `updateTask` on
+the same task could read a stale rev and throw "Document update conflict"
+— reproduced intermittently (~1/4 runs) in `tests/notifications.test.ts`.
+Fixed at the root in `db.ts` by serializing all `updateTask()` calls per
+task id through a small write queue (`updateTask` now chains onto
+`updateTaskImpl` via `_taskWriteQueues`), rather than patching just the
+one call site — 5/5 clean reruns of the previously-flaky test afterward.
+Also extracted `KanbanBoard.svelte`'s repeated touch-drag-state reset into
+one `resetTouchDragState()` helper, and added a release-checklist note in
+CLAUDE.md flagging that the Android `release` build type is currently
+signed with AGP's debug keystore (v5.4.4, local-dev convenience only) and
+must not ship as a real Play Store build before C3's real signing key
+exists. No dead code, no dependency changes, security checklist and `npm
+audit` unchanged from prior passes.
