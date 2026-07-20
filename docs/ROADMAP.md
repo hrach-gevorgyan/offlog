@@ -78,9 +78,21 @@ nicer for its owner to use, or does it just make it bigger?
   identity and data both survived byte-for-byte identical — a previously-
   paired phone needs zero re-pairing after a normal reinstall. See
   IDEAS.md's S4 entry (closed) for the full writeup.
-- **Still open**: S3/S5 are docs-only gaps — see IDEAS.md. All of this
-  session's sync-topology scenarios (S1-S6) are now either fixed,
-  verified, or reduced to a documentation task.
+- **S3/S5 documented — done 2026-07-20.** Both stated plainly in
+  README.md's Sync section now (two-phones-no-PC, and moving-to-a-new-
+  computer) instead of only being discoverable by hitting the wall.
+- **S6 verified live — done 2026-07-20.** 3 origin-isolated real app
+  instances, genuinely offline, all edited the same task differently,
+  then reconnected together against one real host. Storage layer handled
+  it correctly (zero data loss, deterministic winner, both losing
+  revisions preserved). Confirmed a real but narrow, already-documented
+  limitation: resolving a 3-way conflict via the normal flow silently
+  discards the one losing edit that was never shown for review — not
+  fixed (see DECISIONS.md's declined 3-way-merge entry for why), but now
+  empirically confirmed rather than assumed. See IDEAS.md's S6 entry.
+- **All of this session's sync-topology scenarios (S1-S6) are now either
+  fixed, verified, or reduced to a documentation task** — see IDEAS.md
+  for the full per-scenario record.
 - **Next up:** the still-open verification/docs items above, then a
   final bug/cleanup sweep before the actual GitHub push.
 

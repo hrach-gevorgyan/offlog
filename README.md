@@ -131,6 +131,20 @@ Everything above stays **LAN-only by design** — see
 [docs/DECISIONS.md](docs/DECISIONS.md) for why remote/away-from-home
 sync and per-user accounts were deliberately kept out of scope.
 
+**Two phones, no PC, want to share data?** Not supported — a phone can't
+be the sync host (see DECISIONS.md's mesh-sync entry for why). Export/
+Import (Settings → Backup & Storage) is the way to move data between two
+phones that will never share a PC host.
+
+**Moving your PC to a new computer?** The sync host's identity and all
+its data live under one folder (`%APPDATA%\com.offlog.app\` on Windows —
+verified to survive a normal uninstall/reinstall, so this is only needed
+for an actual hardware change), not scattered across the install. Copy
+that whole folder to the new machine before first launching Offlog there,
+and every phone already paired with the old PC reconnects with no
+re-pairing needed, since the port/credentials/database identity all come
+along unchanged.
+
 **Android app — tested and working on a real device**
 - Native app via Capacitor, actively used day to day, not just built and
   shelved

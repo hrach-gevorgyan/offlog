@@ -72,13 +72,12 @@ between two real edits, only recognizes "nobody ever touched this one."
 Covered by 2 new tests in `tests/db.test.ts`. **Closed** — no longer an
 open question.
 
-### S3. Two phones, no PC, want a shared workspace — already an accepted gap
+### S3. Two phones, no PC, want a shared workspace — closed (docs, 2026-07-20)
 Per DECISIONS.md's mesh-sync-declined entry, this is intentional, not a
-bug: phone-as-host was explicitly ruled out. Export/import is the
-intentional answer. **Is this limitation actually communicated anywhere
-user-facing (README/FAQ/in-app copy), or does a user only discover it by
-hitting the wall?** If not communicated, that's a C10 (plain-language)
-gap, not a new engineering question.
+bug: phone-as-host was explicitly ruled out. Export/Import is the
+intentional answer. Now stated plainly in README.md's Sync section
+("Two phones, no PC, want to share data?") instead of only being
+discoverable by hitting the wall.
 
 ### S4. Host machine wiped or replaced — do paired phones silently orphan?
 **Fully closed, verified live (2026-07-20)**: identity (`sync-host.json`)
@@ -107,17 +106,45 @@ sees a *different* Offlog host but can't find the paired one, shown as an
 actionable "re-pair?" tooltip/badge on the Sidebar sync button instead of
 the generic "cannot reach sync server" message.
 
-### S5. Intentional host migration (user buys a new PC) — no guided flow exists
-Today's only answer is presumably `offlog-desktop/scripts/reset-dev-env.ps1`-
-style manual reset plus re-pairing every phone from scratch. **Is a
-guided "move my host to this new computer" flow worth building, or is
-manual re-pair-every-device acceptable given how rarely this happens?**
+### S5. Intentional host migration (user buys a new PC) — closed (docs, 2026-07-20)
+No guided wizard built — S4's live reinstall test already confirmed
+identity + data both live in one copyable folder (`app_data_dir`), so a
+manual copy before first launch on the new machine is enough; no phone
+needs re-pairing afterward. Documented in README.md's Sync section
+("Moving your PC to a new computer?"). A guided in-app migration flow
+remains a possible future nicety, not a gap — revisit only if manual
+copying turns out to be real friction for an actual user.
 
 ### S6. Host offline for a long stretch while 3+ phones diverge
-CouchDB's `_conflicts` handling is doc-level and already exercised with 2
-devices (see DECISIONS.md's 3-way-merge entry). **Has this actually been
-tested with 3+ devices editing the same task while the host is offline,
-or only ever with 2?**
+**Verified live (2026-07-20)**: 3 independent, origin-isolated instances
+of the real app (own IndexedDB/localStorage each, same code paths a real
+device uses — standing in for hardware not available to test with
+directly) shared a baseline task against one real `offlog-desktop` host,
+then were taken genuinely offline (`cancelSync()`, confirmed via the host
+never seeing the pending writes) and each edited the *same* task
+differently before reconnecting together. Result: CouchDB correctly
+tracked all 3 branches — one deterministic winner, both losing revisions
+preserved in `_conflicts`, zero data loss or corruption at the storage
+layer, `scanConflicts()` correctly reported the doc as conflicted.
+
+**Confirmed a real, narrow, already-documented limitation** (not a new
+bug — `getConflicts()`'s own code comment already flags this): it only
+surfaces the *first* losing revision for review, but `resolveConflict()`
+removes *all* losing revisions once applied. In a genuine 3-way conflict,
+resolving via the normal Settings flow adopts one edit and silently
+discards the *other* device's edit too, without it ever being shown.
+`repairDatabase()`'s blunter "keep current, discard the rest" fallback
+remains available and behaves correctly (verified: resolution completed
+cleanly, no crash, fully consistent doc afterward).
+
+**Closed as verified, not a fix candidate**: DECISIONS.md's already-declined
+3-way-merge entry covers exactly why a smarter N-way UI isn't worth
+building (no ancestor available from replication, and genuinely rare for
+a personal/small-group tool — this requires 3+ devices editing the exact
+same task while ALL simultaneously offline from each other). If this
+ever becomes a real complaint, the fix would be extending `getConflicts()`
+to list every losing revision (not just the first) and letting the user
+pick per-conflict, rather than attempting an automatic merge.
 
 ---
 
