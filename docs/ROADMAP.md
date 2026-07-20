@@ -48,12 +48,27 @@ nicer for its owner to use, or does it just make it bigger?
   IDEAS.md; ROADMAP.md/CHANGELOG.md trimmed to current-only, history
   moved to `docs/archive/`; MAINTENANCE.md moved to `docs/` and stripped
   to instructions-only.
-- **Next up after the release gate:** a plain-language optimization pass
-  over README.md/CLAUDE.md/TECH.md (make them read as real, honest
-  features and genuine technical craft, not marketing filler or
-  developer-only jargon) — then final sync-architecture hardening (see
-  IDEAS.md's open sync-topology questions) and a final bug/cleanup sweep
-  before the actual GitHub push.
+- **Plain-language pass on README/TECH.md — done 2026-07-20.** Fixed
+  stale hardcoded version stamps, added honest "why this matters" framing
+  to README's sync section (the packaging is the real innovation, not the
+  individual technologies). CLAUDE.md left as-is — its density is
+  hard-won invariants, not marketing copy.
+- **Sync-architecture hardening (first pass) — done 2026-07-20.** Two
+  additive, non-destructive fixes from IDEAS.md's sync-topology
+  questions: (1) S1 — `offlog-desktop` now does a one-time LAN scan at
+  startup and warns in Settings → Sync if another Offlog host is
+  detected, instead of silently coexisting with zero signal; (2) S4 — a
+  real bug fix, `discovery.ts`'s stale-host re-resolve used to silently
+  give up forever when it saw a *different* host's uuid instead of the
+  paired one; now surfaces an actionable "re-pair?" state instead.
+  Neither touches the actual replication path (`db.ts`'s `sync()` call) —
+  see DECISIONS.md for why a bigger rethink (a new sync protocol, a
+  client/host election system) isn't the right call here. **Still open**:
+  S2 needs a live pairing test with real data, S4's identity-persistence
+  claim needs a live reinstall test, S3/S5 are docs-only gaps — see
+  IDEAS.md.
+- **Next up:** the still-open verification/docs items above, then a
+  final bug/cleanup sweep before the actual GitHub push.
 
 ---
 

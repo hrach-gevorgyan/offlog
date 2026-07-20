@@ -1,6 +1,8 @@
 // Credentials come from .env.local (git-ignored via *.local).
 // The sync URL is also stored in localStorage so it can be changed in-app.
 
+import { writable } from 'svelte/store';
+
 const envUrl = import.meta.env.VITE_COUCH_URL as string | undefined;
 const envUser = import.meta.env.VITE_COUCH_USER as string | undefined;
 const envPass = import.meta.env.VITE_COUCH_PASS as string | undefined;
@@ -77,6 +79,31 @@ export async function initTauriSyncDefaults(): Promise<void> {
   } catch {
     // sidecar not ready yet or invoke failed — leave whatever was
     // there (possibly the stale 5984 default); next launch retries.
+  }
+}
+
+// S1 (docs/IDEAS.md's sync-topology questions, 2026-07-20): the desktop
+// app's embedded sidecar never checked whether another Offlog host
+// already exists on the LAN before spawning its own -- two PCs on one
+// network silently become two independent islands with no warning. This
+// doesn't change that (a real "join as client instead" mode is a much
+// bigger feature, deliberately not built), it only surfaces what the
+// Rust side's one-time startup scan (discovery.rs's browse_for_others())
+// found, so Settings can show a warning. Polled a couple of times after
+// launch rather than once immediately, since the scan itself only runs
+// after the embedded CouchDB has finished booting (a few seconds) --
+// calling this too early just gets an empty list, which is not the same
+// as "no other host exists".
+export const otherHostsDetected = writable<{ uuid: string; name: string }[]>([]);
+
+export async function checkForOtherHosts(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const hosts = await invokeTauri<{ uuid: string; name: string }[]>('get_detected_other_hosts');
+    if (hosts.length) otherHostsDetected.set(hosts);
+  } catch {
+    // command unavailable (older build) or invoke failed -- non-critical,
+    // just skip the warning this launch.
   }
 }
 

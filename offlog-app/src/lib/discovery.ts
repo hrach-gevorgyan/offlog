@@ -121,23 +121,48 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
 // (not its IP) lets a fresh scan confirm "is this still the same PC I
 // paired with, just at a different address" and self-heal.
 //
+// S4 (docs/IDEAS.md's sync-topology questions, 2026-07-20): this used to
+// silently ignore any advertisement whose uuid didn't match the one being
+// looked for, so a genuinely-changed host identity (the PC was wiped/
+// reinstalled and got a fresh random uuid, or the phone was accidentally
+// paired with the wrong device) meant this just timed out to null forever
+// — reresolveHost() below returned false, and watchForStaleHost() did
+// nothing further, with zero user-facing signal that anything was wrong
+// beyond a generic "cannot reach sync server". Now also reports back the
+// first *other* `_offlog._tcp` advertisement seen (if any), so
+// watchForStaleHost() can distinguish "the paired host just isn't
+// reachable right now" from "a different Offlog host exists on this
+// network and it's not the one this device is paired with" — the latter
+// is actionable (re-pair), the former isn't.
+interface HostResolveResult {
+  address: string | null;
+  otherHost: { uuid: string; name: string } | null;
+}
+
 // A short one-shot scan, same 10s window as scanForHosts()'s user-facing
 // one, but headless — doesn't touch the discoveredHosts/isScanning UI
 // stores, since this runs in the background, not from the pairing screen.
-async function findPairedHostAddress(uuid: string): Promise<string | null> {
+async function findPairedHostAddress(uuid: string): Promise<HostResolveResult> {
   const { ZeroConf } = await import('capacitor-zeroconf');
   return new Promise((resolve) => {
     let settled = false;
     let id: string | null = null;
-    const finish = (result: string | null) => {
+    let otherHost: { uuid: string; name: string } | null = null;
+    const finish = (address: string | null) => {
       if (settled) return;
       settled = true;
       if (id) ZeroConf.unwatch({ type: SERVICE_TYPE, domain: DOMAIN }).catch(() => {});
-      resolve(result);
+      resolve({ address, otherHost });
     };
     ZeroConf.watch({ type: SERVICE_TYPE, domain: DOMAIN }, (result) => {
       const { action, service } = result;
-      if (action === 'removed' || service.txtRecord?.uuid !== uuid) return;
+      if (action === 'removed') return;
+      const seenUuid = service.txtRecord?.uuid;
+      if (!seenUuid) return;
+      if (seenUuid !== uuid) {
+        otherHost = { uuid: seenUuid, name: service.txtRecord?.name || service.name };
+        return;
+      }
       const address = service.ipv4Addresses?.[0];
       if (!address) return;
       finish(`http://${address}:${service.port}/offlog`);
@@ -146,6 +171,13 @@ async function findPairedHostAddress(uuid: string): Promise<string | null> {
   });
 }
 
+// Set when a re-resolve scan sees a different Offlog host on the network
+// but can't find the one this device is actually paired with — surfaced
+// in the UI (Sidebar) as an actionable "re-pair?" prompt, distinct from
+// the generic "can't reach sync server" state. Cleared the moment the
+// paired host is found again.
+export const staleHostAlert = writable<{ uuid: string; name: string } | null>(null);
+
 // Re-resolves the paired PC's current address and updates the stored
 // sync URL if it's changed. Returns whether anything was updated, so the
 // caller knows whether it's worth kicking off a fresh sync attempt.
@@ -153,9 +185,14 @@ export async function reresolveHost(): Promise<boolean> {
   if (!isNative()) return false;
   const uuid = getPairedHostUuid();
   if (!uuid) return false; // never paired via mDNS (e.g. a manually-typed URL)
-  const freshUrl = await findPairedHostAddress(uuid);
-  if (!freshUrl || freshUrl === getSyncUrl()) return false;
-  setSyncUrl(freshUrl);
+  const { address, otherHost } = await findPairedHostAddress(uuid);
+  if (!address) {
+    if (otherHost) staleHostAlert.set(otherHost);
+    return false;
+  }
+  staleHostAlert.set(null);
+  if (address === getSyncUrl()) return false;
+  setSyncUrl(address);
   return true;
 }
 

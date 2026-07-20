@@ -17,6 +17,20 @@ fn get_sync_info(info: tauri::State<sync_host::SyncHostInfo>) -> sync_host::Sync
     info.inner().clone()
 }
 
+// S1 (docs/IDEAS.md, 2026-07-20): surfaces whatever discovery::browse_for_others()
+// found at startup so the frontend can warn about a second host on the
+// LAN. Managed empty before the background scan runs, so this command
+// never errors -- it just answers "nothing detected yet" if called
+// before the scan (which takes a few seconds after CouchDB itself boots)
+// finishes; the frontend already polls this a couple of times for
+// exactly that reason (see config.ts's checkForOtherHosts()).
+struct DetectedOtherHosts(Mutex<Vec<discovery::OtherHost>>);
+
+#[tauri::command]
+fn get_detected_other_hosts(state: tauri::State<DetectedOtherHosts>) -> Vec<discovery::OtherHost> {
+    state.0.lock().map(|v| v.clone()).unwrap_or_default()
+}
+
 // Lets the frontend gate dev-only UI (the "Reset test data" button) on
 // whether this is actually a debug build -- the frontend has no other
 // way to know, since it's the same web bundle either way.
@@ -189,6 +203,7 @@ pub fn run() {
             let data_dir = app_data_dir.join(data_dirname);
             app.manage(CouchdbDataDir(data_dir.clone()));
             sync_host::write_couchdb_config(&couchdb_dir, &data_dir, &info);
+            app.manage(DetectedOtherHosts(Mutex::new(Vec::new())));
 
             // info is managed immediately (below) so get_sync_info answers
             // right away with the sidecar's port -- config.ts's
@@ -225,6 +240,17 @@ pub fn run() {
                         if ready {
                             sync_host::ensure_database(&info_bg);
                             if let Some(uuid) = sync_host::fetch_uuid(info_bg.port) {
+                                // Runs before this instance advertises itself below, so it
+                                // can only see genuinely other hosts, never a self-echo.
+                                let others = discovery::browse_for_others(Duration::from_millis(1500), &uuid);
+                                if !others.is_empty() {
+                                    log::warn!("discovery: {} other Offlog host(s) detected on this network", others.len());
+                                }
+                                if let Some(state) = app_handle.try_state::<DetectedOtherHosts>() {
+                                    if let Ok(mut guard) = state.0.lock() {
+                                        *guard = others;
+                                    }
+                                }
                                 let pairing_state = Arc::new(pairing::PairingState::new(info_bg.clone()));
                                 match pairing::spawn_server(pairing_state.clone(), uuid.clone()) {
                                     Ok(pairing_port) => {
@@ -273,7 +299,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification])
+        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, get_detected_other_hosts])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

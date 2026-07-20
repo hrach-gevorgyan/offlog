@@ -6,7 +6,7 @@ import {
   scanConflicts,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
-import { initTauriSyncDefaults } from '../config';
+import { initTauriSyncDefaults, checkForOtherHosts } from '../config';
 import { watchForStaleHost } from './discovery';
 
 export const modalOpen = writable(false);
@@ -80,6 +80,11 @@ export async function init() {
   // previous session instead of showing no badge until sync resumes.
   scanConflicts().catch(() => {});
   watchForStaleHost();
+  // Desktop-only (see config.ts's own comment) -- the Rust-side scan
+  // finishes a few seconds after CouchDB itself boots, so this is polled
+  // rather than checked once immediately after startSync() above.
+  setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 4000);
+  setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 10000);
   subscribe(() => reload());
   checkPermission();
   initNotificationListeners().catch(() => {});

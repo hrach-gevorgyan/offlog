@@ -26,15 +26,21 @@ that haven't been designed for (not declined, just never needed a design
 yet):
 
 ### S1. Two PC apps installed on two different machines — who's the host?
-Today, each `offlog-desktop` install unconditionally spawns its own
-CouchDB sidecar and becomes *a* host on first launch — there's no "join
-an existing host instead" mode, and nothing detects a second host already
-on the network. Two PCs on the same LAN produce two independent islands;
-phones paired to one never see the other's data, with no merge path.
-**Should a second `offlog-desktop` launch detect an existing host on the
-LAN and offer to join as a client instead of spawning its own host, and
-if so, how does a user ever intentionally run two independent
-households/offices on one network?**
+Partially hardened (2026-07-20): `offlog-desktop` still unconditionally
+spawns its own CouchDB sidecar on every launch — there's no "join an
+existing host instead" mode, deliberately not built (a real client-mode
+would be a large feature for a scenario nobody's actually hit, the same
+tradeoff mesh sync's decline already weighed). What shipped instead is
+detection-only: `discovery.rs`'s `browse_for_others()` runs a one-time LAN
+scan at startup, before this instance advertises itself, and surfaces any
+other `_offlog._tcp` host it sees via a new `get_detected_other_hosts`
+Tauri command; Settings → Sync shows a warning if one is found. This
+closes the "silent split-brain, no idea anything's wrong" failure mode
+without touching how sync itself works. **Still open**: no way to
+intentionally run two independent households/offices on one LAN without
+that warning firing (acceptable today, since it's just a heads-up, not a
+block) — and the full "join as client" mode remains a real option if
+actual demand ever shows up.
 
 ### S2. Mobile-only for weeks, then install a PC later — does history merge cleanly?
 Mechanically this is probably fine: the freshly-installed host starts
@@ -55,12 +61,23 @@ hitting the wall?** If not communicated, that's a C10 (plain-language)
 gap, not a new engineering question.
 
 ### S4. Host machine wiped or replaced — do paired phones silently orphan?
-Unresolved: does the sidecar's port/password/node identity persist across
-an `offlog-desktop` reinstall, or regenerate? If it regenerates, every
-previously-paired phone would silently fail to reconnect with no
-re-pairing prompt telling the user why. **Needs a live test**: reinstall
-`offlog-desktop` on the same machine and see what a previously-paired
-phone actually does.
+**Resolved (code-read, 2026-07-20)**: identity (`sync-host.json`) and the
+actual CouchDB data both live under `app_data_dir`, and both already
+survive a normal uninstall/reinstall (moved there specifically to fix
+this in an earlier pass) — only a full OS-profile wipe takes out both
+together. Separately, a real bug was found and fixed in the same session:
+when a phone's stored host `uuid` no longer matches anything on the LAN
+(the host genuinely was wiped, or the phone paired with the wrong
+device), `discovery.ts`'s `findPairedHostAddress()` used to silently
+ignore any non-matching advertisement and just time out to `null` forever
+— `watchForStaleHost()` did nothing further, no user-facing signal at
+all. Now `reresolveHost()` surfaces a `staleHostAlert` store the moment it
+sees a *different* Offlog host but can't find the paired one, shown as an
+actionable "re-pair?" tooltip/badge on the Sidebar sync button instead of
+the generic "cannot reach sync server" message. **Still open**: no live
+test of an actual `offlog-desktop` reinstall exists yet — the code-level
+persistence claim above should get a real end-to-end check before relying
+on it further.
 
 ### S5. Intentional host migration (user buys a new PC) — no guided flow exists
 Today's only answer is presumably `offlog-desktop/scripts/reset-dev-env.ps1`-

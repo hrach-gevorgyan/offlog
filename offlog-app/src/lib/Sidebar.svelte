@@ -6,6 +6,7 @@
     getRecentlyModifiedTasks,
   } from './db';
   import { confirmAction } from './confirm';
+  import { staleHostAlert } from './discovery';
   import { fmtLastSynced } from './utils';
   import type { TaskDoc, ProjectDoc } from './types';
   import CustomSelect from './CustomSelect.svelte';
@@ -164,7 +165,9 @@
     : syncStatus === 'syncing' ? 'Syncing…'
     : syncStatus === 'error' ? 'Sync error'
     : lastSynced ? 'Synced' : 'Not synced';
-  $: syncTooltip = syncStatus === 'offline' ? 'Offline — will retry when back online'
+  $: syncTooltip = $staleHostAlert
+    ? `Paired host not found — a different Offlog host ("${$staleHostAlert.name}") is on this network. Re-pair from Settings → Sync.`
+    : syncStatus === 'offline' ? 'Offline — will retry when back online'
     : syncStatus === 'syncing' ? 'Syncing…'
     : syncStatus === 'error' ? (syncError ?? 'Sync error') + (retryCount > 1 ? ` (retry ${retryCount})` : '')
     : lastSynced ? `Synced ${fmtLastSynced(lastSynced)}` : 'Not synced yet';
@@ -451,6 +454,7 @@
           class:offline={syncStatus === 'offline'}
         ></span>
         {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
+        {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
         <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
         </svg>
