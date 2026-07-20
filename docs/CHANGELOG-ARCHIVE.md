@@ -17,6 +17,7 @@ history, not the only remaining record.
 | 4.24.0 | C2 zero-config first-run empty states (Dashboard/Kanban); C10 plain-language pass on Restore/crash-recovery/pairing copy | `v4.24.0` |
 | 4.26.0 | Settings redesign into consistent `.setting-group` cards + Advanced tab; Reduce Motion toggle; fixed mobile info-loss (project name hidden below ~700px in Dashboard/Deadlines/Focus) | `v4.26.0` |
 | 4.27.0 | Android widget preview/color polish; modal-stack `closeOnBack()` idempotency fix (Quick Add "stops working after repeated use") | `v4.27.0` |
+| 4.28.0 | Widget size reverted to correct 2×2 footprint; widget icon contrast fix; pairing success feedback on both phone/PC; seed-emptiness re-verification instead of trusting a cached flag | `v4.28.0` |
 | 4.21.0 | Card Detail redesign (B49): Due/Reminder collapsed into one "Schedule" row, Checklist/Custom fields/Notes as consistent card-rows, footer actions into one "⋯" menu; Kanban per-card quick-actions menu (B53) | `v4.21.0` |
 | 4.20.0 | Export/import redesign into Back up (scope selector) + Restore groups (B45); first-run device-name prompt via NamePrompt.svelte, skip and save equal-weight (B46) | `v4.20.0` |
 | 4.19.1 | Maintenance pass (seventh run, first to cover offlog-desktop/): consolidated duplicated isTauri()/invoke() detection into config.ts; everything else checked out clean | `v4.19.1` |

@@ -155,9 +155,9 @@
     const lastCol = proj.columns.at(-1)?.id;
     if (!lastCol || t.column_id === lastCol) return;
     try {
-      hapticToggle();
       await updateTask(t._id!, { column_id: lastCol });
       await refresh();
+      hapticToggle();
     } catch {
       showError('Failed to update task. Please try again.');
     }

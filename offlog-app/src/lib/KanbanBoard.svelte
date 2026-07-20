@@ -156,9 +156,9 @@
   }
   async function togglePin(task: TaskDoc) {
     try {
-      hapticToggle();
       await updateTask(task._id!, { pinned: !task.pinned });
       await reloadTasks();
+      hapticToggle();
     } catch {
       showError('Failed to update task.');
     }

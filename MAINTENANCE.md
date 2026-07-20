@@ -242,6 +242,28 @@ properly escaped, and the audited try/catch+showError() invariant holds
 across every new mutation call site (QuickAdd, Time Travel, recurring-task
 reset path in db.ts). No dead code, no new duplication, no npm dependency
 changes to reassess.
-Next pass due: **after v5.3.0 ships**, continuing the every-3-releases
+Last pass: v5.4.0 (2026-07-20 — twelfth run, delta-scoped since v5.0.0,
+covering App Lock's biometric unlock (B54 second half), Privacy Screen +
+Clipboard (B55/B56), a real bug fix (biometric toggle reachable with no
+PIN set — now gated on `appLockEnabled` too), an Android splash-logo fix
+(stale pre-rebrand mark on legacy pre-API-31 devices, new
+`resources/generate-splash.cjs`), a 6-item Android cleanup (dead
+google-services classpath, unadapted scaffold test files, orphaned
+`activity_main.xml`, unused Gradle version vars, unused widget color/
+string resources — all confirmed safe and removed), Haptics (B58), and
+App Launcher (B57). Found and fixed one real [REVIEW] item: `hapticToggle()`
+fired *before* the task mutation was confirmed in 4 places (List/Focus/
+Deadlines' `markDone`, Kanban's `togglePin`) — inconsistent with the
+drag-drop haptic calls, which correctly fire only after `updateTask`
+succeeds; moved all 4 to fire after the `await` instead. Everything else
+clean: all 5 new npm dependencies (`@capacitor/privacy-screen`,
+`@capacitor/clipboard`, `@capacitor/haptics`, `@capacitor/app-launcher`,
+`capacitor-native-biometric`) confirmed genuinely used, no plaintext
+secrets in the 2 new localStorage flags, `clearAppLockPin()` correctly
+clears the biometric flag too, no new `{@html}`/`eval`/`innerHTML`, `npm
+audit` unchanged from prior passes (same dev-tooling/test-only
+advisories). `SettingsPanel.svelte` flagged again at 1881 lines (was 1141
+three passes ago) — same shared-CSS blocker, still deliberately deferred.
+Next pass due: **after v5.7.0 ships**, continuing the every-3-releases
 cadence from there — see docs/ROADMAP.md's sequencing table, which has
 these same points marked inline.

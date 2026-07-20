@@ -362,9 +362,9 @@
   async function markDone(task: TaskDoc) {
     const { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist } = task;
     try {
-      hapticToggle();
       await updateTask(task._id!, { column_id: lastColId() });
       await reloadTasks();
+      hapticToggle();
     } catch {
       showError('Failed to update task. Please try again.');
       return;
