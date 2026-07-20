@@ -282,13 +282,22 @@ Android Studio (fingerprint/face prompt itself can't be exercised from
 this environment) before considering it fully verified.
 
 ### B55. Privacy Screen — hide app content in the recent-apps switcher — shipped 2026-07-20
-`@capacitor/privacy-screen`. Tied to `isAppLockEnabled()` via
-`config.ts`'s `syncPrivacyScreen()` — only dims the app-switcher preview
-when a PIN is actually set, not unconditionally. Called once at launch
-(`App.svelte`) and again whenever the PIN is set/removed
-(`SettingsPanel.svelte`'s `savePin()`/`removePin()`) so it never drifts
-out of sync mid-session. Best-effort (wrapped in try/catch) since it's a
-hardening layer on top of the PIN, not the PIN itself.
+`@capacitor/privacy-screen`. Called once at launch (`App.svelte`) and
+again whenever the PIN or the toggle changes (`SettingsPanel.svelte`) via
+`config.ts`'s `syncPrivacyScreen()`, so it never drifts out of sync
+mid-session. Best-effort (wrapped in try/catch) since it's a hardening
+layer on top of the PIN, not the PIN itself.
+
+v5.4.2 correction (owner-reported live testing, 2026-07-21): originally
+auto-enabled whenever a PIN was set, no separate control. Android's
+FLAG_SECURE — what `PrivacyScreen.enable()` actually sets — blocks ALL
+screenshots while the app is foregrounded, not just the recents-switcher
+snapshot it was meant to hide; there's no way to have one without the
+other. Silently taking away the ability to screenshot the app the moment
+someone turns on App Lock was too big a side effect to bundle in
+automatically. Now a separate, explicit, **OFF-by-default** toggle
+(Settings → App Lock → Privacy screen), shown only once a PIN exists
+(same as biometric), independent of whether App Lock's own PIN is on.
 
 ### B56. Clipboard — one-tap copy on the recovery code — shipped 2026-07-20
 `@capacitor/clipboard`. A "Copy" button next to the recovery code in its

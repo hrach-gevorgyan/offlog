@@ -151,3 +151,20 @@ export function closeOnBack(close: CloseFn): CloseFn {
 export function discardTop(): void {
   stack.pop();
 }
+
+// v5.4.2 bug (owner-reported live testing, 2026-07-21): tapping a widget
+// button while the app was already open with something else on screen
+// (e.g. Quick Add) navigated to the widget's target view but left the
+// old overlay mounted on top of it, since App.svelte's handleWidgetUrl()
+// only flipped view-level booleans — it never went through requestClose()
+// for whatever was already open. A widget tap represents "show me
+// exactly this, and only this," so this closes every currently-tracked
+// layer in one shot rather than the graceful one-at-a-time
+// requestClose() flow: a single real history.go() back past every pushed
+// offlog entry, landing on whatever's beneath all of them (matching
+// onPopState's own "id absent -> close everything" fallback, reused here
+// rather than duplicated).
+export function closeAll(): void {
+  if (stack.length === 0) return;
+  history.go(-stack.length);
+}

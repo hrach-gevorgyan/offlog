@@ -19,6 +19,7 @@ history, not the only remaining record.
 | 4.27.0 | Android widget preview/color polish; modal-stack `closeOnBack()` idempotency fix (Quick Add "stops working after repeated use") | `v4.27.0` |
 | 4.28.0 | Widget size reverted to correct 2×2 footprint; widget icon contrast fix; pairing success feedback on both phone/PC; seed-emptiness re-verification instead of trusting a cached flag | `v4.28.0` |
 | 4.29.0 | Tauri CSP enabled; sidebar follows page theme; modal-stack root-cause fix (revived-instance stale requestClose, coalesced popstate); Ctrl+K command palette bugs (unexported nav functions, racing pushState) | `v4.29.0` |
+| 4.30.0 | Pre-public-release audit phase 1 (web), batches 1-10: 25+ real bugs across sync/CRUD/views/card-detail/settings/notifications/backup, all with build/tsc/test green per batch | `v4.30.0` |
 | 4.21.0 | Card Detail redesign (B49): Due/Reminder collapsed into one "Schedule" row, Checklist/Custom fields/Notes as consistent card-rows, footer actions into one "⋯" menu; Kanban per-card quick-actions menu (B53) | `v4.21.0` |
 | 4.20.0 | Export/import redesign into Back up (scope selector) + Restore groups (B45); first-run device-name prompt via NamePrompt.svelte, skip and save equal-weight (B46) | `v4.20.0` |
 | 4.19.1 | Maintenance pass (seventh run, first to cover offlog-desktop/): consolidated duplicated isTauri()/invoke() detection into config.ts; everything else checked out clean | `v4.19.1` |

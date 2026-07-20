@@ -2,15 +2,20 @@
 <!-- minWidth/minHeight reverted to the original 110x110dp / 2x2 cells
      (owner-reported, 2026-07-17): the previous attempt to fix the widget
      picker's clipped preview by growing these to 200x160dp/4x2 also grew
-     the REAL on-device widget footprint to 3x3 — the picker preview issue
-     is cosmetic (previewLayout, API 31+, rendering this RemoteViews layout
-     shrunk into a small thumbnail frame), the real 2x2 placement was
-     already correct and shouldn't have been changed to chase it. Left as
-     a known, accepted preview-thumbnail quirk rather than distorting the
-     real widget size again. maxResizeWidth/maxResizeHeight stay dropped —
-     both are inert when resizeMode="none" (no resize handles are ever
-     shown), so removing them was a real cleanup, unrelated to the size
-     revert above. -->
+     the REAL on-device widget footprint to 3x3 — the real 2x2 placement
+     was already correct and must never be changed to chase the preview
+     again. maxResizeWidth/maxResizeHeight stay dropped — both are inert
+     when resizeMode="none" (no resize handles are ever shown), so
+     removing them was a real cleanup, unrelated to the size history
+     above.
+     previewLayout points at a DEDICATED @layout/widget_offlog_preview
+     (v5.4.2 fix, owner screenshot showed "FOCUS" wrapped one letter per
+     line) instead of reusing @layout/widget_offlog — the real layout's
+     root is match_parent, which the picker measures against minWidth/
+     minHeight above, squishing the card into a near-square canvas the
+     Focus pill's text can't fit in. The preview layout has its own fixed
+     200x170dp root instead, with zero effect on the real on-device size
+     since previewLayout and initialLayout are fully separate resources. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="110dp"
@@ -18,7 +23,7 @@
     android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_offlog"
-    android:previewLayout="@layout/widget_offlog"
+    android:previewLayout="@layout/widget_offlog_preview"
     android:widgetCategory="home_screen"
     android:description="@string/widget_offlog_description"
     android:resizeMode="none" />

@@ -11,7 +11,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../config';
   import { timeAgo, fmtLastSynced } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
@@ -239,6 +239,19 @@
     }
   }
 
+  // v5.4.2 correction — was auto-tied to isAppLockEnabled() with no
+  // separate control (see config.ts's own comment). OFF by default:
+  // Android's FLAG_SECURE (what this actually sets) blocks ALL
+  // screenshots while the app is foregrounded, not just the recents-
+  // switcher preview it was meant to hide — too big a side effect to
+  // silently bundle into turning on a PIN.
+  let privacyScreenEnabled = isPrivacyScreenEnabled();
+  function togglePrivacyScreen() {
+    privacyScreenEnabled = !privacyScreenEnabled;
+    setPrivacyScreenEnabled(privacyScreenEnabled);
+    syncPrivacyScreen();
+  }
+
   let biometricEnabled = isAppLockBiometricEnabled();
   let biometricError = '';
   let biometricBusy = false;
@@ -334,6 +347,7 @@
     clearAppLockPin();
     appLockEnabled = false;
     biometricEnabled = false;
+    privacyScreenEnabled = false;
     syncPrivacyScreen();
   }
 
@@ -1299,6 +1313,17 @@
                   {#if biometricNoneEnrolled}
                     <button class="export-btn" on:click={openBiometricEnrollment}>Open enrollment settings</button>
                   {/if}
+                </div>
+
+                <div class="setting-group">
+                  <div class="setting-section-title">Privacy screen</div>
+                  <div class="setting-row">
+                    <div class="setting-label">Hide preview when backgrounded</div>
+                    <button class="toggle-btn" class:on={privacyScreenEnabled} on:click={togglePrivacyScreen} aria-label="Toggle privacy screen" role="switch" aria-checked={privacyScreenEnabled}>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <p class="setting-hint">Dims Offlog's preview in the recent-apps switcher — off by default because it also blocks taking screenshots of the app while this is on.</p>
                 </div>
               {/if}
 

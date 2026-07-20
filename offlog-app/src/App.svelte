@@ -22,7 +22,7 @@
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
   import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
-  import { closeOnBack } from './lib/modalStack';
+  import { closeOnBack, closeAll } from './lib/modalStack';
   import AppLock from './lib/AppLock.svelte';
 
   let ready = false;
@@ -217,6 +217,13 @@
   // and clobber a deliberate widget-driven navigation.
   function handleWidgetUrl(url: string | undefined | null): boolean {
     if (!url) return false;
+    // v5.4.2 bug (owner-reported live testing, 2026-07-21): a widget tap
+    // is a "show me exactly this" request, but nothing here previously
+    // closed whatever overlay (Quick Add, most commonly) might already be
+    // open on a warm start — the new view rendered underneath it instead
+    // of replacing it. closeAll() no-ops if nothing's open (cold start,
+    // the common case), so this is safe to call unconditionally.
+    closeAll();
     if (url.includes('quickadd')) { openQuickAdd(); return false; } // an overlay, not a view change
     if (url.includes('agenda')) { showDashboard = false; showDeadlines = true; return true; }
     if (url.includes('focus')) { showDashboard = false; showDeadlines = false; showFocus = true; return true; }

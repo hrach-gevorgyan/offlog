@@ -386,6 +386,7 @@ export function clearAppLockPin(): void {
   localStorage.removeItem(APP_LOCK_RECOVERY_HASH_KEY);
   localStorage.removeItem(APP_LOCK_RECOVERY_SALT_KEY);
   localStorage.removeItem(APP_LOCK_BIOMETRIC_KEY);
+  localStorage.removeItem(PRIVACY_SCREEN_KEY);
 }
 
 export function isAppLockBiometricEnabled(): boolean {
@@ -428,17 +429,37 @@ export function setAppLockTimeoutMinutes(minutes: number): void {
 // the OS snapshots whatever was on screen the instant the app
 // backgrounds, before AppLock.svelte gets a chance to cover it. Privacy
 // Screen (@capacitor/privacy-screen) closes that gap by dimming the
-// content in that snapshot instead. Tied to whether a PIN is actually
-// set, not always-on — the lock adds friction only when the owner opted
-// into it, this shouldn't dim the app switcher for someone who never
-// turned App Lock on at all. Call after any change to the PIN (set,
-// remove) as well as once at launch, so it never drifts out of sync with
-// isAppLockEnabled() mid-session.
+// content in that snapshot instead.
+//
+// v5.4.2 correction (owner-reported live testing, 2026-07-21): this
+// originally auto-enabled whenever a PIN was set, no separate control —
+// but Android's FLAG_SECURE (what PrivacyScreen.enable() actually sets)
+// blocks ALL screenshots while the app is foregrounded, not just the
+// recents-switcher snapshot; there's no way to have one without the
+// other. Silently taking away the ability to screenshot the app the
+// moment someone turns on App Lock is too big a side effect to bundle
+// in automatically — now a separate, explicit, OFF-by-default toggle
+// (Settings → App Lock), independent of whether a PIN is set. Still only
+// shown once a PIN exists (no reason to offer it otherwise), same as
+// biometric.
+const PRIVACY_SCREEN_KEY = 'offlog_privacy_screen_enabled';
+
+export function isPrivacyScreenEnabled(): boolean {
+  return localStorage.getItem(PRIVACY_SCREEN_KEY) === 'true';
+}
+
+export function setPrivacyScreenEnabled(enabled: boolean): void {
+  if (enabled) localStorage.setItem(PRIVACY_SCREEN_KEY, 'true');
+  else localStorage.removeItem(PRIVACY_SCREEN_KEY);
+}
+
+// Call after any change to the PIN (set, remove) or the toggle itself, as
+// well as once at launch, so it never drifts out of sync.
 export async function syncPrivacyScreen(): Promise<void> {
   if (!isNativePlatform()) return;
   try {
     const { PrivacyScreen } = await import('@capacitor/privacy-screen');
-    if (isAppLockEnabled()) await PrivacyScreen.enable();
+    if (isAppLockEnabled() && isPrivacyScreenEnabled()) await PrivacyScreen.enable();
     else await PrivacyScreen.disable();
   } catch {
     // Best-effort — privacy screen is a hardening layer on top of the

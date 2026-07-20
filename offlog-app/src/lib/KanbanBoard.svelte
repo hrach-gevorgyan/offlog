@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { fly, fade, scale } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
@@ -342,6 +342,32 @@
     dragOverColId = null;
     dragOverIndex = null;
   }
+
+  // v5.4.2 bug (owner-reported live testing, 2026-07-21): "shadow of old
+  // is still hanging on screen" after a long-press drag, even without
+  // moving to another column, still visible after navigating to other
+  // pages. Only 'touchend' was wired — 'touchcancel' (which the OS fires
+  // instead when a system gesture, notification-shade pull, or app
+  // backgrounding interrupts the sequence, rather than the finger simply
+  // lifting) was never handled, orphaning the ghost element permanently.
+  // A cancel means the gesture was aborted, not completed — clean up
+  // state without committing whatever column it happened to be over.
+  function onTouchCancel() {
+    if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+    touchTask = null;
+    dragTask = null;
+    dragOverColId = null;
+    dragOverIndex = null;
+  }
+
+  // Belt-and-suspenders for the same bug: touchGhost is appended straight
+  // to document.body (needs to render above the whole app, not just this
+  // component's own stacking context), which means it lives OUTSIDE
+  // Svelte's tree — navigating away from Kanban while a ghost is still
+  // active would leave it behind even with touchcancel handled correctly,
+  // since unmounting this component never touches nodes it manually
+  // appended elsewhere.
+  onDestroy(() => { if (touchGhost) { touchGhost.remove(); touchGhost = null; } });
 </script>
 
 <svelte:window on:click={onWindowClick} />
@@ -350,7 +376,7 @@
   <div class="board-empty-hint">No tasks yet — click "+ Add card" in any column to add one.</div>
 {/if}
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="board" on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd}>
+<div class="board" on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd} on:touchcancel={onTouchCancel}>
   {#each project.columns as col (col.id)}
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div

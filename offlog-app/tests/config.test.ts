@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled } from '../src/config';
+import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -220,5 +220,32 @@ describe('Haptics setting', () => {
     expect(isHapticsEnabled()).toBe(false);
     setHapticsEnabled(true);
     expect(isHapticsEnabled()).toBe(true);
+  });
+});
+
+// v5.4.2 correction: was auto-tied to isAppLockEnabled(), no separate
+// control — Android's FLAG_SECURE (what this actually sets) blocks ALL
+// screenshots, not just the recents-switcher preview, so defaults off
+// and is a real independent setting rather than derived from the PIN.
+describe('Privacy screen setting', () => {
+  beforeEach(() => {
+    clearAppLockPin();
+  });
+
+  it('defaults to off', () => {
+    expect(isPrivacyScreenEnabled()).toBe(false);
+  });
+
+  it('can be turned on independently of the PIN', async () => {
+    await setAppLockPin('1234');
+    setPrivacyScreenEnabled(true);
+    expect(isPrivacyScreenEnabled()).toBe(true);
+  });
+
+  it('clearAppLockPin() also turns it off', async () => {
+    await setAppLockPin('1234');
+    setPrivacyScreenEnabled(true);
+    clearAppLockPin();
+    expect(isPrivacyScreenEnabled()).toBe(false);
   });
 });
