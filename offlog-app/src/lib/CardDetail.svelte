@@ -60,9 +60,14 @@
   let body = task.body;
 
   // Owner-requested (2026-07-20) duplicate nudges — never block saving,
-  // see utils.ts's own header comment for the full reasoning.
+  // see utils.ts's own header comment for the full reasoning. Debounced
+  // (maintenance pass, 2026-07-20): both re-fire on every keystroke via
+  // the two-way bound title/body inputs, and checkNotesSimilarity in
+  // particular scans every task's body in the whole app, not just this
+  // project — debouncing keeps that off the hot keystroke path.
   let duplicateTitleHint = '';
-  $: checkTitleDuplicate(title, project._id, task._id);
+  let titleCheckTimer: ReturnType<typeof setTimeout> | undefined;
+  $: { clearTimeout(titleCheckTimer); titleCheckTimer = setTimeout(() => checkTitleDuplicate(title, project._id, task._id), 350); }
   async function checkTitleDuplicate(t: string, projectId: string, excludeId?: string) {
     if (!t.trim()) { duplicateTitleHint = ''; return; }
     const matches = await findTasksByTitleInProject(projectId, t, excludeId);
@@ -70,13 +75,15 @@
   }
 
   let similarNotesHint = '';
-  $: checkNotesSimilarity(body, task._id);
+  let notesCheckTimer: ReturnType<typeof setTimeout> | undefined;
+  $: { clearTimeout(notesCheckTimer); notesCheckTimer = setTimeout(() => checkNotesSimilarity(body, task._id), 350); }
   async function checkNotesSimilarity(text: string, excludeId?: string) {
     const matches = await findSimilarNotes(excludeId ?? null, text);
     similarNotesHint = matches.length
       ? `This looks similar to notes on "${matches[0].title}" (${Math.round(matches[0].similarity * 100)}% word overlap).`
       : '';
   }
+  onDestroy(() => { clearTimeout(titleCheckTimer); clearTimeout(notesCheckTimer); });
   let priority = task.priority;
   // CustomSelect only takes string values — priority stays 1|2|3 for
   // save()/everything else, this is just a bound proxy for the picker.

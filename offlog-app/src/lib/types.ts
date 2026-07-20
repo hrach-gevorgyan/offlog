@@ -97,5 +97,3 @@ export interface TaskDoc {
   updated_at: string;
   source: Source;
 }
-
-export type AnyDoc = SpaceDoc | ProjectDoc | TaskDoc;

@@ -5,7 +5,8 @@
       "name": "offlog",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "offlog-app"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

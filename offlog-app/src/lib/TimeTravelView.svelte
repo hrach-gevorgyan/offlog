@@ -161,27 +161,40 @@
           </div>
           {#each g.entries as log (log._id)}
             {@const clickable = entityLabel(log) === 'task'}
-            <div
-              class="entry"
-              class:clickable
-              role={clickable ? 'button' : 'listitem'}
-              tabindex={clickable ? 0 : -1}
-              on:click={() => openEntry(log)}
-              on:keydown={(e) => { if (clickable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openEntry(log); } }}
-            >
-              <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
-              <span class="entry-desc">{describeLog(log)}</span>
-              <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
-              <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
-              <!-- Skipped for a project's own create/delete entry -- its
-                   name is already the main description's subject. Own
-                   grid row (not an inline suffix) so it never wraps mid-
-                   sentence or lands split across two lines depending on
-                   description length (owner-reported 2026-07-18). -->
-              {#if log.project_name && entityLabel(log) !== 'project'}
-                <span class="entry-project">{log.project_name}</span>
-              {/if}
-            </div>
+            {#if clickable}
+              <div
+                class="entry clickable"
+                role="button"
+                tabindex="0"
+                on:click={() => openEntry(log)}
+                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEntry(log); } }}
+              >
+                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
+                <span class="entry-desc">{describeLog(log)}</span>
+                <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
+                <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+                {#if log.project_name && entityLabel(log) !== 'project'}
+                  <span class="entry-project">{log.project_name}</span>
+                {/if}
+              </div>
+            {:else}
+              <!-- role="listitem" matches the day-group's implicit list semantics;
+                   never focusable since these entries have no click action. -->
+              <div class="entry" role="listitem">
+                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
+                <span class="entry-desc">{describeLog(log)}</span>
+                <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
+                <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+                <!-- Skipped for a project's own create/delete entry -- its
+                     name is already the main description's subject. Own
+                     grid row (not an inline suffix) so it never wraps mid-
+                     sentence or lands split across two lines depending on
+                     description length (owner-reported 2026-07-18). -->
+                {#if log.project_name && entityLabel(log) !== 'project'}
+                  <span class="entry-project">{log.project_name}</span>
+                {/if}
+              </div>
+            {/if}
           {/each}
         </div>
       {/each}

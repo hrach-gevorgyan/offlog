@@ -67,6 +67,10 @@
   --due-soon-ink: #92400e;
   --overdue-bg: #fee2e2;
   --overdue-ink: #b91c1c;
+  /* Fixed (not overridden in body.dark) — the toggle-switch knob (ListView's
+     .toggle-mini-knob, SettingsPanel's .toggle-knob) is white in both themes;
+     the track (--border-strong/--accent) already carries the theme swap. */
+  --toggle-knob: #ffffff;
 
   /* Same face as the base font-family below -- kept as its own variable
      (not deleted/inlined) since ~20 components style metadata/labels via

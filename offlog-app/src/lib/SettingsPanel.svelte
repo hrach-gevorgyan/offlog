@@ -1622,7 +1622,7 @@
 
 <style>
   .settings-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.35);
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
     display: flex; align-items: center; justify-content: center; z-index: 200;
     padding: env(safe-area-inset-top, 0px) 1rem env(safe-area-inset-bottom, 0px);
   }
@@ -1804,7 +1804,7 @@
   .toggle-knob {
     position: absolute; top: 3px; left: 3px;
     width: 18px; height: 18px; border-radius: 50%;
-    background: #ffffff; transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    background: var(--toggle-knob); transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
   }
   .toggle-btn.on .toggle-knob { left: 21px; }
 
@@ -1894,7 +1894,7 @@
      is `position: fixed` itself (not flex-centered by its scrim parent) so
      dialogPop's `translate(-50%,-50%)` positions it correctly, same
      convention as ConfirmDialog/NamePrompt's sibling scrim+panel pattern. */
-  .mini-modal-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 300; }
+  .mini-modal-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; }
   .mini-modal {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
     z-index: 301; width: min(420px, 90vw); max-height: min(80vh, 560px);

@@ -28,7 +28,7 @@ export function daysSinceWeekStart(d: Date, mondayStart: boolean): number {
   return mondayStart ? (d.getDay() + 6) % 7 : d.getDay();
 }
 
-export function daysDiff(due: string): number {
+function daysDiff(due: string): number {
   return Math.round((new Date(due).getTime() - new Date(TODAY()).getTime()) / 86400000);
 }
 
@@ -74,16 +74,6 @@ export function dueRelative(due: string): string {
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `in ${days}d`;
-}
-
-export type DueState = 'overdue' | 'soon' | 'normal' | 'none';
-
-export function dueState(due: string | null): DueState {
-  if (!due) return 'none';
-  const days = daysDiff(due);
-  if (days < 0) return 'overdue';
-  if (days <= 1) return 'soon';
-  return 'normal';
 }
 
 export function dueInk(due: string | null): string {

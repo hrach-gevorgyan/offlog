@@ -97,6 +97,7 @@ see the "Maintenance pass log" section at the bottom.
 
 <!-- New rows appended below by rotation from CHANGELOG.md; not chronological with the table above yet — fine, git tag is the source of truth -->
 | 5.2.2 | Android cleanup, 6 items from a heavy audit: dead google-services classpath, unadapted scaffold tests, orphaned activity_main.xml, unused Gradle vars, unused widget color/string resources | `v5.2.2` |
+| 5.4.0 | App Launcher (B57) — biometric "nothing enrolled" now jumps straight to Android's enrollment settings screen instead of just telling the user to go find it | `v5.4.0` |
 | 5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets | `v5.2.1` |
 | 5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) | `v5.2.0` |
 | 5.3.0 | Haptics (B58) — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, new shared `src/lib/haptics.ts` | `v5.3.0` |
@@ -245,4 +246,39 @@ CLAUDE.md flagging that the Android `release` build type is currently
 signed with AGP's debug keystore (v5.4.4, local-dev convenience only) and
 must not ship as a real Play Store build before C3's real signing key
 exists. No dead code, no dependency changes, security checklist and `npm
+audit` unchanged from prior passes.
+
+Last pass: v5.6.1 (2026-07-21 — fourteenth run, off-cadence at owner
+request; the schedule's next pass wasn't due until v5.7.0). Baseline
+wasn't green at the start: `TimeTravelView.svelte` had a Svelte a11y
+warning (`role`/`tabindex` both driven by the same ternary, which the
+linter can't statically correlate) — fixed by splitting into static
+`{#if clickable}` branches before analysis could begin. Four parallel
+sub-audits (dead code/duplication, dependencies, error-handling/
+performance, security/robustness) covered `offlog-app/` and
+`offlog-desktop/src-tauri/`. Findings fixed: `utils.ts`'s unused
+`dueState()`/`DueState` and `types.ts`'s unused `AnyDoc` removed;
+`package.json`'s `pouchdb` moved from an unused `dependencies` entry to
+`devDependencies` (real UMD-global standin needed by `tests/setup.ts`
+under Vitest, never shipped in `dist`) and `@capacitor/cli` moved to
+`devDependencies`; new `--toggle-knob` token replacing two hardcoded
+`#ffffff` toggle-knob colors (`ListView.svelte`, `SettingsPanel.svelte`);
+two drifted `SettingsPanel.svelte` modal-scrim opacities (`.35`, `.4`)
+unified to the app's standard `.45`; `CardDetail.svelte`/`QuickAdd.svelte`'s
+per-keystroke duplicate-title/similar-notes checks debounced 350ms
+(`checkNotesSimilarity` was scanning every task's body app-wide on every
+keystroke, unthrottled). Security/robustness checklist (XSS via
+`{@html}`, deep-link handling, localStorage contents, Rust `unsafe`
+blocks, pairing-code logging, `eval`/`innerHTML`, credential leakage into
+errors/logs) came back fully clean, zero findings. Left deliberately
+unfixed: `npm audit`'s one bundle-reachable advisory (`pouchdb-find`'s
+transitive `uuid <11.1.1`, moderate) has no non-breaking upstream fix
+yet — noted to watch, not acted on; `tauri-plugin-updater`'s heavier
+dependency subtree (full second HTTP/TLS stack via reqwest/hyper/rustls)
+is informational only, the official plugin working as intended. No
+RISKY-tier findings; `offlog-desktop` baseline (`cargo build`) confirmed
+green but the crate itself wasn't touched this pass. All fixes verified
+live via browser preview (toggle-knob token, scrim opacity, Time Travel's
+clickable/non-clickable split, debounce timers) in addition to the
+build/tsc/test gates.
 audit` unchanged from prior passes.

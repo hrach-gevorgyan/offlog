@@ -1,7 +1,7 @@
 {
   "name": "offlog-app",
   "private": true,
-  "version": "5.6.0",
+  "version": "5.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,10 +15,12 @@
     "@capacitor/assets": "^3.0.5",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@testing-library/svelte": "^5.4.2",
+    "@capacitor/cli": "^8.4.1",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.2",
     "@types/pouchdb": "^6.4.2",
     "jsdom": "^29.1.1",
+    "pouchdb": "^9.0.0",
     "pouchdb-adapter-memory": "^9.0.0",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.1",
@@ -30,7 +32,6 @@
     "@capacitor/android": "^8.4.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/app-launcher": "^8.0.1",
-    "@capacitor/cli": "^8.4.1",
     "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/filesystem": "^8.1.2",
@@ -46,7 +47,6 @@
     "@tauri-apps/plugin-updater": "^2.10.1",
     "capacitor-native-biometric": "^4.2.2",
     "capacitor-zeroconf": "^4.0.0",
-    "pouchdb": "^9.0.0",
     "pouchdb-find": "^9.0.0"
   },
   "allowScripts": {

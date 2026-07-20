@@ -369,6 +369,7 @@ All colors are CSS custom properties in `app.css` — no hardcoded colors anywhe
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | text color for anything on a `--success` background — fixed (not overridden in dark mode) since `--success` is bright in both themes, unlike the tokens `--on-accent` covers |
 | `--danger` | `#DC2626` | `#F87171` | destructive actions |
 | `--success` | `#22C55E` | `#4ADE80` | done states, sync-ok indicator, "this week" agenda group |
+| `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — toggle-switch knob fill (ListView/SettingsPanel); track already carries the theme swap via `--border-strong`/`--accent` |
 
 The same accent (`#6366F1`) drives the `<meta name="theme-color">` in `index.html`, Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`), and the notification icon color (`capacitor.config.ts`) — one brand color across web and native app, updated in one place if it ever changes again.
 

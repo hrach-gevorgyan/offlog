@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, tick } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { fade } from 'svelte/transition';
   import { quickAddPop, scrimFade } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
@@ -40,12 +40,14 @@
   // hint. Scoped to the target project only, same reasoning as
   // findTasksByTitleInProject()'s own comment in db.ts.
   let duplicateTitleHint = '';
-  $: checkTitleDuplicate(parsed.title, projectId);
+  let titleCheckTimer: ReturnType<typeof setTimeout> | undefined;
+  $: { clearTimeout(titleCheckTimer); titleCheckTimer = setTimeout(() => checkTitleDuplicate(parsed.title, projectId), 350); }
   async function checkTitleDuplicate(t: string, pid: string) {
     if (!t || !pid) { duplicateTitleHint = ''; return; }
     const matches = await findTasksByTitleInProject(pid, t);
     duplicateTitleHint = matches.length ? `A task titled "${t}" already exists in this project.` : '';
   }
+  onDestroy(() => clearTimeout(titleCheckTimer));
 
   function onProjectChange() { projectManuallyChosen = true; }
 

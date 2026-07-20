@@ -721,7 +721,7 @@
   .toggle-mini-knob {
     position: absolute; top: 2px; left: 2px;
     width: 13px; height: 13px; border-radius: 50%;
-    background: #ffffff; transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    background: var(--toggle-knob); transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
   }
   .toggle-mini.on .toggle-mini-knob { left: 15px; }
 
