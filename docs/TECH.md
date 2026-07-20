@@ -256,13 +256,21 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 **For a full realistic scenario** (fresh project setup, or whenever you want
 one command to populate everything at once): `offlog-app/scripts/seed-scenario.js`
-is a ready-made, paste-into-DevTools-console script — 10 projects (1
-archived), 60 active tasks (15 archived) spread across random
-statuses/tags/priorities/deadlines, 6 soft-deleted tasks, and a small
-fraction with notes or a checklist. Usage is documented in the file's own
-header comment. Safe to re-run; every doc it creates is tagged `dummy`
-(tasks) or titled `(dummy)` (projects) for easy identification/bulk-removal,
-and it never touches pre-existing data.
+is a ready-made, paste-into-DevTools-console script covering every major
+feature at once — 4 spaces, ~11 projects (1 archived, 2 deliberately named
+"Draft" in different spaces to exercise B60's duplicate-name hint), ~95
+active tasks (15 archived, 5 pinned, ~8 with reminders, ~4 recurring) spread
+across random statuses/tags/priorities/deadlines, 6 soft-deleted (Trash)
+tasks, global custom fields with values on a subset of tasks, a handful of
+checklists (one with a deliberate duplicate item) and notes (one deliberate
+near-duplicate pair), and a real changelog/history trail (Time Travel) for
+everything it creates — since it calls the app's own `db.ts` functions
+(`createTask`/`updateTask`/etc.) rather than writing raw PouchDB docs, so it
+can't silently drift out of sync with `db.ts`'s own invariants the way
+hand-rolled docs could. Usage (and the `WIPE_EXISTING` reset option) is
+documented in the file's own header comment. Titles/tags read as a genuine
+lived-in workspace, not tagged filler — see the header comment for how to
+reset if you need a clean slate instead of layering another batch on top.
 
 **For anything smaller/more targeted**, write directly against the PouchDB
 instance in the browser (`new PouchDB('offlog')` — it's a global, reachable
