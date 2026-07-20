@@ -148,17 +148,17 @@ src/
     TimePicker.svelte           Themed time picker, replaces native <input type="time">
     ConfirmDialog.svelte        Themed confirm() replacement, driven by confirm.ts
     NamePrompt.svelte           First-run "name this device" prompt
-    AppLock.svelte              PIN lock screen (B54) -- mounted at App.svelte's root,
+    AppLock.svelte              PIN lock screen (B54) — mounted at App.svelte's root,
                                  gated by config.ts's isAppLockEnabled(). Deliberately
                                  does NOT use modalStack.ts's closeOnBack() (Escape must
                                  not dismiss a lock screen); App.svelte makes the rest of
                                  the app `inert` (not just visually covered) while locked.
                                  "Forgot PIN" requires the one-time recovery code shown at
                                  PIN setup (config.ts's verifyAppLockRecoveryCode()), not a
-                                 confirm-and-clear button -- see DECISIONS.md for why.
+                                 confirm-and-clear button — see DECISIONS.md for why.
                                  Biometric (config.ts's isAppLockBiometricEnabled()) is an
                                  opt-in fast path alongside the PIN, Android only, fires
-                                 automatically on mount -- see DECISIONS.md for why it never
+                                 automatically on mount — see DECISIONS.md for why it never
                                  replaces the PIN
 ```
 

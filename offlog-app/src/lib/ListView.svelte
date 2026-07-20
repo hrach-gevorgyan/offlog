@@ -318,7 +318,7 @@
 
   let detailTask: TaskDoc | null = null;
   // See KanbanBoard.svelte's identical detailOpenSession for why this
-  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // exists — {#key detailTask._id} alone doesn't change value on a fast
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
   function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; }
@@ -347,8 +347,8 @@
   //
   // Snapshotting more than just column_id (also due_date/reminder_at/
   // checklist) since a recurring task's completion now resets those too
-  // in the same write (db.ts's updateTask() -- one task object per
-  // series, not a new card per completion) -- restoring only column_id
+  // in the same write (db.ts's updateTask() — one task object per
+  // series, not a new card per completion) — restoring only column_id
   // on undo would leave the due date/checklist changes stuck even though
   // the task visually looks "undone" (found while implementing recurring
   // tasks, 2026-07-19).

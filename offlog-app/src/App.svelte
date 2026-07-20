@@ -61,7 +61,7 @@
   let showShortcuts = false;
   let sidebarRef: Sidebar;
   // See modalStack.ts's mandatory {#key} pattern for any closeOnBack()
-  // consumer -- QuickAdd/GlobalSearch are reachable from multiple rapid
+  // consumer — QuickAdd/GlobalSearch are reachable from multiple rapid
   // triggers (FAB + Ctrl+N, search button + Ctrl+K), same risk class as
   // Time Travel/Trash/Settings/CardDetail had before 2026-07-18's fix.
   let quickAddSession = 0;
@@ -86,9 +86,9 @@
 
   // B9 — command palette, folded into GlobalSearch rather than a separate
   // overlay/shortcut. Sidebar's own openSettings/openTimeTravel/openTrash
-  // are `export`ed top-level functions in its instance -- required for
+  // are `export`ed top-level functions in its instance — required for
   // Svelte 5's bind:this to reach them at all (see CLAUDE.md's Layer
-  // rules) -- so a bind:this ref is enough to reach them without lifting
+  // rules) — so a bind:this ref is enough to reach them without lifting
   // that state.
   $: commands = getCommands({
     goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
@@ -105,7 +105,7 @@
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;
   // See KanbanBoard.svelte's identical detailOpenSession for why this
-  // exists -- {#key searchDetailTask._id} alone doesn't change value on a
+  // exists — {#key searchDetailTask._id} alone doesn't change value on a
   // fast close-then-reopen of the same task.
   let searchDetailSession = 0;
   function openSearchDetail(task: import('./lib/types').TaskDoc, project: import('./lib/types').ProjectDoc) {
@@ -324,7 +324,7 @@
 
   // App lock: locks on every fresh page load (a reload/cold start always
   // re-checks isAppLockEnabled() below) plus after `timeout` minutes of
-  // being backgrounded or idle while foregrounded -- see config.ts and
+  // being backgrounded or idle while foregrounded — see config.ts and
   // DECISIONS.md for why this is a UI gate, not encryption.
   let locked = false;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -405,7 +405,7 @@
 {#if ready}
   <!-- inert (not just visually covered by AppLock's z-index) so a
        keyboard user can't Tab past the lock screen into the app behind
-       it, and so screen readers don't expose it either -- display:contents
+       it, and so screen readers don't expose it either — display:contents
        keeps this wrapper out of the flex/layout tree it sits inside. -->
   <div inert={locked} style="display:contents">
   <div class="status-bar-fill"></div>
@@ -599,7 +599,7 @@
   .status-bar-fill {
     position: fixed; top: 0; left: 0; right: 0;
     height: env(safe-area-inset-top, 0px);
-    /* --statusbar-fill, not --sidebar-bg -- main.ts pins the Android
+    /* --statusbar-fill, not --sidebar-bg — main.ts pins the Android
        status bar's icon style to Style.Dark (white icons) unconditionally,
        so this strip must stay dark in both themes even now that
        --sidebar-bg itself follows the page theme (2026-07-17). */

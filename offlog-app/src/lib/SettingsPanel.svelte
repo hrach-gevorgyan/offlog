@@ -31,7 +31,7 @@
   // and .link-row for anything that opens a modal. Anything genuinely
   // multi-step (device pairing, conflict resolution, the maintenance
   // run, import preview) opens as a small modal instead of living
-  // permanently in the tab -- keeps every tab's default view the same
+  // permanently in the tab — keeps every tab's default view the same
   // shape regardless of how much a feature actually needs underneath.
   // Exactly one tab (Advanced) is allowed to be technical.
   type Category = 'appearance' | 'notifications' | 'sync' | 'organize' | 'data' | 'security' | 'advanced';
@@ -78,7 +78,7 @@
 
   async function selectCategory(key: Category) {
     if (key === activeCategory) return;
-    // Measured FLIP, not a CSS `transition: height` -- the panel's height
+    // Measured FLIP, not a CSS `transition: height` — the panel's height
     // is otherwise auto (content-fit, capped by max-height), and auto
     // can't be transitioned directly. See the .settings-panel CSS comment.
     const fromHeight = panelEl?.getBoundingClientRect().height;
@@ -110,7 +110,7 @@
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
-    // No Escape-to-dismiss while the one-time recovery code is showing --
+    // No Escape-to-dismiss while the one-time recovery code is showing —
     // it must be acknowledged via the explicit button below, or someone
     // reflexively hitting Escape loses their only chance to see it.
     if (newRecoveryCode) return;
@@ -181,7 +181,7 @@
   }
 
   // Same rarely-changed-display-preference tradeoff as weekStartsMonday
-  // above -- every clock-time display in the app reads getTimeFormat24h()
+  // above — every clock-time display in the app reads getTimeFormat24h()
   // fresh via utils.ts's fmtTime(), so a reactive bridge isn't needed for
   // already-open views; a reopen/reload picks it up.
   let timeFormat24h = getTimeFormat24h();
@@ -192,13 +192,13 @@
 
   // ── App Lock ───────────────────────────────────────────────────────────
   // Immediate-write buttons (like "Reset test data"/"Check for updates"
-  // above), not batched into the tab's Save button -- PIN entry has its
+  // above), not batched into the tab's Save button — PIN entry has its
   // own inline validation/error state that doesn't fit the generic
   // "collect every field, write them all on Save" flow the rest of this
   // panel uses.
   let appLockEnabled = isAppLockEnabled();
   let appLockTimeout = getAppLockTimeoutMinutes();
-  // A dropdown, not the segmented control Theme/Week-starts-on use --
+  // A dropdown, not the segmented control Theme/Week-starts-on use —
   // those read fine at 2-3 short options, but 4 numeric ones ("1m 5m 15m
   // 30m") in a row felt cramped (owner feedback, 2026-07-19). Same
   // CustomSelect pattern as CardDetail's Repeat picker.
@@ -216,7 +216,7 @@
   let pinError = '';
   let pinSaving = false;
   // Shown once, right after setAppLockPin() actually generates a new one
-  // (only the very first time a PIN is set -- see config.ts) -- the
+  // (only the very first time a PIN is set — see config.ts) — the
   // plaintext code is never persisted anywhere, so this is the only
   // chance the user gets to see and save it.
   let newRecoveryCode: string | null = null;
@@ -224,7 +224,7 @@
   let recoveryCopied = false;
 
   // B56 (ROADMAP.md): the code is dense and easy to mistype re-copying by
-  // hand -- Clipboard removes that risk entirely. Falls back to
+  // hand — Clipboard removes that risk entirely. Falls back to
   // navigator.clipboard on web/desktop, where @capacitor/clipboard's web
   // implementation already wraps it.
   async function copyRecoveryCode() {
@@ -235,7 +235,7 @@
       recoveryCopied = true;
       setTimeout(() => { recoveryCopied = false; }, 2000);
     } catch {
-      // Best-effort -- the code is still visible on screen either way.
+      // Best-effort — the code is still visible on screen either way.
     }
   }
 
@@ -244,12 +244,12 @@
   let biometricBusy = false;
   // B57 (ROADMAP.md): distinguishes "nothing enrolled" from any other
   // failure so the "Open Settings" deep-link only shows when it'd
-  // actually help -- a wrong-fingerprint or cancelled prompt isn't fixed
+  // actually help — a wrong-fingerprint or cancelled prompt isn't fixed
   // by visiting enrollment settings.
   let biometricNoneEnrolled = false;
 
-  // Enabling requires a live device check + a real successful prompt --
-  // not just flipping a flag -- so a device with no fingerprint/face
+  // Enabling requires a live device check + a real successful prompt —
+  // not just flipping a flag — so a device with no fingerprint/face
   // enrolled never silently ends up "enabled" with no way to actually
   // unlock (owner scope, 2026-07-20: biometric sits alongside the PIN,
   // opt-in, Android only). Disabling never needs the device, it just
@@ -267,7 +267,7 @@
       const { NativeBiometric } = await import('capacitor-native-biometric');
       const available = await NativeBiometric.isAvailable();
       if (!available.isAvailable) {
-        biometricError = 'No fingerprint or face is enrolled on this device yet -- add one in your phone\'s system settings first.';
+        biometricError = 'No fingerprint or face is enrolled on this device yet — add one in your phone\'s system settings first.';
         biometricNoneEnrolled = true;
         return;
       }
@@ -287,7 +287,7 @@
   // screen instead of silently doing nothing. @capacitor/app-launcher's
   // openUrl() falls through to `new Intent(url)` when the string isn't a
   // URL or package name, which Android's Intent(String action)
-  // constructor treats as a genuine intent action -- not documented
+  // constructor treats as a genuine intent action — not documented
   // behavior of the plugin, but confirmed by reading its Android source
   // (AppLauncherPlugin.java) rather than assumed.
   async function openBiometricEnrollment() {
@@ -296,7 +296,7 @@
       const result = await AppLauncher.openUrl({ url: 'android.settings.BIOMETRIC_ENROLL' });
       if (!result.completed) await AppLauncher.openUrl({ url: 'android.settings.SECURITY_SETTINGS' });
     } catch {
-      // Best-effort -- the inline error message already explains what to do manually.
+      // Best-effort — the inline error message already explains what to do manually.
     }
   }
 
@@ -353,7 +353,7 @@
   // surfaced as one human sentence before this.
   //
   // C2 finding (2026-07-19): this used to point everyone at "Developer
-  // options" to connect -- a scary label for a first-time non-technical
+  // options" to connect — a scary label for a first-time non-technical
   // user, and no longer even the easy path once Track E's pairing flow
   // (isAndroid's "Find my computer" section, above this in the template)
   // shipped. Android gets pointed at that instead; anyone else (plain
@@ -391,7 +391,7 @@
   let pairingBusy = false;
   let pairingError = '';
   // Owner-reported, 2026-07-17: on success the modal just reset back to
-  // its initial "Find my computer" screen with no confirmation at all --
+  // its initial "Find my computer" screen with no confirmation at all —
   // read as "stuck," since nothing visibly acknowledged the pairing had
   // actually worked. A distinct success state instead of silently
   // reverting to the scan screen.
@@ -413,7 +413,7 @@
       await pairWithHost(selectedHost, pairingCode);
       syncUrl = getSyncUrl();
       // Real bug found live: without this, the Advanced tab's form still
-      // held whatever stale username/password it was mounted with --
+      // held whatever stale username/password it was mounted with —
       // invisible for the URL (which did refresh) but silent for the
       // masked password field, so tapping "Save & restart sync"
       // afterward would overwrite the just-paired credentials right
@@ -433,7 +433,7 @@
   let pcPairingBusy = false;
   // Owner-reported, 2026-07-17: same "stuck, no confirmation" gap as the
   // phone side above, but the PC has no direct signal that pairing
-  // finished -- the phone drives that handshake entirely. Polling
+  // finished — the phone drives that handshake entirely. Polling
   // getDeviceLastSeen() for a name that wasn't there when the code was
   // generated is the only way this side can tell; 3s is frequent enough
   // to feel live without hammering the local DB read.
@@ -480,7 +480,7 @@
     resetBusy = true;
     try {
       // Two halves, both needed: wipeAndReseed() clears this PC's own
-      // local PouchDB (the WebView's IndexedDB) -- discovered live that
+      // local PouchDB (the WebView's IndexedDB) — discovered live that
       // the Rust-only reset below never touched this, since it's a
       // completely separate local database from the embedded CouchDB
       // server, same local-first split every device in this app has.
@@ -548,11 +548,11 @@
   // ── Organize (Manage Spaces / Manage Tags) ─────────────────────────────
   // All four managers below get the same two fixes (2026-07-18 audit):
   // an error-handled, reentrancy-guarded lazy import (matching Sidebar.
-  // svelte's openTimeTravel/openTrash/openSettings -- an unguarded import
+  // svelte's openTimeTravel/openTrash/openSettings — an unguarded import
   // that rejects used to leave showX stuck false with no feedback), and
   // an *Session counter folded into their {#key} in the template below
   // (matching CardDetail/Time Travel/Trash/Settings/QuickAdd/GlobalSearch
-  // -- all four call closeOnBack(), so all four were exposed to the same
+  // — all four call closeOnBack(), so all four were exposed to the same
   // stuck-panel bug a fast reopen could trigger).
   let SpaceManagerComp: typeof import('./SpaceManager.svelte').default | null = null;
   let showSpaceManager = false;
@@ -662,7 +662,7 @@
 
   // v5.4.1 bug (owner-reported live testing, 2026-07-20): the floating
   // Quick Add button only hides for CardDetail's modalOpen store (see
-  // CardDetail.svelte) -- Settings never set it, so the FAB stayed
+  // CardDetail.svelte) — Settings never set it, so the FAB stayed
   // visible and clickable on top of the Settings overlay on every
   // platform. Same on/off pattern as CardDetail.
   onMount(() => modalOpen.set(true));
@@ -731,15 +731,15 @@
       await Share.share({ title: filename, url: written.uri });
       return;
     }
-    // Same gap A34 found on Android's WebView -- Tauri's embedded WebView2
+    // Same gap A34 found on Android's WebView — Tauri's embedded WebView2
     // has no download manager for the blob-URL + <a download> trick either
     // (owner-reported, 2026-07-16). A native "Save As" dialog + a real
     // file write is the desktop equivalent of Android's Filesystem+Share
-    // fix -- lets the user pick where it actually goes, same as any other
+    // fix — lets the user pick where it actually goes, same as any other
     // desktop app's export/save flow.
     if (isTauri) {
       // Owner-reported, 2026-07-16: defaultPath as a bare filename (no
-      // directory) didn't reliably pre-fill the dialog's filename field --
+      // directory) didn't reliably pre-fill the dialog's filename field —
       // the plugin's own docs note a non-existing-directory path only
       // populates the filename input when it's actually resolvable as
       // "some directory + a name," which a directory-less relative string
@@ -806,7 +806,7 @@
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];
 
-  // Scaffolding ahead of C1 (open-sourcing the repo) -- tauri.conf.json's
+  // Scaffolding ahead of C1 (open-sourcing the repo) — tauri.conf.json's
   // plugins.updater block exists but points at a placeholder endpoint
   // (https://example.invalid/...) and pubkey, not real hosting, so
   // check() below always fails until C1 provides a real update feed and
@@ -896,13 +896,13 @@
   $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
 
   // v5.4.1 bug (owner-reported live testing, 2026-07-20): this was
-  // unconditional -- every tab shares one footer Save button, but every
+  // unconditional — every tab shares one footer Save button, but every
   // OTHER tab's settings already apply live on interaction (theme,
   // reminders, App Lock, etc. all call their own setters directly, no
   // buffering). Only syncUrl/credentialUser/credentialPass are buffered
   // in local state waiting for Save. Reloading unconditionally meant
   // clicking Save on e.g. Appearance forced a full page reload for no
-  // reason -- and with App Lock on, a reload re-triggers the cold-start
+  // reason — and with App Lock on, a reload re-triggers the cold-start
   // lock check, which read as "Save opens the PIN screen" even though
   // nothing PIN-related was touched. Now only reloads if the sync
   // URL/credentials actually changed.
@@ -1537,7 +1537,7 @@
 
 {#if newRecoveryCode}
   <!-- No click-outside-to-close (no on:click|self here) and Escape is
-       blocked in onWindowKeydown above -- this can ONLY be dismissed via
+       blocked in onWindowKeydown above — this can ONLY be dismissed via
        the explicit checkbox + button below. The code is shown exactly
        once; there's no "view it again later" since only its hash is
        ever stored (config.ts). -->
@@ -1602,14 +1602,14 @@
     width: min(640px, 92vw);
     display: flex; flex-direction: column;
     box-shadow: 0 20px 50px rgba(0,0,0,.18);
-    /* Height fits content (not fixed) -- a short tab like Organize or the
+    /* Height fits content (not fixed) — a short tab like Organize or the
        mobile category list shouldn't leave a wall of empty space just to
        match a longer tab's height. Capped so a tab that outgrows this
        (future settings) scrolls inside .detail-content instead of the
        whole modal growing past a sane size. The actual tab-to-tab resize
        is animated from script.ts's selectCategory() (owner feedback,
        2026-07-17: switching tabs "jumping" from one size to another read
-       as broken) -- a plain CSS `transition: height` can't animate an
+       as broken) — a plain CSS `transition: height` can't animate an
        otherwise-auto-sized element, so it's done as a measured FLIP
        (capture old height, let Svelte re-render, measure new height,
        animate between the two pixel values, then release back to auto).
@@ -1659,7 +1659,7 @@
   }
   /* Wraps each tab's content so switching tabs fades it in (owner
      feedback, 2026-07-17: the outer panel resize was smooth but the
-     content itself popped instantly, reading as disjointed) -- same
+     content itself popped instantly, reading as disjointed) — same
      flex/gap the content used to have directly on .detail-content,
      since this wrapper is now the thing actually holding it. */
   .detail-fade {
@@ -1679,12 +1679,12 @@
     .chevron { display: block; }
   }
 
-  /* Every group of related rows is a card -- gives each tab real visual
+  /* Every group of related rows is a card — gives each tab real visual
      structure instead of loose rows floating directly on the panel
      background (owner feedback 2026-07-16: "too plain/bland"). A flat
      var(--bg) fill looked right in light mode but reads as a heavy dark
      block in dark mode, since --bg (#181a20) is *darker* than the panel's
-     own --surface (#242934) there -- a subtle tint off --text stays a
+     own --surface (#242934) there — a subtle tint off --text stays a
      gentle, barely-there card in both themes instead of a hole. */
   .setting-group {
     display: flex; flex-direction: column; gap: .6rem;
@@ -1726,7 +1726,7 @@
   .project-export-select { flex: 1; min-width: 0; }
 
   /* Shared primary-action style for the main CTA inside a modal (Connect,
-     Import, Run Maintenance) -- consistent accent treatment instead of
+     Import, Run Maintenance) — consistent accent treatment instead of
      each modal inventing its own "important button" look. */
   .btn-primary {
     padding: .35rem .8rem; border-radius: var(--radius-sm);
@@ -1858,7 +1858,7 @@
   .save-btn { background: var(--text) !important; color: var(--bg) !important; border-color: var(--text) !important; }
 
   /* Multi-step flows (device pairing, conflicts, maintenance run, import
-     preview) open here instead of living permanently in a tab -- .mini-modal
+     preview) open here instead of living permanently in a tab — .mini-modal
      is `position: fixed` itself (not flex-centered by its scrim parent) so
      dialogPop's `translate(-50%,-50%)` positions it correctly, same
      convention as ConfirmDialog/NamePrompt's sibling scrim+panel pattern. */

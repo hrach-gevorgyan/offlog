@@ -4,11 +4,11 @@
 // logo or brand color changes, same convention as generate-icons.cjs.
 //
 // Found stale during the 2026-07-20 Android audit: generate-icons.cjs
-// regenerates the launcher/notification icons but never touched these --
+// regenerates the launcher/notification icons but never touched these —
 // they were still the pre-rebrand mark. On API 31+ (targetSdk 36, nearly
-// every real device) these are barely used -- windowSplashScreenBackground/
+// every real device) these are barely used — windowSplashScreenBackground/
 // windowSplashScreenAnimatedIcon in styles.xml take over instead, and
-// those already read the current brand mark via ic_launcher_foreground --
+// those already read the current brand mark via ic_launcher_foreground —
 // but they're still the legacy pre-API-31 fallback (android:background),
 // so leaving them stale was a real, if narrow, bug. Matches
 // colorPrimaryDark (#181a20, styles.xml's windowSplashScreenBackground)
@@ -39,15 +39,15 @@ async function splashAt(width, height) {
 }
 
 // v5.4.1 bug (owner-reported live testing, 2026-07-20): "logo is shrunk"
-// on the REAL splash screen -- API 31+ (targetSdk 36, nearly every real
+// on the REAL splash screen — API 31+ (targetSdk 36, nearly every real
 // device) doesn't use drawable*/splash.png at all, it uses styles.xml's
 // windowSplashScreenAnimatedIcon, which pointed at @mipmap/ic_launcher_
 // foreground. That asset is correctly sized FOR THE LAUNCHER (mark at
-// 66% of canvas, generate-icons.cjs -- the safe-zone convention adaptive
+// 66% of canvas, generate-icons.cjs — the safe-zone convention adaptive
 // icons need so the OS's own circular/squircle mask never clips the
 // mark). But AndroidX's SplashScreen API applies its own additional
 // inset on top of whatever icon it's given, assuming the same
-// safe-zone convention -- stacking two rounds of padding shrinks an
+// safe-zone convention — stacking two rounds of padding shrinks an
 // already-padded foreground-only image well below where it reads as a
 // normal logo. Fix: a dedicated splash-only icon, transparent background
 // (the system composites it over windowSplashScreenBackground itself),

@@ -4,7 +4,7 @@
   import { verifyAppLockPin, clearAppLockPin, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, isNativePlatform } from '../config';
   import { trapFocus } from './focusTrap';
 
-  // Deliberately does NOT use modalStack.ts's closeOnBack() -- every other
+  // Deliberately does NOT use modalStack.ts's closeOnBack() — every other
   // overlay in the app is dismissible via Escape/back/scrim-click by
   // design, but a lock screen that closes on Escape isn't a lock. The only
   // ways out are a correct PIN or the explicit "Forgot PIN" reset below.
@@ -31,11 +31,11 @@
     if (biometricEnabled) tryBiometric();
   });
 
-  // Fires automatically on mount, and again from the "Try again" link --
+  // Fires automatically on mount, and again from the "Try again" link —
   // a cancelled/failed attempt is not a wrong PIN, so it never triggers
   // the shake/error state below. The PIN input stays usable the whole
   // time; biometric is just a faster path on top of it, never a
-  // replacement (owner, 2026-07-20 -- see config.ts's own comment).
+  // replacement (owner, 2026-07-20 — see config.ts's own comment).
   async function tryBiometric() {
     if (biometricBusy) return;
     biometricBusy = true;
@@ -46,7 +46,7 @@
       await NativeBiometric.verifyIdentity({ reason: 'Unlock Offlog', title: 'Unlock Offlog' });
       dispatch('unlocked');
     } catch {
-      // Cancelled, failed, or lockout -- fall through to the PIN screen.
+      // Cancelled, failed, or lockout — fall through to the PIN screen.
     } finally {
       biometricBusy = false;
     }
@@ -62,7 +62,7 @@
     error = true;
     wrongCount++;
     pin = '';
-    // A light throttle, not real rate-limiting -- this gates a UI, not a
+    // A light throttle, not real rate-limiting — this gates a UI, not a
     // vault (see DECISIONS.md), so the point is just to slow down idle
     // guessing, not withstand a determined attacker.
     if (wrongCount >= 3) {
@@ -79,15 +79,15 @@
   }
 
   function onPinInput(e: Event) {
-    // Digits only -- a PIN, not a general password field.
+    // Digits only — a PIN, not a general password field.
     pin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8);
   }
 
-  // v1 shipped this as a plain confirm-and-clear -- owner feedback,
+  // v1 shipped this as a plain confirm-and-clear — owner feedback,
   // 2026-07-19: "it is just removing pin... like when there is wall as
   // block of road but in middle there is door u just open and go". Right:
   // a bypass reachable with zero knowledge isn't a lock. Now requires the
-  // one-time recovery code shown at PIN setup (config.ts) -- a real
+  // one-time recovery code shown at PIN setup (config.ts) — a real
   // route back in, not a button. Still no server/account to verify
   // identity against (see GOAL.md), so this is the strongest recovery
   // achievable without one: possessing a secret only ever shown once.
@@ -213,7 +213,7 @@
     transition: border-color .12s;
     /* text-align:center visually centers the typed dots, but leaves the
        blinking text caret jumping to the middle of the field as you type
-       -- reads as broken (owner-reported, 2026-07-20). Hiding the caret
+       — reads as broken (owner-reported, 2026-07-20). Hiding the caret
        is the standard fix for centered PIN/OTP-style inputs; the digits
        themselves are still the only visible feedback, same as any native
        PIN screen. */

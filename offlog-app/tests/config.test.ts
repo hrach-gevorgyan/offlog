@@ -7,7 +7,7 @@ import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin
 // install.
 //
 // C7 (ROADMAP.md, mandatory release-gate item): the old fallback was a
-// real hardcoded password baked into source -- a public-repo blocker on
+// real hardcoded password baked into source — a public-repo blocker on
 // its own. Not testing "falls back to the env/static default" here on
 // purpose: `VITE_COUCH_USER`/`VITE_COUCH_PASS` come from this dev
 // machine's own gitignored `.env.local`, so what that fallback actually
@@ -27,7 +27,7 @@ describe('getSyncCredentials()/setSyncCredentials()', () => {
 });
 
 // App lock: a PIN gate on the UI, not data encryption (see DECISIONS.md).
-// The PIN itself is never stored in plaintext -- only a salted hash --
+// The PIN itself is never stored in plaintext — only a salted hash —
 // so these tests go through setAppLockPin()/verifyAppLockPin() rather
 // than asserting a specific localStorage value.
 describe('App lock (PIN)', () => {
@@ -118,7 +118,7 @@ describe('App lock (PIN)', () => {
 
 // Recovery code: the real route back in if the PIN is forgotten (see
 // DECISIONS.md/config.ts's own comments for why this replaced a plain
-// "Forgot PIN -> clear it" button -- that was a bypass reachable with no
+// "Forgot PIN -> clear it" button — that was a bypass reachable with no
 // knowledge at all, not a lock). Only the salted hash is ever stored;
 // these tests go through setAppLockPin()'s returned plaintext code and
 // verifyAppLockRecoveryCode() rather than asserting a raw localStorage value.
@@ -175,7 +175,7 @@ describe('App lock recovery code', () => {
   });
 });
 
-// Biometric: an opt-in flag only, alongside the PIN -- see DECISIONS.md's
+// Biometric: an opt-in flag only, alongside the PIN — see DECISIONS.md's
 // "Biometric unlock sits alongside the PIN" entry. No new secret to store
 // here (the OS itself holds the enrolled biometric), just whether this
 // device opted in.
@@ -205,7 +205,7 @@ describe('App lock biometric flag', () => {
 });
 
 // B58: pure polish, defaults on unlike App Lock's biometric (no security
-// implication to defaulting a vibration on) -- see config.ts's own comment.
+// implication to defaulting a vibration on) — see config.ts's own comment.
 describe('Haptics setting', () => {
   beforeEach(() => {
     localStorage.removeItem('offlog_haptics_enabled');

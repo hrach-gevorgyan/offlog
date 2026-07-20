@@ -98,14 +98,14 @@
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
   // See KanbanBoard.svelte's identical detailOpenSession for why this
-  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // exists — {#key detailTask._id} alone doesn't change value on a fast
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
 
   async function loadLockedTasks() {
     if (!lock) { lockedTasks = []; return; }
     const fetched = await Promise.all(lock.taskIds.map(id => getTaskById(id)));
-    // !archived too, not just !deleted -- every other read path in the
+    // !archived too, not just !deleted — every other read path in the
     // app (getOpenTasksForFocusPicker, getAllTasksDue, etc.) excludes
     // both; a task archived elsewhere while locked as one of today's 3
     // commitments used to stay visible/actionable here regardless.
@@ -165,7 +165,7 @@
 
   // v5.4.1 bug (owner-reported live testing, 2026-07-20): markDone() was
   // correctly updating the task (confirmed via Time Travel) but the row
-  // itself never reflected it -- no isDone check anywhere in the
+  // itself never reflected it — no isDone check anywhere in the
   // template, so a "done" task looked identical to an untouched one and
   // stayed clickable forever. allDone already computed this per-task
   // inline; extracted so the row template can reuse it too.
@@ -298,7 +298,7 @@
   .focus { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .fc-header {
-    /* flex-start, not center -- see DashboardView.svelte's .dash-header
+    /* flex-start, not center — see DashboardView.svelte's .dash-header
        comment for why (consistent hamburger position across pages with
        a different number of subtitle lines, owner-reported 2026-07-16). */
     display: flex; align-items: flex-start; gap: 10px;
@@ -323,7 +323,7 @@
     background: none; border: 1px solid var(--border); color: var(--faint);
     font-size: 12px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
     flex-shrink: 0; transition: background .12s, color .12s;
-    /* header is align-items:flex-start now (see .fc-header comment) --
+    /* header is align-items:flex-start now (see .fc-header comment) —
        this button still wants to sit centered against the row. */
     align-self: center;
   }
@@ -426,7 +426,7 @@
   /* Locked task-row's title + project stacked (same primary/secondary
      pattern as DashboardView/DeadlinesView's .task-body) instead of a
      same-line project chip that used to just vanish below 700px
-     (owner-reported, 2026-07-16) -- survives at every width now. The
+     (owner-reported, 2026-07-16) — survives at every width now. The
      corkboard note's own .proj-badge (in .note-foot below) keeps its
      chip look; that one has room to spare and pairs visually with
      .suggest-chip, so it's left as-is. */

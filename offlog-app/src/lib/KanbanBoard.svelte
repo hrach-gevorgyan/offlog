@@ -129,11 +129,11 @@
   // ── Card detail ────────────────────────────────────────────────────────────
   let detailTask: TaskDoc | null = null;
   // Bumped every time a card is opened, including reopening the *same*
-  // card -- {#key detailTask._id} alone doesn't change value on a
+  // card — {#key detailTask._id} alone doesn't change value on a
   // close-then-reopen of the same task, so a fast reopen could land while
   // Svelte's outro for the previous CardDetail instance is still
   // in-flight, and get reversed into an intro on that same (already
-  // closed-once) instance instead of a real remount -- same root cause as
+  // closed-once) instance instead of a real remount — same root cause as
   // modalStack.ts's 2026-07-17 stuck-panel bug: the revived instance's
   // own closeOnBack() never re-runs, so its requestClose is a stale,
   // already-spent closure that can never close it again.
@@ -551,7 +551,7 @@
        state (collapsible-section flags, etc.) can't carry over stale from
        a previous task instead of re-deriving. detailOpenSession is
        included (2026-07-17) so reopening the *same* task quickly also
-       forces a remount -- _id alone doesn't change value then, which
+       forces a remount — _id alone doesn't change value then, which
        risked Svelte reversing an in-flight outro into an intro on the
        same (already-closed-once) instance instead of a real remount; see
        the stuck-Time-Travel (née Changelog) fix in Sidebar.svelte for the full story. -->

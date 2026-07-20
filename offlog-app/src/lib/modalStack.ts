@@ -50,20 +50,20 @@ let listening = false;
 let nextId = 1;
 
 // popstate fires once per *browser navigation*, not once per history.back()
-// call -- if two closeOnBack layers each call requestClose() in quick
+// call — if two closeOnBack layers each call requestClose() in quick
 // succession (owner-reported 2026-07-17: rapid Changelog [now Time Travel] open/close/open
 // left it "stuck, can't get back to main screen"), the browser can
 // coalesce the two back() calls into a single navigation and fire only
 // one popstate. Popping exactly one stack entry per popstate (the old
 // behavior) then leaves a stale entry behind: its component is still
 // mounted, but its requestClose was already spent (guarded to fire once),
-// so nothing can ever close it again -- permanently stuck.
+// so nothing can ever close it again — permanently stuck.
 //
 // A first fix (2026-07-17, same day) stamped each push with its stack
 // *depth* and compared depths on landing. That still broke after a page
 // reload: `stack`/`nextId` reset to empty on every fresh module load, but
 // real browser session history (and therefore its current depth) survives
-// a reload -- so a depth comparison against a freshly-empty stack was
+// a reload — so a depth comparison against a freshly-empty stack was
 // comparing two numbers that no longer meant the same thing, and the
 // panel could refuse to open, or get stuck again, after a refresh
 // following an earlier stuck session.
@@ -71,8 +71,8 @@ let nextId = 1;
 // Fix: stamp each push with a globally unique id instead of a depth, and
 // on popstate, match by *identity* against the current stack rather than
 // by count. If the landed state's id is present in `stack`, close and pop
-// every entry above it. If it's absent -- including the common case of a
-// stale id from before a reload, or no offlog state at all -- there is no
+// every entry above it. If it's absent — including the common case of a
+// stale id from before a reload, or no offlog state at all — there is no
 // layer we can still vouch for, so close and pop everything currently
 // tracked. This is correct regardless of whether real browser depth and
 // `stack.length` agree, which a reload can never change.
@@ -100,12 +100,12 @@ export function closeOnBack(close: CloseFn): CloseFn {
   // Guarded against firing twice for the same layer: every overlay can
   // reach requestClose() from more than one path (Escape, a scrim click,
   // a Cancel/Save button), and history.back() resolves asynchronously via
-  // 'popstate' -- a second call before that resolves (a fast double-tap,
+  // 'popstate' — a second call before that resolves (a fast double-tap,
   // or a click landing on a still-fading scrim right after Enter/Save
   // already triggered one) issues a second history.back() against a stack
   // that only ever had one entry pushed for this layer, over-navigating
   // into whatever was underneath it (owner-reported, 2026-07-17: quick add
-  // "sometimes not working" after repeated fast use -- exactly this).
+  // "sometimes not working" after repeated fast use — exactly this).
   let requested = false;
   return () => {
     if (requested) return;
@@ -114,7 +114,7 @@ export function closeOnBack(close: CloseFn): CloseFn {
     // Fallback (owner-reported live testing, 2026-07-20: multiple X/Cancel
     // buttons across different overlays stopped closing anything in the
     // same session, requiring a full app restart to recover). history.back()
-    // is a request, not a guarantee -- Android WebView has been seen to
+    // is a request, not a guarantee — Android WebView has been seen to
     // occasionally not deliver the resulting 'popstate' at all, and this
     // guard's own single-fire design means a stuck entry could never be
     // retried. If popstate hasn't removed this entry shortly after asking

@@ -82,12 +82,12 @@
     return `${date}T${h}:${m}`;
   }
   $: if (remindOnDue && due_date) reminder_at = dueDateToReminderInput(due_date);
-  // Recurrence needs a due_date to advance from -- see db.ts's
+  // Recurrence needs a due_date to advance from — see db.ts's
   // spawnNextRecurrence() comment. Clearing the due date while a repeat
   // rule is set would leave a rule nothing can act on, so clear it too
   // rather than silently keep a rule the UI no longer shows a control for.
   // recurrenceStr (bound to the picker) is the single source of truth;
-  // recurrence is a pure derived value, not independently mutable --
+  // recurrence is a pure derived value, not independently mutable —
   // two reactive statements both assigning the same variable would race.
   const recurrenceOptions = [
     { value: '', label: 'Does not repeat' },
@@ -562,7 +562,7 @@
     display: flex; align-items: stretch; justify-content: flex-end;
     /* Above every panel that can open a card while staying visible itself
        (TrashView/TimeTravelView z:402, GlobalSearch z:401, SettingsPanel
-       z:301, QuickAdd z:501) -- was z:100, which put CardDetail BEHIND
+       z:301, QuickAdd z:501) — was z:100, which put CardDetail BEHIND
        TimeTravelView specifically, since that view deliberately doesn't
        close itself when opening a card (so "back" returns to it). Not
        just >402: still below ConfirmDialog's z:700/701, since CardDetail's

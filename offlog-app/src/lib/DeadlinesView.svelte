@@ -17,7 +17,7 @@
   let detailTask: DueTask | null = null;
   let detailProject: ProjectDoc | null = null;
   // See KanbanBoard.svelte's identical detailOpenSession for why this
-  // exists -- {#key detailTask._id} alone doesn't change value on a fast
+  // exists — {#key detailTask._id} alone doesn't change value on a fast
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
 
@@ -271,7 +271,7 @@
   .deadlines { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .dl-header {
-    /* flex-start, not center -- see DashboardView.svelte's .dash-header
+    /* flex-start, not center — see DashboardView.svelte's .dash-header
        comment for why (consistent hamburger position across pages with
        a different number of subtitle lines, owner-reported 2026-07-16). */
     display: flex; align-items: flex-start; gap: 10px;
@@ -295,7 +295,7 @@
   .mode-toggle {
     display: flex; border: 1px solid var(--border-strong); border-radius: 8px;
     overflow: hidden; flex-shrink: 0; margin-left: auto;
-    /* header is align-items:flex-start now (see .dl-header comment) --
+    /* header is align-items:flex-start now (see .dl-header comment) —
        this control cluster still wants to sit centered against the row,
        not pinned to the top like the title block. */
     align-self: center;
@@ -326,14 +326,14 @@
   .week-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   .week-grid {
-    /* Used to be flex:1 (fill all remaining viewport height) -- the grid
+    /* Used to be flex:1 (fill all remaining viewport height) — the grid
        row's height (a single row of 7 columns, grid-auto-rows: auto by
        default) was forced to stretch across that entire leftover
        viewport space, so a week with only 1-2 tasks read as a wall of
        near-empty columns (owner-reported, 2026-07-15). Dropping flex:1
        lets the row size to its actual tallest column's content instead
        (default align-items:stretch still keeps all 7 columns matching
-       each other's height, same as a real calendar) -- a per-column
+       each other's height, same as a real calendar) — a per-column
        min-height keeps empty days from collapsing to just their header,
        and max-height + overflow-y still cap a genuinely busy week. */
     flex: 0 1 auto; max-height: 60vh; overflow-y: auto; overflow-x: auto;
@@ -448,7 +448,7 @@
 
   /* Title + project stacked (same primary/secondary pattern as
      DashboardView's .task-body) instead of a same-line project chip that
-     used to just vanish below 700px (owner-reported, 2026-07-16) --
+     used to just vanish below 700px (owner-reported, 2026-07-16) —
      project context now survives at every width, no breakpoint needed. */
   .task-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title {

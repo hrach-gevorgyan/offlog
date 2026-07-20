@@ -22,7 +22,7 @@
     <color name="colorWidgetBg">#FBF8F2</color>      <!-- warm cream, not app.css's exact surface token -->
     <!-- v5.4.1 bug (owner-reported live testing, 2026-07-20): "light mode
          still has contrast issues, dark is good". Root cause wasn't icon
-         color (already fixed, B48/v4.28.0) -- it was this token being
+         color (already fixed, B48/v4.28.0) — it was this token being
          only ~10/255 per channel off colorWidgetBg, so the two round
          action buttons barely stood out from the card itself in light
          mode. Dark mode's equivalent gap (colorWidgetBg #101218 vs this

@@ -6,7 +6,7 @@ const envUser = import.meta.env.VITE_COUCH_USER as string | undefined;
 const envPass = import.meta.env.VITE_COUCH_PASS as string | undefined;
 
 // Exported (was module-private) so SettingsPanel.svelte can gate the
-// biometric-unlock note to Android only -- this project ships no other
+// biometric-unlock note to Android only — this project ships no other
 // Capacitor-native platform (see GOAL.md/DECISIONS.md: no iOS), so
 // "native platform" and "Android" are the same thing here in practice.
 export function isNativePlatform(): boolean {
@@ -44,22 +44,22 @@ export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>
 // tab, on its standard port — so loopback:5984 is always right there.
 //
 // The Tauri desktop app (Track E) is a THIRD case, easy to conflate
-// with plain desktop web since both are "not Capacitor" -- but its
+// with plain desktop web since both are "not Capacitor" — but its
 // embedded CouchDB sidecar (sync_host.rs) binds a random port, chosen
 // fresh per install, never 5984. Falling through to the desktop-web
 // branch above silently pointed the Tauri app at port 5984 regardless
-// -- whatever happened to be listening there (a completely unrelated,
+// — whatever happened to be listening there (a completely unrelated,
 // separately-installed CouchDB, in the case that surfaced this) rather
 // than its own sidecar. Caught live: the Tauri app reported "synced"
 // successfully against the wrong database the whole time, since a
 // real CouchDB really was answering on 5984, just not the right one.
 // No synchronous default is possible here (the real port is only
-// knowable via the async get_sync_info Tauri command) -- falls back to
+// knowable via the async get_sync_info Tauri command) — falls back to
 // '' like Android, resolved by initTauriSyncDefaults() below before
 // the first sync attempt.
 export const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() && !isTauri() ? 'http://127.0.0.1:5984/offlog' : '');
 
-// Called once at app boot (store.ts's initApp(), before startSync()) --
+// Called once at app boot (store.ts's initApp(), before startSync()) —
 // if this is the Tauri desktop app and nothing has been explicitly
 // configured yet (no saved URL, meaning either a fresh install or an
 // install still carrying the old wrong 5984 default from before this
@@ -75,7 +75,7 @@ export async function initTauriSyncDefaults(): Promise<void> {
     setSyncUrl(`http://127.0.0.1:${info.port}/offlog`);
     setSyncCredentials(info.user, info.password);
   } catch {
-    // sidecar not ready yet or invoke failed -- leave whatever was
+    // sidecar not ready yet or invoke failed — leave whatever was
     // there (possibly the stale 5984 default); next launch retries.
   }
 }
@@ -96,13 +96,13 @@ export function setSyncUrl(url: string) {
 //
 // C7 (ROADMAP.md Track C, mandatory release-gate item): this used to
 // fall back to a real hardcoded password when nothing was configured
-// -- present in git history too, a real public-repo blocker on its own,
+// — present in git history too, a real public-repo blocker on its own,
 // independent of pairing. No real credential lives in source at all now
-// -- VITE_COUCH_USER/VITE_COUCH_PASS come from `.env.local` only
+// — VITE_COUCH_USER/VITE_COUCH_PASS come from `.env.local` only
 // (git-ignored, never committed) for local dev against a manually-
 // configured CouchDB; anyone else gets '' until they pair or type
 // credentials in manually, same "not configured yet" semantics
-// DEFAULT_SYNC_URL already uses for native/Tauri above -- Settings
+// DEFAULT_SYNC_URL already uses for native/Tauri above — Settings
 // already shows a friendly "Not connected" for an empty URL, and an
 // empty password just fails auth cleanly (401) rather than silently
 // working against a hardcoded default that shouldn't exist.
@@ -243,7 +243,7 @@ export function setWeekStartsMonday(monday: boolean) {
 // Same per-device override pattern as WEEK_STARTS_MONDAY_KEY above.
 // Owner preference, 2026-07-18: default to 24h display rather than
 // following the browser/OS locale (unlike most locale-driven formatting
-// elsewhere in the app) -- 12h AM/PM is the override, not the default.
+// elsewhere in the app) — 12h AM/PM is the override, not the default.
 const TIME_FORMAT_24H_KEY = 'offlog_time_format_24h';
 
 export function getTimeFormat24h(): boolean {
@@ -257,10 +257,10 @@ export function setTimeFormat24h(is24h: boolean) {
 
 // B58 (ROADMAP.md): tactile feedback on checkbox/drag/toggle actions.
 // Defaults ON (unlike App Lock's biometric, which defaults off because
-// it's a security-relevant opt-in) -- this is pure polish with no
+// it's a security-relevant opt-in) — this is pure polish with no
 // downside to a first-time user, matching how haptics ship by default in
 // most native apps; the toggle exists for the minority who find it
-// distracting, same role as Reduce Motion for animation. Android only --
+// distracting, same role as Reduce Motion for animation. Android only —
 // haptics.ts checks isNativePlatform() itself, this flag alone doesn't
 // gate platform.
 const HAPTICS_KEY = 'offlog_haptics_enabled';
@@ -274,10 +274,10 @@ export function setHapticsEnabled(enabled: boolean): void {
   localStorage.setItem(HAPTICS_KEY, String(enabled));
 }
 
-// App lock: a PIN gate on the UI, not data encryption -- see DECISIONS.md
+// App lock: a PIN gate on the UI, not data encryption — see DECISIONS.md
 // for why. Per-device, like every other setting in this file: the PIN
 // itself never syncs, so a phone and a PC can have different PINs, or one
-// locked and the other not. Stores a salted hash, not the plaintext PIN --
+// locked and the other not. Stores a salted hash, not the plaintext PIN —
 // this isn't a real cryptographic secret either way (it only gates the
 // UI), but there's no reason to leave the literal PIN sitting in
 // localStorage when a random salt + SHA-256 costs nothing.
@@ -285,7 +285,7 @@ const APP_LOCK_HASH_KEY = 'offlog_app_lock_hash';
 const APP_LOCK_SALT_KEY = 'offlog_app_lock_salt';
 const APP_LOCK_TIMEOUT_KEY = 'offlog_app_lock_timeout_minutes';
 // A self-written reminder ("my old street address"), not a secret
-// question with a verified answer -- there's no server to check an
+// question with a verified answer — there's no server to check an
 // answer against, so a real Q&A flow would just be a second PIN typed
 // in plaintext for no extra security. Optional, shown on the lock
 // screen so someone who forgot their PIN can jog their own memory
@@ -293,15 +293,15 @@ const APP_LOCK_TIMEOUT_KEY = 'offlog_app_lock_timeout_minutes';
 const APP_LOCK_HINT_KEY = 'offlog_app_lock_hint';
 
 // Recovery code: a random code shown to the user exactly ONCE, at the
-// moment they first set a PIN -- they save it themselves (password
+// moment they first set a PIN — they save it themselves (password
 // manager, notes, written down). "Forgot PIN" on the lock screen requires
 // this code, not a button click. First version just let "Forgot PIN"
-// clear the lock outright with a plain confirm dialog -- owner feedback,
+// clear the lock outright with a plain confirm dialog — owner feedback,
 // 2026-07-19: "it is just removing pin... like when there is wall as
 // block of road but in middle there is door u just open and go". That's
 // right: a bypass reachable with zero knowledge isn't a lock at all. This
 // is the closest thing to a real recovery *route* achievable with no
-// accounts/server (see GOAL.md) -- it requires possessing a secret that
+// accounts/server (see GOAL.md) — it requires possessing a secret that
 // was only ever shown once, not just intent. Only the salted hash is
 // ever stored, same as the PIN itself; the plaintext code is returned
 // once from setAppLockPin() below and never persisted anywhere.
@@ -309,11 +309,11 @@ const APP_LOCK_RECOVERY_HASH_KEY = 'offlog_app_lock_recovery_hash';
 const APP_LOCK_RECOVERY_SALT_KEY = 'offlog_app_lock_recovery_salt';
 
 // Biometric unlock: sits alongside the PIN, never replaces it (owner,
-// 2026-07-20) -- the PIN stays the only thing that can set/change/remove
+// 2026-07-20) — the PIN stays the only thing that can set/change/remove
 // the lock or drive recovery. This is just a faster unlock path on top,
-// opt-in per device via Settings (Android only -- no Capacitor biometric
+// opt-in per device via Settings (Android only — no Capacitor biometric
 // plugin ships an iOS build here since this project doesn't ship iOS, see
-// GOAL.md/DECISIONS.md). No new secret to store -- the OS itself holds
+// GOAL.md/DECISIONS.md). No new secret to store — the OS itself holds
 // the enrolled biometric, this flag only remembers whether the user opted
 // in on this device.
 const APP_LOCK_BIOMETRIC_KEY = 'offlog_app_lock_biometric_enabled';
@@ -326,7 +326,7 @@ function randomRecoveryCode(): string {
   return `${part()}-${part()}`;
 }
 
-// crypto.subtle needs a secure context -- true for the dev server, the
+// crypto.subtle needs a secure context — true for the dev server, the
 // deployed HTTPS site, and Capacitor/Tauri's own WebView schemes, but
 // falls back to a plain (much weaker, still not plaintext) hash rather
 // than making the whole feature throw if some embedding context doesn't
@@ -348,7 +348,7 @@ export function isAppLockEnabled(): boolean {
 }
 
 // Returns the plaintext recovery code ONLY the first time a PIN is set
-// (transitioning disabled -> enabled) -- a "Change PIN" on an
+// (transitioning disabled -> enabled) — a "Change PIN" on an
 // already-enabled lock reuses the existing recovery code rather than
 // silently invalidating whatever the user already saved. Returns null
 // when no new code was generated (nothing new for the caller to show).
@@ -411,7 +411,7 @@ export async function verifyAppLockRecoveryCode(code: string): Promise<boolean> 
   return (await hashWithSalt(salt, code.trim().toUpperCase())) === storedHash;
 }
 
-// Idle/background timeout before the lock screen reappears -- launch
+// Idle/background timeout before the lock screen reappears — launch
 // (fresh page load / cold app start) always locks regardless of this,
 // see App.svelte's onMount.
 export function getAppLockTimeoutMinutes(): number {
@@ -424,12 +424,12 @@ export function setAppLockTimeoutMinutes(minutes: number): void {
 }
 
 // B55 (ROADMAP.md): a PIN on the lock screen still leaks a full
-// screenshot preview of open tasks in Android's recent-apps switcher --
+// screenshot preview of open tasks in Android's recent-apps switcher —
 // the OS snapshots whatever was on screen the instant the app
 // backgrounds, before AppLock.svelte gets a chance to cover it. Privacy
 // Screen (@capacitor/privacy-screen) closes that gap by dimming the
 // content in that snapshot instead. Tied to whether a PIN is actually
-// set, not always-on -- the lock adds friction only when the owner opted
+// set, not always-on — the lock adds friction only when the owner opted
 // into it, this shouldn't dim the app switcher for someone who never
 // turned App Lock on at all. Call after any change to the PIN (set,
 // remove) as well as once at launch, so it never drifts out of sync with
@@ -441,7 +441,7 @@ export async function syncPrivacyScreen(): Promise<void> {
     if (isAppLockEnabled()) await PrivacyScreen.enable();
     else await PrivacyScreen.disable();
   } catch {
-    // Best-effort -- privacy screen is a hardening layer on top of the
+    // Best-effort — privacy screen is a hardening layer on top of the
     // PIN, not the PIN itself, so a plugin failure here shouldn't block
     // using the app.
   }
