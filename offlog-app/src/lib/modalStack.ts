@@ -157,14 +157,32 @@ export function discardTop(): void {
 // (e.g. Quick Add) navigated to the widget's target view but left the
 // old overlay mounted on top of it, since App.svelte's handleWidgetUrl()
 // only flipped view-level booleans — it never went through requestClose()
-// for whatever was already open. A widget tap represents "show me
-// exactly this, and only this," so this closes every currently-tracked
-// layer in one shot rather than the graceful one-at-a-time
-// requestClose() flow: a single real history.go() back past every pushed
-// offlog entry, landing on whatever's beneath all of them (matching
-// onPopState's own "id absent -> close everything" fallback, reused here
-// rather than duplicated).
+// for whatever was already open.
+//
+// v5.4.5 rewrite (owner-reported, 2026-07-21: "once it open quick add,
+// then only open focus even if u click on dashboard" — every widget tap
+// after the first got stuck reopening whatever the FIRST tap opened,
+// regardless of which button was actually pressed). The original version
+// of this function only issued `history.go(-stack.length)` and relied on
+// the async `popstate` it eventually produces to do the real work of
+// popping `stack` and calling each entry's `close()`. That's exactly the
+// failure mode this module's own popstate-coalescing comments already
+// document for rapid `history.back()` calls (see onPopState above): a
+// widget tap fired in quick succession with (or before) a still-pending
+// `history.go()` from a PREVIOUS tap can have its navigation coalesced
+// away by the browser, so `stack` never actually gets popped — the next
+// tap's closeAll() then reads a `stack.length` that's already stale, and
+// the view state from the tap whose popstate silently never landed keeps
+// winning. Now fully synchronous: pop and close every entry immediately
+// (no dependency on any future event), then issue ONE compensating
+// `history.go()` purely to keep real browser history in sync for a later
+// hardware back-press — its resulting popstate (whenever it arrives) will
+// find `stack` already empty and safely no-op, matching if it gets
+// coalesced away entirely.
 export function closeAll(): void {
   if (stack.length === 0) return;
-  history.go(-stack.length);
+  const n = stack.length;
+  const entries = stack.splice(0, stack.length);
+  for (let i = entries.length - 1; i >= 0; i--) entries[i].close();
+  history.go(-n);
 }

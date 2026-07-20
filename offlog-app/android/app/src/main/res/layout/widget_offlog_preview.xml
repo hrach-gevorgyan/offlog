@@ -8,16 +8,23 @@
      why that must never change again), squishing the wrap_content card
      down to a near-square canvas the Focus pill's text can't fit in
      horizontally. This is a copy of widget_offlog.xml with ONLY the root
-     changed to a fixed, generous size (200x170dp) instead of match_parent
-     — previewLayout is a fully separate resource from initialLayout, so
-     this has zero effect on the real widget's on-device size; it only
-     gives the picker's thumbnail render enough room to lay out the same
-     content without constraint-driven wrapping. Keep the two files' inner
-     content in sync by hand if the widget's design ever changes. -->
+     changed to a fixed size instead of match_parent — previewLayout is a
+     fully separate resource from initialLayout, so this has zero effect
+     on the real widget's on-device size; it only gives the picker's
+     thumbnail render enough room to lay out the same content without
+     constraint-driven wrapping. Keep the two files' inner content in
+     sync by hand if the widget's design ever changes.
+     v5.4.5 follow-up (owner feedback, 2026-07-21): the card itself is
+     wrap_content, so a bigger frame just adds empty space AROUND it --
+     the picker scales the whole frame down to thumbnail size, so more
+     dead space makes the card look SMALLER once scaled, not bigger.
+     Tightened from 200x170dp to 185x155dp (close to the card's natural
+     ~173x149dp content size) so it fills nearly the whole frame instead
+     of floating in the middle of it. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_preview_root"
-    android:layout_width="200dp"
-    android:layout_height="170dp">
+    android:layout_width="185dp"
+    android:layout_height="155dp">
 
     <LinearLayout
         android:layout_width="wrap_content"

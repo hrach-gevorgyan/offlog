@@ -215,31 +215,41 @@
   // Returns true if the url actually navigated somewhere, so the caller
   // can skip the localStorage view-restore below rather than have it race
   // and clobber a deliberate widget-driven navigation.
+  // v5.4.5 rewrite (owner-reported, 2026-07-21: "once it open quick add,
+  // then only open focus even if u click on dashboard" — every widget tap
+  // after the first re-opened whatever the FIRST tap opened, regardless
+  // of which button was actually pressed). Two changes from the previous
+  // version: (1) closeAll() itself is now synchronous (see modalStack.ts)
+  // instead of depending on an async popstate that rapid taps could get
+  // coalesced away, which was the real root cause; (2) host matching is
+  // now exact (new URL(url).hostname) instead of url.includes(host) --
+  // .includes() was never actually the bug here since none of these host
+  // strings are substrings of each other, but exact parsing is the
+  // correct way to read a URL's host and matches how the "project" case
+  // already had to be parsed for its query string.
   function handleWidgetUrl(url: string | undefined | null): boolean {
     if (!url) return false;
-    // v5.4.2 bug (owner-reported live testing, 2026-07-21): a widget tap
-    // is a "show me exactly this" request, but nothing here previously
-    // closed whatever overlay (Quick Add, most commonly) might already be
-    // open on a warm start — the new view rendered underneath it instead
-    // of replacing it. closeAll() no-ops if nothing's open (cold start,
-    // the common case), so this is safe to call unconditionally.
+    let host: string;
+    try {
+      host = new URL(url).hostname;
+    } catch {
+      return false; // malformed url — nothing to navigate to
+    }
+    // A widget tap is a "show me exactly this, and only this" request --
+    // closes whatever overlay (Quick Add, most commonly) might already be
+    // open on a warm start instead of leaving it rendered on top of the
+    // new view. No-ops if nothing's open (cold start, the common case).
     closeAll();
-    if (url.includes('quickadd')) { openQuickAdd(); return false; } // an overlay, not a view change
-    if (url.includes('agenda')) { showDashboard = false; showDeadlines = true; return true; }
-    if (url.includes('focus')) { showDashboard = false; showDeadlines = false; showFocus = true; return true; }
-    if (url.includes('dashboard')) { showDeadlines = false; showFocus = false; showDashboard = true; return true; }
-    if (url.includes('project')) {
+    if (host === 'quickadd') { openQuickAdd(); return false; } // an overlay, not a view change
+    if (host === 'agenda') { showDashboard = false; showDeadlines = true; return true; }
+    if (host === 'focus') { showDashboard = false; showDeadlines = false; showFocus = true; return true; }
+    if (host === 'dashboard') { showDeadlines = false; showFocus = false; showDashboard = true; return true; }
+    if (host === 'project') {
       // The project-list widget's row may point at a project that's since
       // been deleted — same "don't land on a broken view" caution as the
       // localStorage view-restore below, just via a different trigger.
-      // Maintenance pass: new URL() throws on a malformed url, and this
-      // runs inside an 'appUrlOpen' listener callback with no other
-      // caller to catch it — a hostile/malformed deep link would surface
-      // as an uncaught exception instead of just failing to navigate.
-      try {
-        const id = new URL(url).searchParams.get('id');
-        if (id && get(projects).some(p => p._id === id)) { showDashboard = false; goToProject(id); return true; }
-      } catch { /* malformed url — ignore, fall through to false below */ }
+      const id = new URL(url).searchParams.get('id');
+      if (id && get(projects).some(p => p._id === id)) { showDashboard = false; goToProject(id); return true; }
     }
     return false;
   }
