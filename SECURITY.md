@@ -38,16 +38,25 @@ documented there). Check DECISIONS.md before reporting either of these.
 
 ## Known, accepted dependency advisories
 
-Dependabot flags ~17 npm advisories on this repo. 16 of them are
-`node-tar`/`minimatch`/`brace-expansion`, all transitive dependencies of
-`@capacitor/cli`'s build tooling — `devDependencies` only, never part of
-the shipped web/Android/desktop bundle. The remaining one, a moderate
-`uuid` buffer-bounds issue pulled in transitively by `pouchdb-find`, *is*
-in the shipped bundle. It's used only for PouchDB's local query-index
-IDs (no security-sensitive use), `pouchdb-find` is already at its latest
-version, and there's no upstream fix yet — `npm audit fix`'s only
-suggestion is a downgrade, not a real fix. Tracked, not forgotten;
-re-checked at every maintenance pass (see docs/MAINTENANCE.md).
+Dependabot currently flags 2 open alerts (down from 17 after removing an
+unused `@capacitor/assets` devDependency, 2026-07-21):
+
+- **`uuid` buffer-bounds issue** (moderate, npm, `offlog-app/package-lock.json`),
+  pulled in transitively by `pouchdb-find` and *is* in the shipped web/
+  Android bundle. It's used only for PouchDB's local query-index IDs (no
+  security-sensitive use), `pouchdb-find` is already at its latest
+  version, and there's no upstream fix yet — `npm audit fix`'s only
+  suggestion is a downgrade, not a real fix.
+- **`glib` iterator unsoundness** (moderate, Rust, `offlog-desktop/src-tauri/Cargo.lock`),
+  pulled in transitively by Tauri's Linux-only GTK/WebKitGTK backend
+  (`gtk`/`webkit2gtk`/`gdk`/`soup3` → `glib`). It appears in the lockfile
+  for every platform Tauri could target, but is never compiled into the
+  Windows build actually distributed (`cfg(target_os = "linux")`-gated) —
+  `cargo update -p glib` confirms no newer compatible version exists yet
+  either way.
+
+Both tracked, not forgotten; re-checked at every maintenance pass (see
+docs/MAINTENANCE.md).
 
 ## Response
 
