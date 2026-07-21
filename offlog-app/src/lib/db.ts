@@ -1338,7 +1338,11 @@ export async function undoDelete(id: string): Promise<void> {
   let projName: string | undefined;
   try { projName = (await db.get<ProjectDoc>(current.project_id)).name; } catch {}
   await logChange(id, 'update', 'deleted', true, false, { task_title: current.title, project_name: projName });
-  _undoListeners.forEach(fn => fn());
+  // Deliberately no _undoListeners notify here (unlike deleteTask above) --
+  // that listener is showUndoToast(), which pulls the single most-recently-
+  // deleted task. Firing it after an undo just found the *next* most-recent
+  // deleted task and popped a fresh "Undo" toast for it -- a second modal
+  // chained off clicking the first one's Undo button (found 2026-07-22).
 }
 
 // ── Trash (its own view — see TrashView.svelte) ─────────────────────────────

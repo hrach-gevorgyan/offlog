@@ -39,6 +39,11 @@
 
   $: allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
   $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag);
+  // Empty-state message (line ~585) needs to tell "no tasks at all" apart
+  // from "filtered down to zero" — mirrors FilterBar.svelte's own
+  // activeFilters, which only drives that popover's badge/clear-button,
+  // not this view's empty-state text.
+  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0);
 
   // ── Multi-column sort ──────────────────────────────────────────────────
   // Plain click sorts by that column alone (resets any prior multi-sort).
