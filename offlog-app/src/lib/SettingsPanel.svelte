@@ -7,7 +7,7 @@
     getConflicts, resolveConflict, type ConflictInfo,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
-    checkIntegrity, repairDatabase, pruneOldLogs, pruneOldDeletedTasks, type IntegrityIssue,
+    runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
@@ -860,47 +860,27 @@
   }
   maintSteps = freshMaintSteps();
 
-  function setMaintStep(i: number, patch: Partial<MaintStep>) {
-    maintSteps = maintSteps.map((s, idx) => idx === i ? { ...s, ...patch } : s);
+  function setMaintStep(key: MaintStepResult['key'], patch: Partial<MaintStep>) {
+    maintSteps = maintSteps.map(s => s.key === key ? { ...s, ...patch } : s);
   }
 
+  // A9 (ROADMAP.md): the actual step sequencing/message-formatting now
+  // lives in db.ts's runMaintenanceSteps() — testable directly against a
+  // mocked db.ts, without mounting this whole file. This is just the thin
+  // UI wiring: forward each emitted step into the reactive step list, and
+  // handle the one thing that's genuinely this component's job (marking
+  // whichever step was running when something threw).
   async function runMaintenance() {
     maintRunning = true;
     maintSteps = freshMaintSteps();
     maintRemainingIssues = [];
     try {
-      setMaintStep(0, { status: 'running' });
-      const { issues, checked } = await checkIntegrity();
-      setMaintStep(0, { status: 'done', note: issues.length === 0 ? `No problems found (${checked} items checked)` : `${issues.length} issue${issues.length === 1 ? '' : 's'} found` });
-
-      if (issues.length === 0) {
-        setMaintStep(1, { status: 'skipped', note: 'Nothing to repair' });
-      } else {
-        setMaintStep(1, { status: 'running' });
-        const { fixed, skipped } = await repairDatabase();
-        setMaintStep(1, { status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
-        if (skipped > 0) {
-          const after = await checkIntegrity();
-          maintRemainingIssues = after.issues;
-        }
-      }
-
-      setMaintStep(2, { status: 'running' });
-      const prunedLogs = await pruneOldLogs();
-      setMaintStep(2, { status: 'done', note: prunedLogs > 0 ? `Removed ${prunedLogs} entr${prunedLogs === 1 ? 'y' : 'ies'} older than 6 months` : 'Nothing old enough to remove' });
-
-      setMaintStep(3, { status: 'running' });
-      const prunedTasks = await pruneOldDeletedTasks();
-      setMaintStep(3, { status: 'done', note: prunedTasks > 0 ? `Removed ${prunedTasks} item${prunedTasks === 1 ? '' : 's'} older than 3 months` : 'Nothing old enough to remove' });
-
-      setMaintStep(4, { status: 'running' });
-      await db.compact();
-      setMaintStep(4, { status: 'done', note: 'Reclaimed disk space' });
-
+      const { remainingIssues } = await runMaintenanceSteps((step) => setMaintStep(step.key, { status: step.status, note: step.note }));
+      maintRemainingIssues = remainingIssues;
       await loadBreakdown();
     } catch {
       const runningIdx = maintSteps.findIndex(s => s.status === 'running');
-      if (runningIdx >= 0) setMaintStep(runningIdx, { status: 'error', note: 'Failed — please try again' });
+      if (runningIdx >= 0) setMaintStep(maintSteps[runningIdx].key, { status: 'error', note: 'Failed — please try again' });
       showError('Maintenance failed partway through. Please try again.');
     } finally {
       maintRunning = false;

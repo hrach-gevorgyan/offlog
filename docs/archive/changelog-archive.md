@@ -102,6 +102,7 @@ see the "Maintenance pass log" section at the bottom.
 | 5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets | `v5.2.1` |
 | 5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) | `v5.2.0` |
 | 5.3.0 | Haptics (B58) — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, new shared `src/lib/haptics.ts` | `v5.3.0` |
+| 5.4.2 | 7 real bugs from a full live-device pass — overlay-close reliability fallback, Settings Save unnecessary reload, Quick Add FAB over Settings, Focus done-state not shown, PIN input polish, splash logo, widget light-mode contrast | `v5.4.2` |
 
 ---
 

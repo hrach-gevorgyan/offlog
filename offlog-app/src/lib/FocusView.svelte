@@ -6,36 +6,18 @@
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
   import { hapticToggle } from './haptics';
+  import { today, loadFocusLock, saveFocusLock, type FocusLock } from './focusLock';
 
   const dispatch = createEventDispatcher<{ menu: void }>();
 
   // B35 (revised) — a daily commitment lock, not an auto-computed priority
   // list. Up to 3 tasks, picked once, locked until each is done or the day
-  // rolls over. This is deliberately NOT a PouchDB doc: it's ephemeral
-  // per-day UI state, not data worth syncing across devices — a stale
-  // lock on one device shouldn't leak into another.
-  const STORAGE_KEY = 'offlog_focus_lock';
+  // rolls over. Lock read/write lives in focusLock.ts now, shared with
+  // DashboardView.svelte's "Daily Brief" card (B35) — see its own comment
+  // for why this is deliberately not a PouchDB doc.
   const MAX_COMMIT = 3;
 
-  interface FocusLock { date: string; taskIds: string[] }
-
-  function today(): string { return new Date().toISOString().slice(0, 10); }
-
-  function loadLock(): FocusLock | null {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      const lock: FocusLock = JSON.parse(raw);
-      return lock.date === today() ? lock : null; // stale day → treat as unset
-    } catch { return null; }
-  }
-
-  function saveLock(lock: FocusLock | null) {
-    if (lock) localStorage.setItem(STORAGE_KEY, JSON.stringify(lock));
-    else localStorage.removeItem(STORAGE_KEY);
-  }
-
-  let lock: FocusLock | null = loadLock();
+  let lock: FocusLock | null = loadFocusLock();
   let lockedTasks: TaskDoc[] = [];
   let pickerTasks: (TaskDoc & { project_name?: string })[] = [];
   type SuggestReason = 'pinned' | 'overdue' | 'due_soon' | 'priority';
@@ -115,7 +97,7 @@
   async function loadPicker() { pickerTasks = rankPicker(await getOpenTasksForFocusPicker()); }
 
   async function refresh() {
-    lock = loadLock();
+    lock = loadFocusLock();
     if (lock) await loadLockedTasks();
     else await loadPicker();
   }
@@ -133,13 +115,13 @@
 
   async function commit() {
     if (!selected.length) return;
-    saveLock({ date: today(), taskIds: selected });
+    saveFocusLock({ date: today(), taskIds: selected });
     selected = [];
     await refresh();
   }
 
   async function resetCommitment() {
-    saveLock(null);
+    saveFocusLock(null);
     await refresh();
   }
 

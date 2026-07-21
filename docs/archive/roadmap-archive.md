@@ -42,12 +42,17 @@ step 2, not just narrative flow. Now closed.
 
 ## Track A — Performance & Stability (shipped items)
 
-### A9. UI component tests — first slice shipped in v4.15.0, still growing
+### A9. UI component tests — fully shipped 2026-07-21
 `tests/db.test.ts`/`modalStack.test.ts`/`sync.test.ts` cover the database
 and pure-logic layers; `CardDetail`'s save logic is the first `.svelte`
-component covered (`tests/CardDetail.test.ts`). Still open (see current
-ROADMAP.md): `KanbanBoard`'s drag/drop position math, `Sidebar`'s
-Maintenance step orchestration.
+component covered (`tests/CardDetail.test.ts`). The two remaining pieces
+(KanbanBoard's drag math, the Maintenance orchestration) were both hard
+to test as-written — not because the logic was untestable, but because
+it lived inline inside DOM event handlers / a 1900+-line component.
+Extracted into pure functions (`computeDropPosition()`,
+`runMaintenanceSteps()`, both in db.ts) instead of attempting a full
+jsdom drag simulation or a heavy component mount — see CHANGELOG.md's
+v5.7.0 row.
 
 ### A10. Large-dataset performance validation — shipped in v4.7.0
 ### A11. Error-handling audit, pass 2 — shipped in v4.6.0
@@ -147,19 +152,20 @@ only if real daily use demands it.
 
 ### B34. Project pinning — shipped in v3.9.0
 
-### B35. Focus view — draft shipped in v4.5.0, still open
+### B35. Focus view — draft shipped in v4.5.0, fully shipped 2026-07-21
 Daily commitment lock: pick up to 3 open tasks/day, ranked pinned >
 overdue > due-soon > priority. Lock is `localStorage`-only, clears on day
-rollover. Still explicitly a draft (see current ROADMAP.md for remaining
-scope): add-task entry point within Focus, a Dashboard/Focus link, and a
-"Daily Brief" summary card.
+rollover. Remaining draft items closed out: the global Quick Add FAB
+already covered "add a task from Focus" (confirmed present on every
+view); a new "Daily Brief" card on Dashboard (reading a new shared
+`focusLock.ts` module) covers both the Dashboard/Focus link and the
+summary-card ask in one — see CHANGELOG.md's v5.7.0 row.
 
 ### B36. List view power customization — shipped in v3.8.5
 
 ### B37. Android widgets — collapsed 3 into 1 combined widget — shipped in v4.8.0
-Final visual sizing/spacing remains an open, owner-driven polish pass —
-pick up whenever convenient directly in Android Studio (see current
-ROADMAP.md).
+Final visual sizing/spacing polish confirmed directly in Android Studio,
+owner-verified 2026-07-21 — fully closed.
 
 ### B38. Custom calendar/date picker instead of the native one — shipped in v4.6.5
 

@@ -90,9 +90,14 @@
   // Svelte 5's bind:this to reach them at all (see CLAUDE.md's Layer
   // rules) — so a bind:this ref is enough to reach them without lifting
   // that state.
+  // B35 — extracted so DashboardView's "Daily Brief" card (on:focus) can
+  // reuse the exact same navigation as the command palette's "Go to
+  // Focus" entry, instead of a second inline copy of these 3 assignments.
+  function goToFocus() { showDashboard = false; showDeadlines = false; showFocus = true; }
+
   $: commands = getCommands({
     goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
-    goToFocus: () => { showDashboard = false; showDeadlines = false; showFocus = true; },
+    goToFocus,
     goToAgenda: () => { showDashboard = false; showFocus = false; showDeadlines = true; },
     openQuickAdd,
     toggleTheme: () => setThemeMode(isEffectivelyDark(getThemeMode()) ? 'light' : 'dark'),
@@ -451,6 +456,7 @@
             showDashboard = false;
             goToProject(e.detail);
           }}
+          on:focus={goToFocus}
         />
       {:else if showFocus}
         <FocusView on:menu={() => sidebarOpen = true} />

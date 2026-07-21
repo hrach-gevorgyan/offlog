@@ -100,10 +100,13 @@ nicer for its owner to use, or does it just make it bigger?
 
 ## Track A — Performance & Stability (still open)
 
-### A9. UI component tests — still growing
-`KanbanBoard`'s drag/drop position math (hard to simulate reliably in
-jsdom) and `Sidebar`'s Maintenance step orchestration remain uncovered.
-Not scheduled to a specific version.
+### A9. UI component tests — shipped 2026-07-21
+Both previously-uncovered pieces extracted into pure, directly-testable
+functions instead of requiring a full jsdom drag simulation or component
+mount: `computeDropPosition()` (KanbanBoard's drag math, 5 tests) and
+`runMaintenanceSteps()` (the Maintenance orchestration — actually lives in
+SettingsPanel.svelte, not Sidebar as this item's name assumed; 3 tests).
+See CHANGELOG.md's v5.7.0 row.
 
 ### A31. Full cross-platform visual/UX review — Android leg still open
 Desktop/web done. Android is entirely unverified — needs an owner Studio
@@ -114,21 +117,24 @@ Gradle).
 
 ## Track B — Features (still open)
 
-### B35. Focus view — still a draft
-Add-task entry point within Focus, a Dashboard/Focus link, and a "Daily
-Brief" summary card — none scoped in detail yet.
+### B35. Focus view — shipped 2026-07-21
+Add-task entry point: already covered by the existing global Quick Add
+FAB, confirmed reachable from Focus like every other view — no new UI
+needed. Dashboard/Focus link + "Daily Brief" summary card: new shared
+`focusLock.ts` module (moved out of FocusView.svelte) lets Dashboard read
+today's commitment lock too; a new card shows "N of M done" (or a prompt
+to pick, if not started) and links straight to Focus. See CHANGELOG.md's
+v5.7.0 row.
 
-### B37. Android widget final polish — open, owner-driven
-Final visual sizing/spacing — pick up whenever convenient directly in
-Android Studio.
+### B37. Android widget final polish — shipped, owner-verified 2026-07-21
+Final visual sizing/spacing confirmed directly in Android Studio.
 
-### B59. Hide/replace the sidebar sync button when no host is paired — new (2026-07-20)
-Owner-flagged: `Sidebar.svelte`'s sync icon button renders unconditionally
-regardless of pairing state, even for a mobile-only user who has never
-paired a PC host and structurally cannot sync yet (see IDEAS.md's sync-
-topology questions for the broader context this came out of). Low-risk,
-self-contained UX fix: either hide the button until a host is paired, or
-swap it for a "Set up sync" CTA when unpaired. Not yet implemented.
+### B59. Hide/replace the sidebar sync button when no host is paired — shipped 2026-07-21
+Native/Android only (desktop web's default sync URL is always
+structurally real even before setup, so "no URL configured" isn't a
+meaningful unpaired signal there). Swapped for a "Set up sync" button
+that opens Settings, re-checked on every sync-state change so it flips
+back the moment pairing succeeds.
 
 ### B60. Duplicate-name/content nudges — shipped 2026-07-20
 Owner-reported after spotting a real duplicate "Draft" project. Non-

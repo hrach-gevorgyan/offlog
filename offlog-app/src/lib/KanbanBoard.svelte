@@ -5,7 +5,7 @@
   import { cubicOut } from 'svelte/easing';
   import { popScale } from './motion';
   import type { ProjectDoc, TaskDoc } from './types';
-  import { createTask, updateTask, posBetween, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask } from './db';
+  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask } from './db';
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
@@ -95,18 +95,7 @@
     if (!dragTask) return;
 
     const colTasks = tasksByCol[colId] ?? [];
-
-    let newPos: number;
-    if (dragOverIndex === null) {
-      // drop at end
-      const last = colTasks.at(-1);
-      newPos = last ? last.position + 1024 : 1024;
-    } else {
-      // insert before dragOverIndex
-      const before = dragOverIndex > 0 ? colTasks[dragOverIndex - 1]?.position ?? null : null;
-      const after  = colTasks[dragOverIndex]?.position ?? null;
-      newPos = posBetween(before, after);
-    }
+    const newPos = computeDropPosition(colTasks, dragOverIndex);
 
     try {
       await updateTask(dragTask._id!, { column_id: colId, position: newPos });
@@ -327,15 +316,7 @@
     const colId = dragOverColId;
     if (colId) {
       const colTasks = tasksByCol[colId] ?? [];
-      let newPos: number;
-      if (dragOverIndex === null) {
-        const last = colTasks.at(-1);
-        newPos = last ? last.position + 1024 : 1024;
-      } else {
-        const before = dragOverIndex > 0 ? colTasks[dragOverIndex - 1]?.position ?? null : null;
-        const after  = colTasks[dragOverIndex]?.position ?? null;
-        newPos = posBetween(before, after);
-      }
+      const newPos = computeDropPosition(colTasks, dragOverIndex);
       try {
         await updateTask(touchTask._id!, { column_id: colId, position: newPos });
         await reloadTasks();

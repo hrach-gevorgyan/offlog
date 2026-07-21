@@ -8,6 +8,7 @@
   import { confirmAction } from './confirm';
   import { staleHostAlert } from './discovery';
   import { fmtLastSynced } from './utils';
+  import { isNativePlatform, getSyncUrl } from '../config';
   import type { TaskDoc, ProjectDoc } from './types';
   import CustomSelect from './CustomSelect.svelte';
   import { getSpaceIconSvg } from './spaceIcons';
@@ -161,12 +162,25 @@
     return subscribeDb(() => { loadBreakdown(); loadRecent(); });
   });
 
+  // B59 (owner-flagged, 2026-07-20): a mobile-only user who's never
+  // paired a PC host structurally can't sync yet -- there's no URL to
+  // retry against, and clicking the sync button was previously just a
+  // silent no-op. Scoped to native/Android only: desktop web's
+  // DEFAULT_SYNC_URL always resolves to a real, potentially-working
+  // loopback address even before any explicit setup (see config.ts), so
+  // "no URL configured yet" isn't a meaningful signal there the way it
+  // is on native. Re-checked on every sync-state change (not just once)
+  // so the button switches back the moment pairing succeeds and
+  // startSync() fires its first status update.
+  let syncNotConfigured = isNativePlatform() && !getSyncUrl();
+
   function onSyncChange() {
     syncStatus = syncState.status;
     lastSynced = syncState.lastSynced;
     syncError = syncState.error;
     retryCount = syncState.retryCount;
     conflictCount = syncState.conflictCount;
+    syncNotConfigured = isNativePlatform() && !getSyncUrl();
   }
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
@@ -475,20 +489,29 @@
         </svg>
         <span class="icon-btn-label">Settings</span>
       </button>
-      <button class="icon-btn icon-btn-sync" on:click={syncNow} title="{syncTooltip} — click to sync now">
-        <span
-          class="sync-indicator"
-          class:active={syncStatus === 'syncing'}
-          class:error={syncStatus === 'error'}
-          class:offline={syncStatus === 'offline'}
-        ></span>
-        {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
-        {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
-        <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
-        </svg>
-        <span class="icon-btn-label">Sync</span>
-      </button>
+      {#if syncNotConfigured}
+        <button class="icon-btn icon-btn-sync" on:click={() => { openSettings(); dispatch('navigate'); }} title="Set up sync — connect to your computer from Settings → Sync">
+          <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
+          </svg>
+          <span class="icon-btn-label">Set up sync</span>
+        </button>
+      {:else}
+        <button class="icon-btn icon-btn-sync" on:click={syncNow} title="{syncTooltip} — click to sync now">
+          <span
+            class="sync-indicator"
+            class:active={syncStatus === 'syncing'}
+            class:error={syncStatus === 'error'}
+            class:offline={syncStatus === 'offline'}
+          ></span>
+          {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
+          {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
+          <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
+          </svg>
+          <span class="icon-btn-label">Sync</span>
+        </button>
+      {/if}
     </div>
   </div>
 </aside>

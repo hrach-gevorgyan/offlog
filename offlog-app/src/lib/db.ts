@@ -78,6 +78,23 @@ export function posBetween(before: number | null, after: number | null): number 
   return (before + after) / 2;
 }
 
+// A9: KanbanBoard.svelte's HTML5-drag path (onCardListDrop) and touch-drag
+// path (onTouchEnd) each independently duplicated this exact neighbor-
+// selection logic before deciding where a dropped card lands. Extracted
+// here so it's a pure function testable directly (tests/db.test.ts),
+// instead of only reachable through a full jsdom drag/touch-event
+// simulation — which is exactly why this math went untested for so long
+// (see ROADMAP.md's A9).
+export function computeDropPosition(colTasks: { position: number }[], dragOverIndex: number | null): number {
+  if (dragOverIndex === null) {
+    const last = colTasks.at(-1);
+    return last ? last.position + 1024 : 1024;
+  }
+  const before = dragOverIndex > 0 ? colTasks[dragOverIndex - 1]?.position ?? null : null;
+  const after = colTasks[dragOverIndex]?.position ?? null;
+  return posBetween(before, after);
+}
+
 function remote() {
   const { user, pass } = getSyncCredentials();
   return new PouchDB(getSyncUrl(), { auth: { username: user, password: pass } });
@@ -1690,6 +1707,59 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
   invalidateTaskCache();
   await scanConflicts();
   return { fixed, skipped };
+}
+
+// A9 (ROADMAP.md): this used to live entirely inline inside SettingsPanel.svelte's
+// runMaintenance(), which made the 5-step sequencing/message-formatting logic
+// only reachable through a full component mount + mocking every one of that
+// file's many imports (sync, discovery, notifications, config...) just to
+// click one button — exactly why it went untested for so long. Extracted as
+// a pure orchestration function: SettingsPanel.svelte now just wires this to
+// its own reactive step-list UI via the onStep callback, and the actual
+// sequencing/error-handling is testable directly (tests/db.test.ts) against
+// a mocked db.ts, the same lightweight pattern CardDetail.test.ts already
+// uses.
+export type MaintStepKey = 'check' | 'repair' | 'history' | 'trash' | 'compact';
+export type MaintStatus = 'running' | 'done' | 'skipped' | 'error';
+export interface MaintStepResult { key: MaintStepKey; status: MaintStatus; note: string }
+
+// Emits a 'running' result for each step right before it starts (so the
+// caller's UI can show a live spinner per step, matching the original
+// inline behavior) and one final done/skipped/error result once it
+// settles -- callers that only care about the end state can filter for
+// `status !== 'running'`.
+export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => void): Promise<{ remainingIssues: IntegrityIssue[] }> {
+  let remainingIssues: IntegrityIssue[] = [];
+
+  onStep({ key: 'check', status: 'running', note: '' });
+  const { issues, checked } = await checkIntegrity();
+  onStep({ key: 'check', status: 'done', note: issues.length === 0 ? `No problems found (${checked} items checked)` : `${issues.length} issue${issues.length === 1 ? '' : 's'} found` });
+
+  if (issues.length === 0) {
+    onStep({ key: 'repair', status: 'skipped', note: 'Nothing to repair' });
+  } else {
+    onStep({ key: 'repair', status: 'running', note: '' });
+    const { fixed, skipped } = await repairDatabase();
+    onStep({ key: 'repair', status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
+    if (skipped > 0) {
+      const after = await checkIntegrity();
+      remainingIssues = after.issues;
+    }
+  }
+
+  onStep({ key: 'history', status: 'running', note: '' });
+  const prunedLogs = await pruneOldLogs();
+  onStep({ key: 'history', status: 'done', note: prunedLogs > 0 ? `Removed ${prunedLogs} entr${prunedLogs === 1 ? 'y' : 'ies'} older than 6 months` : 'Nothing old enough to remove' });
+
+  onStep({ key: 'trash', status: 'running', note: '' });
+  const prunedTasks = await pruneOldDeletedTasks();
+  onStep({ key: 'trash', status: 'done', note: prunedTasks > 0 ? `Removed ${prunedTasks} item${prunedTasks === 1 ? '' : 's'} older than 3 months` : 'Nothing old enough to remove' });
+
+  onStep({ key: 'compact', status: 'running', note: '' });
+  await db.compact();
+  onStep({ key: 'compact', status: 'done', note: 'Reclaimed disk space' });
+
+  return { remainingIssues };
 }
 
 // ── Conflict resolution ─────────────────────────────────────────────────────

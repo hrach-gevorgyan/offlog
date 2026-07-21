@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import db, {
-  posBetween,
+  posBetween, computeDropPosition,
   createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
   createTask, getTasksForProject, updateTask, deleteTask,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash,
   getAllTasksDue, getDashboardData,
-  checkIntegrity, repairDatabase,
+  checkIntegrity, repairDatabase, runMaintenanceSteps,
   getConflicts, resolveConflict,
   importJSON,
   pruneOldLogs, pruneOldDeletedTasks,
@@ -65,6 +65,38 @@ describe('posBetween', () => {
   });
   it('splits the midpoint between two neighbors', () => {
     expect(posBetween(100, 200)).toBe(150);
+  });
+});
+
+// A9: the pure position math behind KanbanBoard.svelte's drag-and-drop
+// (both the HTML5 desktop path and the touch path share this one
+// function) — see computeDropPosition()'s own comment in db.ts for why
+// this was extracted specifically to make it testable without a full
+// jsdom drag/touch-event simulation.
+describe('computeDropPosition', () => {
+  const col = (positions: number[]) => positions.map(position => ({ position }));
+
+  it('drops at the end of an empty column', () => {
+    expect(computeDropPosition(col([]), null)).toBe(1024);
+  });
+
+  it('drops after the last card when dragOverIndex is null', () => {
+    expect(computeDropPosition(col([1024, 2048]), null)).toBe(3072);
+  });
+
+  it('drops before the first card when dragOverIndex is 0', () => {
+    expect(computeDropPosition(col([1024, 2048]), 0)).toBe(512);
+  });
+
+  it('drops between two cards when dragOverIndex points into the middle', () => {
+    expect(computeDropPosition(col([1024, 2048, 3072]), 1)).toBe(1536);
+  });
+
+  it('drops at the end when dragOverIndex points past the last card', () => {
+    // Same effective result as null (no "after" neighbor to insert before) --
+    // covers the real onCardListDrop/onTouchEnd call sites, which can pass
+    // an index equal to colTasks.length in some drop-target edge cases.
+    expect(computeDropPosition(col([1024, 2048]), 2)).toBe(2048 + 1024);
   });
 });
 
@@ -514,6 +546,63 @@ describe('checkIntegrity / repairDatabase', () => {
     await repairDatabase();
     const after = await checkIntegrity();
     expect(after.issues.some(i => i.type === 'no_columns')).toBe(true);
+  });
+});
+
+// A9 (ROADMAP.md): the step sequencing/message-formatting behind
+// SettingsPanel.svelte's "Run Maintenance" flow, extracted to
+// runMaintenanceSteps() specifically so it's reachable without mounting
+// that whole component — see its own comment in db.ts.
+describe('runMaintenanceSteps', () => {
+  it('runs all 5 steps in order, each reported running-then-done, and skips repair when nothing is broken', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Clean Project');
+    await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A task');
+
+    const seen: { key: string; status: string }[] = [];
+    const { remainingIssues } = await runMaintenanceSteps((s) => seen.push({ key: s.key, status: s.status }));
+
+    expect(remainingIssues).toEqual([]);
+    // Every step reports 'running' immediately before its own settled
+    // status, in fixed key order -- exactly what the Settings step list
+    // renders a spinner-then-checkmark from.
+    expect(seen).toEqual([
+      { key: 'check', status: 'running' }, { key: 'check', status: 'done' },
+      { key: 'repair', status: 'skipped' },
+      { key: 'history', status: 'running' }, { key: 'history', status: 'done' },
+      { key: 'trash', status: 'running' }, { key: 'trash', status: 'done' },
+      { key: 'compact', status: 'running' }, { key: 'compact', status: 'done' },
+    ]);
+  });
+
+  it('repairs a fixable issue and reports it in the repair step note', async () => {
+    await seedSpace();
+    const fallback = await createProject('space:unsorted', 'Fallback');
+    await db.put({
+      _id: 'task:orphan', type: 'task', project_id: 'project:does-not-exist', space_id: 'space:unsorted',
+      column_id: 'col:x', title: 'Orphan', body: '', priority: 1, due_date: null, reminder_at: null,
+      tags: [], position: 0, deleted: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'pc',
+    });
+
+    const steps: Record<string, { status: string; note: string }> = {};
+    await runMaintenanceSteps((s) => { if (s.status !== 'running') steps[s.key] = { status: s.status, note: s.note }; });
+
+    expect(steps.check.note).toMatch(/1 issue/);
+    expect(steps.repair.status).toBe('done');
+    expect(steps.repair.note).toMatch(/Fixed 1/);
+    const fixedDoc = await db.get<any>('task:orphan');
+    expect(fixedDoc.project_id).toBe(fallback._id);
+  });
+
+  it('reports unfixable issues as remainingIssues without failing the run', async () => {
+    await seedSpace();
+    await db.put({
+      _id: 'project:empty', type: 'project', space_id: 'space:unsorted', name: 'No Statuses',
+      position: 0, columns: [], default_view: 'kanban', updated_at: new Date().toISOString(), source: 'pc',
+    });
+
+    const { remainingIssues } = await runMaintenanceSteps(() => {});
+    expect(remainingIssues.some(i => i.type === 'no_columns')).toBe(true);
   });
 });
 

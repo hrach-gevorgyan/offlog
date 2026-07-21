@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { getDashboardData, getStorageBreakdown, subscribe } from './db';
+  import { getDashboardData, getStorageBreakdown, getTaskById, subscribe } from './db';
   import { reloadTasks } from './store';
   import { PRIORITY_COLOR } from './constants';
   import { dueLabelLong } from './utils';
   import type { TaskDoc, ProjectDoc } from './types';
   import CardDetail from './CardDetail.svelte';
+  import { loadFocusLock, type FocusLock } from './focusLock';
 
-  const dispatch = createEventDispatcher<{ openProject: string; menu: void }>();
+  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void }>();
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
@@ -21,9 +22,34 @@
   // a full archived-task browser (that stays in List view).
   let archivedCount = 0;
 
+  // B35 — "Daily Brief" card: Dashboard previously had zero visibility
+  // into Focus's daily commitment lock, so there was no way to tell "did
+  // I already pick today's 3, and how am I doing" without leaving for
+  // Focus itself. Deliberately doesn't re-show Today/Pinned/Overdue
+  // (already their own sections below) -- this card is specifically the
+  // one piece of state only Focus otherwise has.
+  let focusLock: FocusLock | null = null;
+  let focusLockedTasks: TaskDoc[] = [];
+
+  function isFocusTaskDone(t: TaskDoc): boolean {
+    const proj = data?.allProjects.find(p => p._id === t.project_id);
+    return !!proj && t.column_id === proj.columns.at(-1)?.id;
+  }
+
+  async function loadFocusSummary() {
+    focusLock = loadFocusLock();
+    if (!focusLock) { focusLockedTasks = []; return; }
+    const fetched = await Promise.all(focusLock.taskIds.map(id => getTaskById(id)));
+    // Same !deleted/!archived filter as FocusView.svelte's own
+    // loadLockedTasks() -- a task removed elsewhere while locked as one
+    // of today's 3 shouldn't still count here either.
+    focusLockedTasks = fetched.filter((t): t is TaskDoc => !!t && !t.deleted && !t.archived);
+  }
+
   async function load() {
     data = await getDashboardData();
     archivedCount = (await getStorageBreakdown()).archivedTasks;
+    await loadFocusSummary();
   }
 
   onMount(() => {
@@ -67,6 +93,27 @@
     <div class="loading">Loading…</div>
   {:else}
     <div class="dash-body">
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div class="brief" role="button" tabindex="0" on:click={() => dispatch('focus')} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('focus'); } }}>
+        {#if focusLock}
+          {@const doneCount = focusLockedTasks.filter(isFocusTaskDone).length}
+          <div class="brief-head">
+            <span class="brief-label">Today's Focus</span>
+            <span class="brief-count">{doneCount} of {focusLockedTasks.length} done</span>
+          </div>
+          <div class="brief-tasks">
+            {#each focusLockedTasks as t (t._id)}
+              <span class="brief-task" class:done={isFocusTaskDone(t)}>{t.title}</span>
+            {/each}
+          </div>
+        {:else}
+          <div class="brief-head">
+            <span class="brief-label">Today's Focus</span>
+          </div>
+          <span class="brief-empty">You haven't picked today's 3 tasks yet — tap to choose in Focus.</span>
+        {/if}
+      </div>
+
       <div class="dash-cols">
 
         <!-- Left: Project cards -->
@@ -226,6 +273,32 @@
     padding: 20px 28px 32px;
     display: flex; flex-direction: column;
   }
+
+  /* B35 — "Daily Brief" card, full-width above the two-column layout. */
+  .brief {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 20px; margin-bottom: 20px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .brief:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.09); }
+  .brief-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .brief-label {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .08em; font-weight: 700; color: var(--faint);
+  }
+  .brief-count { font-family: var(--mono); font-size: 11.5px; color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .brief-empty { font-size: 13px; color: var(--faint); }
+  .brief-tasks { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .brief-task {
+    font-size: 13.5px; color: var(--text); position: relative; padding-left: 16px;
+  }
+  .brief-task::before {
+    content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 8px; height: 8px; border-radius: 50%; border: 1.6px solid var(--border-strong);
+  }
+  .brief-task.done { color: var(--faint); text-decoration: line-through; }
+  .brief-task.done::before { background: var(--success); border-color: var(--success); }
 
   /* Two-column layout: projects left, tasks right */
   .dash-cols {
