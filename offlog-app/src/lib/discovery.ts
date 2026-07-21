@@ -92,7 +92,7 @@ interface PairResponse {
 // side invalidates the code the instant this succeeds (single-use), so
 // this can't be replayed even by someone who saw it once.
 export async function pairWithHost(host: DiscoveredHost, code: string): Promise<void> {
-  if (!host.pairingPort) throw new Error('This device did not advertise a pairing port — update the PC app.');
+  if (!host.pairingPort) throw new Error('This computer is running an older version of the Offlog desktop app — update it and try again.');
   const res = await fetch(`http://${host.address}:${host.pairingPort}/pair`, {
     method: 'POST',
     body: code.trim(),

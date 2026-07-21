@@ -1341,10 +1341,10 @@
               {/if}
 
               <div class="setting-group">
-                <div class="setting-section-title">Self-hosted CouchDB connection</div>
-                <p class="setting-hint">Most people never need to touch this — it's for connecting directly to a self-hosted CouchDB server instead of pairing through the Sync tab.</p>
+                <div class="setting-section-title">Manual server connection (advanced)</div>
+                <p class="setting-hint">Most people never need this — the "Find my computer" option above already handles connecting for you. This is only for advanced users running their own sync server by hand, instead of pairing a device.</p>
                 <label class="field-label">
-                  CouchDB URL
+                  Server address (must be a CouchDB server)
                   <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" disabled={!syncEnabled} />
                 </label>
                 <label class="field-label">
