@@ -135,11 +135,13 @@
   let SettingsPanelComp: typeof import('./SettingsPanel.svelte').default | null = null;
   let settingsActive = false;
   let settingsSession = 0;
-  export async function openSettings() {
+  let settingsInitialCategory: 'sync' | null = null;
+  export async function openSettings(initialCategory: 'sync' | null = null) {
     if (settingsActive) return;
     settingsActive = true;
     try {
       if (!SettingsPanelComp) SettingsPanelComp = (await import('./SettingsPanel.svelte')).default;
+      settingsInitialCategory = initialCategory;
       settingsSession++;
       showSettings = true;
     } catch (e) {
@@ -489,14 +491,14 @@
         </svg>
         <span class="icon-btn-label">Settings</span>
       </button>
-      {#if syncNotConfigured}
-        <button class="icon-btn icon-btn-sync" on:click={() => { openSettings(); dispatch('navigate'); }} title="Set up sync — connect to your computer from Settings → Sync">
-          <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
-          </svg>
-          <span class="icon-btn-label">Set up sync</span>
-        </button>
-      {:else}
+      {#if !syncNotConfigured}
+        <!-- Owner feedback, 2026-07-21: a device that's never been paired
+             has nothing to show here — no status, no action worth a
+             standing button — so the row stays a compact 3 buttons
+             (Time Travel / Recycle / Settings) instead of a 4th button
+             that just says "not set up yet". Sync setup now happens via
+             the post-first-run invite (see NamePrompt.svelte) or, if that
+             was skipped, Settings → Sync — never a permanent footer slot. -->
         <button class="icon-btn icon-btn-sync" on:click={syncNow} title="{syncTooltip} — click to sync now">
           <span
             class="sync-indicator"
@@ -545,7 +547,7 @@
 
 {#if showSettings && SettingsPanelComp}
   {#key settingsSession}
-    <svelte:component this={SettingsPanelComp} on:close={onSettingsClosed} />
+    <svelte:component this={SettingsPanelComp} initialCategory={settingsInitialCategory} on:close={onSettingsClosed} />
   {/key}
 {/if}
 

@@ -129,12 +129,38 @@ v5.7.0 row.
 ### B37. Android widget final polish — shipped, owner-verified 2026-07-21
 Final visual sizing/spacing confirmed directly in Android Studio.
 
-### B59. Hide/replace the sidebar sync button when no host is paired — shipped 2026-07-21
+### B59. Hide the sidebar sync button when no host is paired — revised 2026-07-21
 Native/Android only (desktop web's default sync URL is always
 structurally real even before setup, so "no URL configured" isn't a
-meaningful unpaired signal there). Swapped for a "Set up sync" button
-that opens Settings, re-checked on every sync-state change so it flips
-back the moment pairing succeeds.
+meaningful unpaired signal there). First shipped as a "Set up sync"
+button replacing the sync icon; owner feedback same day: an unpaired
+device has nothing to show there, so the footer should just stay a
+compact 3 buttons (Time Travel / Recycle / Settings), no 4th slot at
+all. Re-checked on every sync-state change so the footer's 4th slot
+reappears the moment pairing succeeds.
+
+The sync invite, and the once-ever post-first-run prompt it lives in
+(`NamePrompt.svelte`), grew into a 3-step flow the same session:
+1. **Device name** — "Skip" exits the *entire* flow (owner feedback:
+   declining a name means "get me out," full stop — the later steps
+   don't get offered either).
+2. **Sync offer** (native + unpaired only) — explains sync in one
+   sentence; "Set up sync" opens Settings straight into the Sync tab
+   (`SettingsPanel.svelte`'s new `initialCategory` prop); "Skip" moves
+   on to step 3 rather than exiting (2nd round of owner feedback:
+   declining *sync specifically* isn't the same as declining
+   everything — the preferences step is still worth offering). Escape/
+   scrim-click mirror whichever decline behavior the current step's own
+   button has, so they never do something more drastic than what's
+   visibly offered.
+3. **Quick preferences** (every platform) — theme (Light/Dark/System),
+   week-starts-on, time format, and (if not already granted) a compact
+   "Notifications" row (label + muted sublabel on the left, an "Enable"
+   button on the right, matching the other rows' row layout — an
+   earlier stacked/left-aligned version looked visually broken and was
+   redone), all wired to the exact same getters/setters
+   `SettingsPanel.svelte` uses so nothing's duplicated. Changes apply
+   live, same as Settings; a single "Done" closes it.
 
 ### B60. Duplicate-name/content nudges — shipped 2026-07-20
 Owner-reported after spotting a real duplicate "Draft" project. Non-

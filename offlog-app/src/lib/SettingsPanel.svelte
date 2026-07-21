@@ -62,6 +62,10 @@
   // Escape both step from detail back to the category list first, and
   // only close Settings entirely on a second press. See modalStack.ts and
   // ROADMAP.md A14.
+  // Lets a caller (e.g. the post-first-run sync invite) open Settings
+  // straight into a specific tab instead of always landing on Appearance.
+  export let initialCategory: Category | null = null;
+
   let isNarrow = false;
   let activeCategory: Category | null = null;
   let popDetailLayer: (() => void) | null = null;
@@ -70,7 +74,7 @@
   onMount(() => {
     const mq = window.matchMedia('(max-width: 640px)');
     isNarrow = mq.matches;
-    activeCategory = isNarrow ? null : 'appearance';
+    activeCategory = isNarrow ? null : (initialCategory ?? 'appearance');
     const onChange = (e: MediaQueryListEvent) => { isNarrow = e.matches; };
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);

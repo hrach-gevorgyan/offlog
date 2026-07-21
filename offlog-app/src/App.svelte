@@ -545,7 +545,7 @@
 {/if}
 
 <ConfirmDialog />
-{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} />{/if}
+{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; sidebarRef?.openSettings('sync'); }} />{/if}
 
 {#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
 <button class="fab" on:click={openQuickAdd} title="Quick add task (Ctrl+N)">
