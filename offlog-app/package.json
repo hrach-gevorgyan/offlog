@@ -12,10 +12,9 @@
     "bench": "vitest bench"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.4.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@testing-library/svelte": "^5.4.2",
-    "@capacitor/cli": "^8.4.1",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.2",
     "@types/pouchdb": "^6.4.2",

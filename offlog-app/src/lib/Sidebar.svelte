@@ -586,7 +586,7 @@
   }
 
   /* Primary nav (Dashboard/Focus/Agenda) — same light, border-free visual
-     language as .space-btn below rather than 3 separately-bordered pills;
+     language as .space-header below rather than 3 separately-bordered pills;
      unifying the two reduces both height per row and competing visual
      weight at the top of the sidebar. */
   .primary-nav { display: flex; flex-direction: column; gap: .1rem; }

@@ -80,7 +80,6 @@
   --radius: 12px;
   --radius-sm: 8px;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --dur-fast: .18s;
   --dur: .26s;
 
   font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
