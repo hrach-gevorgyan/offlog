@@ -3,9 +3,19 @@
 
 import { writable } from 'svelte/store';
 
-const envUrl = import.meta.env.VITE_COUCH_URL as string | undefined;
-const envUser = import.meta.env.VITE_COUCH_USER as string | undefined;
-const envPass = import.meta.env.VITE_COUCH_PASS as string | undefined;
+// Real bug found 2026-07-21 (owner live-testing on Android): Vite loads
+// `.env.local` for EVERY build mode, not just `npm run dev` -- so
+// without the `import.meta.env.DEV` gate below, a developer's own
+// .env.local (real CouchDB URL + credentials, meant purely for local
+// `npm run dev` convenience) got compiled directly into the production
+// `dist/` bundle, and from there into the shipped Android APK and
+// Windows installer. `import.meta.env.DEV` is statically known at
+// build time, so gating on it here means Vite's minifier dead-code-
+// eliminates the literal secret values out of any non-dev build
+// entirely, not just skips using them at runtime.
+const envUrl = import.meta.env.DEV ? (import.meta.env.VITE_COUCH_URL as string | undefined) : undefined;
+const envUser = import.meta.env.DEV ? (import.meta.env.VITE_COUCH_USER as string | undefined) : undefined;
+const envPass = import.meta.env.DEV ? (import.meta.env.VITE_COUCH_PASS as string | undefined) : undefined;
 
 // Exported (was module-private) so SettingsPanel.svelte can gate the
 // biometric-unlock note to Android only — this project ships no other
