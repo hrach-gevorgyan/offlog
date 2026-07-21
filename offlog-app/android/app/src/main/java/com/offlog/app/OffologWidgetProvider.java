@@ -31,7 +31,17 @@ public class OffologWidgetProvider extends AppWidgetProvider {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
         intent.setData(Uri.parse("com.offlog.app://" + host));
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        // Real bug found 2026-07-21 (owner live-testing on a Samsung/OneUI
+        // device): NEW_TASK | CLEAR_TOP alone, without SINGLE_TOP, could
+        // bring the already-running singleTask activity to the foreground
+        // without reliably delivering a fresh onNewIntent() call on some
+        // OEM Android builds — so a warm-start tap on a different widget
+        // button silently did nothing, leaving whatever view was already
+        // showing (e.g. a Focus tap, then Dashboard/Quick Add taps that
+        // never took effect). SINGLE_TOP is the standard combination for
+        // "reuse the existing top instance and always deliver via
+        // onNewIntent()" and doesn't change cold-start behavior at all.
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         // Each button needs its own distinct PendingIntent request code, or
         // Android reuses a cached one with the same intent shape and the
         // wrong target fires — same reasoning as every other widget
