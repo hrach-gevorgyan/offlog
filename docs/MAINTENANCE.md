@@ -58,11 +58,22 @@ Produce a findings report covering:
 - Error handling gaps: any task-mutating call site NOT wrapped in
   try/catch + showError() (this is an audited invariant — regressions
   are findings).
-- Hygiene: stale TODOs, debug console.log, secrets in code (config.ts's
-  hardcoded CouchDB creds are already tracked as ROADMAP Track C — note
-  but don't re-litigate).
+- Hygiene: stale TODOs, debug console.log, secrets in code.
 - **Security & robustness** (owner-requested addition, 2026-07-09 — every
   check beside the purely visual/behavioral ones above):
+  - **Build-output secret leakage — check the actual `dist/` output, not
+    just source** (real incident, 2026-07-21): Vite loads `.env.local`
+    for every build mode, not just `npm run dev`, so a developer's own
+    `.env.local` (real CouchDB URL + credentials) got compiled directly
+    into `dist/`, and from there into a shipped Android APK — found only
+    because the owner live-tested it and it silently "pre-configured"
+    sync to an unreachable address. A source-only secret scan (grepping
+    `.svelte`/`.ts` files, git history) does NOT catch this class of
+    bug. Every pass: run `npm run build`, then grep `dist/` for anything
+    from `.env.local` (`grep -r "$(grep VITE_COUCH_PASS ../.env.local |
+    cut -d= -f2)" dist/` or similar) — must come back empty. Fixed via
+    gating `config.ts`'s `envUrl`/`envUser`/`envPass` reads on
+    `import.meta.env.DEV`; confirm that gate is still intact.
   - XSS surface: grep every `{@html ...}` use and confirm the interpolated
     value is a fixed internal constant (e.g. this codebase's own inline
     SVG icon strings), never user-entered text (task title/notes/tags) or
