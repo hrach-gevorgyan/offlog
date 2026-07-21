@@ -48,13 +48,24 @@ nicer for its owner to use, or does it just make it bigger?
   `network_security_config.xml` comment and in older git history of
   `.claude/settings.local.json`; not yet remediated, low severity — see
   C1 below for detail) **and the GitHub repo has been created
-  (private) and the full commit history pushed to it** — remaining:
-  Android verification (owner testing in progress), C10, the LAN-IP
-  cleanup, then the public flip. C5 (landing page) and C6 (branding
-  pass) are explicitly deferred together — when picked back up, C6 gets
-  full focus in that same step, not squeezed in alongside C1. C3 (Play
-  Store) and E3 (desktop auto-updater, blocked on C1 anyway) are both
-  explicitly "later," after the public flip.
+  (private), full commit history + all 78 version tags pushed, repo
+  hygiene done (SECURITY.md, FUNDING.yml, default branch renamed
+  master→main, Wiki/Projects disabled, Dependabot triaged — 16 of 17
+  flagged advisories are `@capacitor/cli`'s build-only tooling, the 1
+  real one is the already-known `pouchdb-find`/`uuid` advisory with no
+  upstream fix), and a first GitHub Release (v5.7.0) published** with a
+  Windows installer and a testing-signed Android APK (built via a
+  one-off owner-authorized Gradle run — found and fixed a real bug in
+  the process: an XML comment with a literal `--`, invalid per spec,
+  broke a clean `assembleRelease`; harmless under Android Studio's
+  incremental build, which is why it was never caught before). Still
+  remaining: Android verification (owner testing in progress), C10, the
+  LAN-IP cleanup, then the private→public flip. C5 (landing page) and
+  C6 (branding pass) are explicitly deferred together — when picked
+  back up, C6 gets full focus in that same step, not squeezed in
+  alongside C1. C3 (Play Store, needs a real signing key before any
+  real release) and E3 (desktop auto-updater, blocked on C1 anyway) are
+  both explicitly "later," after the public flip.
 - **C10 (plain-language pass) — owner wants this done before the repo
   goes public**, not left open-ended as before (updated 2026-07-21).
 - **Docs restructuring — done 2026-07-20.** GOAL.md merged into
@@ -216,7 +227,22 @@ than C7's credential-only scope — one low-severity finding, a personal
 LAN IP in `network_security_config.xml`'s comment and in older git
 history of `.claude/settings.local.json`, not yet remediated); the
 GitHub repo `hrach-gevorgyan/offlog` created **private** with `origin`
-added and the full local history pushed to it (`master`). Still open:
+added and the full local history + all 78 version tags pushed (default
+branch renamed `master`→`main`, old `master` deleted). Repo hygiene
+done: `SECURITY.md` (private vulnerability reporting instead of a
+public issue or personal email; also documents the known/accepted
+Dependabot advisories), `FUNDING.yml` (GitHub Sponsors + Buy Me a
+Coffee), Wiki/Projects disabled, stale root `assets/` folder (pre-v2.6
+icon source, superseded by 3 later icon redesigns) removed. **First
+GitHub Release published: v5.7.0**, with a Windows installer and a
+testing-signed Android APK (explicitly labeled "not the official
+release, sideload at your own risk" in the release notes — real Play
+Store signing is C3, separately tracked). Building that APK required a
+one-off owner-authorized Gradle run (normally assistant-prohibited, see
+CLAUDE.md) and surfaced a real bug: `widget_offlog_preview.xml` had a
+literal `--` inside an XML comment (invalid per spec) that silently
+passed Android Studio's incremental build but hard-failed a clean
+`assembleRelease` — fixed. Still open:
 - Remediate the LAN-IP finding above.
 - C10 (plain-language pass) — owner wants this done before the public
   flip, not just "ongoing."
