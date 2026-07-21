@@ -45,9 +45,13 @@ nicer for its owner to use, or does it just make it bigger?
   sweep → C10 (plain-language pass) → create the GitHub repo private →
   full check there → flip to public. **Progress: the security/personal-
   info sweep is done** (one finding — a personal LAN IP hardcoded in a
-  `network_security_config.xml` comment and in older git history of
-  `.claude/settings.local.json`; not yet remediated, low severity — see
-  C1 below for detail) **and the GitHub repo has been created
+  `network_security_config.xml` comment — **fixed 2026-07-21**, comment
+  now genericized; the older-git-history copy in
+  `.claude/settings.local.json`'s pre-purge commits is left as-is,
+  deliberately — a full history rewrite + force-push on a remote that
+  already has tags and a Release is a real destructive operation, not
+  worth it for a private, non-exploitable LAN address) **and the GitHub
+  repo has been created
   (private), full commit history + all 78 version tags pushed, repo
   hygiene done (SECURITY.md, FUNDING.yml, default branch renamed
   master→main, Wiki/Projects disabled, Dependabot triaged — 16 of 17
@@ -58,16 +62,16 @@ nicer for its owner to use, or does it just make it bigger?
   one-off owner-authorized Gradle run — found and fixed a real bug in
   the process: an XML comment with a literal `--`, invalid per spec,
   broke a clean `assembleRelease`; harmless under Android Studio's
-  incremental build, which is why it was never caught before). Still
-  remaining: Android verification (owner testing in progress), C10, the
-  LAN-IP cleanup, then the private→public flip. C5 (landing page) and
+  incremental build, which is why it was never caught before). **C10
+  done 2026-07-21** (see its own entry below). Still remaining: Android
+  verification (owner testing in progress), then the private→public
+  flip. C5 (landing page) and
   C6 (branding pass) are explicitly deferred together — when picked
   back up, C6 gets full focus in that same step, not squeezed in
   alongside C1. C3 (Play Store, needs a real signing key before any
   real release) and E3 (desktop auto-updater, blocked on C1 anyway) are
   both explicitly "later," after the public flip.
-- **C10 (plain-language pass) — owner wants this done before the repo
-  goes public**, not left open-ended as before (updated 2026-07-21).
+- **C10 (plain-language pass) — done 2026-07-21.** See its own entry below.
 - **Docs restructuring — done 2026-07-20.** GOAL.md merged into
   DECISIONS.md as its opening manifesto; QUESTIONS.md merged into
   IDEAS.md; ROADMAP.md/CHANGELOG.md trimmed to current-only, history
@@ -224,9 +228,13 @@ entry previously said "not yet started," which was stale; corrected
 2026-07-21. C7 (credential cleanup, git-history purge) is done. Done
 2026-07-21: the dedicated pre-push security/personal-info sweep (broader
 than C7's credential-only scope — one low-severity finding, a personal
-LAN IP in `network_security_config.xml`'s comment and in older git
-history of `.claude/settings.local.json`, not yet remediated); the
-GitHub repo `hrach-gevorgyan/offlog` created **private** with `origin`
+LAN IP in `network_security_config.xml`'s comment, fixed the same day;
+the same IP also sits in older git history of
+`.claude/settings.local.json`'s pre-purge commits, deliberately left
+as-is — a full history rewrite is a real destructive operation on a
+remote that now has tags and a Release, not worth it for a private,
+non-exploitable address); C10 (plain-language pass, see its own entry);
+the GitHub repo `hrach-gevorgyan/offlog` created **private** with `origin`
 added and the full local history + all 78 version tags pushed (default
 branch renamed `master`→`main`, old `master` deleted). Repo hygiene
 done: `SECURITY.md` (private vulnerability reporting instead of a
@@ -243,12 +251,9 @@ CLAUDE.md) and surfaced a real bug: `widget_offlog_preview.xml` had a
 literal `--` inside an XML comment (invalid per spec) that silently
 passed Android Studio's incremental build but hard-failed a clean
 `assembleRelease` — fixed. Still open:
-- Remediate the LAN-IP finding above.
-- C10 (plain-language pass) — owner wants this done before the public
-  flip, not just "ongoing."
 - Android verification (A31) — owner testing in progress.
 - Flipping the repo from private to public — needs the owner's explicit
-  go-ahead when the above are done, per CLAUDE.md.
+  go-ahead when the above is done, per CLAUDE.md.
 
 ### C3. Play Store listing
 A signed release build (**proper keystore — the current `release` build
@@ -268,12 +273,21 @@ landing page copy — to make sure the "not competing, just likable" framing
 from the Mission above comes through, written for humans discovering the
 project.
 
-### C10. Plain-language pass: every string, every document — target: before GitHub push
-Go through every in-app string and every user-facing document and rewrite
-anything a non-technical person would stumble on. Partial sweeps already
-done (v4.19.0, v4.24.0 — see archive for detail). Previously framed as
-open-ended/opportunistic; owner set a deadline 2026-07-21 — do a real
-pass on this before C1's GitHub push, not just pick-up-when-convenient.
+### C10. Plain-language pass: every string, every document — done 2026-07-21
+A survey (in-app strings + docs changed since the 2026-07-20 pass) found
+3 real spots: README's "two phones, no PC" and "moving your PC" sections
+used "sync host"/"identity"/"port·credentials·database identity" jargon
+(reworded, raw folder path demoted to a parenthetical); Settings →
+Advanced's "Self-hosted CouchDB connection" section renamed "Manual
+server connection (advanced)" with a hint pointing back at normal
+pairing instead of assuming self-hosting literacy; `pairWithHost`'s
+"did not advertise a pairing port" error (shown raw on a pairing
+failure) reworded to a plain "update the app" message. Everything else
+surveyed (onboarding copy, `showError()` call sites project-wide, the
+Sync tab's main flow) was already plain-language — no changes needed.
+Stays open by nature going forward per its original framing (partial
+sweeps already done at v4.19.0, v4.24.0) — pick up opportunistically as
+new strings get added, this was the one-time pre-push catch-up pass.
 
 ---
 
