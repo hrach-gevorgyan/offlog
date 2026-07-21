@@ -1,0 +1,6 @@
+# These are used for a support/donation link on the repo page.
+# Offlog has no business model and never will (see docs/DECISIONS.md) --
+# this is optional support for the maintainer's time, not a paywall or
+# a promise of anything in return.
+github: [hrach-gevorgyan]
+# buy_me_a_coffee: <add once the account exists>
