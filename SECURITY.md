@@ -36,6 +36,19 @@ LAN CouchDB sync — see [docs/DECISIONS.md](docs/DECISIONS.md)), and the
 pairing endpoint's CORS policy is intentionally permissive (also
 documented there). Check DECISIONS.md before reporting either of these.
 
+## Known, accepted dependency advisories
+
+Dependabot flags ~17 npm advisories on this repo. 16 of them are
+`node-tar`/`minimatch`/`brace-expansion`, all transitive dependencies of
+`@capacitor/cli`'s build tooling — `devDependencies` only, never part of
+the shipped web/Android/desktop bundle. The remaining one, a moderate
+`uuid` buffer-bounds issue pulled in transitively by `pouchdb-find`, *is*
+in the shipped bundle. It's used only for PouchDB's local query-index
+IDs (no security-sensitive use), `pouchdb-find` is already at its latest
+version, and there's no upstream fix yet — `npm audit fix`'s only
+suggestion is a downgrade, not a real fix. Tracked, not forgotten;
+re-checked at every maintenance pass (see docs/MAINTENANCE.md).
+
 ## Response
 
 Offlog has no SLA (this is a personal project, not a company), but
