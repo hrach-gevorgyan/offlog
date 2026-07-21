@@ -4,11 +4,13 @@
 // NOT a PouchDB doc, still — this is ephemeral per-day UI state, not data
 // worth syncing across devices (see FocusView.svelte's own original
 // comment on this).
+import { localDateStr } from './utils';
+
 const STORAGE_KEY = 'offlog_focus_lock';
 
 export interface FocusLock { date: string; taskIds: string[] }
 
-export function today(): string { return new Date().toISOString().slice(0, 10); }
+export function today(): string { return localDateStr(new Date()); }
 
 export function loadFocusLock(): FocusLock | null {
   try {

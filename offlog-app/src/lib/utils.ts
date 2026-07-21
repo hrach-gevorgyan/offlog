@@ -18,7 +18,23 @@ export function fmtTime(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: getTimeFormat24h() ? '2-digit' : 'numeric', minute: '2-digit', hour12: !getTimeFormat24h() });
 }
 
-const TODAY = () => new Date().toISOString().slice(0, 10);
+// Local calendar date (not toISOString().slice(0,10), which is UTC and can
+// land on the wrong day for anyone off UTC — both directions: west of UTC
+// during the local evening, east of UTC during the local early morning).
+// Real bug found live-testing on a UTC+4 device, 2026-07-21: this file's
+// own TODAY() and 6 other call sites across the app each independently
+// reimplemented "today" using the wrong UTC-based approach, inconsistent
+// with how due_date itself is actually stored (db.ts's own local-date
+// convention) — causing Agenda/Kanban/Search/Focus's day-boundary math to
+// disagree with storage during the ~offset-sized daily window where the
+// UTC and local calendar dates differ. One shared correct implementation
+// now (db.ts imports this instead of keeping its own copy, to avoid a
+// circular import — db.ts already depends on this file).
+export function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+const TODAY = () => localDateStr(new Date());
 
 // B47 — `Date.getDay()` is 0-indexed from Sunday; this converts it to
 // "days since the start of the week" for either week-start convention,
@@ -29,7 +45,7 @@ export function daysSinceWeekStart(d: Date, mondayStart: boolean): number {
 }
 
 function daysDiff(due: string): number {
-  return Math.round((new Date(due).getTime() - new Date(TODAY()).getTime()) / 86400000);
+  return Math.round((new Date(due + 'T00:00:00').getTime() - new Date(TODAY() + 'T00:00:00').getTime()) / 86400000);
 }
 
 // B5: relative-time formatting for "edited on <device>, 2h ago" in

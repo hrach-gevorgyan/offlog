@@ -12,7 +12,7 @@
   } from './db';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
-  import { timeAgo, fmtLastSynced } from './utils';
+  import { timeAgo, fmtLastSynced, localDateStr } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError, modalOpen } from './store';
@@ -799,7 +799,7 @@
         ? await exportProjectDocs(backupScope)
         : (await db.allDocs({ include_docs: true })).rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
       const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
-      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${new Date().toISOString().slice(0,10)}.json`);
+      await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${localDateStr(new Date())}.json`);
     } catch {
       showError('Failed to back up. Please try again.');
     }
@@ -808,7 +808,7 @@
   async function doExportCSV() {
     try {
       const csv = await exportTasksCSV();
-      await downloadBlob(csv, 'text/csv', `offlog-tasks-${new Date().toISOString().slice(0,10)}.csv`);
+      await downloadBlob(csv, 'text/csv', `offlog-tasks-${localDateStr(new Date())}.csv`);
     } catch {
       showError('Failed to export CSV. Please try again.');
     }

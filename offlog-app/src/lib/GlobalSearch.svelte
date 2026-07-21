@@ -9,6 +9,7 @@
   import { PRIORITY_COLOR, PRIORITY_LABEL } from './constants';
   import { closeOnBack, discardTop } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import { localDateStr } from './utils';
 
   export let commands: Command[] = [];
 
@@ -114,7 +115,7 @@
     return escaped.replace(re, '<mark>$1</mark>');
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr(new Date());
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->

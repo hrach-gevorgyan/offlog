@@ -3,7 +3,7 @@
   import { getAllTasksDue, updateTask, subscribe } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-  import { dueLabelLong, dueRelative, daysSinceWeekStart } from './utils';
+  import { dueLabelLong, dueRelative, daysSinceWeekStart, localDateStr } from './utils';
   import { getWeekStartsMonday } from '../config';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
@@ -21,7 +21,7 @@
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr(new Date());
 
   // B7 — week-grid view, toggled alongside the existing flat list. Same
   // underlying getAllTasksDue() query; this just re-lays it out. Per-device
@@ -41,7 +41,7 @@
     return d;
   }
   function toDateStr(d: Date): string {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return localDateStr(d);
   }
   $: weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = startOfOffsetWeek(weekOffset);
@@ -65,13 +65,13 @@
   function startOfWeek(): string {
     const d = new Date();
     d.setDate(d.getDate() - daysSinceWeekStart(d, weekStartsMonday));
-    return d.toISOString().slice(0, 10);
+    return localDateStr(d);
   }
 
   function endOfWeek(): string {
     const d = new Date();
     d.setDate(d.getDate() + (6 - daysSinceWeekStart(d, weekStartsMonday)));
-    return d.toISOString().slice(0, 10);
+    return localDateStr(d);
   }
 
   async function load() { all = await getAllTasksDue(); }

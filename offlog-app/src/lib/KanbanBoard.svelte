@@ -10,7 +10,7 @@
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
-  import { filterTasks } from './utils';
+  import { filterTasks, localDateStr } from './utils';
   import { hapticToggle, hapticDragStart, hapticDragDrop } from './haptics';
 
   export let project: ProjectDoc;
@@ -268,6 +268,20 @@
   let touchTask: TaskDoc | null = null;
   let touchGhost: HTMLElement | null = null;
   let touchOffX = 0, touchOffY = 0;
+  let boardEl: HTMLElement | null = null;
+
+  // Real bug found live-testing on Android, 2026-07-21 (owner-reported):
+  // dragging a card toward the left/right edge of the screen never
+  // scrolled the board to reveal an off-screen column — only a column
+  // already visible could be dropped into. `.board`'s own overflow-x:auto
+  // only responds to a real scroll gesture, which a single-finger drag
+  // (already busy carrying the card) can't also perform. Nudges
+  // `.board.scrollLeft` a fixed amount per touchmove event while the
+  // finger sits within EDGE_ZONE px of either edge — simple and good
+  // enough given touchmove already fires many times a second during a
+  // drag, no need for a rAF loop.
+  const EDGE_ZONE = 60;
+  const EDGE_SCROLL_SPEED = 18;
 
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
     touchTask = task;
@@ -288,6 +302,16 @@
     const touch = e.touches[0];
     touchGhost.style.left = (touch.clientX - touchOffX) + 'px';
     touchGhost.style.top  = (touch.clientY - touchOffY) + 'px';
+
+    if (boardEl) {
+      const boardRect = boardEl.getBoundingClientRect();
+      if (touch.clientX < boardRect.left + EDGE_ZONE) {
+        boardEl.scrollLeft -= EDGE_SCROLL_SPEED;
+      } else if (touch.clientX > boardRect.right - EDGE_ZONE) {
+        boardEl.scrollLeft += EDGE_SCROLL_SPEED;
+      }
+    }
+
     touchGhost.style.display = 'none';
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     touchGhost.style.display = '';
@@ -358,7 +382,7 @@
   <div class="board-empty-hint">No tasks yet — click "+ Add card" in any column to add one.</div>
 {/if}
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="board" on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd} on:touchcancel={onTouchCancel}>
+<div class="board" bind:this={boardEl} on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd} on:touchcancel={onTouchCancel}>
   {#each project.columns as col (col.id)}
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
@@ -494,7 +518,7 @@
                 </span>
               {/if}
               {#if task.due_date}
-                <span class="due-badge" class:overdue={task.due_date < new Date().toISOString().slice(0,10)}>
+                <span class="due-badge" class:overdue={task.due_date < localDateStr(new Date())}>
                   {task.due_date}
                 </span>
               {/if}

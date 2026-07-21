@@ -9,7 +9,7 @@
 import PouchDBFind from 'pouchdb-find';
 import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled, getDefaultReminderTime } from '../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
-import { wordOverlapSimilarity } from './utils';
+import { wordOverlapSimilarity, localDateStr } from './utils';
 
 (PouchDB as any).plugin(PouchDBFind);
 
@@ -64,12 +64,10 @@ export function invalidateTaskCache(): void { _taskCache = null; }
 function now() { return new Date().toISOString(); }
 function nanoid(len = 8) { return Math.random().toString(36).slice(2, 2 + len); }
 
-// Local calendar date (not toISOString().slice(0,10), which is UTC and can
-// land on the wrong day for anyone west of UTC) -- same convention due_date
-// is stored in everywhere else in this file and in nlpParse.ts.
-function localDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+// localDateStr lives in utils.ts (not here) to avoid a circular import --
+// this file already depends on utils.ts for wordOverlapSimilarity. Same
+// local-calendar-date convention due_date is stored in everywhere else in
+// this file and in nlpParse.ts's own isoDate().
 
 export function posBetween(before: number | null, after: number | null): number {
   if (before === null && after === null) return 1024;
@@ -279,7 +277,7 @@ export async function getDashboardData() {
   // still show up here as pinned/overdue/today with no project to resolve
   // its name against (owner-reported "dash" bug, 2026-07-21).
   const tasks = all.filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr(new Date());
 
   const byProject: Record<string, { total: number; pinned: number; overdue: number; lastColId: string }> = {};
   for (const p of allProjects) {
