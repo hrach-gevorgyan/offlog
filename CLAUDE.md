@@ -22,6 +22,15 @@ session — see below; the full pass-by-pass history lives in
 docs/archive/changelog-archive.md). User-facing pitch is the root
 [README.md](README.md).
 
+**Routing rule for where a new item goes** (owner clarification,
+2026-07-21): ROADMAP.md holds only work that's both *needed* and
+*doable* — actually going to happen. The moment something turns out to
+be not doable (technical wall, out of scope per the manifesto, or a
+deliberate no), it moves to DECISIONS.md's log with the reasoning, not
+left sitting in ROADMAP. A genuine open question with no decision yet
+goes to IDEAS.md, not ROADMAP — don't let ROADMAP accumulate "maybe"
+items dressed up as planned work.
+
 **Mandatory, not optional: read the relevant document(s) above before
 making any change or moving forward on a request, and revise whichever of
 them your change affects afterward** — including shrinking or deleting

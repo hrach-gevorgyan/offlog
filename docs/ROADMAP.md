@@ -208,6 +208,15 @@ auto-save could both fire independently.
 disambiguate same-named projects the way Global Search now does — lower
 priority since it's a smaller, less-often-flat-listed surface.
 
+### B61. Require current PIN to change/remove App Lock — not built yet, next up
+Owner-reported, 2026-07-21: changing or removing the App Lock PIN
+currently doesn't ask for the *current* PIN first — anyone with the
+device unlocked (which is the normal state while using the app) can
+silently disable or replace App Lock. Should behave like changing a
+password anywhere else: confirm the current PIN before allowing a
+change or removal. Explicitly deferred by the owner, not part of the
+current update — next real feature item once picked back up.
+
 **Parked** (revisit post-release only if daily use demands it):
 B28 (rethink "last column = done"), B33 (sub-projects) — both touch the
 data model/UI broadly enough to need a real design conversation first;

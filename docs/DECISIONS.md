@@ -288,6 +288,19 @@ resurrect the "deleted" doc as a new create the next time that device
 reconnects, unless the delete itself is a replicated tombstone. Soft
 delete already produces exactly that tombstone behavior for free.
 
+### Why the auto-seeded "Draft" project is archivable, same as any other project (2026-07-21)
+Owner question: is it permissible to archive the default "Draft" project
+every fresh install seeds into Unsorted? Checked the codebase for any
+special-cased dependency on it (a hardcoded fallback destination for
+Quick Add or task creation with no project selected, an assumption it's
+always active, etc.) — found none. `project:draft`'s only special
+handling anywhere is as one of 4 fixed default-seed ids used by
+`autoResolvePristineDefaultConflicts()` (auto-resolving a sync conflict
+when one side is still provably untouched) — that logic works the same
+whether the project is archived or not, since it's about the *doc*
+being pristine, not about it being active. Archiving it behaves exactly
+like archiving any project the user created themselves.
+
 ---
 
 ## Security
