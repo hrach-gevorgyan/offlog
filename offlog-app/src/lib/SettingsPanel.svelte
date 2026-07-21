@@ -996,18 +996,18 @@
                   <div class="theme-segment" role="radiogroup" aria-label="Time format">
                     <button
                       class="theme-seg-btn"
-                      class:active={timeFormat24h}
-                      role="radio"
-                      aria-checked={timeFormat24h}
-                      on:click={() => setTimeFormat(true)}
-                    >24h</button>
-                    <button
-                      class="theme-seg-btn"
                       class:active={!timeFormat24h}
                       role="radio"
                       aria-checked={!timeFormat24h}
                       on:click={() => setTimeFormat(false)}
-                    >12h</button>
+                    >1:00 PM</button>
+                    <button
+                      class="theme-seg-btn"
+                      class:active={timeFormat24h}
+                      role="radio"
+                      aria-checked={timeFormat24h}
+                      on:click={() => setTimeFormat(true)}
+                    >13:00</button>
                   </div>
                 </div>
                 <p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>
@@ -1092,7 +1092,7 @@
                   </button>
                 </div>
                 <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
-                {#if isTauri && $otherHostsDetected.length}
+                {#if syncEnabled && isTauri && $otherHostsDetected.length}
                   <p class="setting-hint setting-hint-warn">
                     Another Offlog host ("{$otherHostsDetected[0].name}") was found on this
                     network. Running two hosts on the same network means they won't share
@@ -1101,48 +1101,50 @@
                 {/if}
               </div>
 
-              <div class="setting-group">
-                <div class="setting-section-title">Connect a device</div>
-                {#if isAndroid || isTauri}
-                  <button class="link-row link-row-compact" on:click={() => showConnectModal = true}>
-                    <span class="link-row-title">Connect a device</span>
-                    <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                  </button>
-                {:else}
-                  <p class="setting-hint">Happens from the Android app (Settings → Sync → "Find my computer") or the PC app (Settings → Sync → "Generate a code") — not from a plain web browser.</p>
+              {#if syncEnabled}
+                <div class="setting-group">
+                  <div class="setting-section-title">Connect a device</div>
+                  {#if isAndroid || isTauri}
+                    <button class="link-row link-row-compact" on:click={() => showConnectModal = true}>
+                      <span class="link-row-title">Connect a device</span>
+                      <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
+                    </button>
+                  {:else}
+                    <p class="setting-hint">Happens from the Android app (Settings → Sync → "Find my computer") or the PC app (Settings → Sync → "Generate a code") — not from a plain web browser.</p>
+                  {/if}
+                </div>
+
+                <div class="setting-group">
+                  <div class="setting-section-title">This device</div>
+                  <label class="field-label">
+                    Name
+                    <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
+                      on:keydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
+                  </label>
+                  <p class="setting-hint">Shown on this device's own edits from now on — changelog entries, task history, and the list below.</p>
+                </div>
+
+                {#if deviceLastSeen.length}
+                  <div class="setting-group">
+                    <div class="setting-section-title">Devices seen recently</div>
+                    {#each deviceLastSeen as d (d.device)}
+                      <div class="setting-row">
+                        <span class="storage-info">{d.device}</span>
+                        <span class="storage-info" style="color: var(--faint)">{timeAgo(d.lastSeen)}</span>
+                      </div>
+                    {/each}
+                  </div>
                 {/if}
-              </div>
 
-              <div class="setting-group">
-                <div class="setting-section-title">This device</div>
-                <label class="field-label">
-                  Name
-                  <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
-                    on:keydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
-                </label>
-                <p class="setting-hint">Shown on this device's own edits from now on — changelog entries, task history, and the list below.</p>
-              </div>
-
-              {#if deviceLastSeen.length}
-                <div class="setting-group">
-                  <div class="setting-section-title">Devices seen recently</div>
-                  {#each deviceLastSeen as d (d.device)}
-                    <div class="setting-row">
-                      <span class="storage-info">{d.device}</span>
-                      <span class="storage-info" style="color: var(--faint)">{timeAgo(d.lastSeen)}</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-
-              {#if conflictCount > 0 || conflictList.length > 0}
-                <div class="setting-group">
-                  <div class="setting-section-title">Conflicts</div>
-                  <button class="link-row link-row-compact" on:click={() => showConflictsModal = true}>
-                    <span class="link-row-title">Resolve conflicts</span>
-                    <span class="nav-badge">{conflictList.length || conflictCount}</span>
-                  </button>
-                </div>
+                {#if conflictCount > 0 || conflictList.length > 0}
+                  <div class="setting-group">
+                    <div class="setting-section-title">Conflicts</div>
+                    <button class="link-row link-row-compact" on:click={() => showConflictsModal = true}>
+                      <span class="link-row-title">Resolve conflicts</span>
+                      <span class="nav-badge">{conflictList.length || conflictCount}</span>
+                    </button>
+                  </div>
+                {/if}
               {/if}
 
             {:else if activeCategory === 'organize'}
@@ -1314,7 +1316,7 @@
                       <span class="toggle-knob"></span>
                     </button>
                   </div>
-                  <p class="setting-hint">Dims Offlog's preview in the recent-apps switcher — off by default because it also blocks taking screenshots of the app while this is on.</p>
+                  <p class="setting-hint">Extra privacy, beyond the PIN lock: when on, nobody can see your tasks in the recent-apps switcher or in a screenshot — Android blocks both at the same time, there's no way to have one without the other. Off by default since blocking screenshots is a real tradeoff (you can't screenshot your own tasks either), not just a cosmetic choice.</p>
                 </div>
               {/if}
 
@@ -1340,25 +1342,32 @@
                 </div>
               {/if}
 
-              <div class="setting-group">
-                <div class="setting-section-title">Manual server connection (advanced)</div>
-                <p class="setting-hint">Most people never need this — the "Find my computer" option above already handles connecting for you. This is only for advanced users running their own sync server by hand, instead of pairing a device.</p>
-                <label class="field-label">
-                  Server address (must be a CouchDB server)
-                  <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" disabled={!syncEnabled} />
-                </label>
-                <label class="field-label">
-                  Username
-                  <input bind:value={credentialUser} placeholder="offlog" disabled={!syncEnabled} />
-                </label>
-                <label class="field-label">
-                  Password
-                  <input type="password" bind:value={credentialPass} disabled={!syncEnabled} />
-                </label>
-                {#if syncError && lastErrorAt}
-                  <p class="setting-hint setting-hint-warn">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
-                {/if}
-              </div>
+              {#if syncEnabled}
+                <div class="setting-group">
+                  <div class="setting-section-title">Manual server connection (advanced)</div>
+                  <p class="setting-hint">Most people never need this — the "Find my computer" option above already handles connecting for you. This is only for advanced users running their own sync server by hand, instead of pairing a device.</p>
+                  <label class="field-label">
+                    Server address (must be a CouchDB server)
+                    <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" />
+                  </label>
+                  <label class="field-label">
+                    Username
+                    <input bind:value={credentialUser} placeholder="offlog" />
+                  </label>
+                  <label class="field-label">
+                    Password
+                    <input type="password" bind:value={credentialPass} />
+                  </label>
+                  {#if syncError && lastErrorAt}
+                    <p class="setting-hint setting-hint-warn">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
+                  {/if}
+                </div>
+              {:else}
+                <div class="setting-group">
+                  <div class="setting-section-title">Manual server connection (advanced)</div>
+                  <p class="setting-hint">Turn on Sync (in the Sync tab) to configure this.</p>
+                </div>
+              {/if}
 
               {#if isTauriDebug}
                 <div class="setting-group">
@@ -1379,7 +1388,7 @@
 
     <div class="settings-actions">
       <button on:click={() => requestClose()}>Cancel</button>
-      <button class="save-btn" on:click={saveSettings}>{activeCategory === 'sync' || activeCategory === 'advanced' ? 'Save & restart sync' : 'Save'}</button>
+      <button class="save-btn" on:click={saveSettings}>{(activeCategory === 'sync' || activeCategory === 'advanced') && syncEnabled ? 'Save & restart sync' : 'Save'}</button>
     </div>
   </div>
 </div>

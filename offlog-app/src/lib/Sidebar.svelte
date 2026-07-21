@@ -471,7 +471,7 @@
         {/each}
       </div>
     {/if}
-    <div class="bottom-row">
+    <div class="bottom-row" class:bottom-row-3={syncNotConfigured}>
       <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="Time Travel">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
@@ -749,6 +749,11 @@
      was too cramped for readable labels; each cell here has enough width
      to show icon + text together again without wrapping. */
   .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+  /* Real bug found live-testing on Android, 2026-07-21 (owner-reported):
+     with the sync button hidden (B59 — no host paired yet), the 2-column
+     grid left the 3rd button (Settings) wrapping alone onto a lonely
+     second row instead of sitting in one even row with the other two. */
+  .bottom-row-3 { grid-template-columns: 1fr 1fr 1fr; }
   .icon-btn {
     min-width: 0; position: relative;
     display: flex; align-items: center; justify-content: center; gap: .4rem;

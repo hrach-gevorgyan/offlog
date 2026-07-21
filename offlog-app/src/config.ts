@@ -228,7 +228,19 @@ export function markNamePromptShown() {
 const SYNC_ENABLED_KEY = 'offlog_sync_enabled';
 
 export function isSyncEnabled(): boolean {
-  return localStorage.getItem(SYNC_ENABLED_KEY) !== 'false';
+  const stored = localStorage.getItem(SYNC_ENABLED_KEY);
+  if (stored !== null) return stored !== 'false';
+  // Real bug found live-testing, 2026-07-21: a native device that's never
+  // been paired (getSyncUrl() falls back to DEFAULT_SYNC_URL, which is ''
+  // for native — see its own comment) still read as "enabled" under the
+  // unconditional default above, showing a misleading "Sync enabled"
+  // toggle and a "Save & restart sync" button for something that was
+  // never configured in the first place, before anyone ever declined the
+  // onboarding sync offer. Default true only where there's actually
+  // something to sync with (a real saved URL, or desktop/web's structural
+  // loopback default) — existing installs that already have a working
+  // syncUrl are unaffected, this only changes the untouched-native case.
+  return !!getSyncUrl();
 }
 
 export function setSyncEnabled(enabled: boolean) {
