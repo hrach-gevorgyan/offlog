@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Real bug found 2026-07-13: this file used to hardcode one specific LAN
-     IP (192.168.27.200) as the only address allowed to use cleartext
+<!-- Real bug found 2026-07-13: this file used to hardcode one specific
+     developer's own LAN IP as the only address allowed to use cleartext
      (HTTP) traffic. Android blocks all other HTTP traffic at the OS level
      regardless of what URL is configured in Settings — so every time the
      sync host's LAN IP changes (DHCP lease renewal, router restart,
