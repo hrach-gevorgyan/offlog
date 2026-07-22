@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import CustomSelect from './CustomSelect.svelte';
   import TimePicker from './TimePicker.svelte';
+  import ConfirmPinGate from './ConfirmPinGate.svelte';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo,
@@ -16,7 +17,6 @@
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
   import { showError, modalOpen } from './store';
-  import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from './theme';
@@ -342,17 +342,24 @@
     }
   }
 
-  async function removePin() {
-    const ok = await confirmAction(
-      'Turn off the PIN lock? Offlog will no longer require a PIN to open.',
-      { confirmLabel: 'Turn off', danger: true },
-    );
-    if (!ok) return;
-    clearAppLockPin();
-    appLockEnabled = false;
-    biometricEnabled = false;
-    privacyScreenEnabled = false;
-    syncPrivacyScreen();
+  // B61: Change/Remove both pass through ConfirmPinGate first — proving
+  // knowledge of the *current* PIN, like any password change. The gate
+  // replaces removePin()'s old confirmAction() dialog entirely: entering
+  // the PIN IS the confirmation, a second "are you sure" on top would be
+  // pure friction. Initial setup (no PIN exists yet) never gates.
+  let pinGateMode: 'change' | 'remove' | null = null;
+
+  function onPinGateVerified() {
+    const mode = pinGateMode;
+    pinGateMode = null;
+    if (mode === 'change') openPinForm();
+    else if (mode === 'remove') {
+      clearAppLockPin();
+      appLockEnabled = false;
+      biometricEnabled = false;
+      privacyScreenEnabled = false;
+      syncPrivacyScreen();
+    }
   }
 
   function onLockTimeoutChange(v: string) {
@@ -1252,12 +1259,22 @@
                       <button class="export-btn" on:click={savePin} disabled={pinSaving}>{pinSaving ? 'Saving…' : 'Save PIN'}</button>
                     </div>
                   {/if}
+                {:else if pinGateMode}
+                  <ConfirmPinGate
+                    message={pinGateMode === 'remove'
+                      ? 'Turn off the PIN lock? Offlog will no longer require a PIN to open. Enter your current PIN to confirm.'
+                      : 'Enter your current PIN to change it.'}
+                    confirmLabel={pinGateMode === 'remove' ? 'Turn off' : 'Continue'}
+                    danger={pinGateMode === 'remove'}
+                    on:verified={onPinGateVerified}
+                    on:cancel={() => pinGateMode = null}
+                  />
                 {:else if !showPinForm}
                   <div class="setting-row">
                     <span class="setting-label">PIN is set</span>
                     <div class="setting-row">
-                      <button class="export-btn" on:click={openPinForm}>Change PIN</button>
-                      <button class="export-btn" on:click={removePin}>Remove PIN</button>
+                      <button class="export-btn" on:click={() => pinGateMode = 'change'}>Change PIN</button>
+                      <button class="export-btn" on:click={() => pinGateMode = 'remove'}>Remove PIN</button>
                     </div>
                   </div>
                 {:else}

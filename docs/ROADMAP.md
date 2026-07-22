@@ -45,10 +45,20 @@ itself updated without manual effort. Grew from two items to four on
 owner request 2026-07-22 (health-score review) — all stability-class,
 none of it feature growth:
 
-- **B61 — Require current PIN to change/remove App Lock.** The one
-  known real security gap: anyone holding the unlocked device can
-  silently disable App Lock. Confirm the current PIN first, like any
-  password change anywhere. (~1 session.)
+- **B61 — Require current PIN to change/remove App Lock. Done
+  2026-07-23.** New `ConfirmPinGate.svelte` (a small reusable
+  component, deliberately not inline SettingsPanel state, so the flow
+  is unit-testable without mounting the whole panel — 6 tests in
+  `ConfirmPinGate.test.ts`, suite now 197): both Change PIN and
+  Remove PIN now require the current PIN first, like any password
+  change. Entering the PIN *is* the confirmation for removal — the
+  old confirmAction() dialog was dropped rather than stacked on top
+  (its warning text moved into the gate's message). Initial PIN setup
+  never gates (there's nothing to prove yet). Verified live in the
+  browser: wrong PIN shows an error and clears the field, correct PIN
+  passes through to the change form / removal, Cancel and Escape back
+  out. Ships with the next version bump (bundled with the rest of
+  milestone 1, not tagged alone).
 - **E3 — Desktop auto-updater.** Already scaffolded; needs the owner to
   run `cargo tauri signer generate` (free, minutes), then wiring the
   pubkey + GitHub Releases endpoint into `tauri.conf.json` and the
