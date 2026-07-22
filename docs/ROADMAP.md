@@ -64,21 +64,27 @@ none of it feature growth:
   PouchDB storage corrupts / a browser profile gets wiped / Android
   storage gets cleared" — today that answer is "hope sync had a second
   copy." Stability item wearing a feature's clothes. (~1-2 sessions.)
-- **A32 — UI test hardening. First pass done 2026-07-23** (13 new
-  component tests, suite now 186): `AppLock.test.ts` (correct/wrong
-  PIN, digit-only filter, 3-strike cooldown, Escape-never-dismisses,
-  recovery-code flow) and `QuickAdd.test.ts` (full type → real
-  nlpParse → createTask pipeline: default routing, priority/tags,
-  @project match, quoted parse-off, failure keeps panel open). Bonus
-  real catch: db.test.ts's dashboard test built "today" via UTC
+- **A32 — UI test hardening. Done 2026-07-23** (18 new component
+  tests, suite now 191): `AppLock.test.ts` (correct/wrong PIN,
+  digit-only filter, 3-strike cooldown gates the verifier,
+  Escape-never-dismisses, recovery-code flow), `QuickAdd.test.ts`
+  (full type → real nlpParse → createTask pipeline: default routing,
+  priority/tags, @project match, quoted parse-off, empty-title no-op,
+  failure keeps panel open), and `CardDetail.test.ts` extended with
+  the discard/delete half of its scope (Cancel and Escape write
+  nothing; Delete is confirm-gated, soft-deletes and reloads on
+  confirm, does nothing on decline, and surfaces a visible error on
+  failure — the audited no-silent-failure invariant, now pinned).
+  Bonus real catch: db.test.ts's dashboard test built "today" via UTC
   `toISOString()` — failed only when run after midnight local, the
   exact date-locality blind-spot class MAINTENANCE.md codifies; app
-  code was already correct, the test was the last UTC holdout.
-  Remaining for B61's session: extend AppLock tests to cover the new
-  confirm-current-PIN flow as it's built. Delete/undo UI (App.svelte's
-  inline toast) deliberately left untested — mounting the whole app
-  shell in jsdom is brittleness, not coverage; its logic (including
-  the chained-toast regression) is already pinned in db.test.ts.
+  code was already correct, the test was the last UTC holdout. The
+  one intentionally-out-of-scope piece: B61's confirm-current-PIN
+  flow gets its AppLock tests written in B61's own session (can't
+  test what doesn't exist yet); delete/undo *toast* UI (inline in
+  App.svelte) stays untested by choice — mounting the whole app shell
+  in jsdom is brittleness, not coverage, and its logic (including the
+  chained-toast regression) is already pinned in db.test.ts.
 
 **One-time owner action, this week, no session needed:** copy
 `C:\Users\hrach\Offlog-signing\` somewhere off this machine (USB

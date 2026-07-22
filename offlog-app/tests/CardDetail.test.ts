@@ -34,6 +34,14 @@ vi.mock('../src/lib/notifications', () => ({
   permissionState: writable('default'),
 }));
 
+// The real confirmAction resolves via <ConfirmDialog/> mounted in
+// App.svelte's root — not present here, so its promise would hang
+// forever. Mocked per-test to simulate the user's confirm/cancel click.
+const confirmAction = vi.fn();
+vi.mock('../src/lib/confirm', () => ({
+  confirmAction: (...args: unknown[]) => confirmAction(...args),
+}));
+
 import CardDetail from '../src/lib/CardDetail.svelte';
 
 function mkProject(): ProjectDoc {
@@ -67,6 +75,7 @@ beforeEach(() => {
   duplicateTask.mockClear();
   reloadTasks.mockClear();
   showError.mockClear();
+  confirmAction.mockReset();
 });
 
 afterEach(() => cleanup());
@@ -131,5 +140,64 @@ describe('CardDetail save logic (A9)', () => {
 
     const [, changes] = updateTask.mock.calls[0];
     expect(changes.checklist?.[0].done).toBe(true);
+  });
+});
+
+describe('CardDetail discard & delete (A32)', () => {
+  it('Cancel discards edits — nothing is written', async () => {
+    const { getByPlaceholderText, getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await fireEvent.input(getByPlaceholderText('Task title'), { target: { value: 'Edited but abandoned' } });
+    await fireEvent.click(getByText('Cancel'));
+
+    expect(updateTask).not.toHaveBeenCalled();
+    expect(reloadTasks).not.toHaveBeenCalled();
+  });
+
+  it('Escape discards edits — nothing is written', async () => {
+    const { getByPlaceholderText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    const input = getByPlaceholderText('Task title');
+    await fireEvent.input(input, { target: { value: 'Edited but escaped' } });
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(updateTask).not.toHaveBeenCalled();
+  });
+
+  async function openActionsMenuAndClickDelete(utils: ReturnType<typeof render>) {
+    await fireEvent.click(utils.getByLabelText('More actions'));
+    await fireEvent.click(utils.getByText('Delete'));
+  }
+
+  it('Delete asks for confirmation, then soft-deletes and reloads', async () => {
+    confirmAction.mockResolvedValue(true);
+    const utils = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await openActionsMenuAndClickDelete(utils);
+
+    expect(confirmAction).toHaveBeenCalledTimes(1);
+    expect(deleteTask).toHaveBeenCalledWith('task:1');
+    expect(reloadTasks).toHaveBeenCalledTimes(1);
+  });
+
+  it('declining the confirmation deletes nothing', async () => {
+    confirmAction.mockResolvedValue(false);
+    const utils = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await openActionsMenuAndClickDelete(utils);
+
+    expect(deleteTask).not.toHaveBeenCalled();
+    expect(reloadTasks).not.toHaveBeenCalled();
+  });
+
+  it('a failed delete surfaces an error (audited no-silent-failure invariant)', async () => {
+    confirmAction.mockResolvedValue(true);
+    deleteTask.mockRejectedValueOnce(new Error('storage error'));
+    const utils = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await openActionsMenuAndClickDelete(utils);
+
+    expect(showError).toHaveBeenCalledTimes(1);
+    expect(reloadTasks).not.toHaveBeenCalled();
   });
 });
