@@ -14,7 +14,17 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
+            <!-- Explicit, not left to the system default — owner-reported
+                 2026-07-22: focusing the "+ New project" input (an inline
+                 field inside the fixed-position off-canvas sidebar drawer,
+                 not a scrollable page) left the sidebar squeezed/unusable
+                 once the keyboard opened. adjustResize shrinks the WebView's
+                 own layout viewport by the keyboard's height instead of
+                 just panning the fixed content underneath it, which is what
+                 a position:fixed; top:0; bottom:0 drawer needs to keep
+                 sizing correctly. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

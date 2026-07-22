@@ -14,6 +14,17 @@ import com.getcapacitor.BridgeActivity;
 // class forwarded the intent manually via a custom triggerJSEvent() call
 // in onCreate(), which fired before the WebView had loaded far enough to
 // have a listener attached — losing the event on every cold start.
+//
+// 2026-07-22: an apparent "widget tap shows stale screen" bug was deeply
+// investigated here (remote WebView console attached, confirmed via
+// logcat that every intent was delivered correctly and every JS reactive
+// flag flipped correctly on every tap) and turned out not to be a real
+// bug at all -- tapping widget buttons faster than about once a second
+// just needs a beat to settle; normal one-tap-at-a-time use always
+// worked. A JS-side forced reflow, a native WebView.invalidate(), and a
+// visibility-toggle workaround were all tried in onNewIntent() and later
+// removed once the real (non-)cause was found, to avoid carrying
+// unnecessary native complexity for a symptom that didn't need fixing.
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {

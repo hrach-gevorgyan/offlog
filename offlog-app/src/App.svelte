@@ -41,10 +41,18 @@
   // project from the sidebar/dashboard) — see goToProject().
   let currentView: View = 'kanban';
 
+  // sessionStorage, not localStorage (owner-reported 2026-07-22: a hard
+  // close (swipe away from recents) should land back on Dashboard, but
+  // minimizing and reopening should still remember the view). Android's
+  // WebView keeps sessionStorage alive across a minimize (the Activity is
+  // only backgrounded, same WebView instance) but not across a real
+  // process kill -- a relaunch there gets a fresh WebView with empty
+  // sessionStorage, same as any other tab-session-scoped state. localStorage
+  // would survive both cases, which is what caused the original complaint.
   function saveView() {
     if (!ready) return;
     const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showDeadlines ? 'agenda' : 'project';
-    localStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
+    sessionStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
   }
 
   $: if (ready) { showDashboard; showDeadlines; showFocus; $activeProjectId; currentView; saveView(); }
@@ -312,7 +320,7 @@
     // somewhere on this cold start; that's a deliberate action and must
     // win over whatever view happened to be open last.
     if (!launchedFromWidget) try {
-      const saved = JSON.parse(localStorage.getItem('offlog_view') ?? '{}');
+      const saved = JSON.parse(sessionStorage.getItem('offlog_view') ?? '{}');
       // saved.projectId can point to a project that no longer exists — a
       // wipeAndReseed(), a data reset, or a reinstall that kept
       // localStorage but not IndexedDB all leave a stale id behind (A19).
@@ -810,7 +818,10 @@
   .toast-close:hover { opacity: 1; }
 
   /* ── Mobile ── */
-  @media (max-width: 768px) {
+  /* Second condition mirrors Sidebar.svelte's own -- a phone in landscape
+     needs the same off-canvas hamburger/scrim treatment even though its
+     width alone often exceeds 768px (owner-reported 2026-07-22). */
+  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .mobile-scrim { display: block; }
     .hamburger { display: flex; }
     .board-header { padding: 12px 16px 10px; gap: 10px; }

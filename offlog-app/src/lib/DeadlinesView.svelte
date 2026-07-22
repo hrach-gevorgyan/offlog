@@ -3,7 +3,7 @@
   import { getAllTasksDue, updateTask, subscribe } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-  import { dueLabelLong, dueRelative, daysSinceWeekStart, localDateStr } from './utils';
+  import { dueLabelLong, dueRelative, dueDateShort, daysSinceWeekStart, localDateStr } from './utils';
   import { getWeekStartsMonday } from '../config';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
@@ -223,7 +223,7 @@
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
               </div>
-              <span class="due-chip week">{dueRelative(t.due_date!)} · {dueLabelLong(t.due_date!)}</span>
+              <span class="due-chip week">{dueRelative(t.due_date!)} · {dueDateShort(t.due_date!)}</span>
             </div>
           {/each}
         </section>
@@ -470,7 +470,7 @@
   .due-chip.week    { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
   .due-chip.later   { background: var(--col-bg); color: var(--faint); }
 
-  @media (max-width: 768px) {
+  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .hamburger { display: flex; }
   }
 

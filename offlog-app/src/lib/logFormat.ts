@@ -124,6 +124,13 @@ export function describeLog(log: any): string {
 
   if (log.diffs) return fmtDiffs(log.diffs) + (who ? ` on ${who}` : '');
 
+  // undoDelete() logs a single-field 'deleted' true->false update rather
+  // than reusing the 'delete' action (that's reserved for the forward
+  // delete, whose entity type varies by ref prefix) -- without this case
+  // it fell through to the generic field formatter below and showed the
+  // raw "deleted: Yes → No" (owner-reported 2026-07-22).
+  if (log.field === 'deleted') return `Restored ${entityLabel(log)} ${who ?? ''}`.trim();
+
   if (log.field) {
     const label = FIELD_LABEL[log.field] ?? log.field;
     const from  = fmtVal(log.field, log.from);

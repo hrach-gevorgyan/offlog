@@ -382,7 +382,7 @@
     .dash-cols { grid-template-columns: minmax(0, 1fr); }
     .col-tasks { gap: 16px; }
   }
-  @media (max-width: 768px) {
+  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .hamburger { display: flex; }
   }
   @media (max-width: 600px) {

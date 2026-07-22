@@ -35,12 +35,17 @@ public class OffologWidgetProvider extends AppWidgetProvider {
         // device): NEW_TASK | CLEAR_TOP alone, without SINGLE_TOP, could
         // bring the already-running singleTask activity to the foreground
         // without reliably delivering a fresh onNewIntent() call on some
-        // OEM Android builds — so a warm-start tap on a different widget
-        // button silently did nothing, leaving whatever view was already
-        // showing (e.g. a Focus tap, then Dashboard/Quick Add taps that
-        // never took effect). SINGLE_TOP is the standard combination for
-        // "reuse the existing top instance and always deliver via
-        // onNewIntent()" and doesn't change cold-start behavior at all.
+        // OEM Android builds. SINGLE_TOP is the standard fix for that.
+        //
+        // 2026-07-22: a follow-up "widget tap shows stale screen" report
+        // was deeply investigated (remote WebView console attached) and
+        // turned out not to be a real bug -- every intent was delivered
+        // correctly and every JS reactive flag flipped correctly on every
+        // tap; the symptom only appeared when tapping faster than about
+        // once a second, which just needs a beat to settle. CLEAR_TASK was
+        // tried as a fix and made things measurably worse (broke Quick Add
+        // entirely, inconsistent under this OEM's singleTask handling) --
+        // reverted back to SINGLE_TOP, which was correct all along.
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         // Each button needs its own distinct PendingIntent request code, or
         // Android reuses a cached one with the same intent shape and the

@@ -276,6 +276,16 @@ browser-preview verification.
   `padding-top: env(safe-area-inset-top)`.
 - Android launcher icon changes: uninstall the app before reinstalling, and
   Clean Project — the launcher caches icons aggressively.
+- **Home-screen widget `PendingIntent`/flag changes need the widget removed
+  and re-added, not just the app reinstalled.** `offlog_widget_info.xml`
+  has `updatePeriodMillis="0"` (no periodic refresh), so
+  `OffologWidgetProvider.onUpdate()` — where the PendingIntents are built —
+  only runs when a widget instance is first placed, not automatically on
+  every APK install. A widget already sitting on the home screen keeps its
+  stale PendingIntents (e.g. still missing a flag fix) until removed and
+  re-added, or the device reboots. Bit real owner testing 2026-07-22 —
+  the `FLAG_ACTIVITY_SINGLE_TOP` fix appeared to not take effect until
+  this was understood.
 - **Prefer an official `@capacitor/*` plugin's own mechanism over a custom
   native bridge event, when one exists.** Check before writing custom
   Java — see [docs/DECISIONS.md](docs/DECISIONS.md)'s A25 entry for the

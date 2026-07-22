@@ -281,7 +281,10 @@
   // enough given touchmove already fires many times a second during a
   // drag, no need for a rAF loop.
   const EDGE_ZONE = 60;
-  const EDGE_SCROLL_SPEED = 18;
+  // Owner feedback 2026-07-22: 18px/touchmove-tick was too aggressive --
+  // touchmove fires at up to ~60Hz during a drag, so it was compounding
+  // into a fast, hard-to-control scroll. Lowered to a gentler nudge.
+  const EDGE_SCROLL_SPEED = 6;
 
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
     touchTask = task;

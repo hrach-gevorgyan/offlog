@@ -84,6 +84,14 @@ export function dueLabelLong(due: string): string {
   return short;
 }
 
+// Plain weekday+date, no relative wording ("Today"/"Tomorrow"/"Nd overdue")
+// -- for pairing next to dueRelative() without producing "Tomorrow ·
+// Tomorrow" (both functions independently collapse day===1 to the same
+// literal word; found in Agenda's "This week" chip, 2026-07-22).
+export function dueDateShort(due: string): string {
+  return new Date(due + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 export function dueRelative(due: string): string {
   const days = daysDiff(due);
   if (days < 0) return `${Math.abs(days)}d overdue`;

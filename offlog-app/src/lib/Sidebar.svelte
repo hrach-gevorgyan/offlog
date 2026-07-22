@@ -422,6 +422,18 @@
                   on:input={() => checkProjectNameDuplicate(newProjectName)}
                   on:keydown={(e) => { if (e.key === 'Enter') doAddProject(space._id); if (e.key === 'Escape') { cancellingAddProject = true; closeAddProject(); } }}
                   on:blur={() => { if (!templateMode) doAddProject(space._id); }}
+                  on:focus={(e) => {
+                    // Owner-reported 2026-07-22: the keyboard opening could
+                    // leave this input scrolled out of view within the
+                    // narrow sidebar drawer, especially in landscape where
+                    // the keyboard eats a much bigger share of the already-
+                    // short viewport. Delayed past one frame so this runs
+                    // after adjustResize has actually finished shrinking the
+                    // layout viewport -- scrolling immediately on focus races
+                    // that resize and can measure the pre-keyboard geometry.
+                    const el = e.currentTarget as HTMLElement;
+                    setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+                  }}
                 />
                 {#if duplicateProjectHint}<p class="dup-name-hint">{duplicateProjectHint}</p>{/if}
                 {#if !templateMode}
@@ -562,7 +574,13 @@
        2026-07-17 asked for a real light-mode sidebar instead. */
   }
 
-  @media (max-width: 768px) {
+  /* Second condition covers a phone rotated to landscape -- its width
+     alone often exceeds 768px (e.g. ~915px on a Pixel-class phone), which
+     used to fall through to the "desktop" always-visible sidebar and eat
+     a big chunk of the already-short landscape height with no way to
+     hide it (owner-reported 2026-07-22). max-height catches "phone in
+     landscape" without also matching a genuinely short desktop window. */
+  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
       width: 280px;
@@ -795,6 +813,17 @@
   @media (max-width: 768px) {
     .proj-delete-btn { opacity: .7; }
     .proj-pin-btn:not(.pinned) { opacity: .7; }
+    /* The side-by-side icon+label layout (fine on a 224px desktop column
+       with only 2 buttons per row) ellipsis-truncated "Time Travel" to
+       "Time Tr…" once the mobile drawer's 3-equal-column footer left each
+       button only ~70px wide (owner-reported 2026-07-22, screenshot).
+       Stacking icon-over-label and letting the label wrap gives it the
+       button's full width instead of a squeezed single line. */
+    .icon-btn { flex-direction: column; gap: .2rem; padding: .5rem .25rem; }
+    .icon-btn-label {
+      white-space: normal; overflow: visible; text-overflow: clip;
+      font-size: .64rem; text-align: center; line-height: 1.15;
+    }
   }
 
   /* Short viewports (landscape phone) — the project tree is the primary

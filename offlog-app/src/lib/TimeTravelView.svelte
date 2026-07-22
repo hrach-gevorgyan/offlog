@@ -171,8 +171,10 @@
               >
                 <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
                 <span class="entry-desc">{describeLog(log)}</span>
-                <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
-                <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+                <span class="entry-meta">
+                  <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
+                  <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+                </span>
                 {#if log.project_name && entityLabel(log) !== 'project'}
                   <span class="entry-project">{log.project_name}</span>
                 {/if}
@@ -183,8 +185,10 @@
               <div class="entry" role="listitem">
                 <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
                 <span class="entry-desc">{describeLog(log)}</span>
-                <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
-                <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+                <span class="entry-meta">
+                  <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
+                  <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
+                </span>
                 <!-- Skipped for a project's own create/delete entry -- its
                      name is already the main description's subject. Own
                      grid row (not an inline suffix) so it never wraps mid-
@@ -271,9 +275,19 @@
      A dedicated row always lands in the same place regardless of how long
      the description is. */
   .entry {
-    display: grid; grid-template-columns: 60px 1fr 56px 54px; column-gap: 10px;
+    display: grid; grid-template-columns: 60px 1fr auto; column-gap: 10px;
     row-gap: 4px; align-items: start;
     padding: 7px 8px; margin-bottom: 1px; border-radius: 5px; font-size: 12.5px; line-height: 1.45;
+  }
+  /* Source pill + time used to be two separate fixed-width grid columns
+     (56px/54px) -- on a narrow phone that left too little room for the
+     description column and made the row look clipped/broken (owner-
+     reported 2026-07-22: "text is truncated ... need clean compact 3
+     column 1 row"). Merged into one flex group in the 3rd (auto-width)
+     column instead -- same visual result on desktop, but shrinks/wraps as
+     one unit instead of two independently-rigid columns on mobile. */
+  .entry-meta {
+    grid-column: 3; display: flex; align-items: center; gap: 6px; margin-top: 2px;
   }
   .entry.clickable { cursor: pointer; }
   .entry.clickable:hover { background: var(--hover); }
@@ -312,10 +326,12 @@
      2026-07-18: "empty rows between log and project name"). */
   .entry-time { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; }
 
-  /* align-items: start (not baseline) on .entry means these two sit
-     flush with the top of the row; nudge down slightly to align with
-     the description text's cap-height instead of its extra line-height. */
-  .action-pill, .source-pill, .entry-time { margin-top: 2px; }
+  /* align-items: start (not baseline) on .entry means these sit flush
+     with the top of the row; nudge down slightly to align with the
+     description text's cap-height instead of its extra line-height.
+     .entry-meta (not its two children) carries this now that source-pill/
+     entry-time are nested inside it, so the offset is applied once. */
+  .action-pill { margin-top: 2px; }
 
   .load-more-btn {
     display: block; margin: 8px auto 0;

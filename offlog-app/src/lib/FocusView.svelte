@@ -443,7 +443,7 @@
   .commit-btn:disabled { opacity: .4; cursor: not-allowed; }
   .commit-btn:not(:disabled):hover { opacity: .9; }
 
-  @media (max-width: 768px) {
+  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .hamburger { display: flex; }
   }
 

@@ -1,8 +1,11 @@
 # Offlog Roadmap
 
-Current version: **v5.4.6**. Everything below is a candidate, not a
-commitment. Before starting any item, re-check it against the current
-code — this document describes intent, not state.
+See [CHANGELOG.md](CHANGELOG.md) for the current version — the single
+source of truth, not restated here since it drifts (this line used to
+say v5.4.6 while the repo was actually on v5.6.x, caught 2026-07-22).
+Everything below is a candidate, not a commitment. Before starting any
+item, re-check it against the current code — this document describes
+intent, not state.
 
 **This file keeps only what's still open**: current status, next-release
 candidates, and remaining work. Everything shipped, declined, or parked

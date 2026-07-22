@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.4.4 | Fixed Android Studio's "Activity class ... does not exist" running `release` — unsigned build type, pointed at AGP's debug keystore for local-dev runnability | `v5.4.4` |
 | 4.22.1 | Maintenance pass (eighth run): missing try/catch on ChangelogView's "Clear all"; Tauri window minWidth/minHeight floor added; everything else audited clean | `v4.22.1` |
 | 4.22.2 | Sync stability (E2): phone re-resolves the PC's stable CouchDB uuid instead of a fixed IP:port; dev/prod Tauri identity collision fixed; Android debug/release storage collision fixed via applicationIdSuffix | `v4.22.2` |
 | 4.22.0 | Week-start-day setting (B47, Sunday/Monday toggle for Agenda/DeadlinesView); full open/close animation pass (B51, new motion.ts); Tauri drag-drop fix (dragDropEnabled: false) | `v4.22.0` |
