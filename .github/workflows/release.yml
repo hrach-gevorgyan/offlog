@@ -50,7 +50,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - name: Sync Capacitor Android project
         working-directory: offlog-app
