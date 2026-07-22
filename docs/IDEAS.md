@@ -192,7 +192,79 @@ this deserves any further priority, or is safe to consider closed?
 
 ---
 
-## How to use this document
+## Post-Done feature candidates (owner-curated brainstorm, 2026-07-22)
+
+Per ROADMAP.md's final plan these are **not** milestone work — they're
+the pre-vetted shortlist for maintenance mode, so when daily use demands
+something it's already been thought through. Curated together with the
+owner from a larger brainstorm; everything the owner declined (stale-task
+triage, daily shutdown ritual, weekly review — "so much statistics from
+every app, now this one?? no") is deliberately not listed, don't
+re-propose those.
+
+**Owner-accepted, roughly by expected value:**
+
+- **"Not today" snooze.** One tap on any task: defer to tomorrow / next
+  week without opening the editor. Snooze exists today only as the
+  notification action's "Snooze 1h" — this extends the idea to the task
+  itself, guilt-free. Small.
+- **Quiet hours.** Reminders queue instead of firing during configured
+  night hours. Small; notifications.ts already owns scheduling.
+- **Calendar (.ics) export.** Dated tasks as a local .ics file/feed the
+  OS calendar reads — deadlines next to real appointments, no cloud.
+  Small-medium.
+- **Checklist templates.** Reusable checklists (packing list, grocery
+  run) — save any task's checklist as a named template, insert into any
+  task. Same mechanism as the existing project templates, one level
+  down. Small.
+- **Import converters (very popular tools only).** One-way import from
+  Trello / ClickUp / Jira export files into Offlog's model. This is the
+  owner's accepted flavor of "integration" — a one-time file conversion,
+  not a live connection, so it doesn't violate the no-integrations
+  stance in DECISIONS.md's manifesto. Medium (per-tool mapping work,
+  Trello's JSON export first — it's the most kanban-shaped).
+- **Voice input for Quick Add.** Dictate a task instead of typing —
+  platform speech-to-text (Android's built-in recognizer / Web Speech
+  API where available) feeding the existing NLP regex parser, no cloud
+  service of our own. Medium; Android-first.
+- **Distraction-minimal interface pass.** Owner's framing: every
+  productivity app (ours included) accumulates too many on-screen
+  things; the create-work-complete lifecycle should be the whole
+  visible surface. Not a feature — a *reduction* pass: audit every
+  view for chrome that doesn't serve the current task, possibly a
+  "minimal mode" toggle. Large-ish in judgment, small in code.
+- **Task linking & dependencies.** "This task blocks that one" /
+  related-task links. Real value, but touches the data model — same
+  caution class as parked B28/B33: needs a design conversation first,
+  not a casual add.
+- **File attachments (with size optimization).** PouchDB supports
+  binary attachments natively and they replicate over the existing
+  sync — but storage growth and sync payload on phones is the real
+  concern, so images would need client-side downscale/compression on
+  attach. Medium-large; the one item here with real storage-cost risk.
+- **Recurrence robustness pass.** Recurring tasks already exist
+  (db.ts's reset-in-place model) — owner's ask is the quality bar:
+  "smart due dates, reminders, and recurrence that don't break."
+  A dedicated test/edge-case pass (month-end dates, DST, skipped
+  occurrences while offline) rather than new behavior.
+- **Unified search.** Global Search already covers tasks — extend to
+  notes/checklist contents so one search box finds everything in-app.
+  (The "connected tools" half of the original idea is out of scope —
+  no live connections, per the manifesto; imported data becomes normal
+  Offlog data and is searched like everything else.)
+
+**iOS reality check (owner asked, 2026-07-22):** a native iOS build
+needs a Mac, Xcode, and Apple's $99/year developer account, plus App
+Store review — the yearly fee alone contradicts the zero-cost stance,
+so it stays community-contribution-only per DECISIONS.md. The realistic
+zero-cost path onto an iPhone is the **web build as a PWA**: Safari →
+Add to Home Screen gives an installable, offline-capable app icon, and
+iOS 16.4+ supports web push notifications. Real limitations: no
+widgets, no lock-screen notification actions, and LAN sync from a PWA
+needs the phone's browser to reach the PC host over plain http (mixed-
+content/local-network rules make this finicky, untested). If iOS ever
+matters, the first step is one evening of testing the existing web
+build as a PWA on a real iPhone — not opening a native front.
 
 Each question above is meant to be copy-pasted on its own to another AI,
 a forum, or a person whose judgment is trusted, without needing this whole
