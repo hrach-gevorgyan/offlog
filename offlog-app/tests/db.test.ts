@@ -15,7 +15,7 @@ import db, {
   getTagCounts, renameTag, deleteTagEverywhere,
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
 } from '../src/lib/db';
-import { findDuplicateChecklistItems, wordOverlapSimilarity } from '../src/lib/utils';
+import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
 
 // Full wipe between tests — db.ts's `db` is a module-level singleton (real
@@ -361,8 +361,13 @@ describe('"done" is positional (column_id === last column)', () => {
     const t3 = await createTask(otherProject._id, 'space:unsorted', otherProject.columns[0].id, 'Done 3');
     await updateTask(t3._id!, { column_id: otherLastCol.id });
 
-    // Not-done task due today should show up in todayTasks.
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Not-done task due today should show up in todayTasks. Must be the
+    // LOCAL calendar date, same as getDashboardData's own comparison —
+    // toISOString() is UTC, which made this exact test fail only when run
+    // between midnight and UTC-offset o'clock local time (caught live at
+    // 02:42 UTC+4, 2026-07-23; the v5.7.1 pass fixed this class in app
+    // code but missed this test-side copy).
+    const todayStr = localDateStr(new Date());
     const todayTask = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Due today');
     await updateTask(todayTask._id!, { due_date: todayStr });
 
