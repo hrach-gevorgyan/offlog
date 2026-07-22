@@ -367,6 +367,24 @@ and usable the whole time; a cancelled/failed biometric attempt falls
 through silently to the PIN screen (not a wrong-PIN shake, since
 cancelling isn't a wrong guess).
 
+### Accepted risk: GitHub alert on `glib` 0.18.5 in offlog-desktop, no fix available (2026-07-22)
+Dependabot flagged a moderate (6.9) unsoundness advisory in the `glib`
+crate (`Iterator`/`DoubleEndedIterator` impls for `VariantStrIter`),
+patched in `glib` 0.20.0. Not applicable here: `glib` is a transitive
+dependency pulled in by `gtk 0.18.2`, which Tauri 2's `tauri` crate
+itself pins to `^0.18` — `cargo update -p glib --precise 0.20.0` fails
+outright (`gtk 0.18.2` won't accept it), and `cargo update -p glib`
+confirms 0.18.5 is already the newest version compatible with that
+constraint. No patched 0.18.x release exists. This is blocked on Tauri
+bumping its own `gtk`/`glib` dependency upstream — not something this
+project can fix locally by touching `Cargo.lock`.
+Risk accepted for now: the unsound code path is internal to `glib`'s
+iterator impl, reached only through this app's own (non-adversarial,
+local) desktop code — no network-facing input reaches it. Re-check
+next time `offlog-desktop`'s Tauri/Cargo deps get bumped for any other
+reason (`cargo update -p glib` to see if a newer compatible version has
+appeared); don't chase this one proactively before then.
+
 ---
 
 ## Mobile / Android
