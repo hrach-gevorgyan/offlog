@@ -60,6 +60,70 @@ Produce a findings report covering:
   try/catch + showError() (this is an audited invariant — regressions
   are findings).
 - Hygiene: stale TODOs, debug console.log, secrets in code.
+- **Recurring blind spots** (each encodes a bug class this project has
+  actually shipped or nearly shipped — that's the bar for adding to
+  this list; don't grow it with generic-audit filler):
+  - **Floating promises.** Any call to an async `db.ts`/
+    `notifications.ts` function that is neither `await`ed, `return`ed,
+    nor explicitly `.then/.catch`-chained is a finding — and a bare
+    `.catch(() => {})` deserves a look too (is the swallow deliberate?).
+    Real incidents: `fireWebNotification()`'s fire-and-forget
+    `updateTask` caused both a rev-conflict race (v5.4.6) and a flaky
+    test that only failed under parallel suite load (v5.7.2 era).
+  - **Date/time locality.** All date-only logic must go through
+    `utils.ts`'s `localDateStr()`/friends — grep new code for raw
+    `toISOString().slice`, `getUTC*`, or string-built dates. Real
+    incident: v5.7.1 found **seven** places using UTC instead of the
+    local calendar day (Agenda, Focus lock, overdue badges, exports).
+    Month-end + DST boundaries are the test cases that expose these.
+  - **Packaging paths, not just build/tsc/test.** A dependency bump can
+    pass all three gates and still break the pipeline, because the
+    gates never exercise the packaging tools' own code paths. Real
+    incident: TypeScript 7 passed build/tsc/tests locally, then broke
+    `npx cap sync android` (Capacitor CLI's config loader) on the next
+    release tag. After any bump touching build tooling (TypeScript,
+    Vite, Capacitor, Tauri), also run `npx cap sync android` (allowed
+    per CLAUDE.md — it's the Gradle/APK build that's owner-only) and
+    let `desktop-ci`'s release-profile cargo build cover the Tauri
+    side.
+  - **Script exit paths.** Read every `.ps1`/`.sh` in the repo
+    end-to-end for exit-code correctness: does every failure path fail
+    loud, and does the success path actually exit 0? Real incident:
+    `fetch-couchdb-win.ps1` succeeded completely yet exited 1 in CI,
+    because robocopy's success codes (1-7) lingered in `$LASTEXITCODE`
+    and `pwsh -File` propagated it.
+  - **Config/permission drift.** Diff `tauri.conf.json`'s CSP and
+    `AndroidManifest.xml`'s `<uses-permission>` list against the last
+    pass — any widening (a new permission, a loosened CSP directive)
+    is a [REVIEW] finding even if some feature "needed" it, because
+    these widen silently and nobody re-reads them once added.
+  - **Docs link integrity.** Relative links in `docs/*.md` and
+    README.md rot silently as files move/merge (GOAL.md, QUESTIONS.md
+    both got merged away — anything still linking to them is wrong).
+    One-liner check:
+    `grep -rhoP '\]\((?!http)[^)#]+' docs *.md | sort -u` → verify
+    each path exists.
+  - **Size drift ledger.** Record `du -sh offlog-app/dist` and the
+    latest installer/APK sizes in the pass narrative every time.
+    Unexplained growth (>~10% with no feature to blame) is a finding —
+    bloat only ever arrives gradually, and without a written baseline
+    each pass has nothing to compare against. (Baseline at v5.7.4:
+    dist 1.1MB, Windows installer ~52MB, of which ~50MB is the bundled
+    CouchDB/Erlang floor.)
+  - **Optional deeper sweeps** (no repo dependency added — dev-run
+    tools only, results are *candidates* requiring judgment, both
+    false-positive-prone with Svelte/Tauri): `npx knip` (unused files/
+    exports/dependencies the manual grep misses) and `cargo machete`
+    (unused crates). Worth running when a pass suspects drift, not
+    mandatory every time.
+  - **What's already covered elsewhere — don't duplicate effort:**
+    fresh-machine/clean-checkout builds (the "works locally, breaks
+    from a clean clone" class — untracked files, lost exec bits,
+    gitignored resources) are exercised by CI on every push
+    (`ci.yml`/`desktop-ci.yml` build from clean checkouts); the
+    incremental-vs-clean Android build class (the `--` XML comment
+    incident) is only truly caught by the owner's own clean Studio
+    builds, since Gradle is owner-only.
 - **Security & robustness** (owner-requested addition, 2026-07-09 — every
   check beside the purely visual/behavioral ones above):
   - **Build-output secret leakage — check the actual `dist/` output, not
