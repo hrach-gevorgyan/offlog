@@ -252,6 +252,27 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 ## Testing & Dev Workflows
 
+### CI & release automation (GitHub Actions, added 2026-07-22)
+
+Three workflows in `.github/workflows/`:
+
+- **`ci.yml`** — on every push/PR touching `offlog-app/**`: type-check,
+  zero-warning build, vitest suite (the same three gates as the release
+  checklist).
+- **`desktop-ci.yml`** — on pushes/PRs touching `offlog-desktop/**`
+  only: a real `cargo build --release` for the Tauri side (Rust
+  previously had no CI at all), which doubles as the cache warmer —
+  GitHub Actions caches created on a tag are invisible to other tags,
+  so only this main-branch job can create the cargo/vendored-CouchDB
+  caches that release runs restore.
+- **`release.yml`** — on any `vX.Y.Z` tag push: builds the Android APK
+  (real-key-signed via repo secrets, debug-keystore fallback when
+  they're absent) and the Windows Tauri installer, then attaches both
+  to a **draft** GitHub Release — publishing stays a manual owner
+  step. Dependabot watches npm (`offlog-app/`), Cargo
+  (`offlog-desktop/src-tauri/`), and the workflows' own action
+  versions, weekly (`.github/dependabot.yml`).
+
 ### Generating test/dummy data
 
 **For a full realistic scenario** (fresh project setup, or whenever you want

@@ -287,4 +287,26 @@ green but the crate itself wasn't touched this pass. All fixes verified
 live via browser preview (toggle-knob token, scrim opacity, Time Travel's
 clickable/non-clickable split, debounce timers) in addition to the
 build/tsc/test gates.
-audit` unchanged from prior passes.
+
+Last pass: v5.7.4 (2026-07-22 — fifteenth run, pulled forward from its
+after-v5.9.0 due date at owner request as the "final cleanup" of the
+finite-plan restructuring; also removed a stray dangling sentence
+fragment left at the end of the fourteenth entry above). Delta-scoped
+since v5.6.1 (the v5.7.0–v5.7.4 releases: A9 extractions, B59's 3-step
+first-run flow, the v5.7.1 credential-gate fix, v5.7.2's bugfix batch,
+two dependency-maintenance batches, CI/release automation). **Cleanest
+pass on record — zero code findings.** Hygiene (console.log, TODOs),
+XSS surfaces (`GlobalSearch`'s `highlight()` escapes before `{@html}`;
+space/category icons resolve from fixed tables), `db.find()` limits,
+Rust `unsafe` inventory (only the known `TerminateJobObject` FFI),
+pairing-path logging, localStorage contents, `npm audit` (0), the
+`dist/` build-output secret check, and dead-export scan of every
+delta file: all clean. One [SAFE] doc finding fixed: TECH.md had no
+mention of the week-old CI/release pipeline — a new "CI & release
+automation" subsection added under Testing & Dev Workflows. Docs-only
+fix, so no version bump per MAINTENANCE.md Phase 5's clean-pass rule.
+Baselines (build zero-warning / tsc / 173 tests / cargo build) all
+green, verified same-day on the current tree. Recommendation for next
+pass: nothing carried over; the `glib` accepted-risk (DECISIONS.md)
+re-check remains tied to the next Cargo dependency bump, not to
+maintenance cadence.

@@ -4,9 +4,10 @@ Scheduled maintenance routine, tailored to this repo. This is NOT a
 feature session: external behavior must remain identical. Read this whole
 file before touching code. Cadence: **every 3 minor versions.**
 
-**Current pointer** — last pass: v5.6.1 (2026-07-21, fourteenth run, off-
-cadence at owner request).
-Next pass due: **after v5.9.0 ships**. This is the only tracker state that
+**Current pointer** — last pass: v5.7.4 (2026-07-22, fifteenth run,
+pulled forward at owner request as part of the final-plan cleanup).
+Next pass due: **after v5.10.0 ships** (or quarterly once ROADMAP.md's
+"Done" milestone lands, whichever framing applies by then). This is the only tracker state that
 lives in this file; the full narrative history of every past pass is in
 [archive/changelog-archive.md](archive/changelog-archive.md)'s
 "Maintenance pass log" section — this file is instructions only. Update
