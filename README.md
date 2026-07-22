@@ -313,6 +313,7 @@ Everything beyond this pitch lives in [docs/](docs/):
 | [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md) | Older releases, one line each, plus the full maintenance-pass log |
 | [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
 | [docs/IDEAS.md](docs/IDEAS.md) | Open questions and un-committed ideas worth outside input |
+| [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference for public-facing copy |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
 ## Contributing

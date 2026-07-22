@@ -313,11 +313,16 @@ against Trello/Notion/ClickUp/Jira by feature count.
 A small, plain landing page (GitHub Pages is enough) linking to the web
 app (browser-only, no install step) and the Android APK download.
 
-### C6. Brand & positioning pass
-A short pass over every public-facing document — README, store copy,
-landing page copy — to make sure the "not competing, just likable" framing
-from the Mission above comes through, written for humans discovering the
-project.
+### C6. Brand & positioning pass — first pass done 2026-07-22
+[docs/BRAND.md](BRAND.md) created: taglines (owner to pick one), voice/
+tone rules ("not competing, just likable" — no competitor-naming in
+pitch copy, no hype words), and the visual identity that already
+existed but was never assembled in one place (accent color, Hanken
+Grotesk typography, icon location). Still open: apply the chosen
+tagline back into README's opening pitch (currently leans more
+competitor-comparison than BRAND.md's own rule prefers — flagged, not
+yet rewritten), then reuse the same copy for C5's landing page and
+C3's store listing once built.
 
 ### C10. Plain-language pass: every string, every document — done 2026-07-21
 A survey (in-app strings + docs changed since the 2026-07-20 pass) found

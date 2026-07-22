@@ -14,8 +14,10 @@ only — shipped/declined/parked history lives in
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (newest ~10 releases — older ones
 plus the full maintenance-pass log compressed into
 [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)),
-and [docs/IDEAS.md](docs/IDEAS.md) (open questions and un-committed ideas;
-merged the old QUESTIONS.md 2026-07-20). The maintenance-pass process
+[docs/IDEAS.md](docs/IDEAS.md) (open questions and un-committed ideas;
+merged the old QUESTIONS.md 2026-07-20), and [docs/BRAND.md](docs/BRAND.md)
+(tagline/pitch/voice/visual-identity reference for any public-facing
+copy — README, landing page, store listing). The maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in
@@ -54,6 +56,9 @@ read-everything every time):
   touching storage/sync/business-model/distribution choices.
 - **IDEAS.md** — only when the task is itself one of the open
   questions/ideas, or a new one worth recording comes up.
+- **BRAND.md** — before writing or editing any public-facing copy
+  (README pitch, landing page, store listing, social post) — check tone/
+  tagline/color/typography line up before proposing new wording.
 - **CHANGELOG.md** — only at release time (the version-bump step), not per
   code change. Move the oldest row into `docs/archive/changelog-archive.md`
   once the table exceeds 10 rows.
