@@ -385,6 +385,23 @@ next time `offlog-desktop`'s Tauri/Cargo deps get bumped for any other
 reason (`cargo update -p glib` to see if a newer compatible version has
 appeared); don't chase this one proactively before then.
 
+### Why TypeScript stays pinned to ~6.0.2, not 7.x (2026-07-22)
+Dependabot proposed TypeScript 6.0.3 → 7.0.2 as part of the v5.7.3
+maintenance batch; `npm run build`/`tsc --noEmit`/`vitest run` all
+passed clean locally, so it looked safe and was merged. It broke the
+release pipeline's `build-android` job on the very next tag push:
+`npx cap sync android` failed with `TypeError: Cannot read properties
+of undefined (reading 'CommonJS')` while parsing `capacitor.config.ts`.
+Root cause is inside Capacitor CLI's own config loader (`requireTS`),
+not this project's code — it wasn't exercised by any of the checks
+above, since none of them actually run `cap sync`. Reverted to
+`~6.0.2` and added a Dependabot `ignore` rule for `typescript` `7.x`
+in `dependabot.yml` so it doesn't get silently re-proposed and
+re-merged on a green CI run that still can't see this failure mode.
+Re-enable once `@capacitor/cli` ships confirmed TS7 support — check by
+reading its release notes/changelog for TypeScript 7 compatibility,
+not just by trying the bump again the same way.
+
 ---
 
 ## Mobile / Android

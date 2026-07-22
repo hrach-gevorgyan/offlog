@@ -5,6 +5,12 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7's `requireTS` config loader breaks Capacitor CLI's
+      # `npx cap sync android` (confirmed 2026-07-22, v5.7.3 release CI --
+      # see DECISIONS.md). Re-enable once @capacitor/cli ships TS7 support.
+      - dependency-name: "typescript"
+        versions: ["7.x"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
