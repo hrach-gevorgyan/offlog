@@ -157,10 +157,11 @@ mount: `computeDropPosition()` (KanbanBoard's drag math, 5 tests) and
 SettingsPanel.svelte, not Sidebar as this item's name assumed; 3 tests).
 See CHANGELOG.md's v5.7.0 row.
 
-### A31. Full cross-platform visual/UX review — Android leg still open
-Desktop/web done. Android is entirely unverified — needs an owner Studio
-check, per CLAUDE.md's Android-build rule (the assistant never runs
-Gradle).
+### A31. Full cross-platform visual/UX review — done 2026-07-22
+Desktop/web done earlier. Android leg closed by the same real-device
+round that verified the public v5.7.4 release: installed the actual
+Release APK on real hardware, confirmed sync pairing/replication both
+directions.
 
 ---
 
