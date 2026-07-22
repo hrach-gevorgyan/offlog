@@ -18,7 +18,7 @@ cloud, no subscription.
 
 Three lengths, same message, use whichever fits the space:
 
-- **Tagline (≤6 words):** "Your tasks. Your devices. Nobody else's."
+- **Tagline (chosen 2026-07-22):** "Your tasks. Your devices. Nobody else's."
 - **One sentence:** Offlog is a free task manager that syncs directly
   between your own phone and PC over Wi-Fi — no account, no cloud, no
   subscription, ever.
@@ -29,8 +29,6 @@ Three lengths, same message, use whichever fits the space:
   and PC talk to each other directly over your own Wi-Fi. No account to
   create, no subscription, no feature ever held back behind a paywall.
 
-Pick whichever tagline candidate you like — or none, and I'll rework
-it — before this propagates into the landing page or store listing.
 
 ## Voice & tone
 

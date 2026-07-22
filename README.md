@@ -1,5 +1,7 @@
 # Offlog
 
+**Your tasks. Your devices. Nobody else's.**
+
 A free, open-source, local-first task manager. No account, no telemetry,
 no subscription, ever. Runs in the browser, as a native Android app, and
 as a Windows desktop app — all three share the exact same codebase and
@@ -11,23 +13,20 @@ doesn't go stale every release.)
 
 ## Why this exists
 
-Every existing task manager either locks a feature you need behind a paid
-tier, or splits the features you actually use across two or three
-different apps because no single one covers all of them. And almost all
-of them sync through *someone else's* cloud by default — which means your
-task list lives on a server you don't control, whether or not you ever
-agreed to that trade-off.
+Offlog is a task manager built to have exactly the features one person
+actually uses and nothing they didn't ask for, syncing only across
+devices they own — a phone and a PC on the same Wi-Fi — never through
+someone else's cloud. It works fully offline, and when sync is turned
+on, your phone and PC talk to each other directly. No account to
+create, no subscription, no feature ever held back behind a paywall.
 
-Offlog was built to have exactly the features one person wanted and
-nothing they didn't, syncing only across devices they own — a phone and a
-PC on the same Wi-Fi — never to an unknown cloud. It started as a
-personal tool, but the sync model works just as well for a small,
-trusted, co-located group: a family, a small team, or one office sharing
-a single board over the same network. It is **not** a remote/multi-tenant
-product — there are no accounts, no per-user permissions, and syncing
-only ever happens on the same local network. See
-[docs/DECISIONS.md](docs/DECISIONS.md)'s opening manifesto for the exact
-scope and why it stops there.
+It started as a personal tool, but the sync model works just as well
+for a small, trusted, co-located group: a family, a small team, or one
+office sharing a single board over the same network. It is **not** a
+remote/multi-tenant product — there are no accounts, no per-user
+permissions, and syncing only ever happens on the same local network.
+See [docs/DECISIONS.md](docs/DECISIONS.md)'s opening manifesto for the
+exact scope and why it stops there.
 
 It's also built in the open, on purpose. Every decision — including the
 ones that got reversed — is written down:

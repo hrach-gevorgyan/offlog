@@ -313,16 +313,17 @@ against Trello/Notion/ClickUp/Jira by feature count.
 A small, plain landing page (GitHub Pages is enough) linking to the web
 app (browser-only, no install step) and the Android APK download.
 
-### C6. Brand & positioning pass — first pass done 2026-07-22
-[docs/BRAND.md](BRAND.md) created: taglines (owner to pick one), voice/
-tone rules ("not competing, just likable" — no competitor-naming in
-pitch copy, no hype words), and the visual identity that already
-existed but was never assembled in one place (accent color, Hanken
-Grotesk typography, icon location). Still open: apply the chosen
-tagline back into README's opening pitch (currently leans more
-competitor-comparison than BRAND.md's own rule prefers — flagged, not
-yet rewritten), then reuse the same copy for C5's landing page and
-C3's store listing once built.
+### C6. Brand & positioning pass — done 2026-07-22
+[docs/BRAND.md](BRAND.md) created: voice/tone rules ("not competing,
+just likable" — no competitor-naming in pitch copy, no hype words),
+tagline ("Your tasks. Your devices. Nobody else's.", owner-picked), and
+the visual identity that already existed but was never assembled in
+one place (accent color, Hanken Grotesk typography, icon location).
+README's opening pitch reworked to lead with the tagline and drop the
+competitor-comparison framing ("every existing task manager either
+locks... or splits...") that didn't match BRAND.md's own rule. Same
+copy/tagline should carry into C5's landing page and C3's store
+listing once built, rather than each reinventing its own pitch.
 
 ### C10. Plain-language pass: every string, every document — done 2026-07-21
 A survey (in-app strings + docs changed since the 2026-07-20 pass) found
