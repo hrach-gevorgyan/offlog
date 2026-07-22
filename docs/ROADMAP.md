@@ -64,16 +64,21 @@ none of it feature growth:
   PouchDB storage corrupts / a browser profile gets wiped / Android
   storage gets cleared" — today that answer is "hope sync had a second
   copy." Stability item wearing a feature's clothes. (~1-2 sessions.)
-- **A32 — UI test hardening.** The whole `.svelte` layer is manual-
-  verification only while db.ts has 173 tests — the imbalance is the
-  weakest line in the project's health score. Not a coverage-number
-  chase: target the flows where silent breakage costs real data or
-  security — CardDetail save/discard, App Lock PIN entry + B61's new
-  confirm flow (test it as it's built, not after), delete/undo, and
-  Quick Add parsing → task creation. `@testing-library/svelte` is
-  already a devDependency, jsdom already configured — the tooling has
-  been sitting there unused. (~2 sessions, and every later session
-  benefits.)
+- **A32 — UI test hardening. First pass done 2026-07-23** (13 new
+  component tests, suite now 186): `AppLock.test.ts` (correct/wrong
+  PIN, digit-only filter, 3-strike cooldown, Escape-never-dismisses,
+  recovery-code flow) and `QuickAdd.test.ts` (full type → real
+  nlpParse → createTask pipeline: default routing, priority/tags,
+  @project match, quoted parse-off, failure keeps panel open). Bonus
+  real catch: db.test.ts's dashboard test built "today" via UTC
+  `toISOString()` — failed only when run after midnight local, the
+  exact date-locality blind-spot class MAINTENANCE.md codifies; app
+  code was already correct, the test was the last UTC holdout.
+  Remaining for B61's session: extend AppLock tests to cover the new
+  confirm-current-PIN flow as it's built. Delete/undo UI (App.svelte's
+  inline toast) deliberately left untested — mounting the whole app
+  shell in jsdom is brittleness, not coverage; its logic (including
+  the chained-toast regression) is already pinned in db.test.ts.
 
 **One-time owner action, this week, no session needed:** copy
 `C:\Users\hrach\Offlog-signing\` somewhere off this machine (USB
