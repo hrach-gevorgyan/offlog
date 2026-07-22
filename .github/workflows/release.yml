@@ -45,7 +45,7 @@ jobs:
         working-directory: offlog-app
         run: npm run build
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '21'
