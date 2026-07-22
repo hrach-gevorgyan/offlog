@@ -1,6 +1,7 @@
 # Offlog
 
 **Your tasks. Your devices. Nobody else's.**
+*Off the cloud, still logged.*
 
 A free, open-source, local-first task manager. No account, no telemetry,
 no subscription, ever. Runs in the browser, as a native Android app, and
