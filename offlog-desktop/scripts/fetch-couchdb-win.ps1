@@ -62,6 +62,15 @@ if ($LASTEXITCODE -ge 8) {
     Write-Error "robocopy failed with code $LASTEXITCODE"
     exit 1
 }
+# robocopy's own exit codes are a bitmask where 0-7 all mean success (e.g.
+# 1 = "files copied", checked above) -- but that non-zero code still lingers
+# in $LASTEXITCODE for the rest of this script, and pwsh -File propagates
+# whatever $LASTEXITCODE holds when the script ends as its own process exit
+# code. Left alone, that silently failed this entire (successful!) run in
+# CI with exit code 1, even though every actual error path was never hit.
+# Reset explicitly rather than leaving a robocopy implementation detail to
+# leak out as this script's own success/failure signal.
+$global:LASTEXITCODE = 0
 
 # Owner-reported, 2026-07-16: is the full bundle actually needed, or can
 # the installed app be lighter? Two genuinely unused pieces, both safe to
@@ -102,3 +111,4 @@ Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $TempMsi -Force -ErrorAction SilentlyContinue
 
 Write-Host "Done: $VendorDir"
+exit 0
