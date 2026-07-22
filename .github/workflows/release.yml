@@ -118,7 +118,7 @@ jobs:
         run: ./scripts/fetch-couchdb-win.ps1
 
       - name: Build Tauri Windows installer
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         with:
           projectPath: offlog-desktop
           # offlog-app/dist was already built above; tauri.conf.json's
