@@ -41,7 +41,9 @@ IDEAS.md and probably stays there.
 ### Milestone 1 — "Stable for me" (target: end of August 2026)
 
 The app is fully trustworthy for the owner's own daily use, and keeps
-itself updated without manual effort. Two items, both small:
+itself updated without manual effort. Grew from two items to four on
+owner request 2026-07-22 (health-score review) — all stability-class,
+none of it feature growth:
 
 - **B61 — Require current PIN to change/remove App Lock.** The one
   known real security gap: anyone holding the unlocked device can
@@ -54,6 +56,31 @@ itself updated without manual effort. Two items, both small:
   with zero manual reinstalls — this directly reduces all future
   maintenance effort, which is why it's in milestone 1. (~1 session
   plus the owner's keygen.)
+- **B62 — Automatic local backup.** Backup/Restore exists but is
+  manual, and manual backups don't happen until after the disaster. A
+  silent periodic JSON export (daily or weekly, rotating, keep last N)
+  to a local folder — desktop via the existing fs plugin, Android via
+  the existing Filesystem plugin. This is the answer to "what if
+  PouchDB storage corrupts / a browser profile gets wiped / Android
+  storage gets cleared" — today that answer is "hope sync had a second
+  copy." Stability item wearing a feature's clothes. (~1-2 sessions.)
+- **A32 — UI test hardening.** The whole `.svelte` layer is manual-
+  verification only while db.ts has 173 tests — the imbalance is the
+  weakest line in the project's health score. Not a coverage-number
+  chase: target the flows where silent breakage costs real data or
+  security — CardDetail save/discard, App Lock PIN entry + B61's new
+  confirm flow (test it as it's built, not after), delete/undo, and
+  Quick Add parsing → task creation. `@testing-library/svelte` is
+  already a devDependency, jsdom already configured — the tooling has
+  been sitting there unused. (~2 sessions, and every later session
+  benefits.)
+
+**One-time owner action, this week, no session needed:** copy
+`C:\Users\hrach\Offlog-signing\` somewhere off this machine (USB
+stick, private cloud — anywhere). After Play Store submission that
+key *is* the app's identity; Google never re-issues it, and right now
+it exists on exactly one disk. Same for the Tauri updater key once E3
+generates it.
 
 ### Milestone 2 — "Installable by normal humans" (target: end of October 2026)
 
@@ -72,6 +99,19 @@ being findable and installable without knowing what "sideload" means.
   BRAND.md's tagline/copy, linking the Play Store listing (once live)
   and GitHub Releases. Deliberately after or alongside C3 so it has
   something better than an APK to link to. (~1 session.)
+
+**One-time owner action (5 minutes, browser, free on public repos):**
+GitHub → Settings → Code security: enable **secret scanning** and
+**push protection** (blocks a committed key/token before it lands —
+the v5.7.1 incident class, at the git layer), and **dependency
+review** on PRs. These were noted at the public flip and are still
+unenabled. Beyond this, security improvement is B61 (milestone 1) and
+the standing MAINTENANCE.md checklist — sync-transport encryption
+(TLS on the LAN link) was considered and stays out: the manifesto's
+stance is that home-Wi-Fi sync is private by scope, and self-signed
+cert trust on Android would break the zero-config pairing promise for
+marginal gain on a home network. Revisit only if a real user reports a
+real hostile-LAN use case.
 
 ### Milestone 3 — "Done" (whenever 1 and 2 are done — no separate work)
 
