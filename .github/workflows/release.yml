@@ -78,7 +78,13 @@ jobs:
 
       - name: Build release APK
         working-directory: offlog-app/android
-        run: ./gradlew assembleRelease
+        # gradlew's executable bit doesn't always survive a checkout on a
+        # repo that's also been worked on from Windows (git tracks the
+        # mode bit, but it can get lost) -- set it explicitly rather than
+        # relying on whatever's committed.
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
 
       - uses: actions/upload-artifact@v4
         with:
@@ -105,6 +111,11 @@ jobs:
         run: npm run build
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch vendored CouchDB (not checked into git, ~200MB)
+        working-directory: offlog-desktop
+        shell: pwsh
+        run: ./scripts/fetch-couchdb-win.ps1
 
       - name: Build Tauri Windows installer
         uses: tauri-apps/tauri-action@v0
