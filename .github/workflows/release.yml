@@ -112,7 +112,30 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Fetch vendored CouchDB (not checked into git, ~200MB)
+      # Both caches are created by desktop-ci.yml on main -- tag runs
+      # can only *restore* default-branch caches, never share caches
+      # between tags, so there's no cache-save value here; this is
+      # purely a restore for speed. Cache miss = build from scratch,
+      # same as before caching existed.
+      - name: Restore cargo cache (warmed by desktop-ci on main)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            offlog-desktop/src-tauri/target
+          key: cargo-windows-${{ hashFiles('offlog-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: cargo-windows-
+
+      - name: Restore vendored CouchDB cache (warmed by desktop-ci on main)
+        uses: actions/cache@v4
+        with:
+          path: offlog-desktop/vendor/couchdb-win
+          # Keep in sync with desktop-ci.yml's key and the fetch
+          # script's $Version.
+          key: couchdb-win-3.5.2-1
+
+      - name: Fetch vendored CouchDB (no-op on cache hit, ~200MB otherwise)
         working-directory: offlog-desktop
         shell: pwsh
         run: ./scripts/fetch-couchdb-win.ps1

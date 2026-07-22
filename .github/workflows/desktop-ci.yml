@@ -1,0 +1,73 @@
+name: Desktop CI
+
+# Two jobs in one (runs only when offlog-desktop/ actually changes,
+# which is rare):
+#  1. A real compile check for the Tauri/Rust side -- until 2026-07-22
+#     Rust had zero CI at all, which let a Dependabot bump (rand 0.10's
+#     Rng->RngExt trait split) reach a mergeable state with a broken
+#     build, caught only by a manual local cargo build.
+#  2. Cache warming for release.yml -- GitHub Actions caches created on
+#     a tag ref are NOT shareable with other tags; only default-branch
+#     caches are. So the release workflow's Windows job can only reuse
+#     cargo/vendor caches if something on main creates them -- this job
+#     is that something. Same reason release.yml deliberately has no
+#     Gradle cache: nothing builds Android on main to warm one, and a
+#     cache written by tag vX is invisible to tag vY.
+on:
+  push:
+    branches: [main]
+    paths: ['offlog-desktop/**', '.github/workflows/desktop-ci.yml']
+  pull_request:
+    branches: [main]
+    paths: ['offlog-desktop/**', '.github/workflows/desktop-ci.yml']
+
+jobs:
+  build-desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: offlog-app/package-lock.json
+
+      # tauri-build resolves frontendDist at compile time, so the web
+      # assets must exist even for a plain cargo build.
+      - name: Build web assets
+        working-directory: offlog-app
+        run: |
+          npm ci
+          npm run build
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            offlog-desktop/src-tauri/target
+          key: cargo-windows-${{ hashFiles('offlog-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: cargo-windows-
+
+      - name: Cache vendored CouchDB
+        uses: actions/cache@v4
+        with:
+          path: offlog-desktop/vendor/couchdb-win
+          # Bump this key's version segment together with the fetch
+          # script's $Version -- a stale cache would otherwise pin an
+          # old CouchDB forever (the script skips fetching when the
+          # directory already exists).
+          key: couchdb-win-3.5.2-1
+
+      - name: Fetch vendored CouchDB (no-op on cache hit)
+        working-directory: offlog-desktop
+        shell: pwsh
+        run: ./scripts/fetch-couchdb-win.ps1
+
+      - name: Cargo build (release profile, matches release.yml)
+        working-directory: offlog-desktop/src-tauri
+        run: cargo build --release
