@@ -3,7 +3,7 @@ import db, {
   posBetween, computeDropPosition,
   createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
   createTask, getTasksForProject, updateTask, deleteTask,
-  getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash,
+  getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribeUndo,
   getAllTasksDue, getDashboardData,
   checkIntegrity, repairDatabase, runMaintenanceSteps,
   getConflicts, resolveConflict,
@@ -253,6 +253,34 @@ describe('undo / Deleted (trash)', () => {
     await undoDelete(task._id!);
     const tasks = await getTasksForProject(project._id);
     expect(tasks.map(t => t._id)).toContain(task._id);
+  });
+
+  it('undoDelete does not re-trigger the undo-toast listener (regression: chained undo toast, 2026-07-22)', async () => {
+    // Real bug: undoDelete() used to call the same _undoListeners notify
+    // that deleteTask() uses to pop up App.svelte's "Undo" toast.
+    // showUndoToast() (the only real subscriber) pulls the single
+    // most-recently-deleted task -- so restoring task A re-fired the
+    // listener, which found task B (now the next most recent deleted
+    // task) and popped a SECOND toast, chained off clicking the first
+    // one's Undo button. subscribeUndo's callback must fire exactly once
+    // per real delete, never on a restore.
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const colId = project.columns[0].id;
+    const taskA = await createTask(project._id, 'space:unsorted', colId, 'Task A');
+    const taskB = await createTask(project._id, 'space:unsorted', colId, 'Task B');
+
+    let notifyCount = 0;
+    const unsubscribe = subscribeUndo(() => { notifyCount++; });
+    try {
+      await deleteTask(taskA._id!);
+      await deleteTask(taskB._id!);
+      expect(notifyCount).toBe(2); // one per real delete
+      await undoDelete(taskA._id!);
+      expect(notifyCount).toBe(2); // unchanged -- a restore must not notify
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('deleteForever hard-removes a single trashed task', async () => {

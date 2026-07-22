@@ -125,12 +125,19 @@ const MAX_TIMEOUT = 2_147_483_647; // setTimeout's 32-bit signed int limit (~24.
 const _firedIds = new Set<string>();
 function firedKey(task: TaskDoc): string { return `${task._id}:${task.reminder_at}`; }
 
-function fireWebNotification(task: TaskDoc) {
+// Returns the clearing write's promise (rather than firing it detached) so
+// catchUpWeb() can actually wait for it to land -- production callers are
+// free to ignore the returned promise same as before, but tests no longer
+// need to pad with an arbitrary setTimeout "give it a tick" that isn't
+// guaranteed long enough under load (real flakiness found 2026-07-22: the
+// padding was too short whenever other test files added enough parallel
+// load to slow PouchDB's actual write down past one macrotask tick).
+function fireWebNotification(task: TaskDoc): Promise<void> {
   const id = task._id!;
   const key = firedKey(task);
-  if (_firedIds.has(key)) return;
+  if (_firedIds.has(key)) return Promise.resolve();
   _firedIds.add(key);
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return Promise.resolve();
   const n = new Notification(task.title, {
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
     tag: id,
@@ -144,7 +151,7 @@ function fireWebNotification(task: TaskDoc) {
   // unrelated later save/reload doesn't re-trigger the same notification
   // via the catch-up check (it would otherwise keep re-firing for as
   // long as reminder_at stays inside the catch-up window).
-  updateTask(id, { reminder_at: null }).catch(() => {});
+  return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
 }
 
 function scheduleWeb(task: TaskDoc) {
@@ -184,16 +191,22 @@ function cancelWeb(taskId: string) {
 // other, never left dangling.
 // Exported for tests/notifications.test.ts (A12) — the stale-reminder
 // cleanup fix above is worth a real regression test.
-export function catchUpWeb(tasks: TaskDoc[]) {
+// Returns a promise resolving once every fire/clear write below has landed
+// -- production callers still don't need to await this (same fire-and-
+// forget usage as always), but tests can, instead of racing an arbitrary
+// setTimeout against real (occasionally slow-under-load) PouchDB writes.
+export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
   const now = Date.now();
   const CATCH_UP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+  const pending: Promise<void>[] = [];
   for (const t of tasks) {
     if (!t.reminder_at) continue;
     const at = new Date(t.reminder_at).getTime();
     if (at > now) continue; // still in the future — scheduleWeb() owns this one
-    if (now - at < CATCH_UP_WINDOW_MS) fireWebNotification(t);
-    else updateTask(t._id!, { reminder_at: null }).catch(() => {});
+    if (now - at < CATCH_UP_WINDOW_MS) pending.push(fireWebNotification(t));
+    else pending.push(updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {}));
   }
+  return Promise.all(pending).then(() => {});
 }
 
 // ── Native (Android) scheduling — genuinely fires while the app is fully

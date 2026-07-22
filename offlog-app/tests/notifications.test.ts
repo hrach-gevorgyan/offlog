@@ -44,9 +44,7 @@ describe('catchUpWeb', () => {
     await updateTask(task._id!, { reminder_at: thirtyMinAgo });
     const withReminder = { ...task, reminder_at: thirtyMinAgo };
 
-    catchUpWeb([withReminder]);
-    // fireWebNotification's own DB write is fire-and-forget — give it a tick.
-    await new Promise(r => setTimeout(r, 0));
+    await catchUpWeb([withReminder]);
 
     const after = await db.get(task._id!) as any;
     expect(after.reminder_at).toBeNull();
@@ -67,8 +65,7 @@ describe('catchUpWeb', () => {
       close() {}
     };
 
-    catchUpWeb([staleReminder]);
-    await new Promise(r => setTimeout(r, 0));
+    await catchUpWeb([staleReminder]);
 
     expect(NotificationSpy).not.toHaveBeenCalled();
     const after = await db.get(task._id!) as any;
@@ -83,8 +80,7 @@ describe('catchUpWeb', () => {
     await updateTask(task._id!, { reminder_at: inOneHour });
     const futureReminder = { ...task, reminder_at: inOneHour };
 
-    catchUpWeb([futureReminder]);
-    await new Promise(r => setTimeout(r, 0));
+    await catchUpWeb([futureReminder]);
 
     const after = await db.get(task._id!) as any;
     expect(after.reminder_at).toBe(inOneHour);
@@ -111,14 +107,12 @@ describe('catchUpWeb', () => {
 
     const firstDue = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     await updateTask(task._id!, { reminder_at: firstDue });
-    catchUpWeb([{ ...task, reminder_at: firstDue }]);
-    await new Promise(r => setTimeout(r, 0));
+    await catchUpWeb([{ ...task, reminder_at: firstDue }]);
     expect(NotificationSpy).toHaveBeenCalledTimes(1);
 
     const secondDue = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     await updateTask(task._id!, { reminder_at: secondDue });
-    catchUpWeb([{ ...task, reminder_at: secondDue }]);
-    await new Promise(r => setTimeout(r, 0));
+    await catchUpWeb([{ ...task, reminder_at: secondDue }]);
     expect(NotificationSpy).toHaveBeenCalledTimes(2);
   });
 });
