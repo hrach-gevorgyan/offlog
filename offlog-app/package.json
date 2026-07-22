@@ -52,5 +52,8 @@
     "sharp@0.32.6": true,
     "leveldown@5.6.0": true,
     "leveldown@6.1.1": true
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }
