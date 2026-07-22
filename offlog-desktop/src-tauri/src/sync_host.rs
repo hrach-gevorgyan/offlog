@@ -10,7 +10,7 @@
 // copy instead of ever running CouchDB live out of the shared
 // `vendor/couchdb-win` source dir — see that function's own comment.
 
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::net::{TcpListener, TcpStream};
