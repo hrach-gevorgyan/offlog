@@ -1,0 +1,41 @@
+name: CI
+
+# Runs the same three checks the release checklist in CLAUDE.md requires
+# before every commit -- type-check, build, and the vitest suite -- so a
+# broken build shows up as a red X on GitHub instead of only being caught
+# by hand later. Scoped to offlog-app/ only; offlog-desktop (Tauri/Rust)
+# has its own separate build story and isn't covered here yet.
+on:
+  push:
+    branches: [main]
+    paths: ['offlog-app/**', '.github/workflows/ci.yml']
+  pull_request:
+    branches: [main]
+    paths: ['offlog-app/**', '.github/workflows/ci.yml']
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: offlog-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: offlog-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit -p .
+
+      - name: Build (must be warning-free)
+        run: npm run build
+
+      - name: Unit tests
+        run: npx vitest run

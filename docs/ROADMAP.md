@@ -268,12 +268,18 @@ passed Android Studio's incremental build but hard-failed a clean
   go-ahead when the above is done, per CLAUDE.md.
 
 ### C3. Play Store listing
-A signed release build (**proper keystore — the current `release` build
-type is signed with AGP's public debug keystore, see CLAUDE.md's release
-checklist, must be replaced before this ships**), a Play Console developer
-account, and store listing assets — icon, screenshots, descriptions, and a
-privacy policy page. Copy should frame Offlog as a calm personal tool, not
-pitch it against Trello/Notion/ClickUp/Jira by feature count.
+**Real signing key generated 2026-07-22** (PKCS12, RSA 2048, 30-year
+validity) — stored at `C:\Users\hrach\Offlog-signing\`, deliberately
+outside the repo, not committed anywhere, not yet wired into
+`build.gradle`'s release signingConfig (still the debug keystore for now,
+per CLAUDE.md's release checklist — wiring the real key in is the next
+step, done only when actually ready to submit, not before). Owner has the
+password and backup instructions in that folder's README.txt. Still
+needed: wiring the key into `build.gradle`, a Play Console developer
+account ($25 one-time fee, separate from key generation), and store
+listing assets — icon, screenshots, descriptions, and a privacy policy
+page. Copy should frame Offlog as a calm personal tool, not pitch it
+against Trello/Notion/ClickUp/Jira by feature count.
 
 ### C5. Public web landing page
 A small, plain landing page (GitHub Pages is enough) linking to the web
