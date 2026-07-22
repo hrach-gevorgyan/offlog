@@ -194,6 +194,27 @@ before they ship (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
 No paid tier, no feature ever held back behind one — see
 [docs/DECISIONS.md](docs/DECISIONS.md)'s manifesto for why.
 
+## Getting the apps
+
+Download the latest Windows installer and Android APK from
+[GitHub Releases](https://github.com/hrach-gevorgyan/offlog/releases).
+
+**Your OS will warn you before installing — this is expected, not a red
+flag specific to this app.** Windows SmartScreen and Android's "unknown
+sources" prompt appear on *any* app that isn't signed with a paid
+certificate from a recognized authority (Windows) or distributed through
+Google Play (Android) — they're not flagging a problem found in this
+app's code, just the absence of a costly credential most solo/hobby
+projects don't have yet. This is a real, ongoing cost, not a one-time
+checkbox: a Windows code-signing certificate runs roughly $100–400/year
+from a commercial CA, and Google Play's one-time $25 developer fee still
+requires an ongoing publishing/review process on Google's side. Getting
+both is tracked as a real goal (see
+[docs/ROADMAP.md](docs/ROADMAP.md)'s Track C), not abandoned — until
+then, expect the warning, and verify you're downloading from this
+repository's own Releases page (not a third-party mirror) before
+clicking through it.
+
 ## Which build is "the app" for you
 
 - **Windows desktop app** is the intended app for a normal, non-technical
@@ -218,9 +239,12 @@ No paid tier, no feature ever held back behind one — see
 Every release goes through the same checklist before it ships: a clean
 production build with **zero compiler warnings**, a clean type check, a
 full automated test suite, and manual verification in both light and
-dark mode. On top of that, a dedicated maintenance pass runs every few
-releases specifically to catch dead code, missing error handling,
-accessibility regressions, and security gaps — logged in
+dark mode. CI runs this on every push, and tagging a version
+automatically builds and drafts a GitHub Release with both the Windows
+installer and Android APK attached — no manual local build step. On top
+of that, a dedicated maintenance pass runs every few releases
+specifically to catch dead code, missing error handling, accessibility
+regressions, and security gaps — logged in
 [docs/MAINTENANCE.md](docs/MAINTENANCE.md). Before the codebase's public release,
 it went through a full security audit and a complete git-history
 credential purge (see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public
@@ -298,13 +322,12 @@ would move it forward — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup
 and PR mechanics, but in short, the most valuable contributions right
 now are:
 
-- Turning the desktop and Android builds into properly packaged,
-  signed, distributable releases (installer signing, a real update
-  mechanism, Play Store publishing)
+- Real code-signing (Windows) and Google Play publishing — the build/
+  release pipeline itself is already automated (see below), what's
+  missing is the paid credentials themselves and someone to own that
+  ongoing cost/process
 - An iOS build — there's currently no bandwidth to open that front
   solo, so this is entirely open for someone who wants to take it on
-- CI/automation for the build/test/release pipeline, which today is run
-  by hand
 - General ideas, fixes, and code review — if something looks like it
   could be simpler, safer, or better structured, that feedback is
   genuinely wanted, not just accepted

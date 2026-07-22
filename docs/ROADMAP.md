@@ -250,7 +250,7 @@ original reasoning.
 Goal: the mission above, made concrete. Unlike Track A/B, these aren't
 paired into a version bump each — they're mostly one-time setup work.
 
-### C1. Open-source the repository on GitHub — repo created (private), pushed; public flip still open
+### C1. Open-source the repository on GitHub — done, repo is public (flipped 2026-07-22)
 `LICENSE` (MIT), `CONTRIBUTING.md`, and `.github/ISSUE_TEMPLATE/` +
 `PULL_REQUEST_TEMPLATE.md` all already exist and are current — this
 entry previously said "not yet started," which was stale; corrected
@@ -279,10 +279,20 @@ one-off owner-authorized Gradle run (normally assistant-prohibited, see
 CLAUDE.md) and surfaced a real bug: `widget_offlog_preview.xml` had a
 literal `--` inside an XML comment (invalid per spec) that silently
 passed Android Studio's incremental build but hard-failed a clean
-`assembleRelease` — fixed. Still open:
-- Android verification (A31) — owner testing in progress.
-- Flipping the repo from private to public — needs the owner's explicit
-  go-ahead when the above is done, per CLAUDE.md.
+`assembleRelease` — fixed. **Flipped to public 2026-07-22**, after
+owner verification: downloaded and installed both the v5.7.4 Windows
+installer and Android APK from a real GitHub Release on real hardware,
+confirmed sync pairs and replicates correctly in both directions.
+Pre-flip sanity check (separate from C7's original purge) confirmed
+clean: no `.env*` file ever committed in git history, no keystore/
+credential files tracked, current `dist/` build free of leaked
+secrets, and the `import.meta.env.DEV` gate from the v5.7.1 incident
+still intact in source. A31 (Android verification) is now covered by
+this same real-device round. Still open: both installers trigger OS
+"unverified publisher" warnings (Windows SmartScreen, Android unknown-
+sources) — expected until C3's real signing/Play Store publishing
+lands, documented plainly in the README's new "Getting the apps"
+section rather than left unexplained.
 
 ### C3. Play Store listing
 **Real signing key generated 2026-07-22** (PKCS12, RSA 2048, 30-year
