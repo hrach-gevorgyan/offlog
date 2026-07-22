@@ -318,19 +318,22 @@ actionable rules, kept short on purpose:
 ## Release checklist
 
 Day-to-day work happens on the PC/web build. **Android sync
-(`npx cap sync android`) is a manual, owner-requested step — do not run it
-as part of a routine release.** Bump the Android version numbers alongside
-the web ones so they stay in sync for whenever a sync/build is actually
-requested.
+(`npx cap sync android`) is a normal part of the workflow — run it freely**
+(owner clarification 2026-07-22, replacing the old owner-requested-only
+rule): it only copies `dist/` into the Android project, and it's the one
+check that exercises Capacitor CLI's own config-loading path (the
+TypeScript-7 breakage passed build/tsc/tests and was only caught there —
+see MAINTENANCE.md's packaging-paths blind spot). Bump the Android version
+numbers alongside the web ones so they stay in sync for whenever a Studio
+build actually happens.
 
 **Never run a Gradle/APK build (`gradlew assembleDebug` or similar) —
-ever, even when asked to verify Android changes.** The owner always builds
-and runs via Android Studio directly (2026-07-05). If Android-side changes
-need verification, `npx cap sync android` (copies `dist/` into the Android
-project so Android Studio picks up the latest code) is as far as this
-goes — confirm it compiles/looks right by reading the code and running
-`cap sync`, then say a Studio rebuild is needed to actually test it,
-rather than invoking Gradle.
+ever, even when asked to verify Android changes.** That's the one Android
+restriction that remains: the owner always builds and runs via Android
+Studio directly (2026-07-05), and the release pipeline builds the
+distributable APK in CI. If Android-side changes need verification, run
+`cap sync` and confirm the code reads right, then say a Studio rebuild is
+needed to actually test it, rather than invoking Gradle.
 
 **The Android `release` build type's `signingConfig` currently points at
 AGP's public debug keystore** (set in v5.4.4 purely so Android Studio's Run
