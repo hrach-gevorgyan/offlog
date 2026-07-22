@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+// Real Play Store signing key (generated 2026-07-22, kept outside the repo
+// entirely -- see docs/ROADMAP.md's C3). Loaded from a gitignored
+// keystore.properties file when present (see keystore.properties.example
+// for the format) -- CI writes this file from repo secrets before the
+// build; a real local release build would do the same by hand. Falls back
+// to the debug keystore below when the file is absent, so Android
+// Studio's Run button keeps working for local dev exactly as before on
+// any machine that doesn't have the real key (which is every machine
+// except the one it was generated on, deliberately).
+def keystorePropsFile = rootProject.file('app/keystore.properties')
+def keystoreProps = new Properties()
+def hasRealKeystore = keystorePropsFile.exists()
+if (hasRealKeystore) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace = "com.offlog.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,6 +32,16 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasRealKeystore) {
+            playstore {
+                storeFile rootProject.file('app/' + keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         // signingConfig points at AGP's built-in debug keystore (owner
         // request, 2026-07-21: "only main version" — release had no
@@ -24,15 +50,16 @@ android {
         // unsigned/uninstallable build, not a real missing-activity
         // problem). This is the standard local-dev pattern for running
         // the release build type directly without a production signing
-        // key — NOT what a real Play Store release build should ship
-        // with; a real release needs its own signing key when that's
-        // actually being prepared (see ROADMAP.md's C1/public-release
-        // items). applicationId here has no suffix — unlike debug's
-        // .debug suffix (see below), so this installs as com.offlog.app.
+        // key. 2026-07-22: now uses the real playstore signing config
+        // instead whenever keystore.properties is present (CI writes it
+        // from repo secrets; a real local release build would do the
+        // same by hand) -- applicationId here has no suffix either way,
+        // unlike debug's .debug suffix (see below), so this installs as
+        // com.offlog.app.
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            signingConfig hasRealKeystore ? signingConfigs.playstore : signingConfigs.debug
         }
         // Owner-reported, 2026-07-20: a debug build previously shared the
         // same applicationId (com.offlog.app) as a real install, so every

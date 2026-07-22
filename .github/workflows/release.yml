@@ -7,15 +7,17 @@ name: Release
 # step that used to eat a lot of time (and Gradle/cargo build turns)
 # every release.
 #
-# Android signing note: this still signs with AGP's public debug keystore
-# (see CLAUDE.md's release checklist) -- the real Play Store signing key
-# exists (generated 2026-07-22, stored outside the repo) but isn't wired
-# into build.gradle yet. Once it is, this workflow will need two GitHub
-# repo secrets added (Settings -> Secrets and variables -> Actions):
-#   ANDROID_KEYSTORE_BASE64 -- `base64 -w0 offlog-release.keystore`
-#   ANDROID_KEYSTORE_PASSWORD
-# and a decode+wire-up step added before the Gradle build. Not added yet
-# since the key isn't in use yet.
+# Android signing: build.gradle uses the real playstore signing config
+# whenever offlog-app/android/app/keystore.properties is present (see
+# keystore.properties.example for the format), falling back to AGP's
+# public debug keystore otherwise. This workflow writes that file (and
+# the keystore itself) from repo secrets before building -- if those
+# secrets aren't set, the build silently falls back to the debug keystore
+# instead of failing, so this workflow still works before you've added
+# them. Add these under Settings -> Secrets and variables -> Actions:
+#   ANDROID_KEYSTORE_BASE64   -- `base64 -w0 offlog-release.keystore`
+#   ANDROID_KEYSTORE_PASSWORD -- same value used for both store and key
+#                                 password (see keystore.properties.example)
 on:
   push:
     tags: ['v*.*.*']
@@ -53,6 +55,26 @@ jobs:
       - name: Sync Capacitor Android project
         working-directory: offlog-app
         run: npx cap sync android
+
+      - name: Write real signing key (if configured)
+        working-directory: offlog-app/android/app
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        # No-ops (leaves build.gradle to fall back to the debug keystore)
+        # if the secrets haven't been added yet -- lets this workflow work
+        # before and after the real key is wired in, without two separate
+        # workflow files to maintain.
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > offlog-release.keystore
+            echo "storeFile=offlog-release.keystore" > keystore.properties
+            echo "storePassword=$KEYSTORE_PASSWORD" >> keystore.properties
+            echo "keyAlias=offlog" >> keystore.properties
+            echo "keyPassword=$KEYSTORE_PASSWORD" >> keystore.properties
+          else
+            echo "ANDROID_KEYSTORE_BASE64 secret not set -- building with the debug keystore instead."
+          fi
 
       - name: Build release APK
         working-directory: offlog-app/android
