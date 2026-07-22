@@ -491,3 +491,24 @@ leverage habit in this project's entire AI-collaboration workflow — it
 turns a one-time fix into permanent institutional memory that survives
 across sessions with no persistent AI memory of their own. Keep doing this
 for every future non-obvious fix, without exception.
+
+### Why the roadmap became finite — a plan with an end (2026-07-22)
+After roughly a month of full-intensity building (including working
+hours), the owner called the pace unsustainable and asked for realism:
+Offlog will not "shoot" in a market owned by giants, open-source apps
+rarely get organic attention anymore, and continuing at sprint pace
+would end in burnout-abandonment rather than a finished product. The
+decision: restructure ROADMAP.md from an open-ended candidate list into
+a finite plan with a defined Done state (v6.0.0) — two small milestones
+(stable-for-owner: B61 + E3; installable-by-normal-humans: C3 + C5),
+then maintenance mode with explicit rules (monthly dependency batches,
+quarterly maintenance passes, features only when daily use demands).
+Loose month-level targets, no hard dates — slipping a target is fine,
+adding scope is not. This is not the project failing; the mission
+(DECISIONS.md's manifesto) was always "a tool for its owner, given
+away as-is," and *being finished* is that mission succeeding. The
+no-business-model stance stays — it is precisely what makes maintenance
+mode sustainable (no customers, no obligations, the owner can step
+away indefinitely and nothing breaks). Marketing/promotion beyond the
+Play Store listing and a landing page was explicitly cut: posting
+about Offlog anywhere is a mood, not a roadmap item.

@@ -42,6 +42,11 @@ step 2, not just narrative flow. Now closed.
 
 ## Track A — Performance & Stability (shipped items)
 
+### A31. Full cross-platform visual/UX review — done 2026-07-22
+Desktop/web done earlier; Android leg closed by the real-device round
+that verified the public v5.7.4 release (Release APK installed on real
+hardware, sync pairing/replication confirmed both directions).
+
 ### A9. UI component tests — fully shipped 2026-07-21
 `tests/db.test.ts`/`modalStack.test.ts`/`sync.test.ts` cover the database
 and pure-logic layers; `CardDetail`'s save logic is the first `.svelte`
@@ -98,6 +103,25 @@ drift — see E1/E2.
 ---
 
 ## Track B — Features (shipped/parked items)
+
+### B35. Focus view follow-ups — shipped 2026-07-21 (v5.7.0)
+Dashboard "Daily Brief" card via shared `focusLock.ts`; add-task entry
+point already covered by the global Quick Add FAB.
+
+### B37. Android widget final polish — shipped, owner-verified 2026-07-21
+
+### B59. Sidebar sync button hidden when unpaired + 3-step first-run flow — shipped 2026-07-21
+Native/Android only; footer stays 3 buttons until pairing succeeds. The
+once-ever `NamePrompt.svelte` grew into device name → sync offer →
+quick preferences, each step's Escape/scrim matching its own visible
+decline behavior. Full detail: CHANGELOG.md's v5.7.0/v5.7.1 rows.
+
+### B60. Duplicate-name/content nudges — shipped 2026-07-20 (v5.6.0)
+Non-blocking duplicate hints across project/space/task/checklist/notes;
+Global Search space-qualifier disambiguation. Known un-built follow-up:
+Command Palette doesn't disambiguate same-named projects the way Global
+Search does — declined 2026-07-22 as part of the final-plan cut (small
+surface, no real-use complaint; reopen only if it actually bites).
 
 ### B1. Space management — shipped in v3.6.0
 ### B2. Filters on Kanban + saved filters — shipped in v4.11.0
@@ -237,6 +261,23 @@ while foregrounded, not just the recents-switcher snapshot.
 ---
 
 ## Track C — Public Release & Open Source (closed items)
+
+### C1. Open-source the repository — done, public since 2026-07-22
+Full story (repo hygiene, security sweeps, the v5.7.0 credential
+incident and its fix, CI/release automation, the pre-flip sanity
+check, real-device verification of the v5.7.4 release) lives in
+CHANGELOG.md's v5.7.x rows and DECISIONS.md's "Public release"
+section. Known-accepted leftover: unsigned-installer OS warnings until
+C3 lands, documented in README's "Getting the apps."
+
+### C6. Brand & positioning pass — done 2026-07-22
+docs/BRAND.md created (full brand book: tagline "Your tasks. Your
+devices. Nobody else's.", name-explainer "Off the cloud, still
+logged.", voice/tone rules, visual identity); README pitch reworked to
+match.
+
+### C10. Plain-language pass — one-time catch-up done 2026-07-21
+Stays a standing habit for new strings, no longer a tracked item.
 
 ### C7. Fix hardcoded CouchDB credentials — fully closed, shipped 2026-07-17
 `offlog-app/src/config.ts` used to hardcode a real CouchDB password as a
