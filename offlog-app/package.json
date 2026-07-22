@@ -38,7 +38,7 @@
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/privacy-screen": "^2.0.1",
     "@capacitor/share": "^8.0.1",
-    "@capacitor/status-bar": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
