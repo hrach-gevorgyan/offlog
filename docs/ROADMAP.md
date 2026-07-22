@@ -66,14 +66,31 @@ nicer for its owner to use, or does it just make it bigger?
   the process: an XML comment with a literal `--`, invalid per spec,
   broke a clean `assembleRelease`; harmless under Android Studio's
   incremental build, which is why it was never caught before). **C10
-  done 2026-07-21** (see its own entry below). Still remaining: Android
-  verification (owner testing in progress), then the private→public
-  flip. C5 (landing page) and
-  C6 (branding pass) are explicitly deferred together — when picked
-  back up, C6 gets full focus in that same step, not squeezed in
-  alongside C1. C3 (Play Store, needs a real signing key before any
-  real release) and E3 (desktop auto-updater, blocked on C1 anyway) are
-  both explicitly "later," after the public flip.
+  done 2026-07-21** (see its own entry below). **2026-07-22: CI/release
+  automation added** — `.github/workflows/ci.yml` runs type-check/build/
+  tests on every push+PR; `release.yml` builds the Android APK and
+  Windows Tauri installer automatically on a version tag push and drops
+  both into a draft GitHub Release. **The real Play Store signing key
+  was also generated** (stored outside the repo, never committed) and
+  wired into `build.gradle` — the release build type now uses it
+  whenever `keystore.properties` is present (CI writes this from repo
+  secrets), falling back to the debug keystore otherwise so local
+  Android Studio builds are unaffected. **v5.7.2 published as the first
+  release built by this pipeline**, real-key-signed APK confirmed via
+  `apksigner` to carry the real certificate fingerprint. Extensive live
+  Android device testing happened in the same session (widget behavior,
+  remote WebView debugging, mobile layout fixes) — **A31's Android leg
+  can be considered substantially covered**, though not a single
+  from-scratch fresh-install pass. Still remaining before the
+  private→public flip: that fresh-install pass, and the owner's explicit
+  go-ahead per CLAUDE.md. C5 (landing page) and C6 (branding pass) are
+  explicitly deferred together — when picked back up, C6 gets full focus
+  in that same step, not squeezed in alongside C1. C3 (Play Store
+  submission itself — the signing key exists now, but a Play Console
+  developer account and store listing assets are still needed) and E3
+  (desktop auto-updater — needs its own separate free signing key via
+  `cargo tauri signer generate`, not done yet) are still "later," after
+  the public flip.
 - **C10 (plain-language pass) — done 2026-07-21.** See its own entry below.
 - **Docs restructuring — done 2026-07-20.** GOAL.md merged into
   DECISIONS.md as its opening manifesto; QUESTIONS.md merged into
