@@ -1015,14 +1015,14 @@
                       role="radio"
                       aria-checked={!timeFormat24h}
                       on:click={() => setTimeFormat(false)}
-                    >1:00 PM</button>
+                    >12h</button>
                     <button
                       class="theme-seg-btn"
                       class:active={timeFormat24h}
                       role="radio"
                       aria-checked={timeFormat24h}
                       on:click={() => setTimeFormat(true)}
-                    >13:00</button>
+                    >24h</button>
                   </div>
                 </div>
                 <p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>
@@ -1217,6 +1217,7 @@
                 {/if}
               </div>
 
+              {#if isNativePlatform() || isTauriCheck()}
               <div class="setting-group">
                 <div class="setting-section-title">Automatic backups</div>
                 <div class="setting-row">
@@ -1226,9 +1227,7 @@
                   </button>
                 </div>
                 <p class="setting-hint">
-                  {#if !isNativePlatform() && !isTauriCheck()}
-                    Only runs in the installed Android or Windows app, not this browser preview.
-                  {:else if lastAutoBackupAt}
+                  {#if lastAutoBackupAt}
                     Last saved: {fmtLastSynced(lastAutoBackupAt)}. This stays on your device, so it won't
                     help if your device is lost or breaks — use "Back up" below for a copy you can keep
                     somewhere else too.
@@ -1238,6 +1237,7 @@
                   {/if}
                 </p>
               </div>
+              {/if}
 
               <div class="setting-group">
                 <div class="setting-section-title">Back up</div>
