@@ -3,6 +3,7 @@
   import CustomSelect from './CustomSelect.svelte';
   import TimePicker from './TimePicker.svelte';
   import ConfirmPinGate from './ConfirmPinGate.svelte';
+  import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from './autoBackup';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo,
@@ -798,6 +799,13 @@
   // button you tap) and "Restore". CSV stays a separate, clearly-labeled
   // one-way export (it isn't round-trippable, so it doesn't belong in the
   // Back up / Restore pair conceptually, just alongside it).
+  let autoBackupEnabled = isAutoBackupEnabled();
+  let lastAutoBackupAt = getLastAutoBackupAt();
+  function toggleAutoBackup() {
+    autoBackupEnabled = !autoBackupEnabled;
+    setAutoBackupEnabled(autoBackupEnabled);
+  }
+
   let backupScope = ''; // '' = everything
   $: backupScopeOptions = [{ value: '', label: 'Everything' }, ...$projectsStore.map(p => ({ value: p._id!, label: p.name }))];
   async function doBackup() {
@@ -1207,6 +1215,25 @@
                     {breakdown.logEntries} history entries
                   </p>
                 {/if}
+              </div>
+
+              <div class="setting-group">
+                <div class="setting-section-title">Automatic backups</div>
+                <div class="setting-row">
+                  <span class="setting-label">Back up automatically</span>
+                  <button class="toggle-btn" class:on={autoBackupEnabled} on:click={toggleAutoBackup} aria-label="Toggle automatic backups" role="switch" aria-checked={autoBackupEnabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                <p class="setting-hint">
+                  {#if !isNativePlatform() && !isTauriCheck()}
+                    Only runs in the installed Android or Windows app, not this browser preview.
+                  {:else if lastAutoBackupAt}
+                    Last automatic backup: {fmtLastSynced(lastAutoBackupAt)}. Keeps the last 7, stored privately on this device.
+                  {:else}
+                    Runs silently once a day, stored privately on this device — no file dialog, nothing to remember.
+                  {/if}
+                </p>
               </div>
 
               <div class="setting-group">

@@ -66,14 +66,21 @@ none of it feature growth:
   with zero manual reinstalls — this directly reduces all future
   maintenance effort, which is why it's in milestone 1. (~1 session
   plus the owner's keygen.)
-- **B62 — Automatic local backup.** Backup/Restore exists but is
-  manual, and manual backups don't happen until after the disaster. A
-  silent periodic JSON export (daily or weekly, rotating, keep last N)
-  to a local folder — desktop via the existing fs plugin, Android via
-  the existing Filesystem plugin. This is the answer to "what if
-  PouchDB storage corrupts / a browser profile gets wiped / Android
-  storage gets cleared" — today that answer is "hope sync had a second
-  copy." Stability item wearing a feature's clothes. (~1-2 sessions.)
+- **B62 — Automatic local backup. Done 2026-07-23.** New
+  `autoBackup.ts`: on app start, at most once every ~20h, silently
+  writes a full JSON snapshot to app-private storage and rotates to
+  the newest 7 — desktop via `@tauri-apps/plugin-fs`
+  (`appDataDir()/auto-backups/`), Android via `@capacitor/filesystem`
+  (`Directory.Data/auto-backups/`), no-op on plain web (no reliable
+  silent local-file API there, and it's a dev/test surface anyway).
+  Answers "what if PouchDB storage corrupts / a profile gets wiped /
+  Android storage gets cleared" — previously "hope sync had a second
+  copy." Settings → Backup & Storage gets a new on-by-default toggle +
+  "last backup" hint, reusing `fmtLastSynced()`'s existing time
+  formatting. 7 new pure-logic tests (`isBackupDue`/`filesToDelete`,
+  suite now 204); the actual filesystem calls aren't mockable
+  meaningfully in Vitest, so verified live instead (toggle persists to
+  localStorage, correct "not this browser preview" copy shown on web).
 - **A32 — UI test hardening. Done 2026-07-23** (18 new component
   tests, suite now 191): `AppLock.test.ts` (correct/wrong PIN,
   digit-only filter, 3-strike cooldown gates the verifier,

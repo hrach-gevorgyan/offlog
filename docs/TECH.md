@@ -327,7 +327,11 @@ when something looks broken:
   build, or uninstall/reinstall via Android Studio for a true fresh
   install (same "owner runs Android Studio" rule as any other Android
   verification step).
-the live `subscribe()` change feed and in-memory task cache pick it up.
+- **Automatic backups (B62)**: these live outside the main PouchDB
+  database (`autoBackup.ts`) — a plain `PouchDB.destroy()` doesn't clear
+  them. Native: `Filesystem`'s `Directory.Data/auto-backups/`. Tauri:
+  `appDataDir()/auto-backups/`. Neither runs on plain web, so nothing to
+  clear there.
 
 ### `tests/setup.ts`'s Node/localStorage workaround
 

@@ -8,6 +8,7 @@ import {
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
 import { initTauriSyncDefaults, checkForOtherHosts } from '../config';
 import { watchForStaleHost } from './discovery';
+import { runAutoBackupIfDue } from './autoBackup';
 
 export const modalOpen = writable(false);
 export const errorToast = writable<string>('');
@@ -90,6 +91,7 @@ export async function init() {
   initNotificationListeners().catch(() => {});
   maybePruneOldLogs();
   maybePruneOldDeletedTasks();
+  runAutoBackupIfDue().catch(() => {});
 }
 
 // Switching the active project needs its own trigger (reload() only runs
