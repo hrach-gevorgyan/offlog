@@ -191,6 +191,18 @@ be a separately-sold convenience layer, never a gate on the app's own
 functionality. Kept as a standing floor under any future reconsideration —
 this constraint doesn't move even if the entry above does.
 
+### Why the brand (name/icon/tagline) is trademark-reserved separately from the MIT code license (2026-07-23)
+Not in tension with "no business model, ever" above — a different axis
+entirely. MIT covers the source code; it was never meant to also hand
+away the "Offlog" name, icon, or tagline, and nothing here plans to
+monetize either. The reservation (see
+[TRADEMARK.md](TRADEMARK.md)) exists so a fork can't present itself as
+official Offlog or as an endorsement by its owner, and so the option to
+someday sell, license, or hand off the project/brand isn't given away
+by implication just because the code is free. Forking, modifying, and
+redistributing under MIT — including commercially — remains fully
+allowed; a fork just needs its own name and mark.
+
 ### Why Tauri, not Electron, for the PC standalone app (2026-07-14)
 Resolves IDEAS.md's former Q6. Decided by prototyping both the
 riskiest parts rather than debating on paper: a Tauri shell wrapping

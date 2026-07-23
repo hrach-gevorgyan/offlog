@@ -15,9 +15,12 @@ only — shipped/declined/parked history lives in
 plus the full maintenance-pass log compressed into
 [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)),
 [docs/IDEAS.md](docs/IDEAS.md) (open questions and un-committed ideas;
-merged the old QUESTIONS.md 2026-07-20), and [docs/BRAND.md](docs/BRAND.md)
+merged the old QUESTIONS.md 2026-07-20), [docs/BRAND.md](docs/BRAND.md)
 (tagline/pitch/voice/visual-identity reference for any public-facing
-copy — README, landing page, store listing). The maintenance-pass process
+copy — README, landing page, store listing), and
+[docs/TRADEMARK.md](docs/TRADEMARK.md) (the MIT license covers code
+only — name/icon/tagline are reserved separately; read before approving
+a fork's naming or any brand-adjacent request). The maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in
@@ -59,6 +62,8 @@ read-everything every time):
 - **BRAND.md** — before writing or editing any public-facing copy
   (README pitch, landing page, store listing, social post) — check tone/
   tagline/color/typography line up before proposing new wording.
+- **TRADEMARK.md** — before responding to anything about forking,
+  reusing the name/icon/tagline, or brand ownership/licensing.
 - **CHANGELOG.md** — only at release time (the version-bump step), not per
   code change. Move the oldest row into `docs/archive/changelog-archive.md`
   once the table exceeds 10 rows.

@@ -314,6 +314,7 @@ Everything beyond this pitch lives in [docs/](docs/):
 | [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
 | [docs/IDEAS.md](docs/IDEAS.md) | Open questions and un-committed ideas worth outside input |
 | [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference for public-facing copy |
+| [docs/TRADEMARK.md](docs/TRADEMARK.md) | MIT covers the code only — name/icon/tagline usage terms for forks |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
 ## Contributing

@@ -18,3 +18,7 @@ offlog-app/.env.local
 offlog-app/android/.gradle/
 offlog-app/android/app/build/
 offlog-app/android/build/
+
+# Screenshots/exports for store listings, landing page, etc -- generated,
+# never part of the shipped app or its source.
+/brand kit/
