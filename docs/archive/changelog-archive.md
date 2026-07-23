@@ -107,6 +107,10 @@ see the "Maintenance pass log" section at the bottom.
 | 5.3.0 | Haptics (B58) — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, new shared `src/lib/haptics.ts` | `v5.3.0` |
 | 5.4.2 | 7 real bugs from a full live-device pass — overlay-close reliability fallback, Settings Save unnecessary reload, Quick Add FAB over Settings, Focus done-state not shown, PIN input polish, splash logo, widget light-mode contrast | `v5.4.2` |
 | 5.4.3 | 5 more real bugs from a second live-device pass — widget picker preview text wrapping (new dedicated preview layout), widget taps overlapping instead of replacing (`modalStack.ts`'s `closeAll()`), drag-and-drop ghost card surviving `touchcancel`, Privacy Screen blocking all screenshots not just the recents preview (now a separate off-by-default toggle) | `v5.4.3` |
+| 5.5.0 | Sync-architecture hardening pass 1 — multiple-host LAN detection (`discovery.rs::browse_for_others()`, warns in Settings → Sync) and a stale-paired-host silent-failure fix (`staleHostAlert`, actionable "re-pair?" badge) | `v5.5.0` |
+| 5.5.1 | S2 live-verified (180-doc dataset, mobile-then-PC merge) — real gap found and fixed: `scanConflicts()` now auto-resolves conflicts on the 4 fixed default-seed ids whenever one side is still the untouched pristine default | `v5.5.1` |
+| 5.6.0 | Duplicate-name/content nudges (projects/spaces/tasks/checklist items/notes) — non-blocking hints only; also fixed a real Escape-vs-blur race that could silently create an empty project/space | `v5.6.0` |
+| 5.6.1 | Maintenance pass (fourteenth run) — dead exports removed, `pouchdb`/`@capacitor/cli` dependency placement fixed, new `--toggle-knob` theme token, debounced duplicate/similarity checks; security/robustness checklist fully clean | `v5.6.1` |
 
 ---
 
