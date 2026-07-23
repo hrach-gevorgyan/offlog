@@ -1229,32 +1229,13 @@
                   {#if !isNativePlatform() && !isTauriCheck()}
                     Only runs in the installed Android or Windows app, not this browser preview.
                   {:else if lastAutoBackupAt}
-                    Last automatic backup: {fmtLastSynced(lastAutoBackupAt)}.
+                    Last automatic backup: {fmtLastSynced(lastAutoBackupAt)}. Keeps the last 7, on this
+                    device only — not a substitute for "Back up" below if you want a copy that survives
+                    losing the device.
                   {:else}
-                    Runs silently on app start, no more than once a day — no file dialog, nothing to remember.
+                    Runs on this device only, no file dialog needed. Keeps the last 7 — not a substitute
+                    for "Back up" below if you want a copy that survives losing the device.
                   {/if}
-                </p>
-                <p class="setting-hint">
-                  <strong>Where:</strong>
-                  {#if isTauriCheck()}
-                    a private <code>auto-backups</code> folder inside this app's own data folder on this PC
-                    (<code>%APPDATA%\com.offlog.app\auto-backups</code>) — not somewhere you'd browse to by
-                    accident, but a real folder you can open if you ever need the files directly.
-                  {:else}
-                    this app's own private storage on this device — not a folder you (or any other app) can
-                    browse to directly, only Offlog itself can read or write it.
-                  {/if}
-                </p>
-                <p class="setting-hint">
-                  <strong>How much:</strong> the newest 7 snapshots are kept; older ones are deleted
-                  automatically as new ones are made — roughly a week of history if you open the app daily.
-                </p>
-                <p class="setting-hint setting-hint-warn">
-                  <strong>How safe:</strong> these stay on <em>this device only</em> — plain JSON, not
-                  encrypted, and never synced or uploaded anywhere. If this device is lost, stolen, wiped,
-                  or the app is uninstalled, its automatic backups are gone with it. This is a safety net
-                  against local data corruption, not a substitute for the "Back up" button below if you want
-                  a copy that survives losing the device itself.
                 </p>
               </div>
 

@@ -233,6 +233,55 @@ New in `db.ts`: `checkIntegrity()` scans every document and reports:
 
 Both are exposed as **Check Database** / **Repair Issues** buttons in a new Maintenance section of Settings (`SettingsPanel.svelte`) — report only by default, repair requires an explicit confirm.
 
+### Automatic local backup (B62, `autoBackup.ts`)
+
+Settings' own copy is deliberately one short line (owner feedback,
+2026-07-23 — a plain-language app menu isn't the place for a technical
+disclosure); the full detail lives here instead.
+
+- **When**: checked once on every app start (`store.ts`'s `init()`,
+  fire-and-forget); actually runs at most every ~20h (`isBackupDue()`),
+  not a strict 24h, so an app opened a bit earlier each day doesn't
+  keep drifting later against a hard boundary.
+- **What**: the exact same full-database JSON shape as the manual
+  "Back up → Everything" export in Settings (`db.allDocs({include_docs:true})`,
+  filtered to non-`_`-prefixed ids).
+- **Where**:
+  - Desktop (Tauri): `appDataDir()/auto-backups/` — resolves to
+    `%APPDATA%\com.offlog.app\auto-backups\` on Windows. A real,
+    browsable folder (`@tauri-apps/plugin-fs`'s `writeTextFile`/`mkdir`/
+    `readDir`/`remove`).
+  - Android (Capacitor): `Directory.Data` (`@capacitor/filesystem`) —
+    the app's private internal storage, not exposed to the user or
+    other apps without root/a file manager granted special access.
+  - Web: no-op entirely — no reliable silent local-file API exists in
+    a browser, and the web build is a dev/test surface anyway (see
+    README's "Which build is 'the app'" section).
+- **Retention**: newest 7 kept, older deleted on every successful run
+  (`filesToDelete()` — sorts filenames ascending, since the ISO
+  timestamp embedded in each name sorts chronologically, and returns
+  everything past the newest `KEEP_COUNT`).
+- **Safety model, stated plainly**: these are plain, unencrypted JSON,
+  stored **on that one device only** — never synced, uploaded, or
+  copied anywhere else. Losing/wiping/uninstalling from that device
+  loses its automatic backups with it. This is a safety net against
+  *local* corruption (a bad IndexedDB write, a storage-clear mistake),
+  not a substitute for the manual "Back up" button's file-you-choose-
+  where-it-goes export if an off-device copy is what's actually needed.
+- **Failure handling**: any error (permission denied, disk full, plugin
+  unavailable) is caught and logged (`console.warn`), never surfaced to
+  the user — the timestamp in `localStorage`'s `offlog_auto_backup_last_run`
+  is only updated on success, so a failed run retries on the next
+  app launch rather than waiting out the full interval.
+- **Toggle**: `offlog_auto_backup_enabled` in `localStorage`, on by
+  default (pure safety net, no downside) — surfaced in Settings →
+  Backup & Storage.
+- Pure logic (`isBackupDue()`, `filesToDelete()`) has direct unit tests
+  (`tests/autoBackup.test.ts`); the actual `Filesystem`/`plugin-fs`
+  calls aren't meaningfully mockable in Vitest and were verified live
+  in the browser preview instead (toggle persists, correct platform-
+  specific copy shown).
+
 ---
 
 ## Shared Utilities  (`utils.ts`)
