@@ -165,6 +165,12 @@ jobs:
       - name: Build Tauri Windows installer
         uses: tauri-apps/tauri-action@v1
         env:
+          # Required explicitly -- the job's `permissions: contents:
+          # write` grants the ambient token privileges, but tauri-action
+          # still needs the actual token value passed to it to call the
+          # GitHub API and create/update the release (confirmed live,
+          # 2026-07-23: omitting this fails with "GITHUB_TOKEN is required").
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
