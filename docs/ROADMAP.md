@@ -38,12 +38,12 @@ A new idea either replaces something of equal size, waits for
 maintenance mode's bar ("does it annoy me in daily use?"), or goes to
 IDEAS.md and probably stays there.
 
-### Milestone 1 — "Stable for me" (target: end of August 2026)
+### Milestone 1 — "Stable for me" — DONE 2026-07-23 (target was end of August 2026)
 
 The app is fully trustworthy for the owner's own daily use, and keeps
 itself updated without manual effort. Grew from two items to four on
 owner request 2026-07-22 (health-score review) — all stability-class,
-none of it feature growth:
+none of it feature growth. All four shipped ahead of target:
 
 - **B61 — Require current PIN to change/remove App Lock. Done
   2026-07-23.** New `ConfirmPinGate.svelte` (a small reusable
@@ -59,13 +59,21 @@ none of it feature growth:
   passes through to the change form / removal, Cancel and Escape back
   out. Ships with the next version bump (bundled with the rest of
   milestone 1, not tagged alone).
-- **E3 — Desktop auto-updater.** Already scaffolded; needs the owner to
-  run `cargo tauri signer generate` (free, minutes), then wiring the
-  pubkey + GitHub Releases endpoint into `tauri.conf.json` and the
-  release workflow. Payoff: future releases reach the owner's own PC
-  with zero manual reinstalls — this directly reduces all future
-  maintenance effort, which is why it's in milestone 1. (~1 session
-  plus the owner's keygen.)
+- **E3 — Desktop auto-updater. Done 2026-07-23.** Owner ran `cargo
+  tauri signer generate` and provided the public key (private key +
+  password kept by the owner, never seen by the assistant, per
+  `lib.rs`'s own comment on why that generation had to be manual).
+  `tauri.conf.json`'s placeholder pubkey/endpoint replaced with the
+  real key and `github.com/hrach-gevorgyan/offlog/releases/latest/
+  download/latest.json`. `release.yml`'s Windows job now passes
+  `TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD` (owner added both as repo
+  secrets) so `tauri-action` signs the installer and produces
+  `latest.json` automatically; falls back to an unsigned build if
+  those secrets are ever absent, same safety pattern as the Android
+  keystore. Draft release now attaches `.sig`/`latest.json` alongside
+  the installer/APK. Verified: valid JSON/YAML, `offlog-desktop` still
+  builds clean. Next real release tag will be the first to actually
+  exercise the signed update path end-to-end.
 - **B62 — Automatic local backup. Done 2026-07-23.** New
   `autoBackup.ts`: on app start, at most once every ~20h, silently
   writes a full JSON snapshot to app-private storage and rotates to
@@ -103,12 +111,14 @@ none of it feature growth:
   in jsdom is brittleness, not coverage, and its logic (including the
   chained-toast regression) is already pinned in db.test.ts.
 
-**One-time owner action, this week, no session needed:** copy
-`C:\Users\hrach\Offlog-signing\` somewhere off this machine (USB
-stick, private cloud — anywhere). After Play Store submission that
-key *is* the app's identity; Google never re-issues it, and right now
-it exists on exactly one disk. Same for the Tauri updater key once E3
-generates it.
+**Still-open owner action, no session needed:** copy both
+`C:\Users\hrach\Offlog-signing\` (Android) and
+`~/.tauri/offlog-updater.key` (desktop, generated 2026-07-23) somewhere
+off this machine (USB stick, private cloud — anywhere). Both are
+permanent identities — Android's key can never be re-issued once used
+for a real Play Store submission, and the Tauri key is what every
+future signed update depends on. Each currently exists on exactly one
+disk.
 
 ### Milestone 2 — "Installable by normal humans" (target: end of October 2026)
 
