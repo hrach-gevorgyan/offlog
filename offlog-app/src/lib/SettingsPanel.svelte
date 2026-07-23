@@ -13,10 +13,11 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
   import { timeAgo, fmtLastSynced, localDateStr } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission, rescheduleAll } from './notifications';
+  import { updateState, showUpdateModal, checkForUpdate } from './updateChecker';
   import { showError, modalOpen } from './store';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -853,34 +854,35 @@
   let maintRemainingIssues: IntegrityIssue[] = [];
 
   // E3 (ROADMAP.md, done 2026-07-23): tauri.conf.json's plugins.updater
-  // block now points at a real signed endpoint (GitHub Releases'
-  // "latest" download URL) with a real pubkey from `cargo tauri signer
-  // generate` — check() below hits real infrastructure, not a
-  // placeholder. Status text is deliberately verbose (each step gets its
-  // own message) since the whole flow is otherwise invisible to the user:
-  // a silent success looks identical to a silent no-op.
+  // block points at a real signed endpoint (GitHub Releases' "latest"
+  // download URL) with a real pubkey from `cargo tauri signer generate`.
+  // v5.7.6 follow-up: the actual check/download/install state machine now
+  // lives in updateChecker.ts (shared with App.svelte's background check
+  // + banner) — this panel just drives it and shows its own status line
+  // for the "you're on the latest version" / error cases the shared
+  // UpdateModal doesn't cover (it only appears once an update exists).
   let updateChecking = false;
   let updateStatus = '';
-  async function checkForUpdate() {
+  let appVersion = '';
+  if (isTauri) {
+    import('@tauri-apps/api/app').then(({ getVersion }) => getVersion()).then(v => { appVersion = v; }).catch(() => {});
+  } else if (isNativePlatform()) {
+    import('@capacitor/app').then(({ App }) => App.getInfo()).then(info => { appVersion = info.version; }).catch(() => {});
+  }
+  async function onCheckForUpdate() {
+    if ($updateState.phase === 'ready') { showUpdateModal.set(true); return; }
     updateChecking = true;
     updateStatus = '';
-    try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
-      if (!update) {
-        updateStatus = "You're on the latest version.";
-        return;
-      }
-      updateStatus = `Downloading v${update.version}…`;
-      await update.downloadAndInstall();
-      updateStatus = 'Installed — restarting…';
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      await relaunch();
-    } catch (e: any) {
-      updateStatus = 'Could not check for updates right now.';
-    } finally {
-      updateChecking = false;
-    }
+    await checkForUpdate();
+    updateChecking = false;
+    if ($updateState.phase === 'available') { showUpdateModal.set(true); }
+    else if ($updateState.phase === 'idle') { updateStatus = "You're on the latest version."; }
+    else if ($updateState.phase === 'error') { updateStatus = $updateState.error ?? 'Could not check for updates right now.'; }
+  }
+  let autoUpdateCheckEnabled = getAutoUpdateCheckEnabled();
+  function toggleAutoUpdateCheck() {
+    autoUpdateCheckEnabled = !autoUpdateCheckEnabled;
+    setAutoUpdateCheckEnabled(autoUpdateCheckEnabled);
   }
 
   function freshMaintSteps(): MaintStep[] {
@@ -1415,11 +1417,31 @@
                 <div class="setting-group">
                   <div class="setting-section-title">Software updates</div>
                   <div class="setting-row">
+                    <span class="setting-label">Version</span>
+                    <span class="setting-value">{appVersion || '—'}</span>
+                  </div>
+                  <div class="setting-row">
                     <span class="setting-label">{updateStatus || 'Check for a newer version of Offlog'}</span>
-                    <button class="export-btn" on:click={checkForUpdate} disabled={updateChecking}>
+                    <button class="export-btn" on:click={onCheckForUpdate} disabled={updateChecking}>
                       {updateChecking ? 'Checking…' : 'Check for updates'}
                     </button>
                   </div>
+                  <div class="setting-row">
+                    <span class="setting-label">Check automatically in the background</span>
+                    <button class="toggle-btn" class:on={autoUpdateCheckEnabled} on:click={toggleAutoUpdateCheck} aria-label="Toggle automatic update checks" role="switch" aria-checked={autoUpdateCheckEnabled}>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <p class="setting-hint">Off means updates are only ever checked when you click "Check for updates" yourself.</p>
+                </div>
+              {:else if isNativePlatform()}
+                <div class="setting-group">
+                  <div class="setting-section-title">About</div>
+                  <div class="setting-row">
+                    <span class="setting-label">Version</span>
+                    <span class="setting-value">{appVersion || '—'}</span>
+                  </div>
+                  <p class="setting-hint">Updates on this platform come through the Play Store.</p>
                 </div>
               {/if}
 
@@ -1819,6 +1841,7 @@
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 600;
   }
   .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
+  .setting-value { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 
   /* B44 — headline reads as a plain sentence; the raw MB/quota numbers are

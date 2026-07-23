@@ -284,6 +284,22 @@ export function setQuietHours(q: QuietHours) {
   localStorage.setItem(QUIET_HOURS_KEY, JSON.stringify(q));
 }
 
+// Desktop-only: whether updateChecker.ts's unattended background check
+// runs at all. On by default, but someone deliberately staying on a
+// stable version they like should be able to turn it off entirely — the
+// manual "Check for updates" button in Settings always works regardless
+// of this setting.
+const AUTO_UPDATE_CHECK_KEY = 'offlog_auto_update_check';
+
+export function getAutoUpdateCheckEnabled(): boolean {
+  const stored = localStorage.getItem(AUTO_UPDATE_CHECK_KEY);
+  return stored === null ? true : stored === 'true';
+}
+
+export function setAutoUpdateCheckEnabled(enabled: boolean) {
+  localStorage.setItem(AUTO_UPDATE_CHECK_KEY, String(enabled));
+}
+
 // B47 — Agenda's week view and DeadlinesView's "this week" grouping
 // assumed a fixed Sunday week start (`d.getDate() - d.getDay()`, and
 // `getDay()` is 0-indexed from Sunday). Per-device, like the reminder

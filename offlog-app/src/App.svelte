@@ -24,6 +24,14 @@
   import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
   import { closeOnBack, closeAll } from './lib/modalStack';
   import AppLock from './lib/AppLock.svelte';
+  import UpdateModal from './lib/UpdateModal.svelte';
+  import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
+
+  // The version an already-dismissed banner shouldn't reappear for until
+  // a *different* update is found — background checks re-run every ~6h
+  // (updateChecker.ts) and would otherwise re-show the same dismissed
+  // banner on every check.
+  let dismissedUpdateVersion: string | null = null;
 
   let ready = false;
   let initError: string | null = null;
@@ -350,6 +358,7 @@
       markNamePromptShown();
     }
     subscribeUndo(showUndoToast);
+    startBackgroundUpdateChecks();
   });
 
   // App lock: locks on every fresh page load (a reload/cold start always
@@ -555,6 +564,19 @@
 <ConfirmDialog />
 {#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; sidebarRef?.openSettings('sync'); }} />{/if}
 
+{#if isTauri()}
+  <UpdateModal />
+  {#if $updateState.phase === 'available' && $updateState.version !== dismissedUpdateVersion && !$showUpdateModal}
+    <div class="update-banner" transition:fade={scrimFade}>
+      <span>Offlog {$updateState.version} is available</span>
+      <div class="update-banner-actions">
+        <button class="update-banner-dismiss" on:click={() => dismissedUpdateVersion = $updateState.version ?? null}>Dismiss</button>
+        <button class="update-banner-view" on:click={() => showUpdateModal.set(true)}>View</button>
+      </div>
+    </div>
+  {/if}
+{/if}
+
 {#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
 <button class="fab" on:click={openQuickAdd} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -741,6 +763,23 @@
     border: 1px solid var(--text); background: var(--text); color: var(--bg);
     cursor: pointer; font-size: 13px; font-weight: 600;
   }
+
+  /* ── Update banner (desktop only) ── */
+  .update-banner {
+    position: fixed; bottom: 24px; left: 24px; z-index: 300;
+    display: flex; align-items: center; gap: .9rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    padding: .7rem 1rem; font-size: .85rem; color: var(--text);
+  }
+  .update-banner-actions { display: flex; gap: .5rem; flex-shrink: 0; }
+  .update-banner-dismiss, .update-banner-view {
+    padding: .35rem .7rem; border-radius: var(--radius-sm); font-size: .78rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
+  }
+  .update-banner-view { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .update-banner-dismiss:hover { background: var(--hover); }
+  .update-banner-view:hover { opacity: .88; }
 
   /* ── FAB ── */
   .fab {

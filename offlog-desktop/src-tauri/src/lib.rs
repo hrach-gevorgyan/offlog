@@ -156,17 +156,13 @@ pub fn run() {
         // write, same fix category as A34's Filesystem+Share plugins.
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        // Scaffolding only, added ahead of C1 (open-sourcing the repo)
-        // at the owner's explicit request -- tauri.conf.json's
-        // `plugins.updater` endpoint is a placeholder that will 404 until
-        // real hosting exists (GitHub Releases, once public), and its
-        // pubkey needs the owner's own signing keypair (generate with
-        // `cargo tauri signer generate`, run by the owner directly since
-        // it protects the private key with a password -- not something
-        // this assistant should be choosing/holding). Checking for an
-        // update against the placeholder endpoint fails gracefully (the
-        // frontend's "Check for updates" button just shows an error, same
-        // as any other unreachable-network case) -- harmless until C1.
+        // E3 (done 2026-07-23): tauri.conf.json's `plugins.updater` block
+        // points at a real signed endpoint (GitHub Releases' "latest"
+        // download URL) with a real pubkey from `cargo tauri signer
+        // generate` -- check()/download()/install() below hit real
+        // infrastructure. The actual check/download/install state
+        // machine + background-check/banner/modal UI lives in
+        // offlog-app's updateChecker.ts + UpdateModal.svelte.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
