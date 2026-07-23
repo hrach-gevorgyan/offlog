@@ -137,8 +137,8 @@
     <div class="pref-row">
       <span class="pref-label">Time format</span>
       <div class="pref-toggle">
-        <button class:active={!timeFormat24h} on:click={() => setTimeFormat(false)}>1:00 PM</button>
-        <button class:active={timeFormat24h} on:click={() => setTimeFormat(true)}>13:00</button>
+        <button class:active={!timeFormat24h} on:click={() => setTimeFormat(false)}>12h</button>
+        <button class:active={timeFormat24h} on:click={() => setTimeFormat(true)}>24h</button>
       </div>
     </div>
 

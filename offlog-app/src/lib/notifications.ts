@@ -1,7 +1,32 @@
 import { writable } from 'svelte/store';
 import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
-import { invokeTauri, isTauri as isTauriPlatform } from '../config';
+import { invokeTauri, isTauri as isTauriPlatform, getQuietHours } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
+
+// Quiet hours: if `at` falls inside the configured local wall-clock
+// window, returns the Date for the window's end instead (the next
+// occurrence of the end time after `at`) — the reminder queues rather
+// than firing. Returns `at` unchanged when quiet hours are off or `at`
+// isn't inside the window. Exported for tests/notifications.test.ts.
+export function applyQuietHours(at: Date): Date {
+  const q = getQuietHours();
+  if (!q.enabled) return at;
+  const [sh, sm] = q.start.split(':').map(Number);
+  const [eh, em] = q.end.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  const atMin = at.getHours() * 60 + at.getMinutes();
+  const wraps = startMin > endMin; // e.g. 22:00 -> 07:00
+  const inWindow = wraps ? (atMin >= startMin || atMin < endMin) : (atMin >= startMin && atMin < endMin);
+  if (!inWindow) return at;
+  const end = new Date(at);
+  end.setHours(eh, em, 0, 0);
+  // Only push to the next day when `at` is on the pre-midnight side of a
+  // wrapping window (e.g. 23:00 with 22:00->07:00 ends 07:00 tomorrow);
+  // the post-midnight side (e.g. 02:00) already ends later the same day.
+  if (wraps && atMin >= startMin) end.setDate(end.getDate() + 1);
+  return end;
+}
 
 // Set by a notification click (native action or web Notification.onclick).
 // App.svelte watches this to open the corresponding task.
@@ -159,7 +184,7 @@ function scheduleWeb(task: TaskDoc) {
   const existing = _webTimers.get(id);
   if (existing) clearTimeout(existing);
   if (!task.reminder_at) return;
-  const delay = new Date(task.reminder_at).getTime() - Date.now();
+  const delay = applyQuietHours(new Date(task.reminder_at)).getTime() - Date.now();
   if (delay <= 0) return; // handled by the catch-up check instead
   // Too far out to schedule now — picked up on a later reload() once it's
   // within range instead (every app open + every live sync change calls
@@ -203,7 +228,20 @@ export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
     if (!t.reminder_at) continue;
     const at = new Date(t.reminder_at).getTime();
     if (at > now) continue; // still in the future — scheduleWeb() owns this one
-    if (now - at < CATCH_UP_WINDOW_MS) pending.push(fireWebNotification(t));
+    if (now - at < CATCH_UP_WINDOW_MS) {
+      // Firing "now" — if quiet hours are currently active, queue until
+      // they end instead of firing immediately, same as a future
+      // reminder would via scheduleWeb()'s applyQuietHours() call.
+      const fireAt = applyQuietHours(new Date(now)).getTime();
+      if (fireAt > now) {
+        const id = t._id!;
+        const existing = _webTimers.get(id);
+        if (existing) clearTimeout(existing);
+        _webTimers.set(id, setTimeout(() => { fireWebNotification(t); _webTimers.delete(id); }, fireAt - now));
+      } else {
+        pending.push(fireWebNotification(t));
+      }
+    }
     else pending.push(updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {}));
   }
   return Promise.all(pending).then(() => {});
@@ -265,7 +303,7 @@ async function scheduleNative(tasks: TaskDoc[]) {
       id: numericId(t._id!),
       title: t.title,
       body: t.due_date ? `Due ${t.due_date}` : 'Reminder',
-      schedule: { at: new Date(t.reminder_at!) },
+      schedule: { at: applyQuietHours(new Date(t.reminder_at!)) },
       extra: { taskId: t._id },
       actionTypeId: REMINDER_ACTION_TYPE,
       channelId: REMINDER_CHANNEL_ID,
@@ -322,7 +360,7 @@ function scheduleTauriTimer(task: TaskDoc) {
   const existing = _webTimers.get(id);
   if (existing) clearTimeout(existing);
   if (!task.reminder_at) return;
-  const delay = new Date(task.reminder_at).getTime() - Date.now();
+  const delay = applyQuietHours(new Date(task.reminder_at)).getTime() - Date.now();
   if (delay <= 0 || delay > MAX_TIMEOUT) return; // handled by catchUpTauri, or too far out for this session
   _webTimers.set(id, setTimeout(() => { fireTauriNotification(task); _webTimers.delete(id); }, delay));
 }
@@ -337,7 +375,17 @@ function catchUpTauri(tasks: TaskDoc[]) {
     if (!t.reminder_at) continue;
     const at = new Date(t.reminder_at).getTime();
     if (at > now) continue;
-    if (now - at < CATCH_UP_WINDOW_MS) fireTauriNotification(t);
+    if (now - at < CATCH_UP_WINDOW_MS) {
+      const fireAt = applyQuietHours(new Date(now)).getTime();
+      if (fireAt > now) {
+        const id = t._id!;
+        const existing = _webTimers.get(id);
+        if (existing) clearTimeout(existing);
+        _webTimers.set(id, setTimeout(() => { fireTauriNotification(t); _webTimers.delete(id); }, fireAt - now));
+      } else {
+        fireTauriNotification(t);
+      }
+    }
     else updateTask(t._id!, { reminder_at: null }).catch(() => {});
   }
 }

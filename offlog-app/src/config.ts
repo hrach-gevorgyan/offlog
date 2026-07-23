@@ -262,6 +262,28 @@ export function setDefaultReminderTime(time: string) {
   localStorage.setItem(DEFAULT_REMINDER_TIME_KEY, time);
 }
 
+// Quiet hours: reminders due inside this local wall-clock window queue
+// until the window ends instead of firing (notifications.ts's
+// applyQuietHours). `start`/`end` are 'HH:MM' 24h strings (same storage
+// format TimePicker/CalendarPicker already use) — start > end means the
+// window wraps past midnight (e.g. 22:00 -> 07:00), the common case.
+export interface QuietHours { enabled: boolean; start: string; end: string; }
+const QUIET_HOURS_KEY = 'offlog_quiet_hours';
+const DEFAULT_QUIET_HOURS: QuietHours = { enabled: false, start: '22:00', end: '07:00' };
+
+export function getQuietHours(): QuietHours {
+  try {
+    const raw = localStorage.getItem(QUIET_HOURS_KEY);
+    return raw ? { ...DEFAULT_QUIET_HOURS, ...JSON.parse(raw) } : DEFAULT_QUIET_HOURS;
+  } catch {
+    return DEFAULT_QUIET_HOURS;
+  }
+}
+
+export function setQuietHours(q: QuietHours) {
+  localStorage.setItem(QUIET_HOURS_KEY, JSON.stringify(q));
+}
+
 // B47 — Agenda's week view and DeadlinesView's "this week" grouping
 // assumed a fixed Sunday week start (`d.getDate() - d.getDay()`, and
 // `getDay()` is 0-indexed from Sunday). Per-device, like the reminder

@@ -13,10 +13,10 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
   import { timeAgo, fmtLastSynced, localDateStr } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
-  import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission } from './notifications';
+  import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission, rescheduleAll } from './notifications';
   import { showError, modalOpen } from './store';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -171,6 +171,19 @@
   function saveDefaultReminderTime(e: CustomEvent<string>) {
     defaultReminderTime = e.detail;
     setDefaultReminderTime(defaultReminderTime);
+  }
+
+  // Quiet hours: reminders due inside this window queue until it ends
+  // instead of firing (notifications.ts's applyQuietHours). rescheduleAll()
+  // re-applies immediately to any already-pending reminder, same
+  // cancel-then-reschedule-from-scratch pattern used after every task
+  // write — cheap at this scale, avoids a separate "does this change
+  // affect already-scheduled timers" special case.
+  let quietHours = getQuietHours();
+  function saveQuietHours(patch: Partial<typeof quietHours>) {
+    quietHours = { ...quietHours, ...patch };
+    setQuietHours(quietHours);
+    rescheduleAll();
   }
 
   // B47 — reactively re-derives Agenda's week math on toggle; DeadlinesView
@@ -839,12 +852,13 @@
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];
 
-  // Scaffolding ahead of C1 (open-sourcing the repo) — tauri.conf.json's
-  // plugins.updater block exists but points at a placeholder endpoint
-  // (https://example.invalid/...) and pubkey, not real hosting, so
-  // check() below always fails until C1 provides a real update feed and
-  // the owner generates a real signing key. Wired up now anyway (owner
-  // request, 2026-07-16) so the UI/flow is ready the moment that lands.
+  // E3 (ROADMAP.md, done 2026-07-23): tauri.conf.json's plugins.updater
+  // block now points at a real signed endpoint (GitHub Releases'
+  // "latest" download URL) with a real pubkey from `cargo tauri signer
+  // generate` — check() below hits real infrastructure, not a
+  // placeholder. Status text is deliberately verbose (each step gets its
+  // own message) since the whole flow is otherwise invisible to the user:
+  // a silent success looks identical to a silent no-op.
   let updateChecking = false;
   let updateStatus = '';
   async function checkForUpdate() {
@@ -859,6 +873,7 @@
       }
       updateStatus = `Downloading v${update.version}…`;
       await update.downloadAndInstall();
+      updateStatus = 'Installed — restarting…';
       const { relaunch } = await import('@tauri-apps/plugin-process');
       await relaunch();
     } catch (e: any) {
@@ -1095,6 +1110,25 @@
                   <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
                 </label>
                 <p class="setting-hint">Used whenever a task's "Remind me on the due date" checkbox is on, instead of picking the exact time yourself.</p>
+              </div>
+
+              <div class="setting-group">
+                <div class="setting-section-title">Quiet hours</div>
+                <div class="setting-row">
+                  <span class="setting-label">Queue reminders during quiet hours</span>
+                  <button class="toggle-btn" class:on={quietHours.enabled} on:click={() => saveQuietHours({ enabled: !quietHours.enabled })} aria-label="Toggle quiet hours" role="switch" aria-checked={quietHours.enabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                {#if quietHours.enabled}
+                  <div class="setting-row">
+                    <span class="setting-label">From</span>
+                    <TimePicker value={quietHours.start} on:change={(e) => saveQuietHours({ start: e.detail })} />
+                    <span class="setting-label">to</span>
+                    <TimePicker value={quietHours.end} on:change={(e) => saveQuietHours({ end: e.detail })} />
+                  </div>
+                {/if}
+                <p class="setting-hint">A reminder due in this window fires as soon as it ends instead of interrupting you.</p>
               </div>
 
             {:else if activeCategory === 'sync'}

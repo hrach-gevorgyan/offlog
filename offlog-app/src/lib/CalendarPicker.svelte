@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import TimePicker from './TimePicker.svelte';
+  import { fmtTime } from './utils';
 
   // B38 — custom calendar/date picker instead of the native OS one.
   // Two value formats, chosen by `withTime`:
@@ -90,7 +91,7 @@
   const DOW = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
   $: displayLabel = !selected ? placeholder
-    : withTime ? `${selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${timeVal}`
+    : withTime ? `${selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${fmtTime(new Date(`1970-01-01T${timeVal}`))}`
     : selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 </script>
 

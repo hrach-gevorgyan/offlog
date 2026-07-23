@@ -208,8 +208,6 @@ re-propose those.
   week without opening the editor. Snooze exists today only as the
   notification action's "Snooze 1h" — this extends the idea to the task
   itself, guilt-free. Small.
-- **Quiet hours.** Reminders queue instead of firing during configured
-  night hours. Small; notifications.ts already owns scheduling.
 - **Calendar (.ics) export.** Dated tasks as a local .ics file/feed the
   OS calendar reads — deadlines next to real appointments, no cloud.
   Small-medium.

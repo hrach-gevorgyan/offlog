@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import db, { createProject, createTask, updateTask, invalidateTaskCache } from '../src/lib/db';
-import { catchUpWeb } from '../src/lib/notifications';
+import { catchUpWeb, applyQuietHours } from '../src/lib/notifications';
+import { setQuietHours } from '../src/config';
 import type { SpaceDoc } from '../src/lib/types';
 
 // ROADMAP.md A12 (notification reliability audit). Real finding: a web
@@ -114,5 +115,83 @@ describe('catchUpWeb', () => {
     await updateTask(task._id!, { reminder_at: secondDue });
     await catchUpWeb([{ ...task, reminder_at: secondDue }]);
     expect(NotificationSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+// Quiet hours: reminders due inside a configured local wall-clock window
+// queue until it ends instead of firing (config.ts's getQuietHours(),
+// notifications.ts's applyQuietHours()).
+describe('applyQuietHours', () => {
+  it('returns the instant unchanged when quiet hours are off', () => {
+    setQuietHours({ enabled: false, start: '22:00', end: '07:00' });
+    const at = new Date(2026, 0, 1, 23, 30);
+    expect(applyQuietHours(at)).toBe(at);
+  });
+
+  it('returns the instant unchanged when outside a wrapping window', () => {
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+    const at = new Date(2026, 0, 1, 12, 0);
+    expect(applyQuietHours(at)).toBe(at);
+  });
+
+  it('pushes an evening instant to the next morning for a wrapping window', () => {
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+    const at = new Date(2026, 0, 1, 23, 30);
+    const result = applyQuietHours(at);
+    expect(result.getFullYear()).toBe(2026);
+    expect(result.getMonth()).toBe(0);
+    expect(result.getDate()).toBe(2); // next day
+    expect(result.getHours()).toBe(7);
+    expect(result.getMinutes()).toBe(0);
+  });
+
+  it('pushes a past-midnight instant to later the same day for a wrapping window', () => {
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+    const at = new Date(2026, 0, 2, 2, 0); // 2am, already inside last night's window
+    const result = applyQuietHours(at);
+    expect(result.getDate()).toBe(2); // same day, not pushed further
+    expect(result.getHours()).toBe(7);
+  });
+
+  it('handles a non-wrapping same-day window', () => {
+    setQuietHours({ enabled: true, start: '13:00', end: '14:00' });
+    const at = new Date(2026, 0, 1, 13, 30);
+    const result = applyQuietHours(at);
+    expect(result.getDate()).toBe(1);
+    expect(result.getHours()).toBe(14);
+  });
+});
+
+describe('catchUpWeb with quiet hours', () => {
+  afterEach(() => {
+    setQuietHours({ enabled: false, start: '22:00', end: '07:00' });
+    vi.useRealTimers();
+  });
+
+  it('queues a due reminder until quiet hours end instead of firing immediately', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Quiet hours test');
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 23, 0)); // inside 22:00-07:00 window
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+
+    const NotificationSpy = vi.fn();
+    (globalThis as any).Notification = class {
+      static permission = 'granted';
+      onclick: (() => void) | null = null;
+      constructor(...args: any[]) { NotificationSpy(...args); }
+      close() {}
+    };
+
+    const dueNow = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    await updateTask(task._id!, { reminder_at: dueNow });
+    await catchUpWeb([{ ...task, reminder_at: dueNow }]);
+
+    expect(NotificationSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(8 * 60 * 60 * 1000); // past 07:00
+    expect(NotificationSpy).toHaveBeenCalledTimes(1);
   });
 });

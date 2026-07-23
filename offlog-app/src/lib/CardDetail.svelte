@@ -399,7 +399,7 @@
             </label>
             <label class="remind-on-due-row">
               <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-              Remind me on the due date{#if due_date}&nbsp;at {getDefaultReminderTime()}{/if}
+              Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
             </label>
             {#if reminder_at && $permissionState !== 'granted'}
               <div class="reminder-hint">
