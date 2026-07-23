@@ -203,6 +203,25 @@ by implication just because the code is free. Forking, modifying, and
 redistributing under MIT — including commercially — remains fully
 allowed; a fork just needs its own name and mark.
 
+### Why SignPath (not a paid cert) for Windows code signing (2026-07-23)
+The Windows installer triggers a SmartScreen "unverified publisher"
+warning, same as any app without a paid code-signing certificate
+(~$100-400/year from a commercial CA). Before spending that recurring
+cost, checked SignPath Foundation's free code-signing program for
+qualifying open-source projects — Offlog is a clean fit against their
+actual published eligibility list: MIT (OSI-approved, no dual-
+licensing), no proprietary dependencies, actively maintained, already
+has real GitHub Releases, thoroughly documented, and — the one that
+lines up almost too well — "no unauthorized data collection," which
+is this project's own manifesto already. Chose to apply rather than
+pay, since the fit is genuine rather than a stretch. Requirements to
+satisfy before applying (none blocking, all cheap): GitHub MFA
+enabled, a short public code-signing-policy doc, a SignPath credit
+line somewhere in the repo, and confirming the installer's binary
+metadata is set (already is, via `tauri.conf.json`). Tracked as
+ROADMAP.md's C3b. Doesn't touch Android at all — that warning is
+solved separately by C3's Play Store listing, unrelated to this.
+
 ### Why Tauri, not Electron, for the PC standalone app (2026-07-14)
 Resolves IDEAS.md's former Q6. Decided by prototyping both the
 riskiest parts rather than debating on paper: a Tauri shell wrapping

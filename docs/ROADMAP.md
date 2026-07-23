@@ -118,11 +118,24 @@ being findable and installable without knowing what "sideload" means.
 - **C3 — Play Store listing.** The highest-leverage remaining item for
   other humans, because normal people will never install an APK from
   GitHub. Signing key already exists and is wired into CI. Remaining:
-  a Play Console developer account ($25 one-time), store listing
-  assets (icon exists; screenshots, short/full description from
-  BRAND.md's copy), a privacy-policy page (trivial to write honestly:
-  "no data is collected"), and Google's review process. Calendar time
-  is mostly waiting on Google, not working.
+  a Play Console developer account (**$25 one-time — owner-approved
+  cost, 2026-07-23**), store listing assets (icon exists; screenshots,
+  short/full description from BRAND.md's copy), a privacy-policy page
+  (trivial to write honestly: "no data is collected"), and Google's
+  review process. Calendar time is mostly waiting on Google, not
+  working.
+- **C3b — Windows code signing via SignPath (owner-decided,
+  2026-07-23).** Removes the Windows SmartScreen "unverified
+  publisher" warning on the installer — free for qualifying open-source
+  projects, evaluated against SignPath Foundation's actual eligibility
+  list and Offlog is a clean fit (MIT, no proprietary deps, active,
+  released, no telemetry — see DECISIONS.md for the full check).
+  Needed before applying: GitHub MFA enabled, a short public "code
+  signing policy" doc, a SignPath credit line, confirm installer binary
+  metadata is set (already is, via `tauri.conf.json`). Then: apply,
+  wait for Foundation review (days–weeks), wire the signing step into
+  `release.yml` once approved. Android's Play Store warning is a
+  separate, unrelated thing (solved by C3's $25 fee, not this).
 - **C5 — Landing page.** A single plain GitHub Pages page using
   BRAND.md's tagline/copy, linking the Play Store listing (once live)
   and GitHub Releases. Deliberately after or alongside C3 so it has
