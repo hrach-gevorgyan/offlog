@@ -1229,12 +1229,12 @@
                   {#if !isNativePlatform() && !isTauriCheck()}
                     Only runs in the installed Android or Windows app, not this browser preview.
                   {:else if lastAutoBackupAt}
-                    Last automatic backup: {fmtLastSynced(lastAutoBackupAt)}. Keeps the last 7, on this
-                    device only — not a substitute for "Back up" below if you want a copy that survives
-                    losing the device.
+                    Last saved: {fmtLastSynced(lastAutoBackupAt)}. This stays on your device, so it won't
+                    help if your device is lost or breaks — use "Back up" below for a copy you can keep
+                    somewhere else too.
                   {:else}
-                    Runs on this device only, no file dialog needed. Keeps the last 7 — not a substitute
-                    for "Back up" below if you want a copy that survives losing the device.
+                    Saves a safety copy on your device every day, automatically. This won't help if your
+                    device is lost or breaks — use "Back up" below for a copy you can keep somewhere else too.
                   {/if}
                 </p>
               </div>
