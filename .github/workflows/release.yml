@@ -18,6 +18,18 @@ name: Release
 #   ANDROID_KEYSTORE_BASE64   -- `base64 -w0 offlog-release.keystore`
 #   ANDROID_KEYSTORE_PASSWORD -- same value used for both store and key
 #                                 password (see keystore.properties.example)
+#
+# Desktop auto-updater signing (E3): tauri.conf.json's plugins.updater
+# has a real pubkey now (owner ran `cargo tauri signer generate`,
+# 2026-07-23) and a real endpoint (GitHub Releases' "latest" download
+# URL). tauri-action signs the installer + writes latest.json whenever
+# these two env vars are set on the Windows job -- if unset, the build
+# still succeeds, it just produces an unsigned update artifact nobody
+# can verify (harmless until the owner adds the secrets). Add:
+#   TAURI_SIGNING_PRIVATE_KEY          -- contents of the private key
+#                                          file from `cargo tauri signer
+#                                          generate` (~/.tauri/offlog-updater.key)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD -- the password set at keygen time
 on:
   push:
     tags: ['v*.*.*']
@@ -142,16 +154,31 @@ jobs:
 
       - name: Build Tauri Windows installer
         uses: tauri-apps/tauri-action@v1
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: offlog-desktop
           # offlog-app/dist was already built above; tauri.conf.json's
           # frontendDist points straight at it, so there's no separate
           # frontend build step for tauri-action to run here.
+          # includeUpdaterJson defaults to true whenever tauri.conf.json
+          # has a plugins.updater block (it does) -- produces latest.json
+          # alongside the installer, signed if the two env vars above
+          # are present.
 
       - uses: actions/upload-artifact@v7
         with:
           name: windows-installer
-          path: offlog-desktop/src-tauri/target/release/bundle/nsis/*.exe
+          # .sig/latest.json only exist when the two signing secrets
+          # above are set -- 'warn' instead of the default 'error' so a
+          # not-yet-signed build still succeeds (matches the Android
+          # job's own "works before the secrets exist" fallback).
+          if-no-files-found: warn
+          path: |
+            offlog-desktop/src-tauri/target/release/bundle/nsis/*.exe
+            offlog-desktop/src-tauri/target/release/bundle/nsis/*.sig
+            offlog-desktop/src-tauri/target/release/bundle/latest.json
 
   draft-release:
     needs: [build-android, build-desktop-windows]
@@ -168,3 +195,5 @@ jobs:
           files: |
             artifacts/android-apk/*.apk
             artifacts/windows-installer/*.exe
+            artifacts/windows-installer/*.sig
+            artifacts/windows-installer/latest.json

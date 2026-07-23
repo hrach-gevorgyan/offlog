@@ -47,9 +47,9 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://example.invalid/offlog/latest.json"
+        "https://github.com/hrach-gevorgyan/offlog/releases/latest/download/latest.json"
       ],
-      "pubkey": "PLACEHOLDER_NOT_A_REAL_KEY_REPLACE_AT_C1_WITH_cargo_tauri_signer_generate_OUTPUT"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ4NkMzRTNGMDY1QjdCM0EKUldRNmUxc0dQejVzMklPYVR4MldkT2Z0eUlLVmZaSE9sL0I3dFpEK3Rrb0YwZ0MyVnI3NkFsRkcK"
     }
   }
 }
