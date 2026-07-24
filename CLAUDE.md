@@ -13,7 +13,12 @@ only — shipped/declined/parked history lives in
 [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md)),
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (newest ~10 releases — older ones
 plus the full maintenance-pass log compressed into
-[docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)),
+[docs/archive/changelog-archive.md](docs/archive/changelog-archive.md);
+technical/maintainer record only — for what ships to actual users see
+[docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) instead, added 2026-07-24
+after users found the GitHub Releases page unreadable: plain language,
+`## New` / `## Fixed`, one entry per version, pulled verbatim into the
+release body by `.github/scripts/extract-release-notes.js`),
 [docs/IDEAS.md](docs/IDEAS.md) (open questions and un-committed ideas;
 merged the old QUESTIONS.md 2026-07-20), [docs/BRAND.md](docs/BRAND.md)
 (tagline/pitch/voice/visual-identity reference for any public-facing
@@ -359,6 +364,14 @@ debug-keystore-signed `release` APK go out as a real release build.
    three stay in sync for whenever a build actually is requested
 6. Add a new entry to `docs/CHANGELOG.md` — the single source of truth for
    version history (do not duplicate it back into TECH.md or README.md)
+6b. Add a new `## vX.Y.Z` entry to `docs/RELEASE_NOTES.md` — plain
+   language, `### New` / `### Fixed` only, no file/function names. This
+   is what real users see on the GitHub Releases page and (once C3
+   ships) Play Store's "What's new" — do not skip this even when step 6
+   feels like it already covers it, the two are written for different
+   readers. A release with nothing user-visible still gets a one-line
+   "No visible changes" entry, not a skipped one (the extraction script
+   needs *some* entry for the tag to find)
 7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
 8. **Never push, sync to Android, build the APK, or commit palette/visual
    changes without the owner's explicit confirmation/request**

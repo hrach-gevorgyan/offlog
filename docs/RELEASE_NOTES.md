@@ -1,0 +1,64 @@
+# Offlog — Release Notes
+
+**This is not [CHANGELOG.md](CHANGELOG.md).** That file is the technical/
+maintainer record — full implementation detail, file names, root causes.
+This file is what actual users read: the GitHub Releases page, and (once
+C3 ships) the Play Store "What's new" box. Plain language, short, and
+split into what's actually new/changed for you vs. what got fixed —
+`.github/scripts/extract-release-notes.js` pulls the entry matching the
+current tag straight from here into the release body, so write a new
+`## vX.Y.Z` entry here as part of every release (see the checklist in the
+root CLAUDE.md).
+
+**Writing rule:** no file names, no function names, no "root cause." One
+line per item, plain language, only things a user would actually notice.
+A release with no user-visible change (a test bump, a dependency-only
+bump) gets a one-line "No visible changes" entry, not padding.
+
+---
+
+## v5.7.10
+
+No visible changes — internal cleanup only.
+
+## v5.7.9
+
+### Fixed
+- A backlog of overnight reminders could all arrive at once instead of
+  spreading out.
+- Dragging a task between columns on mobile could occasionally get
+  stuck until the app was restarted.
+- A brief flash when opening the desktop app on Windows.
+- The custom field type menu in Settings could open off-screen.
+- Smaller polish to the desktop installer's appearance.
+
+## v5.7.8
+
+No visible changes — test release only.
+
+## v5.7.7
+
+### New
+- See the app's current version in Settings.
+- Get notified when an update is ready, with a real download progress
+  bar, and choose when to restart and install it — updates no longer
+  restart the app without asking.
+
+## v5.7.6
+
+### New
+- Quiet hours: reminders due overnight now wait until morning instead of
+  interrupting you.
+
+### Fixed
+- Reminder times could show in the wrong 12-hour/24-hour format.
+
+## v5.7.5
+
+### New
+- Automatic local backups, so your data has a safety copy even if
+  something goes wrong on your device.
+
+### Fixed
+- Changing or removing your App Lock PIN now asks for your current PIN
+  first.
