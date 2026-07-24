@@ -965,6 +965,23 @@ export async function addCustomFieldDef(name: string, type: CustomFieldDef['type
   return fields;
 }
 
+// Owner-reported bug, 2026-07-24: no way to rename a field or change its
+// type/options after creation — only add/remove existed. Renaming is
+// always safe (tasks store values keyed by field *id*, never by name).
+// Changing type/options is left to the caller's judgment, same as the
+// rest of this app's "trust the user" stance elsewhere (e.g. removing a
+// field leaves stale values rather than guarding against it) — an
+// existing text value under a field switched to 'number' just won't
+// parse as a number until the task is edited again, not a crash.
+export async function updateCustomFieldDef(fieldId: string, patch: { name?: string; type?: CustomFieldDef['type']; options?: string[] }): Promise<CustomFieldDef[]> {
+  let doc: any;
+  try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
+  const fields = (doc.fields ?? []).map((f: CustomFieldDef) => f.id === fieldId ? { ...f, ...patch } : f);
+  await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
+  await logChange(fieldId, 'update', undefined, undefined, undefined, { field_name: patch.name });
+  return fields;
+}
+
 // Removing a field definition intentionally leaves any task's stored
 // custom_values[fieldId] in place (dead but harmless keyed data) rather
 // than sweeping every task in the database to strip it — cheap to skip,

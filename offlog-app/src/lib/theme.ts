@@ -62,8 +62,26 @@ export function isEffectivelyDark(mode: ThemeMode = getThemeMode()): boolean {
 }
 
 export function applyTheme(): void {
-  document.body.classList.toggle('dark', isEffectivelyDark());
+  const dark = isEffectivelyDark();
+  document.body.classList.toggle('dark', dark);
   document.body.classList.toggle('high-contrast', getHighContrast());
+  syncTauriWindowTheme(dark);
+}
+
+// Owner-reported, 2026-07-24: the desktop window's native title bar kept
+// whatever theme Windows itself was set to, ignoring this app's own
+// Light/Dark/System choice — a light in-app theme with a Windows-dark
+// title bar (or the reverse) reads as visually broken. Tauri's window API
+// can force the native chrome's theme independent of the OS setting;
+// `!!(window as any).__TAURI_INTERNALS__` mirrors config.ts's isTauri()
+// without importing it here (theme.ts intentionally has no app-config
+// dependency — see this file's header comment). No-op everywhere else
+// (web, Android) since only a real native window frame has this to sync.
+function syncTauriWindowTheme(dark: boolean): void {
+  if (!(window as any).__TAURI_INTERNALS__) return;
+  import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+    getCurrentWindow().setTheme(dark ? 'dark' : 'light').catch(() => {});
+  }).catch(() => {});
 }
 
 // Only fires while mode is 'system' — an explicit Light/Dark choice must

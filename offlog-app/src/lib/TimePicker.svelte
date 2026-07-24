@@ -14,6 +14,16 @@
   // Appearance's 24h/12h choice (getTimeFormat24h) — found 2026-07-23:
   // this picker previously always showed a 00-23 dropdown regardless of
   // that setting.
+  //
+  // 2026-07-24: tried a hand-rolled scroll wheel, the timepicker-ui
+  // library, and native <input type="time"> as replacements, in that
+  // order — reverted every one (wheel: too rough visually; library:
+  // ~117KB for one field; native: its OS popup can't be styled with CSS
+  // at all and ignores the 12h/24h setting entirely, showing whatever
+  // format the OS/browser locale picks). This dropdown version is the
+  // only one that's simultaneously compact, fully CSS-themeable, and
+  // respects the app's own setting — same conclusion the original B50
+  // note already reached.
   export let value = '09:00';
   export let disabled = false;
 

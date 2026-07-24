@@ -14,6 +14,7 @@ import db, {
   createSpace, updateSpace, reorderSpaces, deleteSpace,
   getTagCounts, renameTag, deleteTagEverywhere,
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
+  getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -1020,5 +1021,49 @@ describe('duplicate-name detection helpers', () => {
     const items = [{ text: 'Buy milk' }, { text: '  buy milk  ' }, { text: 'Buy eggs' }];
     expect(findDuplicateChecklistItems(items)).toEqual(['buy milk']);
     expect(findDuplicateChecklistItems([{ text: 'A' }, { text: 'B' }])).toEqual([]);
+  });
+});
+
+// Owner-reported, 2026-07-24: no way to rename a custom field or change
+// its type/options after creation, only add/remove — updateCustomFieldDef()
+// closes that gap.
+describe('updateCustomFieldDef()', () => {
+  it('renames a field, and identifies it by id so a task\'s stored value stays linked', async () => {
+    const fields = await addCustomFieldDef('Rerun', 'text');
+    const id = fields[0].id;
+    const updated = await updateCustomFieldDef(id, { name: 'Re-run count' });
+    expect(updated).toHaveLength(1);
+    expect(updated[0].id).toBe(id);
+    expect(updated[0].name).toBe('Re-run count');
+  });
+
+  it('changes type and options together', async () => {
+    const fields = await addCustomFieldDef('Priority tier', 'text');
+    const id = fields[0].id;
+    const updated = await updateCustomFieldDef(id, { type: 'select', options: ['Low', 'High'] });
+    expect(updated[0].type).toBe('select');
+    expect(updated[0].options).toEqual(['Low', 'High']);
+  });
+
+  it('leaves other fields untouched', async () => {
+    await addCustomFieldDef('A', 'text');
+    const fields = await addCustomFieldDef('B', 'number');
+    const idB = fields[1].id;
+    const updated = await updateCustomFieldDef(idB, { name: 'B renamed' });
+    expect(updated.find(f => f.name === 'A')).toBeTruthy();
+    expect(updated.find(f => f.id === idB)?.name).toBe('B renamed');
+  });
+
+  it('is a no-op returning [] when the custom fields doc does not exist yet', async () => {
+    expect(await getCustomFieldDefs()).toEqual([]);
+    expect(await updateCustomFieldDef('field:nonexistent', { name: 'X' })).toEqual([]);
+  });
+
+  it('removeCustomFieldDef still removes by id after a rename', async () => {
+    const fields = await addCustomFieldDef('Temp', 'text');
+    const id = fields[0].id;
+    await updateCustomFieldDef(id, { name: 'Renamed' });
+    const remaining = await removeCustomFieldDef(id);
+    expect(remaining).toEqual([]);
   });
 });

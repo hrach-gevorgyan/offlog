@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { panelFly, scrimFade } from './motion';
-  import { getCustomFieldDefs, addCustomFieldDef, removeCustomFieldDef } from './db';
+  import { getCustomFieldDefs, addCustomFieldDef, removeCustomFieldDef, updateCustomFieldDef } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
@@ -51,6 +51,35 @@
       showError('Failed to remove field. Please try again.');
     }
   }
+
+  // Owner-reported, 2026-07-24: no way to rename a field or change its
+  // type/options after creation — inline edit, same row, rather than a
+  // separate modal (this list is already small by design, per the panel's
+  // own hint text).
+  let editingId: string | null = null;
+  let editName = '';
+  let editType: CustomFieldDef['type'] = 'text';
+  let editOptions = '';
+
+  function startEdit(field: CustomFieldDef) {
+    editingId = field.id;
+    editName = field.name;
+    editType = field.type;
+    editOptions = (field.options ?? []).join(', ');
+  }
+  function cancelEdit() { editingId = null; }
+
+  async function saveEdit(field: CustomFieldDef) {
+    const name = editName.trim();
+    if (!name) return;
+    const options = editType === 'select' ? editOptions.split(',').map(o => o.trim()).filter(Boolean) : undefined;
+    try {
+      fields = await updateCustomFieldDef(field.id, { name, type: editType, options });
+      editingId = null;
+    } catch {
+      showError('Failed to update field. Please try again.');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown}/>
@@ -71,13 +100,29 @@
       <div class="empty">No custom fields yet.</div>
     {:else}
       {#each fields as field (field.id)}
-        <div class="row">
-          <div class="row-text">
-            <span class="name">{field.name}</span>
-            <span class="type">{field.type}{#if field.type === 'select' && field.options?.length} · {field.options.join(', ')}{/if}</span>
+        {#if editingId === field.id}
+          <div class="row row-editing">
+            <input class="name-input" bind:value={editName} placeholder="Field name" enterkeyhint="done" on:keydown={(e) => e.key === 'Enter' && saveEdit(field)} />
+            <div class="type-select">
+              <CustomSelect options={typeOptions} value={editType} placement="up" on:change={(e) => editType = e.detail as CustomFieldDef['type']} />
+            </div>
+            {#if editType === 'select'}
+              <input class="name-input" bind:value={editOptions} placeholder="Options, comma-separated" />
+            {/if}
+            <div class="row-edit-actions">
+              <button class="edit-cancel-btn" on:click={cancelEdit}>Cancel</button>
+              <button class="edit-save-btn" on:click={() => saveEdit(field)} disabled={!editName.trim()}>Save</button>
+            </div>
           </div>
-          <button class="delete-btn" on:click={() => remove(field)} title="Remove field" aria-label="Remove field {field.name}">×</button>
-        </div>
+        {:else}
+          <div class="row">
+            <button class="row-text row-edit-trigger" on:click={() => startEdit(field)} title="Edit field" aria-label="Edit field {field.name}">
+              <span class="name">{field.name}</span>
+              <span class="type">{field.type}{#if field.type === 'select' && field.options?.length} · {field.options.join(', ')}{/if}</span>
+            </button>
+            <button class="delete-btn" on:click={() => remove(field)} title="Remove field" aria-label="Remove field {field.name}">×</button>
+          </div>
+        {/if}
       {/each}
     {/if}
   </div>
@@ -133,6 +178,21 @@
   .row-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   .name { font-size: 13.5px; color: var(--text); font-weight: 500; }
   .type { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+
+  .row-edit-trigger {
+    background: none; border: none; padding: 2px 4px; margin: -2px -4px; border-radius: 6px;
+    text-align: left; cursor: pointer; transition: background .1s;
+  }
+  .row-edit-trigger:hover { background: var(--hover); }
+
+  .row-editing { flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 0; }
+  .row-edit-actions { display: flex; gap: 6px; width: 100%; justify-content: flex-end; }
+  .edit-cancel-btn, .edit-save-btn {
+    padding: .4rem .75rem; border-radius: var(--radius-sm); font-size: .8rem; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
+  }
+  .edit-save-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .edit-save-btn:disabled { opacity: .5; cursor: not-allowed; }
 
   .delete-btn {
     background: none; border: none; cursor: pointer;

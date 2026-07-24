@@ -1417,18 +1417,18 @@
                 <div class="setting-group">
                   <div class="setting-section-title">Software updates</div>
                   <div class="setting-row">
+                    <span class="setting-label">Check automatically in the background</span>
+                    <button class="toggle-btn" class:on={autoUpdateCheckEnabled} on:click={toggleAutoUpdateCheck} aria-label="Toggle automatic update checks" role="switch" aria-checked={autoUpdateCheckEnabled}>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <div class="setting-row compact-row">
                     <span class="setting-label">Version {appVersion || '—'}</span>
                     <button class="export-btn" on:click={onCheckForUpdate} disabled={updateChecking}>
                       {updateChecking ? 'Checking…' : 'Check for updates'}
                     </button>
                   </div>
                   {#if updateStatus}<p class="setting-hint compact-hint">{updateStatus}</p>{/if}
-                  <div class="setting-row compact-row">
-                    <span class="setting-label">Check automatically in the background</span>
-                    <button class="toggle-btn" class:on={autoUpdateCheckEnabled} on:click={toggleAutoUpdateCheck} aria-label="Toggle automatic update checks" role="switch" aria-checked={autoUpdateCheckEnabled}>
-                      <span class="toggle-knob"></span>
-                    </button>
-                  </div>
                 </div>
               {:else if isNativePlatform()}
                 <div class="setting-group">
