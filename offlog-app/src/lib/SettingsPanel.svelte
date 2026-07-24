@@ -184,7 +184,7 @@
   function saveQuietHours(patch: Partial<typeof quietHours>) {
     quietHours = { ...quietHours, ...patch };
     setQuietHours(quietHours);
-    rescheduleAll();
+    rescheduleAll().catch(() => {});
   }
 
   // B47 — reactively re-derives Agenda's week math on toggle; DeadlinesView

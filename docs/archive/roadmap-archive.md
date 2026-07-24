@@ -357,6 +357,44 @@ now get `applicationIdSuffix ".debug"`).
 
 ---
 
+## Milestone 1 — "Stable for me" — shipped 2026-07-23 (final-plan restructuring, 2026-07-22)
+
+Four items, all stability-class, none feature growth — grew from two on
+owner request (health-score review) and shipped ahead of the end-of-
+August target.
+
+- **B61 — Require current PIN to change/remove App Lock.** New
+  `ConfirmPinGate.svelte` (unit-testable standalone, 6 tests) — Change
+  PIN and Remove PIN both require the current PIN first; entering it
+  *is* the removal confirmation (the old `confirmAction()` dialog was
+  dropped, not stacked). Initial PIN setup never gates.
+- **E3 — Desktop auto-updater.** `tauri.conf.json`'s `plugins.updater`
+  got a real signing key (`cargo tauri signer generate`, owner-run) and
+  a real endpoint (GitHub Releases' `latest.json`); `release.yml`
+  signs the installer whenever the two Tauri secrets are present,
+  falling back to unsigned otherwise (same pattern as the Android
+  keystore). Later hardened across v5.7.6-5.7.10: `createUpdaterArtifacts`
+  fix, `GITHUB_TOKEN` passthrough, real release notes in `latest.json`,
+  background check + Settings toggle, download-progress UI, explicit
+  restart prompt (see CHANGELOG.md for the version-by-version detail).
+- **B62 — Automatic local backup.** New `autoBackup.ts`: on app start,
+  at most once every ~20h, writes a full JSON snapshot to app-private
+  storage and rotates to the newest 7 (desktop via `@tauri-apps/
+  plugin-fs`, Android via `@capacitor/filesystem`, no-op on web). 7 new
+  tests (`isBackupDue`/`filesToDelete`).
+- **A32 — UI test hardening.** 18 new component tests across
+  `AppLock`/`QuickAdd`/`CardDetail` — bonus catch: `db.test.ts`'s
+  dashboard test built "today" via UTC `toISOString()`, the exact
+  date-locality blind spot MAINTENANCE.md codifies (app code was
+  already correct, the test was the last UTC holdout).
+
+**Owner action still outstanding, no session needed:** copy both
+`C:\Users\hrach\Offlog-signing\` (Android) and
+`~/.tauri/offlog-updater.key` (desktop) somewhere off this machine —
+both are permanent identities that can't be re-issued.
+
+---
+
 ## Old sequencing table (v4.19.0 → v5.4.0)
 
 | # | Release | Notes |
