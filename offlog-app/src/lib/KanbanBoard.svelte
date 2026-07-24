@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { fly, fade, scale } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
@@ -286,9 +286,38 @@
   // into a fast, hard-to-control scroll. Lowered to a gentler nudge.
   const EDGE_SCROLL_SPEED = 6;
 
+  // Owner-reported (mobile, live use): drag-and-drop would sometimes get
+  // "stuck" -- a column move silently not committing -- and only a full
+  // app restart fixed it, not just retrying or leaving Kanban and coming
+  // back. Root cause candidate found on review: `touchTask` used to also
+  // write into `dragTask`, the *separate* state the desktop HTML5
+  // dragstart/dragover/drop path guards on (`if (!dragTask) return`) --
+  // sharing one mutable variable between two independently-reasoned-
+  // about code paths meant that if a touch sequence ever ended without
+  // onTouchEnd/onTouchCancel actually firing (the OS can swallow both
+  // if it takes over the gesture for its own edge-swipe/scroll handling
+  // mid-drag), `dragTask` stayed non-null forever with no touch listener
+  // left watching it -- a state no user action could clear, only an app
+  // restart (a fresh module reload) resetting the variable. Decoupled:
+  // touch and mouse drag now track entirely separate task references;
+  // `isDragging()` below is the only thing that needs to know about both.
+  // A watchdog (touchDragWatchdog) also force-clears touch state if a
+  // drag has been "active" implausibly long, as a second line of
+  // defense against whatever OS-level event-swallowing caused this.
+  const TOUCH_DRAG_WATCHDOG_MS = 15_000;
+  let touchDragWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+  function isDragging(task: TaskDoc): boolean {
+    return dragTask?._id === task._id || touchTask?._id === task._id;
+  }
+
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
     touchTask = task;
-    dragTask = task;
+    if (touchDragWatchdog) clearTimeout(touchDragWatchdog);
+    touchDragWatchdog = setTimeout(() => {
+      if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+      resetTouchDragState();
+    }, TOUCH_DRAG_WATCHDOG_MS);
     const touch = e.touches[0];
     const rect = el.getBoundingClientRect();
     touchOffX = touch.clientX - rect.left;
@@ -331,8 +360,8 @@
   }
 
   function resetTouchDragState() {
+    if (touchDragWatchdog) { clearTimeout(touchDragWatchdog); touchDragWatchdog = null; }
     touchTask = null;
-    dragTask = null;
     dragOverColId = null;
     dragOverIndex = null;
   }
@@ -376,7 +405,43 @@
   // active would leave it behind even with touchcancel handled correctly,
   // since unmounting this component never touches nodes it manually
   // appended elsewhere.
-  onDestroy(() => { if (touchGhost) { touchGhost.remove(); touchGhost = null; } });
+  // Second line of defense alongside `.board`'s own touchend/touchcancel
+  // bindings above: a capture-phase document-level listener that clears
+  // any still-active touch drag on ANY touchend/touchcancel anywhere,
+  // not just ones `.board` itself receives. Touch events are spec'd to
+  // keep targeting the original element for the whole gesture, so this
+  // should normally be a no-op duplicate of onTouchEnd/onTouchCancel --
+  // it only does anything if the OS-level event-swallowing suspected
+  // above (see onTouchStart's comment) really did drop the board-level
+  // handlers for a given gesture.
+  function onDocumentTouchEnd() {
+    // Deferred, not immediate: this fires in the capture phase, which
+    // runs BEFORE `.board`'s own target/bubble-phase touchend/touchcancel
+    // handler in the very same event dispatch -- resetting synchronously
+    // here would wipe dragOverColId/touchTask out from under a perfectly
+    // normal drop before onTouchEnd gets to read them. Deferring to a
+    // fresh task lets the normal handler run first; this only ever does
+    // something if touchTask is STILL set afterwards, i.e. genuinely
+    // orphaned.
+    setTimeout(() => {
+      if (!touchTask) return;
+      if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+      resetTouchDragState();
+    }, 0);
+  }
+  onMount(() => {
+    document.addEventListener('touchend', onDocumentTouchEnd, true);
+    document.addEventListener('touchcancel', onDocumentTouchEnd, true);
+    return () => {
+      document.removeEventListener('touchend', onDocumentTouchEnd, true);
+      document.removeEventListener('touchcancel', onDocumentTouchEnd, true);
+    };
+  });
+
+  onDestroy(() => {
+    if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+    if (touchDragWatchdog) clearTimeout(touchDragWatchdog);
+  });
 </script>
 
 <svelte:window on:click={onWindowClick} />
@@ -454,7 +519,7 @@
           <div
             class="card"
             data-task-idx={idx}
-            class:dragging={dragTask?._id === task._id}
+            class:dragging={isDragging(task)}
             class:insert-before={dragOverColId === col.id && dragOverIndex === idx}
             style="--prio-color:{PRIORITY_COLOR[task.priority]}"
             draggable="true"

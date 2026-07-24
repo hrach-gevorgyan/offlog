@@ -85,7 +85,7 @@
   <div class="add-form">
     <input class="name-input" bind:value={newName} placeholder="Field name" enterkeyhint="done" on:keydown={(e) => e.key === 'Enter' && add()} />
     <div class="type-select">
-      <CustomSelect options={typeOptions} value={newType} on:change={(e) => newType = e.detail as CustomFieldDef['type']} />
+      <CustomSelect options={typeOptions} value={newType} placement="up" on:change={(e) => newType = e.detail as CustomFieldDef['type']} />
     </div>
     {#if newType === 'select'}
       <input class="name-input" bind:value={newOptions} placeholder="Options, comma-separated" />

@@ -160,6 +160,26 @@ describe('applyQuietHours', () => {
     expect(result.getDate()).toBe(1);
     expect(result.getHours()).toBe(14);
   });
+
+  // Real risk found while testing: a backlog of overdue reminders would
+  // all queue for the exact same window-end instant, presenting to the
+  // OS notification system as a simultaneous burst. staggerIndex spreads
+  // them out instead.
+  it('spreads staggered reminders apart by 15s per index instead of colliding', () => {
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+    const at = new Date(2026, 0, 1, 23, 0);
+    const first = applyQuietHours(at, 0);
+    const second = applyQuietHours(at, 1);
+    const third = applyQuietHours(at, 2);
+    expect(second.getTime() - first.getTime()).toBe(15_000);
+    expect(third.getTime() - second.getTime()).toBe(15_000);
+  });
+
+  it('ignores staggerIndex for an instant outside the window', () => {
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+    const at = new Date(2026, 0, 1, 12, 0);
+    expect(applyQuietHours(at, 5)).toBe(at);
+  });
 });
 
 describe('catchUpWeb with quiet hours', () => {
@@ -193,5 +213,41 @@ describe('catchUpWeb with quiet hours', () => {
 
     await vi.advanceTimersByTimeAsync(8 * 60 * 60 * 1000); // past 07:00
     expect(NotificationSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('spreads a backlog of overdue reminders across the window end instead of firing them all at once', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test');
+    const tasks = [];
+    for (let i = 0; i < 3; i++) {
+      const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, `Backlog ${i}`);
+      tasks.push(task);
+    }
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 23, 0));
+    setQuietHours({ enabled: true, start: '22:00', end: '07:00' });
+
+    const fireTimes: number[] = [];
+    (globalThis as any).Notification = class {
+      static permission = 'granted';
+      onclick: (() => void) | null = null;
+      constructor(...args: any[]) { fireTimes.push(Date.now()); }
+      close() {}
+    };
+
+    const dueNow = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const withReminders = [];
+    for (const t of tasks) {
+      await updateTask(t._id!, { reminder_at: dueNow });
+      withReminders.push({ ...t, reminder_at: dueNow });
+    }
+    await catchUpWeb(withReminders);
+    expect(fireTimes).toHaveLength(0);
+
+    await vi.advanceTimersByTimeAsync(9 * 60 * 60 * 1000); // past 07:00 + stagger
+    expect(fireTimes).toHaveLength(3);
+    const gaps = [fireTimes[1] - fireTimes[0], fireTimes[2] - fireTimes[1]];
+    expect(gaps).toEqual([15_000, 15_000]);
   });
 });

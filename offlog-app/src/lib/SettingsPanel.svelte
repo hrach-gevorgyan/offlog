@@ -1417,22 +1417,18 @@
                 <div class="setting-group">
                   <div class="setting-section-title">Software updates</div>
                   <div class="setting-row">
-                    <span class="setting-label">Version</span>
-                    <span class="setting-value">{appVersion || '—'}</span>
-                  </div>
-                  <div class="setting-row">
-                    <span class="setting-label">{updateStatus || 'Check for a newer version of Offlog'}</span>
+                    <span class="setting-label">Version {appVersion || '—'}</span>
                     <button class="export-btn" on:click={onCheckForUpdate} disabled={updateChecking}>
                       {updateChecking ? 'Checking…' : 'Check for updates'}
                     </button>
                   </div>
-                  <div class="setting-row">
+                  {#if updateStatus}<p class="setting-hint compact-hint">{updateStatus}</p>{/if}
+                  <div class="setting-row compact-row">
                     <span class="setting-label">Check automatically in the background</span>
                     <button class="toggle-btn" class:on={autoUpdateCheckEnabled} on:click={toggleAutoUpdateCheck} aria-label="Toggle automatic update checks" role="switch" aria-checked={autoUpdateCheckEnabled}>
                       <span class="toggle-knob"></span>
                     </button>
                   </div>
-                  <p class="setting-hint">Off means updates are only ever checked when you click "Check for updates" yourself.</p>
                 </div>
               {:else if isNativePlatform()}
                 <div class="setting-group">
@@ -1830,7 +1826,9 @@
     background: var(--accent); flex-shrink: 0;
   }
   .setting-row { display: flex; align-items: center; gap: .75rem; }
+  .setting-row.compact-row { margin-top: -.3rem; }
   .setting-hint { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
+  .setting-hint.compact-hint { margin-top: -.3rem; }
   .setting-hint-error { color: var(--danger); }
   .setting-hint-warn {
     color: var(--due-soon-ink); background: var(--due-soon-bg);

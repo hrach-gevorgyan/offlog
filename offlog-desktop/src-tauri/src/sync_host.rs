@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -278,10 +278,24 @@ pub fn spawn(couchdb_dir: &Path) -> std::io::Result<(Child, win32job::Job)> {
     // independent of this app's own lifecycle -- killing sync while the
     // main window kept running (owner-reported, first real-install
     // dogfooding session, 2026-07-15).
+    //
+    // Owner-reported, 2026-07-24: a brief console flash on launch still
+    // happened despite CREATE_NO_WINDOW. Likely cause -- couchdb.cmd is
+    // CouchDB's own upstream launcher script, not code in this repo, and
+    // batch scripts can invoke a nested child (its `erl.exe`) in a way
+    // that requests a console of its own regardless of the *parent's*
+    // creation flags. Explicitly redirecting all three standard handles
+    // to null is the standard mitigation: with no valid stdio handle to
+    // inherit and no console explicitly requested, Windows has nothing
+    // to attach a window to even for a nested process. Harmless here --
+    // nothing in this app reads couchdb.cmd's stdout/stderr today.
     const CREATE_NO_WINDOW: u32 = 0x08000000;
     let child = Command::new(couchdb_dir.join("bin").join("couchdb.cmd"))
         .current_dir(couchdb_dir)
         .creation_flags(CREATE_NO_WINDOW)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()?;
 
     let mut info = ExtendedLimitInfo::new();

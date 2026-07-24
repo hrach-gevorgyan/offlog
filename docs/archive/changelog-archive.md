@@ -111,6 +111,7 @@ see the "Maintenance pass log" section at the bottom.
 | 5.5.1 | S2 live-verified (180-doc dataset, mobile-then-PC merge) — real gap found and fixed: `scanConflicts()` now auto-resolves conflicts on the 4 fixed default-seed ids whenever one side is still the untouched pristine default | `v5.5.1` |
 | 5.6.0 | Duplicate-name/content nudges (projects/spaces/tasks/checklist items/notes) — non-blocking hints only; also fixed a real Escape-vs-blur race that could silently create an empty project/space | `v5.6.0` |
 | 5.6.1 | Maintenance pass (fourteenth run) — dead exports removed, `pouchdb`/`@capacitor/cli` dependency placement fixed, new `--toggle-knob` theme token, debounced duplicate/similarity checks; security/robustness checklist fully clean | `v5.6.1` |
+| 5.6.2 | Archived-project tasks leaking into every cross-project view — 6 query functions (`getDashboardData`, `searchAllTasks`, `getOpenTasksForFocusPicker`, `getAllActiveTasksWithReminders`, `getAllTasksDue`, `getRecentlyModifiedTasks`) now all require the task's own project to still be active | `v5.6.2` |
 
 ---
 

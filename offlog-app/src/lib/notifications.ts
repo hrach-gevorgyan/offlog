@@ -3,12 +3,25 @@ import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './d
 import { invokeTauri, isTauri as isTauriPlatform, getQuietHours } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
 
+// Spread queued reminders out instead of letting them all land on the
+// window's end instant — a real risk found while testing quiet hours: a
+// dozen overdue reminders all firing in the same tick would present to
+// Android's notification manager (or Windows toast queue) as a burst,
+// which some OSes throttle/collapse rather than showing individually.
+// 15s * a reminder's position in the current scheduling pass keeps a
+// realistic queue (a handful to a few dozen reminders) spread over
+// seconds-to-minutes without meaningfully delaying anyone.
+const QUIET_HOURS_STAGGER_STEP_MS = 15_000;
+
 // Quiet hours: if `at` falls inside the configured local wall-clock
 // window, returns the Date for the window's end instead (the next
-// occurrence of the end time after `at`) — the reminder queues rather
-// than firing. Returns `at` unchanged when quiet hours are off or `at`
-// isn't inside the window. Exported for tests/notifications.test.ts.
-export function applyQuietHours(at: Date): Date {
+// occurrence of the end time after `at`, plus `staggerIndex` *
+// QUIET_HOURS_STAGGER_STEP_MS so a batch of queued reminders doesn't all
+// land on the same instant) — the reminder queues rather than firing.
+// Returns `at` unchanged when quiet hours are off or `at` isn't inside
+// the window (stagger never applies to an on-time reminder). Exported
+// for tests/notifications.test.ts.
+export function applyQuietHours(at: Date, staggerIndex = 0): Date {
   const q = getQuietHours();
   if (!q.enabled) return at;
   const [sh, sm] = q.start.split(':').map(Number);
@@ -25,7 +38,7 @@ export function applyQuietHours(at: Date): Date {
   // wrapping window (e.g. 23:00 with 22:00->07:00 ends 07:00 tomorrow);
   // the post-midnight side (e.g. 02:00) already ends later the same day.
   if (wraps && atMin >= startMin) end.setDate(end.getDate() + 1);
-  return end;
+  return new Date(end.getTime() + staggerIndex * QUIET_HOURS_STAGGER_STEP_MS);
 }
 
 // Set by a notification click (native action or web Notification.onclick).
@@ -179,12 +192,12 @@ function fireWebNotification(task: TaskDoc): Promise<void> {
   return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
 }
 
-function scheduleWeb(task: TaskDoc) {
+function scheduleWeb(task: TaskDoc, staggerIndex = 0) {
   const id = task._id!;
   const existing = _webTimers.get(id);
   if (existing) clearTimeout(existing);
   if (!task.reminder_at) return;
-  const delay = applyQuietHours(new Date(task.reminder_at)).getTime() - Date.now();
+  const delay = applyQuietHours(new Date(task.reminder_at), staggerIndex).getTime() - Date.now();
   if (delay <= 0) return; // handled by the catch-up check instead
   // Too far out to schedule now — picked up on a later reload() once it's
   // within range instead (every app open + every live sync change calls
@@ -224,6 +237,7 @@ export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
   const now = Date.now();
   const CATCH_UP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
   const pending: Promise<void>[] = [];
+  let queuedCount = 0;
   for (const t of tasks) {
     if (!t.reminder_at) continue;
     const at = new Date(t.reminder_at).getTime();
@@ -232,8 +246,11 @@ export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
       // Firing "now" — if quiet hours are currently active, queue until
       // they end instead of firing immediately, same as a future
       // reminder would via scheduleWeb()'s applyQuietHours() call.
-      const fireAt = applyQuietHours(new Date(now)).getTime();
+      // Staggered by queue position so a whole backlog doesn't land on
+      // the OS notification queue in the same instant.
+      const fireAt = applyQuietHours(new Date(now), queuedCount).getTime();
       if (fireAt > now) {
+        queuedCount++;
         const id = t._id!;
         const existing = _webTimers.get(id);
         if (existing) clearTimeout(existing);
@@ -299,11 +316,11 @@ async function scheduleNative(tasks: TaskDoc[]) {
   }
   const toSchedule = tasks
     .filter(t => t.reminder_at && new Date(t.reminder_at).getTime() > Date.now())
-    .map(t => ({
+    .map((t, i) => ({
       id: numericId(t._id!),
       title: t.title,
       body: t.due_date ? `Due ${t.due_date}` : 'Reminder',
-      schedule: { at: applyQuietHours(new Date(t.reminder_at!)) },
+      schedule: { at: applyQuietHours(new Date(t.reminder_at!), i) },
       extra: { taskId: t._id },
       actionTypeId: REMINDER_ACTION_TYPE,
       channelId: REMINDER_CHANNEL_ID,
@@ -355,12 +372,12 @@ async function fireTauriNotification(task: TaskDoc) {
   updateTask(id, { reminder_at: null }).catch(() => {});
 }
 
-function scheduleTauriTimer(task: TaskDoc) {
+function scheduleTauriTimer(task: TaskDoc, staggerIndex = 0) {
   const id = task._id!;
   const existing = _webTimers.get(id);
   if (existing) clearTimeout(existing);
   if (!task.reminder_at) return;
-  const delay = applyQuietHours(new Date(task.reminder_at)).getTime() - Date.now();
+  const delay = applyQuietHours(new Date(task.reminder_at), staggerIndex).getTime() - Date.now();
   if (delay <= 0 || delay > MAX_TIMEOUT) return; // handled by catchUpTauri, or too far out for this session
   _webTimers.set(id, setTimeout(() => { fireTauriNotification(task); _webTimers.delete(id); }, delay));
 }
@@ -371,13 +388,15 @@ function scheduleTauriTimer(task: TaskDoc) {
 function catchUpTauri(tasks: TaskDoc[]) {
   const now = Date.now();
   const CATCH_UP_WINDOW_MS = 60 * 60 * 1000;
+  let queuedCount = 0;
   for (const t of tasks) {
     if (!t.reminder_at) continue;
     const at = new Date(t.reminder_at).getTime();
     if (at > now) continue;
     if (now - at < CATCH_UP_WINDOW_MS) {
-      const fireAt = applyQuietHours(new Date(now)).getTime();
+      const fireAt = applyQuietHours(new Date(now), queuedCount).getTime();
       if (fireAt > now) {
+        queuedCount++;
         const id = t._id!;
         const existing = _webTimers.get(id);
         if (existing) clearTimeout(existing);
@@ -392,7 +411,7 @@ function catchUpTauri(tasks: TaskDoc[]) {
 
 async function scheduleTauri(tasks: TaskDoc[]) {
   for (const id of [..._webTimers.keys()]) cancelWeb(id);
-  tasks.forEach(scheduleTauriTimer);
+  tasks.forEach((t, i) => scheduleTauriTimer(t, i));
   catchUpTauri(tasks);
 }
 
@@ -468,7 +487,7 @@ export async function rescheduleAll(): Promise<void> {
     await scheduleTauri(tasks);
   } else {
     for (const id of [..._webTimers.keys()]) cancelWeb(id);
-    tasks.forEach(scheduleWeb);
+    tasks.forEach((t, i) => scheduleWeb(t, i));
     catchUpWeb(tasks);
   }
 }
