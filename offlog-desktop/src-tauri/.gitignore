@@ -2,3 +2,8 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
+
+# NyxDB's default NYXDB_DATA fallback ("./data") if it's ever run
+# directly from this directory without an explicit env var -- not real
+# repo content, always test/dev state.
+/data/

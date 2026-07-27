@@ -1,0 +1,90 @@
+name: CodeQL
+
+# Advanced setup, replacing GitHub's auto-managed Default setup. The
+# Default setup's Java/Kotlin (Android) scan ran with build-mode "none"
+# (autodetect) and couldn't extract a real Gradle dependency classpath --
+# degraded analysis quality (more potential false positives/negatives),
+# not a broken build. Fixed here by actually building the Android project
+# (same npm build + cap sync + gradlew steps release.yml's real APK build
+# already uses) before CodeQL analyzes it, giving it a real classpath.
+#
+# IMPORTANT: switching to this Advanced setup requires disabling the
+# repo's "Default setup" under Settings -> Code security -> Code
+# scanning -- GitHub does not allow both to run for the same languages.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Matches the cadence GitHub's Default setup used.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze-js-rust-actions:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript', 'rust', 'actions']
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:${{ matrix.language }}'
+
+  analyze-java-kotlin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin
+          build-mode: manual
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: offlog-app/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: offlog-app
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: offlog-app
+        run: npm run build
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Sync Capacitor Android project
+        working-directory: offlog-app
+        run: npx cap sync android
+
+      - name: Build debug APK (for CodeQL's dependency classpath only, not published)
+        working-directory: offlog-app/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:java-kotlin'

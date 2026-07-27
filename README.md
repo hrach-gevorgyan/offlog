@@ -43,7 +43,7 @@ there's no separate "web team" and "mobile team," it's the exact same
 Svelte app wrapped three different ways (browser, Android via Capacitor,
 Windows via Tauri). Your data lives in a local database on each device
 (PouchDB) and, when sync is turned on, two devices exchange changes
-directly using CouchDB's replication protocol. Your phone finds your PC
+directly over a CouchDB-protocol replication link. Your phone finds your PC
 automatically on the same Wi-Fi using mDNS (the same kind of "no typed IP
 address" discovery your printer or Chromecast uses) — you tap "Find my
 computer," confirm a 6-digit code shown on the PC once, and the two are
@@ -98,19 +98,24 @@ started: one task list, always current, on every device you own, without
 handing it to a cloud provider. Most self-hosted, local-first apps stop at
 "sync is possible if you set up your own server" — that's a real barrier
 for anyone who isn't comfortable running one. Offlog's Windows app *is*
-the server: it bundles CouchDB, configures itself on first launch, and
-your phone finds it on the network automatically. The technical pieces
-(CouchDB replication, mDNS discovery, a paired-handshake credential
-exchange) aren't novel on their own — packaging all three together so a
-non-technical person never sees any of them is the actual point.
+the server: it bundles [NyxDB](https://github.com/hrach-gevorgyan/nyxdb)
+(a small, self-authored CouchDB-protocol server), configures itself on
+first launch, and your phone finds it on the network automatically. The
+technical pieces (CouchDB-protocol replication, mDNS discovery, a
+paired-handshake credential exchange) aren't novel on their own —
+packaging all three together so a non-technical person never sees any
+of them is the actual point. (Real Apache CouchDB was the original
+embedded server through v5.7.10; swapped for NyxDB after that to cut
+installer size roughly 10x — full history in
+[docs/DECISIONS.md](docs/DECISIONS.md).)
 
-- Live bidirectional replication over CouchDB's protocol — a write on
+- Live bidirectional replication over the CouchDB protocol — a write on
   one device shows up on the other in real time whenever both are
   reachable on the same network
-- The Windows desktop app **bundles CouchDB itself** — nothing to
+- The Windows desktop app **bundles NyxDB itself** — nothing to
   install separately, no server admin knowledge required. On first
   launch it silently generates its own random port, admin password, and
-  database identity, and runs CouchDB as a managed background process
+  database identity, and runs NyxDB as a managed background process
   the whole time the app is open
 - Your phone discovers the PC automatically over mDNS (`_offlog._tcp`)
   and pairs with a one-time 6-digit code shown on the PC — no manually
@@ -161,7 +166,7 @@ on Windows.)
 
 **Windows desktop app — the intended "app for humans"**
 - Native app via Tauri, wrapping the same web build unmodified, with an
-  embedded CouchDB sync host (see Sync above)
+  embedded NyxDB sync host (see Sync above)
 - Native Windows notifications with click-to-open and working scheduled
   reminders (not just a browser notification fallback)
 - Native "Save As" dialogs for backup/export instead of a silent no-op
@@ -169,11 +174,13 @@ on Windows.)
 
 **Small footprint, on purpose.** Both the Android and Windows apps have
 gone through repeated cleanup passes specifically to stay small and
-light — dead code removed, unused dependencies dropped, ~64MB of unused
-CouchDB internals stripped from the bundled binaries, bundle-size checks
-as part of the release routine. This isn't accidental; a maintenance
-pass runs every few releases specifically to catch bloat and regressions
-before they ship (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
+light — dead code removed, unused dependencies dropped, and the
+Windows app's embedded sync host switched to a self-authored,
+purpose-built server (NyxDB) instead of a general-purpose database
+engine, cutting the installer roughly 10x. Bundle-size checks are part
+of the release routine. This isn't accidental; a maintenance pass runs
+every few releases specifically to catch bloat and regressions before
+they ship (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
 
 **Data, backup, and integrity**
 - Full Back up (with a scope selector) / Restore flow, JSON and CSV
@@ -278,17 +285,17 @@ npm run dev              # http://localhost:5173
 To enable sync, create `offlog-app/.env.local`:
 
 ```
-VITE_COUCH_URL=http://192.168.x.x:5984/offlog
-VITE_COUCH_USER=youruser
-VITE_COUCH_PASS=yourpass
+VITE_SYNC_URL=http://192.168.x.x:5984/offlog
+VITE_SYNC_USER=youruser
+VITE_SYNC_PASS=yourpass
 ```
 
 Build for web (`npm run build`, output in `offlog-app/dist/`) or Android
 (`npx cap sync android` then build via Android Studio or Gradle).
 
 **Windows desktop app** — a sibling project at `offlog-desktop/` (Tauri),
-wraps the same web build and embeds a CouchDB sync host (fully
-self-contained — no separate CouchDB install needed, even for
+wraps the same web build and embeds a NyxDB sync host (fully
+self-contained — no separate server install needed, even for
 development):
 
 ```bash

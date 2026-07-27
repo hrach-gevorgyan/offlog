@@ -21,6 +21,11 @@ on:
     branches: [main]
     paths: ['offlog-desktop/**', '.github/workflows/desktop-ci.yml']
 
+# Least-privilege default -- this workflow only checks out code and runs
+# a cargo build, it never needs to write anything back to the repo.
+permissions:
+  contents: read
+
 jobs:
   build-desktop:
     runs-on: windows-latest

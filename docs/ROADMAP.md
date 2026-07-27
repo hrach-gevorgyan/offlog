@@ -80,6 +80,15 @@ being findable and installable without knowing what "sideload" means.
   BRAND.md's tagline/copy, linking the Play Store listing (once live)
   and GitHub Releases. Deliberately after or alongside C3 so it has
   something better than an APK to link to. (~1 session.)
+- **C8 — Encrypt the stored sync password at rest** (owner-decided,
+  2026-07-27, resolving IDEAS.md's old Q1). Today the sync password
+  lives in plain `localStorage` (`config.ts`'s `setSyncCredentials()`)
+  — flagged by CodeQL as a real, if low-severity, finding; dismissed for
+  now with that justification, not fixed yet. Needs a real design pass,
+  not a quick patch: a key-derivation/storage strategy (Web Crypto API)
+  and, likely, an unlock step tied into the existing App Lock PIN flow
+  rather than a second separate secret. Scope this properly before
+  starting — don't bolt on ad hoc encryption just to silence the alert.
 
 **One-time owner action (5 minutes, browser, free on public repos):**
 GitHub → Settings → Code security: enable **secret scanning** and

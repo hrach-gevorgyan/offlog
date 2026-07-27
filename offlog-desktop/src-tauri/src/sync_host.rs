@@ -1,17 +1,10 @@
 // Embedded sync host — Track E (ROADMAP.md E1). Manages a bundled NyxDB
-// instance (github.com/hrach-gevorgyan/nyxdb, a from-scratch Rust
-// reimplementation of CouchDB's replication protocol) as a child process
-// so a non-technical user never installs or configures a sync server
+// instance (github.com/hrach-gevorgyan/nyxdb) as a child process so a
+// non-technical user never installs or configures a sync server
 // themselves: this module generates its own random port/credentials on
 // first launch, persists them, and starts/stops the process alongside
-// the app's own lifecycle.
-//
-// NyxDB replaced a real bundled CouchDB here (2026-07-27, after a
-// same-day trial on the now-deleted `nyxdb-sync-backend` branch proved
-// the protocol/size win real — see docs/DECISIONS.md's writeup). Unlike
-// CouchDB, NyxDB needs no config file at all: port/data-dir/credentials/
-// CORS origins are plain env vars, and it's a single process (no
-// batch-launcher/grandchild problem to work around).
+// the app's own lifecycle. Configuration is plain env vars only
+// (port/data-dir/credentials/CORS origins) — no config file to write.
 //
 // `nyxdb_binary_path()` resolves via `app.path().resource_dir()` for a
 // real installed build (bundled as a Tauri resource, `tauri.conf.json`'s
@@ -115,8 +108,7 @@ pub fn nyxdb_binary_path(resource_dir: Option<PathBuf>) -> PathBuf {
 /// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` so the OS guarantees this process
 /// dies the instant this app's own process handle closes, for any reason
 /// (normal exit, crash, or an external force-kill) — no app-side cleanup
-/// code required on that path. NyxDB is a single process (unlike
-/// CouchDB's `couchdb.cmd` → `erl.exe` grandchild), so there's no
+/// code required on that path. NyxDB is a single process, so there's no
 /// nested-child console-flash workaround needed here.
 #[cfg(windows)]
 pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> std::io::Result<(Child, win32job::Job)> {
@@ -127,12 +119,9 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
     let _ = fs::create_dir_all(data_dir);
     const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-    // `.current_dir()` is required, not cosmetic: the first NyxDB trial
-    // omitted this and the app-spawned process bound a different port
-    // than the one requested via NYXDB_ADDR (a manual `cd vendor/nyxdb-win
-    // && ./nyxdb.exe` test with the same env vars worked correctly,
-    // isolating the difference to the missing current_dir). Matches the
-    // real-CouchDB `spawn()` this replaced, which already set it.
+    // `.current_dir()` is required, not cosmetic — without it the
+    // app-spawned process binds a different port than the one requested
+    // via NYXDB_ADDR.
     let working_dir = binary_path.parent().unwrap_or(binary_path);
 
     let child = Command::new(binary_path)
@@ -141,16 +130,12 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
         .env("NYXDB_DATA", data_dir)
         .env("NYXDB_USER", &info.user)
         .env("NYXDB_PASSWORD", &info.password)
-        // Real bug found in the first trial: allowlisting only the
-        // desktop app's own WebView origin meant every sync request from
-        // a *phone* was silently CORS-rejected (pairing, a separate
-        // non-browser handshake, still succeeded, masking this until
-        // actual sync traffic ran) -- capacitor.config.ts's
-        // androidScheme:'https' with the default hostname means the
-        // Android app's real origin is https://localhost, not
-        // http://tauri.localhost. NyxDB requires an explicit allowlist
-        // (no wildcard support, unlike real CouchDB's origins = *), so
-        // both known client origins are listed.
+        // NyxDB requires an explicit CORS allowlist (no wildcard) --
+        // capacitor.config.ts's androidScheme:'https' with the default
+        // hostname means the Android app's real origin is
+        // https://localhost, not http://tauri.localhost (the desktop
+        // app's own WebView origin). Both must be listed or sync
+        // requests from a phone are silently rejected.
         .env("NYXDB_CORS_ORIGINS", "http://tauri.localhost,https://localhost")
         .creation_flags(CREATE_NO_WINDOW)
         .stdin(Stdio::null())
@@ -184,8 +169,6 @@ pub fn wait_ready(port: u16, timeout: Duration) -> bool {
 
 /// Creates the `offlog` database the app's PouchDB sync target expects —
 /// idempotent (a 412 "already exists" is treated the same as 201 created).
-/// Confirmed unchanged against NyxDB in the first trial: it implements
-/// the same PUT-to-create-db + 412-on-exists semantics as real CouchDB.
 pub fn ensure_database(info: &SyncHostInfo) {
     let url = format!("http://127.0.0.1:{}/offlog", info.port);
     let result = ureq::put(&url)
@@ -205,10 +188,8 @@ pub fn ensure_database(info: &SyncHostInfo) {
 }
 
 /// NyxDB's `GET /` welcome response includes a permanent per-server
-/// `uuid` (confirmed compatible with real CouchDB's shape in the first
-/// trial: `{"couchdb":"Welcome","uuid":"...","version":"..."}`) — reused
-/// as this install's stable identity for mDNS advertising instead of
-/// inventing a separate identity scheme.
+/// `uuid` — reused as this install's stable identity for mDNS
+/// advertising instead of inventing a separate identity scheme.
 pub fn fetch_uuid(port: u16) -> Option<String> {
     let url = format!("http://127.0.0.1:{port}/");
     let mut resp = ureq::get(&url).call().ok()?;

@@ -384,7 +384,7 @@ export function describeSyncError(err: any): string {
   if (status === 404) return 'Sync database not found on server';
   if (status === 0 || err.name === 'TypeError' || /network|failed to fetch/i.test(err.message ?? '')) {
     // Owner-reported confusion (2026-07-06): the sync URL is a LAN IP
-    // (see DECISIONS.md — self-hosted CouchDB, no hosted alternative), so
+    // (see DECISIONS.md — self-hosted sync server, no hosted alternative), so
     // "cannot reach it" overwhelmingly means "not on that network right
     // now" — a laptop on a different WiFi, a phone off home WiFi entirely.
     // A device that's never synced before shows an empty/default-seeded
@@ -452,9 +452,9 @@ const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
 // tasks) pairing against a PC whose own defaults were never touched still
 // forks genuine, un-mergeable revision trees on these same fixed ids the
 // moment they sync — the same bug clearLocalSeedBeforeFirstPair() was
-// built for, just from the opposite direction, and CouchDB's deterministic
-// winner isn't guaranteed to prefer the real content over the pristine
-// throwaway. Rather than trying to pre-empt every ordering before pairing,
+// built for, just from the opposite direction, and the protocol's
+// deterministic winner isn't guaranteed to prefer the real content over
+// the pristine throwaway. Rather than trying to pre-empt every ordering before pairing,
 // this cleans up *after* the fact, symmetrically, regardless of which side
 // ends up holding the pristine loser (or winner) — a revision on one of
 // these 4 known ids that still exactly matches seedIfEmpty()'s pristine
@@ -565,7 +565,7 @@ if (typeof window !== 'undefined') {
 // Exported for tests/sync.test.ts (A16/A32) — takes a fake PouchDB-sync-
 // shaped object (chainable `.on(event, cb)`, optionally with `.push`/
 // `.pull` sub-objects of the same shape) so this can be verified without a
-// real replication (this project has no CI-reachable CouchDB to test a
+// real replication (this project has no CI-reachable sync server to test a
 // genuinely dropped connection against).
 export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
   let settled = false;
@@ -1827,8 +1827,8 @@ export async function resolveConflict(docId: string, keep: 'current' | 'other', 
     const winning = await db.get(docId, { rev: otherRev } as any) as any;
     await db.put({ ...winning, _id: docId, _rev: doc._rev });
   }
-  // Every conflicting revision still needs explicit removal — CouchDB/
-  // PouchDB don't auto-prune losing branches just because a new revision
+  // Every conflicting revision still needs explicit removal —
+  // PouchDB/the sync server don't auto-prune losing branches just because a new revision
   // was written. This includes the adopted "other" revision itself: its
   // content was copied into a fresh revision on top of the current one
   // above, but the old "other" leaf is still its own separate branch and

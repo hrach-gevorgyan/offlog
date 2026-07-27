@@ -17,6 +17,15 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v5.8.0
+
+### New
+- The Windows app's built-in sync engine has been replaced with a much
+  smaller, faster one. The installer and installed app are now roughly
+  10x smaller, and sync starts up noticeably faster. No change to how
+  sync works or looks — pairing, syncing, and conflict resolution all
+  behave the same as before.
+
 ## v5.7.10
 
 No visible changes — internal cleanup only.

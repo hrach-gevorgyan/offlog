@@ -107,9 +107,8 @@ Produce a findings report covering:
     latest installer/APK sizes in the pass narrative every time.
     Unexplained growth (>~10% with no feature to blame) is a finding —
     bloat only ever arrives gradually, and without a written baseline
-    each pass has nothing to compare against. (Baseline at v5.7.4:
-    dist 1.1MB, Windows installer ~52MB, of which ~50MB is the bundled
-    CouchDB/Erlang floor.)
+    each pass has nothing to compare against. (Baseline at v5.7.10 post
+    NyxDB swap: dist 1.1MB, Windows installer ~5MB.)
   - **Optional deeper sweeps** (no repo dependency added — dev-run
     tools only, results are *candidates* requiring judgment, both
     false-positive-prone with Svelte/Tauri): `npx knip` (unused files/
@@ -135,7 +134,7 @@ Produce a findings report covering:
     sync to an unreachable address. A source-only secret scan (grepping
     `.svelte`/`.ts` files, git history) does NOT catch this class of
     bug. Every pass: run `npm run build`, then grep `dist/` for anything
-    from `.env.local` (`grep -r "$(grep VITE_COUCH_PASS ../.env.local |
+    from `.env.local` (`grep -r "$(grep VITE_SYNC_PASS ../.env.local |
     cut -d= -f2)" dist/` or similar) — must come back empty. Fixed via
     gating `config.ts`'s `envUrl`/`envUser`/`envPass` reads on
     `import.meta.env.DEV`; confirm that gate is still intact.

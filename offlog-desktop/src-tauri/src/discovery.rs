@@ -6,9 +6,8 @@
 // Deliberately not broadcasting credentials in the TXT record — mDNS is
 // a plaintext LAN broadcast, and anything in it is visible to every device
 // on the network, trusted or not. Only the sync server's own `uuid`
-// (already public once someone knows the URL, since a CouchDB-protocol
-// server's `GET /`
-// returns it unauthenticated) and the pairing server's port go out —
+// (already public once someone knows the URL, since `GET /` returns it
+// unauthenticated) and the pairing server's port go out —
 // enough for a phone to find the right device and know where to send a
 // pairing code, without ever seeing a secret over the air. See
 // pairing.rs for the actual credential handshake this enables.

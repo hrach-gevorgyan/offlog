@@ -6,16 +6,16 @@ import { writable } from 'svelte/store';
 // Real bug found 2026-07-21 (owner live-testing on Android): Vite loads
 // `.env.local` for EVERY build mode, not just `npm run dev` -- so
 // without the `import.meta.env.DEV` gate below, a developer's own
-// .env.local (real CouchDB URL + credentials, meant purely for local
-// `npm run dev` convenience) got compiled directly into the production
+// .env.local (real sync server URL + credentials, meant purely for
+// local `npm run dev` convenience) got compiled directly into the production
 // `dist/` bundle, and from there into the shipped Android APK and
 // Windows installer. `import.meta.env.DEV` is statically known at
 // build time, so gating on it here means Vite's minifier dead-code-
 // eliminates the literal secret values out of any non-dev build
 // entirely, not just skips using them at runtime.
-const envUrl = import.meta.env.DEV ? (import.meta.env.VITE_COUCH_URL as string | undefined) : undefined;
-const envUser = import.meta.env.DEV ? (import.meta.env.VITE_COUCH_USER as string | undefined) : undefined;
-const envPass = import.meta.env.DEV ? (import.meta.env.VITE_COUCH_PASS as string | undefined) : undefined;
+const envUrl = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_URL as string | undefined) : undefined;
+const envUser = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_USER as string | undefined) : undefined;
+const envPass = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_PASS as string | undefined) : undefined;
 
 // Exported (was module-private) so SettingsPanel.svelte can gate the
 // biometric-unlock note to Android only — this project ships no other
@@ -52,20 +52,18 @@ export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>
 //
 // On plain desktop web, a real default *is* structurally guaranteed
 // correct: this app's architecture is "the PC is the host" (GOAL.md) —
-// a manually-installed CouchDB runs on the same machine as the browser
-// tab, on its standard port — so loopback:5984 is always right there.
+// a manually-installed sync server runs on the same machine as the
+// browser tab, on the standard CouchDB-protocol port — so
+// loopback:5984 is always right there.
 //
 // The Tauri desktop app (Track E) is a THIRD case, easy to conflate
 // with plain desktop web since both are "not Capacitor" — but its
 // embedded NyxDB sidecar (sync_host.rs) binds a random port, chosen
 // fresh per install, never 5984. Falling through to the desktop-web
 // branch above silently pointed the Tauri app at port 5984 regardless
-// — whatever happened to be listening there (a completely unrelated,
-// separately-installed CouchDB, in the case that surfaced this) rather
-// than its own sidecar. Caught live: the Tauri app reported "synced"
-// successfully against the wrong database the whole time, since a
-// real CouchDB really was answering on 5984, just not the right one.
-// No synchronous default is possible here (the real port is only
+// — whatever else happened to be listening there — rather than its own
+// sidecar, reporting "synced" successfully against the wrong database
+// the whole time. No synchronous default is possible here (the real port is only
 // knowable via the async get_sync_info Tauri command) — falls back to
 // '' like Android, resolved by initTauriSyncDefaults() below before
 // the first sync attempt.
@@ -135,21 +133,21 @@ export function setSyncUrl(url: string) {
 // fall back to a real hardcoded password when nothing was configured
 // — present in git history too, a real public-repo blocker on its own,
 // independent of pairing. No real credential lives in source at all now
-// — VITE_COUCH_USER/VITE_COUCH_PASS come from `.env.local` only
+// — VITE_SYNC_USER/VITE_SYNC_PASS come from `.env.local` only
 // (git-ignored, never committed) for local dev against a manually-
-// configured CouchDB; anyone else gets '' until they pair or type
+// configured sync server; anyone else gets '' until they pair or type
 // credentials in manually, same "not configured yet" semantics
 // DEFAULT_SYNC_URL already uses for native/Tauri above — Settings
 // already shows a friendly "Not connected" for an empty URL, and an
 // empty password just fails auth cleanly (401) rather than silently
 // working against a hardcoded default that shouldn't exist.
-const DEFAULT_COUCH_USER = envUser ?? '';
-const DEFAULT_COUCH_PASS = envPass ?? '';
+const DEFAULT_SYNC_USER = envUser ?? '';
+const DEFAULT_SYNC_PASS = envPass ?? '';
 
 export function getSyncCredentials(): { user: string; pass: string } {
   return {
-    user: localStorage.getItem('offlog_sync_user') ?? DEFAULT_COUCH_USER,
-    pass: localStorage.getItem('offlog_sync_pass') ?? DEFAULT_COUCH_PASS,
+    user: localStorage.getItem('offlog_sync_user') ?? DEFAULT_SYNC_USER,
+    pass: localStorage.getItem('offlog_sync_pass') ?? DEFAULT_SYNC_PASS,
   };
 }
 

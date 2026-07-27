@@ -150,21 +150,19 @@ pick per-conflict, rather than attempting an automatic merge.
 
 ## Security & privacy
 
-### Q1. Is "no encryption at rest" an acceptable permanent answer?
-Today: no login, no encryption at rest, unencrypted CouchDB sync traffic
-(over HTTP to a LAN address). This is a common local-first tradeoff, but
-it's currently an *implicit* one. **Given the target audience (a personal
-task manager, not a password manager), is this fine to state as a
-permanent, deliberate tradeoff — or does going public with a real user base
-change the calculus enough to warrant at least optional encryption at rest
-and TLS for sync before v1.0?**
+### Q1. Is "no encryption at rest" an acceptable permanent answer? — RESOLVED, moved to ROADMAP.md's C8 (2026-07-27)
+Decided no, not permanent: the stored sync password should be encrypted
+at rest (a real CodeQL finding, not just theoretical). Sync-transport
+encryption (TLS on the LAN link) is still a deliberate no — see
+ROADMAP.md's Milestone 2 security note for that reasoning, unchanged.
+This question is closed; see ROADMAP.md's C8 for the actual work item.
 
 ---
 
 ## Distribution
 
 ### Q2. Play Store policy risk for a task-manager app with local network requests
-The app makes local network calls (CouchDB sync to a LAN address).
+The app makes local network calls (sync to a LAN address).
 **Does this trigger any Play Store review friction** (Android's
 `CHANGE_NETWORK_STATE`/local network permission prompts introduced in
 recent Android versions, or general policy scrutiny of apps that make

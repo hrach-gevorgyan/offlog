@@ -499,7 +499,7 @@ Requires `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and `RECEIVE_BOOT_COMPLET
 
 ### Web — best-effort, not a substitute for a push server
 
-There is no push backend behind this app, so genuinely-closed-browser notifications aren't possible on web without one (a deliberate scope decision — this app is local-first with an optional self-hosted CouchDB, not a hosted service that could run a push relay). What's implemented instead:
+There is no push backend behind this app, so genuinely-closed-browser notifications aren't possible on web without one (a deliberate scope decision — this app is local-first with an optional self-hosted sync server, not a hosted service that could run a push relay). What's implemented instead:
 
 - **`setTimeout`-based scheduling** while the tab is open (covers the common case of leaving the app open in the background)
 - **Catch-up on load** — `catchUpWeb()` fires notifications immediately for any reminder that became due within the last hour while the app was closed, so a missed reminder isn't silently lost forever, just delayed until next open
@@ -543,24 +543,16 @@ never touches the frontend's own logic.
 **Embedded sync host** (`src-tauri/src/sync_host.rs`): on first launch,
 generates a random port + admin password, persists them
 (`app_data_dir()/sync-host.json`), and spawns
-[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a from-scratch Rust
-reimplementation of CouchDB's replication protocol) as a child process,
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) as a child process,
 configured entirely via env vars (`NYXDB_ADDR`, `NYXDB_DATA`,
 `NYXDB_USER`, `NYXDB_PASSWORD`, `NYXDB_CORS_ORIGINS`) — no config file
-to rewrite, unlike CouchDB's `local.ini`/`local.d`/`vm.args`. A
-non-technical user never sees the word NyxDB either. The binary comes
-from `scripts/fetch-nyxdb-win.ps1` (clones a pinned tag, builds with
-`cargo build --release`, gitignored `vendor/nyxdb-win/`, not committed).
-NyxDB replaced a real bundled CouchDB here on 2026-07-27 (see
-`docs/DECISIONS.md`'s writeup) — same-protocol, same integration shape,
-roughly 8-10x smaller installed/installer footprint. A Windows Job
-Object (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate) keeps the
+to write. A non-technical user never sees the word NyxDB either. The
+binary comes from `scripts/fetch-nyxdb-win.ps1` (clones a pinned tag,
+builds with `cargo build --release`, gitignored `vendor/nyxdb-win/`,
+not committed). A Windows Job Object
+(`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate) keeps the
 process tied to the app's own lifetime on every exit path (normal close,
-crash, force-kill) — carried over from the CouchDB era, where killing
-only the directly-tracked child process reliably left CouchDB's
-`erl.exe` grandchild orphaned; NyxDB is a single process with no
-grandchild to worry about, but the same guarantee is kept for
-consistency and free reliability.
+crash, force-kill).
 
 **Discovery + pairing** (`src-tauri/src/discovery.rs`,
 `src-tauri/src/pairing.rs`, `offlog-app/src/lib/discovery.ts`): the PC

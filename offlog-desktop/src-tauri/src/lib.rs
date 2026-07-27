@@ -105,11 +105,8 @@ struct NyxdbDataDir(std::path::PathBuf);
 // debug build -- so this can never end up reachable in a real release
 // the same way `cfg!(debug_assertions)` already gates the log plugin
 // above. Uses the Job Object (win32job) rather than killing the tracked
-// Child directly, for the same reason the crash-cleanup fix does --
-// carried over from the CouchDB era, where only the Job reliably took
-// down couchdb.cmd's actual erl.exe grandchild; harmless overkill for
-// NyxDB's single process, kept for consistency with the exit handler
-// below.
+// Child directly, for the same reason the crash-cleanup fix does (see
+// the exit handler below) -- consistent, reliable process teardown.
 #[cfg(windows)]
 unsafe extern "system" {
     fn TerminateJobObject(hjob: isize, uexitcode: u32) -> i32;
@@ -199,11 +196,7 @@ pub fn run() {
             log::info!("sync_host: using NyxDB binary {}", nyxdb_binary.display());
             // Same debug/release split as config_filename above, and for the
             // same reason -- a dev run's database must never share a
-            // directory with a real installed build's. Never reuse a
-            // CouchDB-era "couchdb-data" name here even for a fresh
-            // install -- NyxDB's storage engine (sled) can't read
-            // CouchDB's on-disk format, so a stale directory from an old
-            // install would silently fail to open.
+            // directory with a real installed build's.
             let data_dirname = if cfg!(debug_assertions) { "nyxdb-data-dev" } else { "nyxdb-data" };
             let data_dir = app_data_dir.join(data_dirname);
             app.manage(NyxdbDataDir(data_dir.clone()));
@@ -309,20 +302,12 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
-                // Real gap found live during the CouchDB era: a *graceful*
-                // exit (closing the window normally, not a crash/force-kill)
-                // went through this handler and only killed the tracked
-                // Child directly, which used to be couchdb.cmd's cmd.exe
-                // wrapper rather than the erl.exe grandchild actually
-                // holding the port -- left orphaned processes after a
-                // normal app close. The Job-based termination (same call
-                // reset_sync_data uses) is the one path proven reliable
-                // instead of relying on JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-                // triggering from the Job simply going out of scope, which
-                // this same graceful-exit case already showed doesn't
-                // reliably happen in time. Kept for NyxDB even though it's
-                // a single process with no grandchild to worry about --
-                // same reliability guarantee either way.
+                // A *graceful* exit (closing the window normally, not a
+                // crash/force-kill) still needs the Job-based termination
+                // (same call reset_sync_data uses) rather than relying on
+                // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE triggering from the
+                // Job simply going out of scope, which isn't reliably
+                // timely on this path.
                 if let Some(job) = app_handle.try_state::<win32job::Job>() {
                     let _ = unsafe { TerminateJobObject(job.handle(), 0) };
                 }

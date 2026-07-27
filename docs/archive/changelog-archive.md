@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.7.1 | CRITICAL: real dev credentials (`.env.local`) baked into a shipped production build via Vite's always-loaded env, leaking a real password in the public v5.7.0 APK — fixed via `import.meta.env.DEV` gating; plus a batch of onboarding/UTC-date/widget/drag fixes from the same live-testing session | `v5.7.1` |
 | 5.4.4 | Fixed Android Studio's "Activity class ... does not exist" running `release` — unsigned build type, pointed at AGP's debug keystore for local-dev runnability | `v5.4.4` |
 | 5.4.5 | Widget clicks getting stuck on the first-opened view (`closeAll()` made fully synchronous instead of relying on async `popstate`); widget preview size tightened to fill its frame | `v5.4.5` |
 | 5.4.6 | Maintenance pass (13th run): fixed a real `updateTask()` race via a per-task write queue in db.ts; extracted `resetTouchDragState()`; documented the debug-keystore-signed release build-type gate | `v5.4.6` |

@@ -13,6 +13,11 @@ on:
     branches: [main]
     paths: ['offlog-app/**', '.github/workflows/ci.yml']
 
+# Least-privilege default -- this workflow only checks out code and runs
+# build/test/tsc, it never needs to write anything back to the repo.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

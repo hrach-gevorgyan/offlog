@@ -79,8 +79,9 @@ read-everything every time):
 
 **Before proposing "why not just do X differently" — check
 docs/DECISIONS.md first.** Several non-obvious choices (PouchDB-as-UMD-
-global, CouchDB over any hosted backend, soft-delete-only, positional
-"done", no F-Droid/iOS, no paywall ever) have already been debated and
+global, a self-hosted CouchDB-protocol backend over any hosted
+alternative, soft-delete-only, positional "done", no F-Droid/iOS, no
+paywall ever) have already been debated and
 closed with reasons recorded there. Don't re-open them without new
 information.
 
@@ -128,7 +129,8 @@ work needed. Concretely:
 
 A **single-user, local-first** task manager with deliberately **no backend,
 no accounts, no telemetry** — everything works fully offline and the only
-network call is optional CouchDB replication. Full tech stack table in
+network call is optional sync replication (self-hosted NyxDB or another
+CouchDB-protocol server). Full tech stack table in
 [docs/TECH.md](docs/TECH.md).
 
 ## Commands
@@ -149,7 +151,7 @@ below).
 
 **`offlog-desktop/`** is a sibling project (Tauri, Track E — ROADMAP.md
 E1), not a subfolder of `offlog-app/` — it wraps `offlog-app/dist`
-unmodified and embeds a CouchDB sync host. Its own build/architecture
+unmodified and embeds a NyxDB sync host. Its own build/architecture
 detail lives in `docs/TECH.md`'s "Desktop (Tauri)" section; don't
 duplicate it here. `cargo build`/`cargo tauri build`/`cargo tauri dev`
 are fine for the assistant to run (unlike the Android APK build above)
@@ -377,7 +379,7 @@ debug-keystore-signed `release` APK go out as a real release build.
    changes without the owner's explicit confirmation/request**
 9. **After any real test round (not every commit), reset to a fresh
    state** — `offlog-desktop/scripts/reset-dev-env.ps1` for the desktop
-   dev CouchDB/config, plus the browser/Android reset steps in
+   dev NyxDB/config, plus the browser/Android reset steps in
    [docs/TECH.md](docs/TECH.md)'s "Resetting to a fresh state" section.
    Dev state silently accumulates release over release otherwise — E2's
    dev/prod identity-collision bug was found because of exactly that.
@@ -420,5 +422,5 @@ debug-keystore-signed `release` APK go out as a real release build.
   (Last pass = current version, Next pass due = next scheduled point), and
   append the pass's narrative to docs/archive/changelog-archive.md.
 - Maintenance passes never add features and never touch doc schema,
-  PouchDB/CouchDB sync logic, storage format, soft-delete semantics, or
+  PouchDB/NyxDB sync logic, storage format, soft-delete semantics, or
   the positional-"done" rule without explicit owner approval.

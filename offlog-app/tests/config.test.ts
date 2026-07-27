@@ -9,7 +9,7 @@ import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin
 // C7 (ROADMAP.md, mandatory release-gate item): the old fallback was a
 // real hardcoded password baked into source — a public-repo blocker on
 // its own. Not testing "falls back to the env/static default" here on
-// purpose: `VITE_COUCH_USER`/`VITE_COUCH_PASS` come from this dev
+// purpose: `VITE_SYNC_USER`/`VITE_SYNC_PASS` come from this dev
 // machine's own gitignored `.env.local`, so what that fallback actually
 // resolves to is an environment detail, not something this suite should
 // assert a specific value for. The behavior this suite must guard is
