@@ -20,142 +20,36 @@ itself.
 ## Sync topology (raised 2026-07-20, owner's "big idea" scenario review)
 
 Context: today's model is one fixed host (whichever PC runs
-`offlog-desktop`), phones as clients — see DECISIONS.md's Tauri/NyxDB
-entries and TECH.md. These scenarios surfaced real gaps in that model
-that haven't been designed for (not declined, just never needed a design
-yet):
+`offlog-desktop`), phones as clients. Full verification narrative for
+all of these lives in `docs/archive/` git history if ever needed again —
+just the current status here:
 
-### S1. Two PC apps installed on two different machines — who's the host?
-Partially hardened (2026-07-20): `offlog-desktop` still unconditionally
-spawns its own NyxDB sidecar on every launch — there's no "join an
-existing host instead" mode, deliberately not built (a real client-mode
-would be a large feature for a scenario nobody's actually hit, the same
-tradeoff mesh sync's decline already weighed). What shipped instead is
-detection-only: `discovery.rs`'s `browse_for_others()` runs a one-time LAN
-scan at startup, before this instance advertises itself, and surfaces any
-other `_offlog._tcp` host it sees via a new `get_detected_other_hosts`
-Tauri command; Settings → Sync shows a warning if one is found. This
-closes the "silent split-brain, no idea anything's wrong" failure mode
-without touching how sync itself works. **Still open**: no way to
-intentionally run two independent households/offices on one LAN without
-that warning firing (acceptable today, since it's just a heads-up, not a
-block) — and the full "join as client" mode remains a real option if
-actual demand ever shows up.
-
-### S2. Mobile-only for weeks, then install a PC later — does history merge cleanly?
-**Verified live, 2026-07-20**: a real `offlog-desktop` host (fresh
-embedded CouchDB, own auto-seeded defaults) paired against a realistic
-180-doc dataset (112 tasks, 13 projects, 4 spaces, 49 log entries — one
-default space at revision 15, i.e. genuinely heavily edited). Every task,
-project, log entry, and space replicated correctly both ways with zero
-data loss, content verified byte-for-byte identical on both sides.
-
-**Real bug found and fixed in the same session**: `clearLocalSeedBeforeFirstPair()`
-only clears a device's own copy of the 4 fixed default-seed ids
-(`space:unsorted`/`personal`/`work`, `project:draft`) when that device has
-*zero* tasks — so a phone with real accumulated history (exactly this
-scenario) skips the guard, and its independently-created copies of those
-same fixed ids genuinely conflict with the host's own freshly-seeded
-copies. Confirmed live: 3 real conflicts, correctly reported by the app's
-own `scanConflicts()`. Not data loss (CouchDB's deterministic winner
-happened to pick the real content over the throwaway default every time
-in this run, and the existing conflict-resolution UI already handles it),
-but not guaranteed either — a coin-flip that just happened to land right.
-
-Fixed at the root: `scanConflicts()` now auto-resolves conflicts on those
-4 known ids whenever one side is provably still the untouched pristine
-default (matches `seedIfEmpty()`'s exact shape) — discarding a pristine
-loser, or adopting a real edit that lost to a still-pristine "winner."
-Two genuinely different real edits on both sides are still left as a real
-conflict for manual resolution, same as always — this never guesses
-between two real edits, only recognizes "nobody ever touched this one."
-Covered by 2 new tests in `tests/db.test.ts`. **Closed** — no longer an
-open question.
-
-### S3. Two phones, no PC, want a shared workspace — closed (docs, 2026-07-20)
-Per DECISIONS.md's mesh-sync-declined entry, this is intentional, not a
-bug: phone-as-host was explicitly ruled out. Export/Import is the
-intentional answer. Now stated plainly in README.md's Sync section
-("Two phones, no PC, want to share data?") instead of only being
-discoverable by hitting the wall.
-
-### S4. Host machine wiped or replaced — do paired phones silently orphan?
-**Fully closed, verified live (2026-07-20)**: identity (`sync-host.json`)
-and the actual CouchDB data both live under `app_data_dir`. Simulated a
-real uninstall/reinstall — deleted the ~152 MB resource-dir binary bundle
-entirely (the exact thing an NSIS uninstall removes), left `app_data_dir`
-untouched, relaunched. Result: **byte-for-byte identical** `_all_docs`
-response before and after (180 docs, 112 tasks, nothing lost/regenerated),
-and identical identity (same port/password/node name/cookie) — a
-previously-paired phone needs zero re-pairing after a normal reinstall.
-The relaunch happened to exercise `couchdb_dir()`'s own documented
-fallback path (bootstrapping a fresh binary copy when the resource-dir
-copy is missing), an even stronger test than a plain reinstall would be,
-and it still worked correctly. Only a full wipe of the Windows user's
-roaming profile itself (not a normal uninstall/reinstall) can still
-orphan a paired phone.
-
-Separately, a real bug was found and fixed in the same overall review:
-when a phone's stored host `uuid` no longer matches anything on the LAN
-(the host genuinely was wiped, or the phone paired with the wrong
-device), `discovery.ts`'s `findPairedHostAddress()` used to silently
-ignore any non-matching advertisement and just time out to `null` forever
-— `watchForStaleHost()` did nothing further, no user-facing signal at
-all. Now `reresolveHost()` surfaces a `staleHostAlert` store the moment it
-sees a *different* Offlog host but can't find the paired one, shown as an
-actionable "re-pair?" tooltip/badge on the Sidebar sync button instead of
-the generic "cannot reach sync server" message.
-
-### S5. Intentional host migration (user buys a new PC) — closed (docs, 2026-07-20)
-No guided wizard built — S4's live reinstall test already confirmed
-identity + data both live in one copyable folder (`app_data_dir`), so a
-manual copy before first launch on the new machine is enough; no phone
-needs re-pairing afterward. Documented in README.md's Sync section
-("Moving your PC to a new computer?"). A guided in-app migration flow
-remains a possible future nicety, not a gap — revisit only if manual
-copying turns out to be real friction for an actual user.
-
-### S6. Host offline for a long stretch while 3+ phones diverge
-**Verified live (2026-07-20)**: 3 independent, origin-isolated instances
-of the real app (own IndexedDB/localStorage each, same code paths a real
-device uses — standing in for hardware not available to test with
-directly) shared a baseline task against one real `offlog-desktop` host,
-then were taken genuinely offline (`cancelSync()`, confirmed via the host
-never seeing the pending writes) and each edited the *same* task
-differently before reconnecting together. Result: CouchDB correctly
-tracked all 3 branches — one deterministic winner, both losing revisions
-preserved in `_conflicts`, zero data loss or corruption at the storage
-layer, `scanConflicts()` correctly reported the doc as conflicted.
-
-**Confirmed a real, narrow, already-documented limitation** (not a new
-bug — `getConflicts()`'s own code comment already flags this): it only
-surfaces the *first* losing revision for review, but `resolveConflict()`
-removes *all* losing revisions once applied. In a genuine 3-way conflict,
-resolving via the normal Settings flow adopts one edit and silently
-discards the *other* device's edit too, without it ever being shown.
-`repairDatabase()`'s blunter "keep current, discard the rest" fallback
-remains available and behaves correctly (verified: resolution completed
-cleanly, no crash, fully consistent doc afterward).
-
-**Closed as verified, not a fix candidate**: DECISIONS.md's already-declined
-3-way-merge entry covers exactly why a smarter N-way UI isn't worth
-building (no ancestor available from replication, and genuinely rare for
-a personal/small-group tool — this requires 3+ devices editing the exact
-same task while ALL simultaneously offline from each other). If this
-ever becomes a real complaint, the fix would be extending `getConflicts()`
-to list every losing revision (not just the first) and letting the user
-pick per-conflict, rather than attempting an automatic merge.
-
----
-
-## Security & privacy
-
-### Q1. Is "no encryption at rest" an acceptable permanent answer? — RESOLVED, moved to ROADMAP.md's C8 (2026-07-27)
-Decided no, not permanent: the stored sync password should be encrypted
-at rest (a real CodeQL finding, not just theoretical). Sync-transport
-encryption (TLS on the LAN link) is still a deliberate no — see
-ROADMAP.md's Milestone 2 security note for that reasoning, unchanged.
-This question is closed; see ROADMAP.md's C8 for the actual work item.
+- **S1. Two PC hosts on one LAN** — still open. Detection-only warning
+  shipped (`discovery.rs`'s `browse_for_others()` + Settings → Sync
+  warning); no "join as client" mode built, same tradeoff mesh sync's
+  decline already weighed. Revisit only on real demand.
+- **S2. Mobile-only for weeks, then a PC pairs later** — closed, verified
+  live with a realistic heavily-edited dataset, zero data loss. Found and
+  fixed a real bug in the same pass: `scanConflicts()` now auto-resolves
+  conflicts on the 4 fixed default-seed ids when one side is provably
+  still pristine, instead of leaving a coin-flip winner.
+- **S3. Two phones, no PC** — closed, intentional (mesh sync declined).
+  Export/Import is the answer; documented in README's Sync section.
+- **S4. Host machine wiped/replaced** — closed, verified live: identity +
+  data both live under `app_data_dir`, survive a full uninstall/reinstall
+  byte-for-byte, no re-pairing needed. Also fixed: a phone whose paired
+  host genuinely vanished used to silently time out forever — now shows
+  an actionable "re-pair?" badge (`discovery.ts`'s `reresolveHost()`).
+- **S5. Intentional host migration (new PC)** — closed, same answer as
+  S4 (copy `app_data_dir`, no wizard needed). Documented in README.
+- **S6. Host offline while 3+ phones diverge** — closed, verified live:
+  the sync protocol correctly tracks all branches, zero data loss. One
+  real, still-current limitation confirmed (not a new bug): a genuine
+  3-way conflict only surfaces the first losing revision for review, but
+  resolving discards all losing revisions — the other device's edit is
+  silently lost too. Not worth a smarter N-way UI for how rare this is
+  (see DECISIONS.md's 3-way-merge entry); if it ever becomes a real
+  complaint, extend `getConflicts()` to list every losing revision.
 
 ---
 

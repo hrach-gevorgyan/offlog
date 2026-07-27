@@ -151,18 +151,11 @@ src/
     TimePicker.svelte           Themed time picker, replaces native <input type="time">
     ConfirmDialog.svelte        Themed confirm() replacement, driven by confirm.ts
     NamePrompt.svelte           First-run "name this device" prompt
-    AppLock.svelte              PIN lock screen (B54) — mounted at App.svelte's root,
-                                 gated by config.ts's isAppLockEnabled(). Deliberately
-                                 does NOT use modalStack.ts's closeOnBack() (Escape must
-                                 not dismiss a lock screen); App.svelte makes the rest of
-                                 the app `inert` (not just visually covered) while locked.
-                                 "Forgot PIN" requires the one-time recovery code shown at
-                                 PIN setup (config.ts's verifyAppLockRecoveryCode()), not a
-                                 confirm-and-clear button — see DECISIONS.md for why.
-                                 Biometric (config.ts's isAppLockBiometricEnabled()) is an
-                                 opt-in fast path alongside the PIN, Android only, fires
-                                 automatically on mount — see DECISIONS.md for why it never
-                                 replaces the PIN
+    AppLock.svelte              PIN lock screen — mounted at App.svelte's root, gated by
+                                 config.ts's isAppLockEnabled(). Doesn't use modalStack.ts's
+                                 closeOnBack() (Escape must not dismiss a lock screen);
+                                 App.svelte makes the rest of the app `inert` while locked.
+                                 Recovery and biometric rationale: see DECISIONS.md
 ```
 
 ---
@@ -191,17 +184,13 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 
 ---
 
-## Performance & Reliability (v2.9.0)
-
-A pre-3.0 hardening pass — no new user-facing features, just making the existing ones fast and resilient at scale.
+## Performance & Reliability
 
 ### Real database indexing
 
-`pouchdb-find` is a listed dependency, but the global `PouchDB` object (loaded as a UMD script in `index.html`, core-only) never actually had it registered — `db.createIndex`/`db.find` didn't exist on it despite the type references. `db.ts` now imports `pouchdb-find` as an ES module and calls `PouchDB.plugin(PouchDBFind)` against the global constructor before first use.
+`pouchdb-find` is registered as an ES module plugin (`PouchDB.plugin(PouchDBFind)`) against the UMD global before first use. `getTasksForProject()` — the hottest read, called on every project switch/reload — queries through a real Mango index on `['type', 'project_id']` via `db.find()` (~9x faster than a full scan at 5,000 tasks) instead of scanning every task and filtering in JS.
 
-`getTasksForProject()` — the single hottest read in the app, called on every project switch and every reload — now queries through a real Mango index on `['type', 'project_id']` via `db.find()` instead of scanning every task in the database and filtering in JS. Measured on an isolated 5,000-task synthetic database (never touching the real synced data): **~831ms per full-scan-and-filter query vs. ~90ms via the indexed `find()`** for a single project's tasks — roughly 9x faster, and the gap widens the larger the total task count grows, since the old approach re-scanned *every* task in the database on *every* call regardless of which project was asked for.
-
-**Bug caught during that same benchmark**: `pouchdb-find`'s `db.find()` silently defaults to a **25-result limit** when none is specified. Without an explicit `limit: 100000` in the query, any project past 25 tasks would have had its later tasks silently vanish from the board. Caught by comparing result counts against the old full-scan implementation during benchmarking — not from any user report — before it shipped.
+**`db.find()` silently defaults to a 25-result limit** when none is specified — always pass an explicit `limit`. This has bitten us before (see CLAUDE.md's db.ts invariants).
 
 ### In-memory task cache
 
@@ -234,54 +223,19 @@ New in `db.ts`: `checkIntegrity()` scans every document and reports:
 
 Both are exposed as **Check Database** / **Repair Issues** buttons in a new Maintenance section of Settings (`SettingsPanel.svelte`) — report only by default, repair requires an explicit confirm.
 
-### Automatic local backup (B62, `autoBackup.ts`)
+### Automatic local backup (`autoBackup.ts`)
 
-Settings' own copy is deliberately one short line (owner feedback,
-2026-07-23 — a plain-language app menu isn't the place for a technical
-disclosure); the full detail lives here instead.
-
-- **When**: checked once on every app start (`store.ts`'s `init()`,
-  fire-and-forget); actually runs at most every ~20h (`isBackupDue()`),
-  not a strict 24h, so an app opened a bit earlier each day doesn't
-  keep drifting later against a hard boundary.
-- **What**: the exact same full-database JSON shape as the manual
-  "Back up → Everything" export in Settings (`db.allDocs({include_docs:true})`,
-  filtered to non-`_`-prefixed ids).
-- **Where**:
-  - Desktop (Tauri): `appDataDir()/auto-backups/` — resolves to
-    `%APPDATA%\com.offlog.app\auto-backups\` on Windows. A real,
-    browsable folder (`@tauri-apps/plugin-fs`'s `writeTextFile`/`mkdir`/
-    `readDir`/`remove`).
-  - Android (Capacitor): `Directory.Data` (`@capacitor/filesystem`) —
-    the app's private internal storage, not exposed to the user or
-    other apps without root/a file manager granted special access.
-  - Web: no-op entirely — no reliable silent local-file API exists in
-    a browser, and the web build is a dev/test surface anyway (see
-    README's "Which build is 'the app'" section).
-- **Retention**: newest 7 kept, older deleted on every successful run
-  (`filesToDelete()` — sorts filenames ascending, since the ISO
-  timestamp embedded in each name sorts chronologically, and returns
-  everything past the newest `KEEP_COUNT`).
-- **Safety model, stated plainly**: these are plain, unencrypted JSON,
-  stored **on that one device only** — never synced, uploaded, or
-  copied anywhere else. Losing/wiping/uninstalling from that device
-  loses its automatic backups with it. This is a safety net against
-  *local* corruption (a bad IndexedDB write, a storage-clear mistake),
-  not a substitute for the manual "Back up" button's file-you-choose-
-  where-it-goes export if an off-device copy is what's actually needed.
-- **Failure handling**: any error (permission denied, disk full, plugin
-  unavailable) is caught and logged (`console.warn`), never surfaced to
-  the user — the timestamp in `localStorage`'s `offlog_auto_backup_last_run`
-  is only updated on success, so a failed run retries on the next
-  app launch rather than waiting out the full interval.
-- **Toggle**: `offlog_auto_backup_enabled` in `localStorage`, on by
-  default (pure safety net, no downside) — surfaced in Settings →
-  Backup & Storage.
-- Pure logic (`isBackupDue()`, `filesToDelete()`) has direct unit tests
-  (`tests/autoBackup.test.ts`); the actual `Filesystem`/`plugin-fs`
-  calls aren't meaningfully mockable in Vitest and were verified live
-  in the browser preview instead (toggle persists, correct platform-
-  specific copy shown).
+- **When**: checked once per app start, runs at most every ~20h (`isBackupDue()`).
+- **What**: same full-database JSON shape as the manual "Back up → Everything" export.
+- **Where**: Desktop `appDataDir()/auto-backups/`; Android `Directory.Data`
+  (private app storage); web is a no-op (no reliable silent local-file API).
+- **Retention**: newest 7 kept (`filesToDelete()`), older deleted each successful run.
+- **Safety model**: plain unencrypted JSON, on-device only — never synced or
+  uploaded. A local-corruption safety net, not a substitute for the manual export.
+- **Failure handling**: caught and logged, never surfaced to the user;
+  `localStorage`'s `offlog_auto_backup_last_run` only updates on success, so a
+  failed run retries next launch.
+- **Toggle**: `offlog_auto_backup_enabled` in `localStorage`, on by default.
 
 ---
 
@@ -302,7 +256,7 @@ All date-formatting and filter logic is centralized here — no duplication acro
 
 ## Testing & Dev Workflows
 
-### CI & release automation (GitHub Actions, added 2026-07-22)
+### CI & release automation (GitHub Actions)
 
 Three workflows in `.github/workflows/`:
 
@@ -325,23 +279,15 @@ Three workflows in `.github/workflows/`:
 
 ### Generating test/dummy data
 
-**For a full realistic scenario** (fresh project setup, or whenever you want
-one command to populate everything at once): `offlog-app/scripts/seed-scenario.js`
-is a ready-made, paste-into-DevTools-console script covering every major
-feature at once — 4 spaces, ~11 projects (1 archived, 2 deliberately named
-"Draft" in different spaces to exercise B60's duplicate-name hint), ~95
-active tasks (15 archived, 5 pinned, ~8 with reminders, ~4 recurring) spread
-across random statuses/tags/priorities/deadlines, 6 soft-deleted (Trash)
-tasks, global custom fields with values on a subset of tasks, a handful of
-checklists (one with a deliberate duplicate item) and notes (one deliberate
-near-duplicate pair), and a real changelog/history trail (Time Travel) for
-everything it creates — since it calls the app's own `db.ts` functions
-(`createTask`/`updateTask`/etc.) rather than writing raw PouchDB docs, so it
-can't silently drift out of sync with `db.ts`'s own invariants the way
-hand-rolled docs could. Usage (and the `WIPE_EXISTING` reset option) is
-documented in the file's own header comment. Titles/tags read as a genuine
-lived-in workspace, not tagged filler — see the header comment for how to
-reset if you need a clean slate instead of layering another batch on top.
+**For a full realistic scenario** (fresh project setup, or one command to
+populate everything at once): `offlog-app/scripts/seed-scenario.js` is a
+ready-made, paste-into-DevTools-console script covering every major feature
+at once (spaces, projects, tasks across every status/tag/priority/deadline,
+archived/pinned/recurring tasks, Trash, custom fields, checklists, notes,
+real changelog/history). It calls the app's own `db.ts` functions rather
+than writing raw PouchDB docs, so it can't drift out of sync with `db.ts`'s
+own invariants. Usage and the `WIPE_EXISTING` reset option are documented
+in the file's own header comment.
 
 **For anything smaller/more targeted**, write directly against the PouchDB
 instance in the browser (`new PouchDB('offlog')` — it's a global, reachable
@@ -355,22 +301,16 @@ first — CLAUDE.md's `column_id` invariant applies here too: assign
 ### Resetting to a fresh state (do this after every test round)
 
 Dev/test state accumulates silently release over release if it's never
-torn down — E2's dev/prod identity-collision bug (ROADMAP.md) was
-literally found *because of* exactly this kind of buildup. Run a reset
-before any "does this look right for a brand-new user" check, not just
-when something looks broken:
+torn down. Run a reset before any "does this look right for a brand-new
+user" check, not just when something looks broken:
 
 - **Desktop (`offlog-desktop`)**: `powershell -ExecutionPolicy Bypass -File
   offlog-desktop/scripts/reset-dev-env.ps1` — wipes the debug build's
   NyxDB data and its `sync-host.dev.json` identity. **`-IncludeRelease`
-  wipes the real installed app's own server-side data and identity too**
-  — real bug found live (2026-07-27, NyxDB test-matrix session): ran it
-  reflexively as part of a routine "clean up after testing" pass and
-  wiped a genuinely live, working paired session's data without
-  checking first. Only pass `-IncludeRelease` when you've explicitly
-  confirmed with the owner that the current release install's data is
-  disposable — never as part of a default/routine cleanup step. Never
-  touches `vendor/nyxdb-win/` itself (the pristine built binary).
+  wipes the real installed app's own server-side data and identity too —
+  only pass it when explicitly confirmed disposable, never as a default
+  cleanup step** (see DECISIONS.md for the incident this rule comes from).
+  Never touches `vendor/nyxdb-win/` itself (the pristine built binary).
 - **Web/browser**: in DevTools console, `new PouchDB('offlog').destroy()
   .then(() => localStorage.clear())`, then reload — this is also the
   right way to reproduce a genuine first-run (localStorage's `SEEDED_KEY`
@@ -408,7 +348,7 @@ from a `beforeEach` that wipes every doc, not from a fresh instance.
 4. The app works fully offline; sync resumes automatically on reconnect
 5. Sync URL is set in the sidebar settings panel and stored in `localStorage`; on the Tauri desktop app it's resolved automatically instead — see "Desktop (Tauri)" below for why that default differs from plain desktop web
 
-### Sync reliability (v2.8.0)
+### Sync reliability
 
 `syncState` in `db.ts` tracks more than just idle/syncing/error:
 
@@ -420,7 +360,7 @@ from a `beforeEach` that wipes every doc, not from a fresh instance.
 
 ---
 
-## Theme System — Brand Colors (v3.0)
+## Theme System — Brand Colors
 
 All colors are CSS custom properties in `app.css` — no hardcoded colors anywhere else in the app, including Android native theming:
 
@@ -454,16 +394,9 @@ The same accent (`#6366F1`) drives the `<meta name="theme-color">` in `index.htm
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
 
-**Gotcha (historical)**: `SettingsPanel.svelte`'s `.settings-panel` (a
-standalone panel since the v4.26.0 redesign — it used to live inside
-`Sidebar.svelte`) is a DOM **sibling** of the sidebar, not a descendant.
-Before 2026-07-17 this meant it read page-level tokens while the sidebar
-had its own pinned-dark overrides — worth documenting then, since a fix
-attempt could easily have gone the wrong direction. Now that the sidebar
-also just follows the page theme, both surfaces behave the same way and
-this is no longer a special case — noted here only so the DOM
-relationship itself (sibling, not descendant) isn't rediscovered as a
-surprise later.
+**Note**: `SettingsPanel.svelte`'s `.settings-panel` is a DOM **sibling**
+of the sidebar, not a descendant — both read page-level theme tokens the
+same way, but keep this in mind before assuming inherited styles.
 
 ---
 
@@ -473,7 +406,7 @@ The last active view is saved to `localStorage` key `offlog_view` as `{ view: 'd
 
 ---
 
-## Notifications (v2.8.0)
+## Notifications
 
 `src/lib/notifications.ts` is a single module handling both platforms, kept deliberately decoupled from `db.ts` in one direction only (`notifications.ts` imports `db.ts` for the reschedule query; `db.ts` never imports `notifications.ts`, avoiding any circular-import risk).
 
@@ -585,31 +518,19 @@ powershell -ExecutionPolicy Bypass -File scripts/fetch-nyxdb-win.ps1   # once, o
 cargo tauri build   # → src-tauri/target/release/bundle/nsis/*.exe
 ```
 
-**Content Security Policy** (`tauri.conf.json`'s `app.security.csp`, enabled
-2026-07-17, previously `null`): `script-src 'self'` (the one inline
-`<script>` `index.html` used to have, for pre-paint dark-mode flash
-prevention, moved to `public/theme-init.js` so it stays same-origin
-instead of needing `'unsafe-inline'`); `style-src 'self' 'unsafe-inline'`
-(`'unsafe-inline'` is required — several components set dynamic
-`style="background:{color}"` attributes for per-space/per-priority
-colors, e.g. `DashboardView.svelte`'s `.prio-bar`, and CSP has no way to
-allow only those); `connect-src 'self' http://*:*` (required, not just a
-convenience — sync/pairing targets are LAN addresses/ports discovered at
-runtime via mDNS or the embedded sidecar's random port; CSP source lists
-don't support CIDR ranges, so there's no way to scope the host tighter
-than "any host over plain HTTP" without breaking the LAN-discovery model
-the app is built around. **The `:*` matters and was originally missing**:
-a bare `http://*` in CSP means "any host, default port (80) only" — it
-does not imply "any port." Since every real sync target uses a
-non-default port, that first version silently broke all sync while
-looking otherwise correct, caught by a live post-enable click-through,
-not by any static check); `img-src 'self'`,
-`font-src 'self'` (self-hosted fonts only, no CDN); `object-src 'none'`,
-`frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. Net
-effect: blocks loading/executing any remote script, blocks embedding in
-a frame, blocks form submission or `<base>` hijacking to another origin
-— contained even if something managed to inject markup, while still
-allowing the app's genuine dynamic behavior (LAN sync, per-item colors).
+**Content Security Policy** (`tauri.conf.json`'s `app.security.csp`):
+`script-src 'self'` (pre-paint dark-mode init lives in same-origin
+`public/theme-init.js`, no `'unsafe-inline'` needed); `style-src 'self'
+'unsafe-inline'` (dynamic `style="background:{color}"` attributes for
+per-space/per-priority colors need this); `connect-src 'self'
+http://*:*` (sync/pairing targets are LAN addresses/ports discovered at
+runtime — **the `:*` is required**, a bare `http://*` only means
+default-port-80, and every real sync target uses a non-default port);
+`img-src 'self'`, `font-src 'self'` (self-hosted only, no CDN);
+`object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`,
+`form-action 'self'`. Net effect: blocks remote script execution, frame
+embedding, and form/`<base>` hijacking, while allowing the app's genuine
+dynamic behavior (LAN sync, per-item colors).
 
 ---
 

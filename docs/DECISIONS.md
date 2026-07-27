@@ -47,8 +47,8 @@ awkward, not an oversight: it was the working setup before the project's
 build tooling matured, and switching to a pure ESM PouchDB import now
 would mean re-verifying every corner of sync/replication behavior against
 a different bundling path for no functional gain. The ~51 KB duplication
-this causes (documented in TECH.md's v3.4.0 entry, A8) is a known, accepted
-cost — not something worth an architectural change to fix.
+this causes is a known, accepted cost — not something worth an
+architectural change to fix.
 
 ### Why a CouchDB-protocol server (not Firebase/Supabase/a custom backend) for optional sync
 A CouchDB-protocol server speaks PouchDB's native replication protocol
@@ -679,3 +679,12 @@ mode sustainable (no customers, no obligations, the owner can step
 away indefinitely and nothing breaks). Marketing/promotion beyond the
 Play Store listing and a landing page was explicitly cut: posting
 about Offlog anywhere is a mood, not a roadmap item.
+
+### `reset-dev-env.ps1 -IncludeRelease` is a real data-loss risk, not a routine flag (2026-07-27)
+Found live during the NyxDB test-matrix session: ran `-IncludeRelease` as
+part of a reflexive "clean up after testing" pass and wiped a genuinely
+live, working paired session's real data without checking first. The
+flag is only for a deliberately confirmed "this release install's data
+is disposable" case — never a default/routine step, even right after a
+test round. TECH.md's own reset-workflow section states the rule; this
+entry is the incident it comes from.

@@ -38,26 +38,11 @@ reasonably ask "why not just—"), [docs/ROADMAP.md](docs/ROADMAP.md)
 architecture), and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) going
 back to the first release.
 
-**How it's built, in plain terms.** Offlog runs on one shared codebase —
-there's no separate "web team" and "mobile team," it's the exact same
-Svelte app wrapped three different ways (browser, Android via Capacitor,
-Windows via Tauri). Your data lives in a local database on each device
-(PouchDB) and, when sync is turned on, two devices exchange changes
-directly over a CouchDB-protocol replication link. Your phone finds your PC
-automatically on the same Wi-Fi using mDNS (the same kind of "no typed IP
-address" discovery your printer or Chromecast uses) — you tap "Find my
-computer," confirm a 6-digit code shown on the PC once, and the two are
-paired. No cloud service sits in the middle at any point.
-
-**Built in about a month, solo, with AI as the primary developer.** This
-project started as a personal tool and as a demonstration of what one
-person can build with Claude doing the hands-on-keyboard engineering
-while every idea, UI decision, priority call, and round of testing came
-from a single owner acting as product manager and QA. The codebase is
-documented specifically so that setup works for anyone forking it: point
-an AI assistant at the repo, have it read [CLAUDE.md](CLAUDE.md) and
-`docs/`, and ask it to add a feature or change something to fit your own
-vision — the same workflow this project was built with.
+One shared codebase — the same Svelte app wrapped three ways (browser,
+Android, Windows) — with each device keeping its own local database and
+syncing peer-to-peer over your own Wi-Fi when you turn it on. No cloud
+service ever sits in the middle. See [docs/TECH.md](docs/TECH.md) for
+exactly how that works.
 
 ## Features
 
@@ -205,59 +190,27 @@ No paid tier, no feature ever held back behind one — see
 
 Download the latest Windows installer and Android APK from
 [GitHub Releases](https://github.com/hrach-gevorgyan/offlog/releases).
+Your OS will warn you before installing (unsigned app, not from Google
+Play) — that's expected, not a red flag on this app's code; getting real
+signing/publishing set up is a tracked goal (see
+[docs/ROADMAP.md](docs/ROADMAP.md)'s Track C). Just make sure you're
+downloading from this repo's own Releases page, not a mirror.
 
-**Your OS will warn you before installing — this is expected, not a red
-flag specific to this app.** Windows SmartScreen and Android's "unknown
-sources" prompt appear on *any* app that isn't signed with a paid
-certificate from a recognized authority (Windows) or distributed through
-Google Play (Android) — they're not flagging a problem found in this
-app's code, just the absence of a costly credential most solo/hobby
-projects don't have yet. This is a real, ongoing cost, not a one-time
-checkbox: a Windows code-signing certificate runs roughly $100–400/year
-from a commercial CA, and Google Play's one-time $25 developer fee still
-requires an ongoing publishing/review process on Google's side. Getting
-both is tracked as a real goal (see
-[docs/ROADMAP.md](docs/ROADMAP.md)'s Track C), not abandoned — until
-then, expect the warning, and verify you're downloading from this
-repository's own Releases page (not a third-party mirror) before
-clicking through it.
+**Windows** is the intended app for day-to-day use — bundles its own
+sync server, nothing else to install. **Android** works the same way via
+side-loaded APK today, Play Store once published. The **web build**
+(`npm run dev`) is a dev/test surface, not the primary way to use the
+app. Auto-update for desktop/Android is still being wired up (tracked in
+ROADMAP.md).
 
-## Which build is "the app" for you
+## Built like a real product, not a prototype
 
-- **Windows desktop app** is the intended app for a normal, non-technical
-  person — install it, it bundles its own sync server, no setup beyond
-  opening it. This is the one meant to eventually have a signed,
-  one-click installer; that's not funded yet (this may end up being a
-  project very few people ever look at, and that's fine — it's built for
-  real use either way, not for an audience).
-- **Android app** is the same idea for a phone — a normal app once it's
-  on Google Play (planned, not live yet); side-loading the APK works
-  today for anyone comfortable with that.
-- **Web build** (`npm run dev`) is mainly a development/testing surface
-  at this point — useful for contributing or trying the app in a
-  browser, not the primary way it's meant to be used day to day.
-- **Update mechanism** for the desktop and Android apps still needs
-  proper wiring (an auto-updater is scaffolded but unconfigured on
-  desktop; Android will get normal Play Store update behavior once it's
-  published) — tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
-
-## Built and QA'd like a real product, not a prototype
-
-Every release goes through the same checklist before it ships: a clean
-production build with **zero compiler warnings**, a clean type check, a
-full automated test suite, and manual verification in both light and
-dark mode. CI runs this on every push, and tagging a version
-automatically builds and drafts a GitHub Release with both the Windows
-installer and Android APK attached — no manual local build step. On top
-of that, a dedicated maintenance pass runs every few releases
-specifically to catch dead code, missing error handling, accessibility
-regressions, and security gaps — logged in
-[docs/MAINTENANCE.md](docs/MAINTENANCE.md). Before the codebase's public release,
-it went through a full security audit and a complete git-history
-credential purge (see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public
-release" section for exactly what was found and how it was fixed) — this
-project takes "stable and safe to actually rely on" as a hard
-requirement, not an afterthought.
+Every release: zero-warning production build, clean type check, full
+test suite, manual light/dark verification — enforced by CI, with a
+maintenance pass every few releases catching dead code and regressions
+(see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)). Went through a full
+security audit and git-history credential purge before going public
+(see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public release" section).
 
 ## Getting Started
 
@@ -326,7 +279,13 @@ Everything beyond this pitch lives in [docs/](docs/):
 
 ## Contributing
 
-This was built solo, so there's a real, honest wishlist of help that
+Built in about a month, solo, with Claude doing the hands-on-keyboard
+engineering while every idea, UI decision, and round of testing came
+from a single owner acting as product manager and QA — the codebase is
+documented (`CLAUDE.md` + `docs/`) specifically so an AI assistant (or a
+human) can pick it up the same way for a fork.
+
+There's a real, honest wishlist of help that
 would move it forward — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup
 and PR mechanics, but in short, the most valuable contributions right
 now are:
