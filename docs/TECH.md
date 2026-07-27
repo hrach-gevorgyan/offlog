@@ -362,11 +362,15 @@ when something looks broken:
 
 - **Desktop (`offlog-desktop`)**: `powershell -ExecutionPolicy Bypass -File
   offlog-desktop/scripts/reset-dev-env.ps1` — wipes the debug build's
-  NyxDB data and its `sync-host.dev.json` identity. Add
-  `-IncludeRelease` only if you're deliberately testing a from-scratch
-  real install and are OK losing its local config too. Never touches
-  `vendor/nyxdb-win/` itself (the pristine built binary) or any real
-  synced data.
+  NyxDB data and its `sync-host.dev.json` identity. **`-IncludeRelease`
+  wipes the real installed app's own server-side data and identity too**
+  — real bug found live (2026-07-27, NyxDB test-matrix session): ran it
+  reflexively as part of a routine "clean up after testing" pass and
+  wiped a genuinely live, working paired session's data without
+  checking first. Only pass `-IncludeRelease` when you've explicitly
+  confirmed with the owner that the current release install's data is
+  disposable — never as part of a default/routine cleanup step. Never
+  touches `vendor/nyxdb-win/` itself (the pristine built binary).
 - **Web/browser**: in DevTools console, `new PouchDB('offlog').destroy()
   .then(() => localStorage.clear())`, then reload — this is also the
   right way to reproduce a genuine first-run (localStorage's `SEEDED_KEY`
