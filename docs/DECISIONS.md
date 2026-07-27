@@ -193,6 +193,27 @@ is what made round one's diagnosis so slow). Full implementation plan
 and file-by-file change list: see the git history around this entry's
 commit on the `nyxdb-sync` branch.
 
+**Real bug found and fixed (2026-07-27, same day, NyxDB v0.1.4):**
+real-device pairing still failed with a generic "There was a problem
+getting docs" error — root-caused this time (permanent release logging
++ WebView2 remote-debugging via CDP made this possible) to NyxDB's
+`_bulk_get` returning `{"reason":"deleted"}` for documents that were
+demonstrably live, specifically `offlog-app`'s four fixed-ID default
+seed documents (`space:unsorted`/`personal`/`work`, `project:draft`) —
+meaning **every real first-time pairing** between two devices hit this,
+since both independently create the same fixed IDs before ever syncing.
+A concrete lead (affected docs' `seq` jumping to ~2,000,000 while
+everything else stayed sequential) was written up as a precise repro
+and handed to the owner to fix in the NyxDB repo directly (this repo's
+standing convention — integration, not maintaining a fork). Fixed same
+day in NyxDB v0.1.4 (`_bulk_get` was returning the wrong error shape for
+a tombstoned/losing-conflict-branch revision; real CouchDB never uses
+that shape there). Verified fixed: re-ran the exact two-independent-
+devices conflict scenario, both in isolation and through the real app
+via CDP, `ok: true` on both push and pull with zero errors. `vendor/
+nyxdb-win/nyxdb.exe` and `fetch-nyxdb-win.ps1`'s pinned tag bumped to
+v0.1.4.
+
 ### Why automatic 3-way conflict merge was explored, then declined (2026-07-18)
 Prompted by reading Neighbourhoodie's CouchDB/Svelte blog series (a
 real-time multi-user kanban board built on the same PouchDB/CouchDB
