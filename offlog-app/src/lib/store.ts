@@ -82,7 +82,7 @@ export async function init() {
   scanConflicts().catch(() => {});
   watchForStaleHost();
   // Desktop-only (see config.ts's own comment) -- the Rust-side scan
-  // finishes a few seconds after CouchDB itself boots, so this is polled
+  // finishes a few seconds after NyxDB itself boots, so this is polled
   // rather than checked once immediately after startSync() above.
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 4000);
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 10000);

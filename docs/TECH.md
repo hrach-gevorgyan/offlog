@@ -21,9 +21,9 @@ since this file doesn't change every release.
 | UI Framework | **Svelte 5** + TypeScript | Reactive without virtual DOM, minimal bundle size |
 | Build Tool | **Vite 8** | Instant HMR, fast production builds |
 | Local Database | **PouchDB 9** | IndexedDB in browser, speaks CouchDB replication protocol |
-| Sync Server | **CouchDB** | Self-hosted, optional. App works fully offline without it |
+| Sync Server | **CouchDB-protocol-compatible** (real CouchDB, or **NyxDB**) | Self-hosted, optional. App works fully offline without it |
 | Mobile Wrapper | **Capacitor 7** | Wraps Vite build into a WebView-based Android APK |
-| Desktop Wrapper | **Tauri 2** (`offlog-desktop/`) | Wraps the same Vite build into a Windows app; embeds a CouchDB sync host — see "Desktop (Tauri)" below |
+| Desktop Wrapper | **Tauri 2** (`offlog-desktop/`) | Wraps the same Vite build into a Windows app; embeds a NyxDB sync host — see "Desktop (Tauri)" below |
 | Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
 | Biometric unlock | **capacitor-native-biometric** | Android-only, opt-in fast path alongside the PIN lock — see AppLock.svelte below |
 | Privacy screen | **@capacitor/privacy-screen** | Opt-in (off by default — blocks screenshots too), dims the app-switcher preview via `config.ts`'s `syncPrivacyScreen()` |
@@ -67,11 +67,12 @@ since this file doesn't change every release.
 │  · All CRUD operations for spaces/projects/tasks   │
 │  · Changelog writer (every mutation → log: doc)   │
 │  · Undo buffer: last 10 deleted tasks in-memory   │
-│  · CouchDB live sync (optional)                   │
+│  · CouchDB-protocol live sync (optional)           │
 └────────────────────┬──────────────────────────────┘
                      │  replication protocol
 ┌────────────────────▼──────────────────────────────┐
-│          CouchDB  (self-hosted, optional)           │
+│  CouchDB-protocol sync server (self-hosted, optional) │
+│  Real CouchDB, or NyxDB (offlog-desktop's embedded one) │
 │  Single database: offlog                           │
 │  All devices sync through one node                 │
 └───────────────────────────────────────────────────┘
@@ -87,7 +88,7 @@ All paths below are relative to `offlog-app/` (the app source root):
 src/
   App.svelte              Root: view routing, keyboard shortcuts, undo toast stack
   app.css                 Global CSS, all custom property tokens (light + dark)
-  config.ts               CouchDB URL + credentials (from .env.local)
+  config.ts               Sync server URL + credentials (from .env.local)
   main.ts                 Svelte mount entry point
 
   lib/
@@ -312,7 +313,7 @@ Three workflows in `.github/workflows/`:
   only: a real `cargo build --release` for the Tauri side (Rust
   previously had no CI at all), which doubles as the cache warmer —
   GitHub Actions caches created on a tag are invisible to other tags,
-  so only this main-branch job can create the cargo/vendored-CouchDB
+  so only this main-branch job can create the cargo/vendored-NyxDB
   caches that release runs restore.
 - **`release.yml`** — on any `vX.Y.Z` tag push: builds the Android APK
   (real-key-signed via repo secrets, debug-keystore fallback when
@@ -361,11 +362,11 @@ when something looks broken:
 
 - **Desktop (`offlog-desktop`)**: `powershell -ExecutionPolicy Bypass -File
   offlog-desktop/scripts/reset-dev-env.ps1` — wipes the debug build's
-  isolated CouchDB copy and its `sync-host.dev.json` identity. Add
+  NyxDB data and its `sync-host.dev.json` identity. Add
   `-IncludeRelease` only if you're deliberately testing a from-scratch
   real install and are OK losing its local config too. Never touches
-  `vendor/couchdb-win/` itself (the pristine downloaded binaries) or any
-  real synced data.
+  `vendor/nyxdb-win/` itself (the pristine built binary) or any real
+  synced data.
 - **Web/browser**: in DevTools console, `new PouchDB('offlog').destroy()
   .then(() => localStorage.clear())`, then reload — this is also the
   right way to reproduce a genuine first-run (localStorage's `SEEDED_KEY`
@@ -397,8 +398,8 @@ from a `beforeEach` that wipes every doc, not from a fresh instance.
 
 ## How Sync Works
 
-1. `startSync()` in `db.ts` starts a **live bidirectional PouchDB sync** with CouchDB
-2. Any local write replicates to CouchDB immediately
+1. `startSync()` in `db.ts` starts a **live bidirectional PouchDB sync** with the configured server
+2. Any local write replicates to the server immediately
 3. Any remote change fires a PouchDB `.changes()` event → `store.ts` reloads all data
 4. The app works fully offline; sync resumes automatically on reconnect
 5. Sync URL is set in the sidebar settings panel and stored in `localStorage`; on the Tauri desktop app it's resolved automatically instead — see "Desktop (Tauri)" below for why that default differs from plain desktop web
@@ -536,19 +537,26 @@ loading, same sync code, same UI — the only new code is Rust, and it
 never touches the frontend's own logic.
 
 **Embedded sync host** (`src-tauri/src/sync_host.rs`): on first launch,
-generates a random port + admin password + Erlang node identity, persists
-them (`app_data_dir()/sync-host.json`), rewrites the bundled CouchDB's
-`local.ini`/`local.d`/`vm.args`, and spawns it as a child process — a
-non-technical user never sees the word CouchDB. Binaries come from
-`scripts/fetch-couchdb-win.ps1` (checksum-pinned, gitignored
-`vendor/couchdb-win/`, not committed) since Apache doesn't publish
-official Windows binaries itself. A Windows Job Object
-(`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate) keeps the whole
-`couchdb.cmd` → `erl.exe` process tree tied to the app's own lifetime, on
-every exit path (normal close, crash, force-kill) — killing only the
-directly-tracked child process reliably leaves `erl.exe` orphaned,
-LAN-reachable with real credentials, since it's a grandchild, not a
-child.
+generates a random port + admin password, persists them
+(`app_data_dir()/sync-host.json`), and spawns
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a from-scratch Rust
+reimplementation of CouchDB's replication protocol) as a child process,
+configured entirely via env vars (`NYXDB_ADDR`, `NYXDB_DATA`,
+`NYXDB_USER`, `NYXDB_PASSWORD`, `NYXDB_CORS_ORIGINS`) — no config file
+to rewrite, unlike CouchDB's `local.ini`/`local.d`/`vm.args`. A
+non-technical user never sees the word NyxDB either. The binary comes
+from `scripts/fetch-nyxdb-win.ps1` (clones a pinned tag, builds with
+`cargo build --release`, gitignored `vendor/nyxdb-win/`, not committed).
+NyxDB replaced a real bundled CouchDB here on 2026-07-27 (see
+`docs/DECISIONS.md`'s writeup) — same-protocol, same integration shape,
+roughly 8-10x smaller installed/installer footprint. A Windows Job
+Object (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate) keeps the
+process tied to the app's own lifetime on every exit path (normal close,
+crash, force-kill) — carried over from the CouchDB era, where killing
+only the directly-tracked child process reliably left CouchDB's
+`erl.exe` grandchild orphaned; NyxDB is a single process with no
+grandchild to worry about, but the same guarantee is kept for
+consistency and free reliability.
 
 **Discovery + pairing** (`src-tauri/src/discovery.rs`,
 `src-tauri/src/pairing.rs`, `offlog-app/src/lib/discovery.ts`): the PC
@@ -564,7 +572,8 @@ constants, which could never match a per-install random password.
 **Sync-URL resolution is genuinely three-way**, not two — easy to get
 wrong (it was, for most of a day): Android has no way to guess an
 address, defaults to `''`. Plain desktop web assumes a manually-installed
-CouchDB on the standard port, defaults to `127.0.0.1:5984`. The Tauri
+CouchDB-protocol-compatible server on the standard CouchDB port, defaults
+to `127.0.0.1:5984`. The Tauri
 app is neither — its embedded sidecar binds a random port, never 5984 —
 so it needs `config.ts`'s `initTauriSyncDefaults()`, called at app boot
 before `startSync()`, to resolve the real address via the async
@@ -576,7 +585,7 @@ Build steps:
 ```bash
 cd offlog-app && npm run build            # produces the dist/ offlog-desktop wraps
 cd ../offlog-desktop
-powershell -ExecutionPolicy Bypass -File scripts/fetch-couchdb-win.ps1   # once, or after bumping its pinned version
+powershell -ExecutionPolicy Bypass -File scripts/fetch-nyxdb-win.ps1   # once, or after bumping its pinned version
 cargo tauri build   # → src-tauri/target/release/bundle/nsis/*.exe
 ```
 

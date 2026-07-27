@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 
-struct CouchdbProcess(Mutex<Option<std::process::Child>>);
+struct NyxdbProcess(Mutex<Option<std::process::Child>>);
 
 fn device_name() -> String {
     std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Offlog PC".to_string())
@@ -21,7 +21,7 @@ fn get_sync_info(info: tauri::State<sync_host::SyncHostInfo>) -> sync_host::Sync
 // found at startup so the frontend can warn about a second host on the
 // LAN. Managed empty before the background scan runs, so this command
 // never errors -- it just answers "nothing detected yet" if called
-// before the scan (which takes a few seconds after CouchDB itself boots)
+// before the scan (which takes a few seconds after NyxDB itself boots)
 // finishes; the frontend already polls this a couple of times for
 // exactly that reason (see config.ts's checkForOtherHosts()).
 struct DetectedOtherHosts(Mutex<Vec<discovery::OtherHost>>);
@@ -93,7 +93,7 @@ fn generate_pairing_code(state: tauri::State<Arc<pairing::PairingState>>) -> Str
     state.generate_code()
 }
 
-struct CouchdbDataDir(std::path::PathBuf);
+struct NyxdbDataDir(std::path::PathBuf);
 
 // Dev-only convenience for testing "what does a real first-run user see"
 // without hand-killing processes and deleting folders each time (owner
@@ -105,24 +105,24 @@ struct CouchdbDataDir(std::path::PathBuf);
 // debug build -- so this can never end up reachable in a real release
 // the same way `cfg!(debug_assertions)` already gates the log plugin
 // above. Uses the Job Object (win32job) rather than killing the tracked
-// Child directly, for the same reason the crash-cleanup fix does: only
-// the Job reliably takes down couchdb.cmd's actual erl.exe grandchild.
+// Child directly, for the same reason the crash-cleanup fix does --
+// carried over from the CouchDB era, where only the Job reliably took
+// down couchdb.cmd's actual erl.exe grandchild; harmless overkill for
+// NyxDB's single process, kept for consistency with the exit handler
+// below.
 #[cfg(windows)]
 unsafe extern "system" {
     fn TerminateJobObject(hjob: isize, uexitcode: u32) -> i32;
 }
 
 #[tauri::command]
-fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data_dir: tauri::State<CouchdbDataDir>) -> Result<(), String> {
+fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data_dir: tauri::State<NyxdbDataDir>) -> Result<(), String> {
     if !cfg!(debug_assertions) {
         return Err("reset_sync_data is only available in debug builds".to_string());
     }
     // win32job::Job has no terminate() of its own -- TerminateJobObject is
     // the raw Win32 call, taking the same job handle already used to
-    // register the CouchDB process tree (sync_host::spawn()). Kills the
-    // whole tree (couchdb.cmd + its erl.exe grandchild) the same reliable
-    // way the crash-cleanup fix does, just triggered on demand instead of
-    // on process exit.
+    // register the NyxDB process (sync_host::spawn_nyxdb()).
     let ok = unsafe { TerminateJobObject(job.handle(), 0) };
     if ok == 0 {
         return Err("TerminateJobObject failed".to_string());
@@ -166,39 +166,47 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            // Enabled in every build, not just debug -- the first NyxDB
+            // trial gated this behind `cfg!(debug_assertions)`, which meant
+            // a real installed release build never wrote a single log
+            // line. That's the single thing that most slowed down
+            // diagnosing real bugs during that trial (a stale debug-build
+            // log file kept getting mistaken for fresh evidence). Info
+            // level, same as before; tauri-plugin-log's own rotation
+            // handles file growth.
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
 
             let app_data_dir = app.path().app_data_dir()?;
             // Owner-reported, 2026-07-20: `app_data_dir()` only depends on
             // the app identifier (com.offlog.app), not debug_assertions --
             // so `cargo tauri dev` and a real installed build used to read
             // and write the exact same sync-host.json (port/credentials),
-            // even though they normally run against different CouchDB
-            // data (see couchdb_dir()'s own comment). A phone paired
-            // against one build's identity would silently start talking
-            // to the other build's (different) database on next launch.
-            // Debug builds get their own config file so the two identities
-            // can never collide.
+            // even though they normally run against different NyxDB
+            // data. A phone paired against one build's identity would
+            // silently start talking to the other build's (different)
+            // database on next launch. Debug builds get their own config
+            // file so the two identities can never collide.
             let config_filename = if cfg!(debug_assertions) { "sync-host.dev.json" } else { "sync-host.json" };
             let config_path = app_data_dir.join(config_filename);
             let info = sync_host::load_or_create_info(&config_path);
 
             let resource_dir = app.path().resource_dir().ok();
-            let couchdb_dir = sync_host::couchdb_dir(resource_dir);
-            log::info!("sync_host: using CouchDB dir {}", couchdb_dir.display());
+            let nyxdb_binary = sync_host::nyxdb_binary_path(resource_dir);
+            log::info!("sync_host: using NyxDB binary {}", nyxdb_binary.display());
             // Same debug/release split as config_filename above, and for the
             // same reason -- a dev run's database must never share a
-            // directory with a real installed build's.
-            let data_dirname = if cfg!(debug_assertions) { "couchdb-data-dev" } else { "couchdb-data" };
+            // directory with a real installed build's. Never reuse a
+            // CouchDB-era "couchdb-data" name here even for a fresh
+            // install -- NyxDB's storage engine (sled) can't read
+            // CouchDB's on-disk format, so a stale directory from an old
+            // install would silently fail to open.
+            let data_dirname = if cfg!(debug_assertions) { "nyxdb-data-dev" } else { "nyxdb-data" };
             let data_dir = app_data_dir.join(data_dirname);
-            app.manage(CouchdbDataDir(data_dir.clone()));
-            sync_host::write_couchdb_config(&couchdb_dir, &data_dir, &info);
+            app.manage(NyxdbDataDir(data_dir.clone()));
             app.manage(DetectedOtherHosts(Mutex::new(Vec::new())));
 
             // info is managed immediately (below) so get_sync_info answers
@@ -207,21 +215,22 @@ pub fn run() {
             // the right URL, and its `retry: true` live sync already
             // tolerates the target not answering yet, same as any other
             // "Cannot reach sync server" moment. Everything below that
-            // actually needs CouchDB running (spawning it, waiting for its
+            // actually needs NyxDB running (spawning it, waiting for its
             // port to answer, creating the database, starting the pairing
             // server, mDNS advertising) used to block .setup() itself --
             // Tauri doesn't paint the window until setup() returns, so the
-            // whole ~3-8s CouchDB/Erlang boot showed as a blank window on
-            // every launch (owner-reported, first real-install dogfooding
-            // session, 2026-07-15). Moved to a background task so the
-            // window shows immediately and sync catches up a few seconds
-            // later, the same way it already does after any transient
-            // "can't reach sync server" moment.
+            // whole boot showed as a blank window on every launch
+            // (owner-reported, first real-install dogfooding session,
+            // 2026-07-15). Moved to a background task so the window shows
+            // immediately and sync catches up a moment later, the same way
+            // it already does after any transient "can't reach sync
+            // server" moment.
             let app_handle = app.handle().clone();
-            let couchdb_dir_bg = couchdb_dir.clone();
+            let nyxdb_binary_bg = nyxdb_binary.clone();
+            let data_dir_bg = data_dir.clone();
             let info_bg = info.clone();
             tauri::async_runtime::spawn(async move {
-                match sync_host::spawn(&couchdb_dir_bg) {
+                match sync_host::spawn_nyxdb(&nyxdb_binary_bg, &data_dir_bg, &info_bg) {
                     Ok((child, job)) => {
                         // The Job must stay alive for the app's lifetime — its
                         // Drop impl closes the job handle, and closing it is
@@ -230,9 +239,9 @@ pub fn run() {
                         // itself ends, so dropping early only happens on the
                         // crash/force-kill path this is meant to catch anyway.
                         app_handle.manage(job);
-                        app_handle.manage(CouchdbProcess(Mutex::new(Some(child))));
+                        app_handle.manage(NyxdbProcess(Mutex::new(Some(child))));
                         let ready = sync_host::wait_ready(info_bg.port, Duration::from_secs(20));
-                        log::info!("sync_host: CouchDB ready = {ready} on port {}", info_bg.port);
+                        log::info!("sync_host: NyxDB ready = {ready} on port {}", info_bg.port);
                         if ready {
                             sync_host::ensure_database(&info_bg);
                             if let Some(uuid) = sync_host::fetch_uuid(info_bg.port) {
@@ -259,13 +268,13 @@ pub fn run() {
                                     Err(e) => log::error!("pairing: failed to start server: {e}"),
                                 }
                             } else {
-                                log::warn!("discovery: couldn't fetch CouchDB uuid, skipping mDNS advertise");
+                                log::warn!("discovery: couldn't fetch NyxDB uuid, skipping mDNS advertise");
                             }
                         }
                     }
                     Err(e) => {
-                        log::error!("sync_host: failed to spawn CouchDB sidecar: {e}");
-                        app_handle.manage(CouchdbProcess(Mutex::new(None)));
+                        log::error!("sync_host: failed to spawn NyxDB sidecar: {e}");
+                        app_handle.manage(NyxdbProcess(Mutex::new(None)));
                     }
                 }
             });
@@ -300,23 +309,24 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
-                // Real gap found live: a *graceful* exit (closing the
-                // window normally, not a crash/force-kill) went through
-                // this handler and only killed the tracked Child directly
-                // -- which is couchdb.cmd's cmd.exe wrapper, not the
-                // erl.exe grandchild actually holding CouchDB's port, so
-                // erl.exe/epmd.exe were still left running after a normal
-                // app close. The Job-based termination (same call
-                // reset_sync_data uses) is the one path proven to
-                // reliably take down the whole tree -- use it here too
+                // Real gap found live during the CouchDB era: a *graceful*
+                // exit (closing the window normally, not a crash/force-kill)
+                // went through this handler and only killed the tracked
+                // Child directly, which used to be couchdb.cmd's cmd.exe
+                // wrapper rather than the erl.exe grandchild actually
+                // holding the port -- left orphaned processes after a
+                // normal app close. The Job-based termination (same call
+                // reset_sync_data uses) is the one path proven reliable
                 // instead of relying on JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-                // triggering from the Job simply going out of scope,
-                // which this same graceful-exit case already showed
-                // doesn't reliably happen in time.
+                // triggering from the Job simply going out of scope, which
+                // this same graceful-exit case already showed doesn't
+                // reliably happen in time. Kept for NyxDB even though it's
+                // a single process with no grandchild to worry about --
+                // same reliability guarantee either way.
                 if let Some(job) = app_handle.try_state::<win32job::Job>() {
                     let _ = unsafe { TerminateJobObject(job.handle(), 0) };
                 }
-                if let Some(state) = app_handle.try_state::<CouchdbProcess>() {
+                if let Some(state) = app_handle.try_state::<NyxdbProcess>() {
                     if let Ok(mut guard) = state.0.lock() {
                         if let Some(mut child) = guard.take() {
                             let _ = child.kill();

@@ -166,7 +166,7 @@ Produce a findings report covering:
     its own comment) — note but don't re-litigate, same as C7 above.
   - Any `eval(`, `new Function(`, or `innerHTML =` outside the `{@html}`
     cases already covered above.
-  - CouchDB sync request construction: confirm the sync URL/credentials
+  - Sync request construction: confirm the sync URL/credentials
     are never interpolated into something executed or logged in full
     (credentials appearing in a thrown-error message that reaches the UI
     would be a real leak, not just untidy).
@@ -174,9 +174,10 @@ Produce a findings report covering:
 Rank each finding:
 - [SAFE] — trivial, no behavior change possible
 - [REVIEW] — needs owner approval
-- [RISKY] — touches doc schema (`_id` prefixes, field names), PouchDB/
-  CouchDB sync/replication, soft-delete semantics, positional-"done"
-  logic, or storage format → propose only, never auto-fix
+- [RISKY] — touches doc schema (`_id` prefixes, field names), PouchDB
+  sync/replication (CouchDB-protocol, currently NyxDB-backed on
+  desktop), soft-delete semantics, positional-"done" logic, or storage
+  format → propose only, never auto-fix
 
 STOP after the report. Wait for owner go-ahead before Phase 2.
 
@@ -236,7 +237,7 @@ STOP after the report. Wait for owner go-ahead before Phase 2.
 - No rewrites — incremental only.
 - Schema, sync logic, storage format, soft-delete, positional-"done":
   propose only, never implement unilaterally. Same bar applies to
-  `offlog-desktop/`'s CouchDB config-generation and credential/pairing
+  `offlog-desktop/`'s NyxDB config-generation and credential/pairing
   logic (`sync_host.rs`, `pairing.rs`) — it's this app's own sync
   internals, not routine Rust glue.
 - Uncertain whether something is safe? Ask, don't guess.

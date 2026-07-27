@@ -43,6 +43,6 @@ export function getCommands(ctx: CommandContext): Command[] {
     { id: 'settings', label: 'Open Settings', keywords: 'preferences config organize sync notifications', run: ctx.openSettings, opensOverlay: true },
     { id: 'timetravel', label: 'Open Time Travel', keywords: 'history activity log journal retrospective', run: ctx.openTimeTravel, opensOverlay: true },
     { id: 'trash', label: 'Open Deleted', keywords: 'recycle bin restore trash', run: ctx.openTrash, opensOverlay: true },
-    { id: 'sync', label: 'Sync Now', keywords: 'refresh couchdb replicate', run: ctx.syncNow },
+    { id: 'sync', label: 'Sync Now', keywords: 'refresh couchdb nyxdb replicate', run: ctx.syncNow },
   ];
 }

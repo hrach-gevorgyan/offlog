@@ -5,8 +5,9 @@
 //
 // Deliberately not broadcasting credentials in the TXT record — mDNS is
 // a plaintext LAN broadcast, and anything in it is visible to every device
-// on the network, trusted or not. Only the CouchDB server's own `uuid`
-// (already public once someone knows the URL, since CouchDB's `GET /`
+// on the network, trusted or not. Only the sync server's own `uuid`
+// (already public once someone knows the URL, since a CouchDB-protocol
+// server's `GET /`
 // returns it unauthenticated) and the pairing server's port go out —
 // enough for a phone to find the right device and know where to send a
 // pairing code, without ever seeing a secret over the air. See
@@ -24,7 +25,7 @@ pub struct OtherHost {
 }
 
 // S1 (docs/IDEAS.md's sync-topology questions, 2026-07-20): `sync_host.rs`
-// unconditionally spawns its own CouchDB sidecar on every launch with no
+// unconditionally spawns its own NyxDB sidecar on every launch with no
 // check for an existing host already on the network — two PCs on one LAN
 // silently become two independent islands with no warning. This doesn't
 // change that spawn behavior (a real "join as client instead" mode is a

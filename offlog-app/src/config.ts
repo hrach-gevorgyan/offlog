@@ -57,7 +57,7 @@ export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>
 //
 // The Tauri desktop app (Track E) is a THIRD case, easy to conflate
 // with plain desktop web since both are "not Capacitor" — but its
-// embedded CouchDB sidecar (sync_host.rs) binds a random port, chosen
+// embedded NyxDB sidecar (sync_host.rs) binds a random port, chosen
 // fresh per install, never 5984. Falling through to the desktop-web
 // branch above silently pointed the Tauri app at port 5984 regardless
 // — whatever happened to be listening there (a completely unrelated,
@@ -101,7 +101,7 @@ export async function initTauriSyncDefaults(): Promise<void> {
 // Rust side's one-time startup scan (discovery.rs's browse_for_others())
 // found, so Settings can show a warning. Polled a couple of times after
 // launch rather than once immediately, since the scan itself only runs
-// after the embedded CouchDB has finished booting (a few seconds) --
+// after the embedded NyxDB has finished booting (a few seconds) --
 // calling this too early just gets an empty list, which is not the same
 // as "no other host exists".
 export const otherHostsDetected = writable<{ uuid: string; name: string }[]>([]);
@@ -555,7 +555,7 @@ export async function syncPrivacyScreen(): Promise<void> {
   }
 }
 
-// E2 (ROADMAP.md) — the CouchDB server's own `uuid` (returned by
+// E2 (ROADMAP.md) — the sync server's own `uuid` (returned by
 // pairing.rs's handshake, also broadcast unauthenticated in the mDNS TXT
 // record per discovery.rs) is a stable identity for "the PC I paired
 // with" that survives an IP/port change, unlike the frozen `sync_url`

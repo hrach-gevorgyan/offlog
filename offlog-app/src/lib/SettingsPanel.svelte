@@ -509,7 +509,7 @@
   $: if (!showConnectModal) { stopPcPairPoll(); pcPairedDeviceName = null; pairSuccessName = null; }
   onDestroy(stopPcPairPoll);
 
-  // Dev-only: wipes this PC's CouchDB data and restarts, so testing "what
+  // Dev-only: wipes this PC's NyxDB data and restarts, so testing "what
   // does a real first-run user see" on a freshly-reinstalled phone
   // doesn't immediately sync down leftover dev/test tasks. The Rust
   // command itself refuses outside a debug build (belt-and-suspenders —
@@ -522,7 +522,7 @@
       // Two halves, both needed: wipeAndReseed() clears this PC's own
       // local PouchDB (the WebView's IndexedDB) — discovered live that
       // the Rust-only reset below never touched this, since it's a
-      // completely separate local database from the embedded CouchDB
+      // completely separate local database from the embedded NyxDB
       // server, same local-first split every device in this app has.
       // Letting sync push the resulting deletion tombstones out first
       // (before the server itself gets wiped) is what actually clears
@@ -1446,7 +1446,7 @@
                   <div class="setting-section-title">Manual server connection (advanced)</div>
                   <p class="setting-hint">Most people never need this — the "Find my computer" option above already handles connecting for you. This is only for advanced users running their own sync server by hand, instead of pairing a device.</p>
                   <label class="field-label">
-                    Server address (must be a CouchDB server)
+                    Server address (must be a CouchDB-protocol-compatible server)
                     <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" />
                   </label>
                   <label class="field-label">

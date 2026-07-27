@@ -41,7 +41,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../vendor/couchdb-win": "couchdb"
+      "../vendor/nyxdb-win": "nyxdb"
     },
     "android": {
       "debugApplicationIdSuffix": ".debug"

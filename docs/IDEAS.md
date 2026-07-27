@@ -20,14 +20,14 @@ itself.
 ## Sync topology (raised 2026-07-20, owner's "big idea" scenario review)
 
 Context: today's model is one fixed host (whichever PC runs
-`offlog-desktop`), phones as clients — see DECISIONS.md's Tauri/CouchDB
+`offlog-desktop`), phones as clients — see DECISIONS.md's Tauri/NyxDB
 entries and TECH.md. These scenarios surfaced real gaps in that model
 that haven't been designed for (not declined, just never needed a design
 yet):
 
 ### S1. Two PC apps installed on two different machines — who's the host?
 Partially hardened (2026-07-20): `offlog-desktop` still unconditionally
-spawns its own CouchDB sidecar on every launch — there's no "join an
+spawns its own NyxDB sidecar on every launch — there's no "join an
 existing host instead" mode, deliberately not built (a real client-mode
 would be a large feature for a scenario nobody's actually hit, the same
 tradeoff mesh sync's decline already weighed). What shipped instead is

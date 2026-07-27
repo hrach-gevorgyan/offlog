@@ -1,6 +1,6 @@
 // Pairing handshake — getting real credentials onto a phone safely, without
 // ever putting them on the wire in the clear over mDNS (discovery.rs
-// carries only the CouchDB uuid). Threat model: this is a same-Wi-Fi
+// carries only the sync server's uuid). Threat model: this is a same-Wi-Fi
 // handshake between two devices one person owns (GOAL.md: "private, not
 // public, secure enough on its own" — same posture DECISIONS.md already
 // applied when declining mesh sync's much larger security investment for

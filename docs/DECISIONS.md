@@ -50,16 +50,24 @@ a different bundling path for no functional gain. The ~51 KB duplication
 this causes (documented in TECH.md's v3.4.0 entry, A8) is a known, accepted
 cost — not something worth an architectural change to fix.
 
-### Why CouchDB (not Firebase/Supabase/a custom backend) for optional sync
-CouchDB speaks PouchDB's native replication protocol with zero adapter
-code — this is the entire reason PouchDB was chosen as the local database
-in the first place. Any other backend would mean writing and maintaining
-a translation layer between "what PouchDB expects" and "what the backend
-provides," which directly contradicts the local-first goal of sync being
-optional, thin, and swappable. CouchDB is self-hostable, which matters:
-using a hosted-only backend (Firebase, Supabase) would make "sync" quietly
-depend on a vendor Offlog doesn't control, contradicting the no-vendor-
-lock-in mission even if that vendor has a free tier.
+### Why a CouchDB-protocol server (not Firebase/Supabase/a custom backend) for optional sync
+A CouchDB-protocol server speaks PouchDB's native replication protocol
+with zero adapter code — this is the entire reason PouchDB was chosen as
+the local database in the first place. Any other backend would mean
+writing and maintaining a translation layer between "what PouchDB
+expects" and "what the backend provides," which directly contradicts the
+local-first goal of sync being optional, thin, and swappable. It must
+also be self-hostable, which matters: using a hosted-only backend
+(Firebase, Supabase) would make "sync" quietly depend on a vendor Offlog
+doesn't control, contradicting the no-vendor-lock-in mission even if that
+vendor has a free tier. This was real Apache CouchDB from the project's
+start through 2026-07-27; `offlog-desktop` now embeds
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) instead (a from-scratch
+Rust reimplementation of the same protocol, by the same owner) — see
+the entry below for why. The reasoning in this section is about the
+*protocol*, not literally-Apache-CouchDB, and holds either way; a
+manually-configured sync target (Settings → Sync) can still point at
+real CouchDB too, since both speak the same wire protocol.
 
 ### Why mesh sync was considered, then declined outright (2026-07-03)
 Mesh/device-to-device sync (every device also acts as a server, paired via
@@ -88,12 +96,13 @@ been enough:
   whose main beneficiary would be hypothetical future users wasn't worth
   it.
 
-CouchDB sync remains the one, permanent sync transport — self-hosted,
-already works, not going anywhere. If mesh sync is ever revisited, it
-should be because a genuinely new reason to want it shows up (e.g. real
-other people asking for it), not because this reasoning turned out wrong.
+CouchDB-protocol sync remains the one, permanent sync transport —
+self-hosted, already works, not going anywhere. If mesh sync is ever
+revisited, it should be because a genuinely new reason to want it shows
+up (e.g. real other people asking for it), not because this reasoning
+turned out wrong.
 
-### NyxDB as offlog-desktop's embedded sync host — evaluated, not adopted (2026-07-27)
+### NyxDB as offlog-desktop's embedded sync host — round one, evaluated but not adopted (2026-07-27)
 [NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a from-scratch Rust
 reimplementation of CouchDB's replication protocol, MIT/Apache-2.0,
 `axum`+`sled`) was trialed on the `nyxdb-sync-backend` branch as a
@@ -162,6 +171,27 @@ in `offlog-desktop`'s own new glue code rather than NyxDB itself:
   `nyxdb-sync-backend` branch's commits and its
   `docs/NYXDB_INTEGRATION_NOTES.md`, reachable via `git log --all` /
   reflog if ever needed again.
+
+**Round two (2026-07-27, same day): adopted for real, CouchDB removed
+from the repo entirely.** Before touching any `offlog-desktop` code, the
+one unresolved bug above was re-investigated in isolation — a real
+NyxDB instance seeded with 60 docs (mixed creates/updates/deletes, deep
+7-generation revision history, a genuine forced conflict), synced via
+the real `pouchdb` npm package (not the app) from a genuinely empty
+client, in three configurations (default batch size, small batch size
+to force more `_bulk_get` round trips, and `live:true/retry:true`
+matching `db.ts`'s exact usage). All three completed with zero errors.
+Conclusion: not a real NyxDB protocol bug — almost certainly one of the
+many stale-process false alarms from that same testing night (the
+process lessons above). Proceeded with the full swap on this basis: all
+CouchDB code, config, vendored binary, and fetch script removed from
+`offlog-desktop`; NyxDB is now the only embedded sync host. Every fix
+from round one (distinct `nyxdb-data` name, `.current_dir()`, `0.0.0.0`
+bind, both CORS origins) was written in from the start this time, plus
+release-build logging enabled permanently (previously debug-only, which
+is what made round one's diagnosis so slow). Full implementation plan
+and file-by-file change list: see the git history around this entry's
+commit on the `nyxdb-sync` branch.
 
 ### Why automatic 3-way conflict merge was explored, then declined (2026-07-18)
 Prompted by reading Neighbourhoodie's CouchDB/Svelte blog series (a
