@@ -93,6 +93,76 @@ already works, not going anywhere. If mesh sync is ever revisited, it
 should be because a genuinely new reason to want it shows up (e.g. real
 other people asking for it), not because this reasoning turned out wrong.
 
+### NyxDB as offlog-desktop's embedded sync host — evaluated, not adopted (2026-07-27)
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a from-scratch Rust
+reimplementation of CouchDB's replication protocol, MIT/Apache-2.0,
+`axum`+`sled`) was trialed on the `nyxdb-sync-backend` branch as a
+drop-in replacement for the real CouchDB `offlog-desktop` bundles and
+spawns. The protocol layer genuinely checks out: `offlog-app`'s own
+source needed zero changes, and NyxDB's full test suite (unit,
+integration, live sync, ported PouchDB edge cases, attachments, load,
+and a differential run against real CouchDB) passed, including
+byte-for-byte conflict/winner-picking parity. The installer-size win was
+real and independently confirmed by hands-on dogfooding: **installer
+52.7MB → 4.98MB (~10.6x), installed footprint 164MB → 20.4MB (~8.0x)**.
+
+**Verdict: not adopted, for now — reverted to real CouchDB on `main`.**
+Real end-to-end testing (pairing a real Android device against the
+NyxDB-backed desktop build) surfaced a string of integration bugs, most
+in `offlog-desktop`'s own new glue code rather than NyxDB itself:
+
+- Reused the `couchdb-data` directory name for NyxDB's `sled` storage —
+  format collision, silently broke discovery (mDNS only advertises after
+  the DB opens). Fixed: distinct `nyxdb-data` name.
+- `spawn_nyxdb()` omitted `.current_dir()` (the CouchDB path already had
+  it) — inconsistent port binding under the Tauri-managed process. Fixed.
+- `NYXDB_ADDR` (NyxDB's actual bind address, unlike CouchDB's separate
+  `chttpd` config) was hardcoded to `127.0.0.1` — loopback-only, silently
+  unreachable from any LAN device despite pairing (a separate handshake
+  server) succeeding. Fixed: `0.0.0.0`.
+- `NYXDB_CORS_ORIGINS` only allowlisted the desktop app's own WebView
+  origin (`http://tauri.localhost`) — every request from the Android
+  app's real origin (`https://localhost`, per `capacitor.config.ts`'s
+  `androidScheme: 'https'`) was silently CORS-rejected. Real CouchDB
+  never hit this since its config uses `origins = *`; NyxDB requires an
+  explicit allowlist. Fixed: both origins listed.
+- After all four fixes above, real-device testing still hit a
+  **persistent, unresolved failure** — a "There was a problem getting
+  docs" sync error and generic mutation-failure toasts that survived a
+  full app restart. Root cause not found before the decision was made to
+  stop: PouchDB's `getDocs()`/`bulkGet()` marks a replication batch
+  `error` when any requested doc/rev comes back as `{"missing": ...}` in
+  NyxDB's `_bulk_get` response — whether this is a genuine NyxDB
+  protocol gap (plausible, given it's the one high-volume, high-
+  concurrency codepath the earlier test matrix didn't specifically
+  stress) or a leftover local-environment issue from the rapid
+  kill/rebuild/reinstall cycles that night was never disambiguated.
+
+**Process lessons for the next attempt** (also relevant beyond NyxDB):
+- **This app's `tauri_plugin_log` registration is debug-only**
+  (`lib.rs`'s `if cfg!(debug_assertions)` gate) — a real installed
+  release build never writes `Offlog.log` at all. This blocked live
+  diagnosis for a long stretch; a stray `.log` file kept looking like
+  fresh evidence when it was actually hours-stale. Confirm which build
+  you're actually looking at (`Get-CimInstance Win32_Process` for the
+  real exe path + start time) before trusting a log file's timestamp.
+- **Don't dogfood real production data on an experimental branch.**
+  This branch's desktop build was used as a daily driver mid-experiment,
+  so real tasks accumulated inside the very data directory being
+  repeatedly wiped/rebuilt for testing — a needless, entirely avoidable
+  risk to real data that had nothing to do with proving the swap out.
+  Use disposable seed/test data for this class of experiment, always.
+- **A background sync server binding to an unexpected port is worth
+  suspecting a stale process before suspecting the code.** Several
+  "port mismatch" scares this session turned out to be leftover
+  processes from earlier kill/rebuild cycles, not new regressions —
+  always confirm zero matching processes are running (not just the one
+  you meant to kill) before trusting a fresh reproduction.
+- Full narrative/commit history of the trial lives in the (now-deleted)
+  `nyxdb-sync-backend` branch's commits and its
+  `docs/NYXDB_INTEGRATION_NOTES.md`, reachable via `git log --all` /
+  reflog if ever needed again.
+
 ### Why automatic 3-way conflict merge was explored, then declined (2026-07-18)
 Prompted by reading Neighbourhoodie's CouchDB/Svelte blog series (a
 real-time multi-user kanban board built on the same PouchDB/CouchDB
