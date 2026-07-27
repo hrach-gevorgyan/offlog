@@ -139,18 +139,18 @@ jobs:
           key: cargo-windows-${{ hashFiles('offlog-desktop/src-tauri/Cargo.lock') }}
           restore-keys: cargo-windows-
 
-      - name: Restore vendored CouchDB cache (warmed by desktop-ci on main)
+      - name: Restore vendored NyxDB cache (warmed by desktop-ci on main)
         uses: actions/cache@v4
         with:
-          path: offlog-desktop/vendor/couchdb-win
+          path: offlog-desktop/vendor/nyxdb-win
           # Keep in sync with desktop-ci.yml's key and the fetch
-          # script's $Version.
-          key: couchdb-win-3.5.2-1
+          # script's $Ref.
+          key: nyxdb-win-v0.1.5
 
-      - name: Fetch vendored CouchDB (no-op on cache hit, ~200MB otherwise)
+      - name: Fetch vendored NyxDB (no-op on cache hit, builds from source otherwise)
         working-directory: offlog-desktop
         shell: pwsh
-        run: ./scripts/fetch-couchdb-win.ps1
+        run: ./scripts/fetch-nyxdb-win.ps1
 
       - name: Extract this version's user-facing release notes
         id: notes
