@@ -1,0 +1,10 @@
+# Excludes third-party dependency source from CodeQL analysis.
+# .github/codeql/codeql-config.yml's paths-ignore didn't reliably filter
+# Java/Kotlin results under build-mode: manual (11 findings inside
+# Capacitor plugins' bundled Java source stayed open after a successful
+# run with that config alone) -- .codeqlignore is CodeQL's more robust,
+# universally-honored exclusion mechanism, kept alongside the config
+# file rather than replacing it.
+**/node_modules/**
+**/target/**
+**/dist/**

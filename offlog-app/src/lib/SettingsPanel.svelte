@@ -1538,6 +1538,8 @@
             <p class="setting-hint">Enter this code on your phone (Settings → Sync → Find my computer):</p>
             <p class="storage-info" style="font-size: 1.5rem; letter-spacing: 0.2em; text-align: center;">{pcPairingCode}</p>
             <p class="setting-hint">Valid for 5 minutes, one-time use — this updates automatically once your phone connects.</p>
+          {:else}
+            <p class="setting-hint">Generates a one-time code to enter on your phone (Settings → Sync → "Find my computer"), so it can connect to this PC.</p>
           {/if}
           <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
             {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
@@ -1765,7 +1767,16 @@
   .nav-badge {
     font-family: var(--mono); font-size: .62rem; font-weight: 700;
     background: var(--due-soon-bg); color: var(--due-soon-ink);
-    padding: 1px 6px; border-radius: 8px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    line-height: 1;
+  }
+  /* `.nav-item span{flex:1}` above (class+element, specificity 11) beats
+     plain `.nav-badge` (specificity 10) regardless of source order, so
+     this badge stretched to fill the row instead of sizing to its own
+     content -- needs the extra class in the selector to actually win. */
+  .nav-item .nav-badge {
+    flex: 0 0 auto;
   }
   .chevron { display: none; flex-shrink: 0; opacity: .5; }
 

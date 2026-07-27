@@ -22,8 +22,10 @@ name: CodeQL
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
   schedule:
     # Matches the cadence GitHub's Default setup used.
     - cron: '0 6 * * 1'

@@ -16,6 +16,40 @@
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); close(); }
   }
+
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // The release notes body only ever uses the restricted subset
+  // RELEASE_NOTES.md's own writing rule requires: `### Heading` and
+  // `- bullet` lines, nothing else — this renders exactly that instead
+  // of dumping the raw markdown text (previously shown literally,
+  // "### New" and all, in a <pre> block). Escaped first since this ends
+  // up in {@html}, even though the source is our own CHANGELOG-derived
+  // text, not user input.
+  function renderNotes(body: string): string {
+    const lines = body.split('\n');
+    let html = '';
+    let inList = false;
+    const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { closeList(); continue; }
+      const heading = line.match(/^###\s+(.*)/);
+      if (heading) { closeList(); html += `<p class="notes-heading">${escapeHtml(heading[1])}</p>`; continue; }
+      const bullet = line.match(/^[-*]\s+(.*)/);
+      if (bullet) {
+        if (!inList) { html += '<ul>'; inList = true; }
+        html += `<li>${escapeHtml(bullet[1])}</li>`;
+        continue;
+      }
+      closeList();
+      html += `<p>${escapeHtml(line)}</p>`;
+    }
+    closeList();
+    return html;
+  }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown} />
@@ -27,7 +61,7 @@
     {#if $updateState.phase === 'available'}
       <p class="update-title">Offlog {$updateState.version} is available</p>
       {#if $updateState.body}
-        <pre class="update-notes">{$updateState.body}</pre>
+        <div class="update-notes">{@html renderNotes($updateState.body)}</div>
       {/if}
       <div class="update-actions">
         <button class="later-btn" on:click={close}>Later</button>
@@ -66,21 +100,29 @@
     z-index: 701; width: min(400px, 90vw);
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     box-shadow: 0 20px 50px rgba(0,0,0,.3);
-    padding: 1.35rem 1.5rem;
+    padding: 1.5rem 1.6rem 1.6rem;
   }
-  .update-title { margin: 0 0 .6rem; font-size: .95rem; font-weight: 600; color: var(--text); }
+  .update-title { margin: 0 0 .9rem; font-size: .95rem; font-weight: 600; color: var(--text); }
   .update-notes {
-    margin: 0 0 .9rem; padding: .6rem .7rem; max-height: 200px; overflow-y: auto;
-    font-family: inherit; white-space: pre-wrap; font-size: .8rem; line-height: 1.5;
+    margin: 0 0 1.1rem; padding: .7rem .8rem; max-height: 200px; overflow-y: auto;
+    font-size: .8rem; line-height: 1.5;
     color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
   }
-  .update-hint { margin: 0 0 .9rem; font-size: .8rem; color: var(--muted); line-height: 1.5; }
+  .update-notes :global(p) { margin: 0 0 .5rem; }
+  .update-notes :global(p:last-child) { margin-bottom: 0; }
+  .update-notes :global(.notes-heading) { color: var(--text); font-weight: 600; margin-top: .7rem; }
+  .update-notes :global(.notes-heading:first-child) { margin-top: 0; }
+  .update-notes :global(ul) { margin: 0 0 .5rem; padding-left: 1.1rem; }
+  .update-notes :global(ul:last-child) { margin-bottom: 0; }
+  .update-notes :global(li) { margin-bottom: .3rem; }
+  .update-notes :global(li:last-child) { margin-bottom: 0; }
+  .update-hint { margin: 0 0 1.1rem; font-size: .8rem; color: var(--muted); line-height: 1.5; }
   .progress-track {
     height: 8px; border-radius: 4px; background: var(--bg); border: 1px solid var(--border);
     overflow: hidden; margin-bottom: .5rem;
   }
   .progress-fill { height: 100%; background: var(--accent); transition: width .15s ease; }
-  .update-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: .3rem; }
+  .update-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: .8rem; }
   .later-btn, .primary-btn {
     padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
     border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);

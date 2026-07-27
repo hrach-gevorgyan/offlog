@@ -511,19 +511,22 @@
              that just says "not set up yet". Sync setup now happens via
              the post-first-run invite (see NamePrompt.svelte) or, if that
              was skipped, Settings → Sync — never a permanent footer slot. -->
-        <button class="icon-btn icon-btn-sync" on:click={syncNow} title="{syncTooltip} — click to sync now">
-          <span
-            class="sync-indicator"
-            class:active={syncStatus === 'syncing'}
-            class:error={syncStatus === 'error'}
-            class:offline={syncStatus === 'offline'}
-          ></span>
-          {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
-          {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
+        <button
+          class="icon-btn icon-btn-sync"
+          class:sync-active={syncStatus === 'syncing'}
+          class:sync-error={syncStatus === 'error'}
+          class:sync-offline={syncStatus === 'offline'}
+          on:click={syncNow}
+          title="{syncTooltip} — click to sync now"
+        >
           <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
           </svg>
-          <span class="icon-btn-label">Sync</span>
+          <span class="icon-btn-label-row">
+            <span class="icon-btn-label">Sync</span>
+            {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
+            {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
+          </span>
         </button>
       {/if}
     </div>
@@ -781,31 +784,35 @@
     transition: background .12s, color .12s, border-color .12s;
   }
   .icon-btn svg { flex-shrink: 0; opacity: .85; }
+  .icon-btn-label-row {
+    display: inline-flex; align-items: center; gap: .3rem; min-width: 0;
+  }
   .icon-btn-label {
     font-size: .72rem; font-weight: 500; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; min-width: 0;
   }
   .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
 
-  .icon-btn-sync .sync-indicator {
-    position: absolute; top: 6px; right: 6px;
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--success); box-shadow: 0 0 0 2px var(--sidebar-bg);
-    transition: background .3s;
-  }
-  .icon-btn-sync .sync-indicator.active { background: var(--accent); }
-  .icon-btn-sync .sync-indicator.error { background: var(--danger); }
-  .icon-btn-sync .sync-indicator.offline { background: var(--faint); }
+  /* Status shown by tinting the button's own icon/text instead of a
+     separate corner dot — that plus the conflict-count badge was too
+     much crammed into one small footer button (owner-reported,
+     2026-07-28). Default (untinted) = synced/idle, same as --success
+     before, just not a distinct color needed for the common case. */
+  .icon-btn-sync.sync-active { color: var(--accent); border-color: var(--accent); }
+  .icon-btn-sync.sync-error { color: var(--danger); border-color: var(--danger); }
+  .icon-btn-sync.sync-offline { color: var(--faint); }
   .conflict-badge {
-    position: absolute; top: -2px; right: -2px;
+    /* Inline in the button's flex row, not absolutely positioned in a
+       corner — that used to overlap the sync icon/label on the narrow
+       2-column footer button (real bug, owner-reported 2026-07-28). */
     /* --on-accent, not hardcoded #fff — maintenance pass caught this at
        1.67:1 in dark mode (its background is --due-soon-ink, which is a
        light amber there); --on-accent's white/dark-text split happens to
        fit this token's per-theme lightness too. */
     color: var(--on-accent); font-family: var(--mono); font-size: .55rem; font-weight: 700;
-    min-width: 13px; height: 13px; border-radius: 7px; padding: 0 3px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 0 2px var(--sidebar-bg);
+    min-width: 14px; height: 14px; border-radius: 999px; padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
     background: var(--due-soon-ink);
   }
   .icon-btn-count { color: var(--faint); font-weight: 400; }
