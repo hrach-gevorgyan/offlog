@@ -210,9 +210,24 @@ day in NyxDB v0.1.4 (`_bulk_get` was returning the wrong error shape for
 a tombstoned/losing-conflict-branch revision; real CouchDB never uses
 that shape there). Verified fixed: re-ran the exact two-independent-
 devices conflict scenario, both in isolation and through the real app
-via CDP, `ok: true` on both push and pull with zero errors. `vendor/
-nyxdb-win/nyxdb.exe` and `fetch-nyxdb-win.ps1`'s pinned tag bumped to
-v0.1.4.
+via CDP, `ok: true` on both push and pull with zero errors.
+
+**Follow-up (same day, NyxDB v0.1.5):** the `_bulk_get` fix's own `seq`
+values still showed a ~2,000,000 jump on conflicted batches — reported
+as a non-blocking observation. Investigated directly by the owner and
+traced to `sled`'s own `idgen_persist_interval` crash-safety mechanism
+(benign, not a bug — confirmed live by restarting an instance and
+watching it happen; unrelated to conflicts specifically). That
+investigation surfaced a real, more serious bug as a side effect: a
+fresh database's very first document ever written got `seq=0`, which
+`_changes?since=0` — what every first-ever sync starts with — could
+never see. Fixed in v0.1.5 (persisted seq now starts at 1, never 0).
+Verified directly: a fresh single-doc database's first document is now
+correctly visible to `since=0`; re-ran the full regression matrix (all
+three Phase 0 scripts, the two-device conflict scenario, a real fresh
+install through the actual app) — all clean, no errors, `seq` no longer
+jumps. `vendor/nyxdb-win/nyxdb.exe` and `fetch-nyxdb-win.ps1`'s pinned
+tag bumped to v0.1.5.
 
 ### Why automatic 3-way conflict merge was explored, then declined (2026-07-18)
 Prompted by reading Neighbourhoodie's CouchDB/Svelte blog series (a

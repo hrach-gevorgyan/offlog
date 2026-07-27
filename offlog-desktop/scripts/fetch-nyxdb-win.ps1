@@ -12,7 +12,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$Ref = "v0.1.4"
+$Ref = "v0.1.5"
 $RepoUrl = "https://github.com/hrach-gevorgyan/nyxdb.git"
 
 $Root = Split-Path -Parent $PSScriptRoot
