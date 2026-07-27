@@ -11,6 +11,13 @@ name: CodeQL
 # IMPORTANT: switching to this Advanced setup requires disabling the
 # repo's "Default setup" under Settings -> Code security -> Code
 # scanning -- GitHub does not allow both to run for the same languages.
+#
+# .github/codeql/codeql-config.yml excludes node_modules/ -- the real
+# Gradle build above compiles Capacitor plugins' bundled Java source
+# (node_modules/@capacitor/*, node_modules/capacitor-*) into the APK,
+# which surfaced real CodeQL findings inside that third-party code the
+# first time this ran. Not fixable here (not our code, npm would
+# overwrite any patch), hence the exclusion.
 
 on:
   push:
@@ -39,6 +46,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: none
+          config-file: ./.github/codeql/codeql-config.yml
 
       - uses: github/codeql-action/analyze@v4
         with:
@@ -53,6 +61,7 @@ jobs:
         with:
           languages: java-kotlin
           build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
 
       - uses: actions/setup-node@v7
         with:

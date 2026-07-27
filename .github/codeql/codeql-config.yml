@@ -1,0 +1,12 @@
+name: "Offlog CodeQL config"
+
+# Excludes third-party dependency source from analysis -- this repo has
+# no way to fix findings inside a Capacitor plugin's own bundled Java
+# source (node_modules/@capacitor/*, node_modules/capacitor-*), and
+# npm/gradle would overwrite any local patch on the next install anyway.
+# Real Android app code (offlog-app/android/app/src) is unaffected and
+# still fully scanned.
+paths-ignore:
+  - '**/node_modules/**'
+  - '**/target/**'
+  - '**/dist/**'
