@@ -203,7 +203,7 @@
     </button>
     <div class="title-block">
       <h1 class="fc-title">Focus</h1>
-      <span class="fc-count">today's commitment — up to {MAX_COMMIT} tasks</span>
+      <span class="fc-count">Select up to {MAX_COMMIT} tasks for today's commitment — they'll stay locked here until each is done</span>
     </div>
     {#if lock}
       <button class="reset-btn" on:click={resetCommitment}>Reset</button>
@@ -236,7 +236,7 @@
         </div>
       {/each}
     {:else}
-      <p class="picker-hint">Pick up to {MAX_COMMIT} tasks to commit to for today — the bigger, highlighted notes are the top suggestions. They'll stay locked here until each is done, or you reset.</p>
+      <p class="picker-hint">The bigger, highlighted notes are today's top suggestions — tap a note to select it, then Commit below.</p>
       {#if pickerTasks.length === 0}
         <div class="empty">No open tasks to pick from.</div>
       {:else}
@@ -246,22 +246,22 @@
               class="note {noteSize(t)}"
               class:selected={selected.includes(t._id!)}
               class:suggested={suggestedReasons.has(t._id!)}
-              style="--tilt: {noteTilt(t)}deg"
+              style="--tilt: {noteTilt(t)}deg; --prio-color: {PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => toggleSelect(t._id!)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelect(t._id!); } }}
             >
-              <div class="note-head">
-                <span class="check" class:checked={selected.includes(t._id!)}></span>
-                <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
-              </div>
               <span class="note-title">{t.title}</span>
               <div class="note-foot">
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
                 {#if suggestedReasons.has(t._id!)}
                   <span class="suggest-chip {suggestedReasons.get(t._id!)}">{SUGGEST_LABEL[suggestedReasons.get(t._id!)!]}</span>
                 {/if}
+                <span class="check" class:checked={selected.includes(t._id!)} aria-label={selected.includes(t._id!) ? 'Selected' : 'Select for commitment'}>
+                  {#if selected.includes(t._id!)}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+                </span>
               </div>
             </div>
           {/each}
@@ -341,17 +341,18 @@
     display: flex; flex-wrap: wrap; align-content: flex-start;
     gap: 18px 22px;
   }
-  /* Plain and solid — an earlier pass tried a priority-colored tint/tape
-     (too playful) then a priority-colored left stripe (redundant/confusing
-     next to the priority dot already on the card — two signals for the
-     same one fact). Color now belongs to the priority dot alone; the card
-     itself only communicates selected/suggested state, via border + a
-     touch of the accent color. */
+  /* redesign/v6 (owner feedback, 2026-07-28): priority moved off the
+     small dot entirely -- a thin colored top edge now, same "color =
+     priority" language as Kanban/List/Agenda, just on top instead of the
+     left since these notes tilt and sit in a scattered board rather than
+     a vertical list. Selected/suggested state stays communicated via
+     border + a touch of the accent color, unrelated to priority. */
   .note {
     position: relative;
     display: flex; flex-direction: column; gap: 10px;
     background: var(--surface);
     border: 1px solid var(--border);
+    border-top: 2px solid var(--prio-color, var(--border));
     border-radius: 10px;
     padding: 14px 16px;
     cursor: pointer;
@@ -373,7 +374,6 @@
   .note-lg { width: 260px; padding: 18px 20px; }
   .note-lg .note-title { font-size: 15px; }
 
-  .note-head { display: flex; align-items: center; gap: 8px; }
   .note-title {
     font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4;
     display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
@@ -414,14 +414,22 @@
   .circle.done { border-color: var(--accent); cursor: default; }
   .task-title.done { text-decoration: line-through; color: var(--muted); }
 
+  /* Select-for-commitment checkbox -- deliberately the *filled* checkbox
+     language (like ListView's bulk-select .row-check), not the plain
+     border-only "done" checkbox style used elsewhere: this one means
+     "chosen", not "complete", and needs to read as a distinct action.
+     Pushed to the bottom-right corner via margin-left:auto in the
+     (flex-wrap) footer, away from the title/project/priority edge
+     (owner feedback, 2026-07-28: used to sit top-left next to the
+     priority dot and read as a stray checkbox, not a deliberate control). */
   .check {
     width: 18px; height: 18px; border-radius: 5px;
-    border: 1.6px solid var(--border-strong); flex-shrink: 0; display: block;
+    border: 1.6px solid var(--border-strong); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    margin-left: auto;
     transition: border-color .12s, background .12s;
   }
   .check.checked { background: var(--accent); border-color: var(--accent); }
-
-  .prio-dot { width: 8px; height: 8px; border-radius: 50%; }
 
   /* Locked task-row's title + project stacked (same primary/secondary
      pattern as DashboardView/DeadlinesView's .task-body) instead of a
@@ -468,10 +476,7 @@
   @media (max-width: 700px) {
     .fc-header { padding: 14px 16px 10px; }
     .fc-body   { padding: 14px 14px 32px; }
-    /* Extra right padding so the full-width Commit button doesn't sit
-       under App.svelte's fixed FAB (bottom:24px/right:24px, 50px wide) —
-       confirmed overlapping at 375px without this. */
-    .fc-footer { padding: 12px 16px; padding-right: 74px; }
+    .fc-footer { padding: 12px 16px; }
     .fc-title  { font-size: 17px; }
     .board { gap: 14px; }
     .note-sm, .note-md, .note-lg { width: calc(50% - 7px); }
