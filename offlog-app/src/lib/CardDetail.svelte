@@ -154,11 +154,6 @@
 
   async function loadRelatedTasks() {
     relatedTasks = await getRelatedTasks(task._id!);
-    // Related links load async, after showExtras' own initial value is
-    // already computed below -- bump it open here too if it turns out
-    // this task has any, same "never hide existing data" rule the other
-    // synchronously-known content already applies.
-    showExtras = showExtras || relatedTasks.length > 0;
   }
 
   // B16 (revised): field definitions are global (Settings → Organize →
@@ -168,20 +163,15 @@
   let customFields: CustomFieldDef[] = [];
   let customValues: Record<string, string | number | null> = { ...(task.custom_values ?? {}) };
 
-  // option B + fixes (owner feedback, 2026-07-30 -- "no B with my
-  // mentioned fixes will be more correct"): back to option B's single
-  // flat disclosure (open it, see everything at once -- not option C's
-  // nested-toggles-within-a-toggle), but with the two fixes from the
-  // mandatory-fields conversation: Title/Status/Priority/Due date/Tags
-  // are mandatory -- due date moves out to always-visible below, joining
-  // Status/Priority/Tags -- and the group covering the genuinely-
-  // optional stuff (Checklist/Custom fields/Related/Notes) is labeled
-  // "Extras", not "More details". Starts open if any of the four
-  // already has content, same "never hide existing data" rule as before.
-  let showExtras = !!(
-    checklist.length > 0 || body.trim() ||
-    Object.values(customValues).some(v => v !== null && v !== '' && v !== undefined)
-  );
+  // Refined further (owner feedback, 2026-07-30): only the due date
+  // *value* itself is mandatory (joining Status/Priority/Tags) --
+  // Repeat and Reminder move into Extras along with Checklist/Custom
+  // fields/Related/Notes, all as their own compact blocks. Extras also
+  // no longer auto-opens just because it has content -- owner: "don't
+  // open extra also [on open], if user wants he/she will open extras
+  // and update or check information". Always starts collapsed now,
+  // full stop, regardless of what's already filled in underneath.
+  let showExtras = false;
   // Cap how many custom fields show by default — a project with a dozen
   // fields defined shouldn't turn every card into a long form. Anything
   // past the cap is one click away, not hidden entirely.
@@ -189,20 +179,26 @@
   let showAllFields = false;
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
 
-  // Collapsed-state summary for the outer "Extras" toggle -- checklist/
-  // related/notes only, since due date/repeat/reminder are their own
-  // always-visible mandatory field now, not part of this group. Every
-  // value read is passed in as an argument (not read from closure) so
-  // Svelte's static dependency analysis on the `$:` call actually
-  // re-runs this when any of them changes.
-  function formatExtrasSummary(cl: typeof checklist, related: TaskDoc[], notes: string): string {
+  const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
+  // Collapsed-state summary for the outer "Extras" toggle -- Repeat/
+  // Reminder now live in here too, so the summary covers them alongside
+  // checklist/related/notes. Every value read is passed in as an
+  // argument (not read from closure) so Svelte's static dependency
+  // analysis on the `$:` call actually re-runs this when any of them
+  // changes.
+  function formatExtrasSummary(
+    reminder: string, repeat: string | null,
+    cl: typeof checklist, related: TaskDoc[], notes: string,
+  ): string {
     const parts: string[] = [];
+    if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
+    if (reminder) parts.push(`${fmtTime(new Date(reminder))} reminder`);
     if (cl.length) parts.push(`${cl.filter(i => i.done).length}/${cl.length} checklist`);
     if (related.length) parts.push(`${related.length} related`);
     if (notes.trim()) parts.push('notes');
-    return parts.length ? parts.join(' · ') : 'Checklist, custom fields, related tasks, notes';
+    return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, notes';
   }
-  $: extrasSummary = formatExtrasSummary(checklist, relatedTasks, body);
+  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, checklist, relatedTasks, body);
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -412,10 +408,10 @@
       </label>
     </div>
 
-    <!-- option C (owner feedback, 2026-07-30): Due date is a mandatory
-         field now, same tier as Status/Priority/Tags -- always visible,
-         no toggle. Repeat/Reminder stay grouped with it (they only make
-         sense in relation to a due date). -->
+    <!-- Owner feedback, 2026-07-30: only the due date value itself is
+         mandatory, same tier as Status/Priority/Tags -- always visible,
+         no toggle. Repeat/Reminder moved into Extras below (they're
+         optional add-ons to a due date, not mandatory themselves). -->
     <div class="detail-block">
       <label>
         Due date
@@ -431,34 +427,6 @@
           {/each}
         </div>
       </label>
-
-      <label class="repeat-field">
-        Repeat
-        <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
-        {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
-      </label>
-
-      <div class="reminder-field">
-        <label>
-          Reminder
-          <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
-        </label>
-        <label class="remind-on-due-row">
-          <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-          Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
-        </label>
-        {#if reminder_at && $permissionState !== 'granted'}
-          <div class="reminder-hint">
-            {#if $permissionState === 'unsupported'}
-              Notifications aren't supported in this browser.
-            {:else}
-              Notifications aren't enabled yet —
-              <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
-              so this reminder can actually notify you.
-            {/if}
-          </div>
-        {/if}
-      </div>
     </div>
 
     <div class="section-divider"></div>
@@ -511,6 +479,38 @@
       </button>
       {#if showExtras}
         <div class="extras-panel" transition:slide={{ duration: 180 }}>
+
+          <div class="detail-block">
+            <label class="repeat-field">
+              Repeat
+              <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
+              {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
+            </label>
+
+            <div class="reminder-field">
+              <label>
+                Reminder
+                <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
+              </label>
+              <label class="remind-on-due-row">
+                <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+                Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
+              </label>
+              {#if reminder_at && $permissionState !== 'granted'}
+                <div class="reminder-hint">
+                  {#if $permissionState === 'unsupported'}
+                    Notifications aren't supported in this browser.
+                  {:else}
+                    Notifications aren't enabled yet —
+                    <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
+                    so this reminder can actually notify you.
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
 
           <div class="detail-block">
             <span class="field-label">
@@ -853,15 +853,18 @@
   }
   .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
-  /* Everything inside Extras is now flat -- every former section a
-     plain .detail-block, separated by the same thin .section-divider
-     used elsewhere, rather than each having its own card treatment. */
+  /* Everything inside Extras is flat -- every former section a plain
+     .detail-block, separated by the same thin .section-divider used
+     elsewhere, rather than each having its own card treatment. Kept
+     tight/compact (owner feedback, 2026-07-30) since this now holds
+     five blocks (Repeat/Reminder, Checklist, Custom fields, Related,
+     Notes) once opened. */
   .extras-panel {
-    display: flex; flex-direction: column; gap: .55rem;
+    display: flex; flex-direction: column; gap: .45rem;
     background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: .65rem .7rem;
+    padding: .55rem .65rem;
   }
-  .detail-block { display: flex; flex-direction: column; gap: .35rem; }
+  .detail-block { display: flex; flex-direction: column; gap: .3rem; }
 
   .related-field { display: flex; flex-direction: column; gap: .3rem; }
   .related-row { display: flex; align-items: center; gap: 7px; }

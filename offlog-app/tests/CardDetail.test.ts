@@ -132,9 +132,14 @@ describe('CardDetail save logic (A9)', () => {
     expect(changes.due_date).toBe(expectedStr);
   });
 
-  it('toggling a checklist item\'s "done" state persists on save (section is auto-expanded when non-empty)', async () => {
+  it('toggling a checklist item\'s "done" state persists on save (Extras opened manually)', async () => {
     const task = mkTask({ checklist: [{ text: 'Step 1', done: false }] });
     const { getByText, container } = render(CardDetail, { props: { task, project: mkProject() } });
+
+    // Owner feedback, 2026-07-30: Extras no longer auto-opens just
+    // because it already has content -- opening it is always a manual
+    // action now.
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
 
     const checkbox = container.querySelector('.checklist-check') as HTMLButtonElement;
     expect(checkbox).toBeTruthy();
