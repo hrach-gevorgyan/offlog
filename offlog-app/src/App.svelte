@@ -482,9 +482,10 @@
             goToProject(e.detail);
           }}
           on:focus={goToFocus}
+          on:search={openSearch}
         />
       {:else if showFocus}
-        <FocusView on:menu={() => sidebarOpen = true} />
+        <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
       {:else if showDeadlines}
         <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} />
       {:else if $activeProject}

@@ -8,7 +8,7 @@
   import { hapticToggle } from './haptics';
   import { today, loadFocusLock, saveFocusLock, type FocusLock } from './focusLock';
 
-  const dispatch = createEventDispatcher<{ menu: void }>();
+  const dispatch = createEventDispatcher<{ menu: void; search: void }>();
 
   // B35 (revised) — a daily commitment lock, not an auto-computed priority
   // list. Up to 3 tasks, picked once, locked until each is done or the day
@@ -272,6 +272,15 @@
     {#if lock}
       <button class="reset-btn" on:click={resetCommitment}>Reset</button>
     {/if}
+    <!-- redesign/v6 (owner feedback, 2026-07-30): same Command Palette
+         button as List/Agenda/Dashboard -- every full-page view needs
+         its own visible entry point, not just the Ctrl+K shortcut,
+         since it's unreachable on mobile with no physical keyboard. -->
+    <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+      </svg>
+    </button>
   </div>
 
   <div class="fc-body">
@@ -392,6 +401,15 @@
     align-self: center;
   }
   .reset-btn:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
+
+  .palette-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: none; border: 1px solid var(--border-strong); border-radius: 8px;
+    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+    align-self: center;
+  }
+  .palette-btn:hover { color: var(--text); background: var(--hover); }
 
   .fc-body {
     flex: 1; min-height: 0; overflow-y: auto;

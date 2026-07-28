@@ -8,7 +8,7 @@
   import CardDetail from './CardDetail.svelte';
   import { loadFocusLock, type FocusLock } from './focusLock';
 
-  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void }>();
+  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void; search: void }>();
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
@@ -97,6 +97,15 @@
         </span>
       {/if}
     </div>
+    <!-- redesign/v6 (owner feedback, 2026-07-30): same Command Palette
+         button as List/Agenda -- every full-page view needs its own
+         visible entry point, not just the Ctrl+K shortcut, since it's
+         unreachable on mobile with no physical keyboard. -->
+    <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+      </svg>
+    </button>
   </div>
 
   {#if !data}
@@ -279,6 +288,18 @@
   }
   .hamburger:hover { background: var(--hover); }
 
+  .palette-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; margin-left: auto; flex-shrink: 0;
+    background: none; border: 1px solid var(--border-strong); border-radius: 8px;
+    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+    /* header is align-items:flex-start (see the header comment below) --
+       this button still wants to sit centered against the row, not
+       pinned to the top like the (multi-line) title block. */
+    align-self: center;
+  }
+  .palette-btn:hover { color: var(--text); background: var(--hover); }
+
   .dash-body {
     flex: 1; min-height: 0; overflow-y: auto;
     padding: 20px 28px 32px;
@@ -341,6 +362,14 @@
     grid-auto-rows: minmax(130px, auto);
     gap: 12px;
     align-content: start;
+    /* redesign/v6 (owner feedback, 2026-07-30): default grid behavior
+       stretches every card in a row to match its tallest sibling -- a
+       card whose title wraps to 2 lines (now that titles wrap instead
+       of truncating) made every other card in that row taller too, and
+       .proj-stats's margin-top:auto then left a visible dead gap in the
+       shorter-titled cards before their chips. align-items:start lets
+       each card size to its own content instead of being stretched. */
+    align-items: start;
   }
   .proj-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
