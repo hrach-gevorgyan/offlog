@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { fly, fade, slide } from 'svelte/transition';
-  import { panelFly, scrimFade, popScale } from './motion';
+  import { fly, slide } from 'svelte/transition';
+  import { popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask } from './db';
   import { reloadTasks, showError, modalOpen, projects } from './store';
@@ -385,8 +385,8 @@
 <svelte:window on:keydown={onWindowKeydown} on:click={onWindowClick} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="overlay" on:click|self={() => requestClose()} transition:fade={scrimFade}>
-  <div class="panel" use:trapFocus transition:fly={{ ...panelFly, x: 440 }}>
+<div class="overlay" on:click|self={() => requestClose()}>
+  <div class="panel" use:trapFocus>
     <div class="panel-header">
       <textarea class="title-input" bind:value={title} placeholder="Task title" rows="1" on:input={(e) => { const t = e.currentTarget; t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }}></textarea>
       <button class="pin-btn" class:pinned on:click={() => pinned = !pinned} title={pinned ? 'Unpin' : 'Pin task'}>
@@ -666,10 +666,17 @@
 </div>
 
 <style>
+  /* Owner feedback, 2026-07-30: "wrong to show in sidebar, can we do
+     same kind of modal as we do settings now" -- was a full-height
+     right-side sliding drawer; now the same centered-card layout
+     SettingsPanel.svelte's .settings-overlay/.settings-panel use (flex-
+     centered overlay, fixed-width card, height fits content up to a
+     cap, no entrance transition on the overlay/panel itself). */
   .overlay {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.45);
-    display: flex; align-items: stretch; justify-content: flex-end;
+    display: flex; align-items: center; justify-content: center;
+    padding: env(safe-area-inset-top, 0px) 1rem env(safe-area-inset-bottom, 0px);
     /* Above every panel that can open a card while staying visible itself
        (TrashView/TimeTravelView z:402, GlobalSearch z:401, SettingsPanel
        z:301, QuickAdd z:501) — was z:100, which put CardDetail BEHIND
@@ -681,14 +688,13 @@
   }
   .panel {
     background: var(--surface);
-    width: min(440px, 100vw);
-    height: 100dvh;
+    width: min(480px, 92vw);
+    max-height: min(85vh, 760px);
     display: flex; flex-direction: column;
     padding: 1.1rem 1.25rem;
-    padding-top: calc(1.1rem + env(safe-area-inset-top, 0px));
     gap: .55rem;
-    border-left: 1px solid var(--border);
-    box-shadow: -20px 0 50px rgba(0,0,0,.22);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(0,0,0,.18);
     overflow-y: auto;
   }
   .panel-header { display: flex; gap: .4rem; align-items: flex-start; }
