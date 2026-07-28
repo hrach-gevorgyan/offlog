@@ -76,18 +76,32 @@
     suggestedReasons = new Map(suggestedReasons); // trigger Svelte reactivity
 
     // redesign/v6 (owner feedback, 2026-07-29): the 3 suggested (bigger)
-    // notes need to actually render near the top of the board, not just
-    // be tagged as suggested. Returning bucket-major order alone didn't
-    // guarantee that -- e.g. several non-suggested pinned tasks would
-    // all list before the overdue bucket's one suggested pick, burying
-    // it well past the top row. Put the suggested 3 first, in their own
-    // round-robin pick order (the Map's insertion order), then
-    // everything else in the previous bucket-major order.
+    // notes need to land somewhere near the top of the board -- but
+    // spread across roughly the first 10 cards, not stacked as a
+    // consecutive block of exactly 3 (owner: "top 10, not 3 together").
+    // Bucket-major order alone didn't even guarantee "near the top": a
+    // handful of non-suggested pinned tasks could all list before the
+    // overdue bucket's one suggested pick, burying it well past the top
+    // row. Build a "top window" of up to 10 slots, place the suggested
+    // picks at evenly-spaced slots within it (in their own round-robin
+    // pick order — the Map's insertion order), fill the gaps with the
+    // rest in bucket-major order, then append whatever's left over.
     const byBucket = BUCKET_ORDER.flatMap(reason => buckets[reason].map(x => x.t));
     const byId = new Map(byBucket.map(t => [t._id!, t]));
     const suggestedFirst = [...suggestedReasons.keys()].map(id => byId.get(id)!).filter(Boolean);
     const rest = byBucket.filter(t => !suggestedReasons.has(t._id!));
-    return [...suggestedFirst, ...rest];
+
+    const windowSize = Math.min(10, suggestedFirst.length + rest.length);
+    const window: (TaskDoc | null)[] = new Array(windowSize).fill(null);
+    suggestedFirst.forEach((t, i) => {
+      const ideal = Math.round(i * (windowSize - 1) / Math.max(1, suggestedFirst.length - 1 || 1));
+      let slot = Math.min(windowSize - 1, ideal);
+      while (window[slot]) slot = (slot + 1) % windowSize;
+      window[slot] = t;
+    });
+    let ri = 0;
+    for (let i = 0; i < windowSize; i++) if (!window[i]) window[i] = rest[ri++];
+    return [...(window.filter((t): t is TaskDoc => !!t)), ...rest.slice(ri)];
   }
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
@@ -213,11 +227,13 @@
     return SIZES[hashId(t._id!) % 2]; // sm/md mix for the rest — lg is reserved for suggested
   }
   // Reduced range (owner feedback, 2026-07-29: "too much, make more
-  // stable") -- still non-zero per card so the board doesn't read as a
-  // rigid grid, just a subtler lean than before.
+  // stable") and about half the cards stay perfectly flat now (owner:
+  // "not all cards need to be tilted, some can be normal") -- only the
+  // other half lean, and only a couple degrees when they do.
   function noteTilt(t: TaskDoc): number {
     const h = hashId(t._id!);
-    return (h % 5) - 2; // -2..2 degrees
+    if (h % 4 < 2) return 0;
+    return h % 4 === 2 ? -1.5 : 1.5;
   }
   // A little vertical stagger alongside the tilt (owner feedback,
   // 2026-07-29: "more freedom of card positions like it was before") --
