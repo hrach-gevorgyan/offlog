@@ -25,7 +25,10 @@ merged the old QUESTIONS.md 2026-07-20), [docs/BRAND.md](docs/BRAND.md)
 copy — README, landing page, store listing), and
 [docs/TRADEMARK.md](docs/TRADEMARK.md) (the MIT license covers code
 only — name/icon/tagline are reserved separately; read before approving
-a fork's naming or any brand-adjacent request). The maintenance-pass process
+a fork's naming or any brand-adjacent request), and
+[docs/SIGNING.md](docs/SIGNING.md) (public code-signing policy for the
+SignPath Foundation application, ROADMAP.md's C3b — only touch this
+when that build/release process itself changes). The maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in

@@ -193,8 +193,11 @@ Download the latest Windows installer and Android APK from
 Your OS will warn you before installing (unsigned app, not from Google
 Play) — that's expected, not a red flag on this app's code; getting real
 signing/publishing set up is a tracked goal (see
-[docs/ROADMAP.md](docs/ROADMAP.md)'s Track C). Just make sure you're
-downloading from this repo's own Releases page, not a mirror.
+[docs/ROADMAP.md](docs/ROADMAP.md)'s Milestone 2 — Windows signing is
+applying to [SignPath Foundation](https://signpath.org)'s free
+open-source program, see [docs/SIGNING.md](docs/SIGNING.md)). Just make
+sure you're downloading from this repo's own Releases page, not a
+mirror.
 
 **Windows** is the intended app for day-to-day use — bundles its own
 sync server, nothing else to install. **Android** works the same way via
