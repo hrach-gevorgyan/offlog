@@ -338,6 +338,20 @@
     return '';
   }
 
+  // redesign/v6, follow-up critique (2026-07-28): tags all rendered as
+  // identical gray, forcing the user to read each one rather than
+  // recognize it by color. Offlog tags are free-text, not a fixed
+  // taxonomy (no built-in "bug"=red mapping) -- a deterministic hash to
+  // a small fixed palette gives every tag its own consistent color
+  // across the whole app (same tag always looks the same) without
+  // inventing a category system that doesn't exist in the data model.
+  const TAG_PALETTE = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+  function tagColor(tag: string): string {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
+    return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
+  }
+
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
     touchTask = task;
     if (touchDragWatchdog) clearTimeout(touchDragWatchdog);
@@ -628,8 +642,11 @@
                 </span>
               {/if}
               {#if task.checklist?.length}
+                <!-- redesign/v6, follow-up critique: a mini progress bar
+                     makes completion visible at a glance instead of
+                     requiring the "X/Y" text to be read every time. -->
                 <span class="meta-badge checklist-badge" class:complete={task.checklist.every(i => i.done)}>
-                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h9M2.5 7h9M2.5 10.5h6"/><path d="M11 9.5l1 1 2-2"/></svg>
+                  <span class="checklist-bar"><span class="checklist-bar-fill" style="width:{Math.round(task.checklist.filter(i => i.done).length / task.checklist.length * 100)}%"></span></span>
                   {task.checklist.filter(i => i.done).length}/{task.checklist.length}
                 </span>
               {/if}
@@ -641,7 +658,7 @@
             </div>
             {#if task.tags.length}
               <div class="card-tags">
-                {#each task.tags as tag}<span class="card-tag">{tag}</span>{/each}
+                {#each task.tags as tag}<span class="card-tag" style="color:{tagColor(tag)}; background:color-mix(in srgb, {tagColor(tag)} 14%, transparent)">{tag}</span>{/each}
               </div>
             {/if}
           </div>
@@ -887,28 +904,40 @@
   }
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
   .due-badge.soon { color: var(--due-soon-ink); background: var(--due-soon-bg); }
+  /* redesign/v6, follow-up critique: a comfortably-future date doesn't
+     need a colored pill at all -- only overdue/soon carry real urgency,
+     so only those two get a background; everything else is plain
+     icon+text with no fill. */
+  .due-badge:not(.overdue):not(.soon) { background: none; padding: .18rem 0; }
   .checklist-badge.complete { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .checklist-bar {
+    display: inline-block; width: 24px; height: 4px; border-radius: 2px;
+    background: var(--border-strong); overflow: hidden; flex-shrink: 0;
+  }
+  .checklist-bar-fill { display: block; height: 100%; background: var(--success); border-radius: 2px; }
   .related-badge { padding: .18rem .4rem; }
 
-  /* B29 (redesign/v6: bordered pill, not filled, matching the owner's
-     reference set's label-chip treatment) — same visual treatment as
-     ListView.svelte's .tag chip is NOT reused here since Svelte scopes
-     component styles per-file, not shared via the class name alone. */
+  /* redesign/v6, follow-up critique: tags were all identical gray
+     (Tag Homogeneity) -- each tag now gets a consistent soft tint via
+     tagColor()'s hash, same filled-pill language as the priority/date
+     badges instead of a plain border. */
   .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .4rem; }
   .card-tag {
-    font-size: 11px; color: var(--muted); background: none;
-    border: 1px solid var(--border-strong);
-    padding: 1px 7px; border-radius: 20px; white-space: nowrap;
+    font-size: 11px; font-weight: 500;
+    padding: 2px 8px; border-radius: 20px; white-space: nowrap;
   }
 
+  /* redesign/v6, follow-up critique: was plain unstyled text, read as an
+     afterthought rather than a real control -- a dashed-outline button
+     matches the reference wireframe's drop-zone treatment. */
   .add-card-btn {
-    border: none; background: none; cursor: pointer;
+    border: 1.5px dashed var(--border-strong); background: none; cursor: pointer;
     color: var(--faint); font-size: .82rem; font-weight: 500;
-    text-align: left; padding: .4rem .5rem;
+    text-align: center; padding: .5rem;
     border-radius: var(--radius-sm); width: 100%;
-    transition: color .12s, background .12s;
+    transition: color .12s, background .12s, border-color .12s;
   }
-  .add-card-btn:hover { color: var(--text); background: var(--hover); }
+  .add-card-btn:hover { color: var(--text); background: var(--hover); border-color: var(--accent); }
 
   .quick-add-form, .add-col-form { display: flex; flex-direction: column; gap: .45rem; }
   .quick-input {
