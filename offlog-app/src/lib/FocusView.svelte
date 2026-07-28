@@ -75,7 +75,19 @@
     }
     suggestedReasons = new Map(suggestedReasons); // trigger Svelte reactivity
 
-    return BUCKET_ORDER.flatMap(reason => buckets[reason].map(x => x.t));
+    // redesign/v6 (owner feedback, 2026-07-29): the 3 suggested (bigger)
+    // notes need to actually render near the top of the board, not just
+    // be tagged as suggested. Returning bucket-major order alone didn't
+    // guarantee that -- e.g. several non-suggested pinned tasks would
+    // all list before the overdue bucket's one suggested pick, burying
+    // it well past the top row. Put the suggested 3 first, in their own
+    // round-robin pick order (the Map's insertion order), then
+    // everything else in the previous bucket-major order.
+    const byBucket = BUCKET_ORDER.flatMap(reason => buckets[reason].map(x => x.t));
+    const byId = new Map(byBucket.map(t => [t._id!, t]));
+    const suggestedFirst = [...suggestedReasons.keys()].map(id => byId.get(id)!).filter(Boolean);
+    const rest = byBucket.filter(t => !suggestedReasons.has(t._id!));
+    return [...suggestedFirst, ...rest];
   }
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
@@ -200,9 +212,20 @@
     if (suggestedReasons.has(t._id!)) return 'note-lg'; // suggested tasks are the ones worth noticing first
     return SIZES[hashId(t._id!) % 2]; // sm/md mix for the rest — lg is reserved for suggested
   }
+  // Reduced range (owner feedback, 2026-07-29: "too much, make more
+  // stable") -- still non-zero per card so the board doesn't read as a
+  // rigid grid, just a subtler lean than before.
   function noteTilt(t: TaskDoc): number {
     const h = hashId(t._id!);
-    return (h % 7) - 3; // -3..3 degrees
+    return (h % 5) - 2; // -2..2 degrees
+  }
+  // A little vertical stagger alongside the tilt (owner feedback,
+  // 2026-07-29: "more freedom of card positions like it was before") --
+  // keeps the flex-grow tiling (no dead gaps) but the row no longer
+  // looks perfectly ruled-off, closer to loose stickers than a table.
+  function noteJitter(t: TaskDoc): number {
+    const h = hashId(t._id!);
+    return (h % 9) - 4; // -4..4 px
   }
 </script>
 
@@ -264,7 +287,7 @@
               class="note {noteSize(t)}"
               class:selected={selected.includes(t._id!)}
               class:suggested={suggestedReasons.has(t._id!)}
-              style="--tilt: {noteTilt(t)}deg; --prio-color: {PRIO_COLOR[t.priority]}"
+              style="--tilt: {noteTilt(t)}deg; --jitter: {noteJitter(t)}px; --prio-color: {PRIO_COLOR[t.priority]}"
               title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
@@ -333,13 +356,13 @@
   }
   .hamburger:hover { background: var(--hover); }
 
-  /* Literally the same padding/font-size/weight/radius as .commit-btn
-     (owner feedback, 2026-07-29: "reset still not like commit") -- only
-     the fill differs (outline, not solid), since Reset is the secondary
-     action here, not a second primary. */
+  /* Same shape family as .commit-btn (rounded, bold, outline instead of
+     filled) but scaled down for a header button rather than matching its
+     footer-CTA size exactly -- a literal match (owner feedback,
+     2026-07-29) ended up too big for this spot. */
   .reset-btn {
     background: none; border: 1.5px solid var(--border-strong); color: var(--muted);
-    font-size: 15px; font-weight: 700; padding: 13px 32px; border-radius: 12px; cursor: pointer;
+    font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 9px; cursor: pointer;
     flex-shrink: 0; transition: background .12s, color .12s, border-color .12s;
     /* header is align-items:flex-start now (see .fc-header comment) —
        this button still wants to sit centered against the row. */
@@ -383,7 +406,7 @@
     padding: 14px 16px;
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.05);
-    transform: rotate(var(--tilt));
+    transform: rotate(var(--tilt)) translateY(var(--jitter, 0px));
     transition: transform .15s, box-shadow .15s, border-color .15s, background .15s;
   }
   .note:hover { transform: rotate(0deg) translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
