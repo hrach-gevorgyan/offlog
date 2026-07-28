@@ -22,13 +22,18 @@ doesn't go stale every release.)
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/images/screenshot-dashboard-desktop.png" alt="Dashboard view (desktop)" width="410">
-  <img src="docs/images/screenshot-kanban-desktop.png" alt="Kanban view (desktop)" width="410">
-</p>
-<p align="center">
-  <img src="docs/images/screenshot-kanban-mobile.png" alt="Kanban view (Android)" width="220">
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/screenshot-dashboard-desktop.png" alt="Dashboard view">
+      <br><sub><b>Dashboard</b> — every project at a glance, pinned and overdue tasks up front</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/screenshot-kanban-desktop.png" alt="Kanban board view">
+      <br><sub><b>Kanban</b> — drag-and-drop columns, per-card due dates and tags</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
