@@ -558,7 +558,11 @@
               </svg>
             </button>
           {/if}
-          <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">×</button>
+          <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">
+            <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 2l10 10M12 2L2 12"/>
+            </svg>
+          </button>
         {/if}
         <div class="col-header-spacer"></div>
         <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
