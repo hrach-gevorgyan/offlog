@@ -73,6 +73,33 @@
     return 0;
   });
 
+  // redesign/v6 fix (owner feedback, 2026-07-28): the title column used
+  // to be `minmax(220px, max-content)`, but .grid-head/each .grid-row are
+  // independent CSS grids (grid-template-columns is set per-element, not
+  // once on a shared container) -- `max-content` resolves separately per
+  // row, sized only to that row's own title. A long-title row got a
+  // wider title column than a short-title row, so Status/Priority/Due/
+  // Tags landed at different x-offsets row to row -- read as the title
+  // text bleeding into the next column and the grid not behaving like a
+  // real table. Fix: measure the widest visible title once (canvas,
+  // matching .cell-title's font) and use that one fixed pixel width for
+  // every row's title column, so every row shares identical boundaries.
+  let measureCanvas: HTMLCanvasElement | null = null;
+  function measureTextWidth(text: string, font: string): number {
+    if (!measureCanvas) measureCanvas = document.createElement('canvas');
+    const ctx = measureCanvas.getContext('2d');
+    if (!ctx) return text.length * 8;
+    ctx.font = font;
+    return ctx.measureText(text).width;
+  }
+  const TITLE_FONT = '500 14px "Hanken Grotesk", sans-serif';
+  // Flat buffer for the pin/recurrence/checklist/related marks that can
+  // trail the title inline, rather than measuring each icon combination.
+  const TITLE_ICON_BUFFER = 70;
+  $: titleColWidth = Math.min(480, Math.max(220, Math.ceil(
+    Math.max(0, ...sorted.map(t => measureTextWidth(t.title, TITLE_FONT))) + TITLE_ICON_BUFFER
+  )));
+
   function toggleSort(col: SortCol, additive: boolean) {
     const existing = sortSpec.find(s => s.col === col);
     if (additive) {
@@ -240,8 +267,10 @@
   // .grid-row are `width: max-content`, so they size to their natural
   // (unclipped) content width and the scroll container takes over once
   // that's wider than the viewport, instead of the old responsive
-  // column-hiding tiers.
-  $: gridTemplate = (selectionMode ? '20px ' : '') + '24px minmax(220px,max-content)' + visibleOrder.map(k => ` ${colWidth(k)}`).join('');
+  // column-hiding tiers. Title track is `titleColWidth`px (computed above),
+  // not `max-content` — every row now shares the exact same track sizes,
+  // so columns actually line up instead of drifting per row.
+  $: gridTemplate = (selectionMode ? '20px ' : '') + `24px ${titleColWidth}px` + visibleOrder.map(k => ` ${colWidth(k)}`).join('');
 
   // B19 (revised, owner feedback 2026-07-09): plain checkboxes-everywhere
   // was rejected as a UI — checkboxes only appear once "Select" mode is
