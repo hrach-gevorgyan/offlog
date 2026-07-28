@@ -771,3 +771,23 @@ resurfacing as its own "Clear text storage" finding under a new alert
 number each time the file changes — that one is the already-accepted
 C8 web-fallback limitation above, same dismissal reason applies, not a
 regression.
+
+### C3 — privacy policy content, resolved (2026-07-28)
+IDEAS.md's Q3 asked what a privacy policy should actually say when
+there is genuinely nothing to disclose, without either reading as
+suspiciously sparse or accidentally implying more data handling than
+really happens via boilerplate legal language. Resolved by writing
+[docs/PRIVACY.md](PRIVACY.md) directly rather than adapting a generic
+template: states plainly that nothing is collected, then explains
+*why* for each category a reviewer would expect (accounts, analytics,
+crash reporting, sync, backups, permissions) by pointing at the actual
+mechanism (e.g. sync is direct device-to-device over the user's own
+LAN, no Offlog-operated server exists to collect anything even in
+principle) rather than a bare denial. Needed for both C3 (Play Store
+listing) and C3b (SignPath application) — same document serves both.
+Until [docs/SIGNING.md](SIGNING.md)'s companion landing page (C5)
+ships, the Play Console privacy-policy URL field should point at the
+GitHub-rendered page directly
+(`https://github.com/hrach-gevorgyan/offlog/blob/main/docs/PRIVACY.md`)
+— publicly viewable today since the repo is already public, no
+GitHub Pages setup required first.

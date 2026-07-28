@@ -60,10 +60,11 @@ being findable and installable without knowing what "sideload" means.
   GitHub. Signing key already exists and is wired into CI. Remaining:
   a Play Console developer account (**$25 one-time — owner-approved
   cost, 2026-07-23**), store listing assets (icon exists; screenshots,
-  short/full description from BRAND.md's copy), a privacy-policy page
-  (trivial to write honestly: "no data is collected"), and Google's
-  review process. Calendar time is mostly waiting on Google, not
-  working.
+  short/full description from BRAND.md's copy), and Google's review
+  process. Calendar time is mostly waiting on Google, not working.
+  **Privacy policy done** — [docs/PRIVACY.md](PRIVACY.md), 2026-07-28
+  (resolves IDEAS.md's old Q3, see DECISIONS.md); use the GitHub-
+  rendered page as the Play Console URL until C5's landing page exists.
 - **C3b — Windows code signing via SignPath (owner-decided,
   2026-07-23).** Removes the Windows SmartScreen "unverified
   publisher" warning on the installer — free for qualifying open-source

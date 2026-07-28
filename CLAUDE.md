@@ -28,7 +28,11 @@ only — name/icon/tagline are reserved separately; read before approving
 a fork's naming or any brand-adjacent request), and
 [docs/SIGNING.md](docs/SIGNING.md) (public code-signing policy for the
 SignPath Foundation application, ROADMAP.md's C3b — only touch this
-when that build/release process itself changes). The maintenance-pass process
+when that build/release process itself changes), and
+[docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
+policy, ROADMAP.md's C3 — update it only if a feature actually changes
+what data the app touches, per its own DECISIONS.md entry). The
+maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in

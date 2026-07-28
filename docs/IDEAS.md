@@ -63,13 +63,6 @@ recent Android versions, or general policy scrutiny of apps that make
 local-network calls) that should be researched before assuming a smooth
 listing process?
 
-### Q3. Privacy policy content when there is genuinely nothing to disclose
-Store listings require a privacy policy page even for an app that collects
-zero telemetry. **What's the right, honest content for that page** that
-doesn't either (a) read as suspiciously sparse to a reviewer, or (b)
-accidentally imply more data handling than actually happens (e.g. because
-of boilerplate legal language that doesn't fit a truly local-only app)?
-
 ---
 
 ## Scale
