@@ -678,7 +678,7 @@
             </div>
             {#if task.tags.length}
               <div class="card-tags">
-                {#each task.tags as tag}<span class="card-tag" style="color:{tagColor(tag)}; background:color-mix(in srgb, {tagColor(tag)} 14%, transparent)">{tag}</span>{/each}
+                {#each task.tags as tag}<span class="card-tag" style="background:color-mix(in srgb, {tagColor(tag)} 14%, transparent)"><span class="card-tag-dot" style="background:{tagColor(tag)}"></span>{tag}</span>{/each}
               </div>
             {/if}
           </div>
@@ -963,12 +963,18 @@
      (Tag Homogeneity) -- each tag now gets a consistent soft tint via
      tagColor()'s hash, same filled-pill language as the priority/date
      badges instead of a plain border. Vertical gap bumped to match
-     .card-meta above. */
+     .card-meta above. Text itself stays var(--text) rather than the raw
+     hash color -- a saturated hue as both text and its own tinted
+     background failed contrast/readability (owner feedback, 2026-07-28,
+     e.g. pink text unreadable on its own dark-maroon tint) -- the color
+     identity now lives in a small dot instead. */
   .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .55rem; }
   .card-tag {
-    font-size: 11px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 500; color: var(--text);
     padding: 2px 8px; border-radius: 20px; white-space: nowrap;
   }
+  .card-tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
   /* redesign/v6, follow-up critique: was plain unstyled text, read as an
      afterthought rather than a real control -- a dashed-outline button
