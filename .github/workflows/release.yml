@@ -130,7 +130,7 @@ jobs:
       # purely a restore for speed. Cache miss = build from scratch,
       # same as before caching existed.
       - name: Restore cargo cache (warmed by desktop-ci on main)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -140,7 +140,7 @@ jobs:
           restore-keys: cargo-windows-
 
       - name: Restore vendored NyxDB cache (warmed by desktop-ci on main)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: offlog-desktop/vendor/nyxdb-win
           # Keep in sync with desktop-ci.yml's key and the fetch
