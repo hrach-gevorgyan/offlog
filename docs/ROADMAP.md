@@ -65,12 +65,13 @@ being findable and installable without knowing what "sideload" means.
   [docs/PRIVACY.md](PRIVACY.md), 2026-07-28 (resolves IDEAS.md's old
   Q3, see DECISIONS.md); use the GitHub-rendered page as the Play
   Console URL until C5's landing page exists. **Listing copy/assets
-  prepped** — `brand kit/Kit/play-store-listing.md` (not tracked in
-  git, local-only per `.gitignore`) has the short/full description
-  draft and an asset-readiness check: icon is Play-ready as-is, but
-  the feature graphic needs a re-export at exactly 1024×500 (currently
-  2048×1000) and the mobile screenshots need a re-export closer to a
-  2:1 ratio (currently ≈2.22:1, over Play's cap) before upload.
+  prepped and Play-ready** — `brand kit/Kit/play-store-listing.md`
+  (not tracked in git, local-only per `.gitignore`) has the short/full
+  description draft; icon, feature graphic (re-exported to exactly
+  1024×500, 24-bit, 2026-07-28), and mobile screenshots
+  (`Mobile - Screenshots/play-ready/`, padded to a safe ≈2:1 ratio
+  without cropping content, 2026-07-28) all meet Play Console's size/
+  format requirements.
 - **C3b — Windows code signing via SignPath (owner-decided,
   2026-07-23).** Removes the Windows SmartScreen "unverified
   publisher" warning on the installer — free for qualifying open-source
