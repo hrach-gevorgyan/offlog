@@ -486,7 +486,7 @@
       {#if showExtras}
         <div class="extras-panel" transition:slide={{ duration: 180 }}>
 
-          <div class="detail-block">
+          <div class="extra-block">
             <label class="repeat-field">
               Repeat
               <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
@@ -516,9 +516,7 @@
             </div>
           </div>
 
-          <div class="section-divider"></div>
-
-          <div class="detail-block">
+          <div class="extra-block">
             <span class="field-label">
               Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
             </span>
@@ -547,8 +545,7 @@
           </div>
 
           {#if customFields.length > 0}
-            <div class="section-divider"></div>
-            <div class="detail-block">
+            <div class="extra-block">
               <span class="field-label">Custom fields</span>
               <div class="custom-fields">
                 {#each visibleFields as field (field.id)}
@@ -579,9 +576,7 @@
             </div>
           {/if}
 
-          <div class="section-divider"></div>
-
-          <div class="detail-block">
+          <div class="extra-block">
             <span class="field-label">
               Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
             </span>
@@ -613,9 +608,7 @@
             </div>
           </div>
 
-          <div class="section-divider"></div>
-
-          <div class="detail-block">
+          <div class="extra-block">
             <span class="field-label">Notes (markdown)</span>
             <div class="notes-wrap">
               <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
@@ -879,18 +872,24 @@
   }
   .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
-  /* Everything inside Extras is flat -- every former section a plain
-     .detail-block, separated by the same thin .section-divider used
-     elsewhere, rather than each having its own card treatment. Kept
-     tight/compact (owner feedback, 2026-07-30) since this now holds
-     five blocks (Repeat/Reminder, Checklist, Custom fields, Related,
-     Notes) once opened. */
-  .extras-panel {
-    display: flex; flex-direction: column; gap: .45rem;
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: .55rem .65rem;
-  }
+  /* .detail-block (the mandatory Due date field, always-visible, not
+     inside Extras) stays plain -- no card treatment, matching Status/
+     Priority/Tags right above it. */
   .detail-block { display: flex; flex-direction: column; gap: .3rem; }
+
+  /* Owner feedback, 2026-07-30 ("still need to make extras more
+     ideal"): a flat list separated only by thin divider lines didn't
+     read as distinct blocks -- everything just blended into one long
+     form. Extras' own outer background/border is dropped; each of the
+     five blocks (Repeat/Reminder, Checklist, Custom fields, Related,
+     Notes) is now its own small card instead, so the grouping is
+     visible at a glance, not just implied by a caption + hairline. */
+  .extras-panel { display: flex; flex-direction: column; gap: .4rem; }
+  .extra-block {
+    display: flex; flex-direction: column; gap: .3rem;
+    background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: .5rem .6rem;
+  }
 
   .related-field { display: flex; flex-direction: column; gap: .3rem; }
   .related-row { display: flex; align-items: center; gap: 7px; }
