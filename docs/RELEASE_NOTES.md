@@ -17,6 +17,10 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v5.8.2
+
+No visible changes — routine dependency updates only.
+
 ## v5.8.1
 
 ### New

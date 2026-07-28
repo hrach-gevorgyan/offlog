@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.7.2 | List view crash on zero-task project, undo-toast chaining bug, Time Travel mobile layout, Agenda "Tomorrow · Tomorrow" chip, faster edge-auto-scroll, view-restore moved to sessionStorage, landscape sidebar drawer fix, AndroidManifest.xml invalid-comment fix | `v5.7.2` |
 | 5.7.10 | TimePicker.svelte settled back to its B50 themed dropdown after trying and rejecting three replacements (scroll wheel, `timepicker-ui` npm lib, native `<input type="time">`) the same day — no functional change | `v5.7.10` |
 | 5.7.1 | CRITICAL: real dev credentials (`.env.local`) baked into a shipped production build via Vite's always-loaded env, leaking a real password in the public v5.7.0 APK — fixed via `import.meta.env.DEV` gating; plus a batch of onboarding/UTC-date/widget/drag fixes from the same live-testing session | `v5.7.1` |
 | 5.4.4 | Fixed Android Studio's "Activity class ... does not exist" running `release` — unsigned build type, pointed at AGP's debug keystore for local-dev runnability | `v5.4.4` |
