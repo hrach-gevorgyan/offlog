@@ -8,9 +8,9 @@ import type { Update } from '@tauri-apps/plugin-updater';
 // `@tauri-apps/plugin-updater`'s `Update` exposes download()/install() as
 // separate steps specifically to support this (confirmed by reading its
 // own type definitions, dist-js/index.d.ts).
-export type UpdatePhase = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
+type UpdatePhase = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
-export interface UpdateState {
+interface UpdateState {
   phase: UpdatePhase;
   version?: string;
   body?: string; // release notes, from latest.json's `notes` field

@@ -7,7 +7,7 @@
 
 import { fmtTime } from './utils';
 
-export const FIELD_LABEL: Record<string, string> = {
+const FIELD_LABEL: Record<string, string> = {
   title: 'Title', body: 'Notes', priority: 'Priority',
   due_date: 'Due date', reminder_at: 'Reminder', remindOnDue: 'Remind on due date',
   tags: 'Tags', name: 'Name', columns: 'Statuses',

@@ -181,7 +181,7 @@ export const staleHostAlert = writable<{ uuid: string; name: string } | null>(nu
 // Re-resolves the paired PC's current address and updates the stored
 // sync URL if it's changed. Returns whether anything was updated, so the
 // caller knows whether it's worth kicking off a fresh sync attempt.
-export async function reresolveHost(): Promise<boolean> {
+async function reresolveHost(): Promise<boolean> {
   if (!isNative()) return false;
   const uuid = getPairedHostUuid();
   if (!uuid) return false; // never paired via mDNS (e.g. a manually-typed URL)

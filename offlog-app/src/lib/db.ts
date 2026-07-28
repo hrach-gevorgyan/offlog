@@ -1739,7 +1739,7 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
 // sequencing/error-handling is testable directly (tests/db.test.ts) against
 // a mocked db.ts, the same lightweight pattern CardDetail.test.ts already
 // uses.
-export type MaintStepKey = 'check' | 'repair' | 'history' | 'trash' | 'compact';
+type MaintStepKey = 'check' | 'repair' | 'history' | 'trash' | 'compact';
 export type MaintStatus = 'running' | 'done' | 'skipped' | 'error';
 export interface MaintStepResult { key: MaintStepKey; status: MaintStatus; note: string }
 

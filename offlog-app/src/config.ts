@@ -67,7 +67,7 @@ export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>
 // knowable via the async get_sync_info Tauri command) — falls back to
 // '' like Android, resolved by initTauriSyncDefaults() below before
 // the first sync attempt.
-export const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() && !isTauri() ? 'http://127.0.0.1:5984/offlog' : '');
+const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() && !isTauri() ? 'http://127.0.0.1:5984/offlog' : '');
 
 // Called once at app boot (store.ts's initApp(), before startSync()) —
 // if this is the Tauri desktop app and nothing has been explicitly
