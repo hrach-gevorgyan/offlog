@@ -571,14 +571,8 @@
             in:scale={{ duration: 150, start: 0.92, easing: cubicOut }}
             out:fade={{ duration: 120 }}
             animate:flip={{ duration: 200, easing: cubicOut }}
+            style="--prio-color:{PRIORITY_COLOR[task.priority]}"
           >
-            <div class="card-badges">
-              <!-- redesign/v6, reference pass: priority moves to its own
-                   pill above the title (owner reference set -- the
-                   ClickUp-style "High Priority" pill pattern), instead of
-                   a left-edge bar or a meta-line item. -->
-              <span class="priority-pill" style="color:{PRIORITY_COLOR[task.priority]}; background:color-mix(in srgb, {PRIORITY_COLOR[task.priority]} 18%, transparent)">{PRIORITY_LABEL[task.priority]}</span>
-            </div>
             <div class="card-top">
               <span class="card-title">{task.title}</span>
               {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
@@ -828,26 +822,28 @@
      2026-07-28): no left priority bar, no static border -- cards float
      on the column via whitespace + a soft shadow only, priority moves
      to its own pill above the title. */
+  /* redesign/v6: priority pill tried and reverted (owner feedback,
+     2026-07-28) -- a thin edge color reads as more correct for priority
+     than a pill, paired with a soft shadow tinted to that same priority
+     color rather than a flat black one, so the two signals reinforce
+     each other instead of competing. */
   .card {
     background: var(--surface);
     border-radius: var(--radius);
     padding: .75rem .85rem;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    border-left: 2px solid var(--prio-color, var(--border));
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 10px color-mix(in srgb, var(--prio-color) 16%, transparent);
     transition: box-shadow var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
                 opacity .18s;
   }
-  .card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.12); transform: translateY(-2px); }
-  .card.dragging { opacity: .35; transition: none; transform: none; }
-  .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 3px rgba(0,0,0,.06); }
-
-  .card-badges { display: flex; margin-bottom: .4rem; }
-  .priority-pill {
-    font-family: var(--mono); font-size: .66rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .03em;
-    padding: .15rem .5rem; border-radius: 20px;
+  .card:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 8px 22px color-mix(in srgb, var(--prio-color) 26%, transparent);
+    transform: translateY(-2px);
   }
+  .card.dragging { opacity: .35; transition: none; transform: none; }
+  .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .92rem; font-weight: 700; line-height: 1.4; color: var(--text); flex: 1; }
