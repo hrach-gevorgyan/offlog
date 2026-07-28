@@ -13,8 +13,9 @@
   import CalendarPicker from './CalendarPicker.svelte';
   import CustomSelect from './CustomSelect.svelte';
   import { getDefaultReminderTime } from '../config';
-  import { fmtTime, findDuplicateChecklistItems } from './utils';
+  import { fmtTime, findDuplicateChecklistItems, dueLabel, dueInk } from './utils';
   import { hapticToggle } from './haptics';
+  import { PRIORITY_COLOR } from './constants';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -180,34 +181,14 @@
   let showAllFields = false;
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
 
-  // B49 redesign (2026-07-19, owner-directed — "still feels complicated/
-  // overloaded"): Due date and Reminder used to be two always-visible
-  // fields, each with their own shortcuts/checkbox/hint sprawl — most of
-  // the panel's density before you even reach a collapsible section.
-  // Mockup-validated (see ROADMAP.md B49): a single collapsed "Schedule"
-  // summary row expands to the exact same two fields, unchanged — nothing
-  // about *how* due date/reminder are set changed, only that both start
-  // tucked away together instead of permanently expanded. Starts open if
-  // either already has a value, same "never hide existing data" rule the
-  // other collapsible sections already use.
-  let showSchedule = !!(due_date || reminder_at);
-
-  const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
-  function formatScheduleSummary(due: string, reminder: string, repeat: string | null): string {
-    if (!due && !reminder) return 'No due date or reminder';
-    const parts: string[] = [];
-    if (due) {
-      const d = new Date(`${due}T00:00:00`);
-      parts.push(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
-    }
-    if (reminder) {
-      const r = new Date(reminder);
-      parts.push(`${fmtTime(r)} reminder`);
-    }
-    if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
-    return parts.join(' · ');
-  }
-  $: scheduleSummary = formatScheduleSummary(due_date, reminder_at, recurrence);
+  // redesign/v6, option A (owner feedback, 2026-07-30): always starts
+  // collapsed now, regardless of whether due_date/reminder_at already
+  // have a value -- superseded B49's "start open if either already has
+  // a value" rule. The due-date pill in the quick-badges row shows the
+  // value at a glance now, so nothing is actually hidden by starting
+  // closed; the old rule existed back when the only way to see the due
+  // date at all was to have this section open.
+  let showSchedule = false;
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -405,25 +386,35 @@
     </div>
     {#if duplicateTitleHint}<p class="dup-name-hint">{duplicateTitleHint}</p>{/if}
 
-    <div class="fields-row">
-      <label>
-        Status
+    <!-- redesign/v6, option A (owner feedback, 2026-07-30): Status/
+         Priority/Due date used to be two full-width bordered dropdown
+         boxes plus a row that auto-expanded into the full due-date/
+         repeat/reminder editor whenever a due date already existed --
+         the single biggest reason a normal, already-scheduled task
+         made this panel feel so long. Now a compact "at a glance" pill
+         row, same language as the Kanban card's own badges: the value
+         is always visible, the *editor* only appears once you click
+         in on it. Schedule always starts collapsed now, regardless of
+         whether due_date/reminder_at already have a value -- the data
+         isn't hidden (the pill shows it), only the editing UI is. -->
+    <div class="quick-badges">
+      <div class="pill status-pill">
         <CustomSelect options={statusOptions} bind:value={column_id} />
-      </label>
-
-      <label>
-        Priority
+      </div>
+      <div class="pill prio-pill" style="--prio-color:{PRIORITY_COLOR[priority]}">
         <CustomSelect options={priorityOptions} bind:value={priorityStr} />
-      </label>
+      </div>
+      <button type="button" class="pill due-pill" style="--due-color:{dueInk(due_date)}" on:click={() => showSchedule = !showSchedule} aria-expanded={showSchedule}>
+        <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M4.5 1.5v2M9.5 1.5v2"/></svg>
+        <span>{due_date ? dueLabel(due_date) : 'No due date'}</span>
+        {#if recurrence}
+          <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
+        {/if}
+        <svg class="section-chevron" class:open={showSchedule} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+      </button>
     </div>
 
     <div class="collapsible-section">
-      <span class="field-label">Due date</span>
-      <button type="button" class="schedule-toggle" on:click={() => showSchedule = !showSchedule} aria-expanded={showSchedule}>
-        <svg class="schedule-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M4.5 1.5v2M9.5 1.5v2"/></svg>
-        <span class="schedule-summary">{scheduleSummary}</span>
-        <svg class="section-chevron" class:open={showSchedule} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-      </button>
       {#if showSchedule}
         <div class="schedule-panel" transition:slide={{ duration: 180 }}>
           <label>
@@ -726,7 +717,32 @@
     flex-shrink: 0; transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
-  .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+
+  /* redesign/v6, option A (owner feedback, 2026-07-30): Status/Priority/
+     Due at a glance, same badge language as the Kanban card -- click any
+     pill to edit. Replaces the old two-column bordered dropdown boxes
+     plus the separate always-visible Schedule toggle row. */
+  .quick-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .pill { display: inline-flex; }
+  .pill :global(.custom-select) { width: auto; }
+  .pill :global(.cs-trigger) {
+    width: auto; gap: 5px; padding: .3rem .55rem .3rem .6rem;
+    border: 1px solid transparent; border-radius: 20px;
+    background: var(--hover); font-size: .78rem; font-weight: 600;
+  }
+  .pill :global(.cs-chevron) { opacity: .5; }
+  .prio-pill :global(.cs-trigger) {
+    color: var(--prio-color); background: color-mix(in srgb, var(--prio-color) 14%, transparent);
+  }
+  .due-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: .3rem .6rem; border: 1px solid transparent; border-radius: 20px;
+    background: color-mix(in srgb, var(--due-color) 14%, transparent); color: var(--due-color);
+    font-size: .78rem; font-weight: 600; cursor: pointer;
+    font-family: 'Hanken Grotesk', sans-serif;
+  }
+  .due-pill .section-chevron { opacity: .6; }
+
   .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
@@ -863,22 +879,9 @@
   }
   .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
-  /* Same de-boxing as .section-toggle above, plus the expanded panel
-     below drops its own card treatment (background/border/padding-box)
-     in favor of a plain indent -- was reading as a card inside a card. */
-  .schedule-toggle {
-    display: flex; align-items: center; gap: 8px;
-    background: none; border: none;
-    cursor: pointer; padding: .3rem 0; width: 100%; text-align: left;
-    border-radius: 6px; transition: background .12s;
-  }
-  .schedule-toggle:hover { background: var(--hover); }
-  .schedule-toggle:hover .section-chevron { color: var(--text); }
-  .schedule-icon { color: var(--accent); flex-shrink: 0; }
-  .schedule-summary {
-    flex: 1; font-family: 'Hanken Grotesk', sans-serif; font-size: .82rem;
-    text-transform: none; letter-spacing: normal; color: var(--text);
-  }
+  /* The due-pill in .quick-badges above is the toggle now (option A) --
+     this panel just holds the actual editor, plain indent, no card
+     treatment of its own (was reading as a card inside a card). */
   .schedule-panel {
     display: flex; flex-direction: column; gap: .55rem;
     padding-left: .3rem;
