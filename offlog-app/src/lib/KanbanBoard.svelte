@@ -595,6 +595,16 @@
                   <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
                 </span>
               {/if}
+              {#if relatedIds.has(task._id!)}
+                <!-- redesign/v6, alignment critique (2026-07-28): was
+                     floating down in the meta row with no anchor; the
+                     pin/recurrence icons already live here consistently
+                     next to the title, so this indicator icon joins them
+                     instead of sitting alone in a different row. -->
+                <span class="card-related" title="Has related tasks">
+                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                </span>
+              {/if}
               <div class="card-menu-wrap">
                 <button
                   type="button"
@@ -648,11 +658,6 @@
                 <span class="meta-badge checklist-badge" class:complete={task.checklist.every(i => i.done)}>
                   <span class="checklist-bar"><span class="checklist-bar-fill" style="width:{Math.round(task.checklist.filter(i => i.done).length / task.checklist.length * 100)}%"></span></span>
                   {task.checklist.filter(i => i.done).length}/{task.checklist.length}
-                </span>
-              {/if}
-              {#if relatedIds.has(task._id!)}
-                <span class="meta-badge related-badge" title="Has related tasks">
-                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
                 </span>
               {/if}
             </div>
@@ -864,6 +869,7 @@
   .card-title { font-size: .92rem; font-weight: 700; line-height: 1.4; color: var(--text); flex: 1; }
   .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
   .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
+  .card-related { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
   .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
   .card-menu-trigger {
     display: flex; align-items: center; justify-content: center;
@@ -893,35 +899,38 @@
   .card-menu-item-danger svg { color: var(--danger); }
   .card-menu-item-danger:hover { background: var(--overdue-bg); }
   /* redesign/v6, reference pass: every item is its own icon+text badge
-     (owner reference set) instead of plain inline text -- due date is
-     color-graded red/overdue -> amber/soon -> neutral, via dueDateClass(). */
-  .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .5rem; flex-wrap: wrap; }
+     (owner reference set) instead of plain inline text. Vertical gap
+     bumped +3px (owner feedback, 2026-07-28: metadata rows felt
+     cramped). */
+  .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .65rem; flex-wrap: wrap; }
   .meta-badge {
     display: inline-flex; align-items: center; gap: 4px;
     font-family: var(--mono); font-size: .68rem; font-weight: 500;
     color: var(--muted); background: var(--hover);
     padding: .18rem .5rem; border-radius: 20px;
   }
+  /* redesign/v6, date-hierarchy critique (2026-07-28): a filled amber
+     "soon" pill read as equally urgent as the overdue red one --
+     "save fill colors exclusively for urgent time alerts." Only overdue
+     gets a colored fill now; every other date (soon or comfortably
+     future) shares the same plain neutral pill as the rest of the meta
+     badges (inherits .meta-badge's --hover background), no separate
+     amber tier. dueDateClass() still distinguishes 'soon' for any
+     future non-visual use, just not styled differently here. */
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
-  .due-badge.soon { color: var(--due-soon-ink); background: var(--due-soon-bg); }
-  /* redesign/v6, follow-up critique: a comfortably-future date doesn't
-     need a colored pill at all -- only overdue/soon carry real urgency,
-     so only those two get a background; everything else is plain
-     icon+text with no fill. */
-  .due-badge:not(.overdue):not(.soon) { background: none; padding: .18rem 0; }
   .checklist-badge.complete { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .checklist-bar {
     display: inline-block; width: 24px; height: 4px; border-radius: 2px;
     background: var(--border-strong); overflow: hidden; flex-shrink: 0;
   }
   .checklist-bar-fill { display: block; height: 100%; background: var(--success); border-radius: 2px; }
-  .related-badge { padding: .18rem .4rem; }
 
   /* redesign/v6, follow-up critique: tags were all identical gray
      (Tag Homogeneity) -- each tag now gets a consistent soft tint via
      tagColor()'s hash, same filled-pill language as the priority/date
-     badges instead of a plain border. */
-  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .4rem; }
+     badges instead of a plain border. Vertical gap bumped to match
+     .card-meta above. */
+  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .55rem; }
   .card-tag {
     font-size: 11px; font-weight: 500;
     padding: 2px 8px; border-radius: 20px; white-space: nowrap;
