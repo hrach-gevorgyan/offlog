@@ -348,8 +348,14 @@
 
   .proj-card-top { display: flex; align-items: center; gap: 6px; }
   .space-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .proj-name { font-size: 16px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  /* Wrap, never truncate (owner feedback, 2026-07-30) -- min-width:0 is
+     required for a flex child to actually wrap instead of overflowing
+     its row, since flex items default to a content-based min-width. The
+     grid's own grid-auto-rows: minmax(130px, auto) already equalizes
+     row heights around whatever a wrapped title needs, so this doesn't
+     "damage" the grid -- it's already built to absorb variable heights. */
+  .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; min-width: 0; overflow-wrap: break-word; }
+  .proj-name { font-size: 16px; font-weight: 700; color: var(--text); overflow-wrap: break-word; margin-top: 2px; }
   /* Chips, not bare wrapped text — at the card's narrower widths three
      plain text runs ("7 tasks" / "★ 1 pinned" / "⚠ 1 overdue") wrapped
      onto three separate lines with uneven spacing (owner-reported,
@@ -369,12 +375,17 @@
 
   .task-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 10px; overflow: hidden; }
   .task-row {
-    display: flex; align-items: center; gap: 9px;
+    display: flex; align-items: stretch; gap: 9px;
     padding: 9px 12px; background: var(--surface);
     cursor: pointer; transition: background .1s;
   }
   .task-row:hover { background: var(--hover); }
-  .prio-bar { width: 3px; height: 28px; border-radius: 2px; flex-shrink: 0; }
+  /* align-self:stretch, not a fixed height -- a wrapped (never
+     truncated) title/project line can make the row taller than the
+     28px this bar used to be hardcoded to, leaving visible gaps above
+     and below it (owner feedback, 2026-07-30). Stretching to the row's
+     actual height keeps it a full edge accent at any row height. */
+  .prio-bar { width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; }
   /* Used to cram title + project (max-width: 72px, hard-truncated) + due
      date onto a single line inside the 320px right column -- badly
      over-truncated everything ("Refact...", "Conference ...") except on
@@ -382,10 +393,10 @@
      project/date (the standard primary/secondary list-row pattern) gives
      each its own full-width line instead of splitting one cramped one. */
   .task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .task-title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-title { font-size: 13px; font-weight: 500; color: var(--text); overflow-wrap: break-word; }
   .task-proj {
     font-family: var(--mono); font-size: 10px; color: var(--faint);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    overflow-wrap: break-word;
   }
   .task-due { color: var(--muted); }
   .task-due.overdue { color: var(--danger); }
