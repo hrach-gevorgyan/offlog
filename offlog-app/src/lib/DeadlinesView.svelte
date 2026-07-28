@@ -186,13 +186,14 @@
           {#each overdue as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -209,13 +210,14 @@
           {#each dueToday as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -232,13 +234,14 @@
           {#each thisWeek as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -255,13 +258,14 @@
           {#each later as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -461,10 +465,11 @@
 
   .task-row {
     display: grid;
-    grid-template-columns: 20px 10px 1fr auto;
+    grid-template-columns: 20px 1fr auto;
     align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--surface);
+    border: 1px solid var(--border); border-left: 3px solid var(--prio-color, var(--border));
+    background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
     transition: background .1s, box-shadow .1s;
   }
@@ -479,8 +484,6 @@
     transition: border-color .12s; display: block;
   }
   .circle:hover { border-color: var(--accent); }
-
-  .prio-dot { width: 8px; height: 8px; border-radius: 50%; }
 
   /* Title + project stacked (same primary/secondary pattern as
      DashboardView's .task-body) instead of a same-line project chip that
@@ -518,8 +521,7 @@
 
   /* Small — collapse chip to short form */
   @media (max-width: 440px) {
-    .task-row  { grid-template-columns: 20px 1fr auto; padding: 9px 10px; gap: 8px; }
-    .prio-dot  { display: none; }
+    .task-row  { padding: 9px 10px; gap: 8px; }
     .task-title { font-size: 13px; }
     .due-chip  { font-size: 10px; padding: 2px 6px; }
   }
