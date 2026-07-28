@@ -71,12 +71,15 @@ being findable and installable without knowing what "sideload" means.
   projects, evaluated against SignPath Foundation's actual eligibility
   list and Offlog is a clean fit (MIT, no proprietary deps, active,
   released, no telemetry — see DECISIONS.md for the full check).
-  Needed before applying: GitHub MFA enabled, a short public "code
-  signing policy" doc, a SignPath credit line, confirm installer binary
-  metadata is set (already is, via `tauri.conf.json`). Then: apply,
-  wait for Foundation review (days–weeks), wire the signing step into
-  `release.yml` once approved. Android's Play Store warning is a
-  separate, unrelated thing (solved by C3's $25 fee, not this).
+  Prep done: `docs/SIGNING.md` (public signing policy), installer
+  binary metadata (`tauri.conf.json`'s `publisher`/`copyright`).
+  **Application submitted to SignPath Foundation, 2026-07-28** —
+  now waiting on Foundation review (days–weeks). Once approved: wire
+  the signing step into `release.yml` as an additional job on the
+  Windows installer the workflow already builds (see SIGNING.md's
+  "how a signed build is produced" section for the exact flow it
+  needs to slot into). Android's Play Store warning is a separate,
+  unrelated thing (solved by C3's $25 fee, not this).
 - **C5 — Landing page.** A single plain GitHub Pages page using
   BRAND.md's tagline/copy, linking the Play Store listing (once live)
   and GitHub Releases. Deliberately after or alongside C3 so it has
