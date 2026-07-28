@@ -149,8 +149,8 @@
                 <div class="proj-name">{proj.name}</div>
                 <div class="proj-stats">
                   <span class="stat"><strong>{stats.total}</strong> tasks</span>
-                  {#if stats.pinned}<span class="stat pinned-stat">★ {stats.pinned} pinned</span>{/if}
-                  {#if stats.overdue}<span class="stat overdue-stat">⚠ {stats.overdue} overdue</span>{/if}
+                  {#if stats.pinned}<span class="stat pinned-stat">{stats.pinned} pinned</span>{/if}
+                  {#if stats.overdue}<span class="stat overdue-stat">{stats.overdue} overdue</span>{/if}
                 </div>
               </div>
             {/each}
@@ -187,7 +187,7 @@
 
           {#if data.pinnedTasks.length > 0}
             <section class="section">
-              <div class="section-title">★ Pinned</div>
+              <div class="section-title pinned-title">Pinned</div>
               <div class="task-list">
                 {#each data.pinnedTasks as t (t._id)}
                   <div
@@ -210,7 +210,7 @@
 
           {#if data.overdueTasks.length > 0}
             <section class="section">
-              <div class="section-title overdue-title">⚠ Overdue</div>
+              <div class="section-title overdue-title">Overdue</div>
               <div class="task-list">
                 {#each data.overdueTasks as t (t._id)}
                   <div
@@ -329,6 +329,10 @@
     letter-spacing: .08em; font-weight: 700; color: var(--faint);
     margin-bottom: 10px;
   }
+  /* redesign/v6 (owner feedback, 2026-07-30): dropped the ★/⚠ text
+     glyphs -- every other view already signals pinned/overdue through
+     color alone (chip tint, edge accent), not an emoji-style icon. */
+  .pinned-title { color: var(--accent); }
   .overdue-title { color: var(--danger); }
 
   .project-grid {
