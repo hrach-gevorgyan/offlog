@@ -339,11 +339,22 @@
   .space-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .proj-name { font-size: 16px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .proj-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
-  .stat { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-  .stat strong { color: var(--text); font-size: 13px; }
-  .pinned-stat { color: var(--accent); }
-  .overdue-stat { color: var(--danger); }
+  /* Chips, not bare wrapped text — at the card's narrower widths three
+     plain text runs ("7 tasks" / "★ 1 pinned" / "⚠ 1 overdue") wrapped
+     onto three separate lines with uneven spacing (owner-reported,
+     2026-07-28). Pill-shaped chips still wrap when the card is narrow,
+     but each one reads as a single self-contained unit instead of a
+     ragged text flow. */
+  .proj-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: auto; padding-top: 8px; }
+  .stat {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 8px; border-radius: 20px; background: var(--hover);
+    white-space: nowrap;
+  }
+  .stat strong { color: var(--text); font-size: 11px; font-weight: 700; }
+  .pinned-stat { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .overdue-stat { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
   .task-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 10px; overflow: hidden; }
   .task-row {
