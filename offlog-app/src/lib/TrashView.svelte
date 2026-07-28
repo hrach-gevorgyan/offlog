@@ -18,6 +18,7 @@
 
   let items: TrashedTask[] = [];
   let emptying = false;
+  let restoringAll = false;
 
   async function load() { items = await getAllDeletedTasks(); }
 
@@ -51,6 +52,21 @@
     }
   }
 
+  async function restoreAll() {
+    if (!items.length) return;
+    if (!(await confirmAction(`Restore all ${items.length} item${items.length === 1 ? '' : 's'} from Recycle?`, { confirmLabel: 'Restore all' }))) return;
+    restoringAll = true;
+    try {
+      for (const t of items) await undoDelete(t._id!);
+      await reloadTasks();
+      await load();
+    } catch {
+      showError('Failed to restore some tasks. Please try again.');
+    } finally {
+      restoringAll = false;
+    }
+  }
+
   async function emptyAll() {
     if (!items.length) return;
     if (!(await confirmAction(`Permanently delete all ${items.length} item${items.length === 1 ? '' : 's'} in Recycle? This can't be undone.`, { danger: true, confirmLabel: 'Empty Recycle' }))) return;
@@ -75,7 +91,8 @@
   <div class="panel-head">
     <span class="panel-title">Recycle</span>
     {#if items.length > 0}
-      <button class="clear-btn" on:click={emptyAll} disabled={emptying}>{emptying ? 'Emptying…' : 'Empty'}</button>
+      <button class="restore-all-btn" on:click={restoreAll} disabled={restoringAll || emptying}>{restoringAll ? 'Restoring…' : 'Restore all'}</button>
+      <button class="clear-btn" on:click={emptyAll} disabled={emptying || restoringAll}>{emptying ? 'Emptying…' : 'Empty'}</button>
     {/if}
     <button class="close-btn" on:click={() => requestClose()}>✕</button>
   </div>
@@ -95,7 +112,11 @@
               {#if t.project_name}<span class="item-proj">{t.project_name}</span>{/if}
             </div>
             <span class="item-time">{timeAgo(t.updated_at)}</span>
-            <button class="restore-btn" on:click={() => restore(t._id!)}>Restore</button>
+            <button class="restore-btn" on:click={() => restore(t._id!)} title="Restore" aria-label="Restore">
+              <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/>
+              </svg>
+            </button>
             <button class="forever-btn" on:click={() => removeForever(t)} title="Delete forever" aria-label="Delete forever">
               <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
@@ -133,10 +154,18 @@
   .clear-btn {
     background: none; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: 6px;
     cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--danger);
-    padding: 4px 10px; transition: background .12s;
+    padding: 4px 10px; transition: background .12s; flex-shrink: 0;
   }
   .clear-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .clear-btn:disabled { opacity: .5; cursor: default; }
+
+  .restore-all-btn {
+    background: none; border: 1px solid var(--border-strong); border-radius: 6px;
+    cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--muted);
+    padding: 4px 10px; transition: background .12s, color .12s, border-color .12s; flex-shrink: 0;
+  }
+  .restore-all-btn:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
+  .restore-all-btn:disabled { opacity: .5; cursor: default; }
 
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
@@ -179,19 +208,17 @@
     white-space: nowrap; flex-shrink: 0;
   }
 
-  .restore-btn {
-    padding: .3rem .65rem; border-radius: 6px;
-    border: 1px solid var(--border-strong); cursor: pointer;
-    background: var(--bg); color: var(--text); font-size: .75rem; font-weight: 500;
-    white-space: nowrap; transition: background .1s; flex-shrink: 0;
-  }
-  .restore-btn:hover { background: var(--hover); }
-
-  .forever-btn {
+  /* redesign/v6 (owner feedback, 2026-07-30): was a single text-labeled
+     "Restore" pill next to a bare icon button -- now two matching icon
+     buttons (restore / delete forever), same size/shape, each colored
+     on hover for its own action instead of one being a filled button
+     and the other a plain icon. */
+  .restore-btn, .forever-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); padding: .3rem; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
     transition: background .1s, color .1s; flex-shrink: 0;
   }
+  .restore-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .forever-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 </style>
