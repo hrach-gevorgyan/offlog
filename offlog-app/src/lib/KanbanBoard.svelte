@@ -538,14 +538,13 @@
             </svg>
           </button>
         {/if}
-        <!-- redesign/v6: count moved to the right, clustered with the
-             hover-revealed archive/remove buttons (owner feedback,
-             2026-07-28) -- the spacer carries flex:1, so the title
-             stays put on the left and count+archive+remove group
-             together on the right regardless of whether archive is
-             currently rendered (task count > 0) or not. -->
+        <!-- redesign/v6: count is now the rightmost element, further
+             right than archive/remove (owner feedback, 2026-07-28) --
+             the spacer carries flex:1, so the title stays put on the
+             left and archive+remove+count group together on the right
+             regardless of whether archive is currently rendered
+             (task count > 0) or not. -->
         <div class="col-header-spacer"></div>
-        <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
         {#if (tasksByCol[col.id]?.length ?? 0) > 0}
           <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
             if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
@@ -562,6 +561,7 @@
           </button>
         {/if}
         <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">×</button>
+        <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
       </div>
 
       <!-- Card list — drop zone for cards -->
@@ -896,7 +896,7 @@
      thin accent-colored right edge (owner feedback, 2026-07-28) --
      mirrors the priority left edge, opposite side so the two never
      compete for the same space. */
-  .card.pinned { border-right: 2px solid var(--accent); }
+  .card.pinned { border-right: 1px solid var(--accent); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
