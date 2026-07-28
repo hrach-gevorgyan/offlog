@@ -8,7 +8,17 @@
   import CardDetail from './CardDetail.svelte';
   import { loadFocusLock, type FocusLock } from './focusLock';
 
-  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void; search: void }>();
+  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void; search: void; agenda: void }>();
+
+  // redesign/v6 (owner feedback, 2026-07-30): Today/Pinned/Overdue were
+  // unbounded -- Dashboard's job is a glanceable overview, not a second
+  // full task browser (that's already List/Agenda's job). Capped with a
+  // muted "View all" -- Today/Overdue link out to Agenda (which already
+  // groups Overdue/Today at the top of its own list); Pinned has no
+  // dedicated cross-project view anywhere in the app yet, so its "View
+  // all" just expands the list in place instead of linking nowhere.
+  const TASK_CAP = 6;
+  let pinnedExpanded = false;
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
@@ -175,7 +185,7 @@
             <section class="section">
               <div class="section-title">Today</div>
               <div class="task-list">
-                {#each data.todayTasks as t (t._id)}
+                {#each data.todayTasks.slice(0, TASK_CAP) as t (t._id)}
                   <div
                     class="task-row"
                     role="button"
@@ -191,6 +201,9 @@
                   </div>
                 {/each}
               </div>
+              {#if data.todayTasks.length > TASK_CAP}
+                <button class="view-all" on:click={() => dispatch('agenda')}>View all {data.todayTasks.length} in Agenda</button>
+              {/if}
             </section>
           {/if}
 
@@ -198,7 +211,7 @@
             <section class="section">
               <div class="section-title pinned-title">Pinned</div>
               <div class="task-list">
-                {#each data.pinnedTasks as t (t._id)}
+                {#each (pinnedExpanded ? data.pinnedTasks : data.pinnedTasks.slice(0, TASK_CAP)) as t (t._id)}
                   <div
                     class="task-row"
                     role="button"
@@ -214,6 +227,11 @@
                   </div>
                 {/each}
               </div>
+              {#if data.pinnedTasks.length > TASK_CAP}
+                <button class="view-all" on:click={() => pinnedExpanded = !pinnedExpanded}>
+                  {pinnedExpanded ? 'Show less' : `View all ${data.pinnedTasks.length}`}
+                </button>
+              {/if}
             </section>
           {/if}
 
@@ -221,7 +239,7 @@
             <section class="section">
               <div class="section-title overdue-title">Overdue</div>
               <div class="task-list">
-                {#each data.overdueTasks as t (t._id)}
+                {#each data.overdueTasks.slice(0, TASK_CAP) as t (t._id)}
                   <div
                     class="task-row"
                     role="button"
@@ -237,6 +255,9 @@
                   </div>
                 {/each}
               </div>
+              {#if data.overdueTasks.length > TASK_CAP}
+                <button class="view-all" on:click={() => dispatch('agenda')}>View all {data.overdueTasks.length} in Agenda</button>
+              {/if}
             </section>
           {/if}
 
@@ -344,6 +365,17 @@
   .col-tasks { display: flex; flex-direction: column; gap: 20px; }
 
   .section { display: flex; flex-direction: column; }
+
+  /* Deliberately understated -- a secondary "there's more, if you want
+     it" affordance, not a second call to action competing with the task
+     rows themselves (owner feedback, 2026-07-30: "very muted"). */
+  .view-all {
+    background: none; border: none; cursor: pointer;
+    color: var(--faint); opacity: .7;
+    font-size: 11px; padding: 8px 12px 0; text-align: left;
+    transition: opacity .12s, color .12s;
+  }
+  .view-all:hover { opacity: 1; color: var(--muted); }
 
   .section-title {
     font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;

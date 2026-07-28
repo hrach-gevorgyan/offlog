@@ -110,11 +110,15 @@
   // reuse the exact same navigation as the command palette's "Go to
   // Focus" entry, instead of a second inline copy of these 3 assignments.
   function goToFocus() { showDashboard = false; showDeadlines = false; showFocus = true; }
+  // B35-style extraction (2026-07-30) so DashboardView's Today/Overdue
+  // "View all" links can reuse the exact same navigation as the command
+  // palette's "Go to Agenda" entry, instead of a second inline copy.
+  function goToAgenda() { showDashboard = false; showFocus = false; showDeadlines = true; }
 
   $: commands = getCommands({
     goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
     goToFocus,
-    goToAgenda: () => { showDashboard = false; showFocus = false; showDeadlines = true; },
+    goToAgenda,
     openQuickAdd,
     toggleTheme: () => setThemeMode(isEffectivelyDark(getThemeMode()) ? 'light' : 'dark'),
     toggleHighContrast: () => setHighContrast(!getHighContrast()),
@@ -483,6 +487,7 @@
           }}
           on:focus={goToFocus}
           on:search={openSearch}
+          on:agenda={goToAgenda}
         />
       {:else if showFocus}
         <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
