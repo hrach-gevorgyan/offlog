@@ -833,13 +833,17 @@
     padding: .75rem .85rem;
     cursor: pointer;
     border-left: 2px solid var(--prio-color, var(--border));
-    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 10px color-mix(in srgb, var(--prio-color) 16%, transparent);
+    /* Colored glow confined to the left edge only (negative x-offset,
+       tight spread) -- owner feedback, 2026-07-28: the color should
+       read as coming off the priority edge, not surrounding the whole
+       card. Plain neutral shadow still handles overall depth. */
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), -2px 0 8px -3px var(--prio-color, transparent);
     transition: box-shadow var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
                 opacity .18s;
   }
   .card:hover {
-    box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 8px 22px color-mix(in srgb, var(--prio-color) 26%, transparent);
+    box-shadow: 0 2px 4px rgba(0,0,0,.06), -3px 0 12px -2px var(--prio-color, transparent);
     transform: translateY(-2px);
   }
   .card.dragging { opacity: .35; transition: none; transform: none; }
