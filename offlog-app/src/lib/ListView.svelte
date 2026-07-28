@@ -47,10 +47,18 @@
   // ── Multi-column sort ──────────────────────────────────────────────────
   // Plain click sorts by that column alone (resets any prior multi-sort).
   // Shift-click adds it as a secondary/tertiary tiebreaker instead of
-  // replacing the sort — the standard spreadsheet pattern. Pinned tasks
-  // still float above everything else regardless of sort spec.
+  // replacing the sort — the standard spreadsheet pattern. Pinned-first
+  // is an opt-in toggle (owner feedback, 2026-07-28) rather than always-on
+  // — some users don't want pinned tasks to override their chosen sort.
+  // Off by default, persisted per-device like `cols`/`colOrder` below.
   type SortCol = 'title' | 'column' | 'priority' | 'due' | 'created' | 'updated' | 'source';
   let sortSpec: { col: SortCol; asc: boolean }[] = [{ col: 'due', asc: true }];
+  let pinnedFirst = false;
+  const PINNED_FIRST_KEY = 'offlog_list_pinned_first';
+  function togglePinnedFirst() {
+    pinnedFirst = !pinnedFirst;
+    localStorage.setItem(PINNED_FIRST_KEY, JSON.stringify(pinnedFirst));
+  }
 
   function cmpOne(col: SortCol, a: TaskDoc, b: TaskDoc): number {
     if (col === 'title')    return a.title.localeCompare(b.title);
@@ -64,7 +72,7 @@
   }
 
   $: sorted = [...filtered].sort((a, b) => {
-    if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+    if (pinnedFirst && !!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
     for (const { col, asc } of sortSpec) {
       const cmp = cmpOne(col, a, b);
       if (cmp !== 0) return asc ? cmp : -cmp;
@@ -212,6 +220,9 @@
       // never drop or silently lose a known key, never keep a stale one.
       const base = savedOrder ?? colOrder;
       colOrder = [...base.filter(k => knownKeys.includes(k)), ...knownKeys.filter(k => !base.includes(k))];
+    } catch {}
+    try {
+      pinnedFirst = JSON.parse(localStorage.getItem(PINNED_FIRST_KEY) ?? 'false');
     } catch {}
   });
 
@@ -494,6 +505,12 @@
                 <span class="toggle-mini-knob"></span>
               </button>
             </label>
+            <label class="col-menu-item select-rows-item">
+              Pinned first
+              <button class="toggle-mini" class:on={pinnedFirst} on:click={togglePinnedFirst} role="switch" aria-checked={pinnedFirst} aria-label="Toggle pinned-first sorting">
+                <span class="toggle-mini-knob"></span>
+              </button>
+            </label>
             <div class="menu-divider"></div>
             {#each colOrder as key (key)}
               <label class="col-menu-item">
@@ -594,7 +611,11 @@
             title="Move to last status"
             aria-label="Move to last status"
             on:click|stopPropagation={() => markDone(task)}
-          ></button>
+          >
+            {#if task.column_id === lastColId()}
+              <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>
+            {/if}
+          </button>
           <span class="cell-title">
             {task.title}
             {#if task.recurrence}
@@ -893,14 +914,19 @@
   .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
   .bulk-clear { margin-left: auto; }
 
+  /* redesign/v6 (owner feedback, 2026-07-28): was a plain circle filled
+     solid green when done -- the loudest thing on the page. Now a real
+     checkbox shape (rounded square, checkmark, accent color) matching
+     .row-check's language instead of a separate green "done" color. */
   .circle {
-    width: 19px; height: 19px; border-radius: 50%;
+    width: 19px; height: 19px; border-radius: 5px;
     background: none; padding: 0;
     border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s, background .12s; display: block;
+    transition: border-color .12s, background .12s;
+    display: flex; align-items: center; justify-content: center;
   }
   .circle:hover { border-color: var(--accent); }
-  .circle.done { background: var(--success); border-color: var(--success); }
+  .circle.done { background: var(--accent); border-color: var(--accent); }
 
   /* No truncation, anywhere in the grid (B36) — plain nowrap, never
      text-overflow: ellipsis. Long content makes the row (and the whole
