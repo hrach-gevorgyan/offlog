@@ -5,12 +5,11 @@
   import { cubicOut } from 'svelte/easing';
   import { toastFly } from './motion';
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
-  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById, getTaskIdsWithRelatedLinks, subscribe } from './db';
+  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabel, dueInk, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
-  import PinStar from './PinStar.svelte';
   import FilterBar from './FilterBar.svelte';
   import CustomSelect from './CustomSelect.svelte';
   import { hapticToggle } from './haptics';
@@ -93,9 +92,10 @@
     return ctx.measureText(text).width;
   }
   const TITLE_FONT = '500 14px "Hanken Grotesk", sans-serif';
-  // Flat buffer for the pin/recurrence/checklist/related marks that can
-  // trail the title inline, rather than measuring each icon combination.
-  const TITLE_ICON_BUFFER = 70;
+  // Flat buffer for the recurrence mark that can trail the title inline
+  // (pin/checklist/related marks were dropped from this view, 2026-07-28
+  // owner feedback — pinned now shows via the row's left accent instead).
+  const TITLE_ICON_BUFFER = 24;
   $: titleColWidth = Math.min(480, Math.max(220, Math.ceil(
     Math.max(0, ...sorted.map(t => measureTextWidth(t.title, TITLE_FONT))) + TITLE_ICON_BUFFER
   )));
@@ -169,7 +169,10 @@
   function colWidth(key: ColKey): string { return COL_WIDTH[key] ?? '130px'; }
   function isCustomCol(key: ColKey): boolean { return key.startsWith('field:'); }
 
-  let cols: Record<ColKey, boolean> = { status: true, priority: true, due: true, tags: true, created: false, updated: false, source: false };
+  // Priority off by default (owner feedback, 2026-07-28) -- the row's
+  // left-edge color already carries priority; the column is available to
+  // turn back on via the column menu for anyone who wants it explicit.
+  let cols: Record<ColKey, boolean> = { status: true, priority: false, due: true, tags: true, created: false, updated: false, source: false };
   let colOrder: ColKey[] = [...DEFAULT_ORDER];
   let showColMenu = false;
   let colMenuPos = { top: 0, left: 0 };
@@ -190,13 +193,6 @@
   let dragOverCol: ColKey | null = null;
   let dragOverSide: 'left' | 'right' | null = null;
 
-  // v6.7.0 — row-level "has related links" indicator, same cheap
-  // Set-lookup approach as KanbanBoard.svelte's identical badge.
-  let relatedIds = new Set<string>();
-  onMount(() => {
-    getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids);
-    return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
-  });
 
   onMount(async () => {
     // Custom fields are global (not per-project) — fetched once here so
@@ -571,6 +567,7 @@
         <div
           class="grid-row"
           class:row-selected={selected.has(task._id!)}
+          class:pinned={task.pinned}
           style="--prio-color:{PRIO_COLOR[task.priority]}; grid-template-columns:{gridTemplate}"
           role="button"
           tabindex="0"
@@ -599,18 +596,10 @@
             on:click|stopPropagation={() => markDone(task)}
           ></button>
           <span class="cell-title">
-            {task.title}{#if task.pinned}<span class="pin-mark"><PinStar size={10} /></span>{/if}
+            {task.title}
             {#if task.recurrence}
               <span class="recur-mark" title="Repeats {task.recurrence}">
                 <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-              </span>
-            {/if}
-            {#if task.checklist?.length}
-              <span class="checklist-mark" class:complete={task.checklist.every(i => i.done)}>☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}</span>
-            {/if}
-            {#if relatedIds.has(task._id!)}
-              <span class="related-mark" title="Has related tasks">
-                <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
               </span>
             {/if}
           </span>
@@ -851,6 +840,7 @@
   .sort-icon { font-size: 10px; opacity: .6; }
 
   .grid-row {
+    position: relative;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
     border-left: 3px solid var(--prio-color, var(--border));
@@ -859,6 +849,15 @@
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
   .grid-row.row-selected { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+  /* redesign/v6 (owner feedback, 2026-07-28): pinned no longer shows as an
+     icon in the title cell -- instead a short indigo segment interrupts
+     the middle of the row's own priority-color left border, e.g. a
+     yellow-priority row reads yellow / indigo / yellow top-to-bottom. */
+  .grid-row.pinned::before {
+    content: '';
+    position: absolute; left: -3px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 14px; background: var(--accent);
+  }
 
   .row-check {
     width: 16px; height: 16px; padding: 0; cursor: pointer;
@@ -907,15 +906,7 @@
      text-overflow: ellipsis. Long content makes the row (and the whole
      grid, via .grid-scroll) wider instead of hiding characters. */
   .cell-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
-  .pin-mark { display: inline-flex; align-items: center; color: var(--accent); opacity: .8; vertical-align: middle; margin-left: 4px; }
   .recur-mark { display: inline-flex; align-items: center; color: var(--muted); opacity: .75; vertical-align: middle; margin-left: 4px; }
-  .checklist-mark {
-    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
-    color: var(--muted); background: var(--col-bg); padding: 1px 6px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
-  }
-  .checklist-mark.complete { color: var(--success); }
-  .related-mark { display: inline-flex; align-items: center; color: var(--muted); opacity: .75; vertical-align: middle; margin-left: 4px; }
 
   .cell-status { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
   .cell-prio { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 12.5px; white-space: nowrap; }
