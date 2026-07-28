@@ -141,13 +141,25 @@
     detailProject = proj;
   }
 
+  // Remembers, per task, which column it was in right before markDone()
+  // moved it to the last column — in-memory only (resets on reload), just
+  // enough to let the same checkbox undo a done-mark by clicking again
+  // (owner feedback, 2026-07-29). Falls back to the project's first
+  // column if that memory is gone (e.g. after a refresh).
+  let doneFromCol: Record<string, string> = {};
+
   async function markDone(t: TaskDoc) {
     const proj = $projects.find(p => p._id === t.project_id);
     if (!proj) return;
     const lastCol = proj.columns.at(-1)?.id;
-    if (!lastCol || t.column_id === lastCol) return;
+    if (!lastCol) return;
+    const target = t.column_id === lastCol
+      ? (doneFromCol[t._id!] ?? proj.columns[0]?.id)
+      : lastCol;
+    if (!target || target === t.column_id) return;
+    if (t.column_id !== lastCol) doneFromCol[t._id!] = t.column_id;
     try {
-      await updateTask(t._id!, { column_id: lastCol });
+      await updateTask(t._id!, { column_id: target });
       await refresh();
       hapticToggle();
     } catch {
@@ -166,7 +178,6 @@
     return !!proj && t.column_id === proj.columns.at(-1)?.id;
   }
   $: allDone = lock !== null && lockedTasks.length > 0 && lockedTasks.every(isDone);
-  $: doneCount = lockedTasks.filter(isDone).length;
 
   // B41 — the picker uses the full available space as a scattered
   // "brainstorm corkboard" of varying-size note cards rather than a
@@ -219,15 +230,6 @@
 
   <div class="fc-body">
     {#if lock}
-      <!-- redesign/v6 (owner feedback, 2026-07-28): the locked view felt
-           empty/flat once tasks were committed — this is the page meant
-           to pull focus onto exactly these 3, so it needs some visual
-           weight of its own rather than reading as an afterthought. A
-           concrete progress stat does that without adding noise. -->
-      <div class="progress-wrap">
-        <span class="progress-label">{doneCount} of {lockedTasks.length} done</span>
-        <div class="progress-track"><div class="progress-fill" style="width:{lockedTasks.length ? (doneCount / lockedTasks.length * 100) : 0}%"></div></div>
-      </div>
       {#if allDone}
         <div class="empty">All {lockedTasks.length} committed today — nicely done. Come back tomorrow, or reset to pick more.</div>
       {/if}
@@ -242,7 +244,7 @@
           on:click={() => openDetail(t)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
         >
-          <button class="circle" class:done on:click|stopPropagation={() => markDone(t)} title={done ? 'Done' : 'Mark done'} aria-label={done ? 'Done' : 'Mark done'} disabled={done}>
+          <button class="circle" class:done on:click|stopPropagation={() => markDone(t)} title={done ? 'Mark not done' : 'Mark done'} aria-label={done ? 'Mark not done' : 'Mark done'}>
             {#if done}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
           </button>
           <div class="task-body">
@@ -289,7 +291,7 @@
   {#if !lock}
     <div class="fc-footer">
       <button class="commit-btn" disabled={!selected.length} on:click={commit}>
-        Commit {selected.length ? `${selected.length} task${selected.length > 1 ? 's' : ''}` : ''}
+        {selected.length ? `Let's focus on ${selected.length} task${selected.length > 1 ? 's' : ''}` : "Let's focus"}
       </button>
     </div>
   {/if}
@@ -331,14 +333,13 @@
   }
   .hamburger:hover { background: var(--hover); }
 
-  /* Same shape language as .commit-btn (rounded, bold, generous padding)
-     so the two read as a matched pair of deliberate actions rather than
-     a bold primary button next to an afterthought link (owner feedback,
-     2026-07-29) -- kept as an outline instead of a solid fill since
-     Reset is the secondary action here, not a second primary. */
+  /* Literally the same padding/font-size/weight/radius as .commit-btn
+     (owner feedback, 2026-07-29: "reset still not like commit") -- only
+     the fill differs (outline, not solid), since Reset is the secondary
+     action here, not a second primary. */
   .reset-btn {
     background: none; border: 1.5px solid var(--border-strong); color: var(--muted);
-    font-size: 13px; font-weight: 600; padding: 8px 18px; border-radius: 10px; cursor: pointer;
+    font-size: 15px; font-weight: 700; padding: 13px 32px; border-radius: 12px; cursor: pointer;
     flex-shrink: 0; transition: background .12s, color .12s, border-color .12s;
     /* header is align-items:flex-start now (see .fc-header comment) —
        this button still wants to sit centered against the row. */
@@ -352,19 +353,12 @@
     width: 100%; box-sizing: border-box;
   }
 
-  .picker-hint { color: var(--faint); font-size: 13px; margin: 0 0 16px; max-width: 640px; }
+  /* Owner feedback (2026-07-29): the "X of Y done" progress stat didn't
+     read as motivating, just as a metric being tracked -- removed. The
+     bigger locked-row treatment it shipped alongside stays; that part
+     landed well on its own. */
+  .picker-hint { color: var(--faint); opacity: .7; font-size: 12.5px; margin: 0 0 16px; max-width: 640px; }
   .empty { color: var(--faint); font-size: 14px; padding: 12px 0; }
-
-  .progress-wrap { margin-bottom: 20px; max-width: 480px; }
-  .progress-label {
-    font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .06em;
-  }
-  .progress-track {
-    margin-top: 7px; height: 6px; border-radius: 3px;
-    background: var(--col-bg); overflow: hidden;
-  }
-  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .2s; }
 
   /* B41 — the corkboard. flex-wrap, not a grid with fixed tracks, so
      differently-sized notes can sit next to each other naturally instead
@@ -401,9 +395,13 @@
   .note.suggested { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
   .note.suggested.selected { border-color: var(--accent); }
 
-  .note-sm { width: 160px; }
-  .note-md { width: 210px; }
-  .note-lg { width: 260px; padding: 18px 20px; }
+  /* flex-grow (not a fixed width) so trailing space at the end of a row
+     gets absorbed by the notes already in it instead of sitting empty --
+     "a real board of stickers" should look tiled edge to edge, not leave
+     a gap where one more note almost fit (owner feedback, 2026-07-29). */
+  .note-sm { flex: 1 1 160px; max-width: 220px; }
+  .note-md { flex: 1 1 210px; max-width: 280px; }
+  .note-lg { flex: 1 1 260px; max-width: 340px; padding: 18px 20px; }
   .note-lg .note-title { font-size: 15px; }
 
   .note-title {
@@ -444,7 +442,7 @@
     transition: border-color .12s;
   }
   .circle:hover { border-color: var(--accent); }
-  .circle.done { border-color: var(--accent); cursor: default; }
+  .circle.done { border-color: var(--accent); }
   .task-title.done { text-decoration: line-through; color: var(--muted); }
 
   /* Select-for-commitment checkbox -- deliberately the *filled* checkbox
@@ -505,9 +503,9 @@
   }
 
   .commit-btn {
-    width: auto; min-width: 200px;
-    background: var(--accent); color: var(--on-accent); border: none;
-    font-size: 14px; font-weight: 600; padding: 11px 28px; border-radius: 10px;
+    width: auto; min-width: 240px;
+    background: var(--accent); color: var(--on-accent); border: 1.5px solid var(--accent);
+    font-size: 15px; font-weight: 700; padding: 13px 32px; border-radius: 12px;
     cursor: pointer; transition: opacity .12s;
   }
   .commit-btn:disabled { opacity: .4; cursor: not-allowed; }
@@ -523,6 +521,6 @@
     .fc-footer { padding: 12px 16px; }
     .fc-title  { font-size: 17px; }
     .board { gap: 14px; }
-    .note-sm, .note-md, .note-lg { width: calc(50% - 7px); }
+    .note-sm, .note-md, .note-lg { flex-basis: calc(50% - 7px); max-width: none; }
   }
 </style>
