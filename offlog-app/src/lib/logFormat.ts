@@ -38,7 +38,7 @@ function fmtVal(field: string, val: any): string {
   return s.length > 40 ? s.slice(0, 40) + '…' : s;
 }
 
-function describeField(field: string, from: any, to: any): string {
+export function describeField(field: string, from: any, to: any): string {
   if (field === 'pinned') return to ? 'Pinned' : 'Unpinned';
   if (field === 'archived') return to ? 'Archived' : 'Taken out of archive';
   if (field === 'due_date') return from == null ? `Due date set to ${fmtVal(field, to)}` : to == null ? 'Due date removed' : `Due date moved to ${fmtVal(field, to)}`;
@@ -70,7 +70,7 @@ function isEmpty(v: any): boolean {
   return v == null || (typeof v === 'object' && Object.keys(v).length === 0);
 }
 
-function hasRealChange(field: string, from: any, to: any): boolean {
+export function hasRealChange(field: string, from: any, to: any): boolean {
   if (typeof from === 'boolean' || typeof to === 'boolean') return !!from !== !!to;
   if (isEmpty(from) && isEmpty(to)) return false;
   return JSON.stringify(from) !== JSON.stringify(to);

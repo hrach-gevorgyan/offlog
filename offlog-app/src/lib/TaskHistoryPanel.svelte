@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getLogsForTask } from './db';
-  import { timeAgo, fmtFullTimestamp, fmtTime, ACTION_COLOR } from './utils';
+  import { timeAgo, fmtFullTimestamp, ACTION_COLOR } from './utils';
+  import { describeField, hasRealChange } from './logFormat';
 
   export let taskId: string;
 
@@ -8,70 +9,19 @@
   let loaded = false;
   getLogsForTask(taskId).then(h => { history = h; loaded = true; });
 
-  const FIELD_LABEL: Record<string, string> = {
-    title: 'Title', body: 'Notes', priority: 'Priority', due_date: 'Due date',
-    reminder_at: 'Reminder', remindOnDue: 'Remind on due date', tags: 'Tags',
-    column_id: 'Status', pinned: 'Pinned', archived: 'Archived',
-    checklist: 'Checklist', custom_values: 'Custom fields', recurrence: 'Repeat',
-  };
-  const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
-
-  // Readability fix (owner, 2026-07-19 — "some tech shit is there
-  // especially boolean logic"): raw `true`/`false`, camelCase field
-  // names, and stringified objects/arrays ("[object Object]" for
-  // checklist/custom_values diffs) were all leaking straight into the
-  // history panel unformatted. Every value shown here should read as a
-  // sentence a non-technical person would write, not a field dump.
-  function fmtLogVal(field: string, val: any): string {
-    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-    if (val == null || val === '') return '—';
-    if (field === 'priority') return PRIO[val] ?? String(val);
-    if (field === 'tags') return Array.isArray(val) ? (val.join(', ') || 'none') : String(val);
-    if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
-    if (field === 'custom_values') return 'updated';
-    if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    if (field === 'reminder_at') { const d = new Date(val); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
-    if (field === 'recurrence') return val === 'daily' ? 'Daily' : val === 'weekly' ? 'Weekly' : val === 'monthly' ? 'Monthly' : String(val);
-    if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
-    if (typeof val === 'object') return 'updated';
-    const s = String(val);
-    return s.length > 36 ? s.slice(0, 36) + '…' : s;
-  }
-
   const ACTION_LABEL: Record<string, string> = { create: 'Created', update: 'Edited', move: 'Moved', delete: 'Deleted' };
 
-  // Readability fix, round 2 (owner, 2026-07-19 — "only created task is
-  // understandable, other ones are too complicated for humans"): same
-  // fix as logFormat.ts's fmtDiffs — drop no-op diff entries
-  // (before/after render identically) and phrase each real change as a
-  // short plain-English clause instead of "Field changed from A to B".
-  function describeField(field: string, from: any, to: any): string {
-    if (field === 'pinned') return to ? 'Pinned' : 'Unpinned';
-    if (field === 'archived') return to ? 'Archived' : 'Taken out of archive';
-    if (field === 'due_date') return from == null ? `Due date set to ${fmtLogVal(field, to)}` : to == null ? 'Due date removed' : `Due date moved to ${fmtLogVal(field, to)}`;
-    if (field === 'reminder_at') return to == null ? 'Reminder removed' : `Reminder set for ${fmtLogVal(field, to)}`;
-    if (field === 'remindOnDue') return to ? 'Reminder now follows the due date' : 'Reminder no longer follows the due date';
-    if (field === 'recurrence') return to == null ? 'Repeat turned off' : `Set to repeat ${fmtLogVal(field, to).toLowerCase()}`;
-    if (field === 'tags') return `Tags changed to ${fmtLogVal(field, to)}`;
-    if (field === 'priority') return `Priority changed to ${fmtLogVal(field, to)}`;
-    if (field === 'title') return `Renamed to "${to}"`;
-    if (field === 'body') return 'Notes updated';
-    if (field === 'checklist') return 'Checklist updated';
-    if (field === 'custom_values') return 'Custom fields updated';
-    return `${FIELD_LABEL[field] ?? field} changed`;
-  }
-
-  // Must not reuse fmtLogVal for this comparison: fmtLogVal collapses
-  // every checklist edit to just an item count and every custom-field
-  // edit to the literal string "updated" (by design, for display) — so
-  // comparing display strings made every real checklist/custom-field
-  // change look like a no-op and get filtered, leaving only the vague
-  // "Details updated" fallback below.
-  function hasRealChange(field: string, from: any, to: any): boolean {
-    if (typeof from === 'boolean' || typeof to === 'boolean') return !!from !== !!to;
-    return JSON.stringify(from) !== JSON.stringify(to);
-  }
-
+  // FIELD_LABEL/describeField/hasRealChange used to be duplicated here
+  // (drifted from logFormat.ts's copy — this file's describeField was
+  // missing the 'name' rename case and hasRealChange was missing the
+  // isEmpty() no-op filter logFormat.ts already got in its 2026-07-18
+  // fix, so a no-op checklist/custom_values diff could still show a
+  // false "Checklist updated"/"Custom fields updated" here after
+  // TimeTravelView had already stopped showing it). Now imported from
+  // logFormat.ts, the single source both views share — this panel keeps
+  // its own simpler describeLog()/MAX_CLAUSES join below since its
+  // create/move/delete phrasing is intentionally different (task-scoped,
+  // no entity-type/who context needed).
   const MAX_CLAUSES = 3;
 
   function describeLog(log: any): string {
