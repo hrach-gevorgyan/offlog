@@ -108,7 +108,13 @@ Produce a findings report covering:
     Unexplained growth (>~10% with no feature to blame) is a finding —
     bloat only ever arrives gradually, and without a written baseline
     each pass has nothing to compare against. (Baseline at v5.7.10 post
-    NyxDB swap: dist 1.1MB, Windows installer ~5MB.)
+    NyxDB swap: dist 1.1MB, Windows installer ~5MB. Updated at v5.8.2,
+    16th pass: dist 1.2MB — ~9% growth, under the 10% threshold and
+    plausibly explained by C8's password-at-rest UI/App Lock work
+    shipped since v5.7.10; no installer/APK figure was ever actually
+    recorded to compare against, so that half of the ledger is still
+    empty going into the next pass — capture it then if a build is
+    available.)
   - **Optional deeper sweeps** (no repo dependency added — dev-run
     tools only, results are *candidates* requiring judgment, both
     false-positive-prone with Svelte/Tauri): `npx knip` (unused files/
@@ -156,7 +162,9 @@ Produce a findings report covering:
     URL/credentials — tracked separately as ROADMAP C7, don't re-litigate).
   - **`offlog-desktop/src-tauri/`**: grep for every `unsafe` block (there
     should only be the `TerminateJobObject` FFI declarations in `lib.rs`
-    — new ones are a real finding, not routine) and confirm none of them
+    and the `CryptProtectData`/`CryptUnprotectData` DPAPI calls in
+    `secure_storage.rs` (added by C8, v5.8.1) — new ones beyond these
+    two spots are a real finding, not routine) and confirm none of them
     are reachable with attacker-controlled input. Confirm
     `pairing.rs`'s generated code/credentials are never written to a log
     line (`log::info!`/`log::warn!` on the pairing path should log

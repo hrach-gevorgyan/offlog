@@ -359,17 +359,20 @@ async function scheduleNative(tasks: TaskDoc[]) {
 // builds the toast directly with tauri-winrt-notification, whose
 // on_activated callback genuinely works, and emits a real Tauri event
 // we can listen for below.
-async function fireTauriNotification(task: TaskDoc) {
+function fireTauriNotification(task: TaskDoc): Promise<void> {
   const id = task._id!;
   const key = firedKey(task);
-  if (_firedIds.has(key)) return;
+  if (_firedIds.has(key)) return Promise.resolve();
   _firedIds.add(key);
   invokeTauri('send_task_notification', {
     title: task.title,
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
     taskId: id,
   }).catch(() => {});
-  updateTask(id, { reminder_at: null }).catch(() => {});
+  // Return the updateTask promise rather than swallowing it silently, same
+  // as fireWebNotification() above -- this path was added later and missed
+  // that fix (MAINTENANCE.md 16th-pass finding).
+  return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
 }
 
 function scheduleTauriTimer(task: TaskDoc, staggerIndex = 0) {
@@ -405,7 +408,7 @@ function catchUpTauri(tasks: TaskDoc[]) {
         fireTauriNotification(t);
       }
     }
-    else updateTask(t._id!, { reminder_at: null }).catch(() => {});
+    else updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {});
   }
 }
 
