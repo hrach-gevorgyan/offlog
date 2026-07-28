@@ -90,7 +90,8 @@ The owner-vetted maintenance-mode shortlist (snooze, .ics export,
 checklist templates, import converters, voice input, distraction-
 minimal pass, task linking, attachments, recurrence robustness, unified
 search) is committed backlog, not an open question — it now lives in
-[ROADMAP.md](ROADMAP.md)'s "Post-Done backlog" section instead of here.
+[ROADMAP.md](ROADMAP.md)'s "Future versions" section (mapped to
+`v6.1.0`-`v6.10.0`, 2026-07-28) instead of here.
 
 Each question above is meant to be copy-pasted on its own to another AI,
 a forum, or a person whose judgment is trusted, without needing this whole

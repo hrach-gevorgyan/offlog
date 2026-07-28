@@ -113,84 +113,104 @@ working."
 
 ---
 
-## Maintenance mode (the rules after Done)
+## Future versions (the rules after Done, restructured 2026-07-28)
 
-- **Dependencies:** batch Dependabot PRs roughly **monthly**, not
-  per-alert. Security advisories with a real fix available are the only
-  interrupt-driven exception.
-- **Maintenance pass:** quarterly (replacing the every-3-releases
-  cadence, since releases become rare) — same process in
-  [MAINTENANCE.md](MAINTENANCE.md).
-- **Bug fixes:** when something annoys the owner in daily use, or a
-  real user files a reproducible issue. No proactive feature work.
-- **New features:** only if daily use *demands* one — the bar is "this
-  friction bothers me every day," not "this would be nice." Pull from
-  the vetted backlog below first; genuinely new ideas that don't clear
-  the bar go to [IDEAS.md](IDEAS.md) without guilt.
-- **Parked permanently unless daily use demands them:** B28 (rethink
-  positional "done"), B33 (sub-projects) — see archive for reasoning.
-  These do not block Done.
+**Owner decision, 2026-07-28:** replace the open-ended "pull one only
+when it annoys me" maintenance-mode rule with two explicit, parallel
+release tracks, so post-Done work has a real shape instead of living as
+an unscheduled backlog. This does **not** reopen the finite-plan
+mission or the "no growth for growth's sake" bar (a feature still has
+to earn its slot — see each item's own reasoning below) — it just gives
+the vetted backlog a version number instead of a vague "someday."
 
----
+### Feature track — one backlog item per minor version
 
-## Post-Done backlog (pre-vetted, maintenance-mode only, 2026-07-22)
+Each `v6.X.0` ships exactly one item below, in this order (still the
+owner-vetted priority ranking from 2026-07-22 — reorder only with an
+explicit owner decision, don't re-litigate the ranking casually).
+Calendar timing stays loose (no monthly quota) — a slot ships when the
+owner is ready to build it, not on a schedule.
 
-Not milestone work, not scheduled — the pre-vetted shortlist for
-maintenance mode, so when daily use demands something it's already been
-thought through instead of re-litigated from scratch. Curated with the
-owner from a larger brainstorm; everything declined (stale-task triage,
-daily shutdown ritual, weekly review — "so much statistics from every
-app, now this one?? no") is deliberately not listed here, don't
-re-propose those. Pull the next one only when daily use actually demands
-it, per the maintenance-mode rule above — roughly ordered by expected
-value:
-
-- **"Not today" snooze.** One tap on any task: defer to tomorrow / next
-  week without opening the editor. Snooze exists today only as the
-  notification action's "Snooze 1h" — this extends the idea to the task
-  itself, guilt-free. Small.
-- **Calendar (.ics) export.** Dated tasks as a local .ics file/feed the
-  OS calendar reads — deadlines next to real appointments, no cloud.
-  Small-medium.
-- **Checklist templates.** Reusable checklists (packing list, grocery
-  run) — save any task's checklist as a named template, insert into any
-  task. Same mechanism as the existing project templates, one level
-  down. Small.
-- **Import converters (very popular tools only).** One-way import from
-  Trello / ClickUp / Jira export files into Offlog's model. This is the
-  owner's accepted flavor of "integration" — a one-time file conversion,
-  not a live connection, so it doesn't violate the no-integrations
-  stance in DECISIONS.md's manifesto. Medium (per-tool mapping work,
-  Trello's JSON export first — it's the most kanban-shaped).
-- **Voice input for Quick Add.** Dictate a task instead of typing —
-  platform speech-to-text (Android's built-in recognizer / Web Speech
-  API where available) feeding the existing NLP regex parser, no cloud
-  service of our own. Medium; Android-first.
-- **Distraction-minimal interface pass.** Owner's framing: every
-  productivity app (ours included) accumulates too many on-screen
-  things; the create-work-complete lifecycle should be the whole
-  visible surface. Not a feature — a *reduction* pass: audit every
-  view for chrome that doesn't serve the current task, possibly a
+- **v6.1.0 — "Not today" snooze.** One tap on any task: defer to
+  tomorrow / next week without opening the editor. Snooze exists today
+  only as the notification action's "Snooze 1h" — this extends the idea
+  to the task itself, guilt-free. Small.
+- **v6.2.0 — Calendar (.ics) export.** Dated tasks as a local .ics
+  file/feed the OS calendar reads — deadlines next to real
+  appointments, no cloud. Small-medium.
+- **v6.3.0 — Checklist templates.** Reusable checklists (packing list,
+  grocery run) — save any task's checklist as a named template, insert
+  into any task. Same mechanism as the existing project templates, one
+  level down. Small.
+- **v6.4.0 — Import converters (very popular tools only).** One-way
+  import from Trello / ClickUp / Jira export files into Offlog's model.
+  The owner's accepted flavor of "integration" — a one-time file
+  conversion, not a live connection, so it doesn't violate the
+  no-integrations stance in DECISIONS.md's manifesto. Medium (per-tool
+  mapping work, Trello's JSON export first — it's the most
+  kanban-shaped).
+- **v6.5.0 — Voice input for Quick Add.** Dictate a task instead of
+  typing — platform speech-to-text (Android's built-in recognizer / Web
+  Speech API where available) feeding the existing NLP regex parser, no
+  cloud service of our own. Medium; Android-first.
+- **v6.6.0 — Distraction-minimal interface pass.** Owner's framing:
+  every productivity app (ours included) accumulates too many
+  on-screen things; the create-work-complete lifecycle should be the
+  whole visible surface. Not a feature — a *reduction* pass: audit
+  every view for chrome that doesn't serve the current task, possibly a
   "minimal mode" toggle. Large-ish in judgment, small in code.
-- **Task linking & dependencies.** "This task blocks that one" /
-  related-task links. Real value, but touches the data model — same
-  caution class as parked B28/B33: needs a design conversation first,
-  not a casual add.
-- **File attachments (with size optimization).** PouchDB supports
-  binary attachments natively and they replicate over the existing
-  sync — but storage growth and sync payload on phones is the real
-  concern, so images would need client-side downscale/compression on
-  attach. Medium-large; the one item here with real storage-cost risk.
-- **Recurrence robustness pass.** Recurring tasks already exist
-  (db.ts's reset-in-place model) — owner's ask is the quality bar:
-  "smart due dates, reminders, and recurrence that don't break."
-  A dedicated test/edge-case pass (month-end dates, DST, skipped
+- **v6.7.0 — Task linking & dependencies.** "This task blocks that one"
+  / related-task links. Real value, but touches the data model — same
+  caution class as parked B28/B33 below: needs its own design
+  conversation immediately before this slot, not a casual add on the
+  day of.
+- **v6.8.0 — File attachments (with size optimization).** PouchDB
+  supports binary attachments natively and they replicate over the
+  existing sync — but storage growth and sync payload on phones is the
+  real concern, so images would need client-side downscale/compression
+  on attach. Medium-large; the one item here with real storage-cost
+  risk.
+- **v6.9.0 — Recurrence robustness pass.** Recurring tasks already
+  exist (db.ts's reset-in-place model) — owner's ask is the quality
+  bar: "smart due dates, reminders, and recurrence that don't break." A
+  dedicated test/edge-case pass (month-end dates, DST, skipped
   occurrences while offline) rather than new behavior.
-- **Unified search.** Global Search already covers tasks — extend to
-  notes/checklist contents so one search box finds everything in-app.
-  (The "connected tools" half of the original idea is out of scope —
-  no live connections, per the manifesto; imported data becomes normal
-  Offlog data and is searched like everything else.)
+- **v6.10.0 — Unified search.** Global Search already covers tasks —
+  extend to notes/checklist contents so one search box finds everything
+  in-app. (The "connected tools" half of the original idea is out of
+  scope — no live connections, per the manifesto; imported data becomes
+  normal Offlog data and is searched like everything else.)
+
+Curated with the owner from a larger brainstorm; everything declined
+(stale-task triage, daily shutdown ritual, weekly review — "so much
+statistics from every app, now this one?? no") is deliberately not
+listed here, don't re-propose those. A genuinely new idea that comes up
+later either slots in at the end (v6.11.0 onward) after owner vetting,
+or goes to [IDEAS.md](IDEAS.md) unvetted.
+
+**Parked permanently, not on the version list:** B28 (rethink
+positional "done"), B33 (sub-projects) — see archive for reasoning.
+These do not block any feature-track version.
+
+### Bugfix / audit track — patch versions, independent of the feature track
+
+Runs in parallel on its own trigger, never bundled into a feature
+version's scope:
+
+- **`v6.X.1`, `.2`, ... (patch bump):** a real bug the owner hits in
+  daily use, or a reproducible issue a real user files. No proactive
+  feature work rides along in the same release.
+- **Quarterly maintenance pass** (replacing the old every-3-releases
+  cadence, since releases were expected to slow down): same process as
+  [MAINTENANCE.md](MAINTENANCE.md) — dependency audit, warning/lint
+  sweep, doc-drift check. Ships as its own patch version even with zero
+  user-visible change (RELEASE_NOTES.md's "No visible changes" entry
+  covers this case).
+- **Dependabot:** batch PRs roughly **monthly**, folded into whichever
+  patch version is next — not a release trigger on its own. A security
+  advisory with a real fix available is the one interrupt-driven
+  exception (ships immediately as its own patch, doesn't wait for the
+  monthly batch).
 
 **iOS reality check** (owner asked, 2026-07-22): a native iOS build
 needs a Mac, Xcode, and Apple's $99/year developer account, plus App
