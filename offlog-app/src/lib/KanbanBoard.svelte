@@ -827,25 +827,35 @@
      than a pill, paired with a soft shadow tinted to that same priority
      color rather than a flat black one, so the two signals reinforce
      each other instead of competing. */
+  /* A box-shadow on the card itself always blurs outward on every side,
+     even with a negative x-offset -- the only way to truly confine the
+     colored glow to the left edge (owner feedback, 2026-07-28: still
+     showing all around) is a dedicated thin element for it, kept
+     separate from the card's own plain neutral shadow. */
   .card {
+    position: relative;
     background: var(--surface);
     border-radius: var(--radius);
     padding: .75rem .85rem;
     cursor: pointer;
     border-left: 2px solid var(--prio-color, var(--border));
-    /* Colored glow confined to the left edge only (negative x-offset,
-       tight spread) -- owner feedback, 2026-07-28: the color should
-       read as coming off the priority edge, not surrounding the whole
-       card. Plain neutral shadow still handles overall depth. */
-    box-shadow: 0 1px 2px rgba(0,0,0,.04), -2px 0 8px -3px var(--prio-color, transparent);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
     transition: box-shadow var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
                 opacity .18s;
   }
+  .card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    box-shadow: 0 0 5px 0 var(--prio-color, transparent);
+    opacity: .4; pointer-events: none;
+    transition: opacity var(--dur) var(--ease);
+  }
   .card:hover {
-    box-shadow: 0 2px 4px rgba(0,0,0,.06), -3px 0 12px -2px var(--prio-color, transparent);
+    box-shadow: 0 2px 4px rgba(0,0,0,.06);
     transform: translateY(-2px);
   }
+  .card:hover::before { opacity: .65; }
   .card.dragging { opacity: .35; transition: none; transform: none; }
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
 
