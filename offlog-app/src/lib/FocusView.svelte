@@ -232,12 +232,13 @@
     return SIZES[hashId(t._id!) % 3];
   }
   // A deliberately varied, mostly-non-zero spread (owner feedback,
-  // 2026-07-30: dialing tilt down to mostly-flat killed the "real
+  // 2026-07-29: dialing tilt down to mostly-flat killed the "real
   // corkboard" character this page is meant to have — it's one of the
   // app's signature touches, not just a detail to tone down). Only 1 of
-  // 8 buckets is dead flat; the rest range fairly widely in both
-  // directions so the board reads as genuinely scattered.
-  const TILTS = [-4, -2.5, -1, 0, 1.5, 3, 4.5, -3.5];
+  // 8 buckets is dead flat; the rest vary in both directions but stay
+  // gentle (owner feedback, 2026-07-30: the wider range read as too
+  // aggressive) rather than the earlier, more dramatic swing.
+  const TILTS = [-2, -1.2, -0.5, 0, 0.7, 1.5, 2.2, -1.7];
   function noteTilt(t: TaskDoc): number {
     return TILTS[hashId(t._id!) % TILTS.length];
   }
