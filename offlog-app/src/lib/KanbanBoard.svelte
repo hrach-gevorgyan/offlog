@@ -601,17 +601,6 @@
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.recurrence}
-                <!-- redesign/v6: pin-star icon removed -- pinned status
-                     now shows as a thin right-edge accent color instead
-                     (owner feedback, 2026-07-28), same idea as the
-                     priority left edge, mirrored on the opposite side. -->
-                <div class="card-icons">
-                  <span class="card-recur" title="Repeats {task.recurrence}">
-                    <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-                  </span>
-                </div>
-              {/if}
               <div class="card-menu-wrap">
                 <button
                   type="button"
@@ -656,6 +645,17 @@
                 <span class="meta-badge due-badge {dueDateClass(task.due_date)}">
                   <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="4" y1="1" x2="4" y2="3.5"/><line x1="10" y1="1" x2="10" y2="3.5"/></svg>
                   {task.due_date}
+                </span>
+              {/if}
+              {#if task.recurrence}
+                <!-- redesign/v6 (owner feedback, 2026-07-30): moved down
+                     here from the title-row icon cluster, same line as
+                     the related-task icon below -- same reasoning as
+                     that earlier move (owner feedback, 2026-07-28): a
+                     metadata icon belongs with the other metadata
+                     badges, not the title row. -->
+                <span class="meta-badge recur-badge" title="Repeats {task.recurrence}">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
                 </span>
               {/if}
               {#if relatedIds.has(task._id!)}
@@ -899,10 +899,6 @@
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
-  .card-icons { display: flex; align-items: center; gap: 5px; flex-shrink: 0; margin-top: 2px; }
-  .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; }
-  .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; }
-  .card-related { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; }
   .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
   .card-menu-trigger {
     display: flex; align-items: center; justify-content: center;
@@ -957,7 +953,7 @@
     background: var(--border-strong); overflow: hidden; flex-shrink: 0;
   }
   .checklist-bar-fill { display: block; height: 100%; background: var(--success); border-radius: 2px; }
-  .related-badge { padding: .18rem .4rem; }
+  .related-badge, .recur-badge { padding: .18rem .4rem; }
 
   /* redesign/v6, follow-up critique: tags were all identical gray
      (Tag Homogeneity) -- each tag now gets a consistent soft tint via
