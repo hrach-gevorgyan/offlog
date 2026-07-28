@@ -1,10 +1,14 @@
-# Excludes third-party dependency source from CodeQL analysis.
-# .github/codeql/codeql-config.yml's paths-ignore didn't reliably filter
-# Java/Kotlin results under build-mode: manual (11 findings inside
-# Capacitor plugins' bundled Java source stayed open after a successful
-# run with that config alone) -- .codeqlignore is CodeQL's more robust,
-# universally-honored exclusion mechanism, kept alongside the config
-# file rather than replacing it.
+# Excludes third-party dependency source from CodeQL analysis for the
+# interpreted languages (javascript-typescript, rust, actions).
+# NOTE: neither this file nor codeql-config.yml's paths-ignore actually
+# suppresses Java/Kotlin findings inside Capacitor plugins' bundled Java
+# source under build-mode: manual -- GitHub's paths/paths-ignore filtering
+# only applies to extraction for interpreted languages; a real Gradle
+# build traces and indexes everything it compiles regardless, including
+# third-party plugin modules the app depends on. Those findings must be
+# dismissed by hand in the Code Scanning UI instead -- see
+# docs/DECISIONS.md's C8b entry for the full reasoning. Kept here anyway
+# since it's still real and effective for the interpreted-language jobs.
 **/node_modules/**
 **/target/**
 **/dist/**

@@ -733,3 +733,41 @@ branch + a one-time silent migration from the old plaintext
 now exists to migrate into — the plain-web path skips migration entirely
 since there's nowhere else to move the value to). Existing installs
 upgrading past this need no re-pairing.
+
+### C8b — CodeQL's compiled-language (Java/Kotlin) findings inside bundled Capacitor plugin source can't be config-excluded; dismiss manually instead (2026-07-28)
+After `.codeqlignore` shipped (dba39a4) expecting it to suppress the
+Java/Kotlin findings living inside third-party plugin source
+(`node_modules/capacitor-native-biometric/.../NativeBiometric.java`,
+`node_modules/@capacitor/android/.../MessageHandler.java`,
+`.../AuthActivity.java` — confirmed by path, all vendored, none of it
+this repo's own code), the Code Scanning UI still shows them open
+several runs later. Checked GitHub's own documented behavior: `paths`/
+`paths-ignore` (both the config file's and `.codeqlignore`) only filter
+which files get **extracted** for interpreted languages (JS/TS, Ruby,
+Python) — for compiled languages under `build-mode: manual`, the actual
+Gradle/javac trace during `analyze-java-kotlin`'s real `gradlew
+assembleDebug` step compiles every module the app module depends on,
+including each Capacitor plugin's own Android module, and CodeQL indexes
+whatever the compiler touches regardless of these exclusion files. There
+is no config-file lever that stops this while still building a real,
+accurate classpath (the entire reason build-mode:manual replaced the
+Default setup's degraded build-mode:none in the first place — see the
+C8-adjacent CodeQL-scoping entry above/commit 9058410). Excluding the
+plugin modules from the Gradle build isn't viable either: the app module
+won't compile without them.
+
+**Decision: stop treating this as a config problem.** These findings are
+real CodeQL output about code Offlog doesn't own, can't patch (npm/the
+plugin's own next release would overwrite any local fix), and can't be
+build-excluded without breaking the classpath the whole Advanced-setup
+switch was for. The correct and final action is dismissing each one
+individually in the Code Scanning UI (reason: **Won't fix**, comment
+noting it's vendored third-party plugin source, e.g.
+`capacitor-native-biometric`/`@capacitor/android`) — owner action, `gh`
+CLI not installed here, not something to keep re-attempting via
+workflow/config changes. `config.ts`'s `LEGACY_SYNC_PASS_KEY`
+`localStorage.setItem` (the plain-web fallback path) will keep
+resurfacing as its own "Clear text storage" finding under a new alert
+number each time the file changes — that one is the already-accepted
+C8 web-fallback limitation above, same dismissal reason applies, not a
+regression.
