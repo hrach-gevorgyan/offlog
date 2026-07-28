@@ -1,3 +1,13 @@
+<p align="center">
+  <img src="docs/images/readme-banner.png" alt="Offlog — off the cloud, still logged." width="700">
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="https://github.com/hrach-gevorgyan/offlog/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hrach-gevorgyan/offlog"></a>
+  <a href="https://github.com/hrach-gevorgyan/offlog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/hrach-gevorgyan/offlog/actions/workflows/ci.yml/badge.svg"></a>
+</p>
+
 # Offlog
 
 **Your tasks. Your devices. Nobody else's.**
@@ -9,6 +19,16 @@ as a Windows desktop app — all three share the exact same codebase and
 sync with each other over your own network. (Current version:
 [docs/CHANGELOG.md](docs/CHANGELOG.md) — not restated here so this page
 doesn't go stale every release.)
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/screenshot-dashboard-desktop.png" alt="Dashboard view (desktop)" width="410">
+  <img src="docs/images/screenshot-kanban-desktop.png" alt="Kanban view (desktop)" width="410">
+</p>
+<p align="center">
+  <img src="docs/images/screenshot-kanban-mobile.png" alt="Kanban view (Android)" width="220">
+</p>
 
 ---
 
