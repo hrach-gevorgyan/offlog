@@ -59,12 +59,18 @@ being findable and installable without knowing what "sideload" means.
   other humans, because normal people will never install an APK from
   GitHub. Signing key already exists and is wired into CI. Remaining:
   a Play Console developer account (**$25 one-time — owner-approved
-  cost, 2026-07-23**), store listing assets (icon exists; screenshots,
-  short/full description from BRAND.md's copy), and Google's review
-  process. Calendar time is mostly waiting on Google, not working.
-  **Privacy policy done** — [docs/PRIVACY.md](PRIVACY.md), 2026-07-28
-  (resolves IDEAS.md's old Q3, see DECISIONS.md); use the GitHub-
-  rendered page as the Play Console URL until C5's landing page exists.
+  cost, 2026-07-23; identity verification pending as of 2026-07-28**)
+  and Google's review process — calendar time is mostly waiting on
+  Google, not working. **Privacy policy done** —
+  [docs/PRIVACY.md](PRIVACY.md), 2026-07-28 (resolves IDEAS.md's old
+  Q3, see DECISIONS.md); use the GitHub-rendered page as the Play
+  Console URL until C5's landing page exists. **Listing copy/assets
+  prepped** — `brand kit/Kit/play-store-listing.md` (not tracked in
+  git, local-only per `.gitignore`) has the short/full description
+  draft and an asset-readiness check: icon is Play-ready as-is, but
+  the feature graphic needs a re-export at exactly 1024×500 (currently
+  2048×1000) and the mobile screenshots need a re-export closer to a
+  2:1 ratio (currently ≈2.22:1, over Play's cap) before upload.
 - **C3b — Windows code signing via SignPath (owner-decided,
   2026-07-23).** Removes the Windows SmartScreen "unverified
   publisher" warning on the installer — free for qualifying open-source
