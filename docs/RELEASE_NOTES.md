@@ -17,6 +17,13 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v5.8.3
+
+### Fixed
+- Task history could occasionally show a confusing "Checklist updated"
+  or "Custom fields updated" note for an edit that didn't actually
+  change anything.
+
 ## v5.8.2
 
 No visible changes — routine dependency updates only.

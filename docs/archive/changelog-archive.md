@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.7.3 | Dependency maintenance batch: `uuid` forced to 11.1.1 via npm `overrides` (GHSA-w5hq-g745-h8pq); TypeScript 7.0.2 merged then reverted same day (broke `npx cap sync android`, invisible to build/tsc/test); `mdns-sd` 0.13.11→0.20.2, `tauri-winrt-notification` 0.7.3→0.8.1; `glib` 0.18.5 advisory recorded as accepted risk (no compatible fix upstream); `dependabot.yml` extended to watch offlog-desktop's Cargo deps | `v5.7.3` |
 | 5.7.2 | List view crash on zero-task project, undo-toast chaining bug, Time Travel mobile layout, Agenda "Tomorrow · Tomorrow" chip, faster edge-auto-scroll, view-restore moved to sessionStorage, landscape sidebar drawer fix, AndroidManifest.xml invalid-comment fix | `v5.7.2` |
 | 5.7.10 | TimePicker.svelte settled back to its B50 themed dropdown after trying and rejecting three replacements (scroll wheel, `timepicker-ui` npm lib, native `<input type="time">`) the same day — no functional change | `v5.7.10` |
 | 5.7.1 | CRITICAL: real dev credentials (`.env.local`) baked into a shipped production build via Vite's always-loaded env, leaking a real password in the public v5.7.0 APK — fixed via `import.meta.env.DEV` gating; plus a batch of onboarding/UTC-date/widget/drag fixes from the same live-testing session | `v5.7.1` |
@@ -319,3 +320,49 @@ green, verified same-day on the current tree. Recommendation for next
 pass: nothing carried over; the `glib` accepted-risk (DECISIONS.md)
 re-check remains tied to the next Cargo dependency bump, not to
 maintenance cadence.
+
+Last pass: v5.8.3 (2026-07-28 — sixteenth run, pulled forward from its
+after-v5.10.0 due date at owner request). Full Phase 1 sweep of both
+apps plus `npx knip` as an optional deeper sweep (`cargo machete` not
+installed, skipped per "no new tooling without approval"). Two real
+findings fixed: (1) `notifications.ts`'s `fireTauriNotification()` and
+`catchUpTauri()`'s stale-reminder branch both discarded `updateTask()`'s
+promise via a bare `.catch(() => {})` instead of returning it, unlike
+`fireWebNotification()`'s already-fixed equivalent (the v5.4.6
+rev-conflict-race / v5.7.2-flaky-test bug class) — the Tauri path was
+added later and missed the same fix; purely internal, no external
+behavior change (still fire-and-forget from every caller). (2) found
+mid-pass, not in the original report: `TaskHistoryPanel.svelte` had its
+own hand-duplicated copy of `logFormat.ts`'s `FIELD_LABEL`/`fmtVal`/
+`describeField`/`hasRealChange`, despite that file's own header comment
+saying it was extracted specifically to prevent this class of drift —
+and it had already drifted (missing the `'name'` rename case, missing
+the `isEmpty()` no-op filter from `logFormat.ts`'s 2026-07-18 fix, so a
+no-op checklist/custom-field diff could still show a false "Checklist
+updated" here after Time Travel had already stopped showing it); now
+imports the shared logic, keeping only its own intentionally-simpler
+`describeLog()` wrapper. Housekeeping: removed `export` from 6
+module-internal-only symbols flagged by `knip` and individually
+hand-verified against real import sites (not trusted blindly — knip's
+other "unused" hits, e.g. `ArchivedProjectsManager`/`SpaceManager`/etc.,
+were confirmed false positives from dynamic `import()` it can't trace);
+updated this file's own stale unsafe-Rust-block checklist entry (missed
+C8's `secure_storage.rs` DPAPI calls) and the size-drift ledger (dist
+1.1MB → 1.2MB, ~9% growth, under the 10% threshold, explained by C8/App
+Lock work shipped since v5.7.10 — installer/APK figures still not
+recorded anywhere, remains a gap for next pass to fill if a build is
+available). Deliberately **not** fixed: `SettingsPanel.svelte`'s size
+(2063 lines, now the largest file in the repo) — real risk/effort
+mismatch for a routine pass given it'd mean lifting a lot of shared
+reactive state across new sub-components purely for readability, not
+correctness; and 7 other `knip`-flagged unused exports/types not
+individually verified (lower confidence, left as a candidate list for
+whoever picks this up next). `handleWidgetUrl()`'s deep-link handling
+was re-verified by hand (traced every branch: strict `===` against 5
+fixed literals, the one attacker-influenceable value — a `project` id
+query param — only ever used for an equality check against real,
+already-loaded project IDs, no `eval`/dynamic property lookup/DOM
+injection anywhere in the chain) — confirmed clean, not just assumed.
+No RISKY findings; no schema/sync/storage-format changes. Baselines
+(build zero-warning / tsc / 219 tests / cargo build) all green,
+re-verified after every fix and once more at Phase 4.
