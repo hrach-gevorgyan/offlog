@@ -223,17 +223,23 @@
   }
   const SIZES = ['note-sm', 'note-md', 'note-lg'] as const;
   function noteSize(t: TaskDoc & { project_name?: string }): string {
-    if (suggestedReasons.has(t._id!)) return 'note-lg'; // suggested tasks are the ones worth noticing first
-    return SIZES[hashId(t._id!) % 2]; // sm/md mix for the rest — lg is reserved for suggested
+    if (suggestedReasons.has(t._id!)) return 'note-lg'; // suggested tasks are always at least this big
+    // Full 3-way size mix, not just sm/md (owner feedback, 2026-07-30:
+    // the corkboard is a signature feature, lean into the variety) --
+    // a non-suggested note can land on note-lg too now; what still marks
+    // a *suggested* one out is the accent border tint + its suggest-chip,
+    // not size alone.
+    return SIZES[hashId(t._id!) % 3];
   }
-  // Reduced range (owner feedback, 2026-07-29: "too much, make more
-  // stable") and about half the cards stay perfectly flat now (owner:
-  // "not all cards need to be tilted, some can be normal") -- only the
-  // other half lean, and only a couple degrees when they do.
+  // A deliberately varied, mostly-non-zero spread (owner feedback,
+  // 2026-07-30: dialing tilt down to mostly-flat killed the "real
+  // corkboard" character this page is meant to have — it's one of the
+  // app's signature touches, not just a detail to tone down). Only 1 of
+  // 8 buckets is dead flat; the rest range fairly widely in both
+  // directions so the board reads as genuinely scattered.
+  const TILTS = [-4, -2.5, -1, 0, 1.5, 3, 4.5, -3.5];
   function noteTilt(t: TaskDoc): number {
-    const h = hashId(t._id!);
-    if (h % 4 < 2) return 0;
-    return h % 4 === 2 ? -1.5 : 1.5;
+    return TILTS[hashId(t._id!) % TILTS.length];
   }
   // A little vertical stagger alongside the tilt (owner feedback,
   // 2026-07-29: "more freedom of card positions like it was before") --
