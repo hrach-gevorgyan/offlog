@@ -200,6 +200,16 @@ owner is ready to build it, not on a schedule.
   in-app. (The "connected tools" half of the original idea is out of
   scope — no live connections, per the manifesto; imported data becomes
   normal Offlog data and is searched like everything else.)
+- **v6.11.0 — Tag color picker.** Added 2026-07-28, from the `redesign/
+  v6` branch's Kanban work: tags there get a deterministic hash-to-
+  palette color so the same tag always looks the same, but a user can't
+  override which color a given tag gets. `TagManager.svelte` (Settings
+  → Organize → Manage Tags) already has the batch rename/delete UI for
+  tags — a color swatch/picker per row is the natural place to add a
+  manual override. Needs a small schema addition (tags today are plain
+  free-text on `TaskDoc.tags`, no separate tag-metadata doc to store a
+  color against) — a new `tag:<name>` doc type holding just `{ color }`,
+  falling back to the hash color when no override doc exists.
 
 Curated with the owner from a larger brainstorm; everything declined
 (stale-task triage, daily shutdown ritual, weekly review — "so much
