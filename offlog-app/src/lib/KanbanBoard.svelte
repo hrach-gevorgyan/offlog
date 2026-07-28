@@ -538,16 +538,14 @@
             </svg>
           </button>
         {/if}
-        <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
-        <!-- redesign/v6: was pushed to the header's far right edge --
-             .col-name had flex:1, stretching its own box the full
-             remaining width, so anything after it (the count, then
-             these buttons) landed disconnected from the visible title
-             text (owner feedback, 2026-07-28: "alignment is wrong").
-             The spacer below now carries flex:1 instead, so title+count
-             cluster together at their natural width and only the
-             hover-revealed action buttons get pushed to the right. -->
+        <!-- redesign/v6: count moved to the right, clustered with the
+             hover-revealed archive/remove buttons (owner feedback,
+             2026-07-28) -- the spacer carries flex:1, so the title
+             stays put on the left and count+archive+remove group
+             together on the right regardless of whether archive is
+             currently rendered (task count > 0) or not. -->
         <div class="col-header-spacer"></div>
+        <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
         {#if (tasksByCol[col.id]?.length ?? 0) > 0}
           <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
             if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
@@ -581,6 +579,7 @@
             data-task-idx={idx}
             class:dragging={isDragging(task)}
             class:insert-before={dragOverColId === col.id && dragOverIndex === idx}
+            class:pinned={task.pinned}
             draggable="true"
             role="button"
             tabindex="0"
@@ -598,18 +597,15 @@
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.pinned || task.recurrence}
-                <!-- redesign/v6: this cluster is the pinned-star's place
-                     (plus recurrence); related-links moved down next to
-                     the due date instead -- owner feedback, 2026-07-28:
-                     "this place is only for pinned star." -->
+              {#if task.recurrence}
+                <!-- redesign/v6: pin-star icon removed -- pinned status
+                     now shows as a thin right-edge accent color instead
+                     (owner feedback, 2026-07-28), same idea as the
+                     priority left edge, mirrored on the opposite side. -->
                 <div class="card-icons">
-                  {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
-                  {#if task.recurrence}
-                    <span class="card-recur" title="Repeats {task.recurrence}">
-                      <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-                    </span>
-                  {/if}
+                  <span class="card-recur" title="Repeats {task.recurrence}">
+                    <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
+                  </span>
                 </div>
               {/if}
               <div class="card-menu-wrap">
@@ -841,21 +837,22 @@
   .col-rename:hover { color: var(--accent); }
   .col-header:hover .col-rename { opacity: 1; }
 
-  .col-archive {
+  /* redesign/v6: .col-remove was a bare "×" text glyph (font-size-driven
+     box) while .col-archive was an icon in a flex box -- same padding
+     values on two different sizing models made them visibly mismatched
+     (owner feedback, 2026-07-28). Both now share fixed 20x20 flex boxes,
+     identical hit targets and visual size. */
+  .col-archive, .col-remove {
+    display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px;
     background: none; border: none; cursor: pointer;
-    color: var(--faint); padding: 0 .15rem; opacity: 0;
-    transition: opacity .15s, color .15s; display: flex; align-items: center;
+    color: var(--faint); font-size: 1rem; line-height: 1;
+    border-radius: 5px; opacity: 0;
+    transition: opacity .15s, color .15s, background .12s;
   }
-  .col-archive:hover { color: var(--accent); }
-  .col-header:hover .col-archive { opacity: 1; }
-
-  .col-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--faint); font-size: 1.05rem; line-height: 1;
-    padding: 0 .15rem; opacity: 0; transition: opacity .15s, color .15s;
-  }
-  .col-remove:hover { color: var(--danger); }
-  .col-header:hover .col-remove { opacity: 1; }
+  .col-archive:hover { color: var(--accent); background: var(--hover); }
+  .col-remove:hover { color: var(--danger); background: var(--hover); }
+  .col-header:hover .col-archive, .col-header:hover .col-remove { opacity: 1; }
 
   .card-list {
     padding: .25rem .6rem .65rem;
@@ -895,6 +892,11 @@
   }
   .card.dragging { opacity: .35; transition: none; transform: none; }
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
+  /* redesign/v6: pin-star icon removed, pinned status now reads as a
+     thin accent-colored right edge (owner feedback, 2026-07-28) --
+     mirrors the priority left edge, opposite side so the two never
+     compete for the same space. */
+  .card.pinned { border-right: 2px solid var(--accent); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
