@@ -447,8 +447,6 @@
             {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
           </label>
 
-          <div class="schedule-divider"></div>
-
           <div class="reminder-field">
             <label>
               Reminder
@@ -473,8 +471,6 @@
         </div>
       {/if}
     </div>
-
-    <div class="section-divider"></div>
 
     <div class="tags-field">
       <span class="field-label">Tags</span>
@@ -509,8 +505,6 @@
         </div>
       {/if}
     </div>
-
-    <div class="section-divider"></div>
 
     <div class="collapsible-section">
       <button type="button" class="section-toggle" on:click={() => showChecklist = !showChecklist}>
@@ -584,8 +578,6 @@
       </div>
     {/if}
 
-    <div class="section-divider"></div>
-
     <div class="collapsible-section">
       <button type="button" class="section-toggle" on:click={() => showRelated = !showRelated}>
         <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
@@ -623,8 +615,6 @@
         </div>
       {/if}
     </div>
-
-    <div class="section-divider"></div>
 
     <div class="collapsible-section">
       <button type="button" class="section-toggle" on:click={() => showNotes = !showNotes}>
@@ -738,7 +728,6 @@
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
   .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
-  .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
@@ -847,16 +836,20 @@
 
   .collapsible-section { display: flex; flex-direction: column; gap: .35rem; }
 
-  /* B49: Checklist/Custom fields/Notes toggles now read as distinct rows
-     (icon + label + chevron, own background) instead of a bare text link,
-     so a stack of them reads as separate cards, not one long accordion. */
+  /* redesign/v6 (owner feedback, 2026-07-30: "minimize maximum... not
+     scary how much things I need to fill or miss") -- these used to be
+     their own bordered/filled boxes (col-bg background, 1px border,
+     8px radius), so a task with several sections open read as a stack
+     of separate cards stacked on cards. Plain rows now, hover-only
+     background, no permanent outline -- the icon+label+chevron still
+     make it unambiguous this is a clickable disclosure. */
   .section-toggle {
     display: flex; align-items: center; gap: 8px;
-    background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
-    cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
-    transition: background .12s, border-color .12s;
+    background: none; border: none;
+    cursor: pointer; padding: .3rem 0; width: 100%; text-align: left;
+    border-radius: 6px; transition: background .12s;
   }
-  .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
+  .section-toggle:hover { background: var(--hover); }
   .section-toggle .field-label { flex: 1; }
   .row-icon { color: var(--accent); flex-shrink: 0; }
   .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
@@ -870,16 +863,16 @@
   }
   .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
-  /* B49: the combined Due date/Reminder disclosure — same row treatment
-     as Checklist/Custom fields/Notes above, plus a small calendar icon
-     and the live summary text instead of a static label. */
+  /* Same de-boxing as .section-toggle above, plus the expanded panel
+     below drops its own card treatment (background/border/padding-box)
+     in favor of a plain indent -- was reading as a card inside a card. */
   .schedule-toggle {
     display: flex; align-items: center; gap: 8px;
-    background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
-    cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
-    transition: background .12s, border-color .12s;
+    background: none; border: none;
+    cursor: pointer; padding: .3rem 0; width: 100%; text-align: left;
+    border-radius: 6px; transition: background .12s;
   }
-  .schedule-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
+  .schedule-toggle:hover { background: var(--hover); }
   .schedule-toggle:hover .section-chevron { color: var(--text); }
   .schedule-icon { color: var(--accent); flex-shrink: 0; }
   .schedule-summary {
@@ -888,10 +881,8 @@
   }
   .schedule-panel {
     display: flex; flex-direction: column; gap: .55rem;
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: .65rem .7rem;
+    padding-left: .3rem;
   }
-  .schedule-divider { height: 1px; background: var(--border); margin: .1rem 0; }
 
   .related-field { display: flex; flex-direction: column; gap: .3rem; }
   .related-row { display: flex; align-items: center; gap: 7px; }
