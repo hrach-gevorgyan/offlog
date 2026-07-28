@@ -539,6 +539,15 @@
           </button>
         {/if}
         <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
+        <!-- redesign/v6: was pushed to the header's far right edge --
+             .col-name had flex:1, stretching its own box the full
+             remaining width, so anything after it (the count, then
+             these buttons) landed disconnected from the visible title
+             text (owner feedback, 2026-07-28: "alignment is wrong").
+             The spacer below now carries flex:1 instead, so title+count
+             cluster together at their natural width and only the
+             hover-revealed action buttons get pushed to the right. -->
+        <div class="col-header-spacer"></div>
         {#if (tasksByCol[col.id]?.length ?? 0) > 0}
           <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
             if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
@@ -589,26 +598,16 @@
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.pinned || task.recurrence || relatedIds.has(task._id!)}
-                <!-- redesign/v6: pin/recurrence/related previously sat
-                     as individual flex children of .card-top, spaced by
-                     its generic 4px gap same as everything else -- with
-                     2-3 of them present at once it read as a random
-                     scatter of dots, not one cohesive group (owner
-                     feedback, 2026-07-28: "abnormal icons box
-                     situation"). Grouped into one wrapper with its own
-                     consistent gap, so this cluster is deliberately
-                     tighter than the gap to the title/menu around it. -->
+              {#if task.pinned || task.recurrence}
+                <!-- redesign/v6: this cluster is the pinned-star's place
+                     (plus recurrence); related-links moved down next to
+                     the due date instead -- owner feedback, 2026-07-28:
+                     "this place is only for pinned star." -->
                 <div class="card-icons">
                   {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
                   {#if task.recurrence}
                     <span class="card-recur" title="Repeats {task.recurrence}">
                       <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-                    </span>
-                  {/if}
-                  {#if relatedIds.has(task._id!)}
-                    <span class="card-related" title="Has related tasks">
-                      <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
                     </span>
                   {/if}
                 </div>
@@ -657,6 +656,14 @@
                 <span class="meta-badge due-badge {dueDateClass(task.due_date)}">
                   <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="4" y1="1" x2="4" y2="3.5"/><line x1="10" y1="1" x2="10" y2="3.5"/></svg>
                   {task.due_date}
+                </span>
+              {/if}
+              {#if relatedIds.has(task._id!)}
+                <!-- redesign/v6: moved here, right next to the due date,
+                     from the title-row icon cluster (owner feedback,
+                     2026-07-28: "move related button to close to date"). -->
+                <span class="meta-badge related-badge" title="Has related tasks">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
                 </span>
               {/if}
               {#if task.checklist?.length}
@@ -801,7 +808,8 @@
   }
   .col-header:active { cursor: grabbing; }
 
-  .col-name { font-weight: 600; font-size: .9rem; flex: 1; color: var(--text); letter-spacing: -.005em; }
+  .col-name { font-weight: 600; font-size: .9rem; color: var(--text); letter-spacing: -.005em; }
+  .col-header-spacer { flex: 1; }
   .col-name-input {
     flex: 1; font-weight: 600; font-size: .9rem;
     border: none; border-bottom: 1.5px solid var(--accent);
@@ -813,11 +821,16 @@
      pill badge, same rounded/muted language as the card's own meta
      badges, with a min-width so 1 vs. 2-digit counts don't shift the
      column name's position. */
+  /* redesign/v6: was var(--hover), which equals --col-bg exactly in
+     light mode -- the pill had no visible fill there at all, only
+     showing up in dark mode where the two tokens differ (owner
+     feedback, 2026-07-28). --surface contrasts with --col-bg in both
+     themes. */
   .col-count {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 20px; height: 20px;
     font-family: var(--mono); font-size: .68rem; font-weight: 600;
-    color: var(--muted); background: var(--hover);
+    color: var(--muted); background: var(--surface);
     border-radius: 20px; padding: 0 .4rem;
   }
   .col-rename {
@@ -943,6 +956,7 @@
     background: var(--border-strong); overflow: hidden; flex-shrink: 0;
   }
   .checklist-bar-fill { display: block; height: 100%; background: var(--success); border-radius: 2px; }
+  .related-badge { padding: .18rem .4rem; }
 
   /* redesign/v6, follow-up critique: tags were all identical gray
      (Tag Homogeneity) -- each tag now gets a consistent soft tint via
