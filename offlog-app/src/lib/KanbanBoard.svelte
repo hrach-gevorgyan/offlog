@@ -866,7 +866,7 @@
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
-  .card-title { font-size: .92rem; font-weight: 700; line-height: 1.4; color: var(--text); flex: 1; }
+  .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
   .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
   .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
   .card-related { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
