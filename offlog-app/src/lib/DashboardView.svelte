@@ -145,10 +145,10 @@
                     <span class="space-dot" style="background:{space.color}"></span>
                     <span class="space-name">{space.name}</span>
                   {/if}
+                  <span class="task-count" title="{stats.total} task{stats.total === 1 ? '' : 's'}">{stats.total}</span>
                 </div>
                 <div class="proj-name">{proj.name}</div>
                 <div class="proj-stats">
-                  <span class="stat"><strong>{stats.total}</strong> tasks</span>
                   {#if stats.pinned}<span class="stat pinned-stat">{stats.pinned} pinned</span>{/if}
                   {#if stats.overdue}<span class="stat overdue-stat">{stats.overdue} overdue</span>{/if}
                 </div>
@@ -352,6 +352,18 @@
 
   .proj-card-top { display: flex; align-items: center; gap: 6px; }
   .space-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  /* redesign/v6 (owner feedback, 2026-07-30): task count moves to the
+     card's top-right corner, same placement/pill language as Kanban's
+     column-header count. margin-left:auto (not a separate spacer div)
+     since this row has no other trailing element to push against --
+     works whether or not the space-dot/name are present. */
+  .task-count {
+    margin-left: auto; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 .4rem;
+    font-family: var(--mono); font-size: .68rem; font-weight: 600;
+    color: var(--muted); background: var(--hover); border-radius: 20px;
+  }
   /* Wrap, never truncate (owner feedback, 2026-07-30) -- min-width:0 is
      required for a flex child to actually wrap instead of overflowing
      its row, since flex items default to a content-based min-width. The
