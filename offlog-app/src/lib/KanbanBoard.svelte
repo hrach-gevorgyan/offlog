@@ -822,18 +822,10 @@
      2026-07-28): no left priority bar, no static border -- cards float
      on the column via whitespace + a soft shadow only, priority moves
      to its own pill above the title. */
-  /* redesign/v6: priority pill tried and reverted (owner feedback,
-     2026-07-28) -- a thin edge color reads as more correct for priority
-     than a pill, paired with a soft shadow tinted to that same priority
-     color rather than a flat black one, so the two signals reinforce
-     each other instead of competing. */
-  /* A box-shadow on the card itself always blurs outward on every side,
-     even with a negative x-offset -- the only way to truly confine the
-     colored glow to the left edge (owner feedback, 2026-07-28: still
-     showing all around) is a dedicated thin element for it, kept
-     separate from the card's own plain neutral shadow. */
+  /* redesign/v6: priority pill tried and reverted, then a colored
+     left-edge glow tried and also reverted (owner feedback, 2026-07-28)
+     -- plain thin edge color, no glow. */
   .card {
-    position: relative;
     background: var(--surface);
     border-radius: var(--radius);
     padding: .75rem .85rem;
@@ -844,18 +836,10 @@
                 transform var(--dur) var(--ease),
                 opacity .18s;
   }
-  .card::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-    box-shadow: 0 0 5px 0 var(--prio-color, transparent);
-    opacity: .4; pointer-events: none;
-    transition: opacity var(--dur) var(--ease);
-  }
   .card:hover {
-    box-shadow: 0 2px 4px rgba(0,0,0,.06);
+    box-shadow: 0 4px 14px rgba(0,0,0,.10);
     transform: translateY(-2px);
   }
-  .card:hover::before { opacity: .65; }
   .card.dragging { opacity: .35; transition: none; transform: none; }
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
 
