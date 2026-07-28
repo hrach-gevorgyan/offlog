@@ -486,7 +486,7 @@
       {:else if showFocus}
         <FocusView on:menu={() => sidebarOpen = true} />
       {:else if showDeadlines}
-        <DeadlinesView on:menu={() => sidebarOpen = true} />
+        <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} />
       {:else if $activeProject}
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
@@ -604,7 +604,7 @@
   {/if}
 {/if}
 
-{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
+{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showDeadlines}
 <button class="fab" on:click={openQuickAdd} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
