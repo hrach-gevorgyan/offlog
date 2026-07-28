@@ -118,11 +118,8 @@ describe('CardDetail save logic (A9)', () => {
     const task = mkTask();
     const { getByText, container } = render(CardDetail, { props: { task, project: mkProject() } });
 
-    // option B: Due date/Reminder now live behind the single "More
-    // details" disclosure (shared with Checklist/Custom fields/Related/
-    // Notes), collapsed by default when the task has none of those set.
-    await fireEvent.click(container.querySelector('.more-details-toggle') as HTMLButtonElement);
-
+    // option C: Due date is a mandatory, always-visible field now (no
+    // toggle) -- no need to open anything first to reach the shortcut.
     const todayShortcut = container.querySelector('.due-shortcut') as HTMLButtonElement;
     expect(todayShortcut?.textContent).toBe('Today');
     await fireEvent.click(todayShortcut);
