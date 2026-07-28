@@ -532,35 +532,35 @@
           />
         {:else}
           <span class="col-name">{col.name}</span>
+          <!-- redesign/v6: all three action buttons (rename/archive/
+               remove) now cluster right next to the title, not just
+               rename (owner feedback, 2026-07-28: "all this icons move
+               to close to column title as not only edit button") --
+               the count alone stays pushed to the far right via the
+               spacer below. -->
           <button class="col-rename" title="Rename status" aria-label="Rename status" on:click|stopPropagation={() => { editingColId = col.id; editingColName = col.name; }}>
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z"/>
             </svg>
           </button>
+          {#if (tasksByCol[col.id]?.length ?? 0) > 0}
+            <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
+              if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
+              try {
+                await archiveColumnTasks(project._id, col.id);
+                await reloadTasks();
+              } catch {
+                showError('Failed to archive tasks. Please try again.');
+              }
+            }}>
+              <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
+              </svg>
+            </button>
+          {/if}
+          <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">×</button>
         {/if}
-        <!-- redesign/v6: count is now the rightmost element, further
-             right than archive/remove (owner feedback, 2026-07-28) --
-             the spacer carries flex:1, so the title stays put on the
-             left and archive+remove+count group together on the right
-             regardless of whether archive is currently rendered
-             (task count > 0) or not. -->
         <div class="col-header-spacer"></div>
-        {#if (tasksByCol[col.id]?.length ?? 0) > 0}
-          <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
-            if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
-            try {
-              await archiveColumnTasks(project._id, col.id);
-              await reloadTasks();
-            } catch {
-              showError('Failed to archive tasks. Please try again.');
-            }
-          }}>
-            <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
-            </svg>
-          </button>
-        {/if}
-        <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">×</button>
         <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
       </div>
 
@@ -829,20 +829,13 @@
     color: var(--muted); background: var(--surface);
     border-radius: 20px; padding: 0 .4rem;
   }
-  .col-rename {
-    cursor: pointer; color: var(--faint); display: flex; align-items: center;
-    background: none; border: none;
-    padding: 0 .1rem; opacity: 0; transition: opacity .15s, color .15s;
-  }
-  .col-rename:hover { color: var(--accent); }
-  .col-header:hover .col-rename { opacity: 1; }
-
-  /* redesign/v6: .col-remove was a bare "×" text glyph (font-size-driven
-     box) while .col-archive was an icon in a flex box -- same padding
-     values on two different sizing models made them visibly mismatched
-     (owner feedback, 2026-07-28). Both now share fixed 20x20 flex boxes,
-     identical hit targets and visual size. */
-  .col-archive, .col-remove {
+  /* redesign/v6: all three action buttons share one fixed 20x20 flex
+     box now -- .col-rename used to have its own smaller padding-only
+     box, .col-remove was a bare "×" text glyph sized by font-size, only
+     .col-archive was already a proper icon-in-flex-box. Different
+     sizing models made them visibly inconsistent/misaligned (owner
+     feedback, 2026-07-28). */
+  .col-rename, .col-archive, .col-remove {
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 20px;
     background: none; border: none; cursor: pointer;
@@ -850,6 +843,8 @@
     border-radius: 5px; opacity: 0;
     transition: opacity .15s, color .15s, background .12s;
   }
+  .col-rename:hover { color: var(--accent); background: var(--hover); }
+  .col-header:hover .col-rename { opacity: 1; }
   .col-archive:hover { color: var(--accent); background: var(--hover); }
   .col-remove:hover { color: var(--danger); background: var(--hover); }
   .col-header:hover .col-archive, .col-header:hover .col-remove { opacity: 1; }
