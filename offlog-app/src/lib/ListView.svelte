@@ -52,7 +52,11 @@
   // — some users don't want pinned tasks to override their chosen sort.
   // Off by default, persisted per-device like `cols`/`colOrder` below.
   type SortCol = 'title' | 'column' | 'priority' | 'due' | 'created' | 'updated' | 'source';
-  let sortSpec: { col: SortCol; asc: boolean }[] = [{ col: 'due', asc: true }];
+  // Default sort is priority descending (High → Medium → Low), matching
+  // how the data is actually ordered/queried elsewhere (owner feedback,
+  // 2026-07-28). cmpOne('priority') already returns high-first with
+  // asc:true, so this is just picking a different starting column.
+  let sortSpec: { col: SortCol; asc: boolean }[] = [{ col: 'priority', asc: true }];
   let pinnedFirst = false;
   const PINNED_FIRST_KEY = 'offlog_list_pinned_first';
   function togglePinnedFirst() {
@@ -524,6 +528,8 @@
     </div>
   </div>
 
+  <div class="sort-hint">Shift+click a column header to sort by more than one column</div>
+
   {#if selectionMode}
     <div class="bulk-bar">
       <span class="bulk-count">{selected.size} selected</span>
@@ -613,7 +619,7 @@
             on:click|stopPropagation={() => markDone(task)}
           >
             {#if task.column_id === lastColId()}
-              <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>
+              <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>
             {/if}
           </button>
           <span class="cell-title">
@@ -732,6 +738,11 @@
     border-bottom: 1px solid var(--border); padding: 10px 14px;
   }
   .toolbar-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
+
+  .sort-hint {
+    font-size: 11px; color: var(--faint);
+    padding: 8px 14px 0;
+  }
 
   .search-box {
     display: flex; align-items: center; gap: 7px;
@@ -915,18 +926,19 @@
   .bulk-clear { margin-left: auto; }
 
   /* redesign/v6 (owner feedback, 2026-07-28): was a plain circle filled
-     solid green when done -- the loudest thing on the page. Now a real
-     checkbox shape (rounded square, checkmark, accent color) matching
-     .row-check's language instead of a separate green "done" color. */
+     solid green when done, then a solid-accent-filled checkbox -- still
+     too heavy a block per the owner. Now stays fully transparent at
+     every state; only the border and checkmark pick up accent color when
+     done, no fill at all -- the minimal version of the checkbox idea. */
   .circle {
-    width: 19px; height: 19px; border-radius: 5px;
+    width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
-    border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s, background .12s;
+    border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
+    transition: border-color .12s;
     display: flex; align-items: center; justify-content: center;
   }
   .circle:hover { border-color: var(--accent); }
-  .circle.done { background: var(--accent); border-color: var(--accent); }
+  .circle.done { border-color: var(--accent); }
 
   /* No truncation, anywhere in the grid (B36) — plain nowrap, never
      text-overflow: ellipsis. Long content makes the row (and the whole
