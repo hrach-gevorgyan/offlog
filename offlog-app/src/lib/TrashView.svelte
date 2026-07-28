@@ -4,7 +4,7 @@
   import { panelFly, scrimFade } from './motion';
   import { getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribe } from './db';
   import { reloadTasks, showError } from './store';
-  import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
+  import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -87,8 +87,7 @@
       <div class="empty">Recycle is empty. Deleted tasks show up here and can be restored, or removed for good.</div>
     {:else}
       {#each items as t (t._id)}
-        <div class="item-row">
-          <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}"></span>
+        <div class="item-row" style="--prio-color:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}>
           <div class="item-main">
             <span class="item-title">{t.title}</span>
             {#if t.project_name}<span class="item-proj">{t.project_name}</span>{/if}
@@ -146,16 +145,21 @@
   .item-list { flex: 1; overflow-y: auto; padding: 12px 24px 24px; }
   .empty { color: var(--faint); font-size: 13.5px; padding: 12px 0; line-height: 1.5; }
 
+  /* redesign/v6 (owner feedback, 2026-07-30): priority now a left-edge
+     color accent, matching Kanban/List/Agenda/Focus, instead of a small
+     dot -- this view was the last one still using the dot. */
   .item-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 0; border-bottom: 1px solid var(--border);
+    padding: 9px 0 9px 10px; border-bottom: 1px solid var(--border);
+    border-left: 2px solid var(--prio-color, var(--border));
   }
-  .prio-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
   .item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  /* Wrap, never truncate (owner feedback, 2026-07-30) -- matches the
+     no-truncation convention every other view already moved to. */
   .item-title {
     font-size: 13.5px; font-weight: 500; color: var(--muted);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    overflow-wrap: break-word;
   }
   .item-proj { font-family: var(--mono); font-size: 10px; color: var(--faint); }
 
