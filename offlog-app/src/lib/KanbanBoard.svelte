@@ -587,6 +587,7 @@
             animate:flip={{ duration: 200, easing: cubicOut }}
             style="--prio-color:{PRIORITY_COLOR[task.priority]}"
           >
+            <span class="priority-dot" title="{PRIORITY_LABEL[task.priority]} priority"></span>
             <div class="card-top">
               <span class="card-title">{task.title}</span>
               {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
@@ -847,12 +848,17 @@
   /* redesign/v6: priority pill tried and reverted, then a colored
      left-edge glow tried and also reverted (owner feedback, 2026-07-28)
      -- plain thin edge color, no glow. */
+  /* redesign/v6, test (owner, 2026-07-28): priority moved off the left
+     edge entirely to a small dot in the top-right corner, to see if
+     that reads as more balanced/modern than an edge bar. Inner vertical
+     padding bumped 12px -> 16px so the now-lighter card doesn't feel
+     cramped against its metadata rows. */
   .card {
+    position: relative;
     background: var(--surface);
     border-radius: var(--radius);
-    padding: .75rem .85rem;
+    padding: 16px 14px;
     cursor: pointer;
-    border-left: 2px solid var(--prio-color, var(--border));
     box-shadow: 0 1px 2px rgba(0,0,0,.04);
     transition: box-shadow var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
@@ -861,6 +867,11 @@
   .card:hover {
     box-shadow: 0 4px 14px rgba(0,0,0,.10);
     transform: translateY(-2px);
+  }
+  .priority-dot {
+    position: absolute; top: 8px; right: 8px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--prio-color, var(--border));
   }
   .card.dragging { opacity: .35; transition: none; transform: none; }
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
