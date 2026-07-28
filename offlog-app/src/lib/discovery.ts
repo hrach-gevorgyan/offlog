@@ -107,10 +107,10 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
   // upcoming pull just adopt the host's versions cleanly. See
   // clearLocalSeedBeforeFirstPair()'s own comment in db.ts.
   await clearLocalSeedBeforeFirstPair();
-  setSyncCredentials(data.user, data.password);
+  await setSyncCredentials(data.user, data.password);
   setSyncUrl(`http://${host.address}:${data.port}/offlog`);
   setPairedHostUuid(data.uuid);
-  startSync();
+  startSync().catch(() => {});
 }
 
 // E2 (ROADMAP.md) — root cause of the owner's "not stable" report: this
@@ -211,7 +211,7 @@ export function watchForStaleHost() {
     const now = Date.now();
     if (now - lastReresolveAttempt < RERESOLVE_COOLDOWN_MS) return;
     lastReresolveAttempt = now;
-    reresolveHost().then((updated) => { if (updated) startSync(); }).catch(() => {});
+    reresolveHost().then((updated) => { if (updated) return startSync(); }).catch(() => {});
   });
 }
 

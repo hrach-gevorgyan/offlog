@@ -17,6 +17,22 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v5.8.1
+
+### New
+- Your sync password is now stored encrypted on your device (Windows
+  and Android), instead of in plain text. Nothing to do — this happens
+  automatically and you won't need to reconnect your devices.
+
+### Fixed
+- Update notifications now show properly formatted release notes
+  instead of raw text.
+- The "Connect a device" screen on the PC app now explains what it
+  does instead of showing a bare button.
+- A couple of small visual polish fixes: the sync status badges no
+  longer look stretched, and the sync button in the sidebar is less
+  cluttered.
+
 ## v5.8.0
 
 ### New

@@ -85,6 +85,7 @@ dependencies = [
  "tiny_http",
  "ureq",
  "win32job",
+ "windows 0.62.2",
 ]
 
 [[package]]

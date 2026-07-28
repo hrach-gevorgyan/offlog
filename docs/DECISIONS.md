@@ -688,3 +688,48 @@ flag is only for a deliberately confirmed "this release install's data
 is disposable" case — never a default/routine step, even right after a
 test round. TECH.md's own reset-workflow section states the rule; this
 entry is the incident it comes from.
+
+### C8 — encrypted the stored sync password per-platform, not with an app-level scheme (2026-07-28)
+CodeQL flagged `config.ts`'s `setSyncCredentials()` for storing the sync
+password in plain `localStorage` — real, not a false positive. Before
+fixing it, checked what was actually available: the only crypto already
+in this codebase is `hashWithSalt()` (App Lock PIN verification, a bare
+`SHA-256(salt+pin)` digest, one-way, not a real KDF), and App Lock is
+opt-in and fully independent from sync — most installs likely have sync
+on with App Lock off, so tying encryption to the PIN wouldn't cover the
+common case. **Decided against inventing an app-level "encrypt with a
+key that's also stored in localStorage" scheme** — that protects against
+nothing (the same local-storage-access threat this CodeQL rule exists
+for gets the key and the ciphertext together) and would be security
+theater, worse than the honest plaintext status quo.
+
+Used each platform's real, already-available primitive instead:
+- **Android**: the already-installed `capacitor-native-biometric`
+  plugin has Android-Keystore-backed `setCredentials`/`getCredentials`
+  (AES/GCM, `unlockedDeviceRequired`) sitting unused — only
+  `isAvailable`/`verifyIdentity` were ever called. Real hardware-backed
+  encryption, zero new dependency, no interactive prompt needed at sync
+  time (`unlockedDeviceRequired` only checks device-unlock state, not a
+  per-call biometric prompt).
+- **Desktop (Windows)**: added the official `windows` crate (pinned to
+  match the version `tauri-winrt-notification` already pulls in, to
+  avoid a second `windows-core` in the dependency graph) for DPAPI
+  (`CryptProtectData`/`CryptUnprotectData`) — ties the ciphertext to the
+  current Windows user account, transparent, no prompt, useless if
+  copied elsewhere. New `store_sync_secret`/`get_sync_secret` Tauri
+  commands (`secure_storage.rs`), storing an encrypted blob at
+  `app_data_dir()/sync-secret.enc` alongside the existing plain
+  `sync-host.json` (which holds this install's own generated identity —
+  not the same class of secret, fine as plain JSON).
+- **Plain web build**: left as plain `localStorage` — no browser-level
+  secure-storage primitive exists to use, and this build is already
+  documented as a dev/test surface, not the primary way to use the app.
+  A known, accepted, platform-specific limitation, not silently
+  swept under an app-level scheme that wouldn't actually help.
+
+`getSyncCredentials()`/`setSyncCredentials()` are async now (platform
+branch + a one-time silent migration from the old plaintext
+`localStorage` keys on Tauri/Android, where a real separate secure store
+now exists to migrate into — the plain-web path skips migration entirely
+since there's nowhere else to move the value to). Existing installs
+upgrading past this need no re-pairing.

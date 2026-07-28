@@ -1,5 +1,7 @@
 mod discovery;
 mod pairing;
+#[cfg(windows)]
+mod secure_storage;
 mod sync_host;
 
 use std::sync::{Arc, Mutex};
@@ -15,6 +17,32 @@ fn device_name() -> String {
 #[tauri::command]
 fn get_sync_info(info: tauri::State<sync_host::SyncHostInfo>) -> sync_host::SyncHostInfo {
     info.inner().clone()
+}
+
+// C8 (ROADMAP.md): the sync password itself (a paired phone's real
+// credential, or one typed into Settings' manual-connection field) is
+// encrypted at rest via Windows DPAPI, stored separately from
+// sync-host.json (which holds this install's own generated identity --
+// not the same secret, and fine as plain JSON). See secure_storage.rs.
+#[cfg(windows)]
+fn sync_secret_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("sync-secret.enc"))
+}
+
+#[tauri::command]
+#[cfg(windows)]
+fn store_sync_secret(app: tauri::AppHandle, user: String, pass: String) -> Result<(), String> {
+    secure_storage::store_secret(&sync_secret_path(&app)?, &user, &pass).map_err(|e| e.to_string())
+}
+
+#[derive(serde::Serialize)]
+#[cfg(windows)]
+struct SyncSecret { user: String, pass: String }
+
+#[tauri::command]
+#[cfg(windows)]
+fn get_sync_secret(app: tauri::AppHandle) -> Result<Option<SyncSecret>, String> {
+    Ok(secure_storage::load_secret(&sync_secret_path(&app)?).map(|(user, pass)| SyncSecret { user, pass }))
 }
 
 // S1 (docs/IDEAS.md, 2026-07-20): surfaces whatever discovery::browse_for_others()
@@ -297,7 +325,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, get_detected_other_hosts])
+        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, get_detected_other_hosts, store_sync_secret, get_sync_secret])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

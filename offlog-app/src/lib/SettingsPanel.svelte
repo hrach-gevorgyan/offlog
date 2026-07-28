@@ -384,7 +384,14 @@
 
   // ── Sync ────────────────────────────────────────────────────────────────
   let syncUrl = getSyncUrl();
-  let { user: credentialUser, pass: credentialPass } = getSyncCredentials();
+  // C8: getSyncCredentials() is async now (platform-appropriate secure
+  // storage, not a synchronous localStorage read) -- seeded empty here,
+  // populated in the onMount below rather than blocking component init.
+  let credentialUser = '';
+  let credentialPass = '';
+  onMount(async () => {
+    ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
+  });
   let deviceName = getDeviceName();
   let syncEnabled = isSyncEnabled();
 
@@ -413,7 +420,7 @@
   function toggleSyncEnabled() {
     syncEnabled = !syncEnabled;
     setSyncEnabled(syncEnabled);
-    if (syncEnabled) startSync(); else cancelSync();
+    if (syncEnabled) startSync().catch(() => {}); else cancelSync();
   }
 
   // ── Track E discovery/pairing (ROADMAP.md E1) ─────────────────────────────
@@ -458,7 +465,7 @@
       // masked password field, so tapping "Save & restart sync"
       // afterward would overwrite the just-paired credentials right
       // back to the old ones.
-      ({ user: credentialUser, pass: credentialPass } = getSyncCredentials());
+      ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
       selectedHost = null;
       pairingCode = '';
       pairSuccessName = pairedName;
@@ -936,12 +943,24 @@
   // lock check, which read as "Save opens the PIN screen" even though
   // nothing PIN-related was touched. Now only reloads if the sync
   // URL/credentials actually changed.
-  function saveSettings() {
-    const { user: storedUser, pass: storedPass } = getSyncCredentials();
+  async function saveSettings() {
+    let storedUser = '', storedPass = '';
+    try {
+      ({ user: storedUser, pass: storedPass } = await getSyncCredentials());
+    } catch {
+      // Secure-storage read failed (e.g. a Tauri/Android platform quirk)
+      // -- fall through treating it as "nothing stored yet" so a save
+      // still goes through rather than getting stuck.
+    }
     const syncChanged = syncUrl !== getSyncUrl() || credentialUser !== storedUser || credentialPass !== storedPass;
     if (syncChanged) {
       setSyncUrl(syncUrl);
-      setSyncCredentials(credentialUser, credentialPass);
+      try {
+        await setSyncCredentials(credentialUser, credentialPass);
+      } catch {
+        showError('Could not save sync credentials securely. Please try again.');
+        return;
+      }
       requestClose();
       location.reload();
       return;

@@ -93,8 +93,8 @@ export function computeDropPosition(colTasks: { position: number }[], dragOverIn
   return posBetween(before, after);
 }
 
-function remote() {
-  const { user, pass } = getSyncCredentials();
+async function remote() {
+  const { user, pass } = await getSyncCredentials();
   return new PouchDB(getSyncUrl(), { auth: { username: user, password: pass } });
 }
 
@@ -593,7 +593,7 @@ export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) 
   return handler;
 }
 
-export function startSync() {
+export async function startSync(): Promise<void> {
   if (_syncHandler) { _syncHandler.cancel(); _syncHandler = null; }
   // B13: an explicit pause takes priority over auto-starting on init —
   // config.ts's isSyncEnabled() defaults to true, so existing installs
@@ -606,7 +606,7 @@ export function startSync() {
   // to another device yet" for this exact state (B43).
   if (!getSyncUrl()) { syncState.status = 'idle'; notify(); return; }
   if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
-  _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }));
+  _syncHandler = attachSyncHandlers(db.sync(await remote(), { live: true, retry: true }));
 }
 
 // B13: the other half of the pause toggle — cancels the live replication
@@ -618,14 +618,15 @@ export function cancelSync() {
   notify();
 }
 
-export function syncNow(): Promise<void> {
+export async function syncNow(): Promise<void> {
+  // Same "nothing configured yet" guard as startSync() — resolve
+  // immediately rather than attempting new PouchDB('', ...).
+  if (!getSyncUrl()) { syncState.status = 'idle'; notify(); return; }
+  syncState.status = 'syncing'; notify();
+  if (_syncHandler) _syncHandler.cancel();
+  const remoteDb = await remote();
   return new Promise((resolve, reject) => {
-    // Same "nothing configured yet" guard as startSync() — resolve
-    // immediately rather than attempting new PouchDB('', ...).
-    if (!getSyncUrl()) { syncState.status = 'idle'; notify(); resolve(); return; }
-    syncState.status = 'syncing'; notify();
-    if (_syncHandler) _syncHandler.cancel();
-    _syncHandler = attachSyncHandlers(db.sync(remote(), { live: true, retry: true }), (err) => {
+    _syncHandler = attachSyncHandlers(db.sync(remoteDb, { live: true, retry: true }), (err) => {
       if (err) reject(err); else resolve();
     });
   });

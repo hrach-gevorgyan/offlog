@@ -36,3 +36,13 @@ tiny_http = "0.12"
 [target.'cfg(windows)'.dependencies]
 win32job = "2"
 tauri-winrt-notification = "0.8"
+# DPAPI bindings (CryptProtectData/CryptUnprotectData) for encrypting
+# the stored sync password at rest -- ties the ciphertext to the
+# current Windows user account, transparent, no prompt. Official
+# Microsoft-maintained crate; narrower than pulling in a whole
+# cross-platform keyring abstraction for a single OS-specific need.
+# Pinned to match the version tauri-winrt-notification already pulls in
+# (confirmed via `cargo tree -i windows-core`) -- avoids a third
+# windows-core version in the dependency graph and the resulting
+# cross-version type-mismatch errors that causes.
+windows = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }

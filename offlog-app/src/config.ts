@@ -83,7 +83,7 @@ export async function initTauriSyncDefaults(): Promise<void> {
   try {
     const info = await invokeTauri<{ port: number; user: string; password: string }>('get_sync_info');
     setSyncUrl(`http://127.0.0.1:${info.port}/offlog`);
-    setSyncCredentials(info.user, info.password);
+    await setSyncCredentials(info.user, info.password);
   } catch {
     // sidecar not ready yet or invoke failed — leave whatever was
     // there (possibly the stale 5984 default); next launch retries.
@@ -144,16 +144,89 @@ export function setSyncUrl(url: string) {
 const DEFAULT_SYNC_USER = envUser ?? '';
 const DEFAULT_SYNC_PASS = envPass ?? '';
 
-export function getSyncCredentials(): { user: string; pass: string } {
+// C8 (ROADMAP.md): the sync password is a real secret (a paired
+// device's actual credential), unlike the URL/port above -- stored
+// encrypted at rest where a real platform primitive exists for it:
+//   - Tauri (Windows): DPAPI-encrypted, via offlog-desktop's
+//     store_sync_secret/get_sync_secret commands (secure_storage.rs) --
+//     tied to the current Windows user account, transparent, no prompt.
+//   - Android: Keystore-backed, via the already-installed
+//     capacitor-native-biometric plugin's setCredentials/getCredentials
+//     (AES/GCM, unlockedDeviceRequired -- no biometric prompt needed at
+//     sync time, just requires the device to have been unlocked since
+//     boot).
+//   - Plain web: no OS-level secure-storage primitive exists in a
+//     browser to use here at all, and this build is already a dev/test
+//     surface, not the primary way to use the app (see README) -- kept
+//     as plain localStorage, a known and accepted limitation specific
+//     to that surface, not something worth inventing fake protection
+//     for (an app-level "encryption" key that's also sitting in
+//     localStorage next to the ciphertext protects against nothing).
+const LEGACY_SYNC_USER_KEY = 'offlog_sync_user';
+const LEGACY_SYNC_PASS_KEY = 'offlog_sync_pass';
+const BIOMETRIC_SYNC_SERVER = 'offlog-sync';
+
+async function migrateLegacyCredentialsIfNeeded(): Promise<void> {
+  // One-time: an existing install upgrading past C8 still has its real
+  // credentials sitting in the old plaintext keys. Only Tauri/Android
+  // actually have a *different* place to move them to -- plain web has
+  // no separate secure store, so setSyncCredentials() there writes
+  // right back to these same keys; deleting them unconditionally after
+  // "migrating" would just erase the value on that platform (real bug
+  // caught by this exact scenario in tests/config.test.ts).
+  if (!isTauri() && !isNativePlatform()) return;
+  const user = localStorage.getItem(LEGACY_SYNC_USER_KEY);
+  const pass = localStorage.getItem(LEGACY_SYNC_PASS_KEY);
+  if (user === null && pass === null) return;
+  await setSyncCredentials(user ?? '', pass ?? '');
+  localStorage.removeItem(LEGACY_SYNC_USER_KEY);
+  localStorage.removeItem(LEGACY_SYNC_PASS_KEY);
+}
+
+export async function getSyncCredentials(): Promise<{ user: string; pass: string }> {
+  await migrateLegacyCredentialsIfNeeded();
+
+  if (isTauri()) {
+    try {
+      const secret = await invokeTauri<{ user: string; pass: string } | null>('get_sync_secret');
+      if (secret) return secret;
+    } catch {
+      // command unavailable (older build) or nothing stored yet -- fall
+      // through to the "not configured" default below.
+    }
+    return { user: DEFAULT_SYNC_USER, pass: DEFAULT_SYNC_PASS };
+  }
+
+  if (isNativePlatform()) {
+    try {
+      const { NativeBiometric } = await import('capacitor-native-biometric');
+      const creds = await NativeBiometric.getCredentials({ server: BIOMETRIC_SYNC_SERVER });
+      return { user: creds.username, pass: creds.password };
+    } catch {
+      // nothing stored yet (first run / never paired) -- same
+      // "not configured" default the old localStorage miss used.
+      return { user: DEFAULT_SYNC_USER, pass: DEFAULT_SYNC_PASS };
+    }
+  }
+
   return {
-    user: localStorage.getItem('offlog_sync_user') ?? DEFAULT_SYNC_USER,
-    pass: localStorage.getItem('offlog_sync_pass') ?? DEFAULT_SYNC_PASS,
+    user: localStorage.getItem(LEGACY_SYNC_USER_KEY) ?? DEFAULT_SYNC_USER,
+    pass: localStorage.getItem(LEGACY_SYNC_PASS_KEY) ?? DEFAULT_SYNC_PASS,
   };
 }
 
-export function setSyncCredentials(user: string, pass: string) {
-  localStorage.setItem('offlog_sync_user', user);
-  localStorage.setItem('offlog_sync_pass', pass);
+export async function setSyncCredentials(user: string, pass: string): Promise<void> {
+  if (isTauri()) {
+    await invokeTauri('store_sync_secret', { user, pass });
+    return;
+  }
+  if (isNativePlatform()) {
+    const { NativeBiometric } = await import('capacitor-native-biometric');
+    await NativeBiometric.setCredentials({ username: user, password: pass, server: BIOMETRIC_SYNC_SERVER });
+    return;
+  }
+  localStorage.setItem(LEGACY_SYNC_USER_KEY, user);
+  localStorage.setItem(LEGACY_SYNC_PASS_KEY, pass);
 }
 
 // B22: `source` on every doc used to be a fixed 'pc' | 'pc2' | 'mobile'

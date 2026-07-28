@@ -74,7 +74,7 @@ export async function init() {
   // localStorage already, not a stale/wrong default.
   await initTauriSyncDefaults();
   await reload();
-  startSync();
+  startSync().catch(() => {});
   // Not just after the next sync settles (markSynced()/resolveConflict()
   // already call this) — a session that starts with sync paused, or
   // genuinely offline, should still surface conflicts left over from a

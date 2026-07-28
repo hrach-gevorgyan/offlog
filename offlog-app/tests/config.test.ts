@@ -20,9 +20,26 @@ describe('getSyncCredentials()/setSyncCredentials()', () => {
     localStorage.removeItem('offlog_sync_pass');
   });
 
-  it('returns stored credentials once set, overriding whatever default applies', () => {
-    setSyncCredentials('paired-user', 'paired-pass');
-    expect(getSyncCredentials()).toEqual({ user: 'paired-user', pass: 'paired-pass' });
+  it('returns stored credentials once set, overriding whatever default applies', async () => {
+    await setSyncCredentials('paired-user', 'paired-pass');
+    await expect(getSyncCredentials()).resolves.toEqual({ user: 'paired-user', pass: 'paired-pass' });
+  });
+
+  // C8 (ROADMAP.md): plain-web/dev (no Tauri, no Capacitor native
+  // platform in this test environment) is the one path that still uses
+  // localStorage directly -- an existing install upgrading past C8 has
+  // its real credentials sitting in the *old* plaintext keys and must
+  // migrate silently, with no re-pairing needed.
+  it('migrates legacy plaintext localStorage credentials on first read', async () => {
+    localStorage.setItem('offlog_sync_user', 'legacy-user');
+    localStorage.setItem('offlog_sync_pass', 'legacy-pass');
+    await expect(getSyncCredentials()).resolves.toEqual({ user: 'legacy-user', pass: 'legacy-pass' });
+    // Migrated back through setSyncCredentials(), which on this
+    // (non-Tauri, non-native) test platform writes the same keys right
+    // back -- confirms the round-trip lands correctly, not just that
+    // the pre-migration read happened to work.
+    expect(localStorage.getItem('offlog_sync_user')).toBe('legacy-user');
+    expect(localStorage.getItem('offlog_sync_pass')).toBe('legacy-pass');
   });
 });
 
