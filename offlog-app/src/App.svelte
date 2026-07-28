@@ -508,10 +508,29 @@
           <div class="spacer"></div>
 
           <div class="search-filter-group">
-            <button class="search-btn" on:click={openSearch} title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">
-              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
-              </svg>
+            <!-- redesign/v6 (owner feedback, 2026-07-28): List view already
+                 has its own local "Search tasks…" box in its toolbar --
+                 this same top-bar button also opening a *second* search felt
+                 confusing there. Since GlobalSearch already folds search and
+                 commands together (B9), the List-view button is relabeled
+                 "Command Palette" with a distinct icon instead of a second
+                 magnifying glass; Kanban (no local search box) keeps the
+                 plain search framing. Same click handler/modal either way. -->
+            <button
+              class="search-btn"
+              on:click={openSearch}
+              title={currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)'}
+              aria-label={currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)'}
+            >
+              {#if currentView === 'list'}
+                <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4,4 8,8 4,12"/><line x1="9" y1="12" x2="13" y2="12"/>
+                </svg>
+              {:else}
+                <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+                </svg>
+              {/if}
             </button>
             {#if currentView === 'kanban'}
               <span class="search-filter-divider"></span>

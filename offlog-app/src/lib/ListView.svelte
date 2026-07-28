@@ -664,7 +664,7 @@
   </div>
   </div>
 
-  <div class="sort-hint">Shift+click a column header to sort by more than one column</div>
+  <div class="sort-hint">* Shift+click a column header to sort by more than one column</div>
 
   {#if showArchived && archivedTasksRaw.length > 0}
     <div class="archived-section">
@@ -744,8 +744,8 @@
      sitting right under the toolbar inside the panel, too prominent for
      a hint). */
   .sort-hint {
-    font-size: 10.5px; color: var(--faint);
-    padding: 0 4px; margin: -14px 0 4px;
+    font-size: 10.5px; color: var(--faint); opacity: .65;
+    padding: 0 4px; margin: 10px 0 4px;
   }
 
   .search-box {
