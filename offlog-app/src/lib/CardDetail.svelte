@@ -3,8 +3,8 @@
   import { fly, fade, slide } from 'svelte/transition';
   import { panelFly, scrimFade, popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes } from './db';
-  import { reloadTasks, showError, modalOpen } from './store';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask } from './db';
+  import { reloadTasks, showError, modalOpen, projects } from './store';
   import { requestPermission, permissionState } from './notifications';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
@@ -19,7 +19,7 @@
   export let task: TaskDoc;
   export let project: ProjectDoc;
 
-  const dispatch = createEventDispatcher<{ close: void }>();
+  const dispatch = createEventDispatcher<{ close: void; openRelated: string }>();
   const requestClose = closeOnBack(() => dispatch('close'));
 
   function onWindowKeydown(e: KeyboardEvent) {
@@ -141,6 +141,23 @@
   let saving = false;
   let showHistory = false;
 
+  // v6.7.0 — task linking, non-directional "related to" only. Unlike
+  // Tags/Checklist above, this is immediate-write, not batched into
+  // save() — a link can live on either of two different task docs
+  // (db.ts's linkRelatedTask()/unlinkRelatedTask()), so it doesn't fit
+  // the "collect locally, write this one doc on Save" pattern the rest
+  // of this form uses.
+  let relatedTasks: TaskDoc[] = [];
+  let relatedInput = '';
+  let relatedSuggestions: TaskDoc[] = [];
+  let showRelated = false;
+  let relatedBusy = false;
+
+  async function loadRelatedTasks() {
+    relatedTasks = await getRelatedTasks(task._id!);
+    showRelated = showRelated || relatedTasks.length > 0;
+  }
+
   // B16 (revised): field definitions are global (Settings → Organize →
   // Manage Custom Fields), not managed from here — CardDetail only reads
   // and fills in values. custom_values stays keyed by field id, not name
@@ -218,6 +235,7 @@
   onMount(async () => {
     modalOpen.set(true);
     [allTags, projectTags, customFields] = await Promise.all([getAllTags(), getAllTags(project._id), getCustomFieldDefs()]);
+    await loadRelatedTasks();
   });
   onDestroy(() => modalOpen.set(false));
 
@@ -280,6 +298,45 @@
   function onTagKey(e: KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); }
     if (e.key === 'Backspace' && !tagInput && tags.length) { tags = tags.slice(0, -1); }
+  }
+
+  $: {
+    const q = relatedInput.trim();
+    if (q) {
+      searchTasksForLinking(q, task._id!, relatedTasks.map(t => t._id!)).then(r => relatedSuggestions = r);
+    } else {
+      relatedSuggestions = [];
+    }
+  }
+
+  function projectNameFor(t: TaskDoc): string {
+    return $projects.find(p => p._id === t.project_id)?.name ?? '—';
+  }
+
+  async function addRelated(otherId: string) {
+    relatedInput = '';
+    relatedSuggestions = [];
+    relatedBusy = true;
+    try {
+      await linkRelatedTask(task._id!, otherId);
+      await loadRelatedTasks();
+    } catch {
+      showError('Could not link that task. Please try again.');
+    } finally {
+      relatedBusy = false;
+    }
+  }
+
+  async function removeRelated(otherId: string) {
+    relatedBusy = true;
+    try {
+      await unlinkRelatedTask(task._id!, otherId);
+      await loadRelatedTasks();
+    } catch {
+      showError('Could not remove that link. Please try again.');
+    } finally {
+      relatedBusy = false;
+    }
   }
 
   async function save() {
@@ -526,6 +583,46 @@
         {/if}
       </div>
     {/if}
+
+    <div class="section-divider"></div>
+
+    <div class="collapsible-section">
+      <button type="button" class="section-toggle" on:click={() => showRelated = !showRelated}>
+        <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+        <span class="field-label">
+          Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
+        </span>
+        <svg class="section-chevron" class:open={showRelated} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+      </button>
+      {#if showRelated}
+        <div class="related-field" transition:slide={{ duration: 180 }}>
+          {#each relatedTasks as rt (rt._id)}
+            <div class="related-row" class:related-deleted={rt.deleted}>
+              {#if rt.deleted}
+                <span class="related-title">{rt.title} (deleted)</span>
+              {:else}
+                <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
+              {/if}
+              <span class="related-proj">{projectNameFor(rt)}</span>
+              <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
+            </div>
+          {/each}
+          <input
+            class="checklist-input"
+            bind:value={relatedInput}
+            placeholder="Link another task…"
+            disabled={relatedBusy}
+          />
+          {#if relatedSuggestions.length}
+            <div class="tag-suggestions">
+              {#each relatedSuggestions as s (s._id)}
+                <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
 
     <div class="section-divider"></div>
 
@@ -795,6 +892,20 @@
     padding: .65rem .7rem;
   }
   .schedule-divider { height: 1px; background: var(--border); margin: .1rem 0; }
+
+  .related-field { display: flex; flex-direction: column; gap: .3rem; }
+  .related-row { display: flex; align-items: center; gap: 7px; }
+  .related-title { flex: 1; font-size: .84rem; color: var(--text); }
+  .related-title-link {
+    background: none; border: none; padding: 0; text-align: left;
+    cursor: pointer; font-family: inherit;
+  }
+  .related-title-link:hover { color: var(--accent); text-decoration: underline; }
+  .related-proj {
+    font-family: var(--mono); font-size: .68rem; color: var(--faint);
+    text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+  }
+  .related-deleted .related-title { color: var(--faint); font-style: italic; }
 
   .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
   .checklist-progress { color: var(--accent); font-weight: 600; margin-left: 4px; }

@@ -93,6 +93,14 @@ export interface TaskDoc {
   // deleted due_date shouldn't silently stop repeating. Absent/undefined
   // on old docs = doesn't repeat, same as null.
   recurrence?: 'daily' | 'weekly' | 'monthly' | null;
+  // v6.7.0 — task linking. Non-directional "related to" only (no blocks/
+  // blocked-by dependency semantics — owner decision, 2026-07-28). Other
+  // task ids this task names as related; stored forward-only on
+  // whichever task the link was added from — see db.ts's
+  // getRelatedTasks() for how the reverse direction is computed at read
+  // time instead of mirror-written to both docs. Absent/undefined on old
+  // docs = no links, same as an empty array.
+  related?: string[];
   created_at: string;
   updated_at: string;
   source: Source;

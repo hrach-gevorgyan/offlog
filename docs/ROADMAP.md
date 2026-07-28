@@ -170,11 +170,20 @@ owner is ready to build it, not on a schedule.
   whole visible surface. Not a feature — a *reduction* pass: audit
   every view for chrome that doesn't serve the current task, possibly a
   "minimal mode" toggle. Large-ish in judgment, small in code.
-- **v6.7.0 — Task linking & dependencies.** "This task blocks that one"
-  / related-task links. Real value, but touches the data model — same
-  caution class as parked B28/B33 below: needs its own design
-  conversation immediately before this slot, not a casual add on the
-  day of.
+- **v6.7.0 — Task linking — DONE 2026-07-28** (pulled forward ahead of
+  v6.0.0 at owner request). Related-only, non-directional links (no
+  blocks/blocked-by dependency semantics — scoped down from the
+  original idea after the required design conversation; full reasoning
+  in DECISIONS.md). `TaskDoc.related?: string[]`, forward-only storage
+  with the reverse direction computed at read time
+  (`db.ts`'s `getRelatedTasks()`), immediate-write
+  `linkRelatedTask()`/`unlinkRelatedTask()`, `CardDetail.svelte`'s new
+  "Related" section with search-to-link. 7 new `tests/db.test.ts`
+  cases. Verified live, not just via tests. **Follow-up same day**: the
+  first cut (list-only, no click-through) tested as not actually useful
+  — added navigate-on-click from the Related list and a link-icon badge
+  on Kanban cards/List rows so a task's links are visible without
+  opening it speculatively.
 - **v6.8.0 — File attachments (with size optimization).** PouchDB
   supports binary attachments natively and they replicate over the
   existing sync — but storage growth and sync payload on phones is the

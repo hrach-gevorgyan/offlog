@@ -4,7 +4,7 @@
   import { cubicOut } from 'svelte/easing';
   import { scrimFade, toastFly } from './lib/motion';
   import { get } from 'svelte/store';
-  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen } from './lib/store';
+  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow } from './lib/db';
   import { pendingOpenTaskId } from './lib/notifications';
   import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
@@ -133,6 +133,14 @@
     searchDetailSession++;
     searchDetailTask = task;
     searchDetailProject = project;
+  }
+
+  async function openRelatedTask(id: string) {
+    const task = await getTaskById(id);
+    if (!task) { showError('This task no longer exists.'); return; }
+    const proj = get(projects).find(p => p._id === task.project_id);
+    if (!proj) { showError('Could not open this task right now.'); return; }
+    openSearchDetail(task, proj);
   }
 
   // The shortcuts panel is a plain boolean toggled within this
@@ -607,6 +615,7 @@
       task={searchDetailTask}
       project={searchDetailProject}
       on:close={async () => { searchDetailTask = null; searchDetailProject = null; await reloadTasks(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}

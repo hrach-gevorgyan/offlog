@@ -791,3 +791,60 @@ GitHub-rendered page directly
 (`https://github.com/hrach-gevorgyan/offlog/blob/main/docs/PRIVACY.md`)
 — publicly viewable today since the repo is already public, no
 GitHub Pages setup required first.
+
+### v6.7.0 — task linking: related-only, forward-only storage, links survive delete (2026-07-28)
+Pulled forward from ROADMAP.md's Post-Done feature track ahead of
+v6.0.0, at owner request — this was flagged there as needing a real
+design conversation before touching the data model, not a casual add.
+Three decisions made explicitly with the owner before writing any code:
+
+1. **Scope: "related to" only, no blocks/blocked-by dependency
+   semantics.** The original idea (IDEAS.md) covered both a directional
+   "this task blocks that one" and a simple non-directional "see also"
+   link. Owner chose related-only — simpler data shape, no link-type
+   picker needed in the UI, and no dependency-tracking logic (auto-
+   surfacing "blocked" state on a card, warning when completing a task
+   something else depends on) to design and maintain.
+2. **Storage: forward-only, reverse computed at read time — not
+   mirrored onto both docs.** A link is really two facts on two
+   documents ("A relates to B" implies "B relates to A"), but PouchDB
+   can't write two docs atomically. Mirroring the write risks one side
+   landing and the other not (a crash or conflict between the two
+   `db.put()` calls leaves a permanently one-sided, inconsistent link).
+   `getRelatedTasks()` instead only ever writes to the task the link was
+   added *from*, and resolves the reverse direction by scanning for any
+   other task whose own `related` array names this one — one doc
+   written per link, never able to go out of sync with itself. The
+   tradeoff (a full task-cache scan per card open) is the same "cheap at
+   the scale of a personal task manager" reasoning already applied
+   elsewhere in this codebase (`findSimilarNotes()`, tag lookups).
+3. **Deletion: a link to a soft-deleted task stays, shown as
+   "(deleted)", until the task is permanently purged.** Matches the
+   app's existing soft-delete-everywhere philosophy — restoring a task
+   from Trash restores its links too, same as every other field.
+   Considered and rejected: silently dropping the link on delete would
+   mean restoring a deleted task from Trash doesn't bring its links back
+   with it, a real surprise given how restore works everywhere else in
+   this app. Only a genuinely hard-deleted/purged task (Trash's "Empty
+   trash", which does call `db.remove()`) drops its links, since there's
+   nothing left to resolve.
+
+Implementation note: `linkRelatedTask()`/`unlinkRelatedTask()` are
+immediate-write, not batched into `CardDetail`'s Save button like Tags/
+Checklist — a link can live on either of two different task docs, so it
+doesn't fit the "collect locally, write one doc on Save" pattern the
+rest of that form uses. Verified live (not just via `tests/db.test.ts`):
+linking from one task's card correctly shows the reverse link on the
+other task's own card despite one-sided storage, and unlinking from
+either side removes it regardless of which doc actually held it.
+
+**Follow-up, same day**: shipped as a bare "see also" list initially,
+then the owner tested it live and pushed back — "click on card details
+and see they are related?? and what?" — correctly identifying that a
+list with no click-through and no board-level visibility wasn't
+actually useful, just a manual note nobody would remember to check.
+Added: clicking a related task's title in `CardDetail` navigates to it
+directly (rather than requiring you to close the card and go find it
+yourself), and a small link-icon badge on Kanban cards/List rows shows
+at a glance that a task has related links, so you don't need to open
+a card speculatively just to check.

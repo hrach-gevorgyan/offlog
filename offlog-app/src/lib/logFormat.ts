@@ -13,7 +13,7 @@ const FIELD_LABEL: Record<string, string> = {
   tags: 'Tags', name: 'Name', columns: 'Statuses',
   pinned: 'Pinned', archived: 'Archived', column_id: 'Status',
   checklist: 'Checklist', custom_values: 'Custom fields',
-  color: 'Color', icon: 'Icon', recurrence: 'Repeat',
+  color: 'Color', icon: 'Icon', recurrence: 'Repeat', related: 'Related tasks',
 };
 
 const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
@@ -52,6 +52,7 @@ export function describeField(field: string, from: any, to: any): string {
   if (field === 'checklist') return 'Checklist updated';
   if (field === 'custom_values') return 'Custom fields updated';
   if (field === 'columns') return 'Statuses updated';
+  if (field === 'related') return 'Related tasks updated';
   return `${FIELD_LABEL[field] ?? field} changed`;
 }
 

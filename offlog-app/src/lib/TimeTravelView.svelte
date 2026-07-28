@@ -131,6 +131,20 @@
       showError('Could not open this task right now.');
     }
   }
+
+  async function openRelatedTask(id: string) {
+    try {
+      const task = await getTaskById(id);
+      if (!task) { showError('This task no longer exists.'); return; }
+      const proj = $projects.find(p => p._id === task.project_id);
+      if (!proj) { showError('Could not open this task right now.'); return; }
+      detailOpenSession++;
+      detailTask = task;
+      detailProject = proj;
+    } catch {
+      showError('Could not open this task right now.');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown}/>
@@ -215,6 +229,7 @@
       task={detailTask}
       project={detailProject}
       on:close={async () => { detailTask = null; detailProject = null; await load(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}

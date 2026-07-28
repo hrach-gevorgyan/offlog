@@ -5,8 +5,8 @@
   import { cubicOut } from 'svelte/easing';
   import { popScale } from './motion';
   import type { ProjectDoc, TaskDoc } from './types';
-  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask } from './db';
-  import { reloadTasks, showError } from './store';
+  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, subscribe } from './db';
+  import { reloadTasks, showError, projects } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
@@ -127,7 +127,21 @@
   // own closeOnBack() never re-runs, so its requestClose is a stale,
   // already-spent closure that can never close it again.
   let detailOpenSession = 0;
-  function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; }
+  // null = "use this board's own `project` prop" (the normal case, a task
+  // from this board). Only set to a real ProjectDoc when a related-task
+  // link opens a task belonging to a *different* project than this board.
+  let detailProjectOverride: ProjectDoc | null = null;
+  function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; detailProjectOverride = null; }
+
+  async function openRelatedTask(id: string) {
+    const t = await getTaskById(id);
+    if (!t) { showError('This task no longer exists.'); return; }
+    const proj = $projects.find(p => p._id === t.project_id);
+    if (!proj) { showError('Could not open this task right now.'); return; }
+    detailOpenSession++;
+    detailTask = t;
+    detailProjectOverride = proj;
+  }
 
   // B53 — per-card "⋯" quick-actions menu (2026-07-19, folded into the
   // B49 redesign at the owner's request). Immediate writes, not batched
@@ -438,6 +452,16 @@
     };
   });
 
+  // v6.7.0 — card-level "has related links" indicator. One cheap set
+  // lookup per card instead of re-deriving getRelatedTasks() for every
+  // rendered card; refreshed on any db change since a related link can
+  // be added/removed from another project's card, off this board.
+  let relatedIds = new Set<string>();
+  onMount(() => {
+    getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids);
+    return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
+  });
+
   onDestroy(() => {
     if (touchGhost) { touchGhost.remove(); touchGhost = null; }
     if (touchDragWatchdog) clearTimeout(touchDragWatchdog);
@@ -590,6 +614,11 @@
                   {task.due_date}
                 </span>
               {/if}
+              {#if relatedIds.has(task._id!)}
+                <span class="related-badge" title="Has related tasks">
+                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                </span>
+              {/if}
             </div>
             {#if task.tags.length}
               <div class="card-tags">
@@ -658,8 +687,9 @@
   {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
-      {project}
-      on:close={async () => { detailTask = null; await reloadTasks(); }}
+      project={detailProjectOverride ?? project}
+      on:close={async () => { detailTask = null; detailProjectOverride = null; await reloadTasks(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}
@@ -833,6 +863,11 @@
     padding: .12rem .45rem; border-radius: 6px;
   }
   .checklist-badge.complete { color: var(--success); }
+  .related-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); background: var(--hover);
+    padding: .18rem .32rem; border-radius: 6px;
+  }
 
   /* B29: same visual treatment as ListView.svelte's .tag chip — kept as a
      separate rule since Svelte scopes component styles per-file, not

@@ -131,6 +131,16 @@
     detailProject = $projects.find(p => p._id === t.project_id) ?? null;
   }
 
+  async function openRelatedTask(id: string) {
+    const t = await getTaskById(id);
+    if (!t) { showError('This task no longer exists.'); return; }
+    const proj = $projects.find(p => p._id === t.project_id);
+    if (!proj) { showError('Could not open this task right now.'); return; }
+    detailOpenSession++;
+    detailTask = t;
+    detailProject = proj;
+  }
+
   async function markDone(t: TaskDoc) {
     const proj = $projects.find(p => p._id === t.project_id);
     if (!proj) return;
@@ -272,6 +282,7 @@
       task={detailTask}
       project={detailProject}
       on:close={async () => { detailTask = null; detailProject = null; await refresh(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}

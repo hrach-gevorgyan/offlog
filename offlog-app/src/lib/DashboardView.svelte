@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { getDashboardData, getStorageBreakdown, getTaskById, subscribe } from './db';
-  import { reloadTasks } from './store';
+  import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR } from './constants';
   import { dueLabelLong } from './utils';
   import type { TaskDoc, ProjectDoc } from './types';
@@ -61,6 +61,16 @@
     detailOpenSession++;
     detailTask = t;
     detailProject = data?.allProjects.find(p => p._id === t.project_id) ?? null;
+  }
+
+  async function openRelatedTask(id: string) {
+    const t = await getTaskById(id);
+    if (!t) { showError('This task no longer exists.'); return; }
+    const proj = data?.allProjects.find(p => p._id === t.project_id) ?? null;
+    if (!proj) { showError('Could not open this task right now.'); return; }
+    detailOpenSession++;
+    detailTask = t;
+    detailProject = proj;
   }
 </script>
 
@@ -237,6 +247,7 @@
       task={detailTask}
       project={detailProject}
       on:close={async () => { detailTask = null; detailProject = null; await reloadTasks(); await load(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}

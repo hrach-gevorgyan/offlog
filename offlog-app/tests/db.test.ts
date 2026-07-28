@@ -15,6 +15,7 @@ import db, {
   getTagCounts, renameTag, deleteTagEverywhere,
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
   getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
+  getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -1065,5 +1066,102 @@ describe('updateCustomFieldDef()', () => {
     await updateCustomFieldDef(id, { name: 'Renamed' });
     const remaining = await removeCustomFieldDef(id);
     expect(remaining).toEqual([]);
+  });
+});
+
+describe('task linking (v6.7.0, related-only, non-directional)', () => {
+  beforeEach(seedSpace);
+
+  it('linkRelatedTask stores the link forward-only, but getRelatedTasks resolves it from either side', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+
+    await linkRelatedTask(a._id!, b._id!);
+
+    const aDoc = await db.get<any>(a._id!);
+    const bDoc = await db.get<any>(b._id!);
+    expect(aDoc.related).toEqual([b._id]);
+    expect(bDoc.related ?? []).toEqual([]); // never mirrored onto b
+
+    // Both directions resolve the same relationship despite one-sided storage.
+    expect((await getRelatedTasks(a._id!)).map(t => t._id)).toEqual([b._id]);
+    expect((await getRelatedTasks(b._id!)).map(t => t._id)).toEqual([a._id]);
+  });
+
+  it('linkRelatedTask is idempotent regardless of which side already holds it', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+
+    await linkRelatedTask(a._id!, b._id!);
+    await linkRelatedTask(b._id!, a._id!); // linking from the other side too
+
+    const aDoc = await db.get<any>(a._id!);
+    const bDoc = await db.get<any>(b._id!);
+    // Only the first link should have actually been written -- the second
+    // call recognizes the relationship already exists (from either side)
+    // and no-ops rather than storing it twice.
+    expect(aDoc.related).toEqual([b._id]);
+    expect(bDoc.related ?? []).toEqual([]);
+  });
+
+  it('unlinkRelatedTask removes the link regardless of which doc actually stores it', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+
+    await linkRelatedTask(a._id!, b._id!);
+    // Unlinking from b's side (the reverse-only view) must still remove
+    // the link actually stored on a.
+    await unlinkRelatedTask(b._id!, a._id!);
+
+    expect(await getRelatedTasks(a._id!)).toEqual([]);
+    expect(await getRelatedTasks(b._id!)).toEqual([]);
+  });
+
+  it('getRelatedTasks includes a soft-deleted linked task (shown as deleted, not dropped)', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    await linkRelatedTask(a._id!, b._id!);
+
+    await deleteTask(b._id!); // soft delete only
+
+    const related = await getRelatedTasks(a._id!);
+    expect(related).toHaveLength(1);
+    expect(related[0].deleted).toBe(true);
+  });
+
+  it('getRelatedTasks silently drops a link to a hard-deleted (purged) task', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    await linkRelatedTask(a._id!, b._id!);
+
+    const bDoc = await db.get(b._id!);
+    await db.remove(bDoc); // hard delete, unlike deleteTask() above
+
+    expect(await getRelatedTasks(a._id!)).toEqual([]);
+  });
+
+  it('searchTasksForLinking excludes the task itself, already-linked tasks, and deleted tasks', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Fix login bug');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Fix login redirect');
+    const c = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Fix login timeout');
+    await deleteTask(c._id!);
+
+    const results = await searchTasksForLinking('fix login', a._id!, [b._id!]);
+    expect(results.map(t => t._id)).toEqual([]); // b excluded (already linked), a excluded (self), c excluded (deleted)
+  });
+
+  it('searchTasksForLinking matches a non-excluded task by title substring', async () => {
+    const project = await createProject('space:unsorted', 'Linking Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Fix login bug');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Fix login redirect');
+
+    const results = await searchTasksForLinking('login', a._id!, []);
+    expect(results.map(t => t._id)).toEqual([b._id]);
   });
 });

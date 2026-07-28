@@ -1106,6 +1106,80 @@ export async function findSimilarNotes(taskId: string | null, body: string, thre
   return out.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
 }
 
+// v6.7.0 — task linking. Non-directional "related to" only (owner
+// decision, 2026-07-28) — no blocks/blocked-by dependency semantics.
+// Stored forward-only on whichever task the link was added from
+// (TaskDoc.related: string[]); the reverse direction is computed here by
+// scanning for any other task whose own `related` array names this task,
+// rather than mirror-writing both docs — PouchDB can't write two docs
+// atomically, so a mirrored write risks one side landing and the other
+// not. A soft-deleted linked task still resolves (getTaskById returns it,
+// the doc still exists) and is included so the UI can show it as
+// "(deleted)" rather than silently dropping it, same soft-delete-
+// everywhere philosophy as the rest of the app — only a genuinely
+// hard-deleted/purged task (404 from db.get) is filtered out.
+export async function getRelatedTasks(taskId: string): Promise<TaskDoc[]> {
+  const task = await getTaskById(taskId);
+  const forwardIds = task?.related ?? [];
+  const all = await getAllTasksRaw();
+  const reverseIds = all.filter(t => t._id !== taskId && (t.related ?? []).includes(taskId)).map(t => t._id!);
+  const ids = [...new Set([...forwardIds, ...reverseIds])];
+  const resolved = await Promise.all(ids.map(id => getTaskById(id)));
+  return resolved.filter((t): t is TaskDoc => t !== null);
+}
+
+// Cheap board/list-card indicator ("this task has related links") without
+// a per-card query -- one full scan of the already-cached task list
+// (getAllTasksRaw) builds the complete set of task ids that participate
+// in a link from *either* direction, then Kanban/List do an O(1) Set
+// lookup per rendered card instead of re-deriving getRelatedTasks() for
+// every card on the board.
+export async function getTaskIdsWithRelatedLinks(): Promise<Set<string>> {
+  const all = await getAllTasksRaw();
+  const ids = new Set<string>();
+  for (const t of all) {
+    if (t.related?.length) {
+      ids.add(t._id!);
+      for (const r of t.related) ids.add(r);
+    }
+  }
+  return ids;
+}
+
+export async function searchTasksForLinking(query: string, excludeId: string, alreadyLinkedIds: string[]): Promise<TaskDoc[]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const all = await getAllTasksRaw();
+  const exclude = new Set([excludeId, ...alreadyLinkedIds]);
+  return all
+    .filter(t => !t.deleted && !exclude.has(t._id!) && t.title.toLowerCase().includes(q))
+    .slice(0, 8);
+}
+
+// Immediate-write (unlike Tags/Checklist, which batch into CardDetail's
+// Save button) — idempotent, checking both docs' existing arrays first
+// so linking from either task's card never stores the same relationship
+// twice.
+export async function linkRelatedTask(taskId: string, otherId: string): Promise<void> {
+  if (taskId === otherId) return;
+  const [a, b] = await Promise.all([getTaskById(taskId), getTaskById(otherId)]);
+  if (!a || !b) return;
+  const alreadyLinked = (a.related ?? []).includes(otherId) || (b.related ?? []).includes(taskId);
+  if (alreadyLinked) return;
+  await updateTask(taskId, { related: [...(a.related ?? []), otherId] });
+}
+
+// Removes a related-task link regardless of which of the two docs
+// actually stores it (the link is non-directional in meaning even
+// though only ever written to one side) — so "unlink" always works from
+// either task's card, including the one that only ever saw it as a
+// reverse (read-time-computed) link.
+export async function unlinkRelatedTask(taskId: string, otherId: string): Promise<void> {
+  const [a, b] = await Promise.all([getTaskById(taskId), getTaskById(otherId)]);
+  if (a?.related?.includes(otherId)) await updateTask(taskId, { related: a.related.filter(id => id !== otherId) });
+  if (b?.related?.includes(taskId)) await updateTask(otherId, { related: b.related.filter(id => id !== taskId) });
+}
+
 // `overrides` lets a caller (Quick Add's NLP parser, or the recurring-task
 // spawner below) set more than just the title in the same write as
 // creation, instead of a create() immediately followed by an update() --

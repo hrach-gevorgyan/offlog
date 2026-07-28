@@ -19,6 +19,10 @@ vi.mock('../src/lib/db', () => ({
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
   findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
   findSimilarNotes: vi.fn().mockResolvedValue([]),
+  getRelatedTasks: vi.fn().mockResolvedValue([]),
+  searchTasksForLinking: vi.fn().mockResolvedValue([]),
+  linkRelatedTask: vi.fn().mockResolvedValue(undefined),
+  unlinkRelatedTask: vi.fn().mockResolvedValue(undefined),
 }));
 
 const reloadTasks = vi.fn().mockResolvedValue(undefined);
@@ -27,6 +31,7 @@ vi.mock('../src/lib/store', () => ({
   reloadTasks: (...args: unknown[]) => reloadTasks(...args),
   showError: (...args: unknown[]) => showError(...args),
   modalOpen: writable(false),
+  projects: writable([]),
 }));
 
 vi.mock('../src/lib/notifications', () => ({

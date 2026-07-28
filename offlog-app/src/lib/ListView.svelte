@@ -5,8 +5,8 @@
   import { cubicOut } from 'svelte/easing';
   import { toastFly } from './motion';
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
-  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs } from './db';
-  import { reloadTasks, showError } from './store';
+  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById, getTaskIdsWithRelatedLinks, subscribe } from './db';
+  import { reloadTasks, showError, projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabel, dueInk, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
@@ -162,6 +162,14 @@
   let dragCol: ColKey | null = null;
   let dragOverCol: ColKey | null = null;
   let dragOverSide: 'left' | 'right' | null = null;
+
+  // v6.7.0 — row-level "has related links" indicator, same cheap
+  // Set-lookup approach as KanbanBoard.svelte's identical badge.
+  let relatedIds = new Set<string>();
+  onMount(() => {
+    getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids);
+    return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
+  });
 
   onMount(async () => {
     // Custom fields are global (not per-project) — fetched once here so
@@ -326,7 +334,21 @@
   // exists — {#key detailTask._id} alone doesn't change value on a fast
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
-  function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; }
+  // null = "use this view's own `project` prop" (the normal case). Only
+  // set to a real ProjectDoc when a related-task link opens a task
+  // belonging to a *different* project than this list.
+  let detailProjectOverride: ProjectDoc | null = null;
+  function openDetail(task: TaskDoc) { detailOpenSession++; detailTask = task; detailProjectOverride = null; }
+
+  async function openRelatedTask(id: string) {
+    const t = await getTaskById(id);
+    if (!t) { showError('This task no longer exists.'); return; }
+    const proj = $projects.find(p => p._id === t.project_id);
+    if (!proj) { showError('Could not open this task right now.'); return; }
+    detailOpenSession++;
+    detailTask = t;
+    detailProjectOverride = proj;
+  }
 
   // B27 — loaded regardless of showArchived (not just while the section is
   // open) so the toggle button itself can carry a count badge; previously
@@ -557,6 +579,11 @@
             {#if task.checklist?.length}
               <span class="checklist-mark" class:complete={task.checklist.every(i => i.done)}>☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}</span>
             {/if}
+            {#if relatedIds.has(task._id!)}
+              <span class="related-mark" title="Has related tasks">
+                <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+              </span>
+            {/if}
           </span>
           {#each visibleOrder as key (key)}
             {#if key === 'status'}
@@ -637,8 +664,9 @@
   {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
-      {project}
-      on:close={async () => { detailTask = null; await reloadTasks(); }}
+      project={detailProjectOverride ?? project}
+      on:close={async () => { detailTask = null; detailProjectOverride = null; await reloadTasks(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}
@@ -858,6 +886,7 @@
     margin-left: 6px; vertical-align: middle;
   }
   .checklist-mark.complete { color: var(--success); }
+  .related-mark { display: inline-flex; align-items: center; color: var(--muted); opacity: .75; vertical-align: middle; margin-left: 4px; }
 
   .cell-status { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
   .cell-prio { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 12.5px; white-space: nowrap; }

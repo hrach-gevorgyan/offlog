@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { getAllTasksDue, updateTask, subscribe } from './db';
+  import { getAllTasksDue, updateTask, subscribe, getTaskById } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabelLong, dueRelative, dueDateShort, daysSinceWeekStart, localDateStr } from './utils';
@@ -91,6 +91,16 @@
     detailOpenSession++;
     detailTask = t;
     detailProject = $projects.find(p => p._id === t.project_id) ?? null;
+  }
+
+  async function openRelatedTask(id: string) {
+    const t = await getTaskById(id);
+    if (!t) { showError('This task no longer exists.'); return; }
+    const proj = $projects.find(p => p._id === t.project_id);
+    if (!proj) { showError('Could not open this task right now.'); return; }
+    detailOpenSession++;
+    detailTask = t;
+    detailProject = proj;
   }
 
   async function markDone(t: DueTask) {
@@ -263,6 +273,7 @@
       task={detailTask}
       project={detailProject}
       on:close={async () => { detailTask = null; detailProject = null; await load(); }}
+      on:openRelated={(e) => openRelatedTask(e.detail)}
     />
   {/key}
 {/if}
