@@ -468,7 +468,7 @@
     grid-template-columns: 20px 1fr auto;
     align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 10px;
-    border: 1px solid var(--border); border-left: 3px solid var(--prio-color, var(--border));
+    border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
     transition: background .1s, box-shadow .1s;
