@@ -879,19 +879,32 @@
     position: relative;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
-    border-left: 3px solid var(--prio-color, var(--border));
     cursor: pointer; transition: background .1s;
   }
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
   .grid-row.row-selected { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+  /* redesign/v6 (owner feedback, 2026-07-30): a border-left spanning the
+     row's full height read as one continuous stripe across adjacent
+     rows whenever they shared a priority color -- the border-bottom
+     hairline between rows wasn't enough to visually break it. Inset the
+     bar a few px top/bottom via ::before instead of a full-height
+     border, so each row's accent reads as its own discrete segment
+     (same fix as Dashboard/Recycle's row lists). */
+  .grid-row::before {
+    content: '';
+    position: absolute; left: 0; top: 3px; bottom: 3px;
+    width: 3px; border-radius: 2px;
+    background: var(--prio-color, var(--border));
+  }
   /* redesign/v6 (owner feedback, 2026-07-28): pinned no longer shows as an
      icon in the title cell -- instead a short indigo segment interrupts
      the middle of the row's own priority-color left border, e.g. a
-     yellow-priority row reads yellow / indigo / yellow top-to-bottom. */
-  .grid-row.pinned::before {
+     yellow-priority row reads yellow / indigo / yellow top-to-bottom.
+     ::after now that ::before is the base accent bar above. */
+  .grid-row.pinned::after {
     content: '';
-    position: absolute; left: -3px; top: 50%; transform: translateY(-50%);
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
     width: 3px; height: 14px; background: var(--accent);
   }
 
