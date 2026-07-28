@@ -86,21 +86,24 @@
     {#if items.length === 0}
       <div class="empty">Recycle is empty. Deleted tasks show up here and can be restored, or removed for good.</div>
     {:else}
-      {#each items as t (t._id)}
-        <div class="item-row" style="--prio-color:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}>
-          <div class="item-main">
-            <span class="item-title">{t.title}</span>
-            {#if t.project_name}<span class="item-proj">{t.project_name}</span>{/if}
+      <div class="item-rows">
+        {#each items as t (t._id)}
+          <div class="item-row">
+            <span class="prio-bar" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
+            <div class="item-main">
+              <span class="item-title">{t.title}</span>
+              {#if t.project_name}<span class="item-proj">{t.project_name}</span>{/if}
+            </div>
+            <span class="item-time">{timeAgo(t.updated_at)}</span>
+            <button class="restore-btn" on:click={() => restore(t._id!)}>Restore</button>
+            <button class="forever-btn" on:click={() => removeForever(t)} title="Delete forever" aria-label="Delete forever">
+              <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
+              </svg>
+            </button>
           </div>
-          <span class="item-time">{timeAgo(t.updated_at)}</span>
-          <button class="restore-btn" on:click={() => restore(t._id!)}>Restore</button>
-          <button class="forever-btn" on:click={() => removeForever(t)} title="Delete forever" aria-label="Delete forever">
-            <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
-            </svg>
-          </button>
-        </div>
-      {/each}
+        {/each}
+      </div>
     {/if}
   </div>
 </div>
@@ -145,14 +148,22 @@
   .item-list { flex: 1; overflow-y: auto; padding: 12px 24px 24px; }
   .empty { color: var(--faint); font-size: 13.5px; padding: 12px 0; line-height: 1.5; }
 
-  /* redesign/v6 (owner feedback, 2026-07-30): priority now a left-edge
-     color accent, matching Kanban/List/Agenda/Focus, instead of a small
-     dot -- this view was the last one still using the dot. */
+  /* redesign/v6 (owner feedback, 2026-07-30): a border-left directly on
+     each row rendered as one continuous stripe across adjacent rows
+     (nothing visually separated them), especially when neighboring
+     rows shared the same priority color. Same fix as Dashboard's
+     Today/Pinned/Overdue lists: a 1px gap of the border color between
+     rows (so each row reads as its own card) plus a distinct rounded
+     .prio-bar segment per row instead of a border. */
+  .item-rows {
+    display: flex; flex-direction: column; gap: 1px;
+    background: var(--border); border-radius: 10px; overflow: hidden;
+  }
   .item-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 0 9px 10px; border-bottom: 1px solid var(--border);
-    border-left: 2px solid var(--prio-color, var(--border));
+    padding: 9px 14px; background: var(--surface);
   }
+  .prio-bar { width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; }
 
   .item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   /* Wrap, never truncate (owner feedback, 2026-07-30) -- matches the
