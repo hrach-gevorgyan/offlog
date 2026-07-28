@@ -325,6 +325,19 @@
     return dragTask?._id === task._id || touchTask?._id === task._id;
   }
 
+  // redesign/v6, reference pass: color-graded due date instead of a
+  // binary overdue/not -- matches the owner's reference set (a due-date
+  // pill that ranges red/urgent -> amber/soon -> neutral/comfortable),
+  // not just red-or-plain. "Soon" threshold (<=3 days) matches
+  // FocusView.svelte's own due_soon bucket, so the two views agree on
+  // what counts as soon.
+  function dueDateClass(due: string): 'overdue' | 'soon' | '' {
+    const days = Math.round((new Date(`${due}T00:00:00`).getTime() - new Date(`${localDateStr(new Date())}T00:00:00`).getTime()) / 86_400_000);
+    if (days < 0) return 'overdue';
+    if (days <= 3) return 'soon';
+    return '';
+  }
+
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
     touchTask = task;
     if (touchDragWatchdog) clearTimeout(touchDragWatchdog);
@@ -545,7 +558,6 @@
             data-task-idx={idx}
             class:dragging={isDragging(task)}
             class:insert-before={dragOverColId === col.id && dragOverIndex === idx}
-            style="--prio-color:{PRIORITY_COLOR[task.priority]}"
             draggable="true"
             role="button"
             tabindex="0"
@@ -560,6 +572,13 @@
             out:fade={{ duration: 120 }}
             animate:flip={{ duration: 200, easing: cubicOut }}
           >
+            <div class="card-badges">
+              <!-- redesign/v6, reference pass: priority moves to its own
+                   pill above the title (owner reference set -- the
+                   ClickUp-style "High Priority" pill pattern), instead of
+                   a left-edge bar or a meta-line item. -->
+              <span class="priority-pill" style="color:{PRIORITY_COLOR[task.priority]}; background:color-mix(in srgb, {PRIORITY_COLOR[task.priority]} 18%, transparent)">{PRIORITY_LABEL[task.priority]}</span>
+            </div>
             <div class="card-top">
               <span class="card-title">{task.title}</span>
               {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
@@ -603,20 +622,26 @@
                 {/if}
               </div>
             </div>
+            <!-- redesign/v6, reference pass: every metadata item is its
+                 own small icon+text badge now (owner reference set), not
+                 boxless plain text -- due date is color-graded
+                 red/overdue -> amber/soon -> neutral, not just binary. -->
             <div class="card-meta">
-              {#if task.checklist?.length}
-                <span class="checklist-badge" class:complete={task.checklist.every(i => i.done)}>
-                  ☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}
-                </span>
-              {/if}
               {#if task.due_date}
-                <span class="due-badge" class:overdue={task.due_date < localDateStr(new Date())}>
+                <span class="meta-badge due-badge {dueDateClass(task.due_date)}">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="4" y1="1" x2="4" y2="3.5"/><line x1="10" y1="1" x2="10" y2="3.5"/></svg>
                   {task.due_date}
                 </span>
               {/if}
+              {#if task.checklist?.length}
+                <span class="meta-badge checklist-badge" class:complete={task.checklist.every(i => i.done)}>
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h9M2.5 7h9M2.5 10.5h6"/><path d="M11 9.5l1 1 2-2"/></svg>
+                  {task.checklist.filter(i => i.done).length}/{task.checklist.length}
+                </span>
+              {/if}
               {#if relatedIds.has(task._id!)}
-                <span class="related-badge" title="Has related tasks">
-                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                <span class="meta-badge related-badge" title="Has related tasks">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
                 </span>
               {/if}
             </div>
@@ -799,25 +824,33 @@
   }
   .card-list.cards-drag-over { background: color-mix(in srgb, var(--accent) 9%, var(--col-bg)); }
 
+  /* redesign/v6, reference pass (owner-provided screenshot set,
+     2026-07-28): no left priority bar, no static border -- cards float
+     on the column via whitespace + a soft shadow only, priority moves
+     to its own pill above the title. */
   .card {
     background: var(--surface);
     border-radius: var(--radius);
-    padding: .7rem .8rem;
+    padding: .75rem .85rem;
     cursor: pointer;
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--prio-color, var(--border));
-    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
     transition: box-shadow var(--dur) var(--ease),
-                border-color var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
                 opacity .18s;
   }
-  .card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.10); border-color: var(--border-strong); border-left-color: var(--prio-color, var(--border-strong)); transform: translateY(-2px); }
+  .card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.12); transform: translateY(-2px); }
   .card.dragging { opacity: .35; transition: none; transform: none; }
-  .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
+  .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 3px rgba(0,0,0,.06); }
+
+  .card-badges { display: flex; margin-bottom: .4rem; }
+  .priority-pill {
+    font-family: var(--mono); font-size: .66rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .03em;
+    padding: .15rem .5rem; border-radius: 20px;
+  }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
-  .card-title { font-size: .9rem; font-weight: 500; line-height: 1.4; color: var(--text); flex: 1; }
+  .card-title { font-size: .92rem; font-weight: 700; line-height: 1.4; color: var(--text); flex: 1; }
   .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
   .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
   .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
@@ -848,34 +881,30 @@
   .card-menu-item-danger { color: var(--danger); }
   .card-menu-item-danger svg { color: var(--danger); }
   .card-menu-item-danger:hover { background: var(--overdue-bg); }
-  .card-meta { display: flex; align-items: center; gap: .5rem; margin-top: .55rem; flex-wrap: wrap; }
-  .due-badge {
-    font-family: var(--mono);
-    font-size: .68rem; font-weight: 500;
+  /* redesign/v6, reference pass: every item is its own icon+text badge
+     (owner reference set) instead of plain inline text -- due date is
+     color-graded red/overdue -> amber/soon -> neutral, via dueDateClass(). */
+  .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .5rem; flex-wrap: wrap; }
+  .meta-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--mono); font-size: .68rem; font-weight: 500;
     color: var(--muted); background: var(--hover);
-    padding: .12rem .45rem; border-radius: 6px;
+    padding: .18rem .5rem; border-radius: 20px;
   }
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
-  .checklist-badge {
-    font-family: var(--mono);
-    font-size: .68rem; font-weight: 500;
-    color: var(--muted); background: var(--hover);
-    padding: .12rem .45rem; border-radius: 6px;
-  }
-  .checklist-badge.complete { color: var(--success); }
-  .related-badge {
-    display: inline-flex; align-items: center; justify-content: center;
-    color: var(--muted); background: var(--hover);
-    padding: .18rem .32rem; border-radius: 6px;
-  }
+  .due-badge.soon { color: var(--due-soon-ink); background: var(--due-soon-bg); }
+  .checklist-badge.complete { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .related-badge { padding: .18rem .4rem; }
 
-  /* B29: same visual treatment as ListView.svelte's .tag chip — kept as a
-     separate rule since Svelte scopes component styles per-file, not
-     shared via the class name alone. */
+  /* B29 (redesign/v6: bordered pill, not filled, matching the owner's
+     reference set's label-chip treatment) — same visual treatment as
+     ListView.svelte's .tag chip is NOT reused here since Svelte scopes
+     component styles per-file, not shared via the class name alone. */
   .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .4rem; }
   .card-tag {
-    font-size: 11px; color: var(--muted); background: var(--col-bg);
-    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+    font-size: 11px; color: var(--muted); background: none;
+    border: 1px solid var(--border-strong);
+    padding: 1px 7px; border-radius: 20px; white-space: nowrap;
   }
 
   .add-card-btn {
