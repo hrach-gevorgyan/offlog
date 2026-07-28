@@ -528,8 +528,6 @@
     </div>
   </div>
 
-  <div class="sort-hint">Shift+click a column header to sort by more than one column</div>
-
   {#if selectionMode}
     <div class="bulk-bar">
       <span class="bulk-count">{selected.size} selected</span>
@@ -666,6 +664,8 @@
   </div>
   </div>
 
+  <div class="sort-hint">Shift+click a column header to sort by more than one column</div>
+
   {#if showArchived && archivedTasksRaw.length > 0}
     <div class="archived-section">
       <div class="archived-label">Archived ({archivedTasks.length}{archivedTasks.length !== archivedTasksRaw.length ? ` of ${archivedTasksRaw.length}` : ''})</div>
@@ -739,9 +739,13 @@
   }
   .toolbar-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 
+  /* Genuine footnote -- outside the table panel entirely, muted, small,
+     out of the way of the actual data (owner feedback, 2026-07-28: was
+     sitting right under the toolbar inside the panel, too prominent for
+     a hint). */
   .sort-hint {
-    font-size: 11px; color: var(--faint);
-    padding: 8px 14px 0;
+    font-size: 10.5px; color: var(--faint);
+    padding: 0 4px; margin: -14px 0 4px;
   }
 
   .search-box {
