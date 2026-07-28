@@ -589,21 +589,29 @@
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
-              {#if task.recurrence}
-                <span class="card-recur" title="Repeats {task.recurrence}">
-                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-                </span>
-              {/if}
-              {#if relatedIds.has(task._id!)}
-                <!-- redesign/v6, alignment critique (2026-07-28): was
-                     floating down in the meta row with no anchor; the
-                     pin/recurrence icons already live here consistently
-                     next to the title, so this indicator icon joins them
-                     instead of sitting alone in a different row. -->
-                <span class="card-related" title="Has related tasks">
-                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
-                </span>
+              {#if task.pinned || task.recurrence || relatedIds.has(task._id!)}
+                <!-- redesign/v6: pin/recurrence/related previously sat
+                     as individual flex children of .card-top, spaced by
+                     its generic 4px gap same as everything else -- with
+                     2-3 of them present at once it read as a random
+                     scatter of dots, not one cohesive group (owner
+                     feedback, 2026-07-28: "abnormal icons box
+                     situation"). Grouped into one wrapper with its own
+                     consistent gap, so this cluster is deliberately
+                     tighter than the gap to the title/menu around it. -->
+                <div class="card-icons">
+                  {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
+                  {#if task.recurrence}
+                    <span class="card-recur" title="Repeats {task.recurrence}">
+                      <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
+                    </span>
+                  {/if}
+                  {#if relatedIds.has(task._id!)}
+                    <span class="card-related" title="Has related tasks">
+                      <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                    </span>
+                  {/if}
+                </div>
               {/if}
               <div class="card-menu-wrap">
                 <button
@@ -800,10 +808,17 @@
     background: transparent; color: var(--text); padding: 0;
   }
   .col-name-input:focus { outline: none; }
+  /* redesign/v6: was bare floating text, no shape, sitting oddly next
+     to the status name (owner feedback, 2026-07-28: "awful"). A small
+     pill badge, same rounded/muted language as the card's own meta
+     badges, with a min-width so 1 vs. 2-digit counts don't shift the
+     column name's position. */
   .col-count {
-    font-family: var(--mono);
-    font-size: .7rem; color: var(--faint);
-    padding: 0 .15rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px;
+    font-family: var(--mono); font-size: .68rem; font-weight: 600;
+    color: var(--muted); background: var(--hover);
+    border-radius: 20px; padding: 0 .4rem;
   }
   .col-rename {
     cursor: pointer; color: var(--faint); display: flex; align-items: center;
@@ -870,9 +885,10 @@
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
-  .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
-  .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
-  .card-related { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
+  .card-icons { display: flex; align-items: center; gap: 5px; flex-shrink: 0; margin-top: 2px; }
+  .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; }
+  .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; }
+  .card-related { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; }
   .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
   .card-menu-trigger {
     display: flex; align-items: center; justify-content: center;
