@@ -736,12 +736,16 @@
      borderless (background-only, like the app's other tag/chip
      language elsewhere), a bit more breathing room, and separated from
      the date field above instead of sitting flush against it. */
-  .due-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  /* One row, always (owner feedback, 2026-07-30) -- nowrap + overflow-x
+     auto as a safety valve on very narrow widths (a horizontal scroll on
+     4 short pills reads better than an awkward 3+1 wrap). */
+  .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 6px; overflow-x: auto; }
   .due-shortcut {
     background: var(--col-bg); color: var(--muted); border: none;
     border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
     text-transform: none; font-family: 'Hanken Grotesk', sans-serif;
     padding: 5px 12px; cursor: pointer; transition: background .12s, color .12s;
+    white-space: nowrap; flex-shrink: 0;
   }
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
   .due-shortcut.active { background: var(--accent); color: var(--on-accent); }
