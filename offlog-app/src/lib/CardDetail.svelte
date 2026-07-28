@@ -150,12 +150,16 @@
   let relatedTasks: TaskDoc[] = [];
   let relatedInput = '';
   let relatedSuggestions: TaskDoc[] = [];
-  let showRelated = false;
   let relatedBusy = false;
 
   async function loadRelatedTasks() {
     relatedTasks = await getRelatedTasks(task._id!);
-    showRelated = showRelated || relatedTasks.length > 0;
+    // option B (owner feedback, 2026-07-30): related links load async,
+    // after showMoreDetails' own initial value is already computed below
+    // -- bump it open here too if it turns out this task has any,
+    // same "never hide existing data" rule the single flag now covers
+    // for every section at once.
+    showMoreDetails = showMoreDetails || relatedTasks.length > 0;
   }
 
   // B16 (revised): field definitions are global (Settings → Organize →
@@ -165,14 +169,22 @@
   let customFields: CustomFieldDef[] = [];
   let customValues: Record<string, string | number | null> = { ...(task.custom_values ?? {}) };
 
-  // Collapsible-by-default sections (owner feedback, 2026-07-12 — the page
-  // got overloaded once Checklist landed on top of everything else).
-  // Checklist/Custom fields/Notes start collapsed UNLESS the task already
-  // has content there, so existing data is never hidden by default, only
-  // new/empty sections start closed.
-  let showChecklist = checklist.length > 0;
-  let showNotes = !!body.trim();
-  let showCustomFieldsSection = Object.values(customValues).some(v => v !== null && v !== '' && v !== undefined);
+  // option B (owner feedback, 2026-07-30, trying a different collapse
+  // strategy than the five-independent-toggles version): Schedule,
+  // Checklist, Custom fields, Related, and Notes now share ONE
+  // disclosure instead of five separate ones -- opening it to edit a
+  // checklist item no longer means only that one section's worth of
+  // extra height shows up, but it also means there's exactly one
+  // decision to make ("is there more to this task?") instead of five.
+  // Starts open if ANY of them already has content, same "never hide
+  // existing data" rule the old per-section flags used individually.
+  // (relatedTasks loads async — loadRelatedTasks() below bumps this
+  // open too if it turns out there are links, same pattern the old
+  // showRelated flag used.)
+  let showMoreDetails = !!(
+    due_date || reminder_at || checklist.length > 0 || body.trim() ||
+    Object.values(customValues).some(v => v !== null && v !== '' && v !== undefined)
+  );
   // Cap how many custom fields show by default — a project with a dozen
   // fields defined shouldn't turn every card into a long form. Anything
   // past the cap is one click away, not hidden entirely.
@@ -180,34 +192,31 @@
   let showAllFields = false;
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
 
-  // B49 redesign (2026-07-19, owner-directed — "still feels complicated/
-  // overloaded"): Due date and Reminder used to be two always-visible
-  // fields, each with their own shortcuts/checkbox/hint sprawl — most of
-  // the panel's density before you even reach a collapsible section.
-  // Mockup-validated (see ROADMAP.md B49): a single collapsed "Schedule"
-  // summary row expands to the exact same two fields, unchanged — nothing
-  // about *how* due date/reminder are set changed, only that both start
-  // tucked away together instead of permanently expanded. Starts open if
-  // either already has a value, same "never hide existing data" rule the
-  // other collapsible sections already use.
-  let showSchedule = !!(due_date || reminder_at);
-
   const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
-  function formatScheduleSummary(due: string, reminder: string, repeat: string | null): string {
-    if (!due && !reminder) return 'No due date or reminder';
+  // Collapsed-state summary line for the single "More details" toggle --
+  // enough of a hint at what's inside to decide whether to open it,
+  // without re-showing the actual fields. Every value it reads is passed
+  // in as an argument (not read from closure) so Svelte's static
+  // dependency analysis on the `$:` call below actually re-runs this
+  // when any of them changes -- same reasoning as this file's original
+  // formatScheduleSummary(due, reminder, repeat), which did the same.
+  function formatDetailsSummary(
+    due: string, reminder: string, repeat: string | null,
+    cl: typeof checklist, related: TaskDoc[], notes: string,
+  ): string {
     const parts: string[] = [];
     if (due) {
       const d = new Date(`${due}T00:00:00`);
-      parts.push(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
-    }
-    if (reminder) {
-      const r = new Date(reminder);
-      parts.push(`${fmtTime(r)} reminder`);
+      parts.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
     }
     if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
-    return parts.join(' · ');
+    if (reminder) parts.push(`${fmtTime(new Date(reminder))} reminder`);
+    if (cl.length) parts.push(`${cl.filter(i => i.done).length}/${cl.length} checklist`);
+    if (related.length) parts.push(`${related.length} related`);
+    if (notes.trim()) parts.push('notes');
+    return parts.length ? parts.join(' · ') : 'Schedule, checklist, related tasks, notes';
   }
-  $: scheduleSummary = formatScheduleSummary(due_date, reminder_at, recurrence);
+  $: detailsSummary = formatDetailsSummary(due_date, reminder_at, recurrence, checklist, relatedTasks, body);
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -417,65 +426,6 @@
       </label>
     </div>
 
-    <div class="collapsible-section">
-      <span class="field-label">Due date</span>
-      <button type="button" class="schedule-toggle" on:click={() => showSchedule = !showSchedule} aria-expanded={showSchedule}>
-        <svg class="schedule-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="10" height="9" rx="1.5"/><path d="M2 5.5h10M4.5 1.5v2M9.5 1.5v2"/></svg>
-        <span class="schedule-summary">{scheduleSummary}</span>
-        <svg class="section-chevron" class:open={showSchedule} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-      </button>
-      {#if showSchedule}
-        <div class="schedule-panel" transition:slide={{ duration: 180 }}>
-          <label>
-            Due date
-            <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
-            <div class="due-shortcuts">
-              {#each DUE_SHORTCUTS as s}
-                <button
-                  type="button"
-                  class="due-shortcut"
-                  class:active={due_date === dateFromToday(s.days, s.months)}
-                  on:click={() => due_date = dateFromToday(s.days, s.months)}
-                >{s.label}</button>
-              {/each}
-            </div>
-          </label>
-
-          <label class="repeat-field">
-            Repeat
-            <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
-            {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
-          </label>
-
-          <div class="schedule-divider"></div>
-
-          <div class="reminder-field">
-            <label>
-              Reminder
-              <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
-            </label>
-            <label class="remind-on-due-row">
-              <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-              Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
-            </label>
-            {#if reminder_at && $permissionState !== 'granted'}
-              <div class="reminder-hint">
-                {#if $permissionState === 'unsupported'}
-                  Notifications aren't supported in this browser.
-                {:else}
-                  Notifications aren't enabled yet —
-                  <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
-                  so this reminder can actually notify you.
-                {/if}
-              </div>
-            {/if}
-          </div>
-        </div>
-      {/if}
-    </div>
-
-    <div class="section-divider"></div>
-
     <div class="tags-field">
       <span class="field-label">Tags</span>
       <div class="tags-input-row">
@@ -512,133 +462,173 @@
 
     <div class="section-divider"></div>
 
+    <!-- option B (owner feedback, 2026-07-30): Schedule/Checklist/Custom
+         fields/Related/Notes share this one disclosure now instead of
+         five independent ones -- see showMoreDetails' own comment above. -->
     <div class="collapsible-section">
-      <button type="button" class="section-toggle" on:click={() => showChecklist = !showChecklist}>
-        <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="4" height="4" rx="1"/><path d="M2.5 3.5l.7.7L4.5 2.7M1.5 8.5h4M1.5 11.5h4M7.5 3.5h5M7.5 8.5h5M7.5 11.5h5"/></svg>
-        <span class="field-label">
-          Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
-        </span>
-        <svg class="section-chevron" class:open={showChecklist} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+      <button type="button" class="section-toggle more-details-toggle" on:click={() => showMoreDetails = !showMoreDetails} aria-expanded={showMoreDetails}>
+        <span class="field-label">More details</span>
+        {#if !showMoreDetails}<span class="details-summary">{detailsSummary}</span>{/if}
+        <svg class="section-chevron" class:open={showMoreDetails} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
-      {#if showChecklist}
-        <div class="checklist-field" transition:slide={{ duration: 180 }}>
-          {#each checklist as item, i}
-            <div class="checklist-row">
-              <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
-                {#if item.done}✓{/if}
-              </button>
-              <span class="checklist-text" class:done={item.done}>{item.text}</span>
-              <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
-            </div>
-          {/each}
-          <input
-            class="checklist-input"
-            bind:value={checklistInput}
-            placeholder="Add item…"
-            enterkeyhint="done"
-            on:keydown={onChecklistKey}
-            on:blur={() => setTimeout(addChecklistItem, 150)}
-          />
-          {#if duplicateChecklistItems.length}
-            <p class="dup-name-hint">Repeated item{duplicateChecklistItems.length > 1 ? 's' : ''}: {duplicateChecklistItems.join(', ')}</p>
-          {/if}
-        </div>
-      {/if}
-    </div>
+      {#if showMoreDetails}
+        <div class="more-details-panel" transition:slide={{ duration: 180 }}>
 
-    {#if customFields.length > 0}
-      <div class="collapsible-section">
-        <button type="button" class="section-toggle" on:click={() => showCustomFieldsSection = !showCustomFieldsSection}>
-          <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h10M2 7h10M2 10h6"/><circle cx="10.5" cy="10" r="1.3"/></svg>
-          <span class="field-label">Custom fields</span>
-          <svg class="section-chevron" class:open={showCustomFieldsSection} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-        </button>
-        {#if showCustomFieldsSection}
-          <div class="custom-fields" transition:slide={{ duration: 180 }}>
-            {#each visibleFields as field (field.id)}
-              <label class="custom-field-label">
-                {field.name}
-                {#if field.type === 'select'}
-                  <CustomSelect
-                    options={[{ value: '', label: '—' }, ...(field.options ?? []).map(o => ({ value: o, label: o }))]}
-                    value={(customValues[field.id] as string) ?? ''}
-                    on:change={(e) => customValues[field.id] = e.detail || null}
-                  />
-                {:else if field.type === 'date'}
-                  <CalendarPicker value={(customValues[field.id] as string) ?? ''} on:change={(e) => customValues[field.id] = e.detail || null} />
-                {:else}
-                  <input
-                    type={field.type === 'number' ? 'number' : 'text'}
-                    bind:value={customValues[field.id]}
-                  />
-                {/if}
+          <div class="detail-block">
+            <label>
+              Due date
+              <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
+              <div class="due-shortcuts">
+                {#each DUE_SHORTCUTS as s}
+                  <button
+                    type="button"
+                    class="due-shortcut"
+                    class:active={due_date === dateFromToday(s.days, s.months)}
+                    on:click={() => due_date = dateFromToday(s.days, s.months)}
+                  >{s.label}</button>
+                {/each}
+              </div>
+            </label>
+
+            <label class="repeat-field">
+              Repeat
+              <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
+              {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
+            </label>
+
+            <div class="reminder-field">
+              <label>
+                Reminder
+                <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
               </label>
-            {/each}
-            {#if customFields.length > VISIBLE_FIELD_CAP}
-              <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
-                {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
-              </button>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    <div class="section-divider"></div>
-
-    <div class="collapsible-section">
-      <button type="button" class="section-toggle" on:click={() => showRelated = !showRelated}>
-        <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
-        <span class="field-label">
-          Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
-        </span>
-        <svg class="section-chevron" class:open={showRelated} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-      </button>
-      {#if showRelated}
-        <div class="related-field" transition:slide={{ duration: 180 }}>
-          {#each relatedTasks as rt (rt._id)}
-            <div class="related-row" class:related-deleted={rt.deleted}>
-              {#if rt.deleted}
-                <span class="related-title">{rt.title} (deleted)</span>
-              {:else}
-                <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
+              <label class="remind-on-due-row">
+                <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+                Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
+              </label>
+              {#if reminder_at && $permissionState !== 'granted'}
+                <div class="reminder-hint">
+                  {#if $permissionState === 'unsupported'}
+                    Notifications aren't supported in this browser.
+                  {:else}
+                    Notifications aren't enabled yet —
+                    <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
+                    so this reminder can actually notify you.
+                  {/if}
+                </div>
               {/if}
-              <span class="related-proj">{projectNameFor(rt)}</span>
-              <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
             </div>
-          {/each}
-          <input
-            class="checklist-input"
-            bind:value={relatedInput}
-            placeholder="Link another task…"
-            disabled={relatedBusy}
-          />
-          {#if relatedSuggestions.length}
-            <div class="tag-suggestions">
-              {#each relatedSuggestions as s (s._id)}
-                <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="detail-block">
+            <span class="field-label">
+              Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
+            </span>
+            <div class="checklist-field">
+              {#each checklist as item, i}
+                <div class="checklist-row">
+                  <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
+                    {#if item.done}✓{/if}
+                  </button>
+                  <span class="checklist-text" class:done={item.done}>{item.text}</span>
+                  <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
+                </div>
               {/each}
+              <input
+                class="checklist-input"
+                bind:value={checklistInput}
+                placeholder="Add item…"
+                enterkeyhint="done"
+                on:keydown={onChecklistKey}
+                on:blur={() => setTimeout(addChecklistItem, 150)}
+              />
+              {#if duplicateChecklistItems.length}
+                <p class="dup-name-hint">Repeated item{duplicateChecklistItems.length > 1 ? 's' : ''}: {duplicateChecklistItems.join(', ')}</p>
+              {/if}
+            </div>
+          </div>
+
+          {#if customFields.length > 0}
+            <div class="section-divider"></div>
+            <div class="detail-block">
+              <span class="field-label">Custom fields</span>
+              <div class="custom-fields">
+                {#each visibleFields as field (field.id)}
+                  <label class="custom-field-label">
+                    {field.name}
+                    {#if field.type === 'select'}
+                      <CustomSelect
+                        options={[{ value: '', label: '—' }, ...(field.options ?? []).map(o => ({ value: o, label: o }))]}
+                        value={(customValues[field.id] as string) ?? ''}
+                        on:change={(e) => customValues[field.id] = e.detail || null}
+                      />
+                    {:else if field.type === 'date'}
+                      <CalendarPicker value={(customValues[field.id] as string) ?? ''} on:change={(e) => customValues[field.id] = e.detail || null} />
+                    {:else}
+                      <input
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        bind:value={customValues[field.id]}
+                      />
+                    {/if}
+                  </label>
+                {/each}
+                {#if customFields.length > VISIBLE_FIELD_CAP}
+                  <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
+                    {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
+                  </button>
+                {/if}
+              </div>
             </div>
           {/if}
-        </div>
-      {/if}
-    </div>
 
-    <div class="section-divider"></div>
+          <div class="section-divider"></div>
 
-    <div class="collapsible-section">
-      <button type="button" class="section-toggle" on:click={() => showNotes = !showNotes}>
-        <svg class="row-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.5h6l2.5 2.5v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M9 1.5V4h2.5M4 7h6M4 9.5h4"/></svg>
-        <span class="field-label">Notes (markdown)</span>
-        <svg class="section-chevron" class:open={showNotes} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-      </button>
-      {#if showNotes}
-        <div class="notes-wrap" transition:slide={{ duration: 180 }}>
-          <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
-          {#if body.length > NOTES_SOFT_LIMIT}
-            <div class="notes-counter">{body.length} characters</div>
-          {/if}
-          {#if similarNotesHint}<p class="dup-name-hint">{similarNotesHint}</p>{/if}
+          <div class="detail-block">
+            <span class="field-label">
+              Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
+            </span>
+            <div class="related-field">
+              {#each relatedTasks as rt (rt._id)}
+                <div class="related-row" class:related-deleted={rt.deleted}>
+                  {#if rt.deleted}
+                    <span class="related-title">{rt.title} (deleted)</span>
+                  {:else}
+                    <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
+                  {/if}
+                  <span class="related-proj">{projectNameFor(rt)}</span>
+                  <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
+                </div>
+              {/each}
+              <input
+                class="checklist-input"
+                bind:value={relatedInput}
+                placeholder="Link another task…"
+                disabled={relatedBusy}
+              />
+              {#if relatedSuggestions.length}
+                <div class="tag-suggestions">
+                  {#each relatedSuggestions as s (s._id)}
+                    <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="detail-block">
+            <span class="field-label">Notes (markdown)</span>
+            <div class="notes-wrap">
+              <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
+              {#if body.length > NOTES_SOFT_LIMIT}
+                <div class="notes-counter">{body.length} characters</div>
+              {/if}
+              {#if similarNotesHint}<p class="dup-name-hint">{similarNotesHint}</p>{/if}
+            </div>
+          </div>
+
         </div>
       {/if}
     </div>
@@ -847,9 +837,10 @@
 
   .collapsible-section { display: flex; flex-direction: column; gap: .35rem; }
 
-  /* B49: Checklist/Custom fields/Notes toggles now read as distinct rows
-     (icon + label + chevron, own background) instead of a bare text link,
-     so a stack of them reads as separate cards, not one long accordion. */
+  /* option B (owner feedback, 2026-07-30): Schedule/Checklist/Custom
+     fields/Related/Notes now share this one toggle instead of five
+     independent ones. Same row treatment (icon-less now, just label +
+     summary + chevron) as the old per-section toggles used. */
   .section-toggle {
     display: flex; align-items: center; gap: 8px;
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
@@ -858,7 +849,10 @@
   }
   .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
   .section-toggle .field-label { flex: 1; }
-  .row-icon { color: var(--accent); flex-shrink: 0; }
+  .details-summary {
+    font-family: 'Hanken Grotesk', sans-serif; font-size: .78rem;
+    text-transform: none; letter-spacing: normal; color: var(--muted);
+  }
   .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
   .section-chevron.open { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
@@ -870,28 +864,15 @@
   }
   .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
-  /* B49: the combined Due date/Reminder disclosure — same row treatment
-     as Checklist/Custom fields/Notes above, plus a small calendar icon
-     and the live summary text instead of a static label. */
-  .schedule-toggle {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
-    cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
-    transition: background .12s, border-color .12s;
-  }
-  .schedule-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
-  .schedule-toggle:hover .section-chevron { color: var(--text); }
-  .schedule-icon { color: var(--accent); flex-shrink: 0; }
-  .schedule-summary {
-    flex: 1; font-family: 'Hanken Grotesk', sans-serif; font-size: .82rem;
-    text-transform: none; letter-spacing: normal; color: var(--text);
-  }
-  .schedule-panel {
+  /* The expanded panel: every former section now a plain .detail-block,
+     separated by the same thin .section-divider used elsewhere in this
+     form rather than each having its own card treatment. */
+  .more-details-panel {
     display: flex; flex-direction: column; gap: .55rem;
     background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
     padding: .65rem .7rem;
   }
-  .schedule-divider { height: 1px; background: var(--border); margin: .1rem 0; }
+  .detail-block { display: flex; flex-direction: column; gap: .35rem; }
 
   .related-field { display: flex; flex-direction: column; gap: .3rem; }
   .related-row { display: flex; align-items: center; gap: 7px; }

@@ -118,9 +118,10 @@ describe('CardDetail save logic (A9)', () => {
     const task = mkTask();
     const { getByText, container } = render(CardDetail, { props: { task, project: mkProject() } });
 
-    // B49: Due date/Reminder now live behind a collapsed-by-default
-    // "Schedule" disclosure when the task has neither set yet.
-    await fireEvent.click(container.querySelector('.schedule-toggle') as HTMLButtonElement);
+    // option B: Due date/Reminder now live behind the single "More
+    // details" disclosure (shared with Checklist/Custom fields/Related/
+    // Notes), collapsed by default when the task has none of those set.
+    await fireEvent.click(container.querySelector('.more-details-toggle') as HTMLButtonElement);
 
     const todayShortcut = container.querySelector('.due-shortcut') as HTMLButtonElement;
     expect(todayShortcut?.textContent).toBe('Today');
