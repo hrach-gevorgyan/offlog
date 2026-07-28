@@ -166,6 +166,7 @@
     return !!proj && t.column_id === proj.columns.at(-1)?.id;
   }
   $: allDone = lock !== null && lockedTasks.length > 0 && lockedTasks.every(isDone);
+  $: doneCount = lockedTasks.filter(isDone).length;
 
   // B41 — the picker uses the full available space as a scattered
   // "brainstorm corkboard" of varying-size note cards rather than a
@@ -203,7 +204,13 @@
     </button>
     <div class="title-block">
       <h1 class="fc-title">Focus</h1>
-      <span class="fc-count">Select up to {MAX_COMMIT} tasks for today's commitment — they'll stay locked here until each is done</span>
+      <span class="fc-count">
+        {#if lock}
+          Today's focus — knock these out, then everything else can wait
+        {:else}
+          Select up to {MAX_COMMIT} tasks for today's commitment — they'll stay locked here until each is done
+        {/if}
+      </span>
     </div>
     {#if lock}
       <button class="reset-btn" on:click={resetCommitment}>Reset</button>
@@ -212,6 +219,15 @@
 
   <div class="fc-body">
     {#if lock}
+      <!-- redesign/v6 (owner feedback, 2026-07-28): the locked view felt
+           empty/flat once tasks were committed — this is the page meant
+           to pull focus onto exactly these 3, so it needs some visual
+           weight of its own rather than reading as an afterthought. A
+           concrete progress stat does that without adding noise. -->
+      <div class="progress-wrap">
+        <span class="progress-label">{doneCount} of {lockedTasks.length} done</span>
+        <div class="progress-track"><div class="progress-fill" style="width:{lockedTasks.length ? (doneCount / lockedTasks.length * 100) : 0}%"></div></div>
+      </div>
       {#if allDone}
         <div class="empty">All {lockedTasks.length} committed today — nicely done. Come back tomorrow, or reset to pick more.</div>
       {/if}
@@ -236,7 +252,7 @@
         </div>
       {/each}
     {:else}
-      <p class="picker-hint">The bigger, highlighted notes are today's top suggestions — tap a note to select it, then Commit below.</p>
+      <p class="picker-hint">Bigger, blue-highlighted notes are today's top suggestions — ranked pinned, then overdue, then due-soon, then priority. Tap a note to select it, then Commit below.</p>
       {#if pickerTasks.length === 0}
         <div class="empty">No open tasks to pick from.</div>
       {:else}
@@ -259,10 +275,10 @@
                 {#if suggestedReasons.has(t._id!)}
                   <span class="suggest-chip {suggestedReasons.get(t._id!)}">{SUGGEST_LABEL[suggestedReasons.get(t._id!)!]}</span>
                 {/if}
-                <span class="check" class:checked={selected.includes(t._id!)} aria-label={selected.includes(t._id!) ? 'Selected' : 'Select for commitment'}>
-                  {#if selected.includes(t._id!)}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
-                </span>
               </div>
+              <span class="check" class:checked={selected.includes(t._id!)} aria-label={selected.includes(t._id!) ? 'Selected' : 'Select for commitment'}>
+                {#if selected.includes(t._id!)}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--on-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+              </span>
             </div>
           {/each}
         </div>
@@ -315,15 +331,20 @@
   }
   .hamburger:hover { background: var(--hover); }
 
+  /* Same shape language as .commit-btn (rounded, bold, generous padding)
+     so the two read as a matched pair of deliberate actions rather than
+     a bold primary button next to an afterthought link (owner feedback,
+     2026-07-29) -- kept as an outline instead of a solid fill since
+     Reset is the secondary action here, not a second primary. */
   .reset-btn {
-    background: none; border: 1px solid var(--border); color: var(--faint);
-    font-size: 12px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
-    flex-shrink: 0; transition: background .12s, color .12s;
+    background: none; border: 1.5px solid var(--border-strong); color: var(--muted);
+    font-size: 13px; font-weight: 600; padding: 8px 18px; border-radius: 10px; cursor: pointer;
+    flex-shrink: 0; transition: background .12s, color .12s, border-color .12s;
     /* header is align-items:flex-start now (see .fc-header comment) —
        this button still wants to sit centered against the row. */
     align-self: center;
   }
-  .reset-btn:hover { background: var(--hover); color: var(--text); }
+  .reset-btn:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
 
   .fc-body {
     flex: 1; min-height: 0; overflow-y: auto;
@@ -333,6 +354,17 @@
 
   .picker-hint { color: var(--faint); font-size: 13px; margin: 0 0 16px; max-width: 640px; }
   .empty { color: var(--faint); font-size: 14px; padding: 12px 0; }
+
+  .progress-wrap { margin-bottom: 20px; max-width: 480px; }
+  .progress-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .progress-track {
+    margin-top: 7px; height: 6px; border-radius: 3px;
+    background: var(--col-bg); overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .2s; }
 
   /* B41 — the corkboard. flex-wrap, not a grid with fixed tracks, so
      differently-sized notes can sit next to each other naturally instead
@@ -353,7 +385,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-top: 2px solid var(--prio-color, var(--border));
-    border-radius: 10px;
+    border-radius: 7px;
     padding: 14px 16px;
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.05);
@@ -376,6 +408,7 @@
 
   .note-title {
     font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4;
+    padding-right: 22px; /* clears the absolutely-positioned .check corner */
     display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
   .note-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
@@ -383,11 +416,11 @@
   .task-row {
     display: grid;
     grid-template-columns: 20px 1fr auto;
-    align-items: center; gap: 10px;
-    padding: 10px 14px; border-radius: 10px;
+    align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 7px;
     border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
-    margin-bottom: 5px; cursor: pointer;
+    margin-bottom: 8px; cursor: pointer;
     transition: background .1s, box-shadow .1s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
@@ -417,16 +450,18 @@
   /* Select-for-commitment checkbox -- deliberately the *filled* checkbox
      language (like ListView's bulk-select .row-check), not the plain
      border-only "done" checkbox style used elsewhere: this one means
-     "chosen", not "complete", and needs to read as a distinct action.
-     Pushed to the bottom-right corner via margin-left:auto in the
-     (flex-wrap) footer, away from the title/project/priority edge
-     (owner feedback, 2026-07-28: used to sit top-left next to the
-     priority dot and read as a stray checkbox, not a deliberate control). */
+     "chosen", not "complete". Absolutely positioned in the note's own
+     top-right corner rather than inline with the footer's badges (owner
+     feedback, 2026-07-28: sharing a flex row with proj-badge/suggest-chip
+     made its alignment look off whenever badge heights/widths varied) --
+     a solid background so it always reads cleanly against the title text
+     underneath, regardless of how many lines the title wraps to. */
   .check {
+    position: absolute; top: 10px; right: 10px;
     width: 18px; height: 18px; border-radius: 5px;
+    background: var(--surface);
     border: 1.6px solid var(--border-strong); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    margin-left: auto;
     transition: border-color .12s, background .12s;
   }
   .check.checked { background: var(--accent); border-color: var(--accent); }
@@ -440,11 +475,19 @@
      .suggest-chip, so it's left as-is. */
   .task-row .task-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title {
-    font-size: 14px; font-weight: 500; color: var(--text);
+    font-size: 15px; font-weight: 600; color: var(--text);
     min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  /* Plain text, not a chip -- the general .proj-badge rule below (used by
+     the corkboard note's own project badge) sets a background/padding
+     that this override was meant to remove but never actually did
+     (background/padding aren't shadowed by setting other properties in
+     CSS), so this row's project name was rendering as a chip that could
+     look stretched/oversized (owner feedback, 2026-07-29: "project pill
+     is too long"). Explicit `none`/`0` here actually clears it. */
   .task-row .proj-badge {
     font-family: var(--mono); font-size: 10px; color: var(--faint);
+    background: none; padding: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
@@ -456,14 +499,15 @@
 
   .fc-footer {
     flex-shrink: 0;
+    display: flex; justify-content: center;
     padding: 14px 28px; border-top: 1px solid var(--border);
     background: var(--surface);
   }
 
   .commit-btn {
-    width: 100%; max-width: 480px;
+    width: auto; min-width: 200px;
     background: var(--accent); color: var(--on-accent); border: none;
-    font-size: 14px; font-weight: 600; padding: 11px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; padding: 11px 28px; border-radius: 10px;
     cursor: pointer; transition: opacity .12s;
   }
   .commit-btn:disabled { opacity: .4; cursor: not-allowed; }
