@@ -731,15 +731,20 @@
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  .due-shortcuts { display: flex; gap: 4px; flex-wrap: wrap; }
+  /* Owner feedback, 2026-07-30: "not beautiful, make them ideal" -- was
+     cramped 5px-radius boxes with a visible border. Full pill shape,
+     borderless (background-only, like the app's other tag/chip
+     language elsewhere), a bit more breathing room, and separated from
+     the date field above instead of sitting flush against it. */
+  .due-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
   .due-shortcut {
-    background: var(--col-bg); color: var(--muted); border: 1px solid var(--border);
-    border-radius: 5px; font-size: .68rem; font-weight: 600; letter-spacing: normal;
+    background: var(--col-bg); color: var(--muted); border: none;
+    border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
     text-transform: none; font-family: 'Hanken Grotesk', sans-serif;
-    padding: 2px 8px; cursor: pointer; transition: background .1s, color .1s, border-color .1s;
+    padding: 5px 12px; cursor: pointer; transition: background .12s, color .12s;
   }
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
-  .due-shortcut.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .due-shortcut.active { background: var(--accent); color: var(--on-accent); }
 
   .reminder-hint {
     font-size: .72rem; color: var(--faint); line-height: 1.35;
