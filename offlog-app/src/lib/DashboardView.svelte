@@ -400,7 +400,15 @@
      row heights around whatever a wrapped title needs, so this doesn't
      "damage" the grid -- it's already built to absorb variable heights. */
   .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; min-width: 0; overflow-wrap: break-word; }
-  .proj-name { font-size: 16px; font-weight: 700; color: var(--text); overflow-wrap: break-word; margin-top: 2px; }
+  /* redesign/v6 (owner feedback, 2026-07-30): align-items:start (added
+     last pass to stop cards stretching) fixed the dead-gap bug but
+     traded it for a genuinely uneven grid -- a 2-line title made just
+     that one card taller than its row-mates, with no room reserved for
+     it elsewhere. Reserving 2 lines' worth of height up front means
+     every card budgets the same space for its title regardless of
+     whether it actually wraps, so the grid reads as uniform again --
+     without reintroducing truncation for a title that needs 2 lines. */
+  .proj-name { font-size: 16px; font-weight: 700; line-height: 1.3; min-height: 2.6em; color: var(--text); overflow-wrap: break-word; margin-top: 2px; }
   /* Chips, not bare wrapped text — at the card's narrower widths three
      plain text runs ("7 tasks" / "★ 1 pinned" / "⚠ 1 overdue") wrapped
      onto three separate lines with uneven spacing (owner-reported,
