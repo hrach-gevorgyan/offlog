@@ -219,13 +219,16 @@
         {@const done = isDone(t)}
         <div
           class="task-row"
+          style="--prio-color:{PRIO_COLOR[t.priority]}"
+          title={PRIO_LABEL[t.priority]}
           role="button"
           tabindex="0"
           on:click={() => openDetail(t)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
         >
-          <button class="circle" class:done on:click|stopPropagation={() => markDone(t)} title={done ? 'Done' : 'Mark done'} aria-label={done ? 'Done' : 'Mark done'} disabled={done}></button>
-          <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
+          <button class="circle" class:done on:click|stopPropagation={() => markDone(t)} title={done ? 'Done' : 'Mark done'} aria-label={done ? 'Done' : 'Mark done'} disabled={done}>
+            {#if done}<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>{/if}
+          </button>
           <div class="task-body">
             <span class="task-title" class:done>{t.title}</span>
             <span class="proj-badge">{$projects.find(p => p._id === t.project_id)?.name ?? '—'}</span>
@@ -379,10 +382,11 @@
 
   .task-row {
     display: grid;
-    grid-template-columns: 20px 10px 1fr auto;
+    grid-template-columns: 20px 1fr auto;
     align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--surface);
+    border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
+    background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
     transition: background .1s, box-shadow .1s;
   }
@@ -397,14 +401,17 @@
   .suggest-chip.due_soon  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
   .suggest-chip.priority  { background: var(--col-bg); color: var(--faint); }
 
+  /* Same minimal checkbox language as ListView/DeadlinesView's .circle
+     (owner feedback, 2026-07-28) -- rounded square, no fill, border-only. */
   .circle {
-    width: 18px; height: 18px; border-radius: 50%;
+    width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
-    border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s, background .12s; display: block;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
+    transition: border-color .12s;
   }
-  .circle:hover { border-color: var(--accent); background: var(--hover); }
-  .circle.done { background: var(--success); border-color: var(--success); cursor: default; }
+  .circle:hover { border-color: var(--accent); }
+  .circle.done { border-color: var(--accent); cursor: default; }
   .task-title.done { text-decoration: line-through; color: var(--muted); }
 
   .check {
