@@ -26,6 +26,11 @@
   // note already reached.
   export let value = '09:00';
   export let disabled = false;
+  // Forwarded straight to each CustomSelect (owner feedback, 2026-07-30) --
+  // a picker sitting near the bottom of a scrollable panel (e.g. Quiet
+  // hours) needs its dropdown to open upward or it renders clipped/
+  // fighting the panel's own scroll instead of just showing above.
+  export let placement: 'up' | 'down' = 'down';
 
   const dispatch = createEventDispatcher<{ change: string }>();
 
@@ -63,14 +68,14 @@
 
 <div class="time-picker">
   {#if is24h}
-    <CustomSelect options={HOURS_24} value={pad(hour24)} {disabled} on:change={onHour24} />
+    <CustomSelect options={HOURS_24} value={pad(hour24)} {disabled} {placement} on:change={onHour24} />
     <span class="time-sep">:</span>
-    <CustomSelect options={MINUTES} value={m ?? '00'} {disabled} on:change={onMinute} />
+    <CustomSelect options={MINUTES} value={m ?? '00'} {disabled} {placement} on:change={onMinute} />
   {:else}
-    <CustomSelect options={HOURS_12} value={hour12} {disabled} on:change={onHour12} />
+    <CustomSelect options={HOURS_12} value={hour12} {disabled} {placement} on:change={onHour12} />
     <span class="time-sep">:</span>
-    <CustomSelect options={MINUTES} value={m ?? '00'} {disabled} on:change={onMinute} />
-    <CustomSelect options={PERIODS} value={period} {disabled} on:change={onPeriod} />
+    <CustomSelect options={MINUTES} value={m ?? '00'} {disabled} {placement} on:change={onMinute} />
+    <CustomSelect options={PERIODS} value={period} {disabled} {placement} on:change={onPeriod} />
   {/if}
 </div>
 

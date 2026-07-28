@@ -13,7 +13,7 @@
     wipeAndReseed,
   } from './db';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
   import { timeAgo, fmtLastSynced, localDateStr } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
   import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission, rescheduleAll } from './notifications';
@@ -165,6 +165,18 @@
 
   // ── Notifications ───────────────────────────────────────────────────────
   const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
+  // Master in-app toggle (owner feedback, 2026-07-30) -- same pattern as
+  // the Sync tab's own enabled/disabled switch gating its sub-settings.
+  // Independent of the OS permission below: that one can only ever be
+  // *granted* from in-app (no platform lets you revoke it programmatically,
+  // hence no "Disable" button next to "Enable" there) — this is the real
+  // on/off switch, config.ts's getNotificationsEnabled().
+  let notificationsEnabled = getNotificationsEnabled();
+  function toggleNotificationsEnabled() {
+    notificationsEnabled = !notificationsEnabled;
+    setNotificationsEnabled(notificationsEnabled);
+    rescheduleAll().catch(() => {});
+  }
   // B12: default time-of-day used when a task's "remind me on the due
   // date" toggle derives reminder_at — per-device, same reasoning as B36's
   // localStorage choices (see config.ts's getDefaultReminderTime()).
@@ -1095,6 +1107,18 @@
 
             {:else if activeCategory === 'notifications'}
               <div class="setting-group">
+                <div class="setting-section-title">Status</div>
+                <div class="setting-row">
+                  <span class="setting-label">{notificationsEnabled ? 'Task reminders enabled' : 'Task reminders off'}</span>
+                  <button class="toggle-btn" class:on={notificationsEnabled} on:click={toggleNotificationsEnabled} aria-label="Toggle task reminders" role="switch" aria-checked={notificationsEnabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                <p class="setting-hint">Turn this off to stop all reminders in-app, regardless of the OS permission below.</p>
+              </div>
+
+              {#if notificationsEnabled}
+              <div class="setting-group">
                 <div class="setting-section-title">Permission</div>
                 <div class="setting-row">
                   <span class="setting-label">
@@ -1144,13 +1168,14 @@
                 {#if quietHours.enabled}
                   <div class="setting-row">
                     <span class="setting-label">From</span>
-                    <TimePicker value={quietHours.start} on:change={(e) => saveQuietHours({ start: e.detail })} />
+                    <TimePicker value={quietHours.start} placement="up" on:change={(e) => saveQuietHours({ start: e.detail })} />
                     <span class="setting-label">to</span>
-                    <TimePicker value={quietHours.end} on:change={(e) => saveQuietHours({ end: e.detail })} />
+                    <TimePicker value={quietHours.end} placement="up" on:change={(e) => saveQuietHours({ end: e.detail })} />
                   </div>
                 {/if}
                 <p class="setting-hint">A reminder due in this window fires as soon as it ends instead of interrupting you.</p>
               </div>
+              {/if}
 
             {:else if activeCategory === 'sync'}
               <div class="setting-group">
