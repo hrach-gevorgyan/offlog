@@ -415,16 +415,22 @@
     <div class="detail-block">
       <label>
         Due date
-        <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
-        <div class="due-shortcuts">
-          {#each DUE_SHORTCUTS as s}
-            <button
-              type="button"
-              class="due-shortcut"
-              class:active={due_date === dateFromToday(s.days, s.months)}
-              on:click={() => due_date = dateFromToday(s.days, s.months)}
-            >{s.label}</button>
-          {/each}
+        <!-- Owner feedback, 2026-07-30: "one row with datepicker" -- the
+             picker and its shortcut pills used to stack on separate
+             rows; now share one, the picker keeping a fixed-ish width
+             so the pills have real room next to it. -->
+        <div class="due-date-row">
+          <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
+          <div class="due-shortcuts">
+            {#each DUE_SHORTCUTS as s}
+              <button
+                type="button"
+                class="due-shortcut"
+                class:active={due_date === dateFromToday(s.days, s.months)}
+                on:click={() => due_date = dateFromToday(s.days, s.months)}
+              >{s.label}</button>
+            {/each}
+          </div>
         </div>
       </label>
     </div>
@@ -736,10 +742,15 @@
      borderless (background-only, like the app's other tag/chip
      language elsewhere), a bit more breathing room, and separated from
      the date field above instead of sitting flush against it. */
+  /* The picker keeps a fixed-ish width (doesn't stretch to fill the row
+     the way its own 100%-width trigger normally would) so the pills get
+     real room next to it instead of being pushed off/wrapped. */
+  .due-date-row { display: flex; align-items: center; gap: 8px; }
+  .due-date-row :global(.cal-field) { flex: 0 0 auto; width: 150px; }
   /* One row, always (owner feedback, 2026-07-30) -- nowrap + overflow-x
      auto as a safety valve on very narrow widths (a horizontal scroll on
      4 short pills reads better than an awkward 3+1 wrap). */
-  .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 6px; overflow-x: auto; }
+  .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 0; overflow-x: auto; flex: 1; min-width: 0; }
   .due-shortcut {
     background: var(--col-bg); color: var(--muted); border: none;
     border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
