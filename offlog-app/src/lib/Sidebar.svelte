@@ -712,38 +712,59 @@
   }
 
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; }
-  .sidebar.collapsed .sidebar-top { justify-content: center; padding-bottom: .5rem; }
-  /* Owner feedback, 2026-07-30 ("change sidebar hide and open button"):
-     was a bare chevron with no visible container, floating with nothing
-     around it -- gave it a proper button treatment (border + background),
-     same visual language as the icon-btn footer buttons, so it actually
-     reads as a clickable control. */
+  .sidebar.collapsed .sidebar-top { justify-content: center; padding-bottom: .6rem; }
+  /* Deliberately smaller and ghost-style (transparent until hover) so it
+     doesn't compete visually with the 32px nav icon boxes below it --
+     owner feedback, 2026-07-30: the two were close enough in size/weight
+     to cause a moment of "which one is Dashboard vs the toggle". */
   .collapse-toggle {
     display: flex; align-items: center; justify-content: center;
-    width: 26px; height: 26px; flex-shrink: 0;
-    background: var(--hover); border: 1px solid var(--border-strong); cursor: pointer;
-    color: var(--muted); border-radius: var(--radius-sm);
+    width: 22px; height: 22px; flex-shrink: 0;
+    background: none; border: 1px solid transparent; cursor: pointer;
+    color: var(--faint); border-radius: var(--radius-sm);
     transition: background .12s, color .12s, border-color .12s;
   }
-  .collapse-toggle:hover { background: var(--surface); color: var(--text); border-color: var(--accent); }
+  .collapse-toggle:hover { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
   .collapse-toggle svg { transition: transform .15s ease; }
   .collapse-toggle svg.flipped { transform: rotate(180deg); }
 
-  /* Collapsed rail (owner-requested, 2026-07-30) -- primary nav buttons
-     center their icon and drop the label via {#if !collapsed} in the
-     template; this just re-centers what's left. */
-  .sidebar.collapsed .nav-btn { justify-content: center; padding: .5rem; }
-  .sidebar.collapsed .icon-btn { padding: .5rem; }
+  /* Owner feedback, 2026-07-30 ("something is not good" -- three
+     different visual languages for one rail: nav icons were boxed only
+     when active, space icons always had a tinted box, footer icons
+     always had a bulky bordered box). One shared, consistent 32px box
+     for nav + footer icons now: transparent at rest, a plain hover
+     background, with each control's own active/status color (accent
+     tint, sync-error red, etc.) still layered on top since this rule
+     only touches background/border at REST -- .nav-btn.active and
+     .icon-btn-sync's state classes are lower-specificity single
+     classes, but they still show through because this compound
+     selector doesn't declare a competing background of its own except
+     on :hover. */
+  .sidebar.collapsed .nav-btn,
+  .sidebar.collapsed .icon-btn {
+    width: 32px; height: 32px; padding: 0;
+    border-radius: 8px; justify-content: center;
+    background: none; border: 1px solid transparent;
+  }
+  .sidebar.collapsed .nav-btn:hover,
+  .sidebar.collapsed .icon-btn:hover {
+    background: var(--hover);
+  }
 
   .tree-section-collapsed {
     display: flex; flex-direction: column; align-items: center; gap: .6rem;
-    padding-top: .5rem; flex: 1; min-height: 90px; overflow-y: auto;
+    padding-top: .5rem; flex: 0 1 auto; min-height: 0; overflow-y: auto;
   }
   .space-icon-only {
-    width: 30px; height: 30px; flex-shrink: 0;
+    width: 32px; height: 32px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 8px; cursor: pointer; border: none;
-    opacity: .75; transition: opacity .12s, box-shadow .12s;
+    border-radius: 8px; cursor: pointer;
+    /* A real border (not just a tinted background) so even a light/
+       neutral space color stays visible against the sidebar background
+       -- owner feedback, 2026-07-30: the default gray space nearly
+       vanished with just a translucent fill. */
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+    opacity: .8; transition: opacity .12s, box-shadow .12s;
   }
   .space-icon-only :global(svg) { width: 15px; height: 15px; }
   .space-icon-only:hover, .space-icon-only.active { opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
