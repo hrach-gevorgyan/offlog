@@ -358,6 +358,19 @@ metadata is set (already is, via `tauri.conf.json`). Tracked as
 ROADMAP.md's C3b. Doesn't touch Android at all — that warning is
 solved separately by C3's Play Store listing, unrelated to this.
 
+### SignPath Foundation application declined, not on merit (2026-07-29)
+Applied 2026-07-28; Foundation response 2026-07-29 declined the
+certificate, explicitly stating it isn't a judgment on code quality —
+their program requires external public-visibility signals (GitHub
+stars/forks/contributors, independent articles/discussion/reviews,
+institutional backing) that a repo this young and not-yet-public
+can't show yet. They explicitly invited reapplication once that
+changes. No design/eligibility problem to fix — Offlog still meets
+every eligibility criterion checked in the entry above. C3b is parked
+in ROADMAP.md until the project has some organic public traction
+(post going-public, real stars/forks, maybe an external mention) to
+reapply with; nothing to actively do here in the meantime.
+
 ### Why Tauri, not Electron, for the PC standalone app (2026-07-14)
 Resolves IDEAS.md's former Q6. Decided by prototyping both the
 riskiest parts rather than debating on paper: a Tauri shell wrapping

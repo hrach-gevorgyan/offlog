@@ -5,13 +5,14 @@
   import { cubicOut } from 'svelte/easing';
   import { popScale } from './motion';
   import type { ProjectDoc, TaskDoc } from './types';
-  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, subscribe } from './db';
+  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, getTagColorOverrides, subscribe } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
   import { filterTasks, localDateStr } from './utils';
   import { hapticToggle, hapticDragStart, hapticDragDrop } from './haptics';
+  import { resolveTagColor } from './tagColors';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -338,18 +339,13 @@
     return '';
   }
 
-  // redesign/v6, follow-up critique (2026-07-28): tags all rendered as
-  // identical gray, forcing the user to read each one rather than
-  // recognize it by color. Offlog tags are free-text, not a fixed
-  // taxonomy (no built-in "bug"=red mapping) -- a deterministic hash to
-  // a small fixed palette gives every tag its own consistent color
-  // across the whole app (same tag always looks the same) without
-  // inventing a category system that doesn't exist in the data model.
-  const TAG_PALETTE = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+  // v6.11.0: hash-to-palette fallback (tagColors.ts) plus any per-tag
+  // color a user picked in Settings -> Organize -> Manage Tags. Reloaded
+  // on any db change (below) since an override can be set from that
+  // panel while this board stays mounted.
+  let tagColorOverrides: Record<string, string> = {};
   function tagColor(tag: string): string {
-    let hash = 0;
-    for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
-    return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
+    return resolveTagColor(tag, tagColorOverrides);
   }
 
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
@@ -487,6 +483,11 @@
   onMount(() => {
     getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids);
     return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
+  });
+
+  onMount(() => {
+    getTagColorOverrides().then(o => tagColorOverrides = o);
+    return subscribe(() => { getTagColorOverrides().then(o => tagColorOverrides = o); });
   });
 
   onDestroy(() => {

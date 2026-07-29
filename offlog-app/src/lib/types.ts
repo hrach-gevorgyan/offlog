@@ -22,6 +22,22 @@ export interface SpaceDoc {
   source: Source;
 }
 
+// v6.11.0 — optional per-tag color override. Tags themselves are still
+// plain free-text on TaskDoc.tags (no schema change needed there) --
+// this is a separate, tiny doc only for tags a user explicitly picked a
+// color for, keyed directly by tag name (`tag:<name>`) since lookups are
+// always by name, never a range scan. Absent = falls back to
+// tagColors.ts's deterministic hash color.
+export interface TagColorDoc {
+  _id: string;          // "tag:<tag-name>"
+  _rev?: string;
+  type: 'tag_color';
+  tag: string;
+  color: string;
+  updated_at: string;
+  source: Source;
+}
+
 export interface Column {
   id: string;           // "col:<nanoid>"
   name: string;

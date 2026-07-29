@@ -12,7 +12,7 @@ import db, {
   invalidateTaskCache,
   seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair, scanConflicts,
   createSpace, updateSpace, reorderSpaces, deleteSpace,
-  getTagCounts, renameTag, deleteTagEverywhere,
+  getTagCounts, renameTag, deleteTagEverywhere, getTagColorOverrides, setTagColor,
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
   getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
   getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
@@ -893,6 +893,46 @@ describe('tag management', () => {
     const tasks = await getTasksForProject(project._id);
     expect(tasks.find(t => t._id === t1._id)!.tags).toEqual([]);
     expect(tasks.find(t => t._id === t2._id)!.tags).toEqual(['keep']);
+  });
+
+  it('sets, overwrites, and clears a tag color override', async () => {
+    await setTagColor('urgent', '#EF4444');
+    expect(await getTagColorOverrides()).toEqual({ urgent: '#EF4444' });
+
+    await setTagColor('urgent', '#3B82F6');
+    expect(await getTagColorOverrides()).toEqual({ urgent: '#3B82F6' });
+
+    await setTagColor('urgent', null);
+    expect(await getTagColorOverrides()).toEqual({});
+  });
+
+  it('carries a color override to the new name on rename, unless the new name already has one', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+    await updateTask(task._id!, { tags: ['wrk'] });
+    await setTagColor('wrk', '#EF4444');
+
+    await renameTag('wrk', 'work');
+    expect(await getTagColorOverrides()).toEqual({ work: '#EF4444' });
+
+    // Merging into a tag that already has its own override keeps that
+    // override rather than the one being merged away.
+    await updateTask(task._id!, { tags: ['work', 'other'] });
+    await setTagColor('other', '#10B981');
+    await renameTag('other', 'work');
+    expect(await getTagColorOverrides()).toEqual({ work: '#EF4444' });
+  });
+
+  it('removes a tag color override when the tag is deleted everywhere', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+    await updateTask(task._id!, { tags: ['temp'] });
+    await setTagColor('temp', '#F59E0B');
+
+    await deleteTagEverywhere('temp');
+    expect(await getTagColorOverrides()).toEqual({});
   });
 });
 

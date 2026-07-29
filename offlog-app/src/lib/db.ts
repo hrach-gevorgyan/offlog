@@ -8,7 +8,7 @@
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
 import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled, getDefaultReminderTime } from '../config';
-import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef } from './types';
+import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef, TagColorDoc } from './types';
 import { wordOverlapSimilarity, localDateStr } from './utils';
 
 (PouchDB as any).plugin(PouchDBFind);
@@ -1603,6 +1603,39 @@ export async function getAllTags(projectId?: string): Promise<string[]> {
 // would drown out everything else in the activity log for what's really a
 // single admin action.
 
+// v6.11.0 — per-tag color override, one tiny doc per overridden tag
+// (`tag:<name>`), point-lookup only (never a range scan across other
+// prefixes) so this doesn't need its own logChange() entries either.
+async function getTagColorDoc(tag: string): Promise<TagColorDoc | undefined> {
+  try { return await db.get<TagColorDoc>(`tag:${tag}`); } catch { return undefined; }
+}
+
+export async function getTagColorOverrides(): Promise<Record<string, string>> {
+  const r = await db.allDocs<TagColorDoc>({ startkey: 'tag:', endkey: 'tag:￰', include_docs: true });
+  const out: Record<string, string> = {};
+  for (const row of r.rows) if (row.doc) out[row.doc.tag] = row.doc.color;
+  return out;
+}
+
+// color === null clears the override, reverting that tag back to its
+// deterministic hash color (tagColors.ts).
+export async function setTagColor(tag: string, color: string | null): Promise<void> {
+  const existing = await getTagColorDoc(tag);
+  if (color === null) {
+    if (existing) await db.remove(existing);
+    return;
+  }
+  await db.put<TagColorDoc>({
+    _id: `tag:${tag}`,
+    _rev: existing?._rev,
+    type: 'tag_color',
+    tag,
+    color,
+    updated_at: now(),
+    source: SOURCE,
+  });
+}
+
 export async function getTagCounts(): Promise<{ tag: string; count: number }[]> {
   const all = await getAllTasksRaw();
   const counts = new Map<string, number>();
@@ -1631,20 +1664,32 @@ export async function renameTag(oldTag: string, newTag: string): Promise<number>
   }));
   await db.bulkDocs(updates);
   invalidateTaskCache();
+  // Carry the old tag's color override to the new name -- but only if the
+  // new name doesn't already have its own override, since merging into an
+  // existing tag should keep that tag's color, not the one being merged away.
+  const oldColorDoc = await getTagColorDoc(oldTag);
+  if (oldColorDoc) {
+    const newHasOverride = await getTagColorDoc(trimmed);
+    if (!newHasOverride) await setTagColor(trimmed, oldColorDoc.color);
+    await db.remove(oldColorDoc);
+  }
   return updates.length;
 }
 
 export async function deleteTagEverywhere(tag: string): Promise<number> {
   const all = await getAllTasksRaw();
   const affected = all.filter(t => !t.deleted && t.tags?.includes(tag));
-  if (!affected.length) return 0;
   const updates = affected.map(t => ({
     ...t,
     tags: t.tags.filter(x => x !== tag),
     updated_at: now(), source: SOURCE,
   }));
-  await db.bulkDocs(updates);
-  invalidateTaskCache();
+  if (updates.length) {
+    await db.bulkDocs(updates);
+    invalidateTaskCache();
+  }
+  const colorDoc = await getTagColorDoc(tag);
+  if (colorDoc) await db.remove(colorDoc);
   return updates.length;
 }
 

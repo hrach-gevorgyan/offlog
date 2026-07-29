@@ -46,6 +46,23 @@
     localStorage.setItem(COLLAPSED_KEY, String(collapsed));
   }
 
+  // Collapse-to-rail only makes sense for the desktop persistent sidebar --
+  // on mobile the sidebar is already a temporary full-width overlay drawer
+  // (see the mobile media query in <style>), so shrinking it to an icon rail
+  // just produces a tiny floating rail over the page with no way to reach
+  // the full nav short of the same toggle. `collapsed` itself (the desktop
+  // preference) stays untouched by viewport size -- only what's actually
+  // rendered/toggleable is gated, so resizing back to desktop restores
+  // whatever the user last chose there (owner-flagged 2026-07-29).
+  let isMobile = false;
+  function checkMobile() { isMobile = window.innerWidth <= 768; }
+  onMount(() => {
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+  });
+  onDestroy(() => window.removeEventListener('resize', checkMobile));
+  $: effectiveCollapsed = collapsed && !isMobile;
+
   // Collapsed rail's icons are meant for quick glancing/switching, not full
   // project browsing — clicking a space icon there expands back to the
   // full sidebar, opens that space, and jumps straight to its first
@@ -400,20 +417,21 @@
 <aside
   class="sidebar"
   class:mobile-open={open}
-  class:collapsed
+  class:collapsed={effectiveCollapsed}
   class:resizing
   class:expanding
-  style="--sidebar-w: {(!collapsed || expanding) ? sidebarWidth : COLLAPSED_WIDTH}px"
+  style="--sidebar-w: {(!effectiveCollapsed || expanding) ? sidebarWidth : COLLAPSED_WIDTH}px"
 >
   <div class="sidebar-top">
-    {#if !collapsed}<div class="logo">Offlog</div>{/if}
-    <button class="collapse-toggle" on:click={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+    {#if !effectiveCollapsed}<div class="logo">Offlog</div>{/if}
+    {#if !isMobile}
+    <button class="collapse-toggle" on:click={toggleCollapsed} title={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
       <!-- Owner feedback, 2026-07-30 (5th round): a plain rotating chevron
            read as generic; a "sidebar panel" glyph (frame + a narrower rail
            section + a chevron) reads unambiguously as a sidebar toggle even
            at 13px. Two literal variants (not one icon rotated) since the
            panel's chevron needs to flip sides, not just point the other way. -->
-      {#if collapsed}
+      {#if effectiveCollapsed}
         <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="2.5" width="12" height="11" rx="2"/>
           <line x1="6.5" y1="2.5" x2="6.5" y2="13.5"/>
@@ -427,6 +445,7 @@
         </svg>
       {/if}
     </button>
+    {/if}
   </div>
 
   <!-- Real bug, owner-reported 2026-07-30: these three buttons only ever
@@ -449,7 +468,7 @@
         <rect x="2" y="10" width="6" height="6" rx="1"/>
         <rect x="10" y="10" width="6" height="6" rx="1"/>
       </svg>
-      {#if !collapsed}Dashboard{/if}
+      {#if !effectiveCollapsed}Dashboard{/if}
     </button>
 
     <button
@@ -463,7 +482,7 @@
         <circle cx="9" cy="9" r="3.5"/>
         <circle cx="9" cy="9" r="0.6" fill="currentColor"/>
       </svg>
-      {#if !collapsed}Focus{/if}
+      {#if !effectiveCollapsed}Focus{/if}
     </button>
 
     <button
@@ -479,12 +498,12 @@
         <line x1="12" y1="1.5" x2="12" y2="4.5"/>
         <line x1="6" y1="11" x2="12" y2="11"/>
       </svg>
-      {#if !collapsed}Agenda{/if}
+      {#if !effectiveCollapsed}Agenda{/if}
     </button>
   </nav>
   <div class="spaces-divider"></div>
 
-  {#if collapsed}
+  {#if effectiveCollapsed}
     <!-- Collapsed rail (owner-requested, 2026-07-30, ahead of the sidebar
          redesign pass): space icons only, no project tree -- this rail is
          for quick glancing/switching, not full browsing. Clicking a space
@@ -614,7 +633,7 @@
     <!-- Owner-picked order (owner feedback, 2026-07-30): Time Travel,
          Recycle, Settings, Sync last (moved here from first per a
          follow-up round). -->
-    <div class="bottom-row" class:bottom-row-collapsed={collapsed}>
+    <div class="bottom-row" class:bottom-row-collapsed={effectiveCollapsed}>
       <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="Time Travel">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
@@ -665,7 +684,7 @@
     </div>
   </div>
 
-  {#if !collapsed}
+  {#if !effectiveCollapsed}
     <!-- Drag-to-resize (owner-requested, 2026-07-30). Hidden entirely on
          mobile via the media query below -- the mobile drawer is a fixed-
          width overlay, not a resizable column. -->

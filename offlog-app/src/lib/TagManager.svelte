@@ -2,11 +2,12 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { panelFly, scrimFade } from './motion';
-  import { getTagCounts, renameTag, deleteTagEverywhere, subscribe } from './db';
+  import { getTagCounts, renameTag, deleteTagEverywhere, getTagColorOverrides, setTagColor, subscribe } from './db';
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
+  import { TAG_PALETTE, resolveTagColor } from './tagColors';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -14,8 +15,13 @@
   let items: { tag: string; count: number }[] = [];
   let editingTag: string | null = null;
   let editingName = '';
+  let overrides: Record<string, string> = {};
+  let openPicker: string | null = null;
 
-  async function load() { items = await getTagCounts(); }
+  async function load() {
+    items = await getTagCounts();
+    overrides = await getTagColorOverrides();
+  }
 
   onMount(() => {
     load();
@@ -24,7 +30,17 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') { if (editingTag) editingTag = null; else requestClose(); }
+    if (e.key === 'Escape') { if (openPicker) openPicker = null; else if (editingTag) editingTag = null; else requestClose(); }
+  }
+
+  async function pickColor(tag: string, color: string | null) {
+    openPicker = null;
+    try {
+      await setTagColor(tag, color);
+      await load();
+    } catch {
+      showError('Failed to update tag color. Please try again.');
+    }
   }
 
   function startEdit(tag: string) { editingTag = tag; editingName = tag; }
@@ -73,6 +89,13 @@
     {:else}
       {#each items as { tag, count } (tag)}
         <div class="row">
+          <button
+            class="color-dot"
+            style="background:{resolveTagColor(tag, overrides)}"
+            title="Change color for tag {tag}"
+            aria-label="Change color for tag {tag}"
+            on:click={() => openPicker = openPicker === tag ? null : tag}
+          ></button>
           {#if editingTag === tag}
             <!-- svelte-ignore a11y-autofocus -->
             <input
@@ -88,6 +111,21 @@
           <span class="count">{count}</span>
           <button class="delete-btn" on:click={() => remove(tag, count)} title="Delete tag" aria-label="Delete tag {tag}">×</button>
         </div>
+        {#if openPicker === tag}
+          <div class="swatch-row">
+            {#each TAG_PALETTE as c}
+              <button
+                class="swatch"
+                class:swatch-active={overrides[tag] === c}
+                style="background:{c}"
+                title={c}
+                aria-label="Set tag {tag} color to {c}"
+                on:click={() => pickColor(tag, c)}
+              ></button>
+            {/each}
+            <button class="swatch-auto" on:click={() => pickColor(tag, null)} title="Use automatic color" aria-label="Use automatic color for tag {tag}">Auto</button>
+          </div>
+        {/if}
       {/each}
     {/if}
   </div>
@@ -153,4 +191,31 @@
     flex-shrink: 0; transition: background .1s, color .1s;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+
+  /* v6.11.0 — tag color override picker. */
+  .color-dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid var(--border-strong); cursor: pointer; padding: 0;
+    transition: transform .1s;
+  }
+  .color-dot:hover { transform: scale(1.15); }
+
+  .swatch-row {
+    display: flex; align-items: center; gap: 7px;
+    padding: 4px 0 10px 24px; border-bottom: 1px solid var(--border);
+  }
+  .swatch {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid transparent; cursor: pointer; padding: 0;
+    transition: transform .1s, border-color .1s;
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch-active { border-color: var(--text); }
+  .swatch-auto {
+    margin-left: 4px; background: none; border: 1px solid var(--border-strong);
+    color: var(--faint); font-family: var(--mono); font-size: 10.5px;
+    padding: 2px 8px; border-radius: 6px; cursor: pointer;
+    transition: background .1s, color .1s;
+  }
+  .swatch-auto:hover { background: var(--hover); color: var(--text); }
 </style>

@@ -72,38 +72,35 @@ being findable and installable without knowing what "sideload" means.
   (`Mobile - Screenshots/play-ready/`, padded to a safe ≈2:1 ratio
   without cropping content, 2026-07-28) all meet Play Console's size/
   format requirements.
-- **C3b — Windows code signing via SignPath (owner-decided,
-  2026-07-23).** Removes the Windows SmartScreen "unverified
-  publisher" warning on the installer — free for qualifying open-source
-  projects, evaluated against SignPath Foundation's actual eligibility
-  list and Offlog is a clean fit (MIT, no proprietary deps, active,
-  released, no telemetry — see DECISIONS.md for the full check).
-  Prep done: `docs/SIGNING.md` (public signing policy), installer
-  binary metadata (`tauri.conf.json`'s `publisher`/`copyright`).
-  **Application submitted to SignPath Foundation, 2026-07-28** —
-  now waiting on Foundation review (days–weeks). Once approved: wire
-  the signing step into `release.yml` as an additional job on the
-  Windows installer the workflow already builds (see SIGNING.md's
-  "how a signed build is produced" section for the exact flow it
-  needs to slot into). Android's Play Store warning is a separate,
-  unrelated thing (solved by C3's $25 fee, not this).
 - **C5 — Landing page.** A single plain GitHub Pages page using
   BRAND.md's tagline/copy, linking the Play Store listing (once live)
   and GitHub Releases. Deliberately after or alongside C3 so it has
-  something better than an APK to link to. (~1 session.)
+  something better than an APK to link to. (~1 session.) **On hold,
+  owner has no energy for it right now (2026-07-29)** — not blocking
+  anything else, pick up whenever.
 
-**One-time owner action (5 minutes, browser, free on public repos):**
-GitHub → Settings → Code security: enable **secret scanning** and
-**push protection** (blocks a committed key/token before it lands —
-the v5.7.1 incident class, at the git layer), and **dependency
-review** on PRs. These were noted at the public flip and are still
-unenabled. Beyond this, security improvement is B61 (milestone 1) and
+GitHub secret scanning, push protection, and dependency review are
+**already enabled** (owner confirmed 2026-07-29 — done, not tracked
+here anymore). Beyond this, security improvement is B61 (milestone 1) and
 the standing MAINTENANCE.md checklist — sync-transport encryption
 (TLS on the LAN link) was considered and stays out: the manifesto's
 stance is that home-Wi-Fi sync is private by scope, and self-signed
 cert trust on Android would break the zero-config pairing promise for
 marginal gain on a home network. Revisit only if a real user reports a
 real hostile-LAN use case.
+
+**C3b — Windows code signing via SignPath, decoupled from Milestone 2
+(owner clarification, 2026-07-29).** Not required for "Installable by
+normal humans" or for Done — Android (C3) is the real distribution
+path for normal humans; the Windows SmartScreen warning is a nice-to-
+remove, not a blocker. **Free-program-only, permanently** — the whole
+point of SignPath over a paid cert was avoiding a recurring fee (see
+DECISIONS.md); if SignPath isn't free for this project, this stays
+undone rather than ever paying for a certificate. **Applied
+2026-07-28, declined 2026-07-29** for insufficient public-visibility
+signals, reapplication explicitly welcomed later — see DECISIONS.md.
+Pick up again whenever it's free to (public repo + some organic
+traction), no schedule, not gating anything else.
 
 ### Milestone 3 — "Done" (whenever 1 and 2 are done — no separate work)
 
@@ -164,12 +161,13 @@ owner is ready to build it, not on a schedule.
   typing — platform speech-to-text (Android's built-in recognizer / Web
   Speech API where available) feeding the existing NLP regex parser, no
   cloud service of our own. Medium; Android-first.
-- **v6.6.0 — Distraction-minimal interface pass.** Owner's framing:
-  every productivity app (ours included) accumulates too many
-  on-screen things; the create-work-complete lifecycle should be the
-  whole visible surface. Not a feature — a *reduction* pass: audit
-  every view for chrome that doesn't serve the current task, possibly a
-  "minimal mode" toggle. Large-ish in judgment, small in code.
+- **v6.6.0 — Distraction-minimal interface pass — DONE (owner call,
+  2026-07-29), satisfied by the 5.9.0 Sidebar + CardDetail redesign.**
+  CardDetail's optional fields (Repeat/Reminder, Checklist, Custom
+  Fields, Related, Notes) consolidated under one manually-opened
+  "Extras" panel instead of always-visible blocks; Recent quick-resume
+  section and per-space project-count badge removed; active-state
+  highlighting unified/toned down across nav/space/project rows.
 - **v6.7.0 — Task linking — DONE 2026-07-28** (pulled forward ahead of
   v6.0.0 at owner request). Related-only, non-directional links (no
   blocks/blocked-by dependency semantics — scoped down from the
@@ -200,16 +198,18 @@ owner is ready to build it, not on a schedule.
   in-app. (The "connected tools" half of the original idea is out of
   scope — no live connections, per the manifesto; imported data becomes
   normal Offlog data and is searched like everything else.)
-- **v6.11.0 — Tag color picker.** Added 2026-07-28, from the `redesign/
-  v6` branch's Kanban work: tags there get a deterministic hash-to-
-  palette color so the same tag always looks the same, but a user can't
-  override which color a given tag gets. `TagManager.svelte` (Settings
-  → Organize → Manage Tags) already has the batch rename/delete UI for
-  tags — a color swatch/picker per row is the natural place to add a
-  manual override. Needs a small schema addition (tags today are plain
-  free-text on `TaskDoc.tags`, no separate tag-metadata doc to store a
-  color against) — a new `tag:<name>` doc type holding just `{ color }`,
-  falling back to the hash color when no override doc exists.
+- **v6.11.0 — Tag color picker — DONE 2026-07-29.** Added 2026-07-28
+  from the `redesign/v6` branch's Kanban work (deterministic hash-to-
+  palette color so the same tag always looks the same); this shipped
+  the manual override. New `tag:<name>` doc (`TagColorDoc` in
+  `types.ts`) holding just `{ color }`, `db.ts`'s `getTagColorOverrides()`/
+  `setTagColor()`, falling back to `tagColors.ts`'s shared hash when no
+  override exists. Rename/delete (`renameTag`/`deleteTagEverywhere`)
+  carry or clean up the override doc accordingly. Picker UI is a color-
+  dot + swatch row in `TagManager.svelte` (Settings -> Organize -> Manage
+  Tags); `KanbanBoard.svelte`'s card tag chips read the same override
+  map, live-reloaded on any db change. 4 new `tests/db.test.ts` cases.
+  Verified live, not just via tests.
 
 Curated with the owner from a larger brainstorm; everything declined
 (stale-task triage, daily shutdown ritual, weekly review — "so much
