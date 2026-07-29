@@ -51,6 +51,39 @@
   $: weekLabel = weekDays.length
     ? `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
     : '';
+
+  // Owner feedback, 2026-07-30: a real 7-day grid genuinely doesn't fit
+  // readably on a phone (found live at an actual ~380px viewport) --
+  // columns shrank to 64px and titles clipped, only mitigated by a
+  // scroll-shadow affordance easy to miss on a touchscreen (scrollbars
+  // are usually invisible until actively touched). Rather than patch
+  // that further, mobile shows a 3-day window it can page through one
+  // day at a time instead of squeezing all 7 in. isMobile is JS (not
+  // just a CSS media query) because which days actually render differs,
+  // not just how they're styled -- kept at the same 700px breakpoint
+  // the existing .week-grid mobile CSS already used, so JS and CSS stay
+  // in sync on what counts as "mobile" here.
+  let isMobile = false;
+  function checkMobile() { isMobile = typeof window !== 'undefined' && window.innerWidth <= 700; }
+  const MOBILE_WINDOW = 3;
+  let mobileDayStart = Math.min(Math.max(daysSinceWeekStart(new Date(), weekStartsMonday) - 1, 0), 7 - MOBILE_WINDOW);
+  function mobilePrev() {
+    if (mobileDayStart > 0) mobileDayStart -= 1;
+    else { weekOffset -= 1; mobileDayStart = 7 - MOBILE_WINDOW; }
+  }
+  function mobileNext() {
+    if (mobileDayStart < 7 - MOBILE_WINDOW) mobileDayStart += 1;
+    else { weekOffset += 1; mobileDayStart = 0; }
+  }
+  function goToToday() {
+    weekOffset = 0;
+    mobileDayStart = Math.min(Math.max(daysSinceWeekStart(new Date(), weekStartsMonday) - 1, 0), 7 - MOBILE_WINDOW);
+  }
+  $: mobileDays = weekDays.slice(mobileDayStart, mobileDayStart + MOBILE_WINDOW);
+  $: mobileLabel = mobileDays.length
+    ? `${mobileDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${mobileDays[mobileDays.length - 1].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    : '';
+  $: todayInMobileWindow = mobileDays.some(d => toDateStr(d) === today);
   // A reactive lookup, not a plain function called from the template — a
   // plain `tasksOnDay(day)` call inside {#each weekDays as day} only
   // references `tasksOnDay` and `day` in the compiler's eyes, not `all`
@@ -78,8 +111,10 @@
 
   onMount(() => {
     load();
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
     const unsub = subscribe(() => load());
-    return unsub;
+    return () => { unsub(); window.removeEventListener('resize', checkMobile); };
   });
 
   $: overdue   = all.filter(t => t.due_date! < today);
@@ -147,12 +182,18 @@
 
   {#if mode === 'week'}
     <div class="week-nav">
-      <button class="week-nav-btn" on:click={() => weekOffset -= 1} aria-label="Previous week">‹</button>
-      <span class="week-label">{weekLabel}{#if weekOffset !== 0}<button class="week-today-btn" on:click={() => weekOffset = 0}>Today</button>{/if}</span>
-      <button class="week-nav-btn" on:click={() => weekOffset += 1} aria-label="Next week">›</button>
+      {#if isMobile}
+        <button class="week-nav-btn" on:click={mobilePrev} aria-label="Previous day">‹</button>
+        <span class="week-label">{mobileLabel}{#if !todayInMobileWindow}<button class="week-today-btn" on:click={goToToday}>Today</button>{/if}</span>
+        <button class="week-nav-btn" on:click={mobileNext} aria-label="Next day">›</button>
+      {:else}
+        <button class="week-nav-btn" on:click={() => weekOffset -= 1} aria-label="Previous week">‹</button>
+        <span class="week-label">{weekLabel}{#if weekOffset !== 0}<button class="week-today-btn" on:click={goToToday}>Today</button>{/if}</span>
+        <button class="week-nav-btn" on:click={() => weekOffset += 1} aria-label="Next week">›</button>
+      {/if}
     </div>
-    <div class="week-grid">
-      {#each weekDays as day (day.toISOString())}
+    <div class="week-grid" class:mobile-window={isMobile}>
+      {#each (isMobile ? mobileDays : weekDays) as day (day.toISOString())}
         {@const dStr = toDateStr(day)}
         <div class="week-col" class:today={dStr === today}>
           <div class="week-col-head">
@@ -418,7 +459,12 @@
   }
 
   @media (max-width: 700px) {
-    .week-grid { grid-template-columns: repeat(7, minmax(64px, 1fr)); margin: 10px 12px 24px; }
+    /* 3 real columns, not 7 shrunk ones (owner feedback, 2026-07-30) --
+       see the script's isMobile/mobileDays comment. Full-width 1fr each
+       instead of the old minmax(64px,1fr) + horizontal scroll, since
+       exactly MOBILE_WINDOW days now render here, not all 7. */
+    .week-grid.mobile-window { grid-template-columns: repeat(3, 1fr); }
+    .week-grid { margin: 10px 12px 24px; }
     .week-nav { padding: 10px 12px 4px; }
     .week-task-title { font-size: .66rem; }
   }
