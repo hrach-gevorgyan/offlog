@@ -731,24 +731,22 @@
   /* Owner feedback, 2026-07-30 ("something is not good" -- three
      different visual languages for one rail: nav icons were boxed only
      when active, space icons always had a tinted box, footer icons
-     always had a bulky bordered box). One shared, consistent 32px box
-     for nav + footer icons now: transparent at rest, a plain hover
-     background, with each control's own active/status color (accent
-     tint, sync-error red, etc.) still layered on top since this rule
-     only touches background/border at REST -- .nav-btn.active and
-     .icon-btn-sync's state classes are lower-specificity single
-     classes, but they still show through because this compound
-     selector doesn't declare a competing background of its own except
-     on :hover. */
+     always had a bulky bordered box). transparent-until-hover (the
+     first attempt at this) turned out to be indistinguishable from the
+     old look in a static screenshot -- an *always-visible* box is what
+     actually reads as consistent with the space icons below, which are
+     always boxed too. Each control's own active/status color (accent
+     tint, sync-error red, etc.) still layers on top of this since it's
+     a lower layer, not a competing higher-specificity background. */
   .sidebar.collapsed .nav-btn,
   .sidebar.collapsed .icon-btn {
     width: 32px; height: 32px; padding: 0;
     border-radius: 8px; justify-content: center;
-    background: none; border: 1px solid transparent;
+    background: var(--hover); border: 1px solid transparent;
   }
   .sidebar.collapsed .nav-btn:hover,
   .sidebar.collapsed .icon-btn:hover {
-    background: var(--hover);
+    background: var(--surface); border-color: var(--border-strong);
   }
 
   .tree-section-collapsed {
@@ -959,6 +957,13 @@
     margin-top: auto; display: flex; flex-direction: column; gap: .4rem;
     padding-top: .75rem; border-top: 1px solid var(--border);
   }
+  /* Owner feedback, 2026-07-30 ("this is your fix?"): shrinking
+     .tree-section-collapsed's flex-grow had zero visible effect on the
+     dead space above the footer, because .bottom's own margin-top:auto
+     independently claims all remaining free space regardless of what
+     an earlier flex sibling does. Overriding it to a fixed gap here is
+     what actually moves the footer up next to the space icons. */
+  .sidebar.collapsed .bottom { margin-top: 1rem; }
 
   /* Icon-only rail (owner feedback, 2026-07-09): 4 buttons with text
      labels squeezed into a ~200px row wrapped/truncated unreadably.
