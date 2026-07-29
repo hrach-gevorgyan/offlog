@@ -774,7 +774,12 @@
      the checkbox flexes/shrinks with its label wrapping internally
      instead of the whole control dropping down. */
   .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-  .reminder-row :global(.cal-field) { flex: 0 0 auto; width: 150px; }
+  /* Owner feedback, 2026-07-30: "use all space, make date picker field
+     more wider" -- 150px (matching the plain due-date row) was cramped
+     next to this picker's longer date+time text. Wider fixed width,
+     checkbox keeps flex:1 for the remainder so the row still fills the
+     block's full width edge to edge. */
+  .reminder-row :global(.cal-field) { flex: 0 0 auto; width: 210px; }
   .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
