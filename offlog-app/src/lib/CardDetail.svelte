@@ -767,12 +767,14 @@
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
   .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
-  /* Same "one row" treatment as .due-date-row (owner feedback,
-     2026-07-30) -- wrap allowed as a safety valve since the withTime
-     picker's own text ("Aug 5, 2026, 9:00 AM") plus the full checkbox
-     label are both longer than the plain due-date row's contents. */
-  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .reminder-row :global(.cal-field) { flex: 0 0 auto; width: 190px; }
+  /* Owner feedback, 2026-07-30: flex-wrap dropped the checkbox to its
+     own line every time in the narrower Extras context (the checkbox's
+     own fit-content width never actually shrank, so the row always
+     overflowed and wrapped) -- genuinely not "one row". nowrap now, and
+     the checkbox flexes/shrinks with its label wrapping internally
+     instead of the whole control dropping down. */
+  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+  .reminder-row :global(.cal-field) { flex: 0 0 auto; width: 150px; }
   .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
@@ -815,9 +817,15 @@
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
   }
 
+  /* width:fit-content used to ignore however little space was actually
+     left next to the picker, so it always overflowed the row and
+     forced a wrap to a new line (owner feedback, 2026-07-30). flex:1 +
+     min-width:0 lets it shrink into whatever's left instead, with its
+     own label text wrapping internally rather than the whole checkbox
+     dropping down. */
   .remind-on-due-row {
     display: flex !important; flex-direction: row !important; align-items: center;
-    gap: .4rem; width: fit-content; max-width: 100%;
+    gap: .4rem; flex: 1; min-width: 0;
     font-size: .74rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
     padding: .3rem .55rem; border-radius: var(--radius-sm);
