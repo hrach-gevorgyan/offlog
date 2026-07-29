@@ -933,10 +933,16 @@
      five blocks (Repeat/Reminder, Checklist, Custom fields, Related,
      Notes) is now its own small card instead, so the grouping is
      visible at a glance, not just implied by a caption + hairline. */
-  /* A light indent (owner feedback, 2026-07-30: the border-left +
-     larger indent read as "too much") so the five blocks feel nested
-     under Extras without adding real visual weight of their own. */
-  .extras-panel { display: flex; flex-direction: column; gap: .4rem; margin-left: 8px; }
+  /* Owner feedback, 2026-07-30: a bare margin-left with no visual
+     anchor read as a misalignment glitch, not an intentional indent
+     ("visible and not visible at the same time" -- a hairline that
+     explains the shift without the earlier bold 2px line being "too
+     much"). A faint, low-opacity 1px border-left threads that needle. */
+  .extras-panel {
+    display: flex; flex-direction: column; gap: .4rem;
+    margin-left: 8px; padding-left: 8px;
+    border-left: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  }
   .extra-block {
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
     padding: .1rem .6rem;
