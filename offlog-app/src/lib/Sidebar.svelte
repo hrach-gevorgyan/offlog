@@ -713,10 +713,6 @@
 
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; }
   .sidebar.collapsed .sidebar-top { justify-content: center; padding-bottom: .6rem; }
-  /* Deliberately smaller and ghost-style (transparent until hover) so it
-     doesn't compete visually with the 32px nav icon boxes below it --
-     owner feedback, 2026-07-30: the two were close enough in size/weight
-     to cause a moment of "which one is Dashboard vs the toggle". */
   .collapse-toggle {
     display: flex; align-items: center; justify-content: center;
     width: 22px; height: 22px; flex-shrink: 0;
@@ -727,6 +723,18 @@
   .collapse-toggle:hover { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
   .collapse-toggle svg { transition: transform .15s ease; }
   .collapse-toggle svg.flipped { transform: rotate(180deg); }
+  /* Owner feedback, 2026-07-30 (3rd round): a smaller ghost button read
+     as its own inconsistent 4th visual language next to the uniform 32px
+     boxes below it. Collapsed mode now gives it the exact same box
+     treatment as .nav-btn/.icon-btn instead of trying to differentiate
+     it by size/weight. */
+  .sidebar.collapsed .collapse-toggle {
+    width: 32px; height: 32px;
+    background: var(--hover); border: 1px solid transparent; border-radius: 8px;
+  }
+  .sidebar.collapsed .collapse-toggle:hover {
+    background: var(--surface); border-color: var(--border-strong);
+  }
 
   /* Owner feedback, 2026-07-30 ("something is not good" -- three
      different visual languages for one rail: nav icons were boxed only
@@ -749,9 +757,16 @@
     background: var(--surface); border-color: var(--border-strong);
   }
 
+  /* flex:1 + justify-content:center -- owner feedback, 2026-07-30 (4th
+     round): "spaces button bring middle of screen". This section used to
+     size to its own content (flex: 0 1 auto) and sit right below the nav,
+     leaving all the leftover rail height as dead space above the footer.
+     Growing to fill the remaining space and centering its icons within
+     that space puts the spaces column in the vertical middle of the rail
+     instead, with the footer naturally landing at the true bottom. */
   .tree-section-collapsed {
-    display: flex; flex-direction: column; align-items: center; gap: .6rem;
-    padding-top: .5rem; flex: 0 1 auto; min-height: 0; overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem;
+    padding-top: .5rem; flex: 1 1 auto; min-height: 0; overflow-y: auto;
   }
   .space-icon-only {
     width: 32px; height: 32px; flex-shrink: 0;
@@ -775,7 +790,12 @@
      still rendered a 3-column grid. Two classes together
      (.bottom-row.bottom-row-collapsed) outrank .bottom-row-3's one
      regardless of source order, so this always wins now. */
-  .bottom-row.bottom-row-collapsed { grid-template-columns: 1fr; }
+  /* justify-items:center for the same reason as .primary-nav above --
+     grid's default item alignment is 'start' once icon-btn has an
+     explicit 32px width (below), so the footer icons were stuck at the
+     left edge of their single-column cell instead of centered under
+     the rest of the rail. */
+  .bottom-row.bottom-row-collapsed { grid-template-columns: 1fr; justify-items: center; }
 
   /* Thin drag strip along the sidebar's own right edge -- absolutely
      positioned so it doesn't take up any layout space of its own (the
@@ -806,6 +826,13 @@
      unifying the two reduces both height per row and competing visual
      weight at the top of the sidebar. */
   .primary-nav { display: flex; flex-direction: column; gap: .1rem; }
+  /* .nav-btn is width:100% by default, so align-items:center is a no-op
+     there -- but once collapsed mode fixes it to 32px (below), a flex
+     column's default cross-axis alignment is flex-start, leaving the
+     fixed-width boxes stuck against the left edge instead of centered
+     under the (centered) collapse toggle above them. Owner feedback,
+     2026-07-30 (4th round): "all buttons center with same line". */
+  .sidebar.collapsed .primary-nav { align-items: center; }
   .nav-btn {
     display: flex; align-items: center; gap: .6rem;
     width: 100%; border: none; cursor: pointer; text-align: left;
@@ -957,13 +984,6 @@
     margin-top: auto; display: flex; flex-direction: column; gap: .4rem;
     padding-top: .75rem; border-top: 1px solid var(--border);
   }
-  /* Owner feedback, 2026-07-30 ("this is your fix?"): shrinking
-     .tree-section-collapsed's flex-grow had zero visible effect on the
-     dead space above the footer, because .bottom's own margin-top:auto
-     independently claims all remaining free space regardless of what
-     an earlier flex sibling does. Overriding it to a fixed gap here is
-     what actually moves the footer up next to the space icons. */
-  .sidebar.collapsed .bottom { margin-top: 1rem; }
 
   /* Icon-only rail (owner feedback, 2026-07-09): 4 buttons with text
      labels squeezed into a ~200px row wrapped/truncated unreadably.
