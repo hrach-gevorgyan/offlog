@@ -713,14 +713,19 @@
 
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; }
   .sidebar.collapsed .sidebar-top { justify-content: center; padding-bottom: .5rem; }
+  /* Owner feedback, 2026-07-30 ("change sidebar hide and open button"):
+     was a bare chevron with no visible container, floating with nothing
+     around it -- gave it a proper button treatment (border + background),
+     same visual language as the icon-btn footer buttons, so it actually
+     reads as a clickable control. */
   .collapse-toggle {
     display: flex; align-items: center; justify-content: center;
-    width: 24px; height: 24px; flex-shrink: 0;
-    background: none; border: none; cursor: pointer;
-    color: var(--faint); border-radius: var(--radius-sm);
-    transition: background .12s, color .12s;
+    width: 26px; height: 26px; flex-shrink: 0;
+    background: var(--hover); border: 1px solid var(--border-strong); cursor: pointer;
+    color: var(--muted); border-radius: var(--radius-sm);
+    transition: background .12s, color .12s, border-color .12s;
   }
-  .collapse-toggle:hover { background: var(--hover); color: var(--text); }
+  .collapse-toggle:hover { background: var(--surface); color: var(--text); border-color: var(--accent); }
   .collapse-toggle svg { transition: transform .15s ease; }
   .collapse-toggle svg.flipped { transform: rotate(180deg); }
 
@@ -731,8 +736,8 @@
   .sidebar.collapsed .icon-btn { padding: .5rem; }
 
   .tree-section-collapsed {
-    display: flex; flex-direction: column; align-items: center; gap: .3rem;
-    padding-top: .3rem; flex: 1; min-height: 90px; overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center; gap: .6rem;
+    padding-top: .5rem; flex: 1; min-height: 90px; overflow-y: auto;
   }
   .space-icon-only {
     width: 30px; height: 30px; flex-shrink: 0;
@@ -743,17 +748,36 @@
   .space-icon-only :global(svg) { width: 15px; height: 15px; }
   .space-icon-only:hover, .space-icon-only.active { opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
 
-  .bottom-row-collapsed { grid-template-columns: 1fr; }
+  /* Owner feedback, 2026-07-30: "last 4 icons horrible make in one
+     column one per row" -- .bottom-row-collapsed alone lost this fight
+     against .bottom-row-3 (both plain single-class selectors; whichever
+     is declared LATER in the stylesheet wins when both apply, and
+     .bottom-row-3 came later) so collapsed mode with an unpaired device
+     still rendered a 3-column grid. Two classes together
+     (.bottom-row.bottom-row-collapsed) outrank .bottom-row-3's one
+     regardless of source order, so this always wins now. */
+  .bottom-row.bottom-row-collapsed { grid-template-columns: 1fr; }
 
   /* Thin drag strip along the sidebar's own right edge -- absolutely
      positioned so it doesn't take up any layout space of its own (the
      border-right the sidebar already has is purely visual, 1px, so this
-     needs a slightly wider invisible hit target overlapping it). */
+     needs a slightly wider invisible hit target overlapping it). A
+     small always-visible grip mark (owner feedback, 2026-07-30: "change
+     icon for this") gives it a real affordance instead of being
+     invisible until hovered; the hover/active tint is muted gray now,
+     not a strong accent flash. */
   .resize-handle {
     position: absolute; top: 0; right: -3px; bottom: 0; width: 6px;
     cursor: col-resize; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
   }
-  .resize-handle:hover, .resize-handle:active { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .resize-handle::before {
+    content: ''; width: 3px; height: 28px; border-radius: 3px;
+    background: var(--border-strong); opacity: .6;
+    transition: opacity .12s, background .12s;
+  }
+  .resize-handle:hover, .resize-handle:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .resize-handle:hover::before, .resize-handle:active::before { opacity: 1; background: var(--muted); }
   @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .resize-handle { display: none; }
   }
