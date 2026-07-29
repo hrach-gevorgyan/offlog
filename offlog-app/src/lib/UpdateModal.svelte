@@ -28,11 +28,23 @@
   // "### New" and all, in a <pre> block). Escaped first since this ends
   // up in {@html}, even though the source is our own CHANGELOG-derived
   // text, not user input.
+  //
+  // Real bug, found live (2026-07-30): every entry in RELEASE_NOTES.md
+  // soft-wraps a long bullet across multiple source lines (real Markdown
+  // treats a following non-blank line as a continuation of the same list
+  // item, and GitHub's own renderer handles this fine on the Releases
+  // page) -- but this line-by-line parser didn't join continuation
+  // lines back onto the current <li>, so a wrapped bullet got cut off
+  // mid-sentence and its remainder appeared as a stray unbulleted
+  // paragraph instead. A continuation line is now appended (with a
+  // joining space) to the last <li> whenever one is open.
   function renderNotes(body: string): string {
     const lines = body.split('\n');
     let html = '';
     let inList = false;
-    const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+    let lastLiText = '';
+    const flushLi = () => { if (lastLiText) { html += `<li>${lastLiText}</li>`; lastLiText = ''; } };
+    const closeList = () => { if (inList) { flushLi(); html += '</ul>'; inList = false; } };
     for (const raw of lines) {
       const line = raw.trim();
       if (!line) { closeList(); continue; }
@@ -40,11 +52,12 @@
       if (heading) { closeList(); html += `<p class="notes-heading">${escapeHtml(heading[1])}</p>`; continue; }
       const bullet = line.match(/^[-*]\s+(.*)/);
       if (bullet) {
+        flushLi();
         if (!inList) { html += '<ul>'; inList = true; }
-        html += `<li>${escapeHtml(bullet[1])}</li>`;
+        lastLiText = escapeHtml(bullet[1]);
         continue;
       }
-      closeList();
+      if (inList) { lastLiText += ' ' + escapeHtml(line); continue; }
       html += `<p>${escapeHtml(line)}</p>`;
     }
     closeList();
