@@ -17,7 +17,7 @@
   const requestClose = closeOnBack(() => dispatch('close'));
 
   let query = '';
-  let results: (TaskDoc & { project_name: string })[] = [];
+  let results: (TaskDoc & { project_name: string; matchedIn: 'title' | 'tags' | 'body' | 'checklist' })[] = [];
   let searching = false;
   let inputEl: HTMLInputElement;
   let selectedIdx = 0;
@@ -116,6 +116,12 @@
   }
 
   const today = localDateStr(new Date());
+
+  // v6.10.0 -- the title itself is always highlighted above, and a tags
+  // match already gets its own visible row (result-tags below), so this
+  // hint only needs to cover the two matches that would otherwise be
+  // invisible: text buried in Notes or a checklist item.
+  const MATCH_HINT: Partial<Record<string, string>> = { body: 'Matched in Notes', checklist: 'Matched in Checklist' };
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
@@ -183,6 +189,9 @@
             <span class="result-title">{@html highlight(r.title, query)}</span>
             {#if r.tags?.length}
               <span class="result-tags">{r.tags.join(' · ')}</span>
+            {/if}
+            {#if MATCH_HINT[r.matchedIn]}
+              <span class="result-match-hint">{MATCH_HINT[r.matchedIn]}</span>
             {/if}
           </div>
           <div class="result-meta">
@@ -263,6 +272,7 @@
   .result-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .result-title :global(mark) { background: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); border-radius: 2px; padding: 0 1px; }
   .result-tags { font-size: 11px; color: var(--faint); font-family: var(--mono); }
+  .result-match-hint { font-size: 11px; color: var(--faint); font-style: italic; }
 
   .result-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
   .result-proj { font-family: var(--mono); font-size: 10.5px; color: var(--faint); white-space: nowrap; }

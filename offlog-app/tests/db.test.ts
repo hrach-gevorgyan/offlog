@@ -16,6 +16,7 @@ import db, {
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
   getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
   getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
+  searchAllTasks,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -1042,6 +1043,78 @@ describe('tag management', () => {
 
     await deleteTagEverywhere('temp');
     expect(await getTagColorOverrides()).toEqual({});
+  });
+});
+
+// v6.10.0 — unified search: title/tags/body already matched here; this
+// covers the checklist-text addition and the matchedIn field the search
+// UI uses to explain a non-title match.
+describe('searchAllTasks', () => {
+  it('matches by title and reports matchedIn: title', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Renew passports');
+
+    const [result] = await searchAllTasks('passports');
+    expect(result.title).toBe('Renew passports');
+    expect(result.matchedIn).toBe('title');
+  });
+
+  it('matches by tag and reports matchedIn: tags', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+    await updateTask(task._id!, { tags: ['contractor'] });
+
+    const [result] = await searchAllTasks('contractor');
+    expect(result._id).toBe(task._id);
+    expect(result.matchedIn).toBe('tags');
+  });
+
+  it('matches by body (Notes) and reports matchedIn: body', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A', {
+      body: 'Contractor said tile delivery pushed back.',
+    });
+
+    const [result] = await searchAllTasks('tile delivery');
+    expect(result._id).toBe(task._id);
+    expect(result.matchedIn).toBe('body');
+  });
+
+  it('matches by checklist item text and reports matchedIn: checklist', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A', {
+      checklist: [{ text: 'Call 3 contractors', done: false }, { text: 'Compare bids', done: false }],
+    });
+
+    const [result] = await searchAllTasks('compare bids');
+    expect(result._id).toBe(task._id);
+    expect(result.matchedIn).toBe('checklist');
+  });
+
+  it('prefers the title match over a checklist match when both are present', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Compare bids', {
+      checklist: [{ text: 'Compare bids from contractors', done: false }],
+    });
+
+    const [result] = await searchAllTasks('compare bids');
+    expect(result.matchedIn).toBe('title');
+  });
+
+  it('excludes deleted and archived tasks the same as a title-only search would', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const deleted = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A', {
+      checklist: [{ text: 'findable checklist item', done: false }],
+    });
+    await deleteTask(deleted._id!);
+
+    expect(await searchAllTasks('findable checklist item')).toEqual([]);
   });
 });
 

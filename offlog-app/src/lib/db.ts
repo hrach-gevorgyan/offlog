@@ -336,7 +336,24 @@ export async function getDashboardData() {
   };
 }
 
-export async function searchAllTasks(query: string): Promise<(TaskDoc & { project_name: string; space_id: string })[]> {
+// v6.10.0 — unified search: title/tags/body ("Notes") already matched here;
+// this adds checklist item text so a task is findable by a step buried
+// inside its checklist, not just its own title/notes. `matchedIn` tells
+// GlobalSearch.svelte which field actually matched (checked in this same
+// priority order) so it can show *why* a result surfaced when the title
+// itself doesn't contain the query -- tags already gets a result row of
+// its own there, so only 'body'/'checklist' need an extra hint.
+export type TaskSearchMatch = 'title' | 'tags' | 'body' | 'checklist';
+
+function taskSearchMatch(d: TaskDoc, q: string): TaskSearchMatch | null {
+  if (d.title.toLowerCase().includes(q)) return 'title';
+  if (d.tags?.some((t: string) => t.toLowerCase().includes(q))) return 'tags';
+  if (d.body?.toLowerCase().includes(q)) return 'body';
+  if (d.checklist?.some(i => i.text.toLowerCase().includes(q))) return 'checklist';
+  return null;
+}
+
+export async function searchAllTasks(query: string): Promise<(TaskDoc & { project_name: string; space_id: string; matchedIn: TaskSearchMatch })[]> {
   if (!query.trim()) return [];
   const q = query.trim().toLowerCase();
   const [all, allProjects, allSpaces] = await Promise.all([getAllTasksRaw(), getProjects(), getSpaces()]);
@@ -344,10 +361,10 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
   // Excludes an archived project's leftover done tasks the same way
   // getDashboardData() does -- see its comment for why they'd otherwise
   // still be findable here.
-  const tasks = all.filter(d =>
-    !d.deleted && !d.archived && activeProjectIds.has(d.project_id) &&
-    (d.title.toLowerCase().includes(q) || d.tags?.some((t: string) => t.includes(q)) || d.body?.toLowerCase().includes(q))
-  );
+  const tasks = all
+    .filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id))
+    .map(d => ({ doc: d, matchedIn: taskSearchMatch(d, q) }))
+    .filter((x): x is { doc: TaskDoc; matchedIn: TaskSearchMatch } => x.matchedIn !== null);
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
   const spaceCache: Record<string, SpaceDoc> = Object.fromEntries(allSpaces.map(s => [s._id!, s]));
   // Owner-requested (2026-07-20, after a real same-name-different-space
@@ -360,11 +377,11 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
     const key = p.name.trim().toLowerCase();
     nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
   }
-  return tasks.map(t => {
+  return tasks.map(({ doc: t, matchedIn }) => {
     const proj = projCache[t.project_id];
     const isDup = proj && (nameCounts.get(proj.name.trim().toLowerCase()) ?? 0) > 1;
     const spaceName = isDup ? spaceCache[proj.space_id]?.name : undefined;
-    return { ...t, project_name: proj ? (spaceName ? `${proj.name} · ${spaceName}` : proj.name) : '—' };
+    return { ...t, project_name: proj ? (spaceName ? `${proj.name} · ${spaceName}` : proj.name) : '—', matchedIn };
   });
 }
 

@@ -203,9 +203,14 @@ owner is ready to build it, not on a schedule.
   as any late completion — confirmed, not changed. 8 new
   `tests/db.test.ts` cases (month-end clamping across leap/non-leap/
   year-end, DST invariant, long-offline-gap single-advance).
-- **v6.10.0 — Unified search.** Global Search already covers tasks —
-  extend to notes/checklist contents so one search box finds everything
-  in-app. (The "connected tools" half of the original idea is out of
+- **v6.10.0 — Unified search — DONE 2026-07-29.** Title/tags/body
+  ("Notes") were already searched — added checklist item text
+  (`db.ts`'s `taskSearchMatch()`/`TaskSearchMatch`). `searchAllTasks()`
+  now also returns `matchedIn` so `GlobalSearch.svelte` can show *why*
+  a result surfaced when the title itself doesn't contain the query
+  ("Matched in Notes" / "Matched in Checklist" — tags already got
+  their own visible row). 6 new `tests/db.test.ts` cases. Verified
+  live. (The "connected tools" half of the original idea stayed out of
   scope — no live connections, per the manifesto; imported data becomes
   normal Offlog data and is searched like everything else.)
 - **v6.11.0 — Tag color picker — DONE 2026-07-29.** Added 2026-07-28
