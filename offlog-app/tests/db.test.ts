@@ -559,6 +559,115 @@ describe('recurring tasks', () => {
     expect(moveLog?.to).toBe(lastColName);
     expect(moveLog?.diffs?.due_date).toEqual({ from: '2026-07-15', to: '2026-07-16' });
   });
+
+  // v6.9.0 -- recurrence robustness pass. Existing behavior (above) already
+  // covered daily/weekly/simple-monthly and the late-completion/no-drift
+  // case; these add the edge cases the roadmap item specifically calls
+  // out: month-end dates, DST, and a long-offline gap.
+  describe('month-end clamping', () => {
+    it('clamps Jan 31 monthly to Feb 28 in a non-leap year, instead of overflowing to March', async () => {
+      await seedSpace();
+      const project = await createProject('space:unsorted', 'Recurring Project');
+      const firstCol = project.columns[0].id;
+      const lastCol = project.columns.at(-1)!.id;
+      const task = await createTask(project._id, 'space:unsorted', firstCol, 'Pay rent');
+      await updateTask(task._id!, { due_date: '2026-01-31', recurrence: 'monthly' });
+
+      const result = await updateTask(task._id!, { column_id: lastCol });
+      expect(result.due_date).toBe('2026-02-28');
+    });
+
+    it('clamps Jan 31 monthly to Feb 29 in a leap year', async () => {
+      await seedSpace();
+      const project = await createProject('space:unsorted', 'Recurring Project');
+      const firstCol = project.columns[0].id;
+      const lastCol = project.columns.at(-1)!.id;
+      const task = await createTask(project._id, 'space:unsorted', firstCol, 'Pay rent');
+      await updateTask(task._id!, { due_date: '2028-01-31', recurrence: 'monthly' });
+
+      const result = await updateTask(task._id!, { column_id: lastCol });
+      expect(result.due_date).toBe('2028-02-29');
+    });
+
+    it('clamps Mar 31 monthly to Apr 30, not May 1', async () => {
+      await seedSpace();
+      const project = await createProject('space:unsorted', 'Recurring Project');
+      const firstCol = project.columns[0].id;
+      const lastCol = project.columns.at(-1)!.id;
+      const task = await createTask(project._id, 'space:unsorted', firstCol, 'Month-end task');
+      await updateTask(task._id!, { due_date: '2026-03-31', recurrence: 'monthly' });
+
+      const result = await updateTask(task._id!, { column_id: lastCol });
+      expect(result.due_date).toBe('2026-04-30');
+    });
+
+    it('clamps Dec 31 monthly to Jan 31 of the next year (mid-month days are unaffected by clamping)', async () => {
+      await seedSpace();
+      const project = await createProject('space:unsorted', 'Recurring Project');
+      const firstCol = project.columns[0].id;
+      const lastCol = project.columns.at(-1)!.id;
+      const task = await createTask(project._id, 'space:unsorted', firstCol, 'Year-end task');
+      await updateTask(task._id!, { due_date: '2026-12-31', recurrence: 'monthly' });
+
+      const result = await updateTask(task._id!, { column_id: lastCol });
+      expect(result.due_date).toBe('2027-01-31');
+    });
+
+    it('does not clamp a mid-month date that fits in every month', async () => {
+      await seedSpace();
+      const project = await createProject('space:unsorted', 'Recurring Project');
+      const firstCol = project.columns[0].id;
+      const lastCol = project.columns.at(-1)!.id;
+      const task = await createTask(project._id, 'space:unsorted', firstCol, 'Mid-month task');
+      await updateTask(task._id!, { due_date: '2026-01-15', recurrence: 'monthly' });
+
+      const result = await updateTask(task._id!, { column_id: lastCol });
+      expect(result.due_date).toBe('2026-02-15');
+    });
+  });
+
+  it('shifts a reminder across a DST transition without changing its local wall-clock time', async () => {
+    // US spring-forward, 2026-03-08. A weekly reminder set for 9:00 AM
+    // local the week before must still read 9:00 AM local the week after,
+    // even though the absolute UTC offset changed by an hour in between.
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Weekly standup');
+    const reminderBefore = new Date('2026-03-01T09:00:00');
+    await updateTask(task._id!, {
+      due_date: '2026-03-01', recurrence: 'weekly', reminder_at: reminderBefore.toISOString(),
+    });
+
+    const result = await updateTask(task._id!, { column_id: lastCol });
+
+    expect(result.due_date).toBe('2026-03-08');
+    const reminderAfter = new Date(result.reminder_at!);
+    expect(reminderAfter.getHours()).toBe(9);
+    expect(reminderAfter.getMinutes()).toBe(0);
+  });
+
+  it('advances exactly one occurrence when completed after a long offline gap, not one per skipped cycle', async () => {
+    // Recurrence only ever advances in response to an explicit completion
+    // (moving into the last column) -- there's no wall-clock catch-up loop,
+    // so a task left uncompleted for months while the device was offline
+    // simply shows as very overdue and advances once, the same as any
+    // other late completion (see the "no drift" test above for the
+    // single-cycle case this generalizes).
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Water plants');
+    await updateTask(task._id!, { due_date: '2026-01-01', recurrence: 'daily' });
+
+    const result = await updateTask(task._id!, { column_id: lastCol });
+
+    expect(result.due_date).toBe('2026-01-02');
+    const tasks = await getTasksForProject(project._id);
+    expect(tasks).toHaveLength(1);
+  });
 });
 
 describe('checkIntegrity / repairDatabase', () => {

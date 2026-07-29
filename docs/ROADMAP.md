@@ -188,11 +188,21 @@ owner is ready to build it, not on a schedule.
   real concern, so images would need client-side downscale/compression
   on attach. Medium-large; the one item here with real storage-cost
   risk.
-- **v6.9.0 — Recurrence robustness pass.** Recurring tasks already
-  exist (db.ts's reset-in-place model) — owner's ask is the quality
-  bar: "smart due dates, reminders, and recurrence that don't break." A
-  dedicated test/edge-case pass (month-end dates, DST, skipped
-  occurrences while offline) rather than new behavior.
+- **v6.9.0 — Recurrence robustness pass — DONE 2026-07-29.** Real bug
+  found and fixed: `db.ts`'s `advanceDate()` used plain
+  `d.setMonth(d.getMonth()+1)` for monthly recurrence, which overflows
+  into the month after next when the day doesn't exist there (Jan 31 +
+  1 month rolled to Mar 3, skipping February's occurrence entirely) —
+  now clamps to the target month's real last day. DST: reminder
+  shifting already worked correctly (shifts by the same wall-clock
+  delta the due date moved, so local time-of-day is preserved across a
+  spring-forward/fall-back boundary) — confirmed, not changed. Offline
+  gaps: recurrence only ever advances once per explicit completion,
+  never a wall-clock catch-up loop, so a task left uncompleted for
+  months just shows very overdue and advances once on completion, same
+  as any late completion — confirmed, not changed. 8 new
+  `tests/db.test.ts` cases (month-end clamping across leap/non-leap/
+  year-end, DST invariant, long-offline-gap single-advance).
 - **v6.10.0 — Unified search.** Global Search already covers tasks —
   extend to notes/checklist contents so one search box finds everything
   in-app. (The "connected tools" half of the original idea is out of

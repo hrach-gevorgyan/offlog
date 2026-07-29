@@ -1219,9 +1219,20 @@ export async function createTask(
 
 function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly'): string {
   const d = new Date(`${dateStr}T00:00:00`);
-  if (freq === 'daily') d.setDate(d.getDate() + 1);
-  else if (freq === 'weekly') d.setDate(d.getDate() + 7);
-  else d.setMonth(d.getMonth() + 1);
+  if (freq === 'daily') { d.setDate(d.getDate() + 1); return localDateStr(d); }
+  if (freq === 'weekly') { d.setDate(d.getDate() + 7); return localDateStr(d); }
+  // Monthly: plain `d.setMonth(d.getMonth() + 1)` overflows into the
+  // month after next when the day-of-month doesn't exist there -- e.g.
+  // Jan 31 + 1 month rolls to Mar 3 (Feb only has 28/29 days), silently
+  // skipping February's occurrence entirely (v6.9.0 recurrence hardening,
+  // 2026-07-29). Clamp to the target month's real last day instead, so a
+  // task due the 31st recurs on the 28th/29th/30th of a shorter month.
+  const day = d.getDate();
+  const targetMonth = d.getMonth() + 1; // may be 12 -- Date normalizes into next year
+  const daysInTargetMonth = new Date(d.getFullYear(), targetMonth + 1, 0).getDate();
+  d.setDate(1); // avoid overflow while still on the original month
+  d.setMonth(targetMonth);
+  d.setDate(Math.min(day, daysInTargetMonth));
   return localDateStr(d);
 }
 
