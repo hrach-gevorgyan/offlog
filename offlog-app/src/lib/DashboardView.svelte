@@ -454,7 +454,6 @@
     padding: 3px 8px; border-radius: 20px; background: var(--hover);
     white-space: nowrap;
   }
-  .stat strong { color: var(--text); font-size: 11px; font-weight: 700; }
   .pinned-stat { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .overdue-stat { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
