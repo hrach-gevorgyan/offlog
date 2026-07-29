@@ -21,6 +21,61 @@
   export let showFocus = false;
   export let open = false;
 
+  // ── Collapsible + resizable sidebar (owner-requested, 2026-07-30,
+  // ahead of the sidebar's own visual redesign pass) ──────────────────────
+  // Per-device (localStorage), same reasoning as every other sidebar/list
+  // preference in this app (expandedSpaces below, List view's saved
+  // columns, etc.) — not synced, since a phone and a PC may reasonably
+  // want different widths/collapse state.
+  const WIDTH_KEY = 'offlog_sidebar_width';
+  const COLLAPSED_KEY = 'offlog_sidebar_collapsed';
+  const DEFAULT_WIDTH = 224;
+  const MIN_WIDTH = 180;
+  const MAX_WIDTH = 420;
+  const COLLAPSED_WIDTH = 60;
+
+  function loadWidth(): number {
+    const raw = Number(localStorage.getItem(WIDTH_KEY));
+    return raw >= MIN_WIDTH && raw <= MAX_WIDTH ? raw : DEFAULT_WIDTH;
+  }
+  let sidebarWidth = loadWidth();
+  let collapsed = localStorage.getItem(COLLAPSED_KEY) === 'true';
+
+  function toggleCollapsed() {
+    collapsed = !collapsed;
+    localStorage.setItem(COLLAPSED_KEY, String(collapsed));
+  }
+
+  // Collapsed rail's icons are meant for quick glancing/switching, not full
+  // project browsing — clicking a space icon there expands back to the
+  // full sidebar (and opens that space), rather than trying to cram a
+  // project flyout into a 60px rail.
+  function expandToSpace(spaceId: string) {
+    collapsed = false;
+    localStorage.setItem(COLLAPSED_KEY, 'false');
+    if (!expandedSpaces.has(spaceId)) toggleSpaceExpand(spaceId);
+  }
+
+  // Drag-to-resize the width itself. mousemove/mouseup listen on the
+  // window (not just the handle) so the drag keeps tracking even if the
+  // cursor briefly leaves the thin handle strip mid-drag — a plain
+  // on:mousemove on the handle alone would drop the drag the instant the
+  // pointer moves off that 4px-wide element.
+  let resizing = false;
+  function onResizeStart(e: MouseEvent) {
+    resizing = true;
+    e.preventDefault();
+  }
+  function onResizeMove(e: MouseEvent) {
+    if (!resizing) return;
+    sidebarWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX));
+  }
+  function onResizeEnd() {
+    if (!resizing) return;
+    resizing = false;
+    localStorage.setItem(WIDTH_KEY, String(sidebarWidth));
+  }
+
   // Settings' own Escape handling (including its mobile back-vs-close
   // distinction) lives in SettingsPanel.svelte. The mobile drawer's Escape
   // handling lives in App.svelte's onKeydown, alongside its back-button
@@ -328,13 +383,23 @@
   // databases), and the generic default.
 </script>
 
-<aside class="sidebar" class:mobile-open={open}>
-  <div class="logo">Offlog</div>
+<svelte:window on:mousemove={onResizeMove} on:mouseup={onResizeEnd} />
+
+<aside class="sidebar" class:mobile-open={open} class:collapsed style="--sidebar-w: {collapsed ? COLLAPSED_WIDTH : sidebarWidth}px">
+  <div class="sidebar-top">
+    {#if !collapsed}<div class="logo">Offlog</div>{/if}
+    <button class="collapse-toggle" on:click={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+      <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class:flipped={collapsed}>
+        <polyline points="10,3 5,8 10,13"/>
+      </svg>
+    </button>
+  </div>
 
   <nav class="primary-nav">
     <button
       class="nav-btn"
       class:active={showDashboard}
+      title="Dashboard"
       on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
@@ -343,12 +408,13 @@
         <rect x="2" y="10" width="6" height="6" rx="1"/>
         <rect x="10" y="10" width="6" height="6" rx="1"/>
       </svg>
-      Dashboard
+      {#if !collapsed}Dashboard{/if}
     </button>
 
     <button
       class="nav-btn"
       class:active={showFocus}
+      title="Focus"
       on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
@@ -356,12 +422,13 @@
         <circle cx="9" cy="9" r="3.5"/>
         <circle cx="9" cy="9" r="0.6" fill="currentColor"/>
       </svg>
-      Focus
+      {#if !collapsed}Focus{/if}
     </button>
 
     <button
       class="nav-btn"
       class:active={showDeadlines}
+      title="Agenda"
       on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
@@ -371,11 +438,31 @@
         <line x1="12" y1="1.5" x2="12" y2="4.5"/>
         <line x1="6" y1="11" x2="12" y2="11"/>
       </svg>
-      Agenda
+      {#if !collapsed}Agenda{/if}
     </button>
   </nav>
   <div class="spaces-divider"></div>
 
+  {#if collapsed}
+    <!-- Collapsed rail (owner-requested, 2026-07-30, ahead of the sidebar
+         redesign pass): space icons only, no project tree -- this rail is
+         for quick glancing/switching, not full browsing. Clicking a space
+         expands back to the full sidebar (expandToSpace() above) rather
+         than trying to cram a project flyout into 60px. -->
+    <div class="tree-section-collapsed">
+      {#each $spaces as space (space._id)}
+        <button
+          class="space-icon-only"
+          class:active={$activeSpaceId === space._id}
+          style="color:{space.color}; background:color-mix(in srgb, {space.color} 18%, transparent)"
+          title={space.name}
+          on:click={() => expandToSpace(space._id)}
+        >
+          {@html getSpaceIconSvg(space)}
+        </button>
+      {/each}
+    </div>
+  {:else}
   <div class="tree-section">
     {#each $spaces as space (space._id)}
       {@const spaceOpen = expandedSpaces.has(space._id)}
@@ -468,9 +555,10 @@
       </div>
     {/each}
   </div>
+  {/if}
 
   <div class="bottom">
-    {#if recentTasks.length > 0}
+    {#if !collapsed && recentTasks.length > 0}
       <div class="recent-section">
         <div class="section-label">Recent</div>
         {#each recentTasks as task (task._id)}
@@ -483,25 +571,25 @@
         {/each}
       </div>
     {/if}
-    <div class="bottom-row" class:bottom-row-3={syncNotConfigured}>
+    <div class="bottom-row" class:bottom-row-3={syncNotConfigured} class:bottom-row-collapsed={collapsed}>
       <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="Time Travel">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
         </svg>
-        <span class="icon-btn-label">Time Travel</span>
+        {#if !collapsed}<span class="icon-btn-label">Time Travel</span>{/if}
       </button>
       <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Recycle{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
         </svg>
-        <span class="icon-btn-label">Recycle{#if breakdown && breakdown.deletedTasks > 0}<span class="icon-btn-count"> · {breakdown.deletedTasks}</span>{/if}</span>
+        {#if !collapsed}<span class="icon-btn-label">Recycle{#if breakdown && breakdown.deletedTasks > 0}<span class="icon-btn-count"> · {breakdown.deletedTasks}</span>{/if}</span>{/if}
       </button>
       <button class="icon-btn" on:click={() => { openSettings(); dispatch('navigate'); }} title="Settings">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
-        <span class="icon-btn-label">Settings</span>
+        {#if !collapsed}<span class="icon-btn-label">Settings</span>{/if}
       </button>
       {#if !syncNotConfigured}
         <!-- Owner feedback, 2026-07-21: a device that's never been paired
@@ -522,15 +610,25 @@
           <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 9a6 6 0 0 1 10.2-4.2M15 9a6 6 0 0 1-10.2 4.2"/><polyline points="13,1.5 13.2,4.8 9.9,5"/><polyline points="5,16.5 4.8,13.2 8.1,13"/>
           </svg>
-          <span class="icon-btn-label-row">
-            <span class="icon-btn-label">Sync</span>
-            {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
-            {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
-          </span>
+          {#if !collapsed}
+            <span class="icon-btn-label-row">
+              <span class="icon-btn-label">Sync</span>
+              {#if conflictCount > 0}<span class="conflict-badge">{conflictCount}</span>{/if}
+              {#if $staleHostAlert}<span class="conflict-badge stale-host-badge">!</span>{/if}
+            </span>
+          {/if}
         </button>
       {/if}
     </div>
   </div>
+
+  {#if !collapsed}
+    <!-- Drag-to-resize (owner-requested, 2026-07-30). Hidden entirely on
+         mobile via the media query below -- the mobile drawer is a fixed-
+         width overlay, not a resizable column. -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="resize-handle" on:mousedown={onResizeStart}></div>
+  {/if}
 </aside>
 
 {#if showTimeTravel && TimeTravelViewComp}
@@ -567,8 +665,14 @@
 {/if}
 
 <style>
+  /* width driven by --sidebar-w (set inline from sidebarWidth/
+     COLLAPSED_WIDTH in script) rather than a literal value here, so the
+     collapse/resize feature can vary it -- the mobile media query below
+     still overrides it back to a literal 280px when it matches, since a
+     same-specificity rule declared later in the stylesheet wins the
+     cascade regardless of which side uses a var(). */
   .sidebar {
-    width: 224px; flex-shrink: 0;
+    width: var(--sidebar-w, 224px); flex-shrink: 0; position: relative;
     background: var(--sidebar-bg); border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
     padding: 1.1rem .75rem; gap: .35rem; overflow: hidden;
@@ -576,6 +680,7 @@
        used to be pinned dark regardless of theme; owner feedback
        2026-07-17 asked for a real light-mode sidebar instead. */
   }
+  .sidebar.collapsed { padding-left: .4rem; padding-right: .4rem; }
 
   /* Second condition covers a phone rotated to landscape -- its width
      alone often exceeds 768px (e.g. ~915px on a Pixel-class phone), which
@@ -604,6 +709,53 @@
   .logo {
     font-family: var(--mono); font-weight: 600; font-size: .68rem; text-transform: uppercase;
     letter-spacing: .14em; padding: .25rem .35rem .85rem; color: var(--faint);
+  }
+
+  .sidebar-top { display: flex; align-items: center; justify-content: space-between; }
+  .sidebar.collapsed .sidebar-top { justify-content: center; padding-bottom: .5rem; }
+  .collapse-toggle {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; flex-shrink: 0;
+    background: none; border: none; cursor: pointer;
+    color: var(--faint); border-radius: var(--radius-sm);
+    transition: background .12s, color .12s;
+  }
+  .collapse-toggle:hover { background: var(--hover); color: var(--text); }
+  .collapse-toggle svg { transition: transform .15s ease; }
+  .collapse-toggle svg.flipped { transform: rotate(180deg); }
+
+  /* Collapsed rail (owner-requested, 2026-07-30) -- primary nav buttons
+     center their icon and drop the label via {#if !collapsed} in the
+     template; this just re-centers what's left. */
+  .sidebar.collapsed .nav-btn { justify-content: center; padding: .5rem; }
+  .sidebar.collapsed .icon-btn { padding: .5rem; }
+
+  .tree-section-collapsed {
+    display: flex; flex-direction: column; align-items: center; gap: .3rem;
+    padding-top: .3rem; flex: 1; min-height: 90px; overflow-y: auto;
+  }
+  .space-icon-only {
+    width: 30px; height: 30px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; cursor: pointer; border: none;
+    opacity: .75; transition: opacity .12s, box-shadow .12s;
+  }
+  .space-icon-only :global(svg) { width: 15px; height: 15px; }
+  .space-icon-only:hover, .space-icon-only.active { opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+
+  .bottom-row-collapsed { grid-template-columns: 1fr; }
+
+  /* Thin drag strip along the sidebar's own right edge -- absolutely
+     positioned so it doesn't take up any layout space of its own (the
+     border-right the sidebar already has is purely visual, 1px, so this
+     needs a slightly wider invisible hit target overlapping it). */
+  .resize-handle {
+    position: absolute; top: 0; right: -3px; bottom: 0; width: 6px;
+    cursor: col-resize; z-index: 5;
+  }
+  .resize-handle:hover, .resize-handle:active { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
+    .resize-handle { display: none; }
   }
 
   /* Primary nav (Dashboard/Focus/Agenda) — same light, border-free visual
