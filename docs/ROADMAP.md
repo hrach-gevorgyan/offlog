@@ -143,8 +143,10 @@ owner is ready to build it, not on a schedule.
   tomorrow / next week without opening the editor. Snooze exists today
   only as the notification action's "Snooze 1h" — this extends the idea
   to the task itself, guilt-free. Small.
-- **v6.2.0 — Calendar (.ics) export.** Dated tasks as a local .ics
-  file/feed the OS calendar reads — deadlines next to real
+- **v6.2.0 — Calendar sync (.ics feed).** Renamed from "export"
+  (owner clarification, 2026-07-29) — dated tasks as a local .ics feed
+  the OS calendar subscribes to and refreshes on its own schedule, not
+  a one-shot file the user re-exports by hand. Deadlines next to real
   appointments, no cloud. Small-medium.
 - **v6.3.0 — Checklist templates.** Reusable checklists (packing list,
   grocery run) — save any task's checklist as a named template, insert
