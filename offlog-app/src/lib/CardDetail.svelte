@@ -172,6 +172,17 @@
   // and update or check information". Always starts collapsed now,
   // full stop, regardless of what's already filled in underneath.
   let showExtras = false;
+  // Owner feedback, 2026-07-30: each of the five blocks inside Extras
+  // gets its own collapse too, same "never auto-open, full stop" rule
+  // as the outer Extras toggle -- opening Extras used to dump all five
+  // open at once (blocks were just always-expanded cards); now each
+  // stays collapsed until clicked, regardless of whether it already
+  // has content.
+  let showRepeatReminder = false;
+  let showChecklistBlock = false;
+  let showCustomFieldsBlock = false;
+  let showRelatedBlock = false;
+  let showNotesBlock = false;
   // Cap how many custom fields show by default — a project with a dozen
   // fields defined shouldn't turn every card into a long form. Anything
   // past the cap is one click away, not hidden entirely.
@@ -487,136 +498,164 @@
         <div class="extras-panel" transition:slide={{ duration: 180 }}>
 
           <div class="extra-block">
-            <label class="repeat-field">
-              Repeat
-              <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
-              {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
-            </label>
+            <button type="button" class="extra-block-toggle" on:click={() => showRepeatReminder = !showRepeatReminder} aria-expanded={showRepeatReminder}>
+              <span class="field-label">Repeat &amp; reminder</span>
+              <svg class="section-chevron" class:open={showRepeatReminder} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+            </button>
+            {#if showRepeatReminder}
+              <div class="extra-block-body" transition:slide={{ duration: 150 }}>
+                <label class="repeat-field">
+                  Repeat
+                  <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
+                  {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
+                </label>
 
-            <div class="reminder-field">
-              <label>
-                Reminder
-                <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
-              </label>
-              <label class="remind-on-due-row">
-                <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-                Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
-              </label>
-              {#if reminder_at && $permissionState !== 'granted'}
-                <div class="reminder-hint">
-                  {#if $permissionState === 'unsupported'}
-                    Notifications aren't supported in this browser.
-                  {:else}
-                    Notifications aren't enabled yet —
-                    <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
-                    so this reminder can actually notify you.
+                <div class="reminder-field">
+                  <label>
+                    Reminder
+                    <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
+                  </label>
+                  <label class="remind-on-due-row">
+                    <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+                    Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
+                  </label>
+                  {#if reminder_at && $permissionState !== 'granted'}
+                    <div class="reminder-hint">
+                      {#if $permissionState === 'unsupported'}
+                        Notifications aren't supported in this browser.
+                      {:else}
+                        Notifications aren't enabled yet —
+                        <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
+                        so this reminder can actually notify you.
+                      {/if}
+                    </div>
                   {/if}
                 </div>
-              {/if}
-            </div>
+              </div>
+            {/if}
           </div>
 
           <div class="extra-block">
-            <span class="field-label">
-              Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
-            </span>
-            <div class="checklist-field">
-              {#each checklist as item, i}
-                <div class="checklist-row">
-                  <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
-                    {#if item.done}✓{/if}
-                  </button>
-                  <span class="checklist-text" class:done={item.done}>{item.text}</span>
-                  <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
-                </div>
-              {/each}
-              <input
-                class="checklist-input"
-                bind:value={checklistInput}
-                placeholder="Add item…"
-                enterkeyhint="done"
-                on:keydown={onChecklistKey}
-                on:blur={() => setTimeout(addChecklistItem, 150)}
-              />
-              {#if duplicateChecklistItems.length}
-                <p class="dup-name-hint">Repeated item{duplicateChecklistItems.length > 1 ? 's' : ''}: {duplicateChecklistItems.join(', ')}</p>
-              {/if}
-            </div>
+            <button type="button" class="extra-block-toggle" on:click={() => showChecklistBlock = !showChecklistBlock} aria-expanded={showChecklistBlock}>
+              <span class="field-label">
+                Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
+              </span>
+              <svg class="section-chevron" class:open={showChecklistBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+            </button>
+            {#if showChecklistBlock}
+              <div class="extra-block-body checklist-field" transition:slide={{ duration: 150 }}>
+                {#each checklist as item, i}
+                  <div class="checklist-row">
+                    <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
+                      {#if item.done}✓{/if}
+                    </button>
+                    <span class="checklist-text" class:done={item.done}>{item.text}</span>
+                    <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
+                  </div>
+                {/each}
+                <input
+                  class="checklist-input"
+                  bind:value={checklistInput}
+                  placeholder="Add item…"
+                  enterkeyhint="done"
+                  on:keydown={onChecklistKey}
+                  on:blur={() => setTimeout(addChecklistItem, 150)}
+                />
+                {#if duplicateChecklistItems.length}
+                  <p class="dup-name-hint">Repeated item{duplicateChecklistItems.length > 1 ? 's' : ''}: {duplicateChecklistItems.join(', ')}</p>
+                {/if}
+              </div>
+            {/if}
           </div>
 
           {#if customFields.length > 0}
             <div class="extra-block">
-              <span class="field-label">Custom fields</span>
-              <div class="custom-fields">
-                {#each visibleFields as field (field.id)}
-                  <label class="custom-field-label">
-                    {field.name}
-                    {#if field.type === 'select'}
-                      <CustomSelect
-                        options={[{ value: '', label: '—' }, ...(field.options ?? []).map(o => ({ value: o, label: o }))]}
-                        value={(customValues[field.id] as string) ?? ''}
-                        on:change={(e) => customValues[field.id] = e.detail || null}
-                      />
-                    {:else if field.type === 'date'}
-                      <CalendarPicker value={(customValues[field.id] as string) ?? ''} on:change={(e) => customValues[field.id] = e.detail || null} />
-                    {:else}
-                      <input
-                        type={field.type === 'number' ? 'number' : 'text'}
-                        bind:value={customValues[field.id]}
-                      />
-                    {/if}
-                  </label>
-                {/each}
-                {#if customFields.length > VISIBLE_FIELD_CAP}
-                  <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
-                    {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
-                  </button>
-                {/if}
-              </div>
+              <button type="button" class="extra-block-toggle" on:click={() => showCustomFieldsBlock = !showCustomFieldsBlock} aria-expanded={showCustomFieldsBlock}>
+                <span class="field-label">Custom fields</span>
+                <svg class="section-chevron" class:open={showCustomFieldsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+              </button>
+              {#if showCustomFieldsBlock}
+                <div class="extra-block-body custom-fields" transition:slide={{ duration: 150 }}>
+                  {#each visibleFields as field (field.id)}
+                    <label class="custom-field-label">
+                      {field.name}
+                      {#if field.type === 'select'}
+                        <CustomSelect
+                          options={[{ value: '', label: '—' }, ...(field.options ?? []).map(o => ({ value: o, label: o }))]}
+                          value={(customValues[field.id] as string) ?? ''}
+                          on:change={(e) => customValues[field.id] = e.detail || null}
+                        />
+                      {:else if field.type === 'date'}
+                        <CalendarPicker value={(customValues[field.id] as string) ?? ''} on:change={(e) => customValues[field.id] = e.detail || null} />
+                      {:else}
+                        <input
+                          type={field.type === 'number' ? 'number' : 'text'}
+                          bind:value={customValues[field.id]}
+                        />
+                      {/if}
+                    </label>
+                  {/each}
+                  {#if customFields.length > VISIBLE_FIELD_CAP}
+                    <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
+                      {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
+                    </button>
+                  {/if}
+                </div>
+              {/if}
             </div>
           {/if}
 
           <div class="extra-block">
-            <span class="field-label">
-              Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
-            </span>
-            <div class="related-field">
-              {#each relatedTasks as rt (rt._id)}
-                <div class="related-row" class:related-deleted={rt.deleted}>
-                  {#if rt.deleted}
-                    <span class="related-title">{rt.title} (deleted)</span>
-                  {:else}
-                    <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
-                  {/if}
-                  <span class="related-proj">{projectNameFor(rt)}</span>
-                  <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
-                </div>
-              {/each}
-              <input
-                class="checklist-input"
-                bind:value={relatedInput}
-                placeholder="Link another task…"
-                disabled={relatedBusy}
-              />
-              {#if relatedSuggestions.length}
-                <div class="tag-suggestions">
-                  {#each relatedSuggestions as s (s._id)}
-                    <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
+            <button type="button" class="extra-block-toggle" on:click={() => showRelatedBlock = !showRelatedBlock} aria-expanded={showRelatedBlock}>
+              <span class="field-label">
+                Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
+              </span>
+              <svg class="section-chevron" class:open={showRelatedBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+            </button>
+            {#if showRelatedBlock}
+              <div class="extra-block-body related-field" transition:slide={{ duration: 150 }}>
+                {#each relatedTasks as rt (rt._id)}
+                  <div class="related-row" class:related-deleted={rt.deleted}>
+                    {#if rt.deleted}
+                      <span class="related-title">{rt.title} (deleted)</span>
+                    {:else}
+                      <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
+                    {/if}
+                    <span class="related-proj">{projectNameFor(rt)}</span>
+                    <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
+                  </div>
+                {/each}
+                <input
+                  class="checklist-input"
+                  bind:value={relatedInput}
+                  placeholder="Link another task…"
+                  disabled={relatedBusy}
+                />
+                {#if relatedSuggestions.length}
+                  <div class="tag-suggestions">
+                    {#each relatedSuggestions as s (s._id)}
+                      <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </div>
 
           <div class="extra-block">
-            <span class="field-label">Notes (markdown)</span>
-            <div class="notes-wrap">
-              <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
-              {#if body.length > NOTES_SOFT_LIMIT}
-                <div class="notes-counter">{body.length} characters</div>
-              {/if}
-              {#if similarNotesHint}<p class="dup-name-hint">{similarNotesHint}</p>{/if}
-            </div>
+            <button type="button" class="extra-block-toggle" on:click={() => showNotesBlock = !showNotesBlock} aria-expanded={showNotesBlock}>
+              <span class="field-label">Notes (markdown)</span>
+              <svg class="section-chevron" class:open={showNotesBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+            </button>
+            {#if showNotesBlock}
+              <div class="extra-block-body notes-wrap" transition:slide={{ duration: 150 }}>
+                <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
+                {#if body.length > NOTES_SOFT_LIMIT}
+                  <div class="notes-counter">{body.length} characters</div>
+                {/if}
+                {#if similarNotesHint}<p class="dup-name-hint">{similarNotesHint}</p>{/if}
+              </div>
+            {/if}
           </div>
 
         </div>
@@ -798,6 +837,16 @@
     background: var(--surface); color: var(--text); font-size: .84rem; font-family: inherit;
     text-transform: none; letter-spacing: normal;
   }
+  /* Owner feedback, 2026-07-30: "wtf is this lift buttons" -- the native
+     number-input spin buttons look like a stray, unstyled OS control
+     next to every other input in this form. Hidden entirely; the field
+     stays a plain text-like number input (still type="number" under the
+     hood -- numeric keyboard on mobile, no other behavior change). */
+  .custom-field-label input[type="number"] { -moz-appearance: textfield; }
+  .custom-field-label input[type="number"]::-webkit-outer-spin-button,
+  .custom-field-label input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+  }
   .add-field-btn {
     align-self: flex-start; background: none; border: none; cursor: pointer;
     color: var(--accent); font-size: .76rem; font-weight: 500; padding: .15rem 0;
@@ -886,10 +935,20 @@
      visible at a glance, not just implied by a caption + hairline. */
   .extras-panel { display: flex; flex-direction: column; gap: .4rem; }
   .extra-block {
-    display: flex; flex-direction: column; gap: .3rem;
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
-    padding: .5rem .6rem;
+    padding: .1rem .6rem;
   }
+  /* Owner feedback, 2026-07-30: each block also collapses on its own
+     now, never auto-open, same rule the outer Extras toggle already
+     follows -- opening Extras used to dump all five blocks open at
+     once. */
+  .extra-block-toggle {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: none; border: none; cursor: pointer; text-align: left;
+    padding: .45rem 0;
+  }
+  .extra-block-toggle .field-label { flex: 1; }
+  .extra-block-body { display: flex; flex-direction: column; gap: .3rem; padding-bottom: .5rem; }
 
   .related-field { display: flex; flex-direction: column; gap: .3rem; }
   .related-row { display: flex; align-items: center; gap: 7px; }

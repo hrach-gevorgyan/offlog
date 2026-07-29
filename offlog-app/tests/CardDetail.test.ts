@@ -136,10 +136,12 @@ describe('CardDetail save logic (A9)', () => {
     const task = mkTask({ checklist: [{ text: 'Step 1', done: false }] });
     const { getByText, container } = render(CardDetail, { props: { task, project: mkProject() } });
 
-    // Owner feedback, 2026-07-30: Extras no longer auto-opens just
-    // because it already has content -- opening it is always a manual
-    // action now.
+    // Owner feedback, 2026-07-30: neither Extras nor any of its five
+    // nested blocks auto-open just because they already have content --
+    // opening each is always a manual action now. Checklist is the
+    // second .extra-block-toggle (Repeat & reminder is the first).
     await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await fireEvent.click(container.querySelectorAll('.extra-block-toggle')[1] as HTMLButtonElement);
 
     const checkbox = container.querySelector('.checklist-check') as HTMLButtonElement;
     expect(checkbox).toBeTruthy();
