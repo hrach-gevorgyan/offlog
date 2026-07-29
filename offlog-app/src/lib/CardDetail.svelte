@@ -513,11 +513,15 @@
                 <div class="reminder-field">
                   <label>
                     Reminder
-                    <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
-                  </label>
-                  <label class="remind-on-due-row">
-                    <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-                    Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
+                    <!-- Owner feedback, 2026-07-30: same "one row" treatment
+                         as the due-date picker + shortcuts above. -->
+                    <div class="reminder-row">
+                      <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
+                      <label class="remind-on-due-row">
+                        <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
+                        Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
+                      </label>
+                    </div>
                   </label>
                   {#if reminder_at && $permissionState !== 'granted'}
                     <div class="reminder-hint">
@@ -763,6 +767,12 @@
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
   .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
+  /* Same "one row" treatment as .due-date-row (owner feedback,
+     2026-07-30) -- wrap allowed as a safety valve since the withTime
+     picker's own text ("Aug 5, 2026, 9:00 AM") plus the full checkbox
+     label are both longer than the plain due-date row's contents. */
+  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .reminder-row :global(.cal-field) { flex: 0 0 auto; width: 190px; }
   .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
