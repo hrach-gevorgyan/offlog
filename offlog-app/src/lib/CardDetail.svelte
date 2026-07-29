@@ -933,10 +933,10 @@
      five blocks (Repeat/Reminder, Checklist, Custom fields, Related,
      Notes) is now its own small card instead, so the grouping is
      visible at a glance, not just implied by a caption + hairline. */
-  /* Indented from the left (owner feedback, 2026-07-30) so the five
-     blocks read as nested under Extras -- a submenu, not five more
-     top-level rows at the same indent as Extras itself. */
-  .extras-panel { display: flex; flex-direction: column; gap: .4rem; margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--border); }
+  /* A light indent (owner feedback, 2026-07-30: the border-left +
+     larger indent read as "too much") so the five blocks feel nested
+     under Extras without adding real visual weight of their own. */
+  .extras-panel { display: flex; flex-direction: column; gap: .4rem; margin-left: 8px; }
   .extra-block {
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
     padding: .1rem .6rem;
