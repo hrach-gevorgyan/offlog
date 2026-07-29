@@ -394,14 +394,17 @@
     grid-auto-rows: minmax(130px, auto);
     gap: 12px;
     align-content: start;
-    /* redesign/v6 (owner feedback, 2026-07-30): default grid behavior
-       stretches every card in a row to match its tallest sibling -- a
-       card whose title wraps to 2 lines (now that titles wrap instead
-       of truncating) made every other card in that row taller too, and
-       .proj-stats's margin-top:auto then left a visible dead gap in the
-       shorter-titled cards before their chips. align-items:start lets
-       each card size to its own content instead of being stretched. */
-    align-items: start;
+    /* align-items:start was tried here (redesign/v6, 2026-07-30) to stop
+       a 2-line-wrapped title from stretching every sibling in its row
+       taller too -- but .proj-name's own min-height (below) was added
+       right after specifically to reserve 2 lines' worth of title height
+       unconditionally, which already neutralizes that exact cause. Left
+       in place afterward, align-items:start instead produced a new, more
+       visible problem with real (uneven-badge-count) data: cards no
+       longer stretch to match their row's tallest sibling at all, so
+       rows read as a ragged, misaligned grid (owner-reported, "grid is
+       damaged") -- default stretch is what's actually correct now that
+       the title-height variance is handled elsewhere. */
   }
   .proj-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
