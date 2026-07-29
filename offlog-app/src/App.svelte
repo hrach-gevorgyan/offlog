@@ -110,11 +110,15 @@
   // reuse the exact same navigation as the command palette's "Go to
   // Focus" entry, instead of a second inline copy of these 3 assignments.
   function goToFocus() { showDashboard = false; showDeadlines = false; showFocus = true; }
+  // B35-style extraction (2026-07-30) so DashboardView's Today/Overdue
+  // "View all" links can reuse the exact same navigation as the command
+  // palette's "Go to Agenda" entry, instead of a second inline copy.
+  function goToAgenda() { showDashboard = false; showFocus = false; showDeadlines = true; }
 
   $: commands = getCommands({
     goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
     goToFocus,
-    goToAgenda: () => { showDashboard = false; showFocus = false; showDeadlines = true; },
+    goToAgenda,
     openQuickAdd,
     toggleTheme: () => setThemeMode(isEffectivelyDark(getThemeMode()) ? 'light' : 'dark'),
     toggleHighContrast: () => setHighContrast(!getHighContrast()),
@@ -482,11 +486,13 @@
             goToProject(e.detail);
           }}
           on:focus={goToFocus}
+          on:search={openSearch}
+          on:agenda={goToAgenda}
         />
       {:else if showFocus}
-        <FocusView on:menu={() => sidebarOpen = true} />
+        <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
       {:else if showDeadlines}
-        <DeadlinesView on:menu={() => sidebarOpen = true} />
+        <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} />
       {:else if $activeProject}
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
@@ -508,10 +514,29 @@
           <div class="spacer"></div>
 
           <div class="search-filter-group">
-            <button class="search-btn" on:click={openSearch} title="Search (Ctrl+K)" aria-label="Search (Ctrl+K)">
-              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
-              </svg>
+            <!-- redesign/v6 (owner feedback, 2026-07-28): List view already
+                 has its own local "Search tasks…" box in its toolbar --
+                 this same top-bar button also opening a *second* search felt
+                 confusing there. Since GlobalSearch already folds search and
+                 commands together (B9), the List-view button is relabeled
+                 "Command Palette" with a distinct icon instead of a second
+                 magnifying glass; Kanban (no local search box) keeps the
+                 plain search framing. Same click handler/modal either way. -->
+            <button
+              class="search-btn"
+              on:click={openSearch}
+              title={currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)'}
+              aria-label={currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)'}
+            >
+              {#if currentView === 'list'}
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+                </svg>
+              {:else}
+                <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+                </svg>
+              {/if}
             </button>
             {#if currentView === 'kanban'}
               <span class="search-filter-divider"></span>
@@ -585,7 +610,7 @@
   {/if}
 {/if}
 
-{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen}
+{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showDeadlines && !showFocus}
 <button class="fab" on:click={openQuickAdd} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>

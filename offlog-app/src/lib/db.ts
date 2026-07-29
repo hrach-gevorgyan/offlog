@@ -286,11 +286,16 @@ export async function getDashboardData() {
   for (const t of tasks) {
     if (!byProject[t.project_id]) continue;
     byProject[t.project_id].total++;
-    if (t.pinned) byProject[t.project_id].pinned++;
+    if (t.pinned && t.column_id !== byProject[t.project_id].lastColId) byProject[t.project_id].pinned++;
     if (t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id].lastColId) byProject[t.project_id].overdue++;
   }
 
-  const pinnedTasks = tasks.filter(t => t.pinned).slice(0, 10);
+  // Owner-caught bug (2026-07-30): unlike overdueTasks/todayTasks below,
+  // this never excluded done tasks -- a pinned task already sitting in
+  // its project's last column kept showing up here indefinitely.
+  const pinnedTasks = tasks
+    .filter(t => t.pinned && t.column_id !== byProject[t.project_id]?.lastColId)
+    .slice(0, 10);
   const overdueTasks = tasks
     .filter(t => t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id]?.lastColId)
     .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))

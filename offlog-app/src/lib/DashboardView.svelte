@@ -8,7 +8,17 @@
   import CardDetail from './CardDetail.svelte';
   import { loadFocusLock, type FocusLock } from './focusLock';
 
-  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void }>();
+  const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void; search: void; agenda: void }>();
+
+  // redesign/v6 (owner feedback, 2026-07-30): Today/Pinned/Overdue were
+  // unbounded -- Dashboard's job is a glanceable overview, not a second
+  // full task browser (that's already List/Agenda's job). Capped with a
+  // muted "View all" -- Today/Overdue link out to Agenda (which already
+  // groups Overdue/Today at the top of its own list); Pinned has no
+  // dedicated cross-project view anywhere in the app yet, so its "View
+  // all" just expands the list in place instead of linking nowhere.
+  const TASK_CAP = 6;
+  let pinnedExpanded = false;
 
   let data: Awaited<ReturnType<typeof getDashboardData>> | null = null;
   let detailTask: TaskDoc | null = null;
@@ -97,6 +107,15 @@
         </span>
       {/if}
     </div>
+    <!-- redesign/v6 (owner feedback, 2026-07-30): same Command Palette
+         button as List/Agenda -- every full-page view needs its own
+         visible entry point, not just the Ctrl+K shortcut, since it's
+         unreachable on mobile with no physical keyboard. -->
+    <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+      </svg>
+    </button>
   </div>
 
   {#if !data}
@@ -145,12 +164,12 @@
                     <span class="space-dot" style="background:{space.color}"></span>
                     <span class="space-name">{space.name}</span>
                   {/if}
+                  <span class="task-count" title="{stats.total} task{stats.total === 1 ? '' : 's'}">{stats.total}</span>
                 </div>
                 <div class="proj-name">{proj.name}</div>
                 <div class="proj-stats">
-                  <span class="stat"><strong>{stats.total}</strong> tasks</span>
-                  {#if stats.pinned}<span class="stat pinned-stat">★ {stats.pinned} pinned</span>{/if}
-                  {#if stats.overdue}<span class="stat overdue-stat">⚠ {stats.overdue} overdue</span>{/if}
+                  {#if stats.pinned}<span class="stat pinned-stat">{stats.pinned} pinned</span>{/if}
+                  {#if stats.overdue}<span class="stat overdue-stat">{stats.overdue} overdue</span>{/if}
                 </div>
               </div>
             {/each}
@@ -166,7 +185,7 @@
             <section class="section">
               <div class="section-title">Today</div>
               <div class="task-list">
-                {#each data.todayTasks as t (t._id)}
+                {#each data.todayTasks.slice(0, TASK_CAP) as t (t._id)}
                   <div
                     class="task-row"
                     role="button"
@@ -182,14 +201,17 @@
                   </div>
                 {/each}
               </div>
+              {#if data.todayTasks.length > TASK_CAP}
+                <button class="view-all" on:click={() => dispatch('agenda')}>View all {data.todayTasks.length} in Agenda</button>
+              {/if}
             </section>
           {/if}
 
           {#if data.pinnedTasks.length > 0}
             <section class="section">
-              <div class="section-title">★ Pinned</div>
+              <div class="section-title pinned-title">Pinned</div>
               <div class="task-list">
-                {#each data.pinnedTasks as t (t._id)}
+                {#each (pinnedExpanded ? data.pinnedTasks : data.pinnedTasks.slice(0, TASK_CAP)) as t (t._id)}
                   <div
                     class="task-row"
                     role="button"
@@ -205,14 +227,19 @@
                   </div>
                 {/each}
               </div>
+              {#if data.pinnedTasks.length > TASK_CAP}
+                <button class="view-all" on:click={() => pinnedExpanded = !pinnedExpanded}>
+                  {pinnedExpanded ? 'Show less' : `View all ${data.pinnedTasks.length}`}
+                </button>
+              {/if}
             </section>
           {/if}
 
           {#if data.overdueTasks.length > 0}
             <section class="section">
-              <div class="section-title overdue-title">⚠ Overdue</div>
+              <div class="section-title overdue-title">Overdue</div>
               <div class="task-list">
-                {#each data.overdueTasks as t (t._id)}
+                {#each data.overdueTasks.slice(0, TASK_CAP) as t (t._id)}
                   <div
                     class="task-row"
                     role="button"
@@ -228,6 +255,9 @@
                   </div>
                 {/each}
               </div>
+              {#if data.overdueTasks.length > TASK_CAP}
+                <button class="view-all" on:click={() => dispatch('agenda')}>View all {data.overdueTasks.length} in Agenda</button>
+              {/if}
             </section>
           {/if}
 
@@ -279,6 +309,18 @@
   }
   .hamburger:hover { background: var(--hover); }
 
+  .palette-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; margin-left: auto; flex-shrink: 0;
+    background: none; border: 1px solid var(--border-strong); border-radius: 8px;
+    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+    /* header is align-items:flex-start (see the header comment below) --
+       this button still wants to sit centered against the row, not
+       pinned to the top like the (multi-line) title block. */
+    align-self: center;
+  }
+  .palette-btn:hover { color: var(--text); background: var(--hover); }
+
   .dash-body {
     flex: 1; min-height: 0; overflow-y: auto;
     padding: 20px 28px 32px;
@@ -324,11 +366,26 @@
 
   .section { display: flex; flex-direction: column; }
 
+  /* Deliberately understated -- a secondary "there's more, if you want
+     it" affordance, not a second call to action competing with the task
+     rows themselves (owner feedback, 2026-07-30: "very muted"). */
+  .view-all {
+    background: none; border: none; cursor: pointer;
+    color: var(--faint); opacity: .7;
+    font-size: 11px; padding: 8px 12px 0; text-align: left;
+    transition: opacity .12s, color .12s;
+  }
+  .view-all:hover { opacity: 1; color: var(--muted); }
+
   .section-title {
     font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
     letter-spacing: .08em; font-weight: 700; color: var(--faint);
     margin-bottom: 10px;
   }
+  /* redesign/v6 (owner feedback, 2026-07-30): dropped the ★/⚠ text
+     glyphs -- every other view already signals pinned/overdue through
+     color alone (chip tint, edge accent), not an emoji-style icon. */
+  .pinned-title { color: var(--accent); }
   .overdue-title { color: var(--danger); }
 
   .project-grid {
@@ -337,6 +394,14 @@
     grid-auto-rows: minmax(130px, auto);
     gap: 12px;
     align-content: start;
+    /* redesign/v6 (owner feedback, 2026-07-30): default grid behavior
+       stretches every card in a row to match its tallest sibling -- a
+       card whose title wraps to 2 lines (now that titles wrap instead
+       of truncating) made every other card in that row taller too, and
+       .proj-stats's margin-top:auto then left a visible dead gap in the
+       shorter-titled cards before their chips. align-items:start lets
+       each card size to its own content instead of being stretched. */
+    align-items: start;
   }
   .proj-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -348,8 +413,34 @@
 
   .proj-card-top { display: flex; align-items: center; gap: 6px; }
   .space-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .proj-name { font-size: 16px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  /* redesign/v6 (owner feedback, 2026-07-30): task count moves to the
+     card's top-right corner, same placement/pill language as Kanban's
+     column-header count. margin-left:auto (not a separate spacer div)
+     since this row has no other trailing element to push against --
+     works whether or not the space-dot/name are present. */
+  .task-count {
+    margin-left: auto; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 .4rem;
+    font-family: var(--mono); font-size: .68rem; font-weight: 600;
+    color: var(--muted); background: var(--hover); border-radius: 20px;
+  }
+  /* Wrap, never truncate (owner feedback, 2026-07-30) -- min-width:0 is
+     required for a flex child to actually wrap instead of overflowing
+     its row, since flex items default to a content-based min-width. The
+     grid's own grid-auto-rows: minmax(130px, auto) already equalizes
+     row heights around whatever a wrapped title needs, so this doesn't
+     "damage" the grid -- it's already built to absorb variable heights. */
+  .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; min-width: 0; overflow-wrap: break-word; }
+  /* redesign/v6 (owner feedback, 2026-07-30): align-items:start (added
+     last pass to stop cards stretching) fixed the dead-gap bug but
+     traded it for a genuinely uneven grid -- a 2-line title made just
+     that one card taller than its row-mates, with no room reserved for
+     it elsewhere. Reserving 2 lines' worth of height up front means
+     every card budgets the same space for its title regardless of
+     whether it actually wraps, so the grid reads as uniform again --
+     without reintroducing truncation for a title that needs 2 lines. */
+  .proj-name { font-size: 16px; font-weight: 700; line-height: 1.3; min-height: 2.6em; color: var(--text); overflow-wrap: break-word; margin-top: 2px; }
   /* Chips, not bare wrapped text — at the card's narrower widths three
      plain text runs ("7 tasks" / "★ 1 pinned" / "⚠ 1 overdue") wrapped
      onto three separate lines with uneven spacing (owner-reported,
@@ -363,18 +454,22 @@
     padding: 3px 8px; border-radius: 20px; background: var(--hover);
     white-space: nowrap;
   }
-  .stat strong { color: var(--text); font-size: 11px; font-weight: 700; }
   .pinned-stat { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .overdue-stat { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
   .task-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 10px; overflow: hidden; }
   .task-row {
-    display: flex; align-items: center; gap: 9px;
+    display: flex; align-items: stretch; gap: 9px;
     padding: 9px 12px; background: var(--surface);
     cursor: pointer; transition: background .1s;
   }
   .task-row:hover { background: var(--hover); }
-  .prio-bar { width: 3px; height: 28px; border-radius: 2px; flex-shrink: 0; }
+  /* align-self:stretch, not a fixed height -- a wrapped (never
+     truncated) title/project line can make the row taller than the
+     28px this bar used to be hardcoded to, leaving visible gaps above
+     and below it (owner feedback, 2026-07-30). Stretching to the row's
+     actual height keeps it a full edge accent at any row height. */
+  .prio-bar { width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; }
   /* Used to cram title + project (max-width: 72px, hard-truncated) + due
      date onto a single line inside the 320px right column -- badly
      over-truncated everything ("Refact...", "Conference ...") except on
@@ -382,10 +477,10 @@
      project/date (the standard primary/secondary list-row pattern) gives
      each its own full-width line instead of splitting one cramped one. */
   .task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .task-title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-title { font-size: 13px; font-weight: 500; color: var(--text); overflow-wrap: break-word; }
   .task-proj {
     font-family: var(--mono); font-size: 10px; color: var(--faint);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    overflow-wrap: break-word;
   }
   .task-due { color: var(--muted); }
   .task-due.overdue { color: var(--danger); }

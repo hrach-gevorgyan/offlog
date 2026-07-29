@@ -118,10 +118,8 @@ describe('CardDetail save logic (A9)', () => {
     const task = mkTask();
     const { getByText, container } = render(CardDetail, { props: { task, project: mkProject() } });
 
-    // B49: Due date/Reminder now live behind a collapsed-by-default
-    // "Schedule" disclosure when the task has neither set yet.
-    await fireEvent.click(container.querySelector('.schedule-toggle') as HTMLButtonElement);
-
+    // option C: Due date is a mandatory, always-visible field now (no
+    // toggle) -- no need to open anything first to reach the shortcut.
     const todayShortcut = container.querySelector('.due-shortcut') as HTMLButtonElement;
     expect(todayShortcut?.textContent).toBe('Today');
     await fireEvent.click(todayShortcut);
@@ -134,9 +132,16 @@ describe('CardDetail save logic (A9)', () => {
     expect(changes.due_date).toBe(expectedStr);
   });
 
-  it('toggling a checklist item\'s "done" state persists on save (section is auto-expanded when non-empty)', async () => {
+  it('toggling a checklist item\'s "done" state persists on save (Extras opened manually)', async () => {
     const task = mkTask({ checklist: [{ text: 'Step 1', done: false }] });
     const { getByText, container } = render(CardDetail, { props: { task, project: mkProject() } });
+
+    // Owner feedback, 2026-07-30: neither Extras nor any of its five
+    // nested blocks auto-open just because they already have content --
+    // opening each is always a manual action now. Checklist is the
+    // second .extra-block-toggle (Repeat & reminder is the first).
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await fireEvent.click(container.querySelectorAll('.extra-block-toggle')[1] as HTMLButtonElement);
 
     const checkbox = container.querySelector('.checklist-check') as HTMLButtonElement;
     expect(checkbox).toBeTruthy();

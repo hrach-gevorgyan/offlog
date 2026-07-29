@@ -333,6 +333,25 @@ export function setDefaultReminderTime(time: string) {
   localStorage.setItem(DEFAULT_REMINDER_TIME_KEY, time);
 }
 
+// Master in-app toggle for task reminders (owner feedback, 2026-07-30) --
+// independent of the OS-level notification permission, which can only ever
+// be *granted* from inside the app (no platform lets you programmatically
+// revoke it — the "Enable" button in Settings has no "Disable" counterpart
+// for exactly that reason, same as any other app). This flag is the actual
+// on/off switch: rescheduleAll() (notifications.ts) treats it as "no tasks
+// to schedule" when off, cancelling anything already pending, same as the
+// Sync tab's own enabled/disabled toggle gates its own sub-settings.
+const NOTIFICATIONS_ENABLED_KEY = 'offlog_notifications_enabled';
+
+export function getNotificationsEnabled(): boolean {
+  const raw = localStorage.getItem(NOTIFICATIONS_ENABLED_KEY);
+  return raw === null ? true : raw === 'true';
+}
+
+export function setNotificationsEnabled(enabled: boolean) {
+  localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, String(enabled));
+}
+
 // Quiet hours: reminders due inside this local wall-clock window queue
 // until the window ends instead of firing (notifications.ts's
 // applyQuietHours). `start`/`end` are 'HH:MM' 24h strings (same storage

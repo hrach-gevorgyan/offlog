@@ -382,6 +382,23 @@ describe('"done" is positional (column_id === last column)', () => {
     expect(data.todayTasks.map(t => t._id)).not.toContain(t1._id);
   });
 
+  it('getDashboardData excludes a completed task from the pinned list and count (owner-caught bug, 2026-07-30)', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Pinned Project');
+    const lastCol = project.columns.at(-1)!;
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Pinned task');
+    await updateTask(task._id!, { pinned: true });
+
+    let data = await getDashboardData();
+    expect(data.pinnedTasks.map(t => t._id)).toContain(task._id);
+    expect(data.byProject[project._id].pinned).toBe(1);
+
+    await updateTask(task._id!, { column_id: lastCol.id });
+    data = await getDashboardData();
+    expect(data.pinnedTasks.map(t => t._id)).not.toContain(task._id);
+    expect(data.byProject[project._id].pinned).toBe(0);
+  });
+
   it('archiveProject/unarchiveProject write a changelog entry (maintenance pass fix, v4.10.0)', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Log Test Project');

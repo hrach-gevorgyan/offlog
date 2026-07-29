@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import TimePicker from './TimePicker.svelte';
   import { fmtTime } from './utils';
 
@@ -20,6 +20,31 @@
 
   let open = false;
   let wrapEl: HTMLDivElement;
+  let triggerEl: HTMLButtonElement;
+  let popoverEl: HTMLDivElement;
+  // Owner feedback, 2026-07-30 (found via CardDetail's move to a
+  // capped-height centered modal): .cal-popover used to be a plain
+  // absolutely-positioned child, which gets clipped by any ancestor
+  // with overflow:hidden/auto once it extends past that ancestor's box
+  // -- exactly what CardDetail's own scrollable .panel does. Same fix
+  // as ListView.svelte's .col-menu--fixed: position:fixed with JS-
+  // measured coordinates escapes that clipping entirely, flipping to
+  // open upward if there's no room below.
+  let popoverStyle = '';
+  async function positionPopover() {
+    await tick();
+    if (!triggerEl || !popoverEl) return;
+    const r = triggerEl.getBoundingClientRect();
+    const pr = popoverEl.getBoundingClientRect();
+    let top = r.bottom + 6;
+    if (top + pr.height > window.innerHeight - 8) {
+      top = Math.max(8, r.top - pr.height - 6);
+    }
+    let left = r.left;
+    if (left + pr.width > window.innerWidth - 8) left = window.innerWidth - pr.width - 8;
+    if (left < 8) left = 8;
+    popoverStyle = `top:${top}px; left:${left}px;`;
+  }
 
   function parseDate(v: string): Date | null {
     if (!v) return null;
@@ -45,11 +70,18 @@
   let timeVal = '09:00';
   $: timeVal = withTime && value.length >= 16 ? value.slice(11, 16) : timeVal;
 
-  function toggle() { if (!disabled) open = !open; }
+  function toggle() {
+    if (disabled) return;
+    open = !open;
+    if (open) positionPopover();
+  }
   function close() { open = false; }
 
-  function prevMonth() { if (viewMonth === 0) { viewMonth = 11; viewYear -= 1; } else viewMonth -= 1; }
-  function nextMonth() { if (viewMonth === 11) { viewMonth = 0; viewYear += 1; } else viewMonth += 1; }
+  // Re-measure on month navigation too -- a 5-week vs 6-week month
+  // changes the grid's height, which can change whether it still fits
+  // below the trigger.
+  function prevMonth() { if (viewMonth === 0) { viewMonth = 11; viewYear -= 1; } else viewMonth -= 1; positionPopover(); }
+  function nextMonth() { if (viewMonth === 11) { viewMonth = 0; viewYear += 1; } else viewMonth += 1; positionPopover(); }
 
   function buildCells(year: number, month: number): (Date | null)[] {
     const first = new Date(year, month, 1);
@@ -98,7 +130,7 @@
 <svelte:window on:keydown={onWindowKeydown} />
 
 <div class="cal-field" bind:this={wrapEl}>
-  <button type="button" class="cal-trigger" class:has-value={!!value} class:open on:click={toggle} {disabled}>
+  <button type="button" class="cal-trigger" class:has-value={!!value} class:open bind:this={triggerEl} on:click={toggle} {disabled}>
     <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6.5" x2="14" y2="6.5"/><line x1="5.5" y1="1.5" x2="5.5" y2="4.5"/><line x1="10.5" y1="1.5" x2="10.5" y2="4.5"/>
     </svg>
@@ -106,7 +138,7 @@
   </button>
 
   {#if open}
-    <div class="cal-popover">
+    <div class="cal-popover" bind:this={popoverEl} style={popoverStyle}>
       <div class="cal-header">
         <button type="button" class="cal-nav" on:click={prevMonth} aria-label="Previous month">‹</button>
         <span class="cal-month-label">{MONTH_NAMES[viewMonth]} {viewYear}</span>
@@ -156,8 +188,11 @@
   .cal-trigger.open, .cal-trigger:hover { border-color: var(--accent); }
   .cal-trigger:disabled { opacity: .55; cursor: default; }
 
+  /* position:fixed with JS-measured top/left (see positionPopover())
+     instead of absolute + top/left CSS -- escapes ancestor clipping
+     (e.g. CardDetail's scrollable modal), see the script comment above. */
   .cal-popover {
-    position: absolute; top: calc(100% + 6px); left: 0; z-index: 220;
+    position: fixed; z-index: 220;
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     box-shadow: 0 12px 32px rgba(0,0,0,.2); padding: 10px; width: 232px;
   }

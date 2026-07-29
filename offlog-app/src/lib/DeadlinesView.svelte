@@ -9,7 +9,7 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import { hapticToggle } from './haptics';
 
-  const dispatch = createEventDispatcher<{ menu: void }>();
+  const dispatch = createEventDispatcher<{ menu: void; search: void }>();
 
   type DueTask = TaskDoc & { project_name?: string };
 
@@ -129,9 +129,19 @@
       <h1 class="dl-title">Agenda</h1>
       <span class="dl-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
     </div>
-    <div class="mode-toggle">
-      <button class="mode-btn" class:active={mode === 'list'} on:click={() => setMode('list')}>List</button>
-      <button class="mode-btn" class:active={mode === 'week'} on:click={() => setMode('week')}>Week</button>
+    <div class="dl-header-actions">
+      <!-- redesign/v6 (owner feedback, 2026-07-28): same Command Palette
+           button/icon as List view's top bar, since Agenda has its own
+           header rather than the shared board-header. -->
+      <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+        </svg>
+      </button>
+      <div class="mode-toggle">
+        <button class="mode-btn" class:active={mode === 'list'} on:click={() => setMode('list')}>List</button>
+        <button class="mode-btn" class:active={mode === 'week'} on:click={() => setMode('week')}>Week</button>
+      </div>
     </div>
   </div>
 
@@ -176,13 +186,14 @@
           {#each overdue as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -199,13 +210,14 @@
           {#each dueToday as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -222,13 +234,14 @@
           {#each thisWeek as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -245,13 +258,14 @@
           {#each later as t (t._id)}
             <div
               class="task-row"
+              style="--prio-color:{PRIO_COLOR[t.priority]}"
+              title={PRIO_LABEL[t.priority]}
               role="button"
               tabindex="0"
               on:click={() => openDetail(t)}
               on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
             >
               <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
-              <span class="prio-dot" style="background:{PRIO_COLOR[t.priority]}" title={PRIO_LABEL[t.priority]}></span>
               <div class="task-body">
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
@@ -303,13 +317,24 @@
   }
   .hamburger:hover { background: var(--hover); }
 
-  .mode-toggle {
-    display: flex; border: 1px solid var(--border-strong); border-radius: 8px;
-    overflow: hidden; flex-shrink: 0; margin-left: auto;
+  .dl-header-actions {
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0; margin-left: auto;
     /* header is align-items:flex-start now (see .dl-header comment) —
        this control cluster still wants to sit centered against the row,
        not pinned to the top like the title block. */
     align-self: center;
+  }
+  .palette-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    background: none; border: 1px solid var(--border-strong); border-radius: 8px;
+    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+  }
+  .palette-btn:hover { color: var(--text); background: var(--hover); }
+  .mode-toggle {
+    display: flex; border: 1px solid var(--border-strong); border-radius: 8px;
+    overflow: hidden; flex-shrink: 0;
   }
   .mode-btn {
     padding: 6px 14px; border: none; background: var(--surface); color: var(--muted);
@@ -385,9 +410,11 @@
     padding: 4px 8px; cursor: pointer; transition: background .1s;
   }
   .week-task:hover { background: var(--hover); }
+  /* Wrap instead of ellipsis (owner feedback, 2026-07-28) -- a single
+     truncated line lost too much of the title in a narrow week column. */
   .week-task-title {
-    display: block; font-size: .72rem; color: var(--text); overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; line-height: 1.5;
+    display: block; font-size: .72rem; color: var(--text);
+    white-space: normal; word-break: break-word; line-height: 1.35;
   }
 
   @media (max-width: 700px) {
@@ -438,24 +465,25 @@
 
   .task-row {
     display: grid;
-    grid-template-columns: 20px 10px 1fr auto;
+    grid-template-columns: 20px 1fr auto;
     align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--surface);
+    border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
+    background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
     transition: background .1s, box-shadow .1s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 
+  /* Same minimal checkbox language as ListView.svelte's .circle (owner
+     feedback, 2026-07-28) -- rounded square, no fill, border-only. */
   .circle {
-    width: 18px; height: 18px; border-radius: 50%;
+    width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
-    border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s, background .12s; display: block;
+    border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
+    transition: border-color .12s; display: block;
   }
-  .circle:hover { border-color: var(--accent); background: var(--hover); }
-
-  .prio-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .circle:hover { border-color: var(--accent); }
 
   /* Title + project stacked (same primary/secondary pattern as
      DashboardView's .task-body) instead of a same-line project chip that
@@ -493,8 +521,7 @@
 
   /* Small — collapse chip to short form */
   @media (max-width: 440px) {
-    .task-row  { grid-template-columns: 20px 1fr auto; padding: 9px 10px; gap: 8px; }
-    .prio-dot  { display: none; }
+    .task-row  { padding: 9px 10px; gap: 8px; }
     .task-title { font-size: 13px; }
     .due-chip  { font-size: 10px; padding: 2px 6px; }
   }

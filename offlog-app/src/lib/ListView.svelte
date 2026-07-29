@@ -5,12 +5,11 @@
   import { cubicOut } from 'svelte/easing';
   import { toastFly } from './motion';
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
-  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById, getTaskIdsWithRelatedLinks, subscribe } from './db';
+  import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabel, dueInk, filterTasks } from './utils';
   import CardDetail from './CardDetail.svelte';
-  import PinStar from './PinStar.svelte';
   import FilterBar from './FilterBar.svelte';
   import CustomSelect from './CustomSelect.svelte';
   import { hapticToggle } from './haptics';
@@ -48,10 +47,22 @@
   // ── Multi-column sort ──────────────────────────────────────────────────
   // Plain click sorts by that column alone (resets any prior multi-sort).
   // Shift-click adds it as a secondary/tertiary tiebreaker instead of
-  // replacing the sort — the standard spreadsheet pattern. Pinned tasks
-  // still float above everything else regardless of sort spec.
+  // replacing the sort — the standard spreadsheet pattern. Pinned-first
+  // is an opt-in toggle (owner feedback, 2026-07-28) rather than always-on
+  // — some users don't want pinned tasks to override their chosen sort.
+  // Off by default, persisted per-device like `cols`/`colOrder` below.
   type SortCol = 'title' | 'column' | 'priority' | 'due' | 'created' | 'updated' | 'source';
-  let sortSpec: { col: SortCol; asc: boolean }[] = [{ col: 'due', asc: true }];
+  // Default sort is priority descending (High → Medium → Low), matching
+  // how the data is actually ordered/queried elsewhere (owner feedback,
+  // 2026-07-28). cmpOne('priority') already returns high-first with
+  // asc:true, so this is just picking a different starting column.
+  let sortSpec: { col: SortCol; asc: boolean }[] = [{ col: 'priority', asc: true }];
+  let pinnedFirst = false;
+  const PINNED_FIRST_KEY = 'offlog_list_pinned_first';
+  function togglePinnedFirst() {
+    pinnedFirst = !pinnedFirst;
+    localStorage.setItem(PINNED_FIRST_KEY, JSON.stringify(pinnedFirst));
+  }
 
   function cmpOne(col: SortCol, a: TaskDoc, b: TaskDoc): number {
     if (col === 'title')    return a.title.localeCompare(b.title);
@@ -65,13 +76,41 @@
   }
 
   $: sorted = [...filtered].sort((a, b) => {
-    if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+    if (pinnedFirst && !!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
     for (const { col, asc } of sortSpec) {
       const cmp = cmpOne(col, a, b);
       if (cmp !== 0) return asc ? cmp : -cmp;
     }
     return 0;
   });
+
+  // redesign/v6 fix (owner feedback, 2026-07-28): the title column used
+  // to be `minmax(220px, max-content)`, but .grid-head/each .grid-row are
+  // independent CSS grids (grid-template-columns is set per-element, not
+  // once on a shared container) -- `max-content` resolves separately per
+  // row, sized only to that row's own title. A long-title row got a
+  // wider title column than a short-title row, so Status/Priority/Due/
+  // Tags landed at different x-offsets row to row -- read as the title
+  // text bleeding into the next column and the grid not behaving like a
+  // real table. Fix: measure the widest visible title once (canvas,
+  // matching .cell-title's font) and use that one fixed pixel width for
+  // every row's title column, so every row shares identical boundaries.
+  let measureCanvas: HTMLCanvasElement | null = null;
+  function measureTextWidth(text: string, font: string): number {
+    if (!measureCanvas) measureCanvas = document.createElement('canvas');
+    const ctx = measureCanvas.getContext('2d');
+    if (!ctx) return text.length * 8;
+    ctx.font = font;
+    return ctx.measureText(text).width;
+  }
+  const TITLE_FONT = '500 14px "Hanken Grotesk", sans-serif';
+  // Flat buffer for the recurrence mark that can trail the title inline
+  // (pin/checklist/related marks were dropped from this view, 2026-07-28
+  // owner feedback — pinned now shows via the row's left accent instead).
+  const TITLE_ICON_BUFFER = 24;
+  $: titleColWidth = Math.min(480, Math.max(220, Math.ceil(
+    Math.max(0, ...sorted.map(t => measureTextWidth(t.title, TITLE_FONT))) + TITLE_ICON_BUFFER
+  )));
 
   function toggleSort(col: SortCol, additive: boolean) {
     const existing = sortSpec.find(s => s.col === col);
@@ -142,7 +181,10 @@
   function colWidth(key: ColKey): string { return COL_WIDTH[key] ?? '130px'; }
   function isCustomCol(key: ColKey): boolean { return key.startsWith('field:'); }
 
-  let cols: Record<ColKey, boolean> = { status: true, priority: true, due: true, tags: true, created: false, updated: false, source: false };
+  // Priority off by default (owner feedback, 2026-07-28) -- the row's
+  // left-edge color already carries priority; the column is available to
+  // turn back on via the column menu for anyone who wants it explicit.
+  let cols: Record<ColKey, boolean> = { status: true, priority: false, due: true, tags: true, created: false, updated: false, source: false };
   let colOrder: ColKey[] = [...DEFAULT_ORDER];
   let showColMenu = false;
   let colMenuPos = { top: 0, left: 0 };
@@ -163,13 +205,6 @@
   let dragOverCol: ColKey | null = null;
   let dragOverSide: 'left' | 'right' | null = null;
 
-  // v6.7.0 — row-level "has related links" indicator, same cheap
-  // Set-lookup approach as KanbanBoard.svelte's identical badge.
-  let relatedIds = new Set<string>();
-  onMount(() => {
-    getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids);
-    return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
-  });
 
   onMount(async () => {
     // Custom fields are global (not per-project) — fetched once here so
@@ -189,6 +224,9 @@
       // never drop or silently lose a known key, never keep a stale one.
       const base = savedOrder ?? colOrder;
       colOrder = [...base.filter(k => knownKeys.includes(k)), ...knownKeys.filter(k => !base.includes(k))];
+    } catch {}
+    try {
+      pinnedFirst = JSON.parse(localStorage.getItem(PINNED_FIRST_KEY) ?? 'false');
     } catch {}
   });
 
@@ -240,8 +278,10 @@
   // .grid-row are `width: max-content`, so they size to their natural
   // (unclipped) content width and the scroll container takes over once
   // that's wider than the viewport, instead of the old responsive
-  // column-hiding tiers.
-  $: gridTemplate = (selectionMode ? '20px ' : '') + '24px minmax(220px,max-content)' + visibleOrder.map(k => ` ${colWidth(k)}`).join('');
+  // column-hiding tiers. Title track is `titleColWidth`px (computed above),
+  // not `max-content` — every row now shares the exact same track sizes,
+  // so columns actually line up instead of drifting per row.
+  $: gridTemplate = (selectionMode ? '20px ' : '') + `24px ${titleColWidth}px` + visibleOrder.map(k => ` ${colWidth(k)}`).join('');
 
   // B19 (revised, owner feedback 2026-07-09): plain checkboxes-everywhere
   // was rejected as a UI — checkboxes only appear once "Select" mode is
@@ -469,6 +509,12 @@
                 <span class="toggle-mini-knob"></span>
               </button>
             </label>
+            <label class="col-menu-item select-rows-item">
+              Pinned first
+              <button class="toggle-mini" class:on={pinnedFirst} on:click={togglePinnedFirst} role="switch" aria-checked={pinnedFirst} aria-label="Toggle pinned-first sorting">
+                <span class="toggle-mini-knob"></span>
+              </button>
+            </label>
             <div class="menu-divider"></div>
             {#each colOrder as key (key)}
               <label class="col-menu-item">
@@ -542,6 +588,7 @@
         <div
           class="grid-row"
           class:row-selected={selected.has(task._id!)}
+          class:pinned={task.pinned}
           style="--prio-color:{PRIO_COLOR[task.priority]}; grid-template-columns:{gridTemplate}"
           role="button"
           tabindex="0"
@@ -568,20 +615,16 @@
             title="Move to last status"
             aria-label="Move to last status"
             on:click|stopPropagation={() => markDone(task)}
-          ></button>
+          >
+            {#if task.column_id === lastColId()}
+              <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg>
+            {/if}
+          </button>
           <span class="cell-title">
-            {task.title}{#if task.pinned}<span class="pin-mark"><PinStar size={10} /></span>{/if}
+            {task.title}
             {#if task.recurrence}
               <span class="recur-mark" title="Repeats {task.recurrence}">
                 <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-              </span>
-            {/if}
-            {#if task.checklist?.length}
-              <span class="checklist-mark" class:complete={task.checklist.every(i => i.done)}>☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}</span>
-            {/if}
-            {#if relatedIds.has(task._id!)}
-              <span class="related-mark" title="Has related tasks">
-                <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
               </span>
             {/if}
           </span>
@@ -620,6 +663,8 @@
     </div>
   </div>
   </div>
+
+  <div class="sort-hint">* Shift+click a column header to sort by more than one column</div>
 
   {#if showArchived && archivedTasksRaw.length > 0}
     <div class="archived-section">
@@ -693,6 +738,15 @@
     border-bottom: 1px solid var(--border); padding: 10px 14px;
   }
   .toolbar-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
+
+  /* Genuine footnote -- outside the table panel entirely, muted, small,
+     out of the way of the actual data (owner feedback, 2026-07-28: was
+     sitting right under the toolbar inside the panel, too prominent for
+     a hint). */
+  .sort-hint {
+    font-size: 10.5px; color: var(--faint); opacity: .65;
+    padding: 0 4px; margin: 10px 0 4px;
+  }
 
   .search-box {
     display: flex; align-items: center; gap: 7px;
@@ -822,14 +876,37 @@
   .sort-icon { font-size: 10px; opacity: .6; }
 
   .grid-row {
+    position: relative;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
-    border-left: 3px solid var(--prio-color, var(--border));
     cursor: pointer; transition: background .1s;
   }
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
   .grid-row.row-selected { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+  /* redesign/v6 (owner feedback, 2026-07-30): a border-left spanning the
+     row's full height read as one continuous stripe across adjacent
+     rows whenever they shared a priority color -- the border-bottom
+     hairline between rows wasn't enough to visually break it. Inset the
+     bar a few px top/bottom via ::before instead of a full-height
+     border, so each row's accent reads as its own discrete segment
+     (same fix as Dashboard/Recycle's row lists). */
+  .grid-row::before {
+    content: '';
+    position: absolute; left: 0; top: 3px; bottom: 3px;
+    width: 3px; border-radius: 2px;
+    background: var(--prio-color, var(--border));
+  }
+  /* redesign/v6 (owner feedback, 2026-07-28): pinned no longer shows as an
+     icon in the title cell -- instead a short indigo segment interrupts
+     the middle of the row's own priority-color left border, e.g. a
+     yellow-priority row reads yellow / indigo / yellow top-to-bottom.
+     ::after now that ::before is the base accent bar above. */
+  .grid-row.pinned::after {
+    content: '';
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 14px; background: var(--accent);
+  }
 
   .row-check {
     width: 16px; height: 16px; padding: 0; cursor: pointer;
@@ -865,28 +942,26 @@
   .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
   .bulk-clear { margin-left: auto; }
 
+  /* redesign/v6 (owner feedback, 2026-07-28): was a plain circle filled
+     solid green when done, then a solid-accent-filled checkbox -- still
+     too heavy a block per the owner. Now stays fully transparent at
+     every state; only the border and checkmark pick up accent color when
+     done, no fill at all -- the minimal version of the checkbox idea. */
   .circle {
-    width: 19px; height: 19px; border-radius: 50%;
+    width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
-    border: 1.6px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s, background .12s; display: block;
+    border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
+    transition: border-color .12s;
+    display: flex; align-items: center; justify-content: center;
   }
   .circle:hover { border-color: var(--accent); }
-  .circle.done { background: var(--success); border-color: var(--success); }
+  .circle.done { border-color: var(--accent); }
 
   /* No truncation, anywhere in the grid (B36) — plain nowrap, never
      text-overflow: ellipsis. Long content makes the row (and the whole
      grid, via .grid-scroll) wider instead of hiding characters. */
   .cell-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
-  .pin-mark { display: inline-flex; align-items: center; color: var(--accent); opacity: .8; vertical-align: middle; margin-left: 4px; }
   .recur-mark { display: inline-flex; align-items: center; color: var(--muted); opacity: .75; vertical-align: middle; margin-left: 4px; }
-  .checklist-mark {
-    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
-    color: var(--muted); background: var(--col-bg); padding: 1px 6px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
-  }
-  .checklist-mark.complete { color: var(--success); }
-  .related-mark { display: inline-flex; align-items: center; color: var(--muted); opacity: .75; vertical-align: middle; margin-left: 4px; }
 
   .cell-status { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
   .cell-prio { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 12.5px; white-space: nowrap; }

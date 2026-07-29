@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
-import { invokeTauri, isTauri as isTauriPlatform, getQuietHours } from '../config';
+import { invokeTauri, isTauri as isTauriPlatform, getQuietHours, getNotificationsEnabled } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
 
 // Spread queued reminders out instead of letting them all land on the
@@ -483,7 +483,11 @@ export async function initNotificationListeners(): Promise<void> {
 // scale of a personal task manager — no need to track every individual
 // create/update/delete/complete site separately.
 export async function rescheduleAll(): Promise<void> {
-  const tasks = await getAllActiveTasksWithReminders();
+  // Master in-app toggle (config.ts's getNotificationsEnabled) -- an empty
+  // task list here means every scheduling path below cancels whatever it
+  // already had pending instead of re-arming it, same effect as "disabled"
+  // should have, without a separate cancel-everything code path per platform.
+  const tasks = getNotificationsEnabled() ? await getAllActiveTasksWithReminders() : [];
   if (isNative()) {
     await scheduleNative(tasks);
   } else if (isTauriPlatform()) {

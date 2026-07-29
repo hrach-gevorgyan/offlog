@@ -325,6 +325,33 @@
     return dragTask?._id === task._id || touchTask?._id === task._id;
   }
 
+  // redesign/v6, reference pass: color-graded due date instead of a
+  // binary overdue/not -- matches the owner's reference set (a due-date
+  // pill that ranges red/urgent -> amber/soon -> neutral/comfortable),
+  // not just red-or-plain. "Soon" threshold (<=3 days) matches
+  // FocusView.svelte's own due_soon bucket, so the two views agree on
+  // what counts as soon.
+  function dueDateClass(due: string): 'overdue' | 'soon' | '' {
+    const days = Math.round((new Date(`${due}T00:00:00`).getTime() - new Date(`${localDateStr(new Date())}T00:00:00`).getTime()) / 86_400_000);
+    if (days < 0) return 'overdue';
+    if (days <= 3) return 'soon';
+    return '';
+  }
+
+  // redesign/v6, follow-up critique (2026-07-28): tags all rendered as
+  // identical gray, forcing the user to read each one rather than
+  // recognize it by color. Offlog tags are free-text, not a fixed
+  // taxonomy (no built-in "bug"=red mapping) -- a deterministic hash to
+  // a small fixed palette gives every tag its own consistent color
+  // across the whole app (same tag always looks the same) without
+  // inventing a category system that doesn't exist in the data model.
+  const TAG_PALETTE = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+  function tagColor(tag: string): string {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
+    return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
+  }
+
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {
     touchTask = task;
     if (touchDragWatchdog) clearTimeout(touchDragWatchdog);
@@ -505,29 +532,40 @@
           />
         {:else}
           <span class="col-name">{col.name}</span>
+          <!-- redesign/v6: all three action buttons (rename/archive/
+               remove) now cluster right next to the title, not just
+               rename (owner feedback, 2026-07-28: "all this icons move
+               to close to column title as not only edit button") --
+               the count alone stays pushed to the far right via the
+               spacer below. -->
           <button class="col-rename" title="Rename status" aria-label="Rename status" on:click|stopPropagation={() => { editingColId = col.id; editingColName = col.name; }}>
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z"/>
             </svg>
           </button>
-        {/if}
-        <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
-        {#if (tasksByCol[col.id]?.length ?? 0) > 0}
-          <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
-            if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
-            try {
-              await archiveColumnTasks(project._id, col.id);
-              await reloadTasks();
-            } catch {
-              showError('Failed to archive tasks. Please try again.');
-            }
-          }}>
-            <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
+          {#if (tasksByCol[col.id]?.length ?? 0) > 0}
+            <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
+              if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
+              try {
+                await archiveColumnTasks(project._id, col.id);
+                await reloadTasks();
+              } catch {
+                showError('Failed to archive tasks. Please try again.');
+              }
+            }}>
+              <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="1" width="12" height="3" rx="1"/><path d="M2 4v8a1 1 0 001 1h8a1 1 0 001-1V4"/><line x1="5" y1="7" x2="9" y2="7"/>
+              </svg>
+            </button>
+          {/if}
+          <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">
+            <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 2l10 10M12 2L2 12"/>
             </svg>
           </button>
         {/if}
-        <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">×</button>
+        <div class="col-header-spacer"></div>
+        <span class="col-count">{tasksByCol[col.id]?.length ?? 0}</span>
       </div>
 
       <!-- Card list — drop zone for cards -->
@@ -545,7 +583,7 @@
             data-task-idx={idx}
             class:dragging={isDragging(task)}
             class:insert-before={dragOverColId === col.id && dragOverIndex === idx}
-            style="--prio-color:{PRIORITY_COLOR[task.priority]}"
+            class:pinned={task.pinned}
             draggable="true"
             role="button"
             tabindex="0"
@@ -559,15 +597,10 @@
             in:scale={{ duration: 150, start: 0.92, easing: cubicOut }}
             out:fade={{ duration: 120 }}
             animate:flip={{ duration: 200, easing: cubicOut }}
+            style="--prio-color:{PRIORITY_COLOR[task.priority]}"
           >
             <div class="card-top">
               <span class="card-title">{task.title}</span>
-              {#if task.pinned}<span class="card-pin" title="Pinned" transition:scale={{ duration: 130, start: 0.5, easing: cubicOut }}><PinStar size={11} /></span>{/if}
-              {#if task.recurrence}
-                <span class="card-recur" title="Repeats {task.recurrence}">
-                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
-                </span>
-              {/if}
               <div class="card-menu-wrap">
                 <button
                   type="button"
@@ -603,26 +636,49 @@
                 {/if}
               </div>
             </div>
+            <!-- redesign/v6, reference pass: every metadata item is its
+                 own small icon+text badge now (owner reference set), not
+                 boxless plain text -- due date is color-graded
+                 red/overdue -> amber/soon -> neutral, not just binary. -->
             <div class="card-meta">
-              {#if task.checklist?.length}
-                <span class="checklist-badge" class:complete={task.checklist.every(i => i.done)}>
-                  ☑ {task.checklist.filter(i => i.done).length}/{task.checklist.length}
-                </span>
-              {/if}
               {#if task.due_date}
-                <span class="due-badge" class:overdue={task.due_date < localDateStr(new Date())}>
+                <span class="meta-badge due-badge {dueDateClass(task.due_date)}">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="4" y1="1" x2="4" y2="3.5"/><line x1="10" y1="1" x2="10" y2="3.5"/></svg>
                   {task.due_date}
                 </span>
               {/if}
+              {#if task.recurrence}
+                <!-- redesign/v6 (owner feedback, 2026-07-30): moved down
+                     here from the title-row icon cluster, same line as
+                     the related-task icon below -- same reasoning as
+                     that earlier move (owner feedback, 2026-07-28): a
+                     metadata icon belongs with the other metadata
+                     badges, not the title row. -->
+                <span class="meta-badge recur-badge" title="Repeats {task.recurrence}">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
+                </span>
+              {/if}
               {#if relatedIds.has(task._id!)}
-                <span class="related-badge" title="Has related tasks">
-                  <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                <!-- redesign/v6: moved here, right next to the due date,
+                     from the title-row icon cluster (owner feedback,
+                     2026-07-28: "move related button to close to date"). -->
+                <span class="meta-badge related-badge" title="Has related tasks">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                </span>
+              {/if}
+              {#if task.checklist?.length}
+                <!-- redesign/v6, follow-up critique: a mini progress bar
+                     makes completion visible at a glance instead of
+                     requiring the "X/Y" text to be read every time. -->
+                <span class="meta-badge checklist-badge" class:complete={task.checklist.every(i => i.done)}>
+                  <span class="checklist-bar"><span class="checklist-bar-fill" style="width:{Math.round(task.checklist.filter(i => i.done).length / task.checklist.length * 100)}%"></span></span>
+                  {task.checklist.filter(i => i.done).length}/{task.checklist.length}
                 </span>
               {/if}
             </div>
             {#if task.tags.length}
               <div class="card-tags">
-                {#each task.tags as tag}<span class="card-tag">{tag}</span>{/each}
+                {#each task.tags as tag}<span class="card-tag" style="background:color-mix(in srgb, {tagColor(tag)} 14%, transparent)"><span class="card-tag-dot" style="background:{tagColor(tag)}"></span>{tag}</span>{/each}
               </div>
             {/if}
           </div>
@@ -752,41 +808,50 @@
   }
   .col-header:active { cursor: grabbing; }
 
-  .col-name { font-weight: 600; font-size: .9rem; flex: 1; color: var(--text); letter-spacing: -.005em; }
+  .col-name { font-weight: 600; font-size: .9rem; color: var(--text); letter-spacing: -.005em; }
+  .col-header-spacer { flex: 1; }
   .col-name-input {
     flex: 1; font-weight: 600; font-size: .9rem;
     border: none; border-bottom: 1.5px solid var(--accent);
     background: transparent; color: var(--text); padding: 0;
   }
   .col-name-input:focus { outline: none; }
+  /* redesign/v6: was bare floating text, no shape, sitting oddly next
+     to the status name (owner feedback, 2026-07-28: "awful"). A small
+     pill badge, same rounded/muted language as the card's own meta
+     badges, with a min-width so 1 vs. 2-digit counts don't shift the
+     column name's position. */
+  /* redesign/v6: was var(--hover), which equals --col-bg exactly in
+     light mode -- the pill had no visible fill there at all, only
+     showing up in dark mode where the two tokens differ (owner
+     feedback, 2026-07-28). --surface contrasts with --col-bg in both
+     themes. */
   .col-count {
-    font-family: var(--mono);
-    font-size: .7rem; color: var(--faint);
-    padding: 0 .15rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px;
+    font-family: var(--mono); font-size: .68rem; font-weight: 600;
+    color: var(--muted); background: var(--surface);
+    border-radius: 20px; padding: 0 .4rem;
   }
-  .col-rename {
-    cursor: pointer; color: var(--faint); display: flex; align-items: center;
-    background: none; border: none;
-    padding: 0 .1rem; opacity: 0; transition: opacity .15s, color .15s;
+  /* redesign/v6: all three action buttons share one fixed 20x20 flex
+     box now -- .col-rename used to have its own smaller padding-only
+     box, .col-remove was a bare "×" text glyph sized by font-size, only
+     .col-archive was already a proper icon-in-flex-box. Different
+     sizing models made them visibly inconsistent/misaligned (owner
+     feedback, 2026-07-28). */
+  .col-rename, .col-archive, .col-remove {
+    display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px;
+    background: none; border: none; cursor: pointer;
+    color: var(--faint); font-size: 1rem; line-height: 1;
+    border-radius: 5px; opacity: 0;
+    transition: opacity .15s, color .15s, background .12s;
   }
-  .col-rename:hover { color: var(--accent); }
+  .col-rename:hover { color: var(--accent); background: var(--hover); }
   .col-header:hover .col-rename { opacity: 1; }
-
-  .col-archive {
-    background: none; border: none; cursor: pointer;
-    color: var(--faint); padding: 0 .15rem; opacity: 0;
-    transition: opacity .15s, color .15s; display: flex; align-items: center;
-  }
-  .col-archive:hover { color: var(--accent); }
-  .col-header:hover .col-archive { opacity: 1; }
-
-  .col-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--faint); font-size: 1.05rem; line-height: 1;
-    padding: 0 .15rem; opacity: 0; transition: opacity .15s, color .15s;
-  }
-  .col-remove:hover { color: var(--danger); }
-  .col-header:hover .col-remove { opacity: 1; }
+  .col-archive:hover { color: var(--accent); background: var(--hover); }
+  .col-remove:hover { color: var(--danger); background: var(--hover); }
+  .col-header:hover .col-archive, .col-header:hover .col-remove { opacity: 1; }
 
   .card-list {
     padding: .25rem .6rem .65rem;
@@ -799,27 +864,41 @@
   }
   .card-list.cards-drag-over { background: color-mix(in srgb, var(--accent) 9%, var(--col-bg)); }
 
+  /* redesign/v6, reference pass (owner-provided screenshot set,
+     2026-07-28): no left priority bar, no static border -- cards float
+     on the column via whitespace + a soft shadow only, priority moves
+     to its own pill above the title. */
+  /* redesign/v6: priority pill tried and reverted, then a colored
+     left-edge glow tried and also reverted (owner feedback, 2026-07-28)
+     -- plain thin edge color, no glow. */
+  /* redesign/v6: top-right priority dot tested and reverted (owner,
+     2026-07-28: "edge color was good") -- back to the left-edge bar.
+     Padding bump (12px -> 16px) kept, that wasn't the issue. */
   .card {
     background: var(--surface);
     border-radius: var(--radius);
-    padding: .7rem .8rem;
+    padding: 16px 14px;
     cursor: pointer;
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--prio-color, var(--border));
+    border-left: 2px solid var(--prio-color, var(--border));
     box-shadow: 0 1px 2px rgba(0,0,0,.04);
     transition: box-shadow var(--dur) var(--ease),
-                border-color var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
                 opacity .18s;
   }
-  .card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.10); border-color: var(--border-strong); border-left-color: var(--prio-color, var(--border-strong)); transform: translateY(-2px); }
+  .card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,.10);
+    transform: translateY(-2px);
+  }
   .card.dragging { opacity: .35; transition: none; transform: none; }
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
+  /* redesign/v6: pin-star icon removed, pinned status now reads as a
+     thin accent-colored right edge (owner feedback, 2026-07-28) --
+     mirrors the priority left edge, opposite side so the two never
+     compete for the same space. */
+  .card.pinned { border-right: 1px solid var(--accent); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
-  .card-title { font-size: .9rem; font-weight: 500; line-height: 1.4; color: var(--text); flex: 1; }
-  .card-pin { flex-shrink: 0; color: var(--accent); opacity: .8; display: flex; align-items: center; margin-top: 2px; }
-  .card-recur { flex-shrink: 0; color: var(--muted); opacity: .75; display: flex; align-items: center; margin-top: 2px; }
+  .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
   .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
   .card-menu-trigger {
     display: flex; align-items: center; justify-content: center;
@@ -848,44 +927,62 @@
   .card-menu-item-danger { color: var(--danger); }
   .card-menu-item-danger svg { color: var(--danger); }
   .card-menu-item-danger:hover { background: var(--overdue-bg); }
-  .card-meta { display: flex; align-items: center; gap: .5rem; margin-top: .55rem; flex-wrap: wrap; }
-  .due-badge {
-    font-family: var(--mono);
-    font-size: .68rem; font-weight: 500;
+  /* redesign/v6, reference pass: every item is its own icon+text badge
+     (owner reference set) instead of plain inline text. Vertical gap
+     bumped +3px (owner feedback, 2026-07-28: metadata rows felt
+     cramped). */
+  .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .65rem; flex-wrap: wrap; }
+  .meta-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--mono); font-size: .68rem; font-weight: 500;
     color: var(--muted); background: var(--hover);
-    padding: .12rem .45rem; border-radius: 6px;
+    padding: .18rem .5rem; border-radius: 20px;
   }
+  /* redesign/v6, date-hierarchy critique (2026-07-28): a filled amber
+     "soon" pill read as equally urgent as the overdue red one --
+     "save fill colors exclusively for urgent time alerts." Only overdue
+     gets a colored fill now; every other date (soon or comfortably
+     future) shares the same plain neutral pill as the rest of the meta
+     badges (inherits .meta-badge's --hover background), no separate
+     amber tier. dueDateClass() still distinguishes 'soon' for any
+     future non-visual use, just not styled differently here. */
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
-  .checklist-badge {
-    font-family: var(--mono);
-    font-size: .68rem; font-weight: 500;
-    color: var(--muted); background: var(--hover);
-    padding: .12rem .45rem; border-radius: 6px;
+  .checklist-badge.complete { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .checklist-bar {
+    display: inline-block; width: 24px; height: 4px; border-radius: 2px;
+    background: var(--border-strong); overflow: hidden; flex-shrink: 0;
   }
-  .checklist-badge.complete { color: var(--success); }
-  .related-badge {
-    display: inline-flex; align-items: center; justify-content: center;
-    color: var(--muted); background: var(--hover);
-    padding: .18rem .32rem; border-radius: 6px;
-  }
+  .checklist-bar-fill { display: block; height: 100%; background: var(--success); border-radius: 2px; }
+  .related-badge, .recur-badge { padding: .18rem .4rem; }
 
-  /* B29: same visual treatment as ListView.svelte's .tag chip — kept as a
-     separate rule since Svelte scopes component styles per-file, not
-     shared via the class name alone. */
-  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .4rem; }
+  /* redesign/v6, follow-up critique: tags were all identical gray
+     (Tag Homogeneity) -- each tag now gets a consistent soft tint via
+     tagColor()'s hash, same filled-pill language as the priority/date
+     badges instead of a plain border. Vertical gap bumped to match
+     .card-meta above. Text itself stays var(--text) rather than the raw
+     hash color -- a saturated hue as both text and its own tinted
+     background failed contrast/readability (owner feedback, 2026-07-28,
+     e.g. pink text unreadable on its own dark-maroon tint) -- the color
+     identity now lives in a small dot instead. */
+  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .55rem; }
   .card-tag {
-    font-size: 11px; color: var(--muted); background: var(--col-bg);
-    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 500; color: var(--text);
+    padding: 2px 8px; border-radius: 20px; white-space: nowrap;
   }
+  .card-tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
+  /* redesign/v6, follow-up critique: was plain unstyled text, read as an
+     afterthought rather than a real control -- a dashed-outline button
+     matches the reference wireframe's drop-zone treatment. */
   .add-card-btn {
-    border: none; background: none; cursor: pointer;
+    border: 1.5px dashed var(--border-strong); background: none; cursor: pointer;
     color: var(--faint); font-size: .82rem; font-weight: 500;
-    text-align: left; padding: .4rem .5rem;
+    text-align: center; padding: .5rem;
     border-radius: var(--radius-sm); width: 100%;
-    transition: color .12s, background .12s;
+    transition: color .12s, background .12s, border-color .12s;
   }
-  .add-card-btn:hover { color: var(--text); background: var(--hover); }
+  .add-card-btn:hover { color: var(--text); background: var(--hover); border-color: var(--accent); }
 
   .quick-add-form, .add-col-form { display: flex; flex-direction: column; gap: .45rem; }
   .quick-input {
