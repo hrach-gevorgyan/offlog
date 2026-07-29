@@ -823,6 +823,14 @@
   .sidebar.collapsed .nav-btn:hover {
     background: var(--surface); border-color: var(--border-strong);
   }
+  /* Real bug, found live in the browser (2026-07-30): .nav-btn.active's
+     own background (var(--hover)) is identical to every collapsed icon's
+     resting background above, so the active nav icon was indistinguishable
+     from Focus/Agenda -- no text to bold either, since labels are hidden
+     when collapsed. Icon color is the only signal left in a 32px icon-only
+     box, so tint it accent here specifically (expanded mode still relies
+     on background + bold text, unaffected by this). */
+  .sidebar.collapsed .nav-btn.active { color: var(--accent); }
 
   /* flex:1 + justify-content:center -- owner feedback, 2026-07-30 (4th
      round): "spaces button bring middle of screen". This section used to
