@@ -773,15 +773,15 @@
      overflowed and wrapped) -- genuinely not "one row". nowrap now, and
      the checkbox flexes/shrinks with its label wrapping internally
      instead of the whole control dropping down. */
-  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-  /* 210px (previous pass, "make date picker field more wider") left too
-     little room for the checkbox's full un-truncated label ("Remind me
-     on the due date at 17:00" -- owner feedback, 2026-07-30: "don't
-     truncate text") to fit on one line, wrapping it to two instead.
-     Back down to 150px so the untouched full-length label has the room
-     it actually needs; the checkbox still flexes to fill whatever's
-     left, so the row still spans the block's full width. */
-  .reminder-row :global(.cal-field) { flex: 0 0 auto; width: 150px; }
+  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; }
+  /* Owner feedback, 2026-07-30: giving the checkbox flex:1 left it
+     stretched wider than its own (nowrap, full-length) text needed --
+     visible dead space trailing the pill. The checkbox only needs to
+     size to its content now (flex:0 0 auto, set on .remind-on-due-row
+     below); the picker takes flex:1 instead, so any leftover row width
+     actually goes to it ("give this space to datepicker") rather than
+     sitting empty behind the checkbox. */
+  .reminder-row :global(.cal-field) { flex: 1; min-width: 150px; }
   .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
@@ -824,18 +824,15 @@
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
   }
 
-  /* width:fit-content used to ignore however little space was actually
-     left next to the picker, so it always overflowed the row and
-     forced a wrap to a new line (owner feedback, 2026-07-30). flex:1 +
-     min-width:0 lets it shrink into whatever's left instead. Label text
-     itself shortened ("Remind me at 17:00", not "...on the due date at
-     17:00" -- full context still on hover via title=) plus nowrap here
-     now that it's short enough to reliably fit the one line the row-
-     level fix was actually meant to produce (owner feedback, 2026-07-30:
-     "now there is 2 lines"). */
+  /* flex:0 0 auto -- sizes to its own (nowrap, full-length) text and no
+     further, so it doesn't stretch wider than its content and leave
+     dead space of its own; the picker (flex:1 above) is what absorbs
+     any leftover row width now. nowrap keeps the full label
+     ("Remind me on the due date at 17:00" -- owner feedback, 2026-07-30:
+     "don't truncate text") on one line rather than wrapping to two. */
   .remind-on-due-row {
     display: flex !important; flex-direction: row !important; align-items: center;
-    gap: .4rem; flex: 1; min-width: 0; white-space: nowrap;
+    gap: .4rem; flex: 0 0 auto; white-space: nowrap;
     font-size: .74rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
     padding: .3rem .55rem; border-radius: var(--radius-sm);
