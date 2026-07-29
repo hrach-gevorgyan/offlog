@@ -802,6 +802,20 @@
      auto as a safety valve on very narrow widths (a horizontal scroll on
      4 short pills reads better than an awkward 3+1 wrap). */
   .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 0; overflow-x: auto; flex: 1; min-width: 0; }
+  /* Real bug, found live on an actual phone-width viewport (2026-07-30):
+     the "safety valve" above was only ever exercised at the modal
+     shrinking on desktop, not a true ~380px phone screen -- there, the
+     150px calendar field alone eats most of the row's width, so the
+     shortcuts get squeezed into a sliver and clip hard at the modal
+     edge with zero indication there's more to scroll. Stacking the two
+     rows instead gives the shortcuts their own full-width row to work
+     with (often enough to fit all four without scrolling at all),
+     without reintroducing the wrap this row was deliberately built to
+     avoid. */
+  @media (max-width: 480px) {
+    .due-date-row { flex-direction: column; align-items: stretch; }
+    .due-date-row :global(.cal-field) { width: 100%; }
+  }
   .due-shortcut {
     background: var(--col-bg); color: var(--muted); border: none;
     border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
