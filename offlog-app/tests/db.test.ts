@@ -4,7 +4,7 @@ import db, {
   createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
   createTask, getTasksForProject, updateTask, deleteTask,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribeUndo,
-  getAllTasksDue, getDashboardData,
+  getAllTasksDue, getDashboardData, getStorageBreakdown,
   checkIntegrity, repairDatabase, runMaintenanceSteps,
   getConflicts, resolveConflict,
   importJSON,
@@ -17,6 +17,7 @@ import db, {
   getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
   getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
   searchAllTasks,
+  addAttachment, deleteAttachment, getAttachmentBlob,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -1115,6 +1116,122 @@ describe('searchAllTasks', () => {
     await deleteTask(deleted._id!);
 
     expect(await searchAllTasks('findable checklist item')).toEqual([]);
+  });
+});
+
+// pouchdb-adapter-memory (this test suite's adapter) returns a Node Buffer
+// from getAttachment() in this environment, unlike a real browser's Blob --
+// db.ts's return type is still Blob for the real app (every platform this
+// app actually runs on returns one), this just normalizes for the test.
+async function attachmentText(content: Blob | Buffer): Promise<string> {
+  if (typeof (content as any).text === 'function') return (content as Blob).text();
+  return Buffer.from(content as Buffer).toString('utf-8');
+}
+
+describe('attachments (v6.8.0)', () => {
+  it('adds an attachment, storing metadata and retrievable blob content', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    const result = await addAttachment(task._id!, {
+      filename: 'receipt.txt', base64Data: btoa('hello world'), size: 11,
+    });
+
+    expect(result.attachments).toHaveLength(1);
+    expect(result.attachments![0]).toMatchObject({ filename: 'receipt.txt', content_type: 'text/plain', size: 11 });
+    const key = result.attachments![0].key;
+    const blob = await getAttachmentBlob(task._id!, key);
+    expect(await attachmentText(blob as any)).toBe('hello world');
+  });
+
+  it('rejects an unsupported file extension', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    await expect(addAttachment(task._id!, { filename: 'photo.heic', base64Data: '', size: 100 }))
+      .rejects.toThrow(/Unsupported file type/);
+    const stored = await getTasksForProject(project._id);
+    expect(stored[0].attachments ?? []).toHaveLength(0);
+  });
+
+  it('rejects a file over the 10MB cap', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    await expect(addAttachment(task._id!, { filename: 'huge.pdf', base64Data: '', size: 10 * 1024 * 1024 + 1 }))
+      .rejects.toThrow(/too large/);
+  });
+
+  it('keeps earlier attachments intact when a second one is added', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    await addAttachment(task._id!, { filename: 'one.txt', base64Data: btoa('one'), size: 3 });
+    const result = await addAttachment(task._id!, { filename: 'two.txt', base64Data: btoa('two'), size: 3 });
+
+    expect(result.attachments!.map(a => a.filename).sort()).toEqual(['one.txt', 'two.txt']);
+    const firstKey = result.attachments!.find(a => a.filename === 'one.txt')!.key;
+    const blob = await getAttachmentBlob(task._id!, firstKey);
+    expect(await attachmentText(blob as any)).toBe('one');
+  });
+
+  it('deletes an attachment, removing it from metadata and from storage', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+    const added = await addAttachment(task._id!, { filename: 'one.txt', base64Data: btoa('one'), size: 3 });
+    const key = added.attachments![0].key;
+
+    const result = await deleteAttachment(task._id!, key);
+
+    expect(result.attachments ?? []).toHaveLength(0);
+    await expect(getAttachmentBlob(task._id!, key)).rejects.toThrow();
+  });
+
+  it('logs an attachment add/delete as an update with a task_title, not a raw blob dump', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Receipts task');
+
+    await addAttachment(task._id!, { filename: 'one.txt', base64Data: btoa('one'), size: 3 });
+
+    const logs = await getRecentLogs(20);
+    const log = logs.find(l => l.ref === task._id && l.field === 'attachments');
+    expect(log?.task_title).toBe('Receipts task');
+    expect(log?.to).toHaveLength(1);
+  });
+
+  it('serializes concurrent attachment adds on the same task without a write conflict', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    const [r1, r2] = await Promise.all([
+      addAttachment(task._id!, { filename: 'one.txt', base64Data: btoa('one'), size: 3 }),
+      addAttachment(task._id!, { filename: 'two.txt', base64Data: btoa('two'), size: 3 }),
+    ]);
+
+    expect(r2.attachments).toHaveLength(2);
+    expect(r1).toBeTruthy();
+  });
+
+  it('counts attachments and their total bytes in getStorageBreakdown, across active/archived/deleted tasks', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const active = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Active');
+    await addAttachment(active._id!, { filename: 'one.txt', base64Data: btoa('one'), size: 3 });
+
+    const deleted = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Deleted');
+    await addAttachment(deleted._id!, { filename: 'two.txt', base64Data: btoa('two'), size: 7 });
+    await deleteTask(deleted._id!);
+
+    const breakdown = await getStorageBreakdown();
+    expect(breakdown.attachmentCount).toBe(2);
+    expect(breakdown.attachmentBytes).toBe(10);
   });
 });
 

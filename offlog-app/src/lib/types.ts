@@ -72,6 +72,15 @@ export interface ProjectDoc {
   source: Source;
 }
 
+// v6.8.0 — one entry per file attached to a task; see TaskDoc.attachments.
+export interface TaskAttachment {
+  key: string;           // "att:<nanoid>" -- the key into the doc's PouchDB _attachments map
+  filename: string;
+  content_type: string;
+  size: number;          // bytes, after any client-side downscale/compression
+  added_at: string;
+}
+
 export interface TaskDoc {
   _id: string;          // "task:<nanoid>"
   _rev?: string;
@@ -117,6 +126,15 @@ export interface TaskDoc {
   // time instead of mirror-written to both docs. Absent/undefined on old
   // docs = no links, same as an empty array.
   related?: string[];
+  // v6.8.0 — file attachments. The actual bytes live in PouchDB's own
+  // `_attachments` map (native attachment support -- rides the existing
+  // sync/replication with zero new code, dedupes unchanged content by
+  // digest automatically). This array is just small, loggable/diffable
+  // metadata per attachment -- `key` is the matching key into
+  // `_attachments`, not the filename, since two attachments could share
+  // a filename. See attachments.ts for the format allowlist/size cap and
+  // db.ts's addAttachment()/deleteAttachment() for the actual writes.
+  attachments?: TaskAttachment[];
   created_at: string;
   updated_at: string;
   source: Source;

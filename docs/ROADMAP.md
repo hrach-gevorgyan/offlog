@@ -184,12 +184,37 @@ owner is ready to build it, not on a schedule.
   — added navigate-on-click from the Related list and a link-icon badge
   on Kanban cards/List rows so a task's links are visible without
   opening it speculatively.
-- **v6.8.0 — File attachments (with size optimization).** PouchDB
-  supports binary attachments natively and they replicate over the
-  existing sync — but storage growth and sync payload on phones is the
-  real concern, so images would need client-side downscale/compression
-  on attach. Medium-large; the one item here with real storage-cost
-  risk.
+- **v6.8.0 — File attachments (with size optimization) — DONE
+  2026-07-29, on `feature/file-attachments` pending owner review before
+  merge.** Single database, not two — considered and deliberately
+  rejected a separate `offlog_attachments` db (would have solved
+  auto-backup duplication more thoroughly but added a second
+  independent sync channel/lifecycle; see DECISIONS.md). Bytes live in
+  PouchDB's own `_attachments` map on the task doc (`TaskDoc.attachments`
+  is just the small loggable/diffable metadata --filename/content_type/
+  size/added_at-- keyed by `att:<id>`, not filename), so it rides the
+  existing sync/replication with zero new sync code and dedupes
+  unchanged content by digest automatically. Formats: jpg/png/webp/svg/
+  pdf/txt/csv/json/yaml/xml/md/docx/xlsx, 10MB/file cap, HEIC/HEIF
+  explicitly rejected (v1 scope). Images are downscaled to ~1600px
+  longest side and re-encoded to JPEG client-side before upload
+  (`CardDetail.svelte`'s `downscaleImage()`) -- the one thing that
+  actually shrinks a modern phone photo; a generic zip/compress pass
+  was considered and rejected for every other format since jpg/webp/pdf/
+  docx/xlsx are already internally compressed (compressing compressed
+  data does ~nothing). B62's auto-backup needed no change: its existing
+  `db.allDocs({include_docs:true})` call (no `attachments:true`) already
+  excludes attachment bytes, so the 7-day rotation doesn't duplicate
+  them -- attachments' real safety net is sync to a second device, same
+  as everything else in this app. New `attachments.ts` (format
+  allowlist/size cap/mime map, shared by db.ts and CardDetail.svelte),
+  `db.ts`'s `addAttachment()`/`deleteAttachment()`/`getAttachmentBlob()`
+  (reuse `updateTask()`'s existing per-doc write-queue via a new shared
+  `queueTaskWrite()`, so concurrent attach calls on the same task can't
+  race into a write conflict), CardDetail's new "Attachments" Extras
+  block, Settings' storage breakdown gained an attachment count/size
+  line. 8 new `tests/db.test.ts` cases. Verified live (add/thumbnail/
+  delete, both text and image paths).
 - **v6.9.0 — Recurrence robustness pass — DONE 2026-07-29.** Real bug
   found and fixed: `db.ts`'s `advanceDate()` used plain
   `d.setMonth(d.getMonth()+1)` for monthly recurrence, which overflows

@@ -168,7 +168,7 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 |---|---|---|
 | `space:` | SpaceDoc | `name`, `color`, `position` |
 | `project:` | ProjectDoc | `space_id`, `name`, `columns[]`, `default_view` |
-| `task:` | TaskDoc | `project_id`, `column_id` (status), `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived`, `recurrence`, `related` |
+| `task:` | TaskDoc | `project_id`, `column_id` (status), `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived`, `recurrence`, `related`, `attachments` |
 | `log:` | LogEntry | `ref` (task id), `action`, `diffs`, `timestamp` |
 
 ### Key conventions
@@ -181,6 +181,30 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 - **Source**: `'pc'` or `'mobile'` — set on write, used in changelog
 - **"Status" vs "Column"**: internally, a project's stages are stored as `Column[]` on `columns` and each task references one via `column_id` — this is a legacy internal name. Every user-facing label calls it "Status" (e.g. "+ Status", "Rename status"); only variable/field names still say "column"
 - **Recurrence**: `recurrence?: 'daily' | 'weekly' | 'monthly' | null` on TaskDoc — no custom interval by design (v1 scope). One task object per series, matching Todoist/Google Tasks/Microsoft To Do/Apple Reminders — **not** a new card per completion (tried first, reverted same day on owner feedback: "now we have two task with same name"). `db.ts`'s `updateTask()` detects a move into the project's last column (the positional "done" check); if the task is recurring, `computeRecurrenceReset()`'s fields win over the caller's `changes` and the *same* task is written back into the first column with due_date advanced from the *original* due_date (not from today, so a late completion doesn't drift the schedule) and checklist items reset to unchecked, all in one write. The log entry still records the real transition ("moved to Done, due date advanced to X") even though the task itself never rests there. `ListView.svelte`'s mark-done undo snapshots due_date/reminder_at/checklist too, not just column_id, since undoing a recurring completion has to revert all of them.
+- **Attachments** (`attachments?: TaskAttachment[]`, v6.8.0): the actual
+  file bytes live in PouchDB's own native `_attachments` map on the task
+  doc — one database, no separate attachments db (see DECISIONS.md for
+  why a second db was considered and rejected), so attachments ride the
+  existing sync/replication with zero new code and dedupe unchanged
+  content by digest automatically. `TaskAttachment` (`types.ts`) is just
+  small, loggable/diffable metadata — `key` (`att:<nanoid>`, the actual
+  key into `_attachments`, not the filename, since two attachments could
+  share one), `filename`, `content_type`, `size`, `added_at`. `db.ts`'s
+  `addAttachment()`/`deleteAttachment()` reuse `updateTask()`'s per-doc
+  write-queue (`queueTaskWrite()`) since it's the same get-then-put shape
+  on the same doc id. Format allowlist (jpg/png/webp/svg/pdf/txt/csv/
+  json/yaml/xml/md/docx/xlsx — HEIC/HEIF explicitly rejected, v1 scope),
+  10MB/file cap, and the extension→mime map live in `attachments.ts`,
+  shared by `db.ts` (write-time validation) and `CardDetail.svelte`
+  (pick-time validation). Images are downscaled to ~1600px longest side
+  and re-encoded to JPEG client-side (`CardDetail.svelte`'s
+  `downscaleImage()`, canvas-based) before ever reaching `addAttachment()`
+  — the one format where client-side compression meaningfully shrinks a
+  file; every other allowed format is already internally compressed, so
+  no generic compression pass is applied to them. B62's auto-backup
+  needed no change — its `db.allDocs({include_docs:true})` call already
+  excludes attachment bytes (PouchDB only fetches them with an explicit
+  `attachments:true`), so the 7-day rotation doesn't duplicate them.
 - **Task linking** (`related?: string[]`, v6.7.0): non-directional "related to" only — no blocks/blocked-by dependency semantics (owner decision, 2026-07-28; see DECISIONS.md). Stored forward-only, on whichever task the link was added from; `db.ts`'s `getRelatedTasks()` computes the reverse direction at read time by scanning for any other task whose own `related` array names this one, rather than mirror-writing both docs (PouchDB can't write two docs atomically). `linkRelatedTask()`/`unlinkRelatedTask()` are immediate-write, unlike Tags/Checklist which batch into `CardDetail`'s Save button — a link can live on either of two different task docs, so it doesn't fit the "collect locally, write this one doc on Save" pattern. A soft-deleted linked task still resolves and is shown as "(deleted)" (same soft-delete-everywhere philosophy); only a hard-deleted/purged task is silently dropped from the list. Clicking a related task's title in `CardDetail` navigates straight to it (`openRelated` dispatch, handled by every one of the 7 parent components that can open `CardDetail` — `App.svelte`, `DashboardView`/`DeadlinesView`/`FocusView`/`TimeTravelView` already had a `detailTask`/`detailProject`/`detailOpenSession` trio to reuse; `KanbanBoard`/`ListView` needed a new `detailProjectOverride` local, since those two normally pass their own fixed `project` prop and a related task can belong to a *different* project than the board/list currently open). `db.ts`'s `getTaskIdsWithRelatedLinks()` gives Kanban cards and List rows a small link-icon badge for "this task has related links" — one full cached-task-list scan building a `Set<string>` of every id that participates in a link from either direction, refreshed on any db change, so no per-card query is needed.
 
 ---
