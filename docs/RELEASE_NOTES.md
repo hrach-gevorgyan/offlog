@@ -17,6 +17,25 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v5.9.0
+
+### New
+- The sidebar can now be collapsed to a slim icon-only rail, and resized
+  by dragging its edge.
+- The task detail view is cleaner: less-often-used fields (repeat,
+  reminder, checklist, custom fields, related tasks, notes) are now
+  tucked under one "Extras" section you open when you need it, instead
+  of always taking up space.
+- The sidebar's sync icon now shows its status (synced, syncing, error,
+  or conflicts) through its own color — tap it to jump straight to Sync
+  settings.
+
+### Fixed
+- The calendar/date picker could get visually cut off when opened
+  inside the task detail view.
+- The sidebar could keep a project highlighted as "current" even after
+  you'd navigated away to Dashboard, Focus, or Agenda.
+
 ## v5.8.3
 
 ### Fixed
