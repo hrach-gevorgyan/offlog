@@ -288,7 +288,22 @@ archived/pinned/recurring tasks, Trash, custom fields, checklists, notes,
 real changelog/history). It calls the app's own `db.ts` functions rather
 than writing raw PouchDB docs, so it can't drift out of sync with `db.ts`'s
 own invariants. Usage and the `WIPE_EXISTING` reset option are documented
-in the file's own header comment.
+in the file's own header comment. This script deliberately includes messy
+edge cases (a duplicate task title, near-duplicate notes) to exercise
+hint/disambiguation features — not meant to look polished.
+
+**For marketing/store screenshots specifically** (mobile and desktop):
+`offlog-app/scripts/seed-demo.js` is a separate, hand-authored,
+deterministic dataset — a single coherent persona (a software developer
+with a family, building a new house) across 4 spaces/13 projects, covering
+the same feature surface as seed-scenario.js (checklists, custom fields
+with values, related-task links, all three recurrence cadences, reminders,
+pinned/archived/trashed tasks) but with polished, believable content
+instead of randomized pools, so re-running it produces essentially the
+same workspace every time — screenshots stay reproducible across sessions.
+Same run mechanics (paste into DevTools console against a Vite dev
+server); for screenshots you almost always want its `WIPE_EXISTING: true`
+so the workspace is exactly this data and nothing else.
 
 **For anything smaller/more targeted**, write directly against the PouchDB
 instance in the browser (`new PouchDB('offlog')` — it's a global, reachable
