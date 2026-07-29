@@ -557,9 +557,14 @@
 
           <div class="view-seg">
             {#each VIEWS as v}
-              <button class="view-btn" class:active={currentView === v.key} on:click={() => setView(v.key)}>
+              <!-- aria-label, not just the visible .view-label span -- that
+                   span is display:none on mobile (icon-only there), which
+                   removes it from the accessible-name computation too, so
+                   this button had no accessible name at all once collapsed
+                   (real bug, found live via automated screenshot capture). -->
+              <button class="view-btn" class:active={currentView === v.key} on:click={() => setView(v.key)} aria-label={v.label} title={v.label}>
                 {@html ICONS[v.key]}
-                <span class="view-label">{v.label}</span>
+                <span class="view-label" aria-hidden="true">{v.label}</span>
               </button>
             {/each}
           </div>
