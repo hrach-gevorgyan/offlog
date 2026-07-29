@@ -68,7 +68,18 @@
   // The one place `activeProjectId` should reset the view to Kanban —
   // called from deliberate "go to this project" actions (sidebar project/
   // space click, dashboard project card), never from state restoration.
+  //
+  // Real bug, found live (2026-07-30): this only ever set activeProjectId,
+  // never activeSpaceId -- Sidebar.svelte's own goToProject() sets both,
+  // but this one (used by Dashboard/Focus's "open project" dispatch) left
+  // activeSpaceId stale from whatever space was last browsed in the
+  // sidebar tree. App.svelte's own breadcrumb (`activeSpace`, below)
+  // reads activeSpaceId, not the opened project's real space_id, so it
+  // could show the wrong space name/color after opening a project from
+  // Dashboard while a different space's tree was last expanded.
   function goToProject(id: string) {
+    const project = get(projects).find(p => p._id === id);
+    if (project) activeSpaceId.set(project.space_id);
     activeProjectId.set(id);
     currentView = 'kanban';
   }
