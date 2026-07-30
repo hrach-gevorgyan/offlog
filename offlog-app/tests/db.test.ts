@@ -1145,15 +1145,32 @@ describe('attachments (v6.8.0)', () => {
     expect(await attachmentText(blob as any)).toBe('hello world');
   });
 
-  it('rejects an unsupported file extension', async () => {
+  it('rejects HEIC/HEIF specifically', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Test Project');
     const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
 
     await expect(addAttachment(task._id!, { filename: 'photo.heic', base64Data: '', size: 100 }))
       .rejects.toThrow(/Unsupported file type/);
+    await expect(addAttachment(task._id!, { filename: 'photo.HEIF', base64Data: '', size: 100 }))
+      .rejects.toThrow(/Unsupported file type/);
     const stored = await getTasksForProject(project._id);
     expect(stored[0].attachments ?? []).toHaveLength(0);
+  });
+
+  // Owner decision, 2026-07-30: no format allowlist beyond rejecting HEIC/
+  // HEIF -- an extension check on top of that would mostly be curation,
+  // not real protection, since Offlog never executes an attachment either
+  // way. A handful of extensions with no special treatment in this app
+  // (no icon, no preview, generic mime fallback) should still attach fine.
+  it('accepts any other file extension, with a generic mime fallback for unrecognized ones', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    const result = await addAttachment(task._id!, { filename: 'archive.zip', base64Data: btoa('x'), size: 1 });
+
+    expect(result.attachments![0]).toMatchObject({ filename: 'archive.zip', content_type: 'application/octet-stream' });
   });
 
   it('rejects a file over the 10MB cap', async () => {

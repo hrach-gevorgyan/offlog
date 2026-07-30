@@ -61,6 +61,26 @@ consistent with how this app has never treated local sync as a backup
 substitute; an attachment's real safety net is whatever other device
 it's synced to, same as everything else.
 
+### Why file attachments have no format allowlist beyond HEIC/HEIF (2026-07-30)
+v6.8.0 shipped with a curated allowlist (jpg/png/webp/svg/pdf/txt/csv/
+json/yaml/xml/md/docx/xlsx). Revised the same day, owner-prompted: "why
+have we blocked some file extensions — this is attachment, need to be
+downloaded/uploaded, we can't open in app anyway." Correct — most
+allowed formats already get no in-app preview (docx/xlsx/pdf all just
+show as a generic file chip + download), so the allowlist wasn't
+protecting some in-app rendering feature, it was just curating what
+"counts" as supported. And an extension check isn't real protection
+either: Offlog never executes an attachment, only stores and downloads
+bytes, so opening whatever you download afterward is the same trust
+decision as any file from anywhere else — and a check like this is
+trivially bypassed by renaming a file's extension regardless. Dropped
+the allowlist entirely except HEIC/HEIF, which stays rejected on
+its own separate, real technical merit (canvas-based downscaling can't
+reliably decode it in a browser/webview today) — not a security
+decision, a compression-pipeline limitation. `CardDetail.svelte`'s file
+input also dropped its `accept` restriction, since HTML's `accept`
+can't express "anything except two extensions."
+
 ### Why PouchDB as a UMD global, not a pure ESM import
 `db.ts` loads PouchDB core via a `<script>` tag in `index.html`
 (`public/pouchdb.js`) and registers `pouchdb-find` separately as an ESM

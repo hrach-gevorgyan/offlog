@@ -192,15 +192,21 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
   share one), `filename`, `content_type`, `size`, `added_at`. `db.ts`'s
   `addAttachment()`/`deleteAttachment()` reuse `updateTask()`'s per-doc
   write-queue (`queueTaskWrite()`) since it's the same get-then-put shape
-  on the same doc id. Format allowlist (jpg/png/webp/svg/pdf/txt/csv/
-  json/yaml/xml/md/docx/xlsx — HEIC/HEIF explicitly rejected, v1 scope),
+  on the same doc id. **No format allowlist** (owner decision,
+  2026-07-30, revised from an initial curated list) — any extension is
+  attachable except HEIC/HEIF, which stays rejected on its own technical
+  merit (canvas-based downscaling can't reliably decode it in a browser/
+  webview today); an allowlist beyond that would be curation, not
+  protection, since Offlog never executes an attachment either way.
   10MB/file cap, 10 attachments/task cap (`db.ts`'s
   `ATTACHMENT_MAX_PER_TASK`, checked inside `queueTaskWrite()` so two
   concurrent attaches on the same task can't both slip past the count
-  check before either write lands), and the extension→mime map live in
-  `attachments.ts`,
-  shared by `db.ts` (write-time validation) and `CardDetail.svelte`
-  (pick-time validation). Images are downscaled to ~1600px longest side
+  check before either write lands), and the extension→mime map (falls
+  back to `application/octet-stream` for an unrecognized extension) live
+  in `attachments.ts`, shared by `db.ts` (write-time validation) and
+  `CardDetail.svelte` (pick-time validation — no `accept` restriction on
+  the file input either, since it can't express "anything except two
+  extensions"). Images are downscaled to ~1600px longest side
   and re-encoded to JPEG client-side (`CardDetail.svelte`'s
   `downscaleImage()`, canvas-based) before ever reaching `addAttachment()`
   — the one format where client-side compression meaningfully shrinks a

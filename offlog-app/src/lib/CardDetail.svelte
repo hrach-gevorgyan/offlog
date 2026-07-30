@@ -801,10 +801,13 @@
                 <button type="button" class="attach-file-btn" disabled={attachmentBusy || attachments.length >= ATTACHMENT_MAX_PER_TASK} on:click={() => attachFileInputEl.click()}>
                   {attachmentBusy ? 'Attaching…' : attachments.length >= ATTACHMENT_MAX_PER_TASK ? `Max ${ATTACHMENT_MAX_PER_TASK} attachments reached` : '+ Attach a file'}
                 </button>
+                <!-- No `accept` restriction -- any file type is attachable except
+                     HEIC/HEIF (rejected in attachOneFile() with a clear message);
+                     `accept` can't express a negation, so this intentionally lets
+                     the OS picker show everything and relies on the JS check. -->
                 <input
                   bind:this={attachFileInputEl}
                   type="file" multiple style="display:none"
-                  accept=".jpg,.jpeg,.png,.webp,.svg,.pdf,.txt,.csv,.json,.yaml,.yml,.xml,.md,.docx,.xlsx"
                   on:change={onFilesPicked}
                 />
                 {#if attachmentError}<p class="dup-name-hint">{attachmentError}</p>{/if}
