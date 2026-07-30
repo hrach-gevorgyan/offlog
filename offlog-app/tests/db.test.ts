@@ -17,7 +17,7 @@ import db, {
   getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
   getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
   searchAllTasks,
-  addAttachment, deleteAttachment, getAttachmentBlob,
+  addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -1217,6 +1217,21 @@ describe('attachments (v6.8.0)', () => {
 
     expect(r2.attachments).toHaveLength(2);
     expect(r1).toBeTruthy();
+  });
+
+  it(`rejects an ${ATTACHMENT_MAX_PER_TASK + 1}th attachment on the same task`, async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+
+    for (let i = 0; i < ATTACHMENT_MAX_PER_TASK; i++) {
+      await addAttachment(task._id!, { filename: `f${i}.txt`, base64Data: btoa('x'), size: 1 });
+    }
+    await expect(addAttachment(task._id!, { filename: 'one-too-many.txt', base64Data: btoa('x'), size: 1 }))
+      .rejects.toThrow(/max per task/);
+
+    const stored = await getTasksForProject(project._id);
+    expect(stored[0].attachments).toHaveLength(ATTACHMENT_MAX_PER_TASK);
   });
 
   it('counts attachments and their total bytes in getStorageBreakdown, across active/archived/deleted tasks', async () => {

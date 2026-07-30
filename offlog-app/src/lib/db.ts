@@ -1414,6 +1414,8 @@ async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<Ta
 // queueTaskWrite() (above) since this is the same get-then-put shape as
 // updateTask(), on the same doc id, and needs the same per-id serialization.
 
+export const ATTACHMENT_MAX_PER_TASK = 10;
+
 export interface AddAttachmentInput {
   filename: string;
   base64Data: string; // already base64-encoded, and for images already downscaled/compressed by the caller
@@ -1432,9 +1434,16 @@ export async function addAttachment(taskId: string, input: AddAttachmentInput): 
 
 async function addAttachmentImpl(taskId: string, input: AddAttachmentInput): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(taskId);
+  const prevMeta = doc.attachments ?? [];
+  // Checked here, inside the per-doc write queue, not in addAttachment()'s
+  // synchronous pre-check above -- two concurrent addAttachment() calls on
+  // the same task must each see the OTHER's count too, or both could pass
+  // a "9 < 10" check before either write lands and end up with 11.
+  if (prevMeta.length >= ATTACHMENT_MAX_PER_TASK) {
+    throw new Error(`This task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task)`);
+  }
   const key = `att:${nanoid()}`;
   const contentType = attachmentMimeType(input.filename);
-  const prevMeta = doc.attachments ?? [];
   const meta: TaskAttachment = { key, filename: input.filename, content_type: contentType, size: input.size, added_at: now() };
   const nextMeta = [...prevMeta, meta];
 

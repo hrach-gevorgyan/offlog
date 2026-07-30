@@ -195,8 +195,10 @@ owner is ready to build it, not on a schedule.
   size/added_at-- keyed by `att:<id>`, not filename), so it rides the
   existing sync/replication with zero new sync code and dedupes
   unchanged content by digest automatically. Formats: jpg/png/webp/svg/
-  pdf/txt/csv/json/yaml/xml/md/docx/xlsx, 10MB/file cap, HEIC/HEIF
-  explicitly rejected (v1 scope). Images are downscaled to ~1600px
+  pdf/txt/csv/json/yaml/xml/md/docx/xlsx, 10MB/file cap, 10 attachments/
+  task cap (`ATTACHMENT_MAX_PER_TASK`, checked inside the write queue so
+  two concurrent attaches on the same task can't both slip past a race),
+  HEIC/HEIF explicitly rejected (v1 scope). Images are downscaled to ~1600px
   longest side and re-encoded to JPEG client-side before upload
   (`CardDetail.svelte`'s `downscaleImage()`) -- the one thing that
   actually shrinks a modern phone photo; a generic zip/compress pass
@@ -213,7 +215,7 @@ owner is ready to build it, not on a schedule.
   `queueTaskWrite()`, so concurrent attach calls on the same task can't
   race into a write conflict), CardDetail's new "Attachments" Extras
   block, Settings' storage breakdown gained an attachment count/size
-  line. 8 new `tests/db.test.ts` cases. Verified live (add/thumbnail/
+  line. 10 new `tests/db.test.ts` cases. Verified live (add/thumbnail/
   delete, both text and image paths).
 - **v6.9.0 — Recurrence robustness pass — DONE 2026-07-29.** Real bug
   found and fixed: `db.ts`'s `advanceDate()` used plain

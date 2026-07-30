@@ -3,7 +3,7 @@
   import { fly, slide } from 'svelte/transition';
   import { popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, addAttachment, deleteAttachment, getAttachmentBlob } from './db';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, formatAttachmentSize } from './attachments';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { requestPermission, permissionState } from './notifications';
@@ -393,6 +393,10 @@
   }
 
   async function attachOneFile(file: File) {
+    if (attachments.length >= ATTACHMENT_MAX_PER_TASK) {
+      attachmentError = `This task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task).`;
+      return;
+    }
     const ext = attachmentExtension(file.name);
     if (!isAttachmentExtensionAllowed(file.name)) {
       attachmentError = (ext === 'heic' || ext === 'heif')
@@ -794,8 +798,8 @@
                     <button type="button" class="checklist-remove" on:click={() => removeAttachment(a.key)} disabled={attachmentBusy} aria-label="Remove attachment {a.filename}">×</button>
                   </div>
                 {/each}
-                <button type="button" class="attach-file-btn" disabled={attachmentBusy} on:click={() => attachFileInputEl.click()}>
-                  {attachmentBusy ? 'Attaching…' : '+ Attach a file'}
+                <button type="button" class="attach-file-btn" disabled={attachmentBusy || attachments.length >= ATTACHMENT_MAX_PER_TASK} on:click={() => attachFileInputEl.click()}>
+                  {attachmentBusy ? 'Attaching…' : attachments.length >= ATTACHMENT_MAX_PER_TASK ? `Max ${ATTACHMENT_MAX_PER_TASK} attachments reached` : '+ Attach a file'}
                 </button>
                 <input
                   bind:this={attachFileInputEl}

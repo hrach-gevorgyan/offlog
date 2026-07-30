@@ -194,7 +194,11 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
   write-queue (`queueTaskWrite()`) since it's the same get-then-put shape
   on the same doc id. Format allowlist (jpg/png/webp/svg/pdf/txt/csv/
   json/yaml/xml/md/docx/xlsx — HEIC/HEIF explicitly rejected, v1 scope),
-  10MB/file cap, and the extension→mime map live in `attachments.ts`,
+  10MB/file cap, 10 attachments/task cap (`db.ts`'s
+  `ATTACHMENT_MAX_PER_TASK`, checked inside `queueTaskWrite()` so two
+  concurrent attaches on the same task can't both slip past the count
+  check before either write lands), and the extension→mime map live in
+  `attachments.ts`,
   shared by `db.ts` (write-time validation) and `CardDetail.svelte`
   (pick-time validation). Images are downscaled to ~1600px longest side
   and re-encoded to JPEG client-side (`CardDetail.svelte`'s
