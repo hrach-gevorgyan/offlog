@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { searchPop, scrimFade } from './motion';
-  import { searchAllTasks } from './db';
+  import { searchAllTasks, type TaskSearchMatch } from './db';
   import { projects } from './store';
   import type { TaskDoc, ProjectDoc } from './types';
   import type { Command } from './commands';
@@ -17,7 +17,7 @@
   const requestClose = closeOnBack(() => dispatch('close'));
 
   let query = '';
-  let results: (TaskDoc & { project_name: string; matchedIn: 'title' | 'tags' | 'body' | 'checklist' })[] = [];
+  let results: (TaskDoc & { project_name: string; matchedIn: TaskSearchMatch })[] = [];
   let searching = false;
   let inputEl: HTMLInputElement;
   let selectedIdx = 0;

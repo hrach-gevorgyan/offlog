@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.7.6 | Quiet hours (Settings → Notifications, queues reminders inside a configured window instead of firing) + a real 12h/24h display bug fix affecting TimePicker/CalendarPicker/CardDetail's reminder text | `v5.7.6` |
 | 5.7.5 | Milestone 1 complete: B61 (App Lock PIN confirmation required to change/remove), B62 (automatic local backup, rotated to 7), E3 (desktop auto-updater wired with real signing key). A32's 18 new UI component tests landed the same batch (suite to 204) | `v5.7.5` |
 | 5.7.4 | Second dependency maintenance batch (6 Dependabot PRs): Capacitor CLI/core/app/local-notifications patch bumps, `serde_json` patch bump, `rand` 0.9.5→0.10.2 needed a real code fix (`random_range` moved to a new `RngExt` trait, broke `sync_host.rs`'s pairing-credential generator); surfaced that `ci.yml` doesn't watch Cargo/Rust changes at all | `v5.7.4` |
 | 5.7.3 | Dependency maintenance batch: `uuid` forced to 11.1.1 via npm `overrides` (GHSA-w5hq-g745-h8pq); TypeScript 7.0.2 merged then reverted same day (broke `npx cap sync android`, invisible to build/tsc/test); `mdns-sd` 0.13.11→0.20.2, `tauri-winrt-notification` 0.7.3→0.8.1; `glib` 0.18.5 advisory recorded as accepted risk (no compatible fix upstream); `dependabot.yml` extended to watch offlog-desktop's Cargo deps | `v5.7.3` |
@@ -368,3 +369,31 @@ injection anywhere in the chain) — confirmed clean, not just assumed.
 No RISKY findings; no schema/sync/storage-format changes. Baselines
 (build zero-warning / tsc / 219 tests / cargo build) all green,
 re-verified after every fix and once more at Phase 4.
+
+Last pass: v6.0.1 (2026-07-30 — seventeenth run, pulled forward at owner
+request right after v6.0.0's large feature batch — file attachments,
+recurrence-robustness fix, unified search, tag color picker, plus the
+milestone/"Done" framework's removal from ROADMAP.md — landed in one
+session and warranted a check before pushing). Baselines confirmed
+green first (offlog-app build/tsc/253 tests, offlog-desktop cargo
+build, `cap sync android`), including the desktop Rust build which
+hadn't been checked yet this session. Two real, verified findings, both
+fixed: `db.ts`'s `getRecentlyModifiedTasks()` was dead code, orphaned
+since the 5.9.0 redesign removed the Sidebar "Recent" section it fed —
+deleted, along with updating the stale comment on `getActiveProjectIds()`
+that still named it as a caller. `GlobalSearch.svelte` re-declared its
+own `'title'|'tags'|'body'|'checklist'` union instead of importing the
+already-exported `TaskSearchMatch` type from `db.ts` — deduped to the
+shared import. A third `knip` flag (`store.ts`'s `tasks` writable has an
+unnecessarily-wide `export` — nothing outside the file imports it
+directly, only its derived `projectTasks` is used elsewhere) was
+reported but left alone at owner's call — trivial, zero value. `npx
+knip` also flagged 4 Capacitor/Tauri deps and 4 Svelte files as
+"unused"; all individually hand-verified as real, dynamically-imported
+code — false positives, matching this project's established experience
+with the tool on Svelte/Tauri. `npm audit`: 0 vulnerabilities. Build-
+output secret-leakage gate re-checked against a real `.env.local` —
+still clean. Dist size: 1.2MB, unchanged from the v5.8.2 baseline
+despite the whole v6.x feature batch landing since. No RISKY findings;
+no schema/sync/storage-format changes. Baselines re-verified clean
+after both fixes.

@@ -265,11 +265,13 @@ export async function getStorageBreakdown(): Promise<StorageBreakdown> {
   return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length, attachmentCount, attachmentBytes };
 }
 
-// v5.6.2 cleanup: getDashboardData()/searchAllTasks()/getRecentlyModifiedTasks()
-// each independently built this identical Set to exclude an archived
-// project's leaked done tasks (see archiveProject()'s own comment for why
-// those can still carry archived:false) -- one shared helper instead of
-// three copies of the same line.
+// v5.6.2 cleanup: getDashboardData()/searchAllTasks() each independently
+// built this identical Set to exclude an archived project's leaked done
+// tasks (see archiveProject()'s own comment for why those can still
+// carry archived:false) -- one shared helper instead of two copies of
+// the same line. (A third caller, getRecentlyModifiedTasks(), was
+// removed as dead code in the 6.0.0 maintenance pass once Sidebar's
+// "Recent" section it fed was dropped in the 5.9.0 redesign.)
 function getActiveProjectIds(allProjects: ProjectDoc[]): Set<string> {
   return new Set(allProjects.map(p => p._id!));
 }
@@ -1499,22 +1501,6 @@ export async function getAttachmentBlob(taskId: string, key: string): Promise<Bl
 
 const _undoListeners = new Set<() => void>();
 export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return () => _undoListeners.delete(fn); }
-
-// B23: sidebar "recent" shortcut — last N modified tasks across every
-// project, not just the currently open one. `tasks`/`projectTasks` in
-// store.ts only hold the active project's tasks, so this needs its own
-// cross-project query rather than reusing what's already loaded.
-export async function getRecentlyModifiedTasks(limit = 3): Promise<TaskDoc[]> {
-  const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
-  const activeProjectIds = getActiveProjectIds(allProjects);
-  // Same archived-project leak as getDashboardData() -- a task from an
-  // archived project can stay archived:false (see archiveProject()'s
-  // comment) and would otherwise still show up in Sidebar's Recent list.
-  return all
-    .filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id))
-    .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
-    .slice(0, limit);
-}
 
 export async function getRecentlyDeleted(limit = 10): Promise<TaskDoc[]> {
   const all = await getAllTasksRaw();

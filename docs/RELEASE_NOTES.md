@@ -17,6 +17,10 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v6.0.1
+
+No visible changes — a routine maintenance pass (internal cleanup only).
+
 ## v6.0.0
 
 ### New
