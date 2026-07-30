@@ -407,3 +407,48 @@ both are permanent identities that can't be re-issued.
 | — | v4.29.0 → v5.0.0 ✓ | Time Travel, NLP Quick Add, recurring tasks, font consolidation (Hanken Grotesk only), App Lock (PIN). |
 | — | v5.2.0 → v5.4.5 ✓ | Privacy Screen, Clipboard, App Launcher, Haptics, biometric unlock, Android cleanup, widget/overlay bug-fix batches from live-device testing rounds. |
 | — | (parked) | B28, B33 — rethinking positional-done and sub-projects; revisit post-release only if daily use demands it. |
+
+---
+
+## v6.0.0 — the "Milestone 1/2/3" framework, and what actually shipped under it
+
+**Owner decision, 2026-07-30:** dropped the three-milestone/"Done"
+ceremony ROADMAP.md had been organized around since 2026-07-22 (Milestone
+1 "Stable for me", Milestone 2 "Installable by normal humans", Milestone
+3 "Done" gated on both). Reasoning: the ceremony had accreted its own
+overhead — a version bump gated on Google's Play Console review timeline
+(outside anyone's control) rather than on the app's actual readiness.
+Version bumped to v6.0.0 anyway, on its own merits (a real, tested batch
+of shipped work), decoupled from the old Milestone 2 gate. Going
+forward: no more milestone/Done ceremony — ROADMAP.md just tracks
+what's actually still open, one step at a time.
+
+**Milestone 1 ("Stable for me") — shipped 2026-07-23:** B61 (App Lock
+PIN confirmation), E3 (desktop auto-updater, hardened across
+v5.7.6-5.7.10), B62 (automatic local backup), A32 (UI test hardening).
+
+**Feature-track items shipped under the old v6.X.0 numbering** (full
+technical detail in CHANGELOG.md, this is just the roadmap-shaped
+pointer):
+- v6.7.0 — Task linking (2026-07-28): related-only, non-directional,
+  `TaskDoc.related?`.
+- v6.8.0 — File attachments (2026-07-29/30): single-database design
+  (PouchDB native `_attachments` on the task doc), 10MB/file + 10/task
+  caps, client-side image downscale, no format allowlist beyond
+  HEIC/HEIF (revised same week from an initial curated list).
+- v6.9.0 — Recurrence robustness pass (2026-07-29): fixed monthly
+  recurrence overflowing past shorter months; DST/long-offline-gap
+  behavior audited and confirmed already correct.
+- v6.10.0 — Unified search (2026-07-29): search now covers checklist
+  text too, shows why a result matched.
+- v6.11.0 — Tag color picker (2026-07-29): manual override on top of
+  the existing hash-color fallback.
+- v6.6.0 — Distraction-minimal interface pass: satisfied by the 5.9.0
+  Sidebar + CardDetail redesign, not built as a separate item.
+
+**Still open, carried forward past v6.0.0** (see ROADMAP.md's current
+"Open" section for status): C3 (Play Store listing, waiting on Google's
+review), C3b (Windows code signing, parked — free-program-only,
+permanently), C5 (landing page, on hold). None of these block anything
+else; they just weren't done in time to gate a version number on, which
+is exactly the ceremony that got dropped.

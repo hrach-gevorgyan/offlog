@@ -257,18 +257,21 @@ Download the latest Windows installer and Android APK from
 Your OS will warn you before installing (unsigned app, not from Google
 Play) — that's expected, not a red flag on this app's code; getting real
 signing/publishing set up is a tracked goal (see
-[docs/ROADMAP.md](docs/ROADMAP.md)'s Milestone 2 — Windows signing is
-applying to [SignPath Foundation](https://signpath.org)'s free
-open-source program, see [docs/SIGNING.md](docs/SIGNING.md)). Just make
+[docs/ROADMAP.md](docs/ROADMAP.md)'s "Open" section — Android's Play
+Store listing is ready and waiting on Google's review; Windows signing
+applied to [SignPath Foundation](https://signpath.org)'s free
+open-source program and was asked to reapply once the project has more
+public traction, see [docs/SIGNING.md](docs/SIGNING.md)). Just make
 sure you're downloading from this repo's own Releases page, not a
 mirror.
 
 **Windows** is the intended app for day-to-day use — bundles its own
-sync server, nothing else to install. **Android** works the same way via
-side-loaded APK today, Play Store once published. The **web build**
+sync server, nothing else to install, and checks for updates
+automatically (signed installer, in-app changelog, explicit restart
+prompt). **Android** works the same way via side-loaded APK today, Play
+Store (with its own auto-update) once published. The **web build**
 (`npm run dev`) is a dev/test surface, not the primary way to use the
-app. Auto-update for desktop/Android is still being wired up (tracked in
-ROADMAP.md).
+app.
 
 ## Built like a real product, not a prototype
 

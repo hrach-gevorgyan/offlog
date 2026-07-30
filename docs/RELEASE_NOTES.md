@@ -17,6 +17,26 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v6.0.0
+
+### New
+- You can now attach files to any task — photos, PDFs, spreadsheets, and
+  more. Photos are automatically shrunk down before saving so they don't
+  take up much space. Each file can be up to 10MB, and a task can hold
+  up to 10 attachments. (Note: HEIC photos, the default format on newer
+  iPhones, aren't supported yet — please share as JPEG instead.)
+- Search now also looks inside your checklists, not just task titles and
+  notes — and shows you where a match was found when it isn't obvious.
+- Tags already got an automatic color so the same tag always looks the
+  same — you can now pick your own color for any tag instead, from
+  Settings → Organize → Manage Tags.
+
+### Fixed
+- Recurring tasks due on the 29th, 30th, or 31st of the month could
+  skip straight past a shorter month instead of landing on its last day.
+- The sidebar could accidentally be collapsed down to a tiny icon strip
+  on a phone, where that mode isn't meant to be available.
+
 ## v5.9.0
 
 ### New
