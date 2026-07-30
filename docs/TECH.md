@@ -12,6 +12,19 @@ since this file doesn't change every release.
 > the system currently works — mission/pitch lives in the root [README.md](../README.md),
 > not duplicated here.
 
+**Contents:** [Technology Stack](#technology-stack) ·
+[Architecture](#architecture) · [Source File Map](#source-file-map) ·
+[Data Model](#data-model) ·
+[Performance & Reliability](#performance--reliability) ·
+[Shared Utilities](#shared-utilities--utilsts) ·
+[Testing & Dev Workflows](#testing--dev-workflows) ·
+[How Sync Works](#how-sync-works) ·
+[Theme System](#theme-system--brand-colors) ·
+[View Persistence](#view-persistence) · [Notifications](#notifications) ·
+[Mobile (Android)](#mobile-android) ·
+[Desktop (Tauri)](#desktop-tauri--offlog-desktop) ·
+[Version History](#version-history)
+
 ---
 
 ## Technology Stack
@@ -37,45 +50,27 @@ since this file doesn't change every release.
 
 ## Architecture
 
-```
-┌───────────────────────────────────────────────────┐
-│                     UI Layer                       │
-│  App.svelte                                        │
-│    ├── Sidebar.svelte   (spaces / project nav)     │
-│    ├── DashboardView    (home — overview)          │
-│    ├── FocusView        (daily commitment lock)    │
-│    ├── KanbanBoard      (drag-and-drop columns)    │
-│    ├── ListView         (sortable + filterable)    │
-│    ├── DeadlinesView    (agenda: list + week grid) │
-│    ├── CardDetail       (task editor modal)        │
-│    ├── QuickAdd         (Ctrl+N fast-add)          │
-│    ├── GlobalSearch     (Ctrl+K cross-project)     │
-│    ├── SettingsPanel    (6-tab settings)           │
-│    └── TimeTravelView   (journal: log: by day)     │
-└────────────────────┬──────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────┐
-│              Store Layer  (store.ts)               │
-│  Svelte writable stores: spaces, projects, tasks   │
-│  activeSpaceId, activeProjectId                    │
-│  Persisted to localStorage; reload on DB change    │
-└────────────────────┬──────────────────────────────┘
-                     │
-┌────────────────────▼──────────────────────────────┐
-│            Database Layer  (db.ts)                 │
-│  PouchDB (IndexedDB in browser)                    │
-│  · All CRUD operations for spaces/projects/tasks   │
-│  · Changelog writer (every mutation → log: doc)   │
-│  · Undo buffer: last 10 deleted tasks in-memory   │
-│  · CouchDB-protocol live sync (optional)           │
-└────────────────────┬──────────────────────────────┘
-                     │  replication protocol
-┌────────────────────▼──────────────────────────────┐
-│  CouchDB-protocol sync server (self-hosted, optional) │
-│  Real CouchDB, or NyxDB (offlog-desktop's embedded one) │
-│  Single database: offlog                           │
-│  All devices sync through one node                 │
-└───────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph UI["UI Layer — App.svelte"]
+        direction LR
+        Sidebar["Sidebar<br/>spaces / project nav"]
+        Dashboard["DashboardView<br/>home overview"]
+        Focus["FocusView<br/>daily commitment lock"]
+        Kanban["KanbanBoard<br/>drag-and-drop columns"]
+        List["ListView<br/>sortable + filterable"]
+        Agenda["DeadlinesView<br/>list + week grid"]
+        Card["CardDetail<br/>task editor modal"]
+        Quick["QuickAdd<br/>Ctrl+N fast-add"]
+        Search["GlobalSearch<br/>Ctrl+K cross-project"]
+        Settings["SettingsPanel<br/>6-tab settings"]
+        Time["TimeTravelView<br/>log: journal by day"]
+    end
+    Store["Store Layer — store.ts<br/>Svelte writable stores: spaces, projects, tasks,<br/>activeSpaceId, activeProjectId<br/>persisted to localStorage, reload on DB change"]
+    DB["Database Layer — db.ts<br/>PouchDB (IndexedDB in browser)<br/>· all CRUD for spaces/projects/tasks<br/>· changelog writer (every mutation → log: doc)<br/>· undo buffer: last 10 deleted tasks in-memory<br/>· CouchDB-protocol live sync (optional)"]
+    Sync["CouchDB-protocol sync server (self-hosted, optional)<br/>real CouchDB, or NyxDB (offlog-desktop's embedded one)<br/>single database 'offlog' — all devices sync through one node"]
+
+    UI --> Store --> DB -->|replication protocol| Sync
 ```
 
 ---
@@ -312,6 +307,41 @@ Three workflows in `.github/workflows/`:
   (`offlog-desktop/src-tauri/`), and the workflows' own action
   versions, weekly (`.github/dependabot.yml`).
 
+### Windows code signing (merged from the old SIGNING.md, 2026-07-31)
+
+Public signing policy — what SignPath Foundation's application
+reviewed, and what would change once a signing key is actually wired
+in (currently declined for insufficient public-visibility signals, see
+DECISIONS.md; parked, reapply once the repo has more organic traction).
+
+- **What gets signed**: only the Windows desktop installer
+  (`offlog-desktop`, Tauri + NSIS packaging). Android's own "unknown
+  publisher" warning is solved separately by the Play Store listing
+  (C3), not by code signing. The web build is a dev/test surface and
+  is never distributed as a signed binary.
+- **How a signed build would be produced**: builds run only in this
+  repo's own `release.yml`, triggered only by a `vX.Y.Z` tag push
+  (owner-only push access) — never a local/manual build. The workflow
+  builds from source on a clean, ephemeral GitHub-hosted runner, and
+  the result is attached to a **draft** Release the owner reviews and
+  publishes by hand (see "CI & release automation" above). SignPath's
+  signing step, once wired in, would run as an additional job in this
+  same workflow, signing only the artifact this workflow itself just
+  built — never anything locally-built or externally-supplied.
+- **Key custody**: Offlog would never hold its own Windows signing
+  private key — the entire point of a hosted signing service over a
+  self-managed certificate. Mirrors the trust model already in place
+  for the desktop auto-updater's own signing key (generated once by
+  the owner, stored only as a GitHub Actions secret, never committed).
+- **Project eligibility**: MIT-licensed (no dual licensing), no
+  proprietary dependencies, actively maintained with real published
+  releases, collects no telemetry or user data by design — see the
+  root README.md and DECISIONS.md's manifesto.
+- **Credit**: once (re)approved, Windows builds would be signed using a
+  free code-signing certificate from [SignPath.io](https://signpath.io),
+  issued through the [SignPath Foundation](https://signpath.org)'s
+  program for open-source projects.
+
 ### Generating test/dummy data
 
 **For a full realistic scenario** (fresh project setup, or one command to
@@ -346,7 +376,11 @@ task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
 identifiable and easy to bulk-remove later. Spread across every existing
 project **and** across each project's actual statuses (fetch real column ids
 first — CLAUDE.md's `column_id` invariant applies here too: assign
-`column.id`, never the whole column object). Reload the page after writing so
+`column.id`, never the whole column object). Reload the page after writing
+so the app's in-memory task cache (`getAllTasksRaw()`, invalidated on
+sync/local writes but not on direct-to-PouchDB console writes) and
+store.ts's stores pick up the new docs instead of showing stale data
+until the next real mutation.
 
 ### Resetting to a fresh state (do this after every test round)
 
@@ -440,7 +474,7 @@ All colors are CSS custom properties in `app.css` — no hardcoded colors anywhe
 | `--success` | `#22C55E` | `#4ADE80` | done states, sync-ok indicator, "this week" agenda group |
 | `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — toggle-switch knob fill (ListView/SettingsPanel); track already carries the theme swap via `--border-strong`/`--accent` |
 
-The same accent (`#6366F1`) drives the `<meta name="theme-color">` in `index.html`, Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`), and the notification icon color (`capacitor.config.ts`) — one brand color across web and native app, updated in one place if it ever changes again.
+The same accent (`#5457E0`) drives Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`) and the notification icon color (`capacitor.config.ts`'s `iconColor`) — update both alongside `app.css`'s `--accent` if it ever changes. (`index.html`'s `<meta name="theme-color">` is intentionally the dark background `#181A20`, not the accent — it colors the mobile browser's own chrome, not an in-app surface, so it doesn't need to track theme switches.)
 
 Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
 

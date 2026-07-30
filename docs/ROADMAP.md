@@ -3,9 +3,10 @@
 See [CHANGELOG.md](CHANGELOG.md) for the current version — the single
 source of truth, not restated here since it drifts. For *why* a
 non-obvious choice was made, see [DECISIONS.md](DECISIONS.md) (also the
-project's manifesto); for open questions, [IDEAS.md](IDEAS.md); for how
-the app works today, [TECH.md](TECH.md). Everything shipped, declined,
-or parked lives in [archive/roadmap-archive.md](archive/roadmap-archive.md).
+project's manifesto and, near its top, genuinely open questions); for
+how the app works today, [TECH.md](TECH.md). Everything shipped,
+declined, or parked lives in
+[archive/roadmap-archive.md](archive/roadmap-archive.md).
 
 **What changed 2026-07-30 (owner decision):** dropped the "three
 milestones, then a Done declaration" framework this file used from
@@ -34,7 +35,12 @@ Nothing to actively build here; just tracking status.
 - **C3 — Play Store listing.** Everything on our side is ready (signing
   key wired into CI, privacy policy done, listing copy/assets Play-
   ready). Waiting on Google's Play Console identity verification and
-  review — calendar time, not work.
+  review — calendar time, not work. **Open question worth researching
+  before assuming a smooth listing**: does the app's local-network sync
+  calls trigger extra Play Store review friction (recent Android
+  local-network permission prompts, or general policy scrutiny of
+  local-network-calling apps)? See DECISIONS.md's Open Questions
+  section.
 - **C3b — Windows code signing (SignPath).** Applied 2026-07-28,
   declined 2026-07-29 for insufficient public-visibility signals
   (stars/forks/discussion) — not a rejection on merit, reapplication
@@ -75,7 +81,7 @@ Curated with the owner from a larger brainstorm; everything declined
 (stale-task triage, daily shutdown ritual, weekly review) is
 deliberately not listed here — don't re-propose those. A genuinely new
 idea either slots in at the end after owner vetting, or goes to
-[IDEAS.md](IDEAS.md) unvetted.
+DECISIONS.md's "Open Questions" section unvetted.
 
 **Parked permanently, not on this list:** B28 (rethink positional
 "done"), B33 (sub-projects) — see archive for reasoning.

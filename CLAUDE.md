@@ -6,10 +6,14 @@ auto-loads a CLAUDE.md found there. Everything else lives in
 [docs/](docs/): [docs/DECISIONS.md](docs/DECISIONS.md) (opens with the
 project's manifesto — why this project exists and what it's ultimately
 for, deliberately no version/timeline, see ROADMAP.md for that — then a
-log of why non-obvious choices were made; merged GOAL.md into this file
-2026-07-20), [docs/TECH.md](docs/TECH.md) (architecture),
-[docs/ROADMAP.md](docs/ROADMAP.md) (current status and still-open work
-only — shipped/declined/parked history lives in
+short "Open Questions" section for genuinely unresolved things nobody
+has a confident answer to yet, merged in from the old IDEAS.md
+2026-07-31, then a log of why non-obvious choices were made; merged
+GOAL.md into this file 2026-07-20), [docs/TECH.md](docs/TECH.md)
+(architecture — also covers Windows code signing policy, merged in
+from the old SIGNING.md 2026-07-31), [docs/ROADMAP.md](docs/ROADMAP.md)
+(current status and still-open work only — shipped/declined/parked
+history lives in
 [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md)),
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (newest ~10 releases — older ones
 plus the full maintenance-pass log compressed into
@@ -19,16 +23,11 @@ technical/maintainer record only — for what ships to actual users see
 after users found the GitHub Releases page unreadable: plain language,
 `## New` / `## Fixed`, one entry per version, pulled verbatim into the
 release body by `.github/scripts/extract-release-notes.js`),
-[docs/IDEAS.md](docs/IDEAS.md) (open questions and un-committed ideas;
-merged the old QUESTIONS.md 2026-07-20), [docs/BRAND.md](docs/BRAND.md)
-(tagline/pitch/voice/visual-identity reference for any public-facing
-copy — README, landing page, store listing), and
-[docs/TRADEMARK.md](docs/TRADEMARK.md) (the MIT license covers code
-only — name/icon/tagline are reserved separately; read before approving
-a fork's naming or any brand-adjacent request), and
-[docs/SIGNING.md](docs/SIGNING.md) (public code-signing policy for the
-SignPath Foundation application, ROADMAP.md's C3b — only touch this
-when that build/release process itself changes), and
+[docs/BRAND.md](docs/BRAND.md) (tagline/pitch/voice/visual-identity
+reference for any public-facing copy — README, landing page, store
+listing), [docs/TRADEMARK.md](docs/TRADEMARK.md) (the MIT license
+covers code only — name/icon/tagline are reserved separately; read
+before approving a fork's naming or any brand-adjacent request), and
 [docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
 policy, ROADMAP.md's C3 — update it only if a feature actually changes
 what data the app touches, per its own DECISIONS.md entry). The
@@ -45,8 +44,8 @@ docs/archive/changelog-archive.md). User-facing pitch is the root
 be not doable (technical wall, out of scope per the manifesto, or a
 deliberate no), it moves to DECISIONS.md's log with the reasoning, not
 left sitting in ROADMAP. A genuine open question with no decision yet
-goes to IDEAS.md, not ROADMAP — don't let ROADMAP accumulate "maybe"
-items dressed up as planned work.
+goes to DECISIONS.md's "Open Questions" section, not ROADMAP — don't
+let ROADMAP accumulate "maybe" items dressed up as planned work.
 
 **Mandatory, not optional: read the relevant document(s) above before
 making any change or moving forward on a request, and revise whichever of
@@ -69,8 +68,8 @@ read-everything every time):
   shipped items again — don't let it regrow into a wall of history.
 - **DECISIONS.md's decisions log** — before any "why not X instead," or
   touching storage/sync/business-model/distribution choices.
-- **IDEAS.md** — only when the task is itself one of the open
-  questions/ideas, or a new one worth recording comes up.
+- **DECISIONS.md's Open Questions section** — only when the task is
+  itself one of the open questions, or a new one worth recording comes up.
 - **BRAND.md** — before writing or editing any public-facing copy
   (README pitch, landing page, store listing, social post) — check tone/
   tagline/color/typography line up before proposing new wording.

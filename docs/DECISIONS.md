@@ -19,8 +19,8 @@ home sync, and per-user accounts or permissions are explicitly not part of
 this goal — the PC is the host, sync stays local, and the shared workspace
 has no individual boundaries. This section states *why* and *what*,
 deliberately not *when* — that's [ROADMAP.md](ROADMAP.md). For anything
-this implies but doesn't resolve, see [IDEAS.md](IDEAS.md) rather than
-assuming an answer here.
+this implies but doesn't resolve, see this file's "Open Questions" section
+below rather than assuming an answer here.
 
 ---
 
@@ -29,11 +29,52 @@ assuming an answer here.
 Below this point: a log of settled choices (decisions) and closed
 questions, so future sessions (AI or human) don't re-litigate them.
 CLAUDE.md says *what the rules are*; this file says *why*. Add an entry
-whenever a real "why not X instead" question gets settled, or a
-previously-open question in [IDEAS.md](IDEAS.md) gets a real answer — not
-for routine feature work, only for decisions that would otherwise get
-re-asked. Keep entries compact — the goal is a fast "has this already
-been settled" check, not a full retelling.
+whenever a real "why not X instead" question gets settled, or an open
+question below gets a real answer — not for routine feature work, only
+for decisions that would otherwise get re-asked. Keep entries compact —
+the goal is a fast "has this already been settled" check, not a full
+retelling.
+
+---
+
+## Open Questions
+
+Genuinely unresolved questions, meant to be shareable as-is with another
+AI or a human for outside input. Not a task list (see
+[ROADMAP.md](ROADMAP.md) for that) and not the decisions log below (this
+is things nobody has a confident answer to yet). Merged in from the old
+IDEAS.md 2026-07-31 — that file's own closed/resolved questions (a
+sync-topology review covering five other scenarios, all closed with a
+verified answer) aren't repeated here since their outcomes are already
+folded into the relevant decisions above/below; the full verification
+narrative for each still lives in git history if ever needed again.
+
+- **Two PC hosts on one LAN.** Today's model is one fixed host (whichever
+  PC runs `offlog-desktop`), phones as clients. Detection-only warning
+  shipped (`discovery.rs`'s `browse_for_others()` + Settings → Sync
+  warning); no "join as client" mode built, same tradeoff mesh sync's
+  decline already weighed (see this file's mesh-sync entry). Revisit
+  only on real demand.
+- **Play Store policy risk for local-network sync.** The Android app
+  makes local network calls (sync to a LAN address). Does this trigger
+  Play Store review friction — `CHANGE_NETWORK_STATE`/local-network
+  permission prompts introduced in recent Android versions, or general
+  policy scrutiny of apps making local-network calls — that should be
+  researched before assuming a smooth listing process? Directly relevant
+  to ROADMAP.md's open C3 item.
+- **Is large-dataset validation a realistic risk?** A validation pass
+  already shipped once (see archive/roadmap-archive.md), but the owner
+  remains skeptical a single-person task manager will ever accumulate
+  enough data for it to matter again. Is there real-world data (from
+  comparable local-first personal tools) on how large a single user's
+  task/log dataset actually gets over multiple years — informing
+  whether this deserves any further priority, or is safe to consider
+  closed?
+
+If an answer emerges, fold the resolution into the relevant section
+above/below (if it settles something permanently) or update ROADMAP.md
+directly, and remove the question from this list — don't let answered
+questions linger alongside genuinely open ones.
 
 ---
 
@@ -840,8 +881,7 @@ mechanism (e.g. sync is direct device-to-device over the user's own
 LAN, no Offlog-operated server exists to collect anything even in
 principle) rather than a bare denial. Needed for both C3 (Play Store
 listing) and C3b (SignPath application) — same document serves both.
-Until [docs/SIGNING.md](SIGNING.md)'s companion landing page (C5)
-ships, the Play Console privacy-policy URL field should point at the
+Until C5's landing page ships, the Play Console privacy-policy URL field should point at the
 GitHub-rendered page directly
 (`https://github.com/hrach-gevorgyan/offlog/blob/main/docs/PRIVACY.md`)
 — publicly viewable today since the repo is already public, no

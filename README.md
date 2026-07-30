@@ -278,9 +278,9 @@ signing/publishing set up is a tracked goal (see
 Store listing is ready and waiting on Google's review; Windows signing
 applied to [SignPath Foundation](https://signpath.org)'s free
 open-source program and was asked to reapply once the project has more
-public traction, see [docs/SIGNING.md](docs/SIGNING.md)). Just make
-sure you're downloading from this repo's own Releases page, not a
-mirror.
+public traction, see [docs/TECH.md](docs/TECH.md)'s "Windows code
+signing" section). Just make sure you're downloading from this repo's
+own Releases page, not a mirror.
 
 **Windows** is the intended app for day-to-day use — bundles its own
 sync server, nothing else to install, and checks for updates
@@ -353,13 +353,12 @@ Everything beyond this pitch lives in [docs/](docs/):
 
 | Document | What's in it |
 |---|---|
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Manifesto (why this project exists) + why non-obvious choices were made |
-| [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Manifesto, open questions worth outside input, and why non-obvious choices were made |
+| [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens, release/signing pipeline |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Current status and still-open planned work |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Recent version history in full detail |
 | [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md) | Older releases, one line each, plus the full maintenance-pass log |
 | [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
-| [docs/IDEAS.md](docs/IDEAS.md) | Open questions and un-committed ideas worth outside input |
 | [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference for public-facing copy |
 | [docs/TRADEMARK.md](docs/TRADEMARK.md) | MIT covers the code only — name/icon/tagline usage terms for forks |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
