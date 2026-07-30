@@ -83,35 +83,26 @@ Real captures from a real build — no mockups, no Lorem Ipsum.
 
 ## Why this exists
 
-Offlog is a task manager built to have exactly the features one person
-actually uses and nothing they didn't ask for, syncing only across
-devices they own — a phone and a PC on the same Wi-Fi — never through
-someone else's cloud. It works fully offline, and when sync is turned
-on, your phone and PC talk to each other directly. No account to
-create, no subscription, no feature ever held back behind a paywall.
+One shared Svelte codebase, wrapped three ways (browser, Android,
+Windows). Each device keeps its own local database; turn sync on and
+your phone and PC talk to each other directly over your own Wi-Fi — no
+cloud service ever sits in the middle, no account to create, no
+feature held back behind a paywall. It works fully offline either way.
 
-It started as a personal tool, but the sync model works just as well
-for a small, trusted, co-located group: a family, a small team, or one
-office sharing a single board over the same network. It is **not** a
-remote/multi-tenant product — there are no accounts, no per-user
-permissions, and syncing only ever happens on the same local network.
-See [docs/DECISIONS.md](docs/DECISIONS.md)'s opening manifesto for the
+It started as a personal tool, and the same sync model works just as
+well for a small, trusted, co-located group — a family, a small team,
+one office sharing a board over the same network. It is **not** a
+remote/multi-tenant product: no per-user permissions, no accounts, and
+sync only ever happens on the same local network. See
+[docs/DECISIONS.md](docs/DECISIONS.md)'s opening manifesto for the
 exact scope and why it stops there.
 
-It's also built in the open, on purpose. Every decision — including the
-ones that got reversed — is written down:
-[docs/DECISIONS.md](docs/DECISIONS.md) (the mission, plus why the
-non-obvious choices were made, including the ones an outsider would
-reasonably ask "why not just—"), [docs/ROADMAP.md](docs/ROADMAP.md)
-(what's planned and why), [docs/TECH.md](docs/TECH.md) (the real
-architecture), and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) going
-back to the first release.
-
-One shared codebase — the same Svelte app wrapped three ways (browser,
-Android, Windows) — with each device keeping its own local database and
-syncing peer-to-peer over your own Wi-Fi when you turn it on. No cloud
-service ever sits in the middle. See [docs/TECH.md](docs/TECH.md) for
-exactly how that works.
+Built in the open, on purpose — every decision, including the ones
+that got reversed, is written down: [docs/DECISIONS.md](docs/DECISIONS.md)
+(why, including the "why not just—" questions), [docs/ROADMAP.md](docs/ROADMAP.md)
+(what's planned), [docs/TECH.md](docs/TECH.md) (the real architecture),
+and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) back to the first
+release.
 
 ## Features
 
@@ -359,8 +350,7 @@ Everything beyond this pitch lives in [docs/](docs/):
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Recent version history in full detail |
 | [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md) | Older releases, one line each, plus the full maintenance-pass log |
 | [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
-| [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference for public-facing copy |
-| [docs/TRADEMARK.md](docs/TRADEMARK.md) | MIT covers the code only — name/icon/tagline usage terms for forks |
+| [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
 ## Contributing

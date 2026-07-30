@@ -16,930 +16,465 @@ The core app stays free, always, with no feature ever paywalled — open
 source, self-hostable, forkable. Integrations and automation are
 deliberately not part of the free core. Phone-as-host, remote/away-from-
 home sync, and per-user accounts or permissions are explicitly not part of
-this goal — the PC is the host, sync stays local, and the shared workspace
-has no individual boundaries. This section states *why* and *what*,
-deliberately not *when* — that's [ROADMAP.md](ROADMAP.md). For anything
-this implies but doesn't resolve, see this file's "Open Questions" section
-below rather than assuming an answer here.
+this goal. This section states *why* and *what*, not *when* — that's
+[ROADMAP.md](ROADMAP.md). For anything this implies but doesn't resolve,
+see "Open Questions" below.
 
 ---
 
 ## About this document
 
-Below this point: a log of settled choices (decisions) and closed
-questions, so future sessions (AI or human) don't re-litigate them.
-CLAUDE.md says *what the rules are*; this file says *why*. Add an entry
-whenever a real "why not X instead" question gets settled, or an open
-question below gets a real answer — not for routine feature work, only
-for decisions that would otherwise get re-asked. Keep entries compact —
-the goal is a fast "has this already been settled" check, not a full
-retelling.
+Below: a log of settled choices, so future sessions (AI or human) don't
+re-litigate them. CLAUDE.md says *what the rules are*; this file says
+*why*. Add an entry when a real "why not X instead" question gets
+settled — not for routine feature work, only for decisions that would
+otherwise get re-asked. Keep entries compact: the goal is a fast "has
+this already been settled" check, not a full retelling. Full narrative
+detail for anything summarized here always still lives in git history.
 
 ---
 
 ## Open Questions
 
-Genuinely unresolved questions, meant to be shareable as-is with another
-AI or a human for outside input. Not a task list (see
-[ROADMAP.md](ROADMAP.md) for that) and not the decisions log below (this
-is things nobody has a confident answer to yet). Merged in from the old
-IDEAS.md 2026-07-31 — that file's own closed/resolved questions (a
-sync-topology review covering five other scenarios, all closed with a
-verified answer) aren't repeated here since their outcomes are already
-folded into the relevant decisions above/below; the full verification
-narrative for each still lives in git history if ever needed again.
+Genuinely unresolved, shareable as-is with another AI or a human for
+outside input. Not a task list (see [ROADMAP.md](ROADMAP.md)) and not
+the decisions log below.
 
-- **Two PC hosts on one LAN.** Today's model is one fixed host (whichever
-  PC runs `offlog-desktop`), phones as clients. Detection-only warning
-  shipped (`discovery.rs`'s `browse_for_others()` + Settings → Sync
-  warning); no "join as client" mode built, same tradeoff mesh sync's
-  decline already weighed (see this file's mesh-sync entry). Revisit
+- **Two PC hosts on one LAN.** Today's model is one fixed host, phones
+  as clients. Detection-only warning shipped; no "join as client" mode
+  built, same tradeoff mesh sync's decline already weighed. Revisit
   only on real demand.
-- **Play Store policy risk for local-network sync.** The Android app
-  makes local network calls (sync to a LAN address). Does this trigger
-  Play Store review friction — `CHANGE_NETWORK_STATE`/local-network
-  permission prompts introduced in recent Android versions, or general
-  policy scrutiny of apps making local-network calls — that should be
-  researched before assuming a smooth listing process? Directly relevant
-  to ROADMAP.md's open C3 item.
-- **Is large-dataset validation a realistic risk?** A validation pass
-  already shipped once (see archive/roadmap-archive.md), but the owner
-  remains skeptical a single-person task manager will ever accumulate
-  enough data for it to matter again. Is there real-world data (from
-  comparable local-first personal tools) on how large a single user's
-  task/log dataset actually gets over multiple years — informing
-  whether this deserves any further priority, or is safe to consider
-  closed?
+- **Play Store policy risk for local-network sync.** Does the app's
+  local network calls trigger review friction (recent Android
+  local-network permission prompts, or general policy scrutiny)?
+  Should be researched before assuming a smooth listing — relevant to
+  ROADMAP.md's open C3 item.
+- **Is large-dataset validation a realistic risk?** Shipped once
+  already; the owner remains skeptical a single-person task manager
+  will ever accumulate enough data for it to matter again. Real-world
+  data on how large a single user's dataset gets over years would
+  settle this either way.
 
-If an answer emerges, fold the resolution into the relevant section
-above/below (if it settles something permanently) or update ROADMAP.md
-directly, and remove the question from this list — don't let answered
-questions linger alongside genuinely open ones.
+If an answer emerges, fold it into the relevant section below or
+update ROADMAP.md directly, and remove the question here.
 
 ---
 
 ## Storage & sync
 
-### Why file attachments use one database, not a second one (2026-07-29)
-v6.8.0's design brainstorm considered a separate `offlog_attachments`
-PouchDB database (task doc holds a reference, actual bytes live in a
-dedicated per-attachment doc in the second db) specifically to solve
-B62's auto-backup duplicating attachment bytes across all 7 rotated
-daily snapshots. Rejected: a second database means a second, independent
-sync lifecycle (its own `PouchDB.sync()`, its own error/retry handling,
-its own "what does Settings' single sync status indicator show when the
-two disagree" question) — real added complexity for a problem that
-turned out to not exist. `autoBackup.ts`'s existing backup call is
-`db.allDocs({ include_docs: true })` with no `attachments: true` —
-PouchDB only pulls attachment binary content into a doc when explicitly
-asked that way, so the 7-day rotation already excludes attachment bytes
-with zero code change needed. Went with the single-database design:
-bytes live in PouchDB's own native `_attachments` map directly on the
-task doc, riding the existing sync/replication with no new sync code at
-all. The one accepted tradeoff: those 7 rotated backups can't restore
-attachment *content* on their own (just the surrounding task data) —
-consistent with how this app has never treated local sync as a backup
-substitute; an attachment's real safety net is whatever other device
-it's synced to, same as everything else.
+### File attachments: one database, not two (2026-07-29)
+Considered a separate `offlog_attachments` PouchDB database specifically
+to stop B62's auto-backup from duplicating attachment bytes across all 7
+rotated snapshots. Rejected — a second database means a second,
+independent sync lifecycle for a problem that turned out not to exist:
+the backup's own `db.allDocs({include_docs:true})` call never fetches
+attachment binary content in the first place (PouchDB only does that with
+an explicit `attachments:true`), so the rotation already excludes them
+with zero code change. Went single-database instead: bytes live in
+PouchDB's native `_attachments` map right on the task doc, riding the
+existing sync with no new code. Accepted tradeoff: those 7 backups can't
+restore attachment *content* on their own — same as everything else in
+this app, an attachment's real safety net is sync to a second device.
 
-### Why file attachments have no format allowlist beyond HEIC/HEIF (2026-07-30)
-v6.8.0 shipped with a curated allowlist (jpg/png/webp/svg/pdf/txt/csv/
-json/yaml/xml/md/docx/xlsx). Revised the same day, owner-prompted: "why
-have we blocked some file extensions — this is attachment, need to be
-downloaded/uploaded, we can't open in app anyway." Correct — most
-allowed formats already get no in-app preview (docx/xlsx/pdf all just
-show as a generic file chip + download), so the allowlist wasn't
-protecting some in-app rendering feature, it was just curating what
-"counts" as supported. And an extension check isn't real protection
-either: Offlog never executes an attachment, only stores and downloads
-bytes, so opening whatever you download afterward is the same trust
-decision as any file from anywhere else — and a check like this is
-trivially bypassed by renaming a file's extension regardless. Dropped
-the allowlist entirely except HEIC/HEIF, which stays rejected on
-its own separate, real technical merit (canvas-based downscaling can't
-reliably decode it in a browser/webview today) — not a security
-decision, a compression-pipeline limitation. `CardDetail.svelte`'s file
-input also dropped its `accept` restriction, since HTML's `accept`
-can't express "anything except two extensions."
+### File attachments: no format allowlist beyond HEIC/HEIF (2026-07-30)
+Shipped with a curated extension allowlist, revised the same day —
+correctly pushed back on: most allowed formats (docx/xlsx/pdf) already
+get no in-app preview anyway, so the allowlist wasn't protecting a
+rendering feature, just curating what "counts." An extension check also
+isn't real protection: Offlog never executes an attachment, only stores
+and downloads it, and the check is trivially bypassed by renaming a
+file anyway. Dropped entirely except HEIC/HEIF, which stays rejected on
+its own technical merit — canvas-based downscaling can't decode it in a
+browser/webview today. Not a security call, a compression-pipeline limit.
 
-### Why PouchDB as a UMD global, not a pure ESM import
-`db.ts` loads PouchDB core via a `<script>` tag in `index.html`
-(`public/pouchdb.js`) and registers `pouchdb-find` separately as an ESM
-plugin against the resulting global constructor. This is intentionally
-awkward, not an oversight: it was the working setup before the project's
-build tooling matured, and switching to a pure ESM PouchDB import now
-would mean re-verifying every corner of sync/replication behavior against
-a different bundling path for no functional gain. The ~51 KB duplication
-this causes is a known, accepted cost — not something worth an
-architectural change to fix.
+### PouchDB as a UMD global, not ESM
+`db.ts` loads PouchDB via a `<script>` tag, registering `pouchdb-find`
+separately against the resulting global. Intentionally awkward, not an
+oversight — the working setup from before build tooling matured, and
+switching now would mean re-verifying every corner of sync behavior
+against a different bundling path for no functional gain. The ~51KB
+duplication is an accepted cost.
 
-### Why a CouchDB-protocol server (not Firebase/Supabase/a custom backend) for optional sync
-A CouchDB-protocol server speaks PouchDB's native replication protocol
-with zero adapter code — this is the entire reason PouchDB was chosen as
-the local database in the first place. Any other backend would mean
-writing and maintaining a translation layer between "what PouchDB
-expects" and "what the backend provides," which directly contradicts the
-local-first goal of sync being optional, thin, and swappable. It must
-also be self-hostable, which matters: using a hosted-only backend
-(Firebase, Supabase) would make "sync" quietly depend on a vendor Offlog
-doesn't control, contradicting the no-vendor-lock-in mission even if that
-vendor has a free tier. This was real Apache CouchDB from the project's
-start through 2026-07-27; `offlog-desktop` now embeds
-[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) instead (a from-scratch
-Rust reimplementation of the same protocol, by the same owner) — see
-the entry below for why. The reasoning in this section is about the
-*protocol*, not literally-Apache-CouchDB, and holds either way; a
-manually-configured sync target (Settings → Sync) can still point at
-real CouchDB too, since both speak the same wire protocol.
+### CouchDB-protocol server, not Firebase/Supabase/custom
+A CouchDB-protocol server speaks PouchDB's native replication with zero
+adapter code — the entire reason PouchDB was picked as the local
+database. Any hosted-only backend would make sync quietly depend on a
+vendor Offlog doesn't control, contradicting the no-vendor-lock-in
+mission even with a free tier. Real Apache CouchDB from project start
+through 2026-07-27; `offlog-desktop` now embeds
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) instead (see below) —
+this reasoning is about the *protocol*, not literally CouchDB, and a
+manually-configured sync target can still point at real CouchDB too.
 
-### Why mesh sync was considered, then declined outright (2026-07-03)
-Mesh/device-to-device sync (every device also acts as a server, paired via
-QR code, no central relay) was explored in real depth in ROADMAP.md's
-Track D, then dropped entirely — not deferred, not "still the long-term
-plan," genuinely off the table. Two reasons, either one alone would have
-been enough:
+### Mesh sync: considered, declined outright (2026-07-03)
+Device-to-device sync with no central host was explored in real depth,
+then dropped entirely — not deferred. Two reasons: (1) the technical
+foundation was weaker than it looked — each Android device would need
+a background CouchDB-compatible server reachable while backgrounded,
+which even Syncthing-Android only manages with a permanent foreground
+notification and manual battery-optimization exemption most users get
+wrong, and Android 15 caps that class of service at 6h/24h regardless;
+two devices never on the same network still can't sync without a
+relay, which quietly breaks the "no server Offlog operates" pitch. (2)
+No strategic reason to absorb that cost — Offlog is single-user with no
+business model, and mesh sync's payoff scales with a userbase this
+project isn't building. CouchDB-protocol sync (self-hosted) remains the
+one, permanent transport. Revisit only if real outside demand shows up.
 
-- **The technical foundation was weaker than it first looked.** The
-  design needed each Android device to run a background
-  CouchDB-compatible HTTP server, reachable even while the app isn't in
-  the foreground. The closest working precedent, Syncthing-Android, only
-  manages this with a foreground service and a permanent notification,
-  plus the user manually exempting the app from battery optimization —
-  friction real users regularly get wrong, per Syncthing's own community
-  forum. Android 15 made this worse, not better: it now caps that class
-  of foreground service at 6 hours of background runtime per 24-hour
-  period. Separately, two devices that are never on the same network
-  still can't sync without some kind of relay, which quietly contradicts
-  the "no server Offlog operates" pitch the whole track was sold on.
-- **There was no strategic reason to absorb that cost.** Offlog is a
-  single-user personal project with no business model (see below) — mesh
-  sync's payoff scales with a multi-device *userbase*, which this project
-  isn't trying to build. Spending native-background-service work, a
-  mandatory security review, and N-way conflict testing on a feature
-  whose main beneficiary would be hypothetical future users wasn't worth
-  it.
+### NyxDB as the embedded sync host, not real CouchDB (2026-07-27)
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) — a from-scratch Rust
+reimplementation of CouchDB's replication protocol, by the same owner —
+was trialed as a drop-in swap for the CouchDB `offlog-desktop` bundles.
+The protocol layer checked out cleanly (zero `offlog-app` code changes,
+full test suite passed including byte-for-byte conflict parity), and
+the size win was real: **installer 52.7MB → 4.98MB (~10.6x), installed
+footprint 164MB → 20.4MB (~8.0x)**.
 
-CouchDB-protocol sync remains the one, permanent sync transport —
-self-hosted, already works, not going anywhere. If mesh sync is ever
-revisited, it should be because a genuinely new reason to want it shows
-up (e.g. real other people asking for it), not because this reasoning
-turned out wrong.
+First attempt wasn't adopted — real-device pairing surfaced several bugs,
+all in `offlog-desktop`'s own new glue code (a storage-directory name
+collision with the old CouchDB path, a missing working-directory call, a
+loopback-only bind address, an incomplete CORS allowlist), plus one
+persistent sync failure that couldn't be root-caused before time ran out
+that session. Reverted to CouchDB on `main`.
 
-### NyxDB as offlog-desktop's embedded sync host — round one, evaluated but not adopted (2026-07-27)
-[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a from-scratch Rust
-reimplementation of CouchDB's replication protocol, MIT/Apache-2.0,
-`axum`+`sled`) was trialed on the `nyxdb-sync-backend` branch as a
-drop-in replacement for the real CouchDB `offlog-desktop` bundles and
-spawns. The protocol layer genuinely checks out: `offlog-app`'s own
-source needed zero changes, and NyxDB's full test suite (unit,
-integration, live sync, ported PouchDB edge cases, attachments, load,
-and a differential run against real CouchDB) passed, including
-byte-for-byte conflict/winner-picking parity. The installer-size win was
-real and independently confirmed by hands-on dogfooding: **installer
-52.7MB → 4.98MB (~10.6x), installed footprint 164MB → 20.4MB (~8.0x)**.
+Same day, round two: the one unresolved failure was reproduced in
+isolation against a real NyxDB instance outside the app — it came back
+clean, meaning it was very likely a stale-process false alarm from the
+first session's rapid rebuild cycles, not a real protocol bug. Proceeded
+with the full swap: all CouchDB code/config/vendored binary removed,
+every fix from the first attempt carried forward, plus enabling NyxDB's
+release-build logging (previously debug-only, which is what made the
+first attempt's diagnosis slow).
 
-**Verdict: not adopted, for now — reverted to real CouchDB on `main`.**
-Real end-to-end testing (pairing a real Android device against the
-NyxDB-backed desktop build) surfaced a string of integration bugs, most
-in `offlog-desktop`'s own new glue code rather than NyxDB itself:
+Two real NyxDB bugs were found and fixed upstream the same day: `_bulk_get`
+misreported a tombstoned/losing-conflict revision as `"deleted"` for
+documents that were demonstrably live — hit on **every real first-time
+device pairing**, since both devices independently create the same
+fixed default-seed IDs before ever syncing (fixed in NyxDB v0.1.4). A
+follow-up investigation into a cosmetic `seq`-jump anomaly surfaced a
+second real bug: a fresh database's very first document got `seq=0`,
+invisible to `since=0` — what every first sync starts with (fixed in
+v0.1.5). Both verified with a full regression pass afterward. Full
+narrative/commit history: the (deleted) `nyxdb-sync-backend` branch, via
+`git log --all`/reflog if ever needed again.
 
-- Reused the `couchdb-data` directory name for NyxDB's `sled` storage —
-  format collision, silently broke discovery (mDNS only advertises after
-  the DB opens). Fixed: distinct `nyxdb-data` name.
-- `spawn_nyxdb()` omitted `.current_dir()` (the CouchDB path already had
-  it) — inconsistent port binding under the Tauri-managed process. Fixed.
-- `NYXDB_ADDR` (NyxDB's actual bind address, unlike CouchDB's separate
-  `chttpd` config) was hardcoded to `127.0.0.1` — loopback-only, silently
-  unreachable from any LAN device despite pairing (a separate handshake
-  server) succeeding. Fixed: `0.0.0.0`.
-- `NYXDB_CORS_ORIGINS` only allowlisted the desktop app's own WebView
-  origin (`http://tauri.localhost`) — every request from the Android
-  app's real origin (`https://localhost`, per `capacitor.config.ts`'s
-  `androidScheme: 'https'`) was silently CORS-rejected. Real CouchDB
-  never hit this since its config uses `origins = *`; NyxDB requires an
-  explicit allowlist. Fixed: both origins listed.
-- After all four fixes above, real-device testing still hit a
-  **persistent, unresolved failure** — a "There was a problem getting
-  docs" sync error and generic mutation-failure toasts that survived a
-  full app restart. Root cause not found before the decision was made to
-  stop: PouchDB's `getDocs()`/`bulkGet()` marks a replication batch
-  `error` when any requested doc/rev comes back as `{"missing": ...}` in
-  NyxDB's `_bulk_get` response — whether this is a genuine NyxDB
-  protocol gap (plausible, given it's the one high-volume, high-
-  concurrency codepath the earlier test matrix didn't specifically
-  stress) or a leftover local-environment issue from the rapid
-  kill/rebuild/reinstall cycles that night was never disambiguated.
-
-**Process lessons for the next attempt** (also relevant beyond NyxDB):
-- **This app's `tauri_plugin_log` registration is debug-only**
-  (`lib.rs`'s `if cfg!(debug_assertions)` gate) — a real installed
-  release build never writes `Offlog.log` at all. This blocked live
-  diagnosis for a long stretch; a stray `.log` file kept looking like
-  fresh evidence when it was actually hours-stale. Confirm which build
-  you're actually looking at (`Get-CimInstance Win32_Process` for the
-  real exe path + start time) before trusting a log file's timestamp.
-- **Don't dogfood real production data on an experimental branch.**
-  This branch's desktop build was used as a daily driver mid-experiment,
-  so real tasks accumulated inside the very data directory being
-  repeatedly wiped/rebuilt for testing — a needless, entirely avoidable
-  risk to real data that had nothing to do with proving the swap out.
-  Use disposable seed/test data for this class of experiment, always.
-- **A background sync server binding to an unexpected port is worth
-  suspecting a stale process before suspecting the code.** Several
-  "port mismatch" scares this session turned out to be leftover
-  processes from earlier kill/rebuild cycles, not new regressions —
-  always confirm zero matching processes are running (not just the one
-  you meant to kill) before trusting a fresh reproduction.
-- Full narrative/commit history of the trial lives in the (now-deleted)
-  `nyxdb-sync-backend` branch's commits and its
-  `docs/NYXDB_INTEGRATION_NOTES.md`, reachable via `git log --all` /
-  reflog if ever needed again.
-
-**Round two (2026-07-27, same day): adopted for real, CouchDB removed
-from the repo entirely.** Before touching any `offlog-desktop` code, the
-one unresolved bug above was re-investigated in isolation — a real
-NyxDB instance seeded with 60 docs (mixed creates/updates/deletes, deep
-7-generation revision history, a genuine forced conflict), synced via
-the real `pouchdb` npm package (not the app) from a genuinely empty
-client, in three configurations (default batch size, small batch size
-to force more `_bulk_get` round trips, and `live:true/retry:true`
-matching `db.ts`'s exact usage). All three completed with zero errors.
-Conclusion: not a real NyxDB protocol bug — almost certainly one of the
-many stale-process false alarms from that same testing night (the
-process lessons above). Proceeded with the full swap on this basis: all
-CouchDB code, config, vendored binary, and fetch script removed from
-`offlog-desktop`; NyxDB is now the only embedded sync host. Every fix
-from round one (distinct `nyxdb-data` name, `.current_dir()`, `0.0.0.0`
-bind, both CORS origins) was written in from the start this time, plus
-release-build logging enabled permanently (previously debug-only, which
-is what made round one's diagnosis so slow). Full implementation plan
-and file-by-file change list: see the git history around this entry's
-commit on the `nyxdb-sync` branch.
-
-**Real bug found and fixed (2026-07-27, same day, NyxDB v0.1.4):**
-real-device pairing still failed with a generic "There was a problem
-getting docs" error — root-caused this time (permanent release logging
-+ WebView2 remote-debugging via CDP made this possible) to NyxDB's
-`_bulk_get` returning `{"reason":"deleted"}` for documents that were
-demonstrably live, specifically `offlog-app`'s four fixed-ID default
-seed documents (`space:unsorted`/`personal`/`work`, `project:draft`) —
-meaning **every real first-time pairing** between two devices hit this,
-since both independently create the same fixed IDs before ever syncing.
-A concrete lead (affected docs' `seq` jumping to ~2,000,000 while
-everything else stayed sequential) was written up as a precise repro
-and handed to the owner to fix in the NyxDB repo directly (this repo's
-standing convention — integration, not maintaining a fork). Fixed same
-day in NyxDB v0.1.4 (`_bulk_get` was returning the wrong error shape for
-a tombstoned/losing-conflict-branch revision; real CouchDB never uses
-that shape there). Verified fixed: re-ran the exact two-independent-
-devices conflict scenario, both in isolation and through the real app
-via CDP, `ok: true` on both push and pull with zero errors.
-
-**Follow-up (same day, NyxDB v0.1.5):** the `_bulk_get` fix's own `seq`
-values still showed a ~2,000,000 jump on conflicted batches — reported
-as a non-blocking observation. Investigated directly by the owner and
-traced to `sled`'s own `idgen_persist_interval` crash-safety mechanism
-(benign, not a bug — confirmed live by restarting an instance and
-watching it happen; unrelated to conflicts specifically). That
-investigation surfaced a real, more serious bug as a side effect: a
-fresh database's very first document ever written got `seq=0`, which
-`_changes?since=0` — what every first-ever sync starts with — could
-never see. Fixed in v0.1.5 (persisted seq now starts at 1, never 0).
-Verified directly: a fresh single-doc database's first document is now
-correctly visible to `since=0`; re-ran the full regression matrix (all
-three Phase 0 scripts, the two-device conflict scenario, a real fresh
-install through the actual app) — all clean, no errors, `seq` no longer
-jumps. `vendor/nyxdb-win/nyxdb.exe` and `fetch-nyxdb-win.ps1`'s pinned
-tag bumped to v0.1.5.
-
-### Why automatic 3-way conflict merge was explored, then declined (2026-07-18)
-Prompted by reading Neighbourhoodie's CouchDB/Svelte blog series (a
-real-time multi-user kanban board built on the same PouchDB/CouchDB
-replication model Offlog uses) — their second post implements automatic
-field-level 3-way merge: diff both conflicting revisions against their
-common ancestor, auto-adopt any field only one side touched, and only
-surface a real conflict when both sides changed the *same* field. It's a
-genuinely good technique, and it looked like a plausible upgrade to
-`resolveConflict()`'s current pick-a-winner-wholesale UI. It doesn't fit
-Offlog, for a reason specific to how Offlog's conflicts actually arise,
-not a general flaw in the technique itself:
-
-**A 3-way merge needs the common ancestor's document body, and
-replication never sends it.** CouchDB/PouchDB replication only transfers
-leaf revisions — the current winner and whatever's in `_conflicts` — never
-the ancestor they diverged from. Neighbourhoodie's own conflicts come from
-two browser tabs hitting one live CouchDB server directly (an immediate
-409 on a concurrent PUT, where the ancestor is still sitting right there
-in the same database) — their own post says as much, explicitly scoping
-the technique to that case and excluding "deferred conflicts from offline
-replication." Offlog's conflicts are structurally the excluded case:
-they come from two devices editing the same task while apart, then
-syncing later — by definition the ancestor was never transferred to
-whichever side receives the conflict, so there is no local ancestor body
-to diff against, ever, for this app's actual conflict shape. This isn't a
-"sometimes it works" edge case worth a fallback path; it's close to
-"essentially never applies," which would make a merge subsystem mostly
-dead code — not acceptable for something meant to ship once and never
-revisit.
-
-A second angle considered: reconstruct each side's changed fields from
-Offlog's own `log:` docs (which do fully replicate, independent of the
-revision tree) instead of the CouchDB ancestor. Rejected too — the
-Changelog view has a user-facing "Clear all" button and a 6-month
-auto-prune, so a merge subsystem's correctness would silently depend on
-data the user is explicitly invited to delete. That fails quietly for
-exactly the user who tidied their history, which is worse than the
-current explicit manual-resolution UI, not better.
-
-**What shipped instead** (same session): the conflict resolution modal
-now shows which device made each competing change and when, using
-`ConflictInfo`'s existing `current`/`other` docs' own `source`/
-`updated_at` fields — a genuine improvement to the existing pick-a-winner
-flow with no new failure modes, unlike merge. PouchDB's own deterministic
-conflict resolution (a stable, real winner is always chosen automatically
-underneath) plus manual override for anyone who wants to look — see
-TECH.md's "Sync reliability" section — remains the permanent model.
-Revisit only if Offlog's conflict *source* changes fundamentally (e.g. a
-future live multi-device-on-one-server mode where ancestors genuinely are
-available locally) — not by re-attempting either variant above against
-the same replication-only conflict shape.
+### Automatic 3-way conflict merge: explored, declined (2026-07-18)
+A genuinely good technique (diff both conflicting revisions against
+their common ancestor, auto-adopt fields only one side touched) doesn't
+fit Offlog's actual conflict shape: CouchDB/PouchDB replication only
+ever transfers leaf revisions, never the ancestor they diverged from.
+The technique's real-world precedent (two browser tabs hitting one live
+server) has the ancestor sitting right there; Offlog's conflicts come
+from two devices editing offline and syncing later, so there is no local
+ancestor to diff against, ever, for this app's actual case — that's not
+an edge case worth a fallback, it's close to "never applies." Reusing
+Offlog's own `log:` docs as a substitute ancestor was considered too,
+and rejected — Changelog is user-clearable and auto-pruned, so a merge
+subsystem would silently depend on data the user is invited to delete.
+What shipped instead: the conflict modal now shows which device made
+each change and when, alongside PouchDB's existing deterministic
+auto-resolution — real improvement, no new failure modes. Revisit only
+if Offlog's conflict *source* changes fundamentally.
 
 ---
 
 ## Distribution & business model
 
-### Why PWA support was dropped entirely rather than patched further (2026-07-12)
-Shipped in v2.7.0, PWA installability (`vite-plugin-pwa` + a Workbox
-service worker) kept causing a recurring staleness problem — an installed/
-"Add to Home Screen" build repeatedly showing a stale icon/design after an
-update, even after A18's forced `registration.update()` fix (v3.8.0).
-ROADMAP.md's A26 tracked this as needing an owner decision rather than
-another patch. Resolved by removing PWA outright instead: the owner only
-uses Offlog via a plain browser tab and the Android app, so the
-installable-desktop-web path wasn't earning its complexity/staleness cost.
-`vite-plugin-pwa` was uninstalled, the manifest/service-worker generation
-removed from `vite.config.ts`, and `main.ts` now actively unregisters any
-leftover service worker from a previous PWA-enabled build on load (so a
-browser that already installed it doesn't stay stuck serving a stale
-cached build forever). The web build is a normal always-fresh page load
-again. A real PC standalone app is still wanted eventually — explicitly
-**not** a PWA next time (Tauri vs. Electron, unresolved — see
-IDEAS.md's former Q6). Android via Capacitor is unaffected; it never used
-the service worker in the first place (CLAUDE.md's db.ts/Android
-invariants).
+### PWA support dropped entirely, not patched further (2026-07-12)
+Kept causing a recurring stale-icon-after-update problem even after one
+targeted fix. Removed outright rather than patched again: the owner only
+ever used a plain browser tab and the Android app, so the installable-
+web path wasn't earning its complexity/staleness cost. `main.ts` now
+actively unregisters any leftover service worker from a previous
+PWA-enabled build. A real PC standalone app was still wanted — that
+became the Tauri desktop app (see below), explicitly not a second PWA
+attempt.
 
-### Why there's no business model at all, not even an optional paid layer (2026-07-03)
-Revises the 2026-07-02 decision directly below, which still assumed some
-future paid convenience layer (most likely a hosted sync relay) would
-eventually exist. On reflection: Offlog is a personal tool built for its
-owner's own use, not a product being grown toward revenue — and the
-realistic paying audience for one person's niche task manager is close to
-zero without a real userbase, which building one isn't a goal here either.
-Chasing a business model before there's evidence anyone besides the owner
-wants this app puts the cart before the horse. The app stays free and
-open-source permanently; if it ever gets real outside usage and a genuine
-support need emerges, a donation link is the appropriate scale of
-response, not a product line. This also resolves IDEAS.md's former
-"is a hosted relay worth building" / "what number would sustain this"
-questions — both removed as moot rather than left open.
+### No business model at all, not even an optional paid layer (2026-07-03)
+Offlog is a personal tool built for its owner's own use, not a product
+being grown toward revenue — the realistic paying audience for one
+person's niche task manager is close to zero without a real userbase,
+which building one isn't a goal here either. Stays free and open-source
+permanently. If real outside usage and a genuine support need ever
+emerges, a donation link is the appropriate scale of response, not a
+product line.
 
-### Why the app will never be paywalled or ad-supported, even if that changes (2026-07-02)
-Settled in ROADMAP.md's Mission: even if the "no business model at all"
-decision above were ever revisited, monetization (if any) would have to
-be a separately-sold convenience layer, never a gate on the app's own
-functionality. Kept as a standing floor under any future reconsideration —
-this constraint doesn't move even if the entry above does.
+### Never paywalled or ad-supported, even if the above changes (2026-07-02)
+A standing floor under any future reconsideration of the entry above —
+even if that decision were ever revisited, monetization (if any) would
+have to be a separately-sold convenience layer, never a gate on the
+app's own functionality.
 
-### Why the brand (name/icon/tagline) is trademark-reserved separately from the MIT code license (2026-07-23)
-Not in tension with "no business model, ever" above — a different axis
-entirely. MIT covers the source code; it was never meant to also hand
-away the "Offlog" name, icon, or tagline, and nothing here plans to
-monetize either. The reservation (see
-[TRADEMARK.md](TRADEMARK.md)) exists so a fork can't present itself as
-official Offlog or as an endorsement by its owner, and so the option to
-someday sell, license, or hand off the project/brand isn't given away
-by implication just because the code is free. Forking, modifying, and
-redistributing under MIT — including commercially — remains fully
-allowed; a fork just needs its own name and mark.
+### Brand (name/icon/tagline) reserved separately from the MIT code license (2026-07-23)
+MIT covers the source code; it was never meant to hand away the name,
+icon, or tagline too. The reservation (see [BRAND.md](BRAND.md)) exists
+so a fork can't present itself as official Offlog or as an endorsement
+by its owner, and so the option to someday sell/license/hand off the
+brand isn't given away by implication just because the code is free.
+Forking, modifying, and redistributing under MIT — including
+commercially — remains fully allowed; a fork just needs its own name.
 
-### Why SignPath (not a paid cert) for Windows code signing (2026-07-23)
+### SignPath (not a paid cert) for Windows code signing (2026-07-23)
 The Windows installer triggers a SmartScreen "unverified publisher"
-warning, same as any app without a paid code-signing certificate
-(~$100-400/year from a commercial CA). Before spending that recurring
-cost, checked SignPath Foundation's free code-signing program for
-qualifying open-source projects — Offlog is a clean fit against their
-actual published eligibility list: MIT (OSI-approved, no dual-
-licensing), no proprietary dependencies, actively maintained, already
-has real GitHub Releases, thoroughly documented, and — the one that
-lines up almost too well — "no unauthorized data collection," which
-is this project's own manifesto already. Chose to apply rather than
-pay, since the fit is genuine rather than a stretch. Requirements to
-satisfy before applying (none blocking, all cheap): GitHub MFA
-enabled, a short public code-signing-policy doc, a SignPath credit
-line somewhere in the repo, and confirming the installer's binary
-metadata is set (already is, via `tauri.conf.json`). Tracked as
-ROADMAP.md's C3b. Doesn't touch Android at all — that warning is
-solved separately by C3's Play Store listing, unrelated to this.
+warning without a paid code-signing certificate (~$100-400/year).
+Checked SignPath Foundation's free program for qualifying open-source
+projects first — Offlog is a clean fit (MIT, no proprietary deps,
+actively maintained, real releases, no telemetry). Chose to apply
+rather than pay since the fit is genuine. Tracked as ROADMAP.md's C3b;
+doesn't touch Android (that warning is solved by the Play Store
+listing, C3, separately).
 
-### SignPath Foundation application declined, not on merit (2026-07-29)
-Applied 2026-07-28; Foundation response 2026-07-29 declined the
-certificate, explicitly stating it isn't a judgment on code quality —
-their program requires external public-visibility signals (GitHub
-stars/forks/contributors, independent articles/discussion/reviews,
-institutional backing) that a repo this young and not-yet-public
-can't show yet. They explicitly invited reapplication once that
-changes. No design/eligibility problem to fix — Offlog still meets
-every eligibility criterion checked in the entry above. C3b is parked
-in ROADMAP.md until the project has some organic public traction
-(post going-public, real stars/forks, maybe an external mention) to
-reapply with; nothing to actively do here in the meantime.
+**Declined 2026-07-29, not on merit** — the Foundation's response was
+explicit that it isn't a code-quality judgment: their program needs
+external public-visibility signals (stars/forks/discussion) a repo this
+young can't show yet, and explicitly invited reapplication once that
+changes. Parked in ROADMAP.md until the project has organic traction to
+reapply with.
 
-### Why Tauri, not Electron, for the PC standalone app (2026-07-14)
-Resolves IDEAS.md's former Q6. Decided by prototyping both the
-riskiest parts rather than debating on paper: a Tauri shell wrapping
-`offlog-app/dist` unmodified, a bundled CouchDB run as a managed child
-process with per-install generated credentials, and mDNS advertising —
-all proven working end-to-end (see ROADMAP.md's E1 for the full detail).
-Tauri reuses the existing Svelte/Vite build as-is (no PouchDB-as-UMD-
-global changes needed — it loads identically to a browser tab or the
-Capacitor build) and produces a far smaller installer than Electron
-would, which matters for "someone with no technical background just
-downloads and runs it." No reason found during prototyping to reconsider
-Electron. This decision covers the *shell* only — installer packaging/
-signing and the CouchDB-sidecar hardening (a Windows Job Object is still
-needed so a crashed app can't orphan a LAN-reachable CouchDB process)
-remain open engineering, tracked in ROADMAP.md's E1, not open questions
-about which framework to use.
+### Tauri, not Electron, for the PC standalone app (2026-07-14)
+Decided by prototyping the riskiest parts rather than debating on
+paper — a Tauri shell wrapping the existing build unmodified, a bundled
+sync server as a managed child process, mDNS advertising, all proven
+working end-to-end. Tauri reuses the existing Svelte/Vite build as-is
+and produces a far smaller installer than Electron would, which matters
+for "someone with no technical background just downloads and runs it."
 
-### Why F-Droid is explicitly out of scope (2026-07-02)
-Considered and declined by the owner — Offlog isn't being positioned as
-"an app that needs to be in every store," and F-Droid's audience/process
-overhead isn't worth it for this project's goals. Distribution stays to
-**GitHub (source) + a website + Google Play**. iOS is out of scope
-entirely (no current owner interest, no immediate plan); if it ever
-happens, it would be via community contribution, not an owner-driven
-build.
+### F-Droid explicitly out of scope (2026-07-02)
+Offlog isn't positioned as "needs to be in every store"; F-Droid's
+audience/process overhead isn't worth it here. Distribution stays
+GitHub (source) + a website + Google Play. iOS is out of scope entirely
+unless a future community contribution takes it on.
 
-### Why the repo stays private (no git remote yet) until the app is stable and audited (2026-07-02)
-Explicit owner decision: going public is a Track C step, not something to
-rush ahead of readiness. Two concrete blockers must clear first — a
-hardcoded CouchDB password/LAN IP in `config.ts` (present in git history
-too) and a general stability/security audit pass. Until both are done,
-"public repo" is not attempted, even though GitHub is the confirmed target
-platform. See ROADMAP.md's Track C for the tracked release-readiness step.
+### Repo went public once the credential/history audit cleared (resolved)
+Originally gated on two blockers: a hardcoded CouchDB password/LAN IP
+in `config.ts` (present in git history too), and a full git-history
+purge of leaked credentials. Both are done — the credential design was
+replaced by NyxDB's per-install random pairing (no baked-in password
+exists anymore), and the history purge is documented below (BFG
+Repo-Cleaner). The repo is public on GitHub now; this entry stays only
+as the record of what the gate actually was.
 
 ---
 
 ## UI
 
-### Why List and Table merged into one view, and why the merged view is Table-shaped (2026-07-03)
-The two views duplicated ~70% of their code (identical search/filter
-toolbar, same underlying `filterTasks()`) and differed only in
-interactions: List had a one-click mark-done circle, pin-to-top, and the
-archived section; Table had click-to-sort column headers and a denser,
-better-aligned grid. Owner decision: one view instead of two. A first
-merge attempt grafted Table's headers onto List's layout and produced a
-cramped hybrid with clipping/alignment problems — the owner judged the
-old Table the better foundation ("previous table was better than list"),
-so the merged view was rewritten from scratch with **TableView as the
-design baseline** (real data grid, generous fixed columns, plain
-`dueInk`-colored text for due dates instead of pill badges — text can't
-be clipped by a background shape, which the badges repeatedly were) and
-List's interactions layered on top. Don't reintroduce a separate Table
-view, and don't bring back pill-style due badges in the grid — both were
-deliberately removed. B35 ("Focus", shipped as a draft in v4.5.0) is a
-third view for a different job — "what should I be doing right now,"
-a daily commitment lock — not a re-split of this merge.
+### List and Table merged into one view, Table-shaped (2026-07-03)
+The two views duplicated most of their code and differed only in
+interactions (List: mark-done circle, pin-to-top, archived section;
+Table: sortable headers, denser grid). Merged into one, rewritten with
+**Table as the design baseline** (real data grid, plain colored text for
+due dates instead of pill badges, which kept clipping) with List's
+interactions layered on top. Don't reintroduce a separate Table view or
+bring back pill-style due badges — both were deliberately removed.
+Focus (a later, different view) is "what should I do right now," not a
+re-split of this merge.
 
----
-
-### Why Quick Add's NLP parsing is local regex, not an LLM call (2026-07-19)
-Quick Add (Ctrl+N) parses free-typed text ("tomorrow 5pm !high #errand
-@project") into due_date/reminder_at/priority/tags/project as the user
-types, via `nlpParse.ts`'s `parseQuickAdd()`. This stays a small,
-enumerable set of regex patterns — never a call to an external LLM API —
-for the same reason the project has no accounts, no telemetry, and no
-backend at all (this file's manifesto): a network call on every keystroke of a task
-title would be a real network dependency and a real privacy leak (task
-titles are often the most sensitive text in the whole app) for a feature
-whose actual job — recognizing "tomorrow", "#tag", "!high" — doesn't need
-one. A wrong parse is also silent in a way a missed reminder makes
-expensive, so ambiguous phrasing is deliberately left as plain text in
-the title rather than guessed at (see `nlpParse.ts`'s own header comment)
-— a rule-based parser can promise that; an LLM's phrasing-sensitive
-output can't. Revisit only if the project's no-backend stance itself
-changes, which DECISIONS.md's other entries treat as a closed question.
+### Quick Add's NLP parsing is local regex, not an LLM call (2026-07-19)
+Parses free-typed text ("tomorrow 5pm !high #errand") into structured
+fields as the user types. Stays a small, enumerable regex set, never an
+external LLM call — a network call on every keystroke of a task title
+(often the most sensitive text in the app) is a real privacy leak and
+dependency for a job regex already does. A wrong parse is also silent in
+a way a missed reminder makes expensive, so ambiguous phrasing is left
+as plain text rather than guessed at — something a rule-based parser can
+promise and an LLM's phrasing-sensitive output can't.
 
 ---
 
 ## Data model
 
-### Why "done" is positional (last column), not a boolean field
-Documented as an enforced invariant in CLAUDE.md already — repeated here
-because a multi-device CouchDB conflict scenario could tempt someone to
-"fix" by adding a `done: boolean` for simpler conflict resolution. Don't.
-The positional model is intentional (it's just "which column," which is
-what Kanban already represents) and changing it would require a data
-migration and touch every view — not something to casually introduce
-while solving an unrelated sync problem.
+### "Done" is positional (last column), not a boolean field
+Enforced invariant, repeated here because a multi-device conflict
+scenario could tempt someone to "fix" this with a simpler `done: boolean`.
+Don't — the positional model is just "which column," already what
+Kanban represents; changing it needs a data migration touching every view.
 
-### Why soft-delete only, never `db.remove()` for tasks (except admin paths)
-Also an existing CLAUDE.md invariant — recorded here because CouchDB's
-multi-device replication makes hard deletes more dangerous, not less: a
-hard delete that hasn't yet replicated to a currently-offline device will
-resurrect the "deleted" doc as a new create the next time that device
-reconnects, unless the delete itself is a replicated tombstone. Soft
-delete already produces exactly that tombstone behavior for free.
+### Soft-delete only, never `db.remove()` for tasks (except admin paths)
+Also an enforced invariant. CouchDB's multi-device replication makes
+hard deletes more dangerous, not less: a hard delete that hasn't yet
+replicated to an offline device resurrects the doc as a new create when
+that device reconnects, unless the delete itself is a replicated
+tombstone — which soft-delete already produces for free.
 
-### Why the auto-seeded "Draft" project is archivable, same as any other project (2026-07-21)
-Owner question: is it permissible to archive the default "Draft" project
-every fresh install seeds into Unsorted? Checked the codebase for any
-special-cased dependency on it (a hardcoded fallback destination for
-Quick Add or task creation with no project selected, an assumption it's
-always active, etc.) — found none. `project:draft`'s only special
-handling anywhere is as one of 4 fixed default-seed ids used by
-`autoResolvePristineDefaultConflicts()` (auto-resolving a sync conflict
-when one side is still provably untouched) — that logic works the same
-whether the project is archived or not, since it's about the *doc*
-being pristine, not about it being active. Archiving it behaves exactly
-like archiving any project the user created themselves.
+### The auto-seeded "Draft" project is archivable like any other (2026-07-21)
+Checked for any special-cased dependency on it (a hardcoded fallback,
+an assumption it's always active) — found none. Its only special
+handling anywhere is as one of 4 fixed default-seed IDs used for
+auto-resolving a pristine-conflict edge case, which works identically
+whether the project is archived or not.
 
 ---
 
 ## Security
 
-### Why the App Lock PIN gates the UI, not the data (2026-07-19)
-App Lock (B54, ROADMAP.md) blocks the app behind a PIN, but doesn't
-encrypt the local PouchDB database — someone with direct filesystem/
-IndexedDB access to the device could still read task data without the
-PIN. This was a deliberate, owner-confirmed scope choice (via
-AskUserQuestion, not assumed): full at-rest encryption is a much bigger
-effort — key management, sync implications (every replicating device
-would need to agree on how ciphertext moves through CouchDB), and a real
-"what if I forget my PIN" recovery story with actual stakes (permanent
-data loss, not just inconvenience) — squarely the kind of scope-creep
-"security minimal by design, not yet audited" already commits this
-project to avoiding until it's actually asked for again. The PIN's job is
-narrower and matches most task-manager app locks (Things, Todoist): stop
-a passer-by from casually opening the app, not withstand someone who
-already has the device and is willing to dig.
+### App Lock PIN gates the UI, not the data (2026-07-19)
+Blocks the app behind a PIN but doesn't encrypt the local database —
+someone with direct filesystem access could still read task data
+without the PIN. A deliberate, owner-confirmed scope choice: full
+at-rest encryption needs key management, sync implications (every
+device would need to agree on how ciphertext moves through the sync
+protocol), and a real "forgot my key" recovery story with permanent-
+data-loss stakes — bigger than this feature's actual job, which is
+stopping a passer-by from casually opening the app, same scope as
+Things/Todoist's own app locks.
 
-First version shipped `AppLock.svelte`'s "Forgot PIN" as a plain
-confirm-and-clear (reasoning: no accounts/email — see this file's manifesto — so
-there's nothing to verify identity against, and the PIN only gates the
-UI anyway). Owner feedback the same day: "it is just removing pin...
-like when there is wall as block of road but in middle there is door u
-just open and go" — correct. A bypass reachable by anyone with zero
-knowledge isn't a lock at all, regardless of how narrow the threat model
-is; it's not "recovery for the forgetful owner," it's "no lock." Replaced
-with a one-time recovery code (config.ts's `setAppLockPin()`/
-`verifyAppLockRecoveryCode()`): a random code shown exactly once, the
-moment a PIN is first set, that the user must save themselves (password
-manager, notes, written down) — same pattern disk encryption and 2FA
-apps use for backup codes. "Forgot PIN" now requires possessing that
-code, not just intent. Still no server/account to verify identity
-against — this is the strongest recovery route achievable without one,
-short of full at-rest encryption's much bigger tradeoffs (still declined,
-see above). If no recovery code exists for a device (state predating
-this fix), the lock screen says so plainly rather than pretending a
-reset is possible.
-
-Revisit only if the project's no-accounts/no-server stance itself changes
-(unlikely — see DECISIONS.md's other closed entries on that), since real
-encryption needs *something* to hold/recover keys against.
+First version's "Forgot PIN" was a plain confirm-and-clear — correctly
+called out as no lock at all ("like a wall with a door in the middle you
+just open and go"). Replaced with a one-time recovery code shown once
+when the PIN is first set, which the user must save themselves — same
+pattern disk-encryption/2FA backup codes use. Still no server to verify
+identity against; this is the strongest recovery achievable without one.
 
 ### Biometric unlock sits alongside the PIN, never replaces it (2026-07-20)
-Once the owner had the app installed on an actual phone, B54's deferred
-second half became buildable — a real device is required to test any
-biometric plugin (see B54's original entry above for why it couldn't ship
-in the first pass). Scoped via AskUserQuestion before building: uses
-`capacitor-native-biometric` (the closest thing to a de facto standard
-among community Capacitor biometric plugins — there's no Ionic-official
-one, unlike this project's other plugins, per A25's preference), Android
-only (no iOS build, see this file's manifesto), opt-in (off by default, a new toggle in
-Settings → App Lock that only appears once a PIN exists), and — this is
-the load-bearing constraint — it is *only* a faster unlock path on top of
-the PIN, never a replacement for it. The PIN remains the only thing that
-can set/change/remove the lock or drive "Forgot PIN" recovery; biometric
-never touches either. Enabling the toggle requires a real successful
-`verifyIdentity()` prompt, not just flipping a flag, so a device with
-nothing enrolled can't end up "enabled" with no way to actually unlock.
-On the lock screen (`AppLock.svelte`), the OS prompt fires automatically
-on mount when enabled — no extra tap — but the PIN input stays visible
-and usable the whole time; a cancelled/failed biometric attempt falls
-through silently to the PIN screen (not a wrong-PIN shake, since
-cancelling isn't a wrong guess).
+Uses `capacitor-native-biometric`, Android-only, opt-in. The PIN remains
+the only thing that can set/change/remove the lock or drive recovery —
+biometric is only ever a faster unlock path on top of it. Enabling the
+toggle requires a real successful unlock prompt, not just flipping a
+flag, so a device with nothing enrolled can't end up "enabled" with no
+way to unlock. A cancelled/failed biometric attempt falls through
+silently to the PIN screen.
 
-### Accepted risk: GitHub alert on `glib` 0.18.5 in offlog-desktop, no fix available (2026-07-22)
-Dependabot flagged a moderate (6.9) unsoundness advisory in the `glib`
-crate (`Iterator`/`DoubleEndedIterator` impls for `VariantStrIter`),
-patched in `glib` 0.20.0. Not applicable here: `glib` is a transitive
-dependency pulled in by `gtk 0.18.2`, which Tauri 2's `tauri` crate
-itself pins to `^0.18` — `cargo update -p glib --precise 0.20.0` fails
-outright (`gtk 0.18.2` won't accept it), and `cargo update -p glib`
-confirms 0.18.5 is already the newest version compatible with that
-constraint. No patched 0.18.x release exists. This is blocked on Tauri
-bumping its own `gtk`/`glib` dependency upstream — not something this
-project can fix locally by touching `Cargo.lock`.
-Risk accepted for now: the unsound code path is internal to `glib`'s
-iterator impl, reached only through this app's own (non-adversarial,
-local) desktop code — no network-facing input reaches it. Re-check
-next time `offlog-desktop`'s Tauri/Cargo deps get bumped for any other
-reason (`cargo update -p glib` to see if a newer compatible version has
-appeared); don't chase this one proactively before then.
+### Accepted risk: `glib` 0.18.5 advisory in offlog-desktop, no fix available (2026-07-22)
+A moderate unsoundness advisory, patched in `glib` 0.20.0 — not
+reachable here since `glib` is transitively pinned by Tauri's own `gtk`
+dependency (`^0.18`), and no patched 0.18.x release exists. Blocked on
+Tauri bumping its own dependency upstream, not fixable locally. The
+unsound path is only reached through this app's own local, non-
+adversarial code — no network-facing input touches it. Re-check whenever
+Tauri/Cargo deps next get bumped for any other reason.
 
-### Why TypeScript stays pinned to ~6.0.2, not 7.x (2026-07-22)
-Dependabot proposed TypeScript 6.0.3 → 7.0.2 as part of the v5.7.3
-maintenance batch; `npm run build`/`tsc --noEmit`/`vitest run` all
-passed clean locally, so it looked safe and was merged. It broke the
-release pipeline's `build-android` job on the very next tag push:
-`npx cap sync android` failed with `TypeError: Cannot read properties
-of undefined (reading 'CommonJS')` while parsing `capacitor.config.ts`.
-Root cause is inside Capacitor CLI's own config loader (`requireTS`),
-not this project's code — it wasn't exercised by any of the checks
-above, since none of them actually run `cap sync`. Reverted to
-`~6.0.2` and added a Dependabot `ignore` rule for `typescript` `7.x`
-in `dependabot.yml` so it doesn't get silently re-proposed and
-re-merged on a green CI run that still can't see this failure mode.
-Re-enable once `@capacitor/cli` ships confirmed TS7 support — check by
-reading its release notes/changelog for TypeScript 7 compatibility,
-not just by trying the bump again the same way.
+### TypeScript stays pinned to ~6.0.2, not 7.x (2026-07-22)
+A Dependabot bump to 7.0.2 passed every local check (build/tsc/tests)
+but broke the release pipeline's `cap sync android` step on the very
+next tag — a Capacitor CLI config-loader bug none of the local checks
+actually exercise. Reverted, with a Dependabot `ignore` rule so it
+doesn't get silently re-proposed. Re-enable once `@capacitor/cli`
+confirms real TS7 support in its own changelog.
 
 ---
 
 ## Mobile / Android
 
-### Why `android:allowBackup="false"` (2026-07-14)
-Discovered live while testing Track E's pairing flow: Android's Auto
-Backup silently uploads app data (including the local PouchDB WebView
-storage) to the user's Google account and restores it automatically on
-reinstall — which made "uninstall and reinstall" not actually produce a
-fresh install for testing, since old data kept reappearing with no
-visible cause. Beyond the testing wrinkle, this is a real product
-question: this app's entire pitch is no accounts, no telemetry, no
-implicit cloud dependency (this file's manifesto) — a real user's local task data
-silently leaving the device via Google's backup infrastructure,
-without them explicitly choosing that, contradicts that stance even
-though it's a well-intentioned OS feature. Sync (self-hosted CouchDB,
-explicit and user-controlled) is the app's own backup mechanism;
-Android's implicit one isn't needed on top of it. Set in
-`AndroidManifest.xml`.
+### `android:allowBackup="false"` (2026-07-14)
+Android's Auto Backup silently uploads local app data (including
+PouchDB's WebView storage) to the user's Google account and restores it
+on reinstall — a real product conflict with "no accounts, no telemetry,
+no implicit cloud dependency," not just a testing inconvenience (it also
+made "uninstall and reinstall" not actually produce a fresh install).
+Sync (self-hosted, explicit, user-controlled) is this app's own backup
+mechanism; Android's implicit one isn't wanted on top of it.
 
-### Why an official `@capacitor/*` plugin's own mechanism beats a custom native bridge event (A25, 2026-07)
-The Quick Add home-screen widget used to forward its launch intent via a
-hand-rolled `getBridge().triggerJSEvent(...)` call in `MainActivity` — it
-fired before the WebView had a listener attached, so the event was lost on
-every cold start (A25). Replaced with `@capacitor/app`'s own
-`getLaunchUrl()` + `appUrlOpen` listener, which does the same job
-correctly, because Capacitor's own Bridge already handles the
-timing/replay problem for its own plugins' events — a hand-rolled bridge
-call doesn't get that guarantee for free. The general lesson, not just
-this one fix: before writing custom native Java for something that feels
-like it needs "a bridge event," check whether `@capacitor/local-
-notifications`, `@capacitor/app`, etc. already expose the native
-capability directly (see A28's `checkExactNotificationSetting()`/
-`changeExactNotificationSetting()` for a second example of the same
-pattern paying off). Apply this check before adding any new native bridge
-code, not just when debugging one that's already broken.
+### An official `@capacitor/*` plugin's mechanism beats a custom native bridge event
+A hand-rolled bridge call for the Quick Add widget's launch intent fired
+before the WebView had a listener attached, silently losing the event on
+every cold start. Replaced with `@capacitor/app`'s own launch-URL
+listener, which Capacitor's own Bridge already handles the timing/replay
+problem for. General lesson: check whether an official plugin already
+exposes a native capability directly before writing custom bridge Java.
 
 ---
 
 ## Public release
 
-### Why BFG Repo-Cleaner over `git filter-branch`/`git filter-repo` for C7's git-history purge (2026-07-17)
-C7 required scrubbing a real leaked CouchDB password (and, found during
-the same pass, a second username+password pair that had separately
-leaked into a committed `.claude/settings.local.json`) from every commit
-in the repo's history before it could go public. `git filter-repo` was
-the nominally-recommended tool but needs Python, which wasn't installed
-and couldn't be added without a heavier system change; hand-rolled `git
-filter-branch --index-filter` scripting was tried first (no extra
-dependency) and failed twice in ways worth recording so they aren't
-repeated — first with `--tree-filter`, which checks out the *entire*
-working tree per commit and was still running after 3+ minutes on a
-127-commit repo; then with `--index-filter`, where `git rev-parse
-"HEAD:$path"` silently resolved against the wrong tree inside filter-
-branch's rewrite context (the correct form is `:$path`, reading the
-in-progress commit's index, not `HEAD:$path`) — the fixed version still
-missed several commits for reasons never fully root-caused. BFG (Java,
-already available via Android Studio's JBR) did the entire rewrite,
-correctly, across all 127 commits and 71 tags, in under a second, and
-needed only one extra flag once discovered: `--no-blob-protection`,
-since BFG deliberately skips the *latest* commit on each ref by default
-(a safety feature, not a bug) and the leaked `.claude/settings.local.json`
-line was still present in the tip commit. **Lesson for any future
-history rewrite**: reach for BFG first, and verify completion by
-exhaustively grepping every remaining blob in the object database
-(`git rev-list --objects --all` → `git cat-file -p` each blob) — spot-
-checking specific commits or trusting a tool's own "done" output isn't
-sufficient; this pass caught real gaps in its own first two rewrite
-attempts exactly that way. Also worth noting: `git clone` from a bundle
-does not preserve repo-local config (`user.name`/`user.email`, and it
-will *add* a `remote.origin` pointing at whatever bundle file was
-cloned from) — both had to be fixed by hand after swapping the rewritten
-`.git` into place; check `git config --list --local` after any clone-
-based rewrite for exactly this.
+### BFG Repo-Cleaner over `git filter-branch`/`git filter-repo` for the history purge (2026-07-17)
+Needed to scrub a leaked CouchDB password (and a second leaked
+credential pair) from every commit before going public. `git
+filter-repo` needed Python, not installed; hand-rolled `git
+filter-branch` scripting was tried first and failed twice in ways worth
+remembering — `--tree-filter` was still running after 3+ minutes on a
+127-commit repo, and `--index-filter` silently resolved paths against
+the wrong tree. **BFG (Java) did the entire rewrite correctly, across
+all commits and tags, in under a second** — the one extra flag needed
+was `--no-blob-protection`, since BFG skips the latest commit on each
+ref by default and the leak was still in the tip commit. Lesson for any
+future history rewrite: reach for BFG first, and verify completion by
+exhaustively grepping every remaining blob in the object database —
+spot-checking isn't enough, this pass caught real gaps in its own first
+two attempts exactly that way. Also: a bundle-based clone doesn't
+preserve repo-local git config and adds its own `remote.origin` — check
+`git config --list --local` after any clone-based rewrite.
 
 ---
 
 ## Process
 
-### Why CLAUDE.md invariants get written in the same commit as the bug that caused them
-Not a formal decision so much as an observed practice worth preserving
-deliberately: every hard-won invariant currently in CLAUDE.md
-(`db.find()`'s 25-result default, `row.doc._conflicts` vs
-`row.value.conflicts`, `column_id` being a string not an object) was added
-at the moment the bug was fixed, not retroactively. This is the highest-
-leverage habit in this project's entire AI-collaboration workflow — it
-turns a one-time fix into permanent institutional memory that survives
-across sessions with no persistent AI memory of their own. Keep doing this
-for every future non-obvious fix, without exception.
+### CLAUDE.md invariants get written in the same commit as the bug that caused them
+The highest-leverage habit in this project's AI-collaboration workflow —
+every hard-won invariant in CLAUDE.md was added the moment the bug was
+fixed, not retroactively. Turns a one-time fix into institutional memory
+that survives across sessions with no persistent AI memory of their own.
+Keep doing this without exception.
 
-### Why the roadmap became finite — a plan with an end (2026-07-22)
-After roughly a month of full-intensity building (including working
-hours), the owner called the pace unsustainable and asked for realism:
-Offlog will not "shoot" in a market owned by giants, open-source apps
-rarely get organic attention anymore, and continuing at sprint pace
-would end in burnout-abandonment rather than a finished product. The
-decision: restructure ROADMAP.md from an open-ended candidate list into
-a finite plan with a defined Done state (v6.0.0) — two small milestones
-(stable-for-owner: B61 + E3; installable-by-normal-humans: C3 + C5),
-then maintenance mode with explicit rules (monthly dependency batches,
-quarterly maintenance passes, features only when daily use demands).
-Loose month-level targets, no hard dates — slipping a target is fine,
-adding scope is not. This is not the project failing; the mission
-(DECISIONS.md's manifesto) was always "a tool for its owner, given
-away as-is," and *being finished* is that mission succeeding. The
-no-business-model stance stays — it is precisely what makes maintenance
-mode sustainable (no customers, no obligations, the owner can step
-away indefinitely and nothing breaks). Marketing/promotion beyond the
-Play Store listing and a landing page was explicitly cut: posting
-about Offlog anywhere is a mood, not a roadmap item.
+### The roadmap became finite — a plan with an end (2026-07-22)
+After a month of full-intensity building, the owner called the pace
+unsustainable: Offlog isn't competing for organic attention in a market
+giants own, and continuing at sprint pace would end in burnout-
+abandonment, not a finished product. Restructured ROADMAP.md from an
+open-ended list into a finite plan with a defined "Done" state, then
+maintenance mode. Not the project failing — the mission was always "a
+tool for its owner, given away as-is," and *being finished* is that
+mission succeeding.
 
-### `reset-dev-env.ps1 -IncludeRelease` is a real data-loss risk, not a routine flag (2026-07-27)
-Found live during the NyxDB test-matrix session: ran `-IncludeRelease` as
-part of a reflexive "clean up after testing" pass and wiped a genuinely
-live, working paired session's real data without checking first. The
-flag is only for a deliberately confirmed "this release install's data
-is disposable" case — never a default/routine step, even right after a
-test round. TECH.md's own reset-workflow section states the rule; this
-entry is the incident it comes from.
+### `reset-dev-env.ps1 -IncludeRelease` is a real data-loss risk, not routine
+Found live: ran it as a reflexive "clean up after testing" step and
+wiped a genuinely live, working paired session's real data without
+checking first. Only for a deliberately confirmed "this data is
+disposable" case — never a default step, even right after testing.
 
-### C8 — encrypted the stored sync password per-platform, not with an app-level scheme (2026-07-28)
-CodeQL flagged `config.ts`'s `setSyncCredentials()` for storing the sync
-password in plain `localStorage` — real, not a false positive. Before
-fixing it, checked what was actually available: the only crypto already
-in this codebase is `hashWithSalt()` (App Lock PIN verification, a bare
-`SHA-256(salt+pin)` digest, one-way, not a real KDF), and App Lock is
-opt-in and fully independent from sync — most installs likely have sync
-on with App Lock off, so tying encryption to the PIN wouldn't cover the
-common case. **Decided against inventing an app-level "encrypt with a
-key that's also stored in localStorage" scheme** — that protects against
-nothing (the same local-storage-access threat this CodeQL rule exists
-for gets the key and the ciphertext together) and would be security
-theater, worse than the honest plaintext status quo.
-
-Used each platform's real, already-available primitive instead:
+### C8 — encrypted the stored sync password per-platform (2026-07-28)
+A real CodeQL finding: the sync password sat in plain `localStorage`.
+Rejected an app-level "encrypt with a key that's also in localStorage"
+scheme as security theater — it protects against nothing, since the
+same access that reads localStorage reads the key too. Used each
+platform's real primitive instead:
 - **Android**: the already-installed `capacitor-native-biometric`
-  plugin has Android-Keystore-backed `setCredentials`/`getCredentials`
-  (AES/GCM, `unlockedDeviceRequired`) sitting unused — only
-  `isAvailable`/`verifyIdentity` were ever called. Real hardware-backed
-  encryption, zero new dependency, no interactive prompt needed at sync
-  time (`unlockedDeviceRequired` only checks device-unlock state, not a
-  per-call biometric prompt).
-- **Desktop (Windows)**: added the official `windows` crate (pinned to
-  match the version `tauri-winrt-notification` already pulls in, to
-  avoid a second `windows-core` in the dependency graph) for DPAPI
-  (`CryptProtectData`/`CryptUnprotectData`) — ties the ciphertext to the
-  current Windows user account, transparent, no prompt, useless if
-  copied elsewhere. New `store_sync_secret`/`get_sync_secret` Tauri
-  commands (`secure_storage.rs`), storing an encrypted blob at
-  `app_data_dir()/sync-secret.enc` alongside the existing plain
-  `sync-host.json` (which holds this install's own generated identity —
-  not the same class of secret, fine as plain JSON).
-- **Plain web build**: left as plain `localStorage` — no browser-level
-  secure-storage primitive exists to use, and this build is already
-  documented as a dev/test surface, not the primary way to use the app.
-  A known, accepted, platform-specific limitation, not silently
-  swept under an app-level scheme that wouldn't actually help.
+  plugin's Keystore-backed credential storage (AES/GCM,
+  `unlockedDeviceRequired` — no prompt needed at sync time), previously
+  unused for this.
+- **Desktop**: the `windows` crate's DPAPI, ties ciphertext to the
+  current Windows user account, transparent, useless if copied
+  elsewhere.
+- **Plain web**: left as `localStorage` — no browser-level secure
+  storage exists, and this build is already a dev/test surface, not
+  primary use. An accepted, documented limitation, not swept under an
+  app-level scheme that wouldn't actually help.
 
-`getSyncCredentials()`/`setSyncCredentials()` are async now (platform
-branch + a one-time silent migration from the old plaintext
-`localStorage` keys on Tauri/Android, where a real separate secure store
-now exists to migrate into — the plain-web path skips migration entirely
-since there's nowhere else to move the value to). Existing installs
-upgrading past this need no re-pairing.
+Existing installs migrate silently from the old plaintext keys, no
+re-pairing needed.
 
-### C8b — CodeQL's compiled-language (Java/Kotlin) findings inside bundled Capacitor plugin source can't be config-excluded; dismiss manually instead (2026-07-28)
-After `.codeqlignore` shipped (dba39a4) expecting it to suppress the
-Java/Kotlin findings living inside third-party plugin source
-(`node_modules/capacitor-native-biometric/.../NativeBiometric.java`,
-`node_modules/@capacitor/android/.../MessageHandler.java`,
-`.../AuthActivity.java` — confirmed by path, all vendored, none of it
-this repo's own code), the Code Scanning UI still shows them open
-several runs later. Checked GitHub's own documented behavior: `paths`/
-`paths-ignore` (both the config file's and `.codeqlignore`) only filter
-which files get **extracted** for interpreted languages (JS/TS, Ruby,
-Python) — for compiled languages under `build-mode: manual`, the actual
-Gradle/javac trace during `analyze-java-kotlin`'s real `gradlew
-assembleDebug` step compiles every module the app module depends on,
-including each Capacitor plugin's own Android module, and CodeQL indexes
-whatever the compiler touches regardless of these exclusion files. There
-is no config-file lever that stops this while still building a real,
-accurate classpath (the entire reason build-mode:manual replaced the
-Default setup's degraded build-mode:none in the first place — see the
-C8-adjacent CodeQL-scoping entry above/commit 9058410). Excluding the
-plugin modules from the Gradle build isn't viable either: the app module
-won't compile without them.
+### CodeQL findings inside bundled Capacitor plugin source: dismiss manually, don't fight config (2026-07-28)
+`paths-ignore`/`.codeqlignore` only filter which files get *extracted*
+for interpreted languages — for compiled languages under
+`build-mode: manual`, the real Gradle/javac build compiles every plugin
+module the app depends on, and CodeQL indexes whatever the compiler
+touches regardless of exclusion files. No config lever stops this
+without breaking the classpath the manual build-mode exists to provide.
+These are real findings about code Offlog doesn't own and can't patch —
+dismiss each individually in the Code Scanning UI (**Won't fix**, noting
+it's vendored third-party source), not something to keep re-attempting
+via workflow changes.
 
-**Decision: stop treating this as a config problem.** These findings are
-real CodeQL output about code Offlog doesn't own, can't patch (npm/the
-plugin's own next release would overwrite any local fix), and can't be
-build-excluded without breaking the classpath the whole Advanced-setup
-switch was for. The correct and final action is dismissing each one
-individually in the Code Scanning UI (reason: **Won't fix**, comment
-noting it's vendored third-party plugin source, e.g.
-`capacitor-native-biometric`/`@capacitor/android`) — owner action, `gh`
-CLI not installed here, not something to keep re-attempting via
-workflow/config changes. `config.ts`'s `LEGACY_SYNC_PASS_KEY`
-`localStorage.setItem` (the plain-web fallback path) will keep
-resurfacing as its own "Clear text storage" finding under a new alert
-number each time the file changes — that one is the already-accepted
-C8 web-fallback limitation above, same dismissal reason applies, not a
-regression.
+### C3 — privacy policy content (2026-07-28)
+What should a privacy policy say when there's genuinely nothing to
+disclose, without reading as suspiciously sparse? Resolved by writing
+[PRIVACY.md](PRIVACY.md) directly: states plainly that nothing is
+collected, then explains *why* for each category a reviewer would
+expect (accounts, analytics, sync, permissions) by pointing at the
+actual mechanism, not a bare denial. Serves both C3 (Play Store) and the
+SignPath application.
 
-### C3 — privacy policy content, resolved (2026-07-28)
-IDEAS.md's Q3 asked what a privacy policy should actually say when
-there is genuinely nothing to disclose, without either reading as
-suspiciously sparse or accidentally implying more data handling than
-really happens via boilerplate legal language. Resolved by writing
-[docs/PRIVACY.md](PRIVACY.md) directly rather than adapting a generic
-template: states plainly that nothing is collected, then explains
-*why* for each category a reviewer would expect (accounts, analytics,
-crash reporting, sync, backups, permissions) by pointing at the actual
-mechanism (e.g. sync is direct device-to-device over the user's own
-LAN, no Offlog-operated server exists to collect anything even in
-principle) rather than a bare denial. Needed for both C3 (Play Store
-listing) and C3b (SignPath application) — same document serves both.
-Until C5's landing page ships, the Play Console privacy-policy URL field should point at the
-GitHub-rendered page directly
-(`https://github.com/hrach-gevorgyan/offlog/blob/main/docs/PRIVACY.md`)
-— publicly viewable today since the repo is already public, no
-GitHub Pages setup required first.
+### v6.7.0 — task linking: related-only, forward-only, links survive delete (2026-07-28)
+Three decisions made explicitly before writing code: **scope** —
+related-only, no directional blocks/blocked-by semantics (simpler data
+shape, no dependency-tracking logic to maintain). **Storage** —
+forward-only on whichever task the link was added from, reverse
+direction computed at read time by scanning for it, since PouchDB can't
+write two docs atomically and a mirrored write risks landing one-sided.
+**Deletion** — a link to a soft-deleted task stays, shown as
+"(deleted)", until the task is permanently purged — matches the app's
+soft-delete-everywhere philosophy; only a hard purge drops the link.
 
-### v6.7.0 — task linking: related-only, forward-only storage, links survive delete (2026-07-28)
-Pulled forward from ROADMAP.md's Post-Done feature track ahead of
-v6.0.0, at owner request — this was flagged there as needing a real
-design conversation before touching the data model, not a casual add.
-Three decisions made explicitly with the owner before writing any code:
-
-1. **Scope: "related to" only, no blocks/blocked-by dependency
-   semantics.** The original idea (IDEAS.md) covered both a directional
-   "this task blocks that one" and a simple non-directional "see also"
-   link. Owner chose related-only — simpler data shape, no link-type
-   picker needed in the UI, and no dependency-tracking logic (auto-
-   surfacing "blocked" state on a card, warning when completing a task
-   something else depends on) to design and maintain.
-2. **Storage: forward-only, reverse computed at read time — not
-   mirrored onto both docs.** A link is really two facts on two
-   documents ("A relates to B" implies "B relates to A"), but PouchDB
-   can't write two docs atomically. Mirroring the write risks one side
-   landing and the other not (a crash or conflict between the two
-   `db.put()` calls leaves a permanently one-sided, inconsistent link).
-   `getRelatedTasks()` instead only ever writes to the task the link was
-   added *from*, and resolves the reverse direction by scanning for any
-   other task whose own `related` array names this one — one doc
-   written per link, never able to go out of sync with itself. The
-   tradeoff (a full task-cache scan per card open) is the same "cheap at
-   the scale of a personal task manager" reasoning already applied
-   elsewhere in this codebase (`findSimilarNotes()`, tag lookups).
-3. **Deletion: a link to a soft-deleted task stays, shown as
-   "(deleted)", until the task is permanently purged.** Matches the
-   app's existing soft-delete-everywhere philosophy — restoring a task
-   from Trash restores its links too, same as every other field.
-   Considered and rejected: silently dropping the link on delete would
-   mean restoring a deleted task from Trash doesn't bring its links back
-   with it, a real surprise given how restore works everywhere else in
-   this app. Only a genuinely hard-deleted/purged task (Trash's "Empty
-   trash", which does call `db.remove()`) drops its links, since there's
-   nothing left to resolve.
-
-Implementation note: `linkRelatedTask()`/`unlinkRelatedTask()` are
-immediate-write, not batched into `CardDetail`'s Save button like Tags/
-Checklist — a link can live on either of two different task docs, so it
-doesn't fit the "collect locally, write one doc on Save" pattern the
-rest of that form uses. Verified live (not just via `tests/db.test.ts`):
-linking from one task's card correctly shows the reverse link on the
-other task's own card despite one-sided storage, and unlinking from
-either side removes it regardless of which doc actually held it.
-
-**Follow-up, same day**: shipped as a bare "see also" list initially,
-then the owner tested it live and pushed back — "click on card details
-and see they are related?? and what?" — correctly identifying that a
-list with no click-through and no board-level visibility wasn't
-actually useful, just a manual note nobody would remember to check.
-Added: clicking a related task's title in `CardDetail` navigates to it
-directly (rather than requiring you to close the card and go find it
-yourself), and a small link-icon badge on Kanban cards/List rows shows
-at a glance that a task has related links, so you don't need to open
-a card speculatively just to check.
+Shipped first as a bare "see also" list with no click-through — tested
+live and correctly called out as not actually useful. Added
+click-through navigation and a link-icon badge on cards/rows so a
+task's links are visible without opening it speculatively.

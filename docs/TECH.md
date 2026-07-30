@@ -176,41 +176,35 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
 - **Source**: `'pc'` or `'mobile'` — set on write, used in changelog
 - **"Status" vs "Column"**: internally, a project's stages are stored as `Column[]` on `columns` and each task references one via `column_id` — this is a legacy internal name. Every user-facing label calls it "Status" (e.g. "+ Status", "Rename status"); only variable/field names still say "column"
 - **Recurrence**: `recurrence?: 'daily' | 'weekly' | 'monthly' | null` on TaskDoc — no custom interval by design (v1 scope). One task object per series, matching Todoist/Google Tasks/Microsoft To Do/Apple Reminders — **not** a new card per completion (tried first, reverted same day on owner feedback: "now we have two task with same name"). `db.ts`'s `updateTask()` detects a move into the project's last column (the positional "done" check); if the task is recurring, `computeRecurrenceReset()`'s fields win over the caller's `changes` and the *same* task is written back into the first column with due_date advanced from the *original* due_date (not from today, so a late completion doesn't drift the schedule) and checklist items reset to unchecked, all in one write. The log entry still records the real transition ("moved to Done, due date advanced to X") even though the task itself never rests there. `ListView.svelte`'s mark-done undo snapshots due_date/reminder_at/checklist too, not just column_id, since undoing a recurring completion has to revert all of them.
-- **Attachments** (`attachments?: TaskAttachment[]`, v6.8.0): the actual
-  file bytes live in PouchDB's own native `_attachments` map on the task
-  doc — one database, no separate attachments db (see DECISIONS.md for
-  why a second db was considered and rejected), so attachments ride the
-  existing sync/replication with zero new code and dedupe unchanged
-  content by digest automatically. `TaskAttachment` (`types.ts`) is just
-  small, loggable/diffable metadata — `key` (`att:<nanoid>`, the actual
-  key into `_attachments`, not the filename, since two attachments could
+- **Attachments** (`attachments?: TaskAttachment[]`, v6.8.0): file bytes
+  live in PouchDB's own native `_attachments` map on the task doc — one
+  database, no separate attachments db (see DECISIONS.md for why).
+  `TaskAttachment` (`types.ts`) is small, loggable metadata only —
+  `key` (`att:<nanoid>`, not the filename, since two attachments could
   share one), `filename`, `content_type`, `size`, `added_at`. `db.ts`'s
   `addAttachment()`/`deleteAttachment()` reuse `updateTask()`'s per-doc
-  write-queue (`queueTaskWrite()`) since it's the same get-then-put shape
-  on the same doc id. **No format allowlist** (owner decision,
-  2026-07-30, revised from an initial curated list) — any extension is
-  attachable except HEIC/HEIF, which stays rejected on its own technical
-  merit (canvas-based downscaling can't reliably decode it in a browser/
-  webview today); an allowlist beyond that would be curation, not
-  protection, since Offlog never executes an attachment either way.
-  10MB/file cap, 10 attachments/task cap (`db.ts`'s
-  `ATTACHMENT_MAX_PER_TASK`, checked inside `queueTaskWrite()` so two
-  concurrent attaches on the same task can't both slip past the count
-  check before either write lands), and the extension→mime map (falls
-  back to `application/octet-stream` for an unrecognized extension) live
-  in `attachments.ts`, shared by `db.ts` (write-time validation) and
-  `CardDetail.svelte` (pick-time validation — no `accept` restriction on
-  the file input either, since it can't express "anything except two
-  extensions"). Images are downscaled to ~1600px longest side
-  and re-encoded to JPEG client-side (`CardDetail.svelte`'s
-  `downscaleImage()`, canvas-based) before ever reaching `addAttachment()`
-  — the one format where client-side compression meaningfully shrinks a
-  file; every other allowed format is already internally compressed, so
-  no generic compression pass is applied to them. B62's auto-backup
-  needed no change — its `db.allDocs({include_docs:true})` call already
-  excludes attachment bytes (PouchDB only fetches them with an explicit
-  `attachments:true`), so the 7-day rotation doesn't duplicate them.
-- **Task linking** (`related?: string[]`, v6.7.0): non-directional "related to" only — no blocks/blocked-by dependency semantics (owner decision, 2026-07-28; see DECISIONS.md). Stored forward-only, on whichever task the link was added from; `db.ts`'s `getRelatedTasks()` computes the reverse direction at read time by scanning for any other task whose own `related` array names this one, rather than mirror-writing both docs (PouchDB can't write two docs atomically). `linkRelatedTask()`/`unlinkRelatedTask()` are immediate-write, unlike Tags/Checklist which batch into `CardDetail`'s Save button — a link can live on either of two different task docs, so it doesn't fit the "collect locally, write this one doc on Save" pattern. A soft-deleted linked task still resolves and is shown as "(deleted)" (same soft-delete-everywhere philosophy); only a hard-deleted/purged task is silently dropped from the list. Clicking a related task's title in `CardDetail` navigates straight to it (`openRelated` dispatch, handled by every one of the 7 parent components that can open `CardDetail` — `App.svelte`, `DashboardView`/`DeadlinesView`/`FocusView`/`TimeTravelView` already had a `detailTask`/`detailProject`/`detailOpenSession` trio to reuse; `KanbanBoard`/`ListView` needed a new `detailProjectOverride` local, since those two normally pass their own fixed `project` prop and a related task can belong to a *different* project than the board/list currently open). `db.ts`'s `getTaskIdsWithRelatedLinks()` gives Kanban cards and List rows a small link-icon badge for "this task has related links" — one full cached-task-list scan building a `Set<string>` of every id that participates in a link from either direction, refreshed on any db change, so no per-card query is needed.
+  write-queue (`queueTaskWrite()`). No format allowlist beyond HEIC/HEIF
+  (see DECISIONS.md); 10MB/file cap and 10-attachments/task cap
+  (`ATTACHMENT_MAX_PER_TASK`, checked inside the write queue so two
+  concurrent attaches can't both slip past the count race); extension→
+  mime map in `attachments.ts` (shared by `db.ts` and `CardDetail.svelte`,
+  falls back to `application/octet-stream`). Images are downscaled to
+  ~1600px longest side and re-encoded to JPEG client-side
+  (`CardDetail.svelte`'s `downscaleImage()`) before reaching
+  `addAttachment()` — the one format where client-side compression
+  actually helps.
+- **Task linking** (`related?: string[]`, v6.7.0): non-directional
+  "related to" only (see DECISIONS.md for the scope call). Stored
+  forward-only on whichever task the link was added from;
+  `getRelatedTasks()` computes the reverse direction at read time by
+  scanning for any other task whose own `related` names this one —
+  PouchDB can't write two docs atomically, so mirroring the write isn't
+  safe. `linkRelatedTask()`/`unlinkRelatedTask()` are immediate-write,
+  unlike Tags/Checklist which batch into `CardDetail`'s Save. A
+  soft-deleted linked task still resolves, shown as "(deleted)"; only a
+  hard purge drops it. `getTaskIdsWithRelatedLinks()` gives Kanban
+  cards/List rows a link-icon badge via one cached full-task-list scan,
+  refreshed on any db change.
 
 ---
 
@@ -535,7 +529,18 @@ Mobile-specific adaptations:
 - **`enterkeyhint`** on inputs: shows GO/Done on soft keyboard
 - **Responsive CSS**: breakpoints at 900px, 768px, 600px, 440px
 - **Source field**: `'mobile'` instead of `'pc'` for changelog tracking
-- **Status bar** (v2.6.1): targetSdk 36 (Android 16) enforces edge-to-edge display; `StatusBar.setBackgroundColor()` is a hard no-op above API 35 regardless of what color is passed (confirmed by reading `@capacitor/status-bar`'s Android source — `shouldSetStatusBarColor()` returns `false` unconditionally once `targetSdk > 35`). Fighting this by trying to set a background color (the v2.6.0 approach) silently failed, leaving the system's default status bar with our light icon style on top — invisible icons on a light background. The fix embraces edge-to-edge instead: `main.ts` calls `StatusBar.setOverlaysWebView({ overlay: true })` (content draws behind the transparent status bar, standard for modern Android) and `StatusBar.setStyle({ style: Style.Dark })` for light/white icons (this call is *not* gated by the edge-to-edge check, so it still works). A colored strip (`.status-bar-fill` in `App.svelte`) is painted behind the transparent status bar using `height: env(safe-area-inset-top)` and `background: var(--sidebar-bg)`, so the (now-transparent) system icons sit on a dark background and stay visible. Requires `viewport-fit=cover` in the `index.html` viewport meta tag for `env(safe-area-inset-top)` to resolve to a nonzero value on notched/edge-to-edge devices — Capacitor's WebView bridge supplies the actual inset automatically once that's set
+- **Status bar** (v2.6.1): targetSdk 36 enforces edge-to-edge display,
+  so `StatusBar.setBackgroundColor()` is a hard no-op above API 35 no
+  matter what color is passed. The fix embraces edge-to-edge instead of
+  fighting it: `main.ts` calls `StatusBar.setOverlaysWebView({overlay:
+  true})` (content draws behind the transparent bar) and
+  `StatusBar.setStyle({style: Style.Dark})` for light icons (not gated
+  by the edge-to-edge check, still works). A colored strip
+  (`.status-bar-fill` in `App.svelte`, `height: env(safe-area-inset-top)`,
+  `background: var(--sidebar-bg)`) sits behind the transparent bar so
+  the system icons stay visible against something other than the page
+  content. Needs `viewport-fit=cover` in `index.html`'s viewport meta
+  tag for the safe-area inset to resolve on notched devices
 
 Build steps:
 ```bash

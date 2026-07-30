@@ -25,10 +25,10 @@ after users found the GitHub Releases page unreadable: plain language,
 release body by `.github/scripts/extract-release-notes.js`),
 [docs/BRAND.md](docs/BRAND.md) (tagline/pitch/voice/visual-identity
 reference for any public-facing copy — README, landing page, store
-listing), [docs/TRADEMARK.md](docs/TRADEMARK.md) (the MIT license
-covers code only — name/icon/tagline are reserved separately; read
-before approving a fork's naming or any brand-adjacent request), and
-[docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
+listing — also covers trademark/usage terms, merged from the old
+TRADEMARK.md 2026-07-31: the MIT license covers code only, name/icon/
+tagline are reserved separately; read before approving a fork's naming
+or any brand-adjacent request), and [docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
 policy, ROADMAP.md's C3 — update it only if a feature actually changes
 what data the app touches, per its own DECISIONS.md entry). The
 maintenance-pass process
@@ -72,9 +72,9 @@ read-everything every time):
   itself one of the open questions, or a new one worth recording comes up.
 - **BRAND.md** — before writing or editing any public-facing copy
   (README pitch, landing page, store listing, social post) — check tone/
-  tagline/color/typography line up before proposing new wording.
-- **TRADEMARK.md** — before responding to anything about forking,
-  reusing the name/icon/tagline, or brand ownership/licensing.
+  tagline/color/typography line up before proposing new wording. Also
+  before responding to anything about forking, reusing the name/icon/
+  tagline, or brand ownership/licensing (§10, the trademark section).
 - **CHANGELOG.md** — only at release time (the version-bump step), not per
   code change. Move the oldest row into `docs/archive/changelog-archive.md`
   once the table exceeds 10 rows.

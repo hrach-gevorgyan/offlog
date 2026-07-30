@@ -7,7 +7,10 @@ instead of being reinvented per surface. This is C6 in
 [ROADMAP.md](ROADMAP.md) — assembled from identity elements that
 already existed (icon, colors, typography) but were never gathered
 into one place, then extended into a full reference deliberately
-detailed enough to brief a design pass from directly.
+detailed enough to brief a design pass from directly. Also covers
+trademark/usage terms (§10) — merged in from the old TRADEMARK.md
+2026-07-31, since "what the brand is" and "who can use it" are the
+same question asked from two directions.
 
 ---
 
@@ -253,7 +256,31 @@ justify itself.
 | "Built for one person" as a feature | Implying team-admin/enterprise capability |
 | Short, plain sentences | Long sentences stacking multiple claims |
 
-## 10. What's deliberately *not* here
+## 10. Trademark — the name/icon/tagline are reserved separately from the code
+
+The MIT license in this repo covers the **source code only**. It
+doesn't grant any right to use the "Offlog" name, wordmark, tagline, or
+icon (see DECISIONS.md's brand-reservation entry for why: keeping code
+and brand on separate licenses means giving away the code for free
+doesn't also give away the option to protect or license the brand
+later). In practice:
+
+- **Forks must rename.** Fork, modify, and redistribute the code under
+  MIT freely — including commercially — but not under the name
+  "Offlog," the icon, or "Off the cloud, still logged." Pick your own.
+- **The marks are reserved by first use** — this file's own history and
+  the repo's commits/release tags are the record. No formal trademark
+  registration exists; these are common-law rights based on actual,
+  dated use.
+- **Fine without asking**: naming Offlog in an article, a comparison,
+  a "built with" note, or redistributing an official release unmodified.
+- **Not fine without asking**: using the name or icon on a fork, a
+  competing product, merchandise, or anything that could look like an
+  official release or an endorsement by its owner.
+- Brand-related questions go through the repo's SECURITY.md contact
+  channel — no separate brand inquiry address exists.
+
+## 11. What's deliberately *not* here
 
 No press-kit-style boilerplate paragraph nobody will read, no
 guidelines for things Offlog doesn't have yet (merch, a social icon
