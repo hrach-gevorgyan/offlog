@@ -12,6 +12,7 @@
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
     wipeAndReseed,
   } from './db';
+  import { formatAttachmentSize } from './attachments';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
   import { timeAgo, fmtLastSynced, localDateStr } from './utils';
@@ -1293,6 +1294,9 @@
                     {breakdown.archivedTasks} archived ·
                     {breakdown.deletedTasks} in Recycle ·
                     {breakdown.logEntries} history entries
+                    {#if breakdown.attachmentCount}
+                      · {breakdown.attachmentCount} attachment{breakdown.attachmentCount === 1 ? '' : 's'} ({formatAttachmentSize(breakdown.attachmentBytes)})
+                    {/if}
                   </p>
                 {/if}
               </div>

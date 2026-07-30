@@ -2,8 +2,9 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fly, slide } from 'svelte/transition';
   import { popScale } from './motion';
-  import type { TaskDoc, ProjectDoc, CustomFieldDef } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask } from './db';
+  import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
+  import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, formatAttachmentSize } from './attachments';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { requestPermission, permissionState } from './notifications';
   import { confirmAction } from './confirm';
@@ -83,7 +84,11 @@
       ? `This looks similar to notes on "${matches[0].title}" (${Math.round(matches[0].similarity * 100)}% word overlap).`
       : '';
   }
-  onDestroy(() => { clearTimeout(titleCheckTimer); clearTimeout(notesCheckTimer); });
+  onDestroy(() => {
+    clearTimeout(titleCheckTimer); clearTimeout(notesCheckTimer);
+    for (const url of Object.values(thumbnailUrls)) URL.revokeObjectURL(url);
+  });
+  $: if (showAttachmentsBlock) ensureThumbnails();
   let priority = task.priority;
   // CustomSelect only takes string values — priority stays 1|2|3 for
   // save()/everything else, this is just a bound proxy for the picker.
@@ -182,6 +187,7 @@
   let showChecklistBlock = false;
   let showCustomFieldsBlock = false;
   let showRelatedBlock = false;
+  let showAttachmentsBlock = false;
   let showNotesBlock = false;
   // Cap how many custom fields show by default — a project with a dozen
   // fields defined shouldn't turn every card into a long form. Anything
@@ -199,17 +205,18 @@
   // changes.
   function formatExtrasSummary(
     reminder: string, repeat: string | null,
-    cl: typeof checklist, related: TaskDoc[], notes: string,
+    cl: typeof checklist, related: TaskDoc[], atts: TaskAttachment[], notes: string,
   ): string {
     const parts: string[] = [];
     if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
     if (reminder) parts.push(`${fmtTime(new Date(reminder))} reminder`);
     if (cl.length) parts.push(`${cl.filter(i => i.done).length}/${cl.length} checklist`);
     if (related.length) parts.push(`${related.length} related`);
+    if (atts.length) parts.push(`${atts.length} attachment${atts.length > 1 ? 's' : ''}`);
     if (notes.trim()) parts.push('notes');
-    return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, notes';
+    return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, attachments, notes';
   }
-  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, checklist, relatedTasks, body);
+  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, checklist, relatedTasks, attachments, body);
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -338,6 +345,126 @@
       showError('Could not remove that link. Please try again.');
     } finally {
       relatedBusy = false;
+    }
+  }
+
+  // v6.8.0 — file attachments. Immediate-write like Related above (same
+  // reasoning: attaching a file is its own discrete action, not part of
+  // the "collect locally, write on Save" pattern the rest of this form
+  // uses for title/tags/checklist/etc.), not batched into save().
+  let attachments: TaskAttachment[] = [...(task.attachments ?? [])];
+  let attachmentBusy = false;
+  let attachmentError = '';
+  let thumbnailUrls: Record<string, string> = {};
+  let attachFileInputEl: HTMLInputElement;
+
+  const MAX_IMAGE_DIMENSION = 1600;
+  const IMAGE_JPEG_QUALITY = 0.8;
+
+  // Re-encodes to JPEG regardless of the source image format (jpg/png/webp)
+  // -- one predictable output format instead of format-specific quality/
+  // compression tuning for each, and JPEG is universally previewable.
+  // Downscaling first, not just re-compressing at full resolution, is what
+  // actually shrinks a modern phone photo (4000px+) meaningfully -- see the
+  // size-optimization discussion this came out of.
+  async function downscaleImage(file: File): Promise<{ filename: string; base64Data: string; size: number }> {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', IMAGE_JPEG_QUALITY);
+    });
+    return { filename: file.name.replace(/\.[^.]+$/, '') + '.jpg', base64Data: await blobToBase64(blob), size: blob.size };
+  }
+
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function attachOneFile(file: File) {
+    if (attachments.length >= ATTACHMENT_MAX_PER_TASK) {
+      attachmentError = `This task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task).`;
+      return;
+    }
+    const ext = attachmentExtension(file.name);
+    if (!isAttachmentExtensionAllowed(file.name)) {
+      attachmentError = (ext === 'heic' || ext === 'heif')
+        ? 'HEIC/HEIF photos aren’t supported yet -- please share or convert as JPEG first.'
+        : `Unsupported file type: .${ext || '?'}`;
+      return;
+    }
+    attachmentError = '';
+    attachmentBusy = true;
+    try {
+      const out = isAttachmentImage(file.name)
+        ? await downscaleImage(file)
+        : { filename: file.name, base64Data: await blobToBase64(file), size: file.size };
+      if (out.size > ATTACHMENT_MAX_BYTES) {
+        attachmentError = `"${file.name}" is too large (max ${ATTACHMENT_MAX_BYTES / (1024 * 1024)}MB).`;
+        return;
+      }
+      const result = await addAttachment(task._id!, out);
+      attachments = result.attachments ?? [];
+      await ensureThumbnails();
+    } catch {
+      showError('Could not attach that file. Please try again.');
+    } finally {
+      attachmentBusy = false;
+    }
+  }
+
+  async function onFilesPicked(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = ''; // allow picking the same filename again later
+    for (const file of files) await attachOneFile(file);
+  }
+
+  async function removeAttachment(key: string) {
+    attachmentBusy = true;
+    try {
+      const result = await deleteAttachment(task._id!, key);
+      attachments = result.attachments ?? [];
+      if (thumbnailUrls[key]) { URL.revokeObjectURL(thumbnailUrls[key]); delete thumbnailUrls[key]; thumbnailUrls = thumbnailUrls; }
+    } catch {
+      showError('Could not remove that attachment. Please try again.');
+    } finally {
+      attachmentBusy = false;
+    }
+  }
+
+  async function ensureThumbnails() {
+    for (const a of attachments) {
+      if (thumbnailUrls[a.key] || !isAttachmentImage(a.filename)) continue;
+      try {
+        const blob = await getAttachmentBlob(task._id!, a.key);
+        thumbnailUrls[a.key] = URL.createObjectURL(blob as Blob);
+        thumbnailUrls = thumbnailUrls;
+      } catch { /* thumbnail is a nice-to-have, not worth surfacing an error for */ }
+    }
+  }
+
+  async function openAttachment(key: string, filename: string) {
+    try {
+      const blob = await getAttachmentBlob(task._id!, key);
+      const url = URL.createObjectURL(blob as Blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.rel = 'noopener';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch {
+      showError('Could not open that attachment.');
     }
   }
 
@@ -642,6 +769,48 @@
                     {/each}
                   </div>
                 {/if}
+              </div>
+            {/if}
+          </div>
+
+          <div class="extra-block">
+            <button type="button" class="extra-block-toggle" on:click={() => showAttachmentsBlock = !showAttachmentsBlock} aria-expanded={showAttachmentsBlock}>
+              <span class="field-label">
+                Attachments{#if attachments.length} <span class="checklist-progress">{attachments.length}</span>{/if}
+              </span>
+              <svg class="section-chevron" class:open={showAttachmentsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+            </button>
+            {#if showAttachmentsBlock}
+              <div class="extra-block-body attachments-field" transition:slide={{ duration: 150 }}>
+                {#each attachments as a (a.key)}
+                  <div class="attachment-row">
+                    <button type="button" class="attachment-open" on:click={() => openAttachment(a.key, a.filename)} title="Download {a.filename}">
+                      {#if thumbnailUrls[a.key]}
+                        <img class="attachment-thumb" src={thumbnailUrls[a.key]} alt="" />
+                      {:else}
+                        <span class="attachment-file-icon" aria-hidden="true">
+                          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.5h6l4 4v9a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5z"/><path d="M9 1.5v4h4"/></svg>
+                        </span>
+                      {/if}
+                      <span class="attachment-name">{a.filename}</span>
+                      <span class="attachment-size">{formatAttachmentSize(a.size)}</span>
+                    </button>
+                    <button type="button" class="checklist-remove" on:click={() => removeAttachment(a.key)} disabled={attachmentBusy} aria-label="Remove attachment {a.filename}">×</button>
+                  </div>
+                {/each}
+                <button type="button" class="attach-file-btn" disabled={attachmentBusy || attachments.length >= ATTACHMENT_MAX_PER_TASK} on:click={() => attachFileInputEl.click()}>
+                  {attachmentBusy ? 'Attaching…' : attachments.length >= ATTACHMENT_MAX_PER_TASK ? `Max ${ATTACHMENT_MAX_PER_TASK} attachments reached` : '+ Attach a file'}
+                </button>
+                <!-- No `accept` restriction -- any file type is attachable except
+                     HEIC/HEIF (rejected in attachOneFile() with a clear message);
+                     `accept` can't express a negation, so this intentionally lets
+                     the OS picker show everything and relies on the JS check. -->
+                <input
+                  bind:this={attachFileInputEl}
+                  type="file" multiple style="display:none"
+                  on:change={onFilesPicked}
+                />
+                {#if attachmentError}<p class="dup-name-hint">{attachmentError}</p>{/if}
               </div>
             {/if}
           </div>
@@ -1039,6 +1208,36 @@
   }
   .checklist-input:focus { border-color: var(--accent); }
   .checklist-input::placeholder { color: var(--faint); }
+
+  /* v6.8.0 -- file attachments */
+  .attachments-field { display: flex; flex-direction: column; gap: .3rem; }
+  .attachment-row { display: flex; align-items: center; gap: 7px; }
+  .attachment-open {
+    flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;
+    background: none; border: none; padding: .2rem 0; text-align: left; cursor: pointer;
+    font-family: inherit; color: var(--text); border-radius: 6px;
+  }
+  .attachment-open:hover .attachment-name { color: var(--accent); text-decoration: underline; }
+  .attachment-thumb {
+    width: 26px; height: 26px; border-radius: 5px; object-fit: cover;
+    flex-shrink: 0; border: 1px solid var(--border);
+  }
+  .attachment-file-icon {
+    width: 26px; height: 26px; border-radius: 5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border); color: var(--faint);
+  }
+  .attachment-name { flex: 1; font-size: .84rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attachment-size {
+    font-family: var(--mono); font-size: .68rem; color: var(--faint); flex-shrink: 0;
+  }
+  .attach-file-btn {
+    align-self: flex-start; font-size: .82rem; color: var(--accent); cursor: pointer;
+    padding: .3rem .2rem; border-radius: 6px; transition: background .1s;
+    background: none; border: none; font-family: inherit;
+  }
+  .attach-file-btn:hover { background: var(--hover); }
+  .attach-file-btn:disabled { color: var(--faint); cursor: default; }
   textarea {
     flex: 1; resize: vertical; min-height: 90px;
     padding: .55rem .65rem; border: 1px solid var(--border);

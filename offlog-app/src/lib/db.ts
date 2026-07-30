@@ -8,8 +8,9 @@
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
 import { getSyncUrl, getSyncCredentials, getDeviceName, getDeviceId, isSyncEnabled, getDefaultReminderTime } from '../config';
-import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef, TagColorDoc } from './types';
+import type { SpaceDoc, ProjectDoc, TaskDoc, Column, Source, CustomFieldDef, TagColorDoc, TaskAttachment } from './types';
 import { wordOverlapSimilarity, localDateStr } from './utils';
+import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension, attachmentMimeType } from './attachments';
 
 (PouchDB as any).plugin(PouchDBFind);
 
@@ -244,18 +245,24 @@ export interface StorageBreakdown {
   archivedTasks: number;
   deletedTasks: number;
   logEntries: number;
+  attachmentCount: number;
+  attachmentBytes: number;
 }
 
 export async function getStorageBreakdown(): Promise<StorageBreakdown> {
   const all = await getAllTasksRaw();
-  let activeTasks = 0, archivedTasks = 0, deletedTasks = 0;
+  let activeTasks = 0, archivedTasks = 0, deletedTasks = 0, attachmentCount = 0, attachmentBytes = 0;
   for (const d of all) {
     if (d.deleted) deletedTasks++;
     else if (d.archived) archivedTasks++;
     else activeTasks++;
+    // Counted regardless of active/archived/deleted -- a soft-deleted
+    // task's attachments still occupy real disk space until emptied from
+    // Recycle, same as everything else about it (v6.8.0).
+    for (const a of d.attachments ?? []) { attachmentCount++; attachmentBytes += a.size; }
   }
   const logRows = await db.allDocs({ startkey: 'log:', endkey: 'log:￰' });
-  return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length };
+  return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length, attachmentCount, attachmentBytes };
 }
 
 // v5.6.2 cleanup: getDashboardData()/searchAllTasks()/getRecentlyModifiedTasks()
@@ -1302,11 +1309,20 @@ function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc
 // callers await updateTask() themselves.
 const _taskWriteQueues = new Map<string, Promise<unknown>>();
 
-export function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
+// Shared by updateTask() and the attachment writers below -- addAttachment()
+// does its own get-then-put on the same doc, so it needs the identical
+// per-id serialization or attaching two files back-to-back (or attaching
+// while another edit is in flight) can race the same way the comment above
+// describes.
+function queueTaskWrite<T>(id: string, fn: () => Promise<T>): Promise<T> {
   const prev = _taskWriteQueues.get(id) ?? Promise.resolve();
-  const run = prev.then(() => updateTaskImpl(id, changes), () => updateTaskImpl(id, changes));
+  const run = prev.then(fn, fn);
   _taskWriteQueues.set(id, run.catch(() => {}));
   return run;
+}
+
+export function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
+  return queueTaskWrite(id, () => updateTaskImpl(id, changes));
 }
 
 async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
@@ -1387,6 +1403,92 @@ async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<Ta
   }
 
   return { ...doc, ...finalChanges, updated_at: now(), source: SOURCE } as TaskDoc;
+}
+
+// ── Attachments (v6.8.0) ─────────────────────────────────────────────────────
+// The actual bytes live in PouchDB's own `_attachments` map on the task doc
+// itself -- native attachment support, so it rides the existing sync/
+// replication with no new code, and unchanged attachment content is
+// deduped by digest automatically on every subsequent sync. TaskDoc.attachments
+// is just the small, loggable/diffable metadata list (see types.ts). Reuses
+// queueTaskWrite() (above) since this is the same get-then-put shape as
+// updateTask(), on the same doc id, and needs the same per-id serialization.
+
+export const ATTACHMENT_MAX_PER_TASK = 10;
+
+export interface AddAttachmentInput {
+  filename: string;
+  base64Data: string; // already base64-encoded, and for images already downscaled/compressed by the caller
+  size: number;        // final byte size (post-compression) -- what the 10MB cap and Settings' storage breakdown care about
+}
+
+export async function addAttachment(taskId: string, input: AddAttachmentInput): Promise<TaskDoc> {
+  if (!isAttachmentExtensionAllowed(input.filename)) {
+    throw new Error(`Unsupported file type: .${attachmentExtension(input.filename) || '?'}`);
+  }
+  if (input.size > ATTACHMENT_MAX_BYTES) {
+    throw new Error(`File too large (max ${ATTACHMENT_MAX_BYTES / (1024 * 1024)}MB)`);
+  }
+  return queueTaskWrite(taskId, () => addAttachmentImpl(taskId, input));
+}
+
+async function addAttachmentImpl(taskId: string, input: AddAttachmentInput): Promise<TaskDoc> {
+  const doc = await db.get<TaskDoc>(taskId);
+  const prevMeta = doc.attachments ?? [];
+  // Checked here, inside the per-doc write queue, not in addAttachment()'s
+  // synchronous pre-check above -- two concurrent addAttachment() calls on
+  // the same task must each see the OTHER's count too, or both could pass
+  // a "9 < 10" check before either write lands and end up with 11.
+  if (prevMeta.length >= ATTACHMENT_MAX_PER_TASK) {
+    throw new Error(`This task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task)`);
+  }
+  const key = `att:${nanoid()}`;
+  const contentType = attachmentMimeType(input.filename);
+  const meta: TaskAttachment = { key, filename: input.filename, content_type: contentType, size: input.size, added_at: now() };
+  const nextMeta = [...prevMeta, meta];
+
+  await db.put({
+    ...doc,
+    attachments: nextMeta,
+    // Existing entries in _attachments come back from db.get() as stubs
+    // (content_type/digest/length, no data) unless {attachments:true} was
+    // requested -- PouchDB recognizes stub entries on put() and keeps their
+    // existing content as-is rather than requiring every attachment to be
+    // re-sent on every write. Only the new key needs real `data` here.
+    _attachments: { ...(doc as any)._attachments, [key]: { content_type: contentType, data: input.base64Data } },
+    updated_at: now(), source: SOURCE,
+  } as any);
+  invalidateTaskCache();
+  await logChange(taskId, 'update', 'attachments', prevMeta, nextMeta, { task_title: doc.title });
+  return db.get<TaskDoc>(taskId);
+}
+
+export async function deleteAttachment(taskId: string, key: string): Promise<TaskDoc> {
+  return queueTaskWrite(taskId, () => deleteAttachmentImpl(taskId, key));
+}
+
+async function deleteAttachmentImpl(taskId: string, key: string): Promise<TaskDoc> {
+  const doc = await db.get<TaskDoc>(taskId);
+  const prevMeta = doc.attachments ?? [];
+  const nextMeta = prevMeta.filter(a => a.key !== key);
+  const nextAttachments = { ...(doc as any)._attachments };
+  delete nextAttachments[key];
+
+  await db.put({
+    ...doc,
+    attachments: nextMeta,
+    _attachments: nextAttachments,
+    updated_at: now(), source: SOURCE,
+  } as any);
+  invalidateTaskCache();
+  await logChange(taskId, 'update', 'attachments', prevMeta, nextMeta, { task_title: doc.title });
+  return db.get<TaskDoc>(taskId);
+}
+
+// Returns the raw file content for preview/download -- a Blob in every
+// environment this app runs in (browser, Capacitor WebView, Tauri webview).
+export async function getAttachmentBlob(taskId: string, key: string): Promise<Blob> {
+  return db.getAttachment(taskId, key) as Promise<Blob>;
 }
 
 // ── Undo (recently deleted, sourced from the database) ────────────────────────
