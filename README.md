@@ -22,6 +22,8 @@ doesn't go stale every release.)
 
 ## Screenshots
 
+Real captures from a real build — no mockups, no Lorem Ipsum.
+
 <table>
   <tr>
     <td width="50%" align="center">
@@ -30,10 +32,35 @@ doesn't go stale every release.)
     </td>
     <td width="50%" align="center">
       <img src="docs/images/screenshot-kanban-desktop.png" alt="Kanban board view">
-      <br><sub><b>Kanban</b> — drag-and-drop columns, per-card due dates and tags</sub>
+      <br><sub><b>Kanban</b> — drag-and-drop columns, per-card due dates, tags, and checklist progress</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/screenshot-list-desktop.png" alt="List/Table view">
+      <br><sub><b>List</b> — sortable columns, saved filters, multi-column sort</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/screenshot-focus-desktop.png" alt="Focus view">
+      <br><sub><b>Focus</b> — pick up to 3 tasks for today, ranked pinned → overdue → due-soon</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/images/screenshot-carddetail-desktop.png" alt="Task detail panel over the Agenda calendar view">
+      <br><sub><b>Task detail</b> — full editor over Agenda's week calendar</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/images/screenshot-search-desktop.png" alt="Global search / command palette">
+      <br><sub><b>Search (Ctrl+K)</b> — one box for tasks, notes, checklist text, and commands</sub>
     </td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="docs/images/screenshot-kanban-desktop-dark.png" alt="Kanban board view in dark mode" width="640">
+  <br><sub>Light or dark — every screen, not just a toggle that half-works</sub>
+</p>
 
 ---
 
@@ -88,16 +115,28 @@ was missing while using the app for real. Full detail on all of it:
   from a round-robin-ranked picker, instead of an auto-computed priority
   list nobody trusts
 - Checklists with a progress badge, tags with project-local
-  autocomplete, custom fields (global, not per-project)
+  autocomplete and an optional per-tag color, custom fields (global, not
+  per-project)
 - Card detail — full task editor: notes with a length counter, priority,
   due date, reminder time (independent of due date), status, checklist,
-  custom fields, and a per-card changelog of every change made to it
+  custom fields, related-task links, file attachments, and a per-card
+  changelog of every change made to it
+- File attachments — photos, PDFs, spreadsheets, or any other file
+  (except HEIC/HEIF, not supported yet), up to 10MB each and 10 per
+  task. Images are downscaled and re-encoded on-device before saving,
+  so a phone photo doesn't balloon your database. Attachments sync like
+  everything else — no separate upload step
+- Recurring tasks (daily/weekly/monthly) — one task resets in place
+  instead of spawning a duplicate, correctly handles month-end dates
+  (a task due the 31st lands on the 28th/29th/30th of a shorter month,
+  not two months later) and DST transitions
 - One-tap due-date shortcuts on task creation; Duplicate task; project
   templates (copy a status structure, optionally with its open tasks)
 - Dashboard — every project at a glance, pinned tasks, overdue tasks,
   a weekly "N completed this past week" summary
-- Quick Add (Ctrl+N) and Global Search (Ctrl+K) from anywhere, plus a
-  command palette that matches actions, not just tasks
+- Quick Add (Ctrl+N) and Global Search (Ctrl+K) from anywhere — search
+  covers task titles, notes, and checklist text, not just titles — plus
+  a command palette that matches actions, not just tasks
 - Undo & Recycle — soft-delete everywhere with undo, a full Recycle view
   with restore/delete-forever, and a configurable retention policy
 
