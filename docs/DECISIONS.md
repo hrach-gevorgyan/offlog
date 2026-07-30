@@ -54,6 +54,14 @@ the decisions log below.
   will ever accumulate enough data for it to matter again. Real-world
   data on how large a single user's dataset gets over years would
   settle this either way.
+- **Remote access via the user's own personal mesh VPN (Tailscale/
+  WireGuard), experimental.** Not an Offlog-run relay or account —
+  just pointing the existing sync URL at a Tailscale IP instead of a
+  LAN IP, so a phone can reach the home host from outside the LAN.
+  Directly brushes the manifesto's "remote/away-from-home sync...
+  explicitly not part of this goal" line, so this is flagged as an
+  experimental idea to think about, not a plan — stays here, not
+  ROADMAP.md, until it's actually vetted one way or the other.
 
 If an answer emerges, fold it into the relevant section below or
 update ROADMAP.md directly, and remove the question here.
@@ -268,6 +276,23 @@ interactions layered on top. Don't reintroduce a separate Table view or
 bring back pill-style due badges — both were deliberately removed.
 Focus (a later, different view) is "what should I do right now," not a
 re-split of this merge.
+
+### Calendar sync (.ics), live-subscribe or one-shot export: declined (2026-07-31)
+A live-subscribe feed (OS calendar polls a local URL, auto-refreshes)
+sounded right until checking the actual desktop app: it has no tray/
+background-persistence — closing the window quits the sync host
+entirely, so the feed would only be reachable while Offlog happened to
+be open, which most calendar polls would miss. That makes "auto-
+refreshes" not really true in practice. Android can't host the feed at
+all (no server on that platform, and standing one up just for this
+isn't worth the new background-service surface). Dropped to a plain
+one-shot ".ics export" instead as the fallback — but that turned out to
+only serve rare cases (a once-a-week planning glance, sharing one
+deadline with someone else, a one-time calendar migration), not
+something worth the new UI/code for. Declined entirely, both forms.
+Don't re-propose without a real recurring use case, or the desktop app
+gaining tray/background persistence (a separate, bigger change nobody's
+asked for).
 
 ### Quick Add's NLP parsing is local regex, not an LLM call (2026-07-19)
 Parses free-typed text ("tomorrow 5pm !high #errand") into structured
