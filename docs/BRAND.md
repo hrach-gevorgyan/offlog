@@ -144,6 +144,22 @@ social card):
   gradients, public material shouldn't invent a different visual
   language than the actual app.
 
+**shields.io badges** (README, 2026-07-30): any badge whose color is
+freely chosen (license, tech-stack badges) uses the accent hex
+(`5457E0`) via `?color=5457E0` (or the literal hex in a static
+`img.shields.io/badge/...` URL) — same "one accent, no second marketing
+color" rule as everything else. Badges whose color is fixed by the
+service itself (GitHub's own CI status badge, a simple-icons logo's
+brand color like Svelte's orange) are left as-is; overriding a
+recognizable third-party logo's own color would look broken, not
+on-brand. **Prefer a real, dynamic GitHub/shields.io endpoint over a
+hardcoded number in prose** — a fact that changes (commit count,
+release version, download total) belongs in a live badge, not a string
+that will quietly go stale the next time nobody remembers to update it
+(this is why "Built up over 170+ commits" in the Features intro was
+replaced with stable phrasing plus a live commit-activity badge instead
+of just updating the number once more).
+
 ### Typography
 
 **Hanken Grotesk** — the only typeface anywhere in the project

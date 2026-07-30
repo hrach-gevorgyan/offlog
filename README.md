@@ -3,9 +3,20 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <a href="https://github.com/hrach-gevorgyan/offlog/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hrach-gevorgyan/offlog"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5457E0?style=flat-square"></a>
+  <a href="https://github.com/hrach-gevorgyan/offlog/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hrach-gevorgyan/offlog?style=flat-square&color=5457E0"></a>
   <a href="https://github.com/hrach-gevorgyan/offlog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/hrach-gevorgyan/offlog/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/hrach-gevorgyan/offlog/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/hrach-gevorgyan/offlog?style=flat-square&color=5457E0"></a>
+  <img alt="Commit activity" src="https://img.shields.io/github/commit-activity/m/hrach-gevorgyan/offlog?style=flat-square&color=5457E0">
+  <a href="https://github.com/hrach-gevorgyan/offlog/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/hrach-gevorgyan/offlog/total?style=flat-square&color=5457E0"></a>
+</p>
+
+<p align="center">
+  <img alt="Svelte" src="https://img.shields.io/badge/Svelte-FF3E00?style=flat-square&logo=svelte&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
+  <img alt="Tauri" src="https://img.shields.io/badge/Tauri-FFC131?style=flat-square&logo=tauri&logoColor=white">
+  <img alt="Capacitor" src="https://img.shields.io/badge/Capacitor-119EFF?style=flat-square&logo=capacitor&logoColor=white">
+  <img alt="PouchDB" src="https://img.shields.io/badge/PouchDB-E2041B?style=flat-square&logo=apachecouchdb&logoColor=white">
 </p>
 
 # Offlog
@@ -16,9 +27,15 @@
 A free, open-source, local-first task manager. No account, no telemetry,
 no subscription, ever. Runs in the browser, as a native Android app, and
 as a Windows desktop app — all three share the exact same codebase and
-sync with each other over your own network. (Current version:
-[docs/CHANGELOG.md](docs/CHANGELOG.md) — not restated here so this page
-doesn't go stale every release.)
+sync with each other over your own network. (Current version: the
+badge above, always live — [docs/CHANGELOG.md](docs/CHANGELOG.md) for
+what changed.)
+
+**Jump to:** [Screenshots](#screenshots) ·
+[Why this exists](#why-this-exists) · [Features](#features) ·
+[Getting the apps](#getting-the-apps) ·
+[Getting Started](#getting-started) ·
+[Documentation](#documentation) · [Contributing](#contributing)
 
 ## Screenshots
 
