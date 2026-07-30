@@ -98,9 +98,9 @@ exactly how that works.
 
 ## Features
 
-Built up over 170+ commits of real daily use — some features
-came from the original plan, plenty came from just noticing something
-was missing while using the app for real. Full detail on all of it:
+Built up from months of real daily use — some features came from the
+original plan, plenty came from just noticing something was missing
+while using the app for real. Full detail on all of it:
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent releases) and
 [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)
 (everything older, one line per release).
