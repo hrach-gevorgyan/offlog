@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import db, {
   posBetween, computeDropPosition,
   createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
-  createTask, getTasksForProject, updateTask, deleteTask,
+  createTask, getTasksForProject, updateTask, deleteTask, getTaskById,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribeUndo,
   getAllTasksDue, getDashboardData, getStorageBreakdown,
   checkIntegrity, repairDatabase, runMaintenanceSteps,
@@ -1638,6 +1638,100 @@ describe('task linking (v6.7.0, related-only, non-directional)', () => {
 
     const results = await searchTasksForLinking('login', a._id!, []);
     expect(results.map(t => t._id)).toEqual([b._id]);
+  });
+});
+
+describe('backup/restore round-trip (the emergency exit)', () => {
+  beforeEach(seedSpace);
+
+  // The bug this covers: exports used to write attachment *stubs* with no
+  // bytes, and PouchDB rejects an entire bulkDocs batch with `missing_stub`
+  // when it meets one -- so a single attached photo made the whole backup
+  // file unrestorable, taking every space/project/task down with it and
+  // reporting only "Import failed. Please try again."
+  it('a backup containing an attachment restores its tasks (was: whole batch rejected)', async () => {
+    const project = await createProject('space:unsorted', 'Backup Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Has an attachment');
+    await addAttachment(task._id!, { filename: 'receipt.txt', base64Data: btoa('hello world'), size: 11 });
+
+    // Exactly what the backup path now collects.
+    const exported = (await db.allDocs({ include_docs: true, attachments: true, binary: false }))
+      .rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+
+    // Simulate restoring into a database that lost the task.
+    await deleteForever(task._id!);
+    expect(await getTaskById(task._id!)).toBeNull();
+
+    const { ok } = await importJSON(exported);
+    expect(ok).toBeGreaterThan(0);
+    const restored = await getTaskById(task._id!);
+    expect(restored).not.toBeNull();
+    expect(restored!.title).toBe('Has an attachment');
+  });
+
+  // Old backup files (written before attachments were inlined) still exist
+  // on disk. They must degrade to "task restored, file missing" rather than
+  // failing the entire import.
+  it('an older backup whose attachments are bare stubs still restores the task', async () => {
+    const project = await createProject('space:unsorted', 'Backup Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Legacy backup task');
+
+    const legacyDoc = {
+      ...(await db.get<any>(task._id!)),
+      _attachments: { 'att:old': { content_type: 'text/plain', digest: 'md5-bogus', length: 5, stub: true } },
+      attachments: [{ key: 'att:old', filename: 'old.txt', content_type: 'text/plain', size: 5, added_at: new Date().toISOString() }],
+    };
+    await deleteForever(task._id!);
+
+    const { ok } = await importJSON([legacyDoc]);
+    expect(ok).toBe(1);
+    const restored = await getTaskById(task._id!);
+    expect(restored!.title).toBe('Legacy backup task');
+    expect(restored!.attachments ?? []).toEqual([]); // file genuinely gone, task saved
+  });
+
+  it('restores custom-field definitions and tag colours, not just tasks', async () => {
+    await addCustomFieldDef('Budget', 'number');
+    await setTagColor('urgent', '#FF0000');
+    const exported = (await db.allDocs({ include_docs: true })).rows
+      .map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+    // These two doc types used to be filtered out of every restore, which
+    // left restored tasks holding custom_values keyed to field ids that no
+    // longer had definitions — present on disk, invisible in the UI.
+    expect(exported.some((d: any) => d.type === 'meta')).toBe(true);
+    expect(exported.some((d: any) => d.type === 'tag_color')).toBe(true);
+
+    // Wipe both out, then restore from the backup file.
+    for (const d of exported.filter((x: any) => x.type === 'meta' || x.type === 'tag_color')) {
+      await db.remove(await db.get(d._id));
+    }
+    expect((await getCustomFieldDefs()).some(f => f.name === 'Budget')).toBe(false);
+
+    const { ok } = await importJSON(exported);
+    expect(ok).toBeGreaterThan(0);
+    expect((await getCustomFieldDefs()).some(f => f.name === 'Budget')).toBe(true);
+    expect((await getTagColorOverrides())['urgent']).toBe('#FF0000');
+  });
+
+  it('normalizes a malformed project rather than importing a view-crashing doc', async () => {
+    // A project with no `columns` used to import fine, then crash the
+    // Dashboard/Kanban/List/CardDetail on columns.at(-1).
+    const { ok } = await importJSON([
+      { _id: 'project:broken', type: 'project', space_id: 'space:unsorted', name: 'Broken', position: 0 },
+    ]);
+    expect(ok).toBe(1);
+    const proj = (await getProjects()).find(p => p._id === 'project:broken');
+    expect(Array.isArray(proj!.columns)).toBe(true);
+    expect(proj!.columns.length).toBeGreaterThan(0);
+    expect(proj!.columns.at(-1)!.id).toBeTruthy();
+  });
+
+  it('skips a task with no project_id instead of importing an unreachable orphan', async () => {
+    const { ok, skipped } = await importJSON([
+      { _id: 'task:orphan', type: 'task', title: 'Nowhere', column_id: 'col:x' },
+    ]);
+    expect(ok).toBe(0);
+    expect(skipped).toBe(0); // filtered before the write, not attempted and failed
   });
 });
 

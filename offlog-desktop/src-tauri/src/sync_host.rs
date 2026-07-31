@@ -145,7 +145,7 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
 
     let mut limits = ExtendedLimitInfo::new();
     limits.limit_kill_on_job_close();
-    let job = Job::create_with_limit_info(&mut limits)
+    let job = Job::create_with_limit_info(&limits)
         .map_err(|e| std::io::Error::other(format!("failed to create job object: {e}")))?;
     job.assign_process(child.as_raw_handle() as _)
         .map_err(|e| std::io::Error::other(format!("failed to assign process to job: {e}")))?;

@@ -42,19 +42,43 @@ export const projectTasks = derived(
   ([$tasks, $id]) => $tasks.filter(t => t.project_id === $id),
 );
 
+// Guards against an older reload finishing *after* a newer one and
+// overwriting fresh stores with stale data — with several reloads in
+// flight at once there's no ordering guarantee between them, so the
+// last one to be *started* wins rather than the last to resolve.
+let _reloadSeq = 0;
+
 async function reload() {
   // None of these three reads depend on each other (tasks only needs the
   // already-known activeProjectId, not the freshly-loaded spaces/projects),
   // so fetching them in parallel instead of sequentially shaves a full
   // round-trip off every reload — this runs on init and on every incoming
   // sync change.
+  const seq = ++_reloadSeq;
   const $projectId = get(activeProjectId);
   const [sp, pr, tk] = await Promise.all([getSpaces(), getProjects(), getTasksForProject($projectId)]);
+  if (seq !== _reloadSeq) return; // superseded while we were awaiting
   spaces.set(sp);
   projects.set(pr);
   tasks.set(tk);
   // Not awaited — reminders don't need to block the UI becoming interactive.
   rescheduleAll().catch(() => {});
+}
+
+// PouchDB's change feed emits one event *per document*, so a phone that
+// was offline for a week pushing 300 changed docs used to trigger 300
+// full reloads back-to-back -- each one four queries plus a complete
+// reminder reschedule, all on the main thread, exactly when the app is
+// opened in the morning. Coalescing into a single reload per quiet
+// period turns that into one. Kept short (120ms) so a *local* write
+// still feels instant: local mutation paths call reloadTasks() directly
+// anyway, this only backstops the change feed.
+const RELOAD_DEBOUNCE_MS = 120;
+let _reloadTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleReload() {
+  clearTimeout(_reloadTimer);
+  _reloadTimer = setTimeout(() => { reload().catch(() => {}); }, RELOAD_DEBOUNCE_MS);
 }
 
 export async function reloadTasks() {
@@ -86,9 +110,26 @@ export async function init() {
   // rather than checked once immediately after startSync() above.
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 4000);
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 10000);
-  subscribe(() => reload());
+  subscribe(scheduleReload);
   checkPermission();
   initNotificationListeners().catch(() => {});
+  runHousekeeping();
+  // Housekeeping used to run only here, once per app start -- which was
+  // fine while closing the window quit the app, so "app start" happened
+  // at least daily. The desktop app is tray-resident as of 2026-07-31
+  // (close-to-tray, ROADMAP.md's tray item), so a session can now last
+  // weeks and "next launch" may never come: automatic backups would
+  // silently stop while still *reporting* a real last-backup timestamp,
+  // and neither retention cap would ever be enforced. Re-run on a timer
+  // instead. Each of the three has its own internal "is it due yet"
+  // check, so calling hourly is cheap -- it just means the daily backup
+  // actually happens on a machine that never restarts the app.
+  setInterval(runHousekeeping, HOUSEKEEPING_INTERVAL_MS);
+}
+
+const HOUSEKEEPING_INTERVAL_MS = 60 * 60 * 1000; // hourly; each task self-checks whether it's actually due
+
+function runHousekeeping() {
   maybePruneOldLogs();
   maybePruneOldDeletedTasks();
   runAutoBackupIfDue().catch(() => {});

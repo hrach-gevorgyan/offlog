@@ -22,7 +22,18 @@
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
 
-  const today = localDateStr(new Date());
+  // Reactive, not a one-shot const: the desktop app is tray-resident as of
+  // 2026-07-31, so this view can stay mounted across midnight. Captured
+  // once, it kept yesterday's date — "Overdue" showed a stale set, today's
+  // tasks sat filed under "This week", and nothing looked broken enough to
+  // notice. Re-checked on a timer, and immediately on tab focus so waking
+  // a laptop corrects it without waiting out the interval.
+  let today = localDateStr(new Date());
+  const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
+  function refreshToday() {
+    const current = localDateStr(new Date());
+    if (current !== today) today = current;
+  }
 
   // Agenda's second view mode alongside the flat list — Month (roadmap
   // item 2), which replaced an earlier Week grid: Week's whole value was
@@ -109,7 +120,15 @@
   onMount(() => {
     load();
     const unsub = subscribe(() => load());
-    return () => { unsub(); };
+    const dayTimer = setInterval(refreshToday, DAY_ROLLOVER_CHECK_MS);
+    window.addEventListener('focus', refreshToday);
+    document.addEventListener('visibilitychange', refreshToday);
+    return () => {
+      unsub();
+      clearInterval(dayTimer);
+      window.removeEventListener('focus', refreshToday);
+      document.removeEventListener('visibilitychange', refreshToday);
+    };
   });
 
   $: overdue   = all.filter(t => t.due_date! < today);

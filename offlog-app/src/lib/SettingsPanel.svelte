@@ -846,7 +846,10 @@
     try {
       const docs = backupScope
         ? await exportProjectDocs(backupScope)
-        : (await db.allDocs({ include_docs: true })).rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+        // attachments inlined as base64 rather than left as stubs -- see
+        // autoBackup.ts's collectBackupJson() for why a stub makes the
+        // whole restore fail, not just lose the file.
+        : (await db.allDocs({ include_docs: true, attachments: true, binary: false })).rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
       const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
       await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${localDateStr(new Date())}.json`);
     } catch {

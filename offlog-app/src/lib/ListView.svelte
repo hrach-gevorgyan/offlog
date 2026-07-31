@@ -446,8 +446,15 @@
 
   async function markDone(task: TaskDoc) {
     const { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist } = task;
+    // lastColId() falls back to '' on a project with no columns; writing
+    // that would orphan the task into a column that doesn't exist (which
+    // checkIntegrity then flags as invalid_column). DeadlinesView, FocusView
+    // and notifications.ts all guard this already -- this was the one path
+    // that didn't.
+    const target = lastColId();
+    if (!target) { showError('This project has no statuses to mark done into.'); return; }
     try {
-      await updateTask(task._id!, { column_id: lastColId() });
+      await updateTask(task._id!, { column_id: target });
       await reloadTasks();
       hapticToggle();
     } catch {

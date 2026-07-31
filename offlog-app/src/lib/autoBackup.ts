@@ -56,7 +56,13 @@ function backupFilename(now: Date): string {
 async function collectBackupJson(): Promise<string> {
   const PouchDBCtor = (window as any).PouchDB;
   const db = new PouchDBCtor('offlog');
-  const all = await db.allDocs({ include_docs: true });
+  // `attachments: true, binary: false` inlines each attachment as base64
+  // `data` instead of a `{stub: true}` placeholder. Without it a backup
+  // containing any attachment was not merely missing the file -- restoring
+  // it failed *entirely*, because PouchDB rejects a whole bulkDocs batch
+  // with `missing_stub` when a stub has no matching blob, taking every
+  // space/project/task in the file down with it (audit, 2026-07-31).
+  const all = await db.allDocs({ include_docs: true, attachments: true, binary: false });
   const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
   return JSON.stringify(docs, null, 2);
 }

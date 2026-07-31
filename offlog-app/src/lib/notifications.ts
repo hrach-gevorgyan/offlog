@@ -175,6 +175,22 @@ const MAX_TIMEOUT = 2_147_483_647; // setTimeout's 32-bit signed int limit (~24.
 const _firedIds = new Set<string>();
 function firedKey(task: TaskDoc): string { return `${task._id}:${task.reminder_at}`; }
 
+// The set is only a short-lived duplicate-suppression guard -- once a
+// reminder has fired and its write has settled, the key has no further
+// job. Left unbounded it grew by one string per fired reminder for the
+// life of the process, which used to mean "until the tab closed" and now
+// means "until the tray-resident desktop app is quit", possibly weeks
+// (audit, 2026-07-31). Trim oldest-first well above any plausible
+// same-session backlog, so the dedupe behaviour is unchanged in practice.
+const FIRED_IDS_MAX = 500;
+function rememberFired(key: string) {
+  _firedIds.add(key);
+  if (_firedIds.size > FIRED_IDS_MAX) {
+    const oldest = _firedIds.values().next().value as string | undefined;
+    if (oldest !== undefined) _firedIds.delete(oldest);
+  }
+}
+
 // Returns the clearing write's promise (rather than firing it detached) so
 // catchUpWeb() can actually wait for it to land -- production callers are
 // free to ignore the returned promise same as before, but tests no longer
@@ -186,7 +202,7 @@ function fireWebNotification(task: TaskDoc): Promise<void> {
   const id = task._id!;
   const key = firedKey(task);
   if (_firedIds.has(key)) return Promise.resolve();
-  _firedIds.add(key);
+  rememberFired(key);
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return Promise.resolve();
   const n = new Notification(task.title, {
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
@@ -245,9 +261,19 @@ function cancelWeb(taskId: string) {
 // -- production callers still don't need to await this (same fire-and-
 // forget usage as always), but tests can, instead of racing an arbitrary
 // setTimeout against real (occasionally slow-under-load) PouchDB writes.
+// A reminder that came due while the app wasn't running gets fired late
+// rather than dropped. The window was 1 hour, and anything older had its
+// `reminder_at` set to null -- i.e. the user's own setting was silently
+// destroyed, never having fired once. That's easy to hit on the desktop:
+// scheduling there is setTimeout-based, so it needs the app running, and
+// a reminder set for 23:00 (deferred to 07:00 by quiet hours) on a machine
+// that's off overnight was simply erased by morning. Widened to 24h so a
+// normal overnight or workday gap still notifies, late but present
+// (audit, 2026-07-31).
+const CATCH_UP_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
   const now = Date.now();
-  const CATCH_UP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
   const pending: Promise<void>[] = [];
   let queuedCount = 0;
   for (const t of tasks) {
@@ -375,7 +401,7 @@ function fireTauriNotification(task: TaskDoc): Promise<void> {
   const id = task._id!;
   const key = firedKey(task);
   if (_firedIds.has(key)) return Promise.resolve();
-  _firedIds.add(key);
+  rememberFired(key);
   invokeTauri('send_task_notification', {
     title: task.title,
     body: task.due_date ? `Due ${task.due_date}` : 'Reminder',
@@ -402,7 +428,9 @@ function scheduleTauriTimer(task: TaskDoc, staggerIndex = 0) {
 // header comment), so fire it on load instead if it's not too stale.
 function catchUpTauri(tasks: TaskDoc[]) {
   const now = Date.now();
-  const CATCH_UP_WINDOW_MS = 60 * 60 * 1000;
+  // Shares catchUpWeb()'s 24h window — this is the desktop path, and the
+  // owner's primary build, so it's the one where an overnight gap wiping
+  // a reminder actually bit. See that constant's comment.
   let queuedCount = 0;
   for (const t of tasks) {
     if (!t.reminder_at) continue;

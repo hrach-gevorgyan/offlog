@@ -217,6 +217,26 @@
     const toIdx   = cols.findIndex(c => c.id === targetColId);
     const [moved] = cols.splice(fromIdx, 1);
     cols.splice(toIdx, 0, moved);
+    // "Done" is positional — the LAST status is what counts as complete
+    // (db.ts). So a drag that changes which status sits last silently
+    // redefines done-ness in both directions at once: everything in the
+    // new last column becomes done (dropping off Agenda/Dashboard/Focus
+    // and cancelling its reminders), and everything in the old last
+    // column comes back as not-done, possibly as a pile of overdue. This
+    // was reachable by one accidental drag with no confirmation at all,
+    // so it now asks — but only when the last position actually changes.
+    const oldLast = project.columns.at(-1);
+    const newLast = cols.at(-1);
+    if (oldLast && newLast && oldLast.id !== newLast.id) {
+      const nowDone = tasksByCol[newLast.id]?.length ?? 0;
+      const nowUndone = tasksByCol[oldLast.id]?.length ?? 0;
+      const ok = await confirmAction(
+        `"${newLast.name}" would become the last status, which is what counts as done. ` +
+        `${nowDone} task(s) in it will be treated as complete, and ${nowUndone} in "${oldLast.name}" will go back to not-done.`,
+        { confirmLabel: 'Reorder' },
+      );
+      if (!ok) { dragCol = null; dragOverCol = null; return; }
+    }
     try {
       const updated = await reorderColumns(project._id, cols);
       project = updated;
@@ -264,10 +284,22 @@
 
   async function doRemoveCol(colId: string) {
     const colTasks = tasksByCol[colId] ?? [];
-    const msg = colTasks.length
+    let msg = colTasks.length
       ? `Remove column? ${colTasks.length} card(s) will move to the first column.`
       : 'Remove this column?';
-    if (!(await confirmAction(msg.replace('column', 'status'), { danger: true, confirmLabel: 'Remove' }))) return;
+    msg = msg.replace('column', 'status');
+    // Removing the *last* status promotes the one before it, and "done"
+    // is positional — so every task sitting in that now-last status
+    // silently becomes complete: gone from Agenda, Dashboard and Focus,
+    // with its reminders cancelled. The old dialog said only that cards
+    // would move to the first status, which is the lesser half of what
+    // actually happens.
+    if (project.columns.at(-1)?.id === colId && project.columns.length > 1) {
+      const promoted = project.columns.at(-2)!;
+      const affected = tasksByCol[promoted.id]?.length ?? 0;
+      msg += ` "${promoted.name}" then becomes the last status, so its ${affected} task(s) will count as done.`;
+    }
+    if (!(await confirmAction(msg, { danger: true, confirmLabel: 'Remove' }))) return;
     try {
       const updated = await removeColumn(project._id, colId);
       project = updated;

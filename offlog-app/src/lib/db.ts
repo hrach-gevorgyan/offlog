@@ -21,7 +21,18 @@ import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension
 // picked up on next load rather than needing this to be reactive.
 const SOURCE: Source = getDeviceName();
 const SOURCE_ID: string = getDeviceId();
-const db = new PouchDB('offlog');
+// auto_compaction discards superseded revision bodies as soon as a new
+// revision lands. Without it PouchDB keeps every historical revision of
+// every doc forever, and -- the case that actually bites -- deleting a
+// 10MB attachment frees zero disk space, because the previous revision
+// still references the blob. Compaction was previously only reachable
+// via the manual Settings → Maintenance button, i.e. only if the user
+// happened to remember it existed. Local-only setting; it has no effect
+// on (and no relationship to) the sync remote's own history, so
+// replication semantics are unchanged. Applies going forward on an
+// existing database -- the one-time cleanup of already-accumulated
+// revisions is still the manual button's job.
+const db = new PouchDB('offlog', { auto_compaction: true });
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
 // Mango indexes for pouchdb-find. getTasksForProject is the hottest path in
@@ -1455,7 +1466,15 @@ const _taskWriteQueues = new Map<string, Promise<unknown>>();
 function queueTaskWrite<T>(id: string, fn: () => Promise<T>): Promise<T> {
   const prev = _taskWriteQueues.get(id) ?? Promise.resolve();
   const run = prev.then(fn, fn);
-  _taskWriteQueues.set(id, run.catch(() => {}));
+  const settled = run.catch(() => {});
+  _taskWriteQueues.set(id, settled);
+  // Drop the entry once nothing else has chained onto it. Without this the
+  // map kept one resolved-promise entry per task id ever written, for the
+  // life of the process -- fine when that was a browser tab, less fine now
+  // the desktop app is tray-resident for weeks (audit, 2026-07-31).
+  settled.then(() => {
+    if (_taskWriteQueues.get(id) === settled) _taskWriteQueues.delete(id);
+  });
   return run;
 }
 
@@ -1750,11 +1769,76 @@ export async function archiveColumnTasks(projectId: string, columnId: string): P
   await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true } as any)));
 }
 
+// Restoring a backup is the app's emergency exit -- it has to work on the
+// worst day, against a file that may be old, hand-edited, truncated, or
+// written by a much older version. Three failure modes were found and
+// fixed together (audit, 2026-07-31):
+//
+//  1. Attachment stubs took the WHOLE restore down. Backups written before
+//     today stored `{stub: true}` with no bytes; PouchDB rejects an entire
+//     bulkDocs batch with `missing_stub` if any doc carries a stub it
+//     can't resolve -- so a single attached photo made every space,
+//     project and task in that file unrestorable, reported only as
+//     "Import failed. Please try again." Stubs are now dropped (the file
+//     genuinely doesn't contain those bytes; losing the attachment beats
+//     losing the entire backup), while real inlined base64 `data` is kept.
+//  2. Custom-field definitions and tag colours were filtered out, so
+//     restored tasks kept `custom_values` keyed to field ids that no
+//     longer existed -- values physically present but invisible in the UI.
+//  3. No structural validation: a project doc missing `columns` imported
+//     fine and then crashed the Dashboard, Kanban, List, FilterBar and
+//     CardDetail on `columns.at(-1)`. Now normalized on the way in.
+function sanitizeImportedDoc(d: any): any {
+  const out = { ...d };
+
+  if (out._attachments && typeof out._attachments === 'object') {
+    const kept: Record<string, any> = {};
+    for (const [key, att] of Object.entries<any>(out._attachments)) {
+      if (att && typeof att.data === 'string') kept[key] = att; // real base64 payload
+    }
+    if (Object.keys(kept).length) out._attachments = kept;
+    else delete out._attachments;
+    // Keep the metadata array honest about what actually came back.
+    if (Array.isArray(out.attachments)) {
+      out.attachments = out.attachments.filter((a: any) => a?.key && kept[a.key]);
+    }
+  }
+
+  if (out.type === 'project') {
+    const cols = Array.isArray(out.columns)
+      ? out.columns.filter((c: any) => c && typeof c.id === 'string' && typeof c.name === 'string')
+      : [];
+    // A project with no usable columns is the shape that crashes every
+    // view reading columns.at(-1). Give it the standard starter set
+    // rather than importing a landmine.
+    out.columns = cols.length ? cols : DEFAULT_COLS;
+    if (typeof out.name !== 'string') out.name = 'Untitled project';
+  }
+
+  if (out.type === 'task') {
+    if (!Array.isArray(out.tags)) out.tags = [];
+    if (typeof out.title !== 'string') out.title = 'Untitled task';
+    if (typeof out.priority !== 'number') out.priority = 0;
+    if (typeof out.position !== 'number') out.position = 0;
+  }
+
+  if (out.type === 'space' && typeof out.name !== 'string') out.name = 'Untitled space';
+
+  return out;
+}
+
 export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: number }> {
-  const valid = docs.filter(d =>
-    d._id && typeof d._id === 'string' &&
-    ['space', 'project', 'task'].includes(d.type)
-  );
+  const valid = docs
+    .filter(d =>
+      d && d._id && typeof d._id === 'string' &&
+      // 'meta' carries the custom-field definitions and 'tag_color' the
+      // per-tag colour overrides -- both were previously dropped, which
+      // is what orphaned restored custom values (see #2 above).
+      ['space', 'project', 'task', 'meta', 'tag_color'].includes(d.type) &&
+      // A task pointing at no project can never be rendered anywhere.
+      !(d.type === 'task' && typeof d.project_id !== 'string')
+    )
+    .map(sanitizeImportedDoc);
   // A doc whose id already exists locally is meant to overwrite it with
   // the backup's content ("merges instead of duplicating" -- the Restore
   // tab's own UI copy) -- fetch each existing doc's current _rev first
@@ -1776,7 +1860,27 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
     const rev = revById.get(d._id);
     return rev ? { ...d, _rev: rev } : d;
   });
-  const results = await db.bulkDocs(clean);
+  // bulkDocs normally reports per-doc results, but a few error classes
+  // (missing_stub being the one that actually bit us) reject the entire
+  // call, losing every good doc alongside the bad one. On a restore --
+  // the one operation someone runs *because* something already went
+  // wrong -- all-or-nothing is the wrong failure mode, so fall back to
+  // writing document by document and salvage whatever will land.
+  let results: any[];
+  try {
+    results = await db.bulkDocs(clean) as any[];
+  } catch (e) {
+    console.warn('bulk import rejected wholesale, retrying per-document', e);
+    results = [];
+    for (const doc of clean) {
+      try {
+        await db.put(doc);
+        results.push({ ok: true });
+      } catch (err) {
+        results.push({ error: err });
+      }
+    }
+  }
   invalidateTaskCache();
   const ok = results.filter((r: any) => !r.error).length;
   const skipped = results.filter((r: any) => r.error).length;
@@ -2224,12 +2328,52 @@ export async function resolveConflict(docId: string, keep: 'current' | 'other', 
 
 // ── Live query ────────────────────────────────────────────────────────────────
 
+// The live feed is the app's only signal that anything changed elsewhere --
+// an incoming sync, or a write made from another view. It used to be
+// attached with `.on('change')` alone: no error handler, no restart. If the
+// feed ever died (an IndexedDB connection dropped across a laptop
+// sleep/resume, a quota error, a WebView renderer hiccup) the app went
+// silently deaf -- still running, still looking fine, but never seeing
+// another sync again until the process restarted. That was survivable when
+// closing the window quit the app; it is not now that the desktop app is
+// tray-resident across weeks and many sleep cycles (2026-07-31).
+//
+// So: catch the error, and rebuild the feed behind the same subscription.
+// The rebuilt feed uses `since: 'now'`, which means changes that landed
+// during the gap were never delivered -- hence the callback() fired on
+// every successful restart, to force a full reload and catch up rather
+// than resuming from a hole.
+const CHANGE_FEED_RETRY_MS = 2000;
+
 export function subscribe(callback: () => void): () => void {
-  const handler = db.changes({ since: 'now', live: true }).on('change', () => {
-    invalidateTaskCache();
-    callback();
-  });
-  return () => handler.cancel();
+  let cancelled = false;
+  let handler: { cancel: () => void } | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const attach = (isRestart: boolean) => {
+    if (cancelled) return;
+    handler = db.changes({ since: 'now', live: true })
+      .on('change', () => {
+        invalidateTaskCache();
+        callback();
+      })
+      .on('error', (err: unknown) => {
+        console.warn('change feed died, restarting', err);
+        try { handler?.cancel(); } catch { /* already dead */ }
+        handler = null;
+        retryTimer = setTimeout(() => attach(true), CHANGE_FEED_RETRY_MS);
+      }) as unknown as { cancel: () => void };
+    // Anything that changed while the feed was down was never delivered.
+    if (isRestart) { invalidateTaskCache(); callback(); }
+  };
+
+  attach(false);
+
+  return () => {
+    cancelled = true;
+    clearTimeout(retryTimer);
+    try { handler?.cancel(); } catch { /* already cancelled */ }
+  };
 }
 
 export default db;

@@ -6,6 +6,7 @@
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from './logFormat';
   import { ACTION_COLOR } from './utils';
   import { closeOnBack } from './modalStack';
+  import { confirmAction } from './confirm';
   import { trapFocus } from './focusTrap';
   import { panelFly, scrimFade } from './motion';
   import CardDetail from './CardDetail.svelte';
@@ -156,7 +157,14 @@
   <div class="panel-head">
     <span class="panel-title">Time Travel</span>
     {#if logs.length > 0}
-      <button class="clear-btn" on:click={async () => { try { await clearLogs(); logs = []; } catch { showError('Failed to clear history.'); } }}>Clear all</button>
+      <!-- Confirmed like every other destructive action in the app (it was
+           the one exception): this permanently erases the entire change
+           history, which is also the only record of what a task looked
+           like before an unwanted edit or a conflict resolution. -->
+      <button class="clear-btn" on:click={async () => {
+        if (!(await confirmAction('Clear the entire history? This erases the record of every change ever made, and cannot be undone.', { danger: true, confirmLabel: 'Clear all' }))) return;
+        try { await clearLogs(); logs = []; } catch { showError('Failed to clear history.'); }
+      }}>Clear all</button>
     {/if}
     <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
