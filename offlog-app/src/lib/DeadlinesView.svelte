@@ -176,9 +176,14 @@
 
   {#if mode === 'month'}
     <div class="month-nav">
-      <button class="cal-nav-btn" on:click={monthPrev} aria-label="Previous month">‹</button>
-      <span class="cal-label">{monthLabel}{#if monthOffset !== 0}<button class="cal-today-btn" on:click={goToTodayMonth}>Today</button>{/if}</span>
-      <button class="cal-nav-btn" on:click={monthNext} aria-label="Next month">›</button>
+      <div class="month-nav-center">
+        <button class="cal-nav-btn" on:click={monthPrev} aria-label="Previous month">‹</button>
+        <span class="cal-label">{monthLabel}</span>
+        <button class="cal-nav-btn" on:click={monthNext} aria-label="Next month">›</button>
+      </div>
+      {#if monthOffset !== 0}
+        <button class="month-today-btn" on:click={goToTodayMonth}>Today</button>
+      {/if}
     </div>
     <div class="month-scroll">
       <div class="month-grid">
@@ -416,27 +421,34 @@
   .mode-btn:hover { background: var(--hover); }
   .mode-btn.active { background: var(--accent); color: var(--on-accent); }
 
-  /* Shared by both calendar-style nav bars (currently just Month's) --
-     prev/next arrows, a centered period label, and a "Today" jump link
-     that only appears once you've navigated away from the current
-     period. */
+  /* Shared by any calendar-style nav bar (currently just Month's) --
+     prev/next arrows plus a centered period label. */
   .cal-nav-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer;
     color: var(--muted); font-size: 1rem; line-height: 1; padding: 3px 10px;
     transition: background .12s, color .12s;
   }
   .cal-nav-btn:hover { background: var(--hover); color: var(--text); }
-  .cal-label { font-size: .85rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
-  .cal-today-btn {
-    background: none; border: none; color: var(--accent); font-size: .72rem; font-weight: 600;
-    cursor: pointer; padding: 2px 6px; border-radius: 5px;
-  }
-  .cal-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .cal-label { font-size: .85rem; font-weight: 700; color: var(--text); }
 
   .month-nav {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
+    display: flex; align-items: center; justify-content: center; position: relative;
     padding: 12px 28px 4px; flex-shrink: 0;
   }
+  .month-nav-center { display: flex; align-items: center; gap: 14px; }
+  /* A real button (not a small text link buried in the label, owner
+     feedback 2026-07-31: that was easy to miss and not worth clicking
+     for) -- pinned to the nav bar's right edge, out of the centered
+     prev/label/next group. Only rendered once you've navigated away
+     from the current month, same as before -- no point offering a jump
+     to where you already are. */
+  .month-today-btn {
+    position: absolute; right: 28px;
+    background: none; border: 1px solid var(--border-strong); border-radius: 6px;
+    color: var(--accent); font-size: .78rem; font-weight: 600;
+    padding: 4px 12px; cursor: pointer; transition: background .12s;
+  }
+  .month-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   /* flex:1 + overflow-y:auto on the *scroll container*, not the grid
      itself — the grid sizes to its own content (6 rows max). Stretching
@@ -514,6 +526,7 @@
     .month-cell { min-height: 52px; padding: 4px 3px; }
     .month-scroll { padding: 0 12px 12px; }
     .month-nav { padding: 10px 12px 4px; }
+    .month-today-btn { right: 12px; font-size: .72rem; padding: 4px 9px; }
   }
 
   .dl-body {
