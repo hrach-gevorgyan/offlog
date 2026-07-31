@@ -93,7 +93,12 @@
   // Time Travel/Trash/Settings/CardDetail had before 2026-07-18's fix.
   let quickAddSession = 0;
   let searchSession = 0;
-  function openQuickAdd() { quickAddSession++; showQuickAdd = true; }
+  // Month view's "Add card" (a day cell tapped in Agenda's Month mode)
+  // passes the tapped date through here so the new task's due date is
+  // prefilled instead of blank — reset to null after every open so a
+  // later Ctrl+N/FAB open (no date context) doesn't inherit a stale one.
+  let quickAddDueDate: string | null = null;
+  function openQuickAdd(dueDate: string | null = null) { quickAddSession++; quickAddDueDate = dueDate; showQuickAdd = true; }
   function openSearch() { searchSession++; showSearch = true; }
 
   // B2 — Kanban's filter state lives here (not inside KanbanBoard) so the
@@ -503,7 +508,7 @@
       {:else if showFocus}
         <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
       {:else if showDeadlines}
-        <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} />
+        <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
       {:else if $activeProject}
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
@@ -627,7 +632,7 @@
 {/if}
 
 {#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showDeadlines && !showFocus}
-<button class="fab" on:click={openQuickAdd} title="Quick add task (Ctrl+N)">
+<button class="fab" on:click={() => openQuickAdd()} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
   </svg>
@@ -636,7 +641,7 @@
 
 {#if showQuickAdd}
   {#key quickAddSession}
-    <QuickAdd on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
+    <QuickAdd initialDueDate={quickAddDueDate} on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
   {/key}
 {/if}
 

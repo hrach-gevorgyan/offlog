@@ -59,7 +59,7 @@ flowchart TB
         Focus["FocusView<br/>daily commitment lock"]
         Kanban["KanbanBoard<br/>drag-and-drop columns"]
         List["ListView<br/>sortable + filterable"]
-        Agenda["DeadlinesView<br/>list + week grid"]
+        Agenda["DeadlinesView<br/>list + month grid"]
         Card["CardDetail<br/>task editor modal"]
         Quick["QuickAdd<br/>Ctrl+N fast-add"]
         Search["GlobalSearch<br/>Ctrl+K cross-project"]
@@ -114,7 +114,7 @@ src/
     KanbanBoard.svelte          Drag-and-drop kanban (mouse + touch)
     ListView.svelte             List/Table view with search, filter, sort, archive
     FilterBar.svelte            Shared Kanban/List search+filter row
-    DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + week-grid view
+    DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + month-grid view
     CardDetail.svelte           Full task editor modal with history
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
     QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector); live-parses

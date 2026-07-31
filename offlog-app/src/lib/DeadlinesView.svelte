@@ -9,7 +9,7 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import { hapticToggle } from './haptics';
 
-  const dispatch = createEventDispatcher<{ menu: void; search: void }>();
+  const dispatch = createEventDispatcher<{ menu: void; search: void; addTask: string }>();
 
   type DueTask = TaskDoc & { project_name?: string };
 
@@ -23,69 +23,24 @@
 
   const today = localDateStr(new Date());
 
-  // B7 — week-grid view, toggled alongside the existing flat list. Same
-  // underlying getAllTasksDue() query; this just re-lays it out. Per-device
-  // preference (localStorage), same as every other view-mode toggle.
+  // Agenda's second view mode alongside the flat list — Month (roadmap
+  // item 2), which replaced an earlier Week grid: Week's whole value was
+  // seeing the current week laid out by day, which List's own "This
+  // week" section already covers, and Month's per-day drill-in replaces
+  // the rest. Same underlying getAllTasksDue() query, just re-laid out.
+  // Per-device preference (localStorage), same as every other view-mode
+  // toggle.
   const VIEW_KEY = 'offlog_agenda_view';
-  let mode: 'list' | 'week' = (typeof localStorage !== 'undefined' && localStorage.getItem(VIEW_KEY) === 'week') ? 'week' : 'list';
-  function setMode(m: 'list' | 'week') { mode = m; localStorage.setItem(VIEW_KEY, m); }
+  const storedMode = typeof localStorage !== 'undefined' ? localStorage.getItem(VIEW_KEY) : null;
+  let mode: 'list' | 'month' = storedMode === 'month' ? 'month' : 'list';
+  function setMode(m: 'list' | 'month') { mode = m; localStorage.setItem(VIEW_KEY, m); }
 
-  let weekOffset = 0;
-  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const weekStartsMonday = getWeekStartsMonday();
-
-  function startOfOffsetWeek(offset: number): Date {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - daysSinceWeekStart(d, weekStartsMonday) + offset * 7);
-    return d;
-  }
   function toDateStr(d: Date): string {
     return localDateStr(d);
   }
-  $: weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = startOfOffsetWeek(weekOffset);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-  $: weekLabel = weekDays.length
-    ? `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
-    : '';
-
-  // Owner feedback, 2026-07-30: a real 7-day grid genuinely doesn't fit
-  // readably on a phone (found live at an actual ~380px viewport) --
-  // columns shrank to 64px and titles clipped, only mitigated by a
-  // scroll-shadow affordance easy to miss on a touchscreen (scrollbars
-  // are usually invisible until actively touched). Rather than patch
-  // that further, mobile shows a 3-day window it can page through one
-  // day at a time instead of squeezing all 7 in. isMobile is JS (not
-  // just a CSS media query) because which days actually render differs,
-  // not just how they're styled -- kept at the same 700px breakpoint
-  // the existing .week-grid mobile CSS already used, so JS and CSS stay
-  // in sync on what counts as "mobile" here.
-  let isMobile = false;
-  function checkMobile() { isMobile = typeof window !== 'undefined' && window.innerWidth <= 700; }
-  const MOBILE_WINDOW = 3;
-  let mobileDayStart = Math.min(Math.max(daysSinceWeekStart(new Date(), weekStartsMonday) - 1, 0), 7 - MOBILE_WINDOW);
-  function mobilePrev() {
-    if (mobileDayStart > 0) mobileDayStart -= 1;
-    else { weekOffset -= 1; mobileDayStart = 7 - MOBILE_WINDOW; }
-  }
-  function mobileNext() {
-    if (mobileDayStart < 7 - MOBILE_WINDOW) mobileDayStart += 1;
-    else { weekOffset += 1; mobileDayStart = 0; }
-  }
-  function goToToday() {
-    weekOffset = 0;
-    mobileDayStart = Math.min(Math.max(daysSinceWeekStart(new Date(), weekStartsMonday) - 1, 0), 7 - MOBILE_WINDOW);
-  }
-  $: mobileDays = weekDays.slice(mobileDayStart, mobileDayStart + MOBILE_WINDOW);
-  $: mobileLabel = mobileDays.length
-    ? `${mobileDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${mobileDays[mobileDays.length - 1].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
-    : '';
-  $: todayInMobileWindow = mobileDays.some(d => toDateStr(d) === today);
   // A reactive lookup, not a plain function called from the template — a
-  // plain `tasksOnDay(day)` call inside {#each weekDays as day} only
+  // plain `tasksOnDay(day)` call inside {#each monthGridDays as day} only
   // references `tasksOnDay` and `day` in the compiler's eyes, not `all`
   // (that's hidden inside the function body), so the grid silently never
   // re-rendered once `all` loaded async. `$:` makes the `all` dependency
@@ -94,6 +49,47 @@
     if (t.due_date) (acc[t.due_date] ??= []).push(t);
     return acc;
   }, {});
+
+  // Month grid. Each cell shows a priority-colored dot per task always,
+  // plus a short title chip on wider viewports only (see .month-titles
+  // media query below) — real titles don't survive a narrow column at
+  // this density, so month cells never try to fit titles below 700px;
+  // tapping a day opens its tasks in the panel below the grid instead,
+  // same interaction on every platform.
+  let monthOffset = 0;
+  let selectedDay: string | null = null;
+  const DOW_MONDAY_FIRST = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const DOW_SUNDAY_FIRST = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  $: orderedDayNames = weekStartsMonday ? DOW_MONDAY_FIRST : DOW_SUNDAY_FIRST;
+  $: monthAnchor = (() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    d.setMonth(d.getMonth() + monthOffset);
+    return d;
+  })();
+  $: monthLabel = monthAnchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  $: monthLeadDays = daysSinceWeekStart(monthAnchor, weekStartsMonday);
+  $: monthDaysInMonth = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 0).getDate();
+  $: monthGridLength = Math.ceil((monthLeadDays + monthDaysInMonth) / 7) * 7;
+  $: monthGridStart = (() => {
+    const d = new Date(monthAnchor);
+    d.setDate(d.getDate() - monthLeadDays);
+    return d;
+  })();
+  $: monthGridDays = Array.from({ length: monthGridLength }, (_, i) => {
+    const d = new Date(monthGridStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  function inCurrentMonth(d: Date): boolean { return d.getMonth() === monthAnchor.getMonth(); }
+  function monthPrev() { monthOffset -= 1; }
+  function monthNext() { monthOffset += 1; }
+  function goToTodayMonth() { monthOffset = 0; selectedDay = today; }
+  function toggleSelectedDay(dStr: string) { selectedDay = selectedDay === dStr ? null : dStr; }
+  // "Add card" in the day panel — QuickAdd (opened at the App level)
+  // prefills its due date from this, same as any other Quick Add open.
+  function addCardOnDay(dStr: string) { dispatch('addTask', dStr); }
 
   function startOfWeek(): string {
     const d = new Date();
@@ -111,10 +107,8 @@
 
   onMount(() => {
     load();
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
     const unsub = subscribe(() => load());
-    return () => { unsub(); window.removeEventListener('resize', checkMobile); };
+    return () => { unsub(); };
   });
 
   $: overdue   = all.filter(t => t.due_date! < today);
@@ -175,45 +169,82 @@
       </button>
       <div class="mode-toggle">
         <button class="mode-btn" class:active={mode === 'list'} on:click={() => setMode('list')}>List</button>
-        <button class="mode-btn" class:active={mode === 'week'} on:click={() => setMode('week')}>Week</button>
+        <button class="mode-btn" class:active={mode === 'month'} on:click={() => setMode('month')}>Month</button>
       </div>
     </div>
   </div>
 
-  {#if mode === 'week'}
-    <div class="week-nav">
-      {#if isMobile}
-        <button class="week-nav-btn" on:click={mobilePrev} aria-label="Previous day">‹</button>
-        <span class="week-label">{mobileLabel}{#if !todayInMobileWindow}<button class="week-today-btn" on:click={goToToday}>Today</button>{/if}</span>
-        <button class="week-nav-btn" on:click={mobileNext} aria-label="Next day">›</button>
-      {:else}
-        <button class="week-nav-btn" on:click={() => weekOffset -= 1} aria-label="Previous week">‹</button>
-        <span class="week-label">{weekLabel}{#if weekOffset !== 0}<button class="week-today-btn" on:click={goToToday}>Today</button>{/if}</span>
-        <button class="week-nav-btn" on:click={() => weekOffset += 1} aria-label="Next week">›</button>
-      {/if}
+  {#if mode === 'month'}
+    <div class="month-nav">
+      <button class="cal-nav-btn" on:click={monthPrev} aria-label="Previous month">‹</button>
+      <span class="cal-label">{monthLabel}{#if monthOffset !== 0}<button class="cal-today-btn" on:click={goToTodayMonth}>Today</button>{/if}</span>
+      <button class="cal-nav-btn" on:click={monthNext} aria-label="Next month">›</button>
     </div>
-    <div class="week-grid" class:mobile-window={isMobile}>
-      {#each (isMobile ? mobileDays : weekDays) as day (day.toISOString())}
-        {@const dStr = toDateStr(day)}
-        <div class="week-col" class:today={dStr === today}>
-          <div class="week-col-head">
-            <span class="week-dow">{DAY_NAMES[day.getDay()]}</span>
-            <span class="week-date">{day.getDate()}</span>
+    <div class="month-scroll">
+      <div class="month-grid">
+        {#each orderedDayNames as dow}<div class="month-dow">{dow}</div>{/each}
+        {#each monthGridDays as day (day.toISOString())}
+          {@const dStr = toDateStr(day)}
+          {@const dayTasks = tasksByDate[dStr] ?? []}
+          <button
+            class="month-cell"
+            class:today={dStr === today}
+            class:out-month={!inCurrentMonth(day)}
+            class:selected={dStr === selectedDay}
+            on:click={() => toggleSelectedDay(dStr)}
+          >
+            <span class="month-daynum">{day.getDate()}</span>
+            {#if dayTasks.length}
+              <span class="month-dots">
+                {#each dayTasks.slice(0, 4) as t (t._id)}
+                  <span class="month-dot" style="background:{PRIO_COLOR[t.priority]}"></span>
+                {/each}
+              </span>
+              <span class="month-titles">
+                {#each dayTasks.slice(0, 2) as t (t._id)}
+                  <span class="month-title-chip">{t.title}</span>
+                {/each}
+                {#if dayTasks.length > 2}<span class="month-more">+{dayTasks.length - 2} more</span>{/if}
+              </span>
+            {/if}
+          </button>
+        {/each}
+      </div>
+      {#if selectedDay}
+        <div class="month-day-panel">
+          <div class="month-day-panel-head">
+            <span>{new Date(selectedDay + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+            <button class="month-day-close" on:click={() => selectedDay = null} aria-label="Close">×</button>
           </div>
-          <div class="week-col-body">
-            {#each tasksByDate[dStr] ?? [] as t (t._id)}
-              <button
-                class="week-task"
-                style="border-left-color:{PRIO_COLOR[t.priority]}"
+          {#if (tasksByDate[selectedDay] ?? []).length === 0}
+            <div class="empty">No tasks due this day.</div>
+          {:else}
+            {#each tasksByDate[selectedDay] as t (t._id)}
+              <div
+                class="task-row"
+                style="--prio-color:{PRIO_COLOR[t.priority]}"
+                title={PRIO_LABEL[t.priority]}
+                role="button"
+                tabindex="0"
                 on:click={() => openDetail(t)}
-                title={t.title}
+                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(t); } }}
               >
-                <span class="week-task-title">{t.title}</span>
-              </button>
+                <button class="circle" on:click|stopPropagation={() => markDone(t)} title="Mark done" aria-label="Mark done"></button>
+                <div class="task-body">
+                  <span class="task-title">{t.title}</span>
+                  <span class="proj-badge">{t.project_name ?? '—'}</span>
+                </div>
+              </div>
             {/each}
-          </div>
+          {/if}
+          <button class="month-add-card-btn" on:click={() => addCardOnDay(selectedDay)}>
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
+            </svg>
+            Add card
+          </button>
         </div>
-      {/each}
+      {/if}
     </div>
   {:else}
   <div class="dl-body">
@@ -385,88 +416,104 @@
   .mode-btn:hover { background: var(--hover); }
   .mode-btn.active { background: var(--accent); color: var(--on-accent); }
 
-  .week-nav {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
-    padding: 12px 28px 4px; flex-shrink: 0;
-  }
-  .week-nav-btn {
+  /* Shared by both calendar-style nav bars (currently just Month's) --
+     prev/next arrows, a centered period label, and a "Today" jump link
+     that only appears once you've navigated away from the current
+     period. */
+  .cal-nav-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer;
     color: var(--muted); font-size: 1rem; line-height: 1; padding: 3px 10px;
     transition: background .12s, color .12s;
   }
-  .week-nav-btn:hover { background: var(--hover); color: var(--text); }
-  .week-label { font-size: .85rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
-  .week-today-btn {
+  .cal-nav-btn:hover { background: var(--hover); color: var(--text); }
+  .cal-label { font-size: .85rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .cal-today-btn {
     background: none; border: none; color: var(--accent); font-size: .72rem; font-weight: 600;
     cursor: pointer; padding: 2px 6px; border-radius: 5px;
   }
-  .week-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .cal-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
-  .week-grid {
-    /* Used to be flex:1 (fill all remaining viewport height) — the grid
-       row's height (a single row of 7 columns, grid-auto-rows: auto by
-       default) was forced to stretch across that entire leftover
-       viewport space, so a week with only 1-2 tasks read as a wall of
-       near-empty columns (owner-reported, 2026-07-15). Dropping flex:1
-       lets the row size to its actual tallest column's content instead
-       (default align-items:stretch still keeps all 7 columns matching
-       each other's height, same as a real calendar) — a per-column
-       min-height keeps empty days from collapsing to just their header,
-       and max-height + overflow-y still cap a genuinely busy week. */
-    flex: 0 1 auto; max-height: 60vh; overflow-y: auto; overflow-x: auto;
-    display: grid; grid-template-columns: repeat(7, minmax(96px, 1fr));
-    border: 1px solid var(--border); border-radius: 10px;
-    margin: 12px 28px 32px; width: auto;
-    /* Scroll-shadow affordance (CSS-only) — see KanbanBoard.svelte's .board
-       for the same technique. Horizontal-only since vertical scroll here
-       is unbounded content, not a fixed "there's exactly N more" edge. */
-    background:
-      linear-gradient(to right, var(--bg) 30%, transparent) 0 0,
-      linear-gradient(to left, var(--bg) 30%, transparent) 100% 0,
-      linear-gradient(to right, rgba(0,0,0,.1), transparent) 0 0,
-      linear-gradient(to left, rgba(0,0,0,.1), transparent) 100% 0;
-    background-repeat: no-repeat;
-    background-color: var(--bg);
-    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
-    background-attachment: local, local, scroll, scroll;
+  .month-nav {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 12px 28px 4px; flex-shrink: 0;
   }
-  .week-col {
-    display: flex; flex-direction: column; min-height: 130px;
-    border-right: 1px solid var(--border);
+
+  /* flex:1 + overflow-y:auto on the *scroll container*, not the grid
+     itself — the grid sizes to its own content (6 rows max). Stretching
+     a short grid to fill all leftover flex space just leaves a blank
+     gap before whatever comes after it (the day panel here) — found
+     live while building this view, fixed by moving the scroll behavior
+     up a level instead. */
+  .month-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px 16px; }
+  .month-grid {
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    margin: 12px 0;
   }
-  .week-col:last-child { border-right: none; }
-  .week-col.today { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-  .week-col-head {
-    display: flex; align-items: baseline; gap: 5px; padding: 7px 9px;
-    border-bottom: 1px solid var(--border); color: var(--faint);
+  .month-dow {
+    font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--faint); text-align: center; padding: 6px 4px;
+    background: var(--col-bg); border-bottom: 1px solid var(--border);
   }
-  .week-col.today .week-col-head { color: var(--accent); }
-  .week-dow { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: inherit; }
-  .week-date { font-size: .78rem; font-weight: 700; color: var(--text); }
-  .week-col.today .week-date { color: var(--accent); }
-  .week-col-body { flex: 1; display: flex; flex-direction: column; }
-  .week-task {
-    display: block; text-align: left; width: 100%;
-    background: none; border: none; border-left: 3px solid var(--faint);
-    padding: 4px 8px; cursor: pointer; transition: background .1s;
+  .month-cell {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+    min-height: 84px; padding: 5px 6px; text-align: left;
+    background: var(--surface); border: none; cursor: pointer;
+    border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    transition: background .1s;
   }
-  .week-task:hover { background: var(--hover); }
-  /* Wrap instead of ellipsis (owner feedback, 2026-07-28) -- a single
-     truncated line lost too much of the title in a narrow week column. */
-  .week-task-title {
-    display: block; font-size: .72rem; color: var(--text);
-    white-space: normal; word-break: break-word; line-height: 1.35;
+  .month-cell:hover { background: var(--hover); }
+  .month-cell:nth-child(7n) { border-right: none; }
+  .month-cell.out-month { background: var(--bg); color: var(--faint); }
+  .month-cell.out-month .month-daynum { color: var(--faint); }
+  .month-cell.today { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .month-cell.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+  .month-daynum { font-size: .78rem; font-weight: 700; color: var(--text); }
+  .month-cell.today .month-daynum {
+    color: var(--on-accent); background: var(--accent);
+    border-radius: 50%; width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center; font-size: .72rem;
   }
+  .month-dots { display: flex; gap: 3px; flex-wrap: wrap; }
+  .month-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  /* Title chips are a desktop-only enhancement — real titles don't
+     survive a narrow column, so below 700px cells fall back to
+     dots-only + tap-to-open, same interaction everywhere, just less
+     crammed into the cell itself. */
+  .month-titles { display: flex; flex-direction: column; gap: 1px; width: 100%; }
+  .month-title-chip {
+    font-size: .68rem; color: var(--text); width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .month-more { font-size: .64rem; color: var(--faint); }
+
+  .month-day-panel {
+    border-top: 1px solid var(--border); padding: 14px 0 4px;
+  }
+  .month-day-panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: 10px;
+  }
+  .month-day-close {
+    background: none; border: none; color: var(--faint); font-size: 1.1rem;
+    line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 6px;
+  }
+  .month-day-close:hover { background: var(--hover); color: var(--text); }
+
+  .month-add-card-btn {
+    display: flex; align-items: center; gap: 6px;
+    width: 100%; margin-top: 6px; padding: 9px 10px;
+    border: 1px dashed var(--border-strong); border-radius: 10px;
+    background: none; color: var(--muted); font-size: .82rem; font-weight: 500;
+    cursor: pointer; transition: background .1s, color .12s, border-color .12s;
+  }
+  .month-add-card-btn:hover { background: var(--hover); color: var(--accent); border-color: var(--accent); }
 
   @media (max-width: 700px) {
-    /* 3 real columns, not 7 shrunk ones (owner feedback, 2026-07-30) --
-       see the script's isMobile/mobileDays comment. Full-width 1fr each
-       instead of the old minmax(64px,1fr) + horizontal scroll, since
-       exactly MOBILE_WINDOW days now render here, not all 7. */
-    .week-grid.mobile-window { grid-template-columns: repeat(3, 1fr); }
-    .week-grid { margin: 10px 12px 24px; }
-    .week-nav { padding: 10px 12px 4px; }
-    .week-task-title { font-size: .66rem; }
+    .month-titles { display: none; }
+    .month-cell { min-height: 52px; padding: 4px 3px; }
+    .month-scroll { padding: 0 12px 12px; }
+    .month-nav { padding: 10px 12px 4px; }
   }
 
   .dl-body {

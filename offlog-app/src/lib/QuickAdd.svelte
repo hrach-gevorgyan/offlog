@@ -10,6 +10,12 @@
   import { parseQuickAdd } from './nlpParse';
   import { fmtTime } from './utils';
 
+  // Set when opened from Month view's "Add card" (a tapped day) — seeds
+  // the due date so the new task lands on that day without retyping it.
+  // A date phrase the user actually types (parsed.due_date) still wins,
+  // same precedence as any other NLP-parsed field overriding a default.
+  export let initialDueDate: string | null = null;
+
   const dispatch = createEventDispatcher<{ close: void; created: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
 
@@ -34,6 +40,9 @@
   // doesn't fight the user's explicit choice.
   $: parsed = parseQuickAdd(title, $projects);
   $: if (parsed.projectId && !projectManuallyChosen) projectId = parsed.projectId;
+  // A typed date phrase always wins over the prefilled default -- same
+  // precedence any other parsed field already has over its own default.
+  $: effectiveDueDate = parsed.due_date ?? initialDueDate;
 
   // Owner-requested (2026-07-20) duplicate-title nudge — never blocks
   // Quick Add's fast create-and-close flow, just a dismissible-by-typing
@@ -92,7 +101,7 @@
     try {
       await createTask(projectId, proj.space_id, firstCol, t, {
         priority: parsed.priority ?? undefined,
-        due_date: parsed.due_date,
+        due_date: effectiveDueDate,
         reminder_at: parsed.reminder_at,
         tags: parsed.tags.length ? parsed.tags : undefined,
       });
@@ -156,11 +165,11 @@
     <div class="parsed-chips">
       <span class="chip chip-raw">Quoted — parsing off</span>
     </div>
-  {:else if parsed.due_date || parsed.priority || parsed.tags.length || parsed.matchedProjectLabel}
+  {:else if effectiveDueDate || parsed.priority || parsed.tags.length || parsed.matchedProjectLabel}
     <div class="parsed-chips">
-      {#if parsed.due_date}
+      {#if effectiveDueDate}
         <span class="chip chip-date">
-          {new Date(`${parsed.due_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {new Date(`${effectiveDueDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           {#if parsed.reminder_at}· {fmtTime(new Date(parsed.reminder_at))}{/if}
         </span>
       {/if}

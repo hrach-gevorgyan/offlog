@@ -1053,7 +1053,7 @@
                     >Monday</button>
                   </div>
                 </div>
-                <p class="setting-hint">Controls Agenda's week view and "this week" grouping.</p>
+                <p class="setting-hint">Controls Agenda's month grid and "this week" grouping.</p>
 
                 <div class="setting-row">
                   <div class="setting-label">Time format</div>
