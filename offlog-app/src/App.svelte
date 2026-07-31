@@ -137,9 +137,13 @@
   // "View all" links can reuse the exact same navigation as the command
   // palette's "Go to Agenda" entry, instead of a second inline copy.
   function goToAgenda() { showDashboard = false; showFocus = false; showDeadlines = true; }
+  // Same extraction, needed by the desktop tray/global-shortcut's
+  // "show-dashboard" event listener below (ROADMAP.md's tray-resident
+  // item) alongside the command palette entry.
+  function goToDashboard() { showDeadlines = false; showFocus = false; showDashboard = true; }
 
   $: commands = getCommands({
-    goToDashboard: () => { showDeadlines = false; showFocus = false; showDashboard = true; },
+    goToDashboard,
     goToFocus,
     goToAgenda,
     openQuickAdd,
@@ -347,6 +351,25 @@
     requestAnimationFrame(() => { invokeTauri('show_main_window').catch(() => {}); });
   }
 
+  // Desktop tray-resident + global shortcut (ROADMAP.md): Rust's
+  // global-shortcut handler and tray menu both already show/focus the
+  // window themselves (lib.rs) before emitting any of these — by the time
+  // one arrives here the app is already in front, each just needs to
+  // trigger the same navigation every other entry point (command palette,
+  // Sidebar) already uses. 'show-dashboard' is the global shortcut
+  // (Ctrl+Alt+O, "get back into Offlog fast" — owner feedback, 2026-07-31:
+  // not Quick Add, which already has its own in-app Ctrl+N); 'quick-
+  // capture'/'open-settings' are the tray menu's "Quick Add"/"Settings"
+  // items. A no-op everywhere else since isTauri() gates it, same pattern
+  // as revealTauriWindow above.
+  async function listenForTrayEvents() {
+    if (!isTauri()) return;
+    const { listen } = await import('@tauri-apps/api/event');
+    await listen('show-dashboard', () => goToDashboard());
+    await listen('quick-capture', () => openQuickAdd());
+    await listen('open-settings', () => sidebarRef?.openSettings());
+  }
+
   onMount(async () => {
     applyTheme(); // runs the legacy-key migration once and re-applies (idempotent vs. index.html's pre-paint script)
     watchSystemTheme(); // App.svelte is a permanent root singleton, never unmounted — no cleanup needed
@@ -398,6 +421,7 @@
     }
     subscribeUndo(showUndoToast);
     startBackgroundUpdateChecks();
+    listenForTrayEvents();
   });
 
   // App lock: locks on every fresh page load (a reload/cold start always

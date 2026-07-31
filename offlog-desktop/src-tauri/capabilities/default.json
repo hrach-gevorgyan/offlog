@@ -12,6 +12,8 @@
     "fs:default",
     "fs:allow-write-text-file",
     "updater:default",
-    "process:default"
+    "process:default",
+    "global-shortcut:default",
+    "autostart:default"
   ]
 }

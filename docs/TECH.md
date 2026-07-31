@@ -629,6 +629,33 @@ A fully dark installer wizard (every page, not just Welcome/Finish) would
 need custom compiled dialog resources replacing NSIS's own UI templates —
 real, but out of scope here; not attempted.
 
+**Tray-resident + global quick-capture shortcut** (ROADMAP.md, `lib.rs`):
+closing the main window (titlebar X) hides it instead of quitting
+(`on_window_event`'s `CloseRequested` → `api.prevent_close()` +
+`w.hide()`) — the only real quit path is the tray menu's "Quit" item
+(or an OS-level kill), which reuses the same `terminate_nyxdb()` cleanup
+the graceful-`ExitRequested` path already had. Tray menu: Show Offlog /
+Quick Add / Settings / a checkable "Start on login" (`tauri-plugin-
+autostart`, reflects the real registry state at menu-build time, not an
+in-memory flag) / Quit — the first three all emit a plain Tauri event
+(`quick-capture`/`open-settings`) the frontend already listens for in
+`App.svelte`'s `listenForTrayEvents()`, same split notifications already
+use for `notification-action`. Left-click on the tray icon toggles show/
+hide (owner feedback, 2026-07-31 — not always-show, so the icon can also
+tuck the window away).
+Global shortcut (`Ctrl+Alt+O`, `tauri-plugin-global-shortcut`) lands on
+Dashboard, not Quick Add — Quick Add already has its own in-app shortcut
+(Ctrl+N), so this one's only job is "get back into Offlog fast" from
+anywhere, window focused or not. **`bring_to_front()`** (shared by every
+show/focus call site above) exists because a bare `set_focus()` alone is
+silently ignored by Windows' foreground-lock timeout when called from a
+background thread that isn't the current foreground app — which a
+global-shortcut callback never is (owner-reported, 2026-07-31: worked
+while the window was hidden, did nothing while it was open-but-
+unfocused behind other windows). Toggling `always_on_top` true→false is
+the standard workaround; Windows treats that as a legitimate reason to
+actually raise the window instead of just requesting focus.
+
 **Content Security Policy** (`tauri.conf.json`'s `app.security.csp`):
 `script-src 'self'` (pre-paint dark-mode init lives in same-origin
 `public/theme-init.js`, no `'unsafe-inline'` needed); `style-src 'self'

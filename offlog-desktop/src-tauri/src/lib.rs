@@ -7,6 +7,10 @@ mod sync_host;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Emitter, Manager};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 struct NyxdbProcess(Mutex<Option<std::process::Child>>);
 
@@ -116,6 +120,47 @@ fn show_main_window(app: tauri::AppHandle) {
     }
 }
 
+// Shared by the tray menu, tray left-click, and the global shortcut handler
+// below -- all need to reliably bring the main window to the front, not
+// just visible. Owner-reported, 2026-07-31: the global shortcut worked
+// fine while the window was hidden, but did nothing when the window was
+// already open in the background (behind other windows, unfocused) --
+// Windows' foreground-lock timeout silently ignores SetForegroundWindow
+// (what set_focus() calls under the hood) from a thread that isn't the
+// current foreground app, which a global-shortcut callback never is.
+// Toggling always-on-top is the standard workaround: Windows treats that
+// as a legitimate reason to actually raise the window instead of just
+// requesting focus, unlike a bare SetForegroundWindow call.
+fn bring_to_front(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        let _ = w.set_always_on_top(true);
+        let _ = w.set_always_on_top(false);
+    }
+}
+
+// Shared by the tray "Quit" menu item and the ExitRequested handler below --
+// both are real, deliberate quits (as opposed to closing the window to the
+// tray, which never reaches either path), so both need the same NyxDB
+// teardown. Safe to call twice in a row (e.g. Quit calls this then
+// app.exit(), which may itself later fire ExitRequested) -- the Job/Child
+// state is just gone the second time, and the `let _ =` swallows the
+// resulting no-op error.
+fn terminate_nyxdb(app_handle: &tauri::AppHandle) {
+    if let Some(job) = app_handle.try_state::<win32job::Job>() {
+        let _ = unsafe { TerminateJobObject(job.handle(), 0) };
+    }
+    if let Some(state) = app_handle.try_state::<NyxdbProcess>() {
+        if let Ok(mut guard) = state.0.lock() {
+            if let Some(mut child) = guard.take() {
+                let _ = child.kill();
+            }
+        }
+    }
+}
+
 #[tauri::command]
 fn generate_pairing_code(state: tauri::State<Arc<pairing::PairingState>>) -> String {
     state.generate_code()
@@ -190,6 +235,24 @@ pub fn run() {
         // offlog-app's updateChecker.ts + UpdateModal.svelte.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Roadmap "desktop tray-resident + global quick-capture shortcut" --
+        // the handler here only needs to show the window and emit an event;
+        // the actual navigation lives entirely in the frontend already
+        // (App.svelte), same split as send_task_notification's
+        // 'notification-action' event above. Owner feedback, 2026-07-31:
+        // the shortcut should land on Dashboard, not open Quick Add directly
+        // -- Quick Add already has its own in-app shortcut (Ctrl+N), and
+        // this one's job is just "get me back into Offlog fast". Quick Add
+        // is still reachable from the tray menu's own "Quick Add" item
+        // (below), which reuses the 'quick-capture' event name.
+        .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _shortcut, event| {
+            if event.state() == ShortcutState::Pressed {
+                bring_to_front(app);
+                let _ = app.emit("show-dashboard", ());
+            }
+        }).build())
+        // Start-on-login toggle in the tray menu below.
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .setup(|app| {
             // Enabled in every build, not just debug -- the first NyxDB
             // trial gated this behind `cfg!(debug_assertions)`, which meant
@@ -323,6 +386,96 @@ pub fn run() {
                 }
             });
 
+            // Closing the window (the titlebar X) hides it instead of
+            // quitting -- a tray-resident app stays running so the global
+            // quick-capture shortcut and sync host keep working with the
+            // window closed. The only real quit path is the tray menu's
+            // "Quit" item below (or an OS-level process kill).
+            if let Some(w) = app.get_webview_window("main") {
+                let w_hide = w.clone();
+                w.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = w_hide.hide();
+                    }
+                });
+            }
+
+            let show_item = MenuItem::with_id(app, "show", "Show Offlog", true, None::<&str>)?;
+            let quickadd_item = MenuItem::with_id(app, "quickadd", "Quick Add", true, None::<&str>)?;
+            let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+            // Reflects the real OS autostart-registration state at menu-build
+            // time (not just an in-memory flag) -- checked() below toggles
+            // this same CheckMenuItem's visual state after each click via
+            // its own set_checked(), kept alive in the on_menu_event closure
+            // via .clone() (cheap, same Rc-backed handle pattern every other
+            // menu item here already is).
+            let autostart_checked = app.autolaunch().is_enabled().unwrap_or(false);
+            let autostart_item = CheckMenuItem::with_id(app, "autostart", "Start on login", true, autostart_checked, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(app, &[
+                &show_item,
+                &quickadd_item,
+                &settings_item,
+                &PredefinedMenuItem::separator(app)?,
+                &autostart_item,
+                &PredefinedMenuItem::separator(app)?,
+                &quit_item,
+            ])?;
+            let autostart_item_for_toggle = autostart_item.clone();
+            TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .tooltip("Offlog")
+                .on_menu_event(move |app, event| match event.id.as_ref() {
+                    "show" => bring_to_front(app),
+                    "quickadd" => {
+                        bring_to_front(app);
+                        let _ = app.emit("quick-capture", ());
+                    }
+                    "settings" => {
+                        bring_to_front(app);
+                        let _ = app.emit("open-settings", ());
+                    }
+                    "autostart" => {
+                        let mgr = app.autolaunch();
+                        let now_enabled = mgr.is_enabled().unwrap_or(false);
+                        let toggled = if now_enabled { mgr.disable() } else { mgr.enable() };
+                        if toggled.is_ok() {
+                            let _ = autostart_item_for_toggle.set_checked(!now_enabled);
+                        }
+                    }
+                    "quit" => {
+                        terminate_nyxdb(app);
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                // Left click toggles show/hide (owner feedback, 2026-07-31)
+                // rather than always-show -- lets the tray icon double as a
+                // quick way to tuck the window away again without reaching
+                // for the titlebar X.
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                        let app = tray.app_handle();
+                        let visible = app.get_webview_window("main").and_then(|w| w.is_visible().ok()).unwrap_or(false);
+                        if visible {
+                            if let Some(w) = app.get_webview_window("main") { let _ = w.hide(); }
+                        } else {
+                            bring_to_front(app);
+                        }
+                    }
+                })
+                .build(app)?;
+
+            // Global "back to Offlog" shortcut -- works from anywhere, no
+            // need to have Offlog focused (ROADMAP.md). Lands on Dashboard,
+            // not Quick Add (owner feedback, 2026-07-31) -- Quick Add has
+            // its own in-app shortcut (Ctrl+N) already. Registered once at
+            // startup; the handler itself lives in the plugin() call above.
+            app.global_shortcut().register("Ctrl+Alt+O")?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, get_detected_other_hosts, store_sync_secret, get_sync_secret])
@@ -336,16 +489,7 @@ pub fn run() {
                 // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE triggering from the
                 // Job simply going out of scope, which isn't reliably
                 // timely on this path.
-                if let Some(job) = app_handle.try_state::<win32job::Job>() {
-                    let _ = unsafe { TerminateJobObject(job.handle(), 0) };
-                }
-                if let Some(state) = app_handle.try_state::<NyxdbProcess>() {
-                    if let Ok(mut guard) = state.0.lock() {
-                        if let Some(mut child) = guard.take() {
-                            let _ = child.kill();
-                        }
-                    }
-                }
+                terminate_nyxdb(app_handle);
             }
         });
 }
