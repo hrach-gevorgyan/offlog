@@ -65,7 +65,7 @@ Real captures from a real build — no mockups, no Lorem Ipsum.
   <tr>
     <td width="50%" align="center">
       <img src="docs/images/screenshot-carddetail-desktop.png" alt="Task detail panel over the Agenda calendar view">
-      <br><sub><b>Task detail</b> — full editor over Agenda's week calendar</sub>
+      <br><sub><b>Task detail</b> — full editor over Agenda's month calendar</sub>
     </td>
     <td width="50%" align="center">
       <img src="docs/images/screenshot-search-desktop.png" alt="Global search / command palette">
