@@ -8,7 +8,7 @@
   import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-  import { dueLabel, dueInk, filterTasks } from './utils';
+  import { dueLabel, dueInk, filterTasks, type CustomFieldFilter } from './utils';
   import CardDetail from './CardDetail.svelte';
   import FilterBar from './FilterBar.svelte';
   import CustomSelect from './CustomSelect.svelte';
@@ -31,8 +31,7 @@
   let filterCol = '';
   let filterPrio = 0;
   let filterTag = '';
-  let filterFieldId = '';
-  let filterFieldValue = '';
+  let customFieldFilters: CustomFieldFilter[] = [];
   let showArchived = false;
   // Declared up here (not down by colLabel/isCustomCol below, where it's
   // also used) so cmpOne()/sortIcons above can reference it without a
@@ -44,12 +43,13 @@
   const lastColId = () => project.columns.at(-1)?.id ?? '';
 
   $: allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
-  $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue);
+  $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag, customFieldFilters);
   // Empty-state message (line ~585) needs to tell "no tasks at all" apart
   // from "filtered down to zero" — mirrors FilterBar.svelte's own
   // activeFilters, which only drives that popover's badge/clear-button,
   // not this view's empty-state text.
-  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0) + (filterFieldId && filterFieldValue ? 1 : 0);
+  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0)
+    + customFieldFilters.filter(f => f.fieldId && f.value).length;
 
   // ── Multi-column sort ──────────────────────────────────────────────────
   // Plain click sorts by that column alone (resets any prior multi-sort).
@@ -416,7 +416,7 @@
   // Same active search/status/priority/tag filters as the main list — the
   // archived section previously ignored them entirely, so narrowing the
   // main list did nothing to what showed up here.
-  $: archivedTasks = filterTasks(archivedTasksRaw, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue);
+  $: archivedTasks = filterTasks(archivedTasksRaw, search, filterCol, filterPrio, filterTag, customFieldFilters);
 
   // Full date (month/day/year) — with no truncation and horizontal scroll
   // available (B36), there's no reason to abbreviate away the year.
@@ -496,7 +496,7 @@
       </div>
 
     <div class="toolbar-actions">
-      <FilterBar {project} {allTags} {tasks} {customFields} bind:search bind:filterCol bind:filterPrio bind:filterTag bind:filterFieldId bind:filterFieldValue />
+      <FilterBar {project} {allTags} {tasks} {customFields} bind:search bind:filterCol bind:filterPrio bind:filterTag bind:customFieldFilters />
 
       <button class="action-btn" class:active={showArchived} on:click={() => showArchived = !showArchived} aria-label="Show archived tasks ({archivedTasksRaw.length})" title="Show archived tasks">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

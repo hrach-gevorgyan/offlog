@@ -198,13 +198,17 @@
             class:selected={dStr === selectedDay}
             on:click={() => toggleSelectedDay(dStr)}
           >
-            <span class="month-daynum">{day.getDate()}</span>
+            <div class="month-daynum-row">
+              <span class="month-daynum">{day.getDate()}</span>
+              {#if dayTasks.length}
+                <span class="month-dots">
+                  {#each dayTasks.slice(0, 4) as t (t._id)}
+                    <span class="month-dot" style="background:{PRIO_COLOR[t.priority]}"></span>
+                  {/each}
+                </span>
+              {/if}
+            </div>
             {#if dayTasks.length}
-              <span class="month-dots">
-                {#each dayTasks.slice(0, 4) as t (t._id)}
-                  <span class="month-dot" style="background:{PRIO_COLOR[t.priority]}"></span>
-                {/each}
-              </span>
               <span class="month-titles">
                 {#each dayTasks.slice(0, 2) as t (t._id)}
                   <span class="month-title-chip">{t.title}</span>
@@ -414,7 +418,15 @@
     overflow: hidden; flex-shrink: 0;
   }
   .mode-btn {
-    padding: 6px 14px; border: none; background: var(--surface); color: var(--muted);
+    /* Explicit height (not just padding), matching .palette-btn's own
+       32px box next to it -- owner feedback, 2026-07-31: this cluster
+       and the palette button read as two different control heights,
+       inconsistent across pages that pair a toggle group with the
+       command-palette button (Agenda, Kanban/List). Same fix on that
+       button in App.svelte. */
+    display: flex; align-items: center; justify-content: center;
+    height: 30px; box-sizing: border-box; padding: 0 14px;
+    border: none; background: var(--surface); color: var(--muted);
     font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .12s, color .12s;
   }
   .mode-btn + .mode-btn { border-left: 1px solid var(--border-strong); }
@@ -443,7 +455,27 @@
      from the current month, same as before -- no point offering a jump
      to where you already are. */
   .month-today-btn {
-    position: absolute; right: 28px;
+    /* top:50%+translateY -- no `top` at all (previous version) left the
+       browser to compute this button's position from its "static
+       position" fallback instead of a real anchor, since it's the only
+       absolutely-positioned child pulled out of a `justify-content:
+       center` flex row. That's genuinely ambiguous cross-browser and
+       is what let it drift up to the page header instead of staying
+       inside .month-nav (caught live) -- an explicit top anchors it to
+       this row specifically, not wherever the fallback algorithm guessed. */
+    /* right:9% matches .month-scroll's own side padding (also 9%) so
+       this button's right edge lines up with the calendar grid's right
+       edge below it -- a fixed 28px here drifted away from that edge
+       once the grid's gutter became percentage-based (the "make the
+       calendar smaller, not fixed size" change), since 28px and 9% of
+       the container only coincidentally matched at one specific width. */
+    /* top: 50% + 4px, not plain 50% -- .month-nav's padding is
+       asymmetric (12px top, 4px bottom), so 50% of the FULL box
+       (padding included, which is what `top` percentages resolve
+       against) sits 4px above where .month-nav-center's flex-centered
+       content actually falls. Plain 50% put this button visibly higher
+       than the month label row it needs to line up with. */
+    position: absolute; top: calc(50% + 4px); right: 9%; transform: translateY(-50%);
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     color: var(--accent); font-size: .78rem; font-weight: 600;
     padding: 4px 12px; cursor: pointer; transition: background .12s;
@@ -456,9 +488,32 @@
      gap before whatever comes after it (the day panel here) — found
      live while building this view, fixed by moving the scroll behavior
      up a level instead. */
-  .month-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px 16px; }
+  /* Percentage side gutter, not a fixed max-width on the grid itself
+     (owner feedback, 2026-07-31: a hard px cap either looks cramped on
+     a small window or leaves a huge dead gutter on a big one) -- the
+     grid still stretches to fill whatever room is left, so the ratio
+     of "calendar" to "breathing room" stays proportional at any window
+     size instead of being clamped to one fixed pixel width. */
+  .month-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 9% 16px; }
+  /* grid-auto-rows: every week row is the same fixed height regardless
+     of content (owner feedback, 2026-07-31: rows sizing to their own
+     busiest day -- normal grid "stretch to tallest cell" behavior --
+     read as the whole calendar resizing while browsing between weeks,
+     even though clicking a day itself never touched row height). A
+     day's own content is already capped (day number + up to 4 dots +
+     2 title chips + one "+N more" line, never more regardless of how
+     many tasks are actually due), so 100px comfortably fits the busiest
+     real case with room to spare; overflow:hidden on the cell is a
+     safety net, not something normal content should ever hit. */
   .month-grid {
+    /* grid-template-rows: auto -- ONLY the explicit first row (the day-
+       of-week header, .month-dow x7) -- grid-auto-rows then covers
+       every row after that (the actual day cells). Missed this the
+       first time and set grid-auto-rows alone, which sizes *every*
+       implicit row including the header, forcing MON/TUE/... to a
+       100px-tall band instead of hugging its own small content. */
     display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: auto; grid-auto-rows: 78px;
     border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
     margin: 12px 0;
   }
@@ -469,7 +524,7 @@
   }
   .month-cell {
     display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-    min-height: 84px; padding: 5px 6px; text-align: left;
+    height: 100%; overflow: hidden; padding: 5px 6px; text-align: left;
     background: var(--surface); border: none; cursor: pointer;
     border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
     transition: background .1s;
@@ -480,12 +535,36 @@
   .month-cell.out-month .month-daynum { color: var(--faint); }
   .month-cell.today { background: color-mix(in srgb, var(--accent) 6%, transparent); }
   .month-cell.selected { box-shadow: inset 0 0 0 2px var(--accent); }
-  .month-daynum { font-size: .78rem; font-weight: 700; color: var(--text); }
+  /* min-height:20px (and the flex centering) apply to EVERY day, not
+     just "today" -- the fixed-size circle badge below only changes
+     today's cell, so every other day's plain-text number was a
+     different, shorter height. That mismatch is what threw off dot
+     alignment on both desktop (row layout) and mobile (column layout):
+     whichever cell was "today" reserved more vertical space than every
+     other cell, so dots centered/positioned against a different height
+     depending on which day they belonged to. Same box height everywhere
+     fixes it at the source instead of patching each layout separately. */
+  .month-daynum {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 20px; font-size: .78rem; font-weight: 700; color: var(--text);
+  }
   .month-cell.today .month-daynum {
     color: var(--on-accent); background: var(--accent);
-    border-radius: 50%; width: 20px; height: 20px;
-    display: flex; align-items: center; justify-content: center; font-size: .72rem;
+    border-radius: 50%; width: 20px; height: 20px; font-size: .72rem;
   }
+  /* Desktop: day number top-left, dots pinned to the cell's top-right
+     corner (owner call, 2026-07-31 -- final position after trying an
+     inline fixed-gap placement first). Mobile keeps the original
+     stacked layout -- overridden back to column in the 700px media
+     query below. */
+  /* min-height:20px matches .month-cell.today .month-daynum's fixed
+     20x20 circle badge below -- without it, "today"'s row is taller
+     than every other day's (plain text has no fixed box), so
+     align-items:center centers each day's dots within a DIFFERENT row
+     height and they land at different y-coordinates across the week
+     (caught live: today's dot sat visibly lower than the rest). Same
+     height on every row regardless of which day is "today" fixes it. */
+  .month-daynum-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 20px; }
   .month-dots { display: flex; gap: 3px; flex-wrap: wrap; }
   .month-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   /* Title chips are a desktop-only enhancement — real titles don't
@@ -523,7 +602,14 @@
 
   @media (max-width: 700px) {
     .month-titles { display: none; }
-    .month-cell { min-height: 52px; padding: 4px 3px; }
+    /* Centering the dots against the full cell width (previous version)
+       pulled them away from the day number they belong to -- visually
+       disconnected once the cell has any width to it. Left-aligned,
+       directly under the number, is what "belongs to this day" actually
+       looks like; the gap above still gives it real breathing room. */
+    .month-daynum-row { flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; }
+    .month-grid { grid-auto-rows: 60px; }
+    .month-cell { padding: 4px 3px; }
     .month-scroll { padding: 0 12px 12px; }
     .month-nav { padding: 10px 12px 4px; }
     .month-today-btn { right: 12px; font-size: .72rem; padding: 4px 9px; }

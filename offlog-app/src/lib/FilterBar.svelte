@@ -6,6 +6,7 @@
   // shows up in Kanban's popover too — same `offlog_saved_filters_<id>`
   // localStorage key either view would have used on its own.
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
+  import type { CustomFieldFilter } from './utils';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
   import CustomSelect from './CustomSelect.svelte';
 
@@ -18,23 +19,37 @@
   // Roadmap item "custom fields: filterable and sortable" -- `tasks` is
   // only needed to compute the distinct values a chosen field actually
   // has (same "dropdown of what's really in use" pattern as allTags
-  // above), not for anything else here.
+  // above), not for anything else here. A *list* of filters, not one --
+  // owner feedback, 2026-07-31: filtering by a single custom field
+  // wasn't enough; every row must match (AND), same as Status/Tag/
+  // Priority already stacking together.
   export let customFields: CustomFieldDef[] = [];
   export let tasks: TaskDoc[] = [];
-  export let filterFieldId = '';
-  export let filterFieldValue = '';
+  export let customFieldFilters: CustomFieldFilter[] = [];
 
   $: statusOptions = [{ value: '', label: 'All statuses' }, ...project.columns.map(col => ({ value: col.id, label: col.name }))];
   $: tagOptions = [{ value: '', label: 'All tags' }, ...allTags.map(t => ({ value: t, label: t }))];
-  $: fieldOptions = [{ value: '', label: 'All fields' }, ...customFields.map(f => ({ value: f.id, label: f.name }))];
-  $: fieldValueOptions = filterFieldId
-    ? [{ value: '', label: 'Any value' }, ...[...new Set(
-        tasks.map(t => t.custom_values?.[filterFieldId]).filter((v): v is string | number => v !== undefined && v !== null && v !== '')
-      )].map(v => ({ value: String(v), label: String(v) }))]
-    : [];
+  // Each row's field dropdown excludes fields already chosen in another
+  // row (plus itself, so its own current value stays selectable) --
+  // filtering the same field twice at once is never meaningful.
+  function fieldOptionsFor(rowIdx: number) {
+    const usedElsewhere = new Set(customFieldFilters.filter((_, i) => i !== rowIdx).map(f => f.fieldId).filter(Boolean));
+    return [{ value: '', label: 'Choose a field…' }, ...customFields.filter(f => !usedElsewhere.has(f.id)).map(f => ({ value: f.id, label: f.name }))];
+  }
+  function fieldValueOptionsFor(fieldId: string) {
+    if (!fieldId) return [];
+    return [{ value: '', label: 'Any value' }, ...[...new Set(
+      tasks.map(t => t.custom_values?.[fieldId]).filter((v): v is string | number => v !== undefined && v !== null && v !== '')
+    )].map(v => ({ value: String(v), label: String(v) }))];
+  }
+  function addFieldFilter() { customFieldFilters = [...customFieldFilters, { fieldId: '', value: '' }]; }
+  function removeFieldFilter(i: number) { customFieldFilters = customFieldFilters.filter((_, idx) => idx !== i); }
   // A value chosen under a previously-selected field wouldn't mean
   // anything once the field itself changes.
-  $: if (!filterFieldId) filterFieldValue = '';
+  function onFieldFilterFieldChange(i: number, fieldId: string) {
+    customFieldFilters = customFieldFilters.map((f, idx) => idx === i ? { fieldId, value: '' } : f);
+  }
+  $: canAddFieldFilter = customFieldFilters.length < customFields.length;
   // Icon-only, no "Filters" text label — used where the button sits
   // paired with other icon buttons in a tight pill (App.svelte's board
   // header) rather than List's own roomier toolbar row.
@@ -57,10 +72,10 @@
     showFilterMenu = !showFilterMenu;
   }
 
-  // filterFieldId/filterFieldValue are optional on old saved filters
-  // (predate this feature) -- absent just means "no custom-field filter",
-  // same as an empty string would.
-  interface SavedFilter { name: string; search: string; filterCol: string; filterPrio: number; filterTag: string; filterFieldId?: string; filterFieldValue?: string }
+  // customFieldFilters is optional on old saved filters (predate this
+  // feature, or predate it becoming a list) -- absent just means "no
+  // custom-field filters", same as an empty array would.
+  interface SavedFilter { name: string; search: string; filterCol: string; filterPrio: number; filterTag: string; customFieldFilters?: CustomFieldFilter[] }
   $: savedFiltersKey = `offlog_saved_filters_${project._id}`;
   let savedFilters: SavedFilter[] = [];
 
@@ -73,14 +88,14 @@
   function saveCurrentFilter() {
     const name = newFilterName.trim();
     if (!name) return;
-    savedFilters = [...savedFilters.filter(f => f.name !== name), { name, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue }];
+    savedFilters = [...savedFilters.filter(f => f.name !== name), { name, search, filterCol, filterPrio, filterTag, customFieldFilters }];
     localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
     newFilterName = '';
   }
 
   function applySavedFilter(f: SavedFilter) {
     search = f.search; filterCol = f.filterCol; filterPrio = f.filterPrio; filterTag = f.filterTag;
-    filterFieldId = f.filterFieldId ?? ''; filterFieldValue = f.filterFieldValue ?? '';
+    customFieldFilters = f.customFieldFilters ?? [];
     showFilterMenu = false;
   }
 
@@ -89,8 +104,9 @@
     localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
   }
 
-  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0) + (filterFieldId && filterFieldValue ? 1 : 0);
-  function clearFilters() { search = ''; filterCol = ''; filterPrio = 0; filterTag = ''; filterFieldId = ''; filterFieldValue = ''; }
+  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0)
+    + customFieldFilters.filter(f => f.fieldId && f.value).length;
+  function clearFilters() { search = ''; filterCol = ''; filterPrio = 0; filterTag = ''; customFieldFilters = []; }
 
   function onWindowClick(e: MouseEvent) {
     if (!showFilterMenu) return;
@@ -123,10 +139,20 @@
       {/if}
 
       {#if customFields.length}
-        <div class="menu-label">Custom field</div>
-        <CustomSelect options={fieldOptions} bind:value={filterFieldId} />
-        {#if filterFieldId}
-          <CustomSelect options={fieldValueOptions} bind:value={filterFieldValue} />
+        <div class="menu-label">Custom fields</div>
+        {#each customFieldFilters as f, i}
+          <div class="field-filter-row">
+            <div class="field-filter-selects">
+              <CustomSelect options={fieldOptionsFor(i)} value={f.fieldId} on:change={(e) => onFieldFilterFieldChange(i, e.detail)} />
+              {#if f.fieldId}
+                <CustomSelect options={fieldValueOptionsFor(f.fieldId)} bind:value={f.value} />
+              {/if}
+            </div>
+            <button class="field-filter-remove" on:click={() => removeFieldFilter(i)} aria-label="Remove this custom field filter">×</button>
+          </div>
+        {/each}
+        {#if canAddFieldFilter}
+          <button class="add-field-filter-btn" on:click={addFieldFilter}>+ Add custom field filter</button>
         {/if}
       {/if}
 
@@ -210,6 +236,25 @@
   }
   .prio-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
   .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* One row per active custom-field filter (owner feedback, 2026-07-31:
+     a single field/value pair wasn't enough) -- field select on top,
+     its value select below once a field is chosen, a remove button on
+     the row's right edge. */
+  .field-filter-row { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 2px; }
+  .field-filter-selects { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .field-filter-remove {
+    flex-shrink: 0; background: none; border: none; cursor: pointer;
+    color: var(--faint); font-size: .95rem; line-height: 1;
+    padding: .3rem .3rem; border-radius: 6px; margin-top: 2px;
+  }
+  .field-filter-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .add-field-filter-btn {
+    width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+    color: var(--accent); font-size: .78rem; font-weight: 600;
+    padding: .3rem .2rem; margin-top: 2px;
+  }
+  .add-field-filter-btn:hover { text-decoration: underline; }
 
   .clear-all {
     width: 100%;

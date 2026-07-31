@@ -10,7 +10,7 @@
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
-  import { filterTasks, localDateStr } from './utils';
+  import { filterTasks, localDateStr, type CustomFieldFilter } from './utils';
   import { hapticToggle, hapticDragStart, hapticDragDrop } from './haptics';
   import { resolveTagColor } from './tagColors';
 
@@ -26,8 +26,7 @@
   export let filterCol = '';
   export let filterPrio = 0;
   export let filterTag = '';
-  export let filterFieldId = '';
-  export let filterFieldValue = '';
+  export let customFieldFilters: CustomFieldFilter[] = [];
 
   const dispatch = createEventDispatcher();
 
@@ -38,7 +37,7 @@
     });
   }
 
-  $: visibleTasks = filterTasks(tasks, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue);
+  $: visibleTasks = filterTasks(tasks, search, filterCol, filterPrio, filterTag, customFieldFilters);
 
   $: tasksByCol = Object.fromEntries(
     project.columns.map(col => [

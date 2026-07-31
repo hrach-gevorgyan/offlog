@@ -7,6 +7,7 @@
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
   import type { CustomFieldDef } from './lib/types';
+  import type { CustomFieldFilter } from './lib/utils';
   import { pendingOpenTaskId } from './lib/notifications';
   import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
   import { getCommands } from './lib/commands';
@@ -112,8 +113,7 @@
   let kbFilterCol = '';
   let kbFilterPrio = 0;
   let kbFilterTag = '';
-  let kbFilterFieldId = '';
-  let kbFilterFieldValue = '';
+  let kbCustomFieldFilters: CustomFieldFilter[] = [];
   $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
   // Custom fields are global (not per-project), same as ListView's own
   // copy — loaded once here so Kanban's FilterBar can offer the same
@@ -122,7 +122,7 @@
   getCustomFieldDefs().then(f => { customFieldDefs = f; });
   // Stale filter values from a previous project shouldn't silently narrow
   // the next project's board — reset on every genuine navigation.
-  $: $activeProjectId, (kbSearch = '', kbFilterCol = '', kbFilterPrio = 0, kbFilterTag = '', kbFilterFieldId = '', kbFilterFieldValue = '');
+  $: $activeProjectId, (kbSearch = '', kbFilterCol = '', kbFilterPrio = 0, kbFilterTag = '', kbCustomFieldFilters = []);
 
   // B9 — command palette, folded into GlobalSearch rather than a separate
   // overlay/shortcut. Sidebar's own openSettings/openTimeTravel/openTrash
@@ -564,7 +564,7 @@
             </button>
             {#if currentView === 'kanban'}
               <span class="search-filter-divider"></span>
-              <FilterBar compact project={$activeProject} allTags={kbAllTags} tasks={$projectTasks} customFields={customFieldDefs} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} bind:filterFieldId={kbFilterFieldId} bind:filterFieldValue={kbFilterFieldValue} />
+              <FilterBar compact project={$activeProject} allTags={kbAllTags} tasks={$projectTasks} customFields={customFieldDefs} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} bind:customFieldFilters={kbCustomFieldFilters} />
             {/if}
           </div>
 
@@ -591,8 +591,7 @@
             filterCol={kbFilterCol}
             filterPrio={kbFilterPrio}
             filterTag={kbFilterTag}
-            filterFieldId={kbFilterFieldId}
-            filterFieldValue={kbFilterFieldValue}
+            customFieldFilters={kbCustomFieldFilters}
             on:projectUpdated={(e) => {
               projects.update(ps => ps.map(p => p._id === e.detail._id ? e.detail : p));
             }}
@@ -780,9 +779,14 @@
   }
   .search-filter-divider { width: 1px; height: 14px; background: var(--border-strong); flex-shrink: 0; }
   .search-btn {
+    /* Explicit height (not just padding) matching .view-btn's own box --
+       owner feedback, 2026-07-31: this button and the Kanban/List toggle
+       next to it read as two different control heights. Same fix on
+       Agenda's analogous palette-btn/mode-btn pair in DeadlinesView. */
     display: flex; align-items: center; justify-content: center;
+    height: 30px; box-sizing: border-box;
     background: none; border: none;
-    border-radius: 6px; padding: 5px 8px; cursor: pointer;
+    border-radius: 6px; padding: 0 8px; cursor: pointer;
     color: var(--muted);
     transition: color .12s, background .12s;
     flex-shrink: 0;
@@ -794,9 +798,10 @@
     border-radius: 10px; padding: 3px; gap: 2px; flex-shrink: 0;
   }
   .view-btn {
-    display: flex; align-items: center; gap: 7px;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    height: 30px; box-sizing: border-box;
     border: none; cursor: pointer; font-family: inherit; font-size: 13px;
-    font-weight: 600; padding: 6px 13px; border-radius: 7px;
+    font-weight: 600; padding: 0 13px; border-radius: 7px;
     background: transparent; color: var(--muted);
     transition: background .12s, color .12s, box-shadow .12s;
   }

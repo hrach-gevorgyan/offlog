@@ -117,14 +117,21 @@
   // spawnNextRecurrence() comment. Clearing the due date while a repeat
   // rule is set would leave a rule nothing can act on, so clear it too
   // rather than silently keep a rule the UI no longer shows a control for.
-  // recurrenceStr (bound to the picker) is the single source of truth;
-  // recurrence is a pure derived value, not independently mutable —
-  // two reactive statements both assigning the same variable would race.
+  //
+  // Rewritten from scratch (2026-07-31, fourth pass, owner-specified
+  // shape): one select only -- "Not repeating" by default, Day/Week/
+  // Month as the other options -- no separate enable checkbox and no
+  // second unit dropdown duplicating it. Picking a real option reveals
+  // the rest of the row (interval number, Weekdays-only pill, Skip-this-
+  // one pill) inline, all sharing one explicit control height so the
+  // input/select/pills don't render at three different heights.
+  // recurrenceStr is the single source of truth; recurrence is a pure
+  // derived value, never assigned directly.
   const recurrenceOptions = [
-    { value: '', label: 'Does not repeat' },
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
+    { value: '', label: 'Not repeating' },
+    { value: 'daily', label: 'Day' },
+    { value: 'weekly', label: 'Week' },
+    { value: 'monthly', label: 'Month' },
   ];
   let recurrenceStr = task.recurrence ?? '';
   $: if (!due_date && recurrenceStr) recurrenceStr = '';
@@ -138,10 +145,6 @@
   let recurrenceIntervalStr = String(task.recurrenceInterval ?? 1);
   $: recurrenceInterval = Math.max(1, Math.min(365, parseInt(recurrenceIntervalStr, 10) || 1));
   let recurrenceWeekdaysOnly = task.recurrenceWeekdaysOnly ?? false;
-  $: recurrenceIntervalUnitLabel = (() => {
-    const unit = recurrenceStr === 'daily' ? 'day' : recurrenceStr === 'weekly' ? 'week' : 'month';
-    return recurrenceInterval === 1 ? unit : `${unit}s`;
-  })();
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
@@ -664,29 +667,28 @@
             </button>
             {#if showRepeatReminder}
               <div class="extra-block-body" transition:slide={{ duration: 150 }}>
-                <label class="repeat-field">
-                  Repeat
-                  <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
-                  {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
-                </label>
-                {#if recurrenceStr}
-                  <div class="repeat-interval-row">
-                    <span>Every</span>
-                    <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat interval" />
-                    <span>{recurrenceIntervalUnitLabel}</span>
+                <div class="repeat-block">
+                  <div class="repeat-row">
+                    <div class="repeat-select-wrap" class:compact={!!recurrenceStr}>
+                      <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
+                    </div>
+                    {#if recurrenceStr}
+                      <span class="repeat-every-text" aria-hidden="true">×</span>
+                      <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat every N {recurrenceStr === 'daily' ? 'days' : recurrenceStr === 'weekly' ? 'weeks' : 'months'}" />
+                      {#if recurrenceStr === 'daily'}
+                        <button type="button" class="repeat-pill" class:active={recurrenceWeekdaysOnly} on:click={() => recurrenceWeekdaysOnly = !recurrenceWeekdaysOnly}>
+                          Weekdays
+                        </button>
+                      {/if}
+                      {#if task.recurrence}
+                        <button type="button" class="repeat-pill repeat-pill-accent" on:click={skipToNext}>
+                          Skip
+                        </button>
+                      {/if}
+                    {/if}
                   </div>
-                  {#if recurrenceStr === 'daily'}
-                    <label class="repeat-weekdays-label">
-                      <input type="checkbox" bind:checked={recurrenceWeekdaysOnly} />
-                      Weekdays only (skip Sat/Sun)
-                    </label>
-                  {/if}
-                {/if}
-                {#if task.recurrence}
-                  <button type="button" class="skip-recur-btn" on:click={skipToNext}>
-                    Skip this one — jump to next occurrence
-                  </button>
-                {/if}
+                  {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
+                </div>
 
                 <div class="reminder-field">
                   <label>
@@ -987,13 +989,14 @@
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
   .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
-  /* Owner feedback, 2026-07-30: flex-wrap dropped the checkbox to its
-     own line every time in the narrower Extras context (the checkbox's
-     own fit-content width never actually shrank, so the row always
-     overflowed and wrapped) -- genuinely not "one row". nowrap now, and
-     the checkbox flexes/shrinks with its label wrapping internally
-     instead of the whole control dropping down. */
-  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; }
+  /* Reverted the 2026-07-30 nowrap+horizontal-scroll version (2026-07-31
+     owner feedback: a scrollbar on a compact modal control row is worse
+     than the checkbox dropping to its own line, especially on mobile,
+     where this was the actual complaint). flex-wrap:wrap lets
+     .remind-on-due-row move to a full line below the date picker when
+     both don't fit side by side, instead of clipping into a horizontal
+     scroll area. */
+  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   /* Owner feedback, 2026-07-30: giving the checkbox flex:1 left it
      stretched wider than its own (nowrap, full-length) text needed --
      visible dead space trailing the pill. The checkbox only needs to
@@ -1052,39 +1055,73 @@
     padding: .4rem .55rem;
   }
 
-  .repeat-field { gap: .35rem; }
   .repeat-hint {
     font-size: .72rem; color: var(--faint); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
+    margin-top: .2rem; display: block;
   }
-  .skip-recur-btn {
-    align-self: flex-start; margin-top: -.15rem;
-    background: none; border: none; padding: 0;
-    color: var(--accent); font-size: .78rem; font-weight: 600;
-    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
-    cursor: pointer;
-  }
-  .skip-recur-btn:hover { text-decoration: underline; }
 
-  .repeat-interval-row {
-    display: flex; align-items: center; gap: .4rem;
-    font-size: .82rem; color: var(--muted); font-weight: 500;
+  /* Rewritten from scratch (2026-07-31, fourth pass). One select only
+     ("Not repeating" default, Day/Week/Month otherwise) -- no separate
+     enable checkbox, no second unit dropdown repeating the same choice.
+     Every control in the revealed row (select, number input, both
+     pills) shares one explicit height (--repeat-ctrl-h) instead of each
+     sizing itself from its own padding/font-size, which is what made
+     them render at three different heights before. .repeat-block gets
+     its own bottom margin so this section doesn't run straight into
+     Reminder below it with no visual break. */
+  .repeat-block { --repeat-ctrl-h: 30px; margin-bottom: .5rem; }
+  .repeat-row {
+    display: flex; align-items: center; flex-wrap: wrap; gap: .25rem;
+    font-size: .8rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
   }
+  /* Widths trimmed to fit the worst case (Day + Weekdays + Skip, every
+     word shown) on a real 375px phone -- the modal's own content width
+     there is ~260px, not the ~400px this looks roomy at on desktop, so
+     this was tuned against that number specifically, not just resized
+     until it looked fine on a wide screen. 86px only fits the *short*
+     option words (Day/Week/Month); the default "Not repeating" is a
+     real word 2.5x longer and truncated to "Not rep…" at that width
+     (caught live) -- .compact only applies once a real option is
+     chosen and the row actually needs the room back for the rest of
+     the controls sharing the line with it. */
+  .repeat-select-wrap { width: 150px; flex-shrink: 0; height: var(--repeat-ctrl-h); }
+  .repeat-select-wrap.compact { width: 86px; }
+  .repeat-select-wrap :global(.cs-trigger) {
+    height: var(--repeat-ctrl-h); box-sizing: border-box; padding: 0 6px; font-size: .8rem;
+  }
+  /* CustomSelect's own .cs-panel is `left:0;right:0` -- full width of
+     its trigger by default, which would force "Not repeating" to wrap
+     inside the option list at this trigger's compact 86px. Widening
+     just the panel (not the always-visible trigger) keeps the row
+     compact while the open dropdown stays readable. */
+  .repeat-select-wrap :global(.cs-panel) { width: 150px; right: auto; }
+  .repeat-every-text { flex-shrink: 0; }
   .repeat-interval-input {
-    width: 52px; text-align: center;
+    width: 30px; height: var(--repeat-ctrl-h); box-sizing: border-box;
+    text-align: center; flex-shrink: 0;
     border: 1px solid var(--border-strong); border-radius: 6px;
-    padding: .3rem .3rem; font-size: .82rem; color: var(--text);
+    padding: 0 .15rem; font-size: .8rem; color: var(--text);
     background: var(--bg); font-family: inherit;
   }
   .repeat-interval-input:focus { border-color: var(--accent); outline: none; }
-  .repeat-weekdays-label {
-    display: flex; align-items: center; gap: .4rem;
-    font-size: .82rem; color: var(--muted); font-weight: 500;
-    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
-    cursor: pointer;
+  .repeat-pill {
+    flex-shrink: 0; height: var(--repeat-ctrl-h); box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--border-strong); border-radius: 999px;
+    font-size: .7rem; font-weight: 600; padding: 0 8px; cursor: pointer;
+    white-space: nowrap;
+    transition: background .1s, color .1s, border-color .1s;
   }
-  .repeat-weekdays-label input[type="checkbox"] { margin: 0; cursor: pointer; }
+  .repeat-pill:hover { border-color: var(--accent); color: var(--text); }
+  .repeat-pill.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  /* Skip is a real action, not a state toggle like Weekdays-only -- an
+     accent outline (not accent fill) so it doesn't read as "currently
+     on" the way .active does. */
+  .repeat-pill-accent { border-color: var(--accent); color: var(--accent); }
+  .repeat-pill-accent:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   /* flex:0 0 auto -- sizes to its own (nowrap, full-length) text and no
      further, so it doesn't stretch wider than its content and leave

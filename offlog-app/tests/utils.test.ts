@@ -32,35 +32,49 @@ describe('dueDateShort / dueRelative (regression: "Tomorrow · Tomorrow", 2026-0
 });
 
 // Roadmap item "custom fields: filterable and sortable" -- filterTasks()
-// gained an optional custom-field exact-match filter alongside its
-// existing search/status/priority/tag filters.
-describe('filterTasks — custom field filter', () => {
+// gained an optional list of custom-field exact-match filters (ANDed
+// together) alongside its existing search/status/priority/tag filters.
+describe('filterTasks — custom field filters', () => {
   const base = { title: 'Task', column_id: 'col1', priority: 1, tags: [] as string[] };
   const tasks = [
-    { ...base, title: 'A', custom_values: { 'field:client': 'Acme' } },
-    { ...base, title: 'B', custom_values: { 'field:client': 'Globex' } },
-    { ...base, title: 'C', custom_values: {} },
-    { ...base, title: 'D' }, // custom_values entirely absent
+    { ...base, title: 'A', custom_values: { 'field:client': 'Acme', 'field:region': 'East' } },
+    { ...base, title: 'B', custom_values: { 'field:client': 'Globex', 'field:region': 'East' } },
+    { ...base, title: 'C', custom_values: { 'field:client': 'Acme', 'field:region': 'West' } },
+    { ...base, title: 'D', custom_values: {} },
+    { ...base, title: 'E' }, // custom_values entirely absent
   ];
 
-  it('matches only tasks whose custom field value equals filterFieldValue', () => {
-    const result = filterTasks(tasks, '', '', 0, '', 'field:client', 'Acme');
+  it('matches only tasks whose custom field value equals the filter value', () => {
+    const result = filterTasks(tasks, '', '', 0, '', [{ fieldId: 'field:client', value: 'Acme' }]);
+    expect(result.map(t => t.title)).toEqual(['A', 'C']);
+  });
+
+  it('ANDs multiple field filters together, not OR', () => {
+    const result = filterTasks(tasks, '', '', 0, '', [
+      { fieldId: 'field:client', value: 'Acme' },
+      { fieldId: 'field:region', value: 'East' },
+    ]);
     expect(result.map(t => t.title)).toEqual(['A']);
   });
 
-  it('does not filter at all when filterFieldValue is empty ("Any value")', () => {
-    const result = filterTasks(tasks, '', '', 0, '', 'field:client', '');
-    expect(result).toHaveLength(4);
+  it('does not filter at all when customFieldFilters is empty', () => {
+    const result = filterTasks(tasks, '', '', 0, '', []);
+    expect(result).toHaveLength(5);
   });
 
-  it('does not filter at all when filterFieldId is empty', () => {
-    const result = filterTasks(tasks, '', '', 0, '', '', 'Acme');
-    expect(result).toHaveLength(4);
+  it('ignores an entry whose value is empty ("Any value")', () => {
+    const result = filterTasks(tasks, '', '', 0, '', [{ fieldId: 'field:client', value: '' }]);
+    expect(result).toHaveLength(5);
+  });
+
+  it('ignores an entry whose fieldId is empty', () => {
+    const result = filterTasks(tasks, '', '', 0, '', [{ fieldId: '', value: 'Acme' }]);
+    expect(result).toHaveLength(5);
   });
 
   it('treats a missing/empty custom_values map as no match for a real value filter', () => {
-    const result = filterTasks(tasks, '', '', 0, '', 'field:client', 'Acme');
-    expect(result.map(t => t.title)).not.toContain('C');
+    const result = filterTasks(tasks, '', '', 0, '', [{ fieldId: 'field:client', value: 'Acme' }]);
     expect(result.map(t => t.title)).not.toContain('D');
+    expect(result.map(t => t.title)).not.toContain('E');
   });
 });

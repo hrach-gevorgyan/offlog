@@ -161,6 +161,8 @@ export function findDuplicateChecklistItems(items: { text: string }[]): string[]
   return [...dupes];
 }
 
+export interface CustomFieldFilter { fieldId: string; value: string }
+
 export function filterTasks<T extends {
   title: string; column_id: string; priority: number; tags: string[];
   custom_values?: Record<string, string | number | null>;
@@ -170,20 +172,23 @@ export function filterTasks<T extends {
   filterCol: string,
   filterPrio: number,
   filterTag: string,
-  // Roadmap item "custom fields: filterable and sortable" -- an exact-
-  // match filter against one custom field's value, same shape as the
-  // tag filter above (a dropdown of currently-used values, not a free-
-  // type box). Defaulted so every existing call site not yet passing
-  // these keeps working unchanged.
-  filterFieldId = '',
-  filterFieldValue = '',
+  // Roadmap item "custom fields: filterable and sortable" -- exact-match
+  // filters against custom field values, same "dropdown of currently-
+  // used values" shape as the tag filter above, but a *list* (owner
+  // feedback, 2026-07-31: filtering by only one field at a time wasn't
+  // enough) -- every entry must match (AND), same as stacking Status +
+  // Tag + Priority already do. Defaulted so every existing call site not
+  // yet passing this keeps working unchanged.
+  customFieldFilters: CustomFieldFilter[] = [],
 ): T[] {
   return tasks.filter(t => {
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterCol && t.column_id !== filterCol) return false;
     if (filterPrio && t.priority !== filterPrio) return false;
     if (filterTag && !t.tags.includes(filterTag)) return false;
-    if (filterFieldId && filterFieldValue && String(t.custom_values?.[filterFieldId] ?? '') !== filterFieldValue) return false;
+    for (const f of customFieldFilters) {
+      if (f.fieldId && f.value && String(t.custom_values?.[f.fieldId] ?? '') !== f.value) return false;
+    }
     return true;
   });
 }
