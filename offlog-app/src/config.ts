@@ -19,7 +19,7 @@ const envPass = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_PASS as string 
 
 // Exported (was module-private) so SettingsPanel.svelte can gate the
 // biometric-unlock note to Android only — this project ships no other
-// Capacitor-native platform (see GOAL.md/DECISIONS.md: no iOS), so
+// Capacitor-native platform (see DECISIONS.md: no iOS), so
 // "native platform" and "Android" are the same thing here in practice.
 export function isNativePlatform(): boolean {
   return !!(window as any).Capacitor?.isNativePlatform?.();
@@ -51,7 +51,7 @@ export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>
 // it (B43).
 //
 // On plain desktop web, a real default *is* structurally guaranteed
-// correct: this app's architecture is "the PC is the host" (GOAL.md) —
+// correct: this app's architecture is "the PC is the host" (DECISIONS.md) —
 // a manually-installed sync server runs on the same machine as the
 // browser tab, on the standard CouchDB-protocol port — so
 // loopback:5984 is always right there.
@@ -90,7 +90,7 @@ export async function initTauriSyncDefaults(): Promise<void> {
   }
 }
 
-// S1 (docs/IDEAS.md's sync-topology questions, 2026-07-20): the desktop
+// S1 (DECISIONS.md's Open Questions section, 2026-07-20): the desktop
 // app's embedded sidecar never checked whether another Offlog host
 // already exists on the LAN before spawning its own -- two PCs on one
 // network silently become two independent islands with no warning. This
@@ -478,7 +478,7 @@ const APP_LOCK_HINT_KEY = 'offlog_app_lock_hint';
 // block of road but in middle there is door u just open and go". That's
 // right: a bypass reachable with zero knowledge isn't a lock at all. This
 // is the closest thing to a real recovery *route* achievable with no
-// accounts/server (see GOAL.md) — it requires possessing a secret that
+// accounts/server (see DECISIONS.md) — it requires possessing a secret that
 // was only ever shown once, not just intent. Only the salted hash is
 // ever stored, same as the PIN itself; the plaintext code is returned
 // once from setAppLockPin() below and never persisted anywhere.
@@ -490,7 +490,7 @@ const APP_LOCK_RECOVERY_SALT_KEY = 'offlog_app_lock_recovery_salt';
 // the lock or drive recovery. This is just a faster unlock path on top,
 // opt-in per device via Settings (Android only — no Capacitor biometric
 // plugin ships an iOS build here since this project doesn't ship iOS, see
-// GOAL.md/DECISIONS.md). No new secret to store — the OS itself holds
+// DECISIONS.md). No new secret to store — the OS itself holds
 // the enrolled biometric, this flag only remembers whether the user opted
 // in on this device.
 const APP_LOCK_BIOMETRIC_KEY = 'offlog_app_lock_biometric_enabled';

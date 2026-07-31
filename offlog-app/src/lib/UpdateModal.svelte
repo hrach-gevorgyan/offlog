@@ -3,6 +3,7 @@
   import { trapFocus } from './focusTrap';
   import { dialogPop, scrimFade } from './motion';
   import { updateState, showUpdateModal, downloadUpdate, installUpdate } from './updateChecker';
+  import { escapeHtml } from './utils';
 
   // Desktop-only (App.svelte only mounts this behind isTauri()). Shows
   // whichever phase updateChecker.ts's state machine is in — 'available'
@@ -15,10 +16,6 @@
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); close(); }
-  }
-
-  function escapeHtml(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   // The release notes body only ever uses the restricted subset

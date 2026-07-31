@@ -90,7 +90,7 @@
   // a bypass reachable with zero knowledge isn't a lock. Now requires the
   // one-time recovery code shown at PIN setup (config.ts) — a real
   // route back in, not a button. Still no server/account to verify
-  // identity against (see GOAL.md), so this is the strongest recovery
+  // identity against (see DECISIONS.md), so this is the strongest recovery
   // achievable without one: possessing a secret only ever shown once.
   async function submitRecovery() {
     if (recoverySaving || !recoveryCode.trim()) return;

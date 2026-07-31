@@ -23,12 +23,12 @@ pub struct OtherHost {
     pub name: String,
 }
 
-// S1 (docs/IDEAS.md's sync-topology questions, 2026-07-20): `sync_host.rs`
+// S1 (DECISIONS.md's Open Questions section, 2026-07-20): `sync_host.rs`
 // unconditionally spawns its own NyxDB sidecar on every launch with no
 // check for an existing host already on the network — two PCs on one LAN
 // silently become two independent islands with no warning. This doesn't
 // change that spawn behavior (a real "join as client instead" mode is a
-// much bigger feature, deliberately not built — see IDEAS.md for why);
+// much bigger feature, deliberately not built — see DECISIONS.md for why);
 // it only detects the situation so the frontend can warn about it. Runs
 // once at startup, before this instance advertises itself, so it can
 // only see genuinely other hosts, never a self-echo of its own upcoming

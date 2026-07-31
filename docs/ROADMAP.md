@@ -40,9 +40,8 @@ any change: does it make Offlog nicer to use, or just bigger?
 ## Next up — one at a time, no fixed order
 
 A vetted backlog, not a schedule. Finish and ship one before starting
-the next, same as v6.7.0 through v6.11.0 shipped one at a time.
-Reordering needs an explicit owner call — this is priority-ranked, not
-a bag of ideas.
+the next, same as every release so far. Reordering needs an explicit
+owner call — this is priority-ranked, not a bag of ideas.
 
 1. **Snooze.** One tap on any task: defer to tomorrow or next week
    without opening the editor. Extends the existing notification

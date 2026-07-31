@@ -480,7 +480,7 @@ const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
                          && d.default_view === 'kanban' && JSON.stringify(d.columns) === JSON.stringify(DEFAULT_COLS),
 };
 
-// S2 (docs/IDEAS.md's sync-topology questions, 2026-07-20): confirmed live
+// S2 (DECISIONS.md's Open Questions section, 2026-07-20): confirmed live
 // against a real 180-doc dataset — clearLocalSeedBeforeFirstPair() only
 // helps when THIS device's own copy of a fixed default id is still
 // pristine; it can't know or fix the *other* side's copy. A phone with

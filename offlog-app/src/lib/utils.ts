@@ -18,6 +18,13 @@ export function fmtTime(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: getTimeFormat24h() ? '2-digit' : 'numeric', minute: '2-digit', hour12: !getTimeFormat24h() });
 }
 
+// Shared by GlobalSearch (sync-derived, untrusted title text) and
+// UpdateModal (own release-notes text) — both feed a `{@html}` sink and
+// must escape first, since both were carrying an identical inline copy.
+export function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // Local calendar date (not toISOString().slice(0,10), which is UTC and can
 // land on the wrong day for anyone off UTC — both directions: west of UTC
 // during the local evening, east of UTC during the local early morning).

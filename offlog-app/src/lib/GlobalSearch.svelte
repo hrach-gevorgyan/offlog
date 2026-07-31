@@ -9,7 +9,7 @@
   import { PRIORITY_COLOR, PRIORITY_LABEL } from './constants';
   import { closeOnBack, discardTop } from './modalStack';
   import { trapFocus } from './focusTrap';
-  import { localDateStr } from './utils';
+  import { localDateStr, escapeHtml } from './utils';
 
   export let commands: Command[] = [];
 
@@ -96,10 +96,6 @@
     if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, combinedLength - 1); }
     if (e.key === 'ArrowUp')   { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); }
     if (e.key === 'Enter' && combinedLength > 0) selectAt(selectedIdx);
-  }
-
-  function escapeHtml(s: string): string {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   // r.title is sync-derived, untrusted data (can arrive from another

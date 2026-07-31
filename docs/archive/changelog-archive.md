@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.7.9 | Live-testing fallout from v5.7.6/5.7.7: reminder backlogs now stagger 15s apart instead of firing as a simultaneous burst; Kanban touch-drag and mouse-drag no longer share state (a stuck touch sequence could wedge drag entirely); desktop console-flash on launch fixed via redirecting the CouchDB sidecar's std handles; CustomFieldManager's field-type dropdown opens upward instead of off-screen; installer gained real branding + skipped the UAC prompt | `v5.7.9` |
 | 5.7.8 | Test release only -- version bump with no functional change, to exercise the new updater UX (v5.7.7) end-to-end from a real installed app | `v5.7.8` |
 | 5.7.7 | Desktop updater UX overhaul — real download progress, explicit restart prompt (no auto-restart), silent ~6h background check with a dismissible banner, `latest.json`'s release notes now pull from the real CHANGELOG row instead of being empty | `v5.7.7` |
 | 5.7.6 | Quiet hours (Settings → Notifications, queues reminders inside a configured window instead of firing) + a real 12h/24h display bug fix affecting TimePicker/CalendarPicker/CardDetail's reminder text | `v5.7.6` |
@@ -398,4 +399,39 @@ output secret-leakage gate re-checked against a real `.env.local` —
 still clean. Dist size: 1.2MB, unchanged from the v5.8.2 baseline
 despite the whole v6.x feature batch landing since. No RISKY findings;
 no schema/sync/storage-format changes. Baselines re-verified clean
+
+Last pass: v6.2.1 (2026-07-31 — eighteenth run, pulled forward at owner
+request right after the animation-harmonization/installer-branding/
+splash-icon polish pass, ahead of the schedule's next-due v6.3.0).
+Baselines confirmed green first (offlog-app build/tsc/265 tests,
+offlog-desktop cargo build). One real, verified finding, fixed:
+`App.svelte`'s `handleUndo()` (the undo-toast button's handler) was
+missing this codebase's audited try/catch + `showError()` invariant —
+every other task-mutating call site has it; a failed undo previously
+failed silently instead of surfacing a toast. Also fixed: an identical
+2-line `escapeHtml()` implementation duplicated verbatim in
+`GlobalSearch.svelte` and `UpdateModal.svelte` (both feed `{@html}`),
+deduped into a shared `utils.ts` export; 14 stale `GOAL.md`/
+`docs/IDEAS.md` references surviving in source comments across 9 files
+(`config.ts`, `AppLock.svelte`, `db.ts`, `discovery.ts`, `haptics.ts`,
+`nlpParse.ts`, and 3 Rust files in `offlog-desktop/src-tauri/src/`) —
+both docs were merged into `DECISIONS.md` months ago (GOAL.md
+2026-07-20, IDEAS.md 2026-07-31) but the source comments citing them by
+name were never swept. `AddAttachmentInput` (db.ts) was checked and
+confirmed a legitimate export (the public `addAttachment()` API's own
+param type), not dead code. `npm audit`: 2 advisories
+(`brace-expansion`, `tar`), both confirmed dev-only build tooling
+(transitive through `@capacitor/cli`), not reachable from the shipped
+bundle. No dead code beyond the one confirmed-legitimate export, no
+duplicated logic beyond the one `escapeHtml()` fix, no oversized-
+function split candidates, no `db.find()` missing a `limit`, no cache-
+invalidation gaps, no date/UTC locality bugs, no script exit-path
+issues, no config/permission drift since the last pass, no broken docs
+links, zero secret leakage into `dist/`, no unsafe `{@html}` sites, no
+new `unsafe` Rust blocks (still only the two documented spots in
+`lib.rs`/`secure_storage.rs`), nothing logged that shouldn't be. Dist
+size: 1.2MB, unchanged despite the v6.1.0/v6.2.0 feature batch and this
+pass's own fixes. No RISKY findings; no schema/sync/storage-format
+changes. Baselines (build zero-warning / tsc / 265 tests / cargo build)
+re-verified clean after every fix.
 after both fixes.

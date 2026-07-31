@@ -1,7 +1,7 @@
 // Local, offline, regex-based natural-language parsing for Quick Add --
 // no network call, no bundled model. See DECISIONS.md for why this stays
 // rule-based rather than reaching for an LLM API (matches the project's
-// no-AI/no-backend mission — GOAL.md).
+// no-AI/no-backend mission — DECISIONS.md).
 //
 // Scope is deliberately small: a handful of date/time phrases, #tags,
 // !priority, and an @project mention. Ambiguous or unrecognized text is

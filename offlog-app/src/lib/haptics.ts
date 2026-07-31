@@ -1,7 +1,7 @@
 // B58 (ROADMAP.md): shared entry point for every haptic call site, so the
 // isNativePlatform()/isHapticsEnabled() gate lives in exactly one place
 // instead of being re-checked at each call site. Android only (this
-// project ships no other Capacitor-native platform, see GOAL.md/
+// project ships no other Capacitor-native platform, see DECISIONS.md/
 // DECISIONS.md) — web/desktop silently no-op rather than falling back to
 // the Vibration API, since a plain buzz on every checkbox click on
 // desktop would read as a bug, not a feature.

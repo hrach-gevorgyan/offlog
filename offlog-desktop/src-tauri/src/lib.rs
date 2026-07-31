@@ -45,7 +45,7 @@ fn get_sync_secret(app: tauri::AppHandle) -> Result<Option<SyncSecret>, String> 
     Ok(secure_storage::load_secret(&sync_secret_path(&app)?).map(|(user, pass)| SyncSecret { user, pass }))
 }
 
-// S1 (docs/IDEAS.md, 2026-07-20): surfaces whatever discovery::browse_for_others()
+// S1 (DECISIONS.md's Open Questions section, 2026-07-20): surfaces whatever discovery::browse_for_others()
 // found at startup so the frontend can warn about a second host on the
 // LAN. Managed empty before the background scan runs, so this command
 // never errors -- it just answers "nothing detected yet" if called

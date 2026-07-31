@@ -121,7 +121,7 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
 // (not its IP) lets a fresh scan confirm "is this still the same PC I
 // paired with, just at a different address" and self-heal.
 //
-// S4 (docs/IDEAS.md's sync-topology questions, 2026-07-20): this used to
+// S4 (DECISIONS.md's Open Questions section, 2026-07-20): this used to
 // silently ignore any advertisement whose uuid didn't match the one being
 // looked for, so a genuinely-changed host identity (the PC was wiped/
 // reinstalled and got a fresh random uuid, or the phone was accidentally

@@ -212,8 +212,12 @@
     const t = undoToasts.find(t => t.id === id);
     if (t) clearTimeout(t.timer);
     undoToasts = undoToasts.filter(t => t.id !== id);
-    await undoDelete(id);
-    await reloadTasks();
+    try {
+      await undoDelete(id);
+      await reloadTasks();
+    } catch {
+      showError('Failed to undo. Please try again.');
+    }
   }
 
   async function openFromNotification(taskId: string) {
