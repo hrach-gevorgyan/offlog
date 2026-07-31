@@ -376,6 +376,18 @@ sync/local writes but not on direct-to-PouchDB console writes) and
 store.ts's stores pick up the new docs instead of showing stale data
 until the next real mutation.
 
+### Debugging sync discovery (`offlog-desktop/mdns-browse/`)
+
+A ~20-line standalone script that browses for `_offlog._tcp` on the LAN
+and prints whatever it finds — name, port, addresses, and the full TXT
+record. Run `npm install && node browse.js` inside that folder. Not part
+of any build; it exists for exactly one question, which is the most
+likely sync failure in daily use: **"is the PC actually advertising, and
+is the phone able to see it?"** Answering that from the outside
+immediately separates a discovery problem (nothing found → mDNS/firewall/
+network isolation) from a pairing or replication problem (found, but the
+handshake or sync fails). Worth reaching for before reading any code.
+
 ### Resetting to a fresh state (do this after every test round)
 
 Dev/test state accumulates silently release over release if it's never

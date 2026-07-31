@@ -5,6 +5,27 @@ choice was made: [DECISIONS.md](DECISIONS.md) (also open questions).
 How the app works: [TECH.md](TECH.md). Shipped/declined/parked history:
 [archive/roadmap-archive.md](archive/roadmap-archive.md).
 
+## Status: in use, not closed
+
+**As of 2026-08-01, Offlog is finished and in daily use by its author.**
+That is not the same as closed, and the difference matters:
+
+- **Finished** means the planned work is done. `Next up` is empty. No
+  feature is queued, in progress, or promised.
+- **Not closed** means the repo stays alive. Bugs hit in real daily use
+  get fixed. Dependencies get updated. Security gets reviewed. The Play
+  Store listing keeps moving, slowly, on Google's schedule.
+- **New work needs a real trigger** — something wanted while genuinely
+  using the app, or a security issue. Not an idea, not a feature someone
+  else's task manager has, not a "wouldn't it be nice."
+
+So the ongoing shape of this project, indefinitely, is: bugfixes,
+dependency batches, security revisions, and the Play Store. That's it.
+If a real need shows up in daily use, it gets built. If it doesn't,
+nothing does — and that's the plan working, not the plan stalling.
+
+How it got here: [STORY.md](STORY.md).
+
 **2026-07-30:** dropped the old "three milestones, then a Done
 declaration" framework — it gated a version bump on Google's Play
 Console review timeline, something nobody here controls. What shipped

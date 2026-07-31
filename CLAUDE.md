@@ -28,9 +28,13 @@ reference for any public-facing copy — README, landing page, store
 listing — also covers trademark/usage terms, merged from the old
 TRADEMARK.md 2026-07-31: the MIT license covers code only, name/icon/
 tagline are reserved separately; read before approving a fork's naming
-or any brand-adjacent request), and [docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
+or any brand-adjacent request), [docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
 policy, ROADMAP.md's C3 — update it only if a feature actually changes
-what data the app touches, per its own DECISIONS.md entry). The
+what data the app touches, per its own DECISIONS.md entry), and
+[docs/STORY.md](docs/STORY.md) (the narrative account of the whole
+2026-07 build, written on the last day of development — background
+reading, never a source of truth; if it ever contradicts DECISIONS.md
+or TECH.md, they win and STORY.md is the stale one). The
 maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every

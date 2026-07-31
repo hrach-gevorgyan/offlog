@@ -104,6 +104,14 @@ that got reversed, is written down: [docs/DECISIONS.md](docs/DECISIONS.md)
 and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) back to the first
 release.
 
+**Status: finished and in daily use — not abandoned, not in active
+development.** Built over July 2026; since 2026-08-01 it's the author's
+own primary task manager. Ongoing work is bugfixes found in real use,
+dependency updates, and security review. New features need a real need,
+not an idea. [docs/STORY.md](docs/STORY.md) is the honest account of how
+it got built — including the month the foundation was thrown out and
+rewritten, and the backup bug caught twelve hours before it mattered.
+
 ## Features
 
 Built up from months of real daily use — some features came from the
