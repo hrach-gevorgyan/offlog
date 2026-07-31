@@ -474,7 +474,18 @@ pub fn run() {
             // not Quick Add (owner feedback, 2026-07-31) -- Quick Add has
             // its own in-app shortcut (Ctrl+N) already. Registered once at
             // startup; the handler itself lives in the plugin() call above.
-            app.global_shortcut().register("Ctrl+Alt+O")?;
+            //
+            // Deliberately NOT `?` -- Ctrl+Alt+O is a plausible collision
+            // with another already-running app's own global hotkey, and
+            // Windows simply refuses the second registration. Propagating
+            // that error out of setup() would fail .build() and panic the
+            // whole app on startup over a convenience shortcut: the tray,
+            // the window, and sync would all be gone because something
+            // else happened to own one key combo. Log and carry on instead
+            // -- everything else still works, only the hotkey is missing.
+            if let Err(e) = app.global_shortcut().register("Ctrl+Alt+O") {
+                log::warn!("global shortcut Ctrl+Alt+O unavailable (already bound by another app?): {e}");
+            }
 
             Ok(())
         })

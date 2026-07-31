@@ -7,7 +7,7 @@
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
   import type { CustomFieldDef } from './lib/types';
   import type { CustomFieldFilter } from './lib/utils';
-  import { pendingOpenTaskId } from './lib/notifications';
+  import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
   import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
   import { getCommands } from './lib/commands';
   import Sidebar from './lib/Sidebar.svelte';
@@ -234,6 +234,15 @@
   }
 
   $: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);
+
+  // A "Done"/"Snooze" tap straight from a notification toast whose write
+  // failed — surfaced here rather than via a showError() call inside
+  // notifications.ts, which would be a circular import (see that store's
+  // own comment).
+  $: if ($notificationActionError) {
+    showError($notificationActionError);
+    notificationActionError.set('');
+  }
 
   function onKeydown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }

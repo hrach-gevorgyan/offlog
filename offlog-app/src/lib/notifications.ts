@@ -45,6 +45,18 @@ export function applyQuietHours(at: Date, staggerIndex = 0): Date {
 // App.svelte watches this to open the corresponding task.
 export const pendingOpenTaskId = writable<string | null>(null);
 
+// A notification action ("Done"/"Snooze 1h" straight from the toast) that
+// failed its underlying updateTask() write. Same store-and-let-App-react
+// pattern as pendingOpenTaskId above, deliberately NOT a direct
+// showError() import: store.ts already imports this module, so importing
+// it back would be a circular import and would break CLAUDE.md's
+// one-directional layer rule. These handlers can't be awaited by their
+// caller (they run inside a plain OS-callback), and swallowing the
+// rejection outright is the exact bug class the v5.4.6 fireWebNotification
+// incident is about -- the user taps "Done" on a reminder, nothing
+// happens, and nothing ever says so.
+export const notificationActionError = writable<string>('');
+
 export type PermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
 export const permissionState = writable<PermissionState>('default');
 
@@ -451,8 +463,8 @@ export async function initNotificationListeners(): Promise<void> {
     await listen<[string, string]>('notification-action', (event) => {
       const [actionId, taskId] = event.payload;
       if (!taskId) return;
-      if (actionId === 'done') completeTaskFromNotification(taskId).catch(() => {});
-      else if (actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => {});
+      if (actionId === 'done') completeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not mark that task done. Please try again.'));
+      else if (actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not snooze that reminder. Please try again.'));
       else {
         // bare click (no action button) -- lib.rs emits '' for this case.
         // Windows brings no window forward on a toast click by itself, so
@@ -472,8 +484,8 @@ export async function initNotificationListeners(): Promise<void> {
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
     const taskId = (action.notification.extra as any)?.taskId;
     if (!taskId) return;
-    if (action.actionId === 'done') completeTaskFromNotification(taskId).catch(() => {});
-    else if (action.actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => {});
+    if (action.actionId === 'done') completeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not mark that task done. Please try again.'));
+    else if (action.actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not snooze that reminder. Please try again.'));
     else pendingOpenTaskId.set(taskId); // 'tap' (default open) — anything else falls through to opening the task
   });
 }

@@ -476,27 +476,29 @@
     };
   });
 
-  // v6.7.0 — card-level "has related links" indicator. One cheap set
-  // lookup per card instead of re-deriving getRelatedTasks() for every
-  // rendered card; refreshed on any db change since a related link can
-  // be added/removed from another project's card, off this board.
+  // Card-level indicators (related-link / blocked / tag-color lookups) all
+  // follow the same shape: one cheap whole-board query up front instead of
+  // re-deriving per rendered card, re-run on any db change since the
+  // underlying data can be edited from another project's card, off this
+  // board. Extracted into one helper once the third copy landed — the
+  // `.catch` matters: these are read-only board decorations, so a failed
+  // refresh should leave the last-known value in place and log, never
+  // reject unhandled (maintenance pass, 2026-07-31).
+  function loadIndicator<T>(query: () => Promise<T>, apply: (value: T) => void) {
+    const run = () => query().then(apply).catch(e => console.warn('board indicator refresh failed', e));
+    run();
+    return subscribe(run);
+  }
+
+  // v6.7.0 — card-level "has related links" indicator.
   let relatedIds = new Set<string>();
-  onMount(() => {
-    getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids);
-    return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
-  });
+  onMount(() => loadIndicator(getTaskIdsWithRelatedLinks, ids => relatedIds = ids));
 
-  // ROADMAP.md "Blocked by" — same cheap-set pattern as relatedIds above.
+  // ROADMAP.md "Blocked by" — an unresolved dependency shows a lock badge.
   let blockedIds = new Set<string>();
-  onMount(() => {
-    getTaskIdsBlocked().then(ids => blockedIds = ids);
-    return subscribe(() => { getTaskIdsBlocked().then(ids => blockedIds = ids); });
-  });
+  onMount(() => loadIndicator(getTaskIdsBlocked, ids => blockedIds = ids));
 
-  onMount(() => {
-    getTagColorOverrides().then(o => tagColorOverrides = o);
-    return subscribe(() => { getTagColorOverrides().then(o => tagColorOverrides = o); });
-  });
+  onMount(() => loadIndicator(getTagColorOverrides, o => tagColorOverrides = o));
 
   onDestroy(() => {
     if (touchGhost) { touchGhost.remove(); touchGhost = null; }
