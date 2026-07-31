@@ -3,7 +3,7 @@
   import { fly, slide } from 'svelte/transition';
   import { popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, formatAttachmentSize } from './attachments';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { requestPermission, permissionState } from './notifications';
@@ -518,6 +518,22 @@
       showError('Failed to duplicate task.');
     }
   }
+
+  // Roadmap: "skip one recurrence occurrence" -- advances due date/
+  // reminder/checklist to the next occurrence without logging a
+  // completion, for the day you're not doing this one but don't want
+  // the series stuck overdue. Closes afterward (same as archive/
+  // duplicate/delete above) rather than patching local state, since the
+  // task's due date/checklist just changed underneath this open editor.
+  async function skipToNext() {
+    try {
+      await skipRecurrence(task._id!);
+      await reloadTasks();
+      requestClose();
+    } catch (e) {
+      showError('Failed to skip to the next occurrence.');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown} on:click={onWindowClick} />
@@ -636,6 +652,11 @@
                   <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
                   {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
                 </label>
+                {#if task.recurrence}
+                  <button type="button" class="skip-recur-btn" on:click={skipToNext}>
+                    Skip this one — jump to next occurrence
+                  </button>
+                {/if}
 
                 <div class="reminder-field">
                   <label>
@@ -1006,6 +1027,14 @@
     font-size: .72rem; color: var(--faint); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
   }
+  .skip-recur-btn {
+    align-self: flex-start; margin-top: -.15rem;
+    background: none; border: none; padding: 0;
+    color: var(--accent); font-size: .78rem; font-weight: 600;
+    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
+    cursor: pointer;
+  }
+  .skip-recur-btn:hover { text-decoration: underline; }
 
   /* flex:0 0 auto -- sizes to its own (nowrap, full-length) text and no
      further, so it doesn't stretch wider than its content and leave

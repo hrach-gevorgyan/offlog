@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.7.7 | Desktop updater UX overhaul — real download progress, explicit restart prompt (no auto-restart), silent ~6h background check with a dismissible banner, `latest.json`'s release notes now pull from the real CHANGELOG row instead of being empty | `v5.7.7` |
 | 5.7.6 | Quiet hours (Settings → Notifications, queues reminders inside a configured window instead of firing) + a real 12h/24h display bug fix affecting TimePicker/CalendarPicker/CardDetail's reminder text | `v5.7.6` |
 | 5.7.5 | Milestone 1 complete: B61 (App Lock PIN confirmation required to change/remove), B62 (automatic local backup, rotated to 7), E3 (desktop auto-updater wired with real signing key). A32's 18 new UI component tests landed the same batch (suite to 204) | `v5.7.5` |
 | 5.7.4 | Second dependency maintenance batch (6 Dependabot PRs): Capacitor CLI/core/app/local-notifications patch bumps, `serde_json` patch bump, `rand` 0.9.5→0.10.2 needed a real code fix (`random_range` moved to a new `RngExt` trait, broke `sync_host.rs`'s pairing-credential generator); surfaced that `ci.yml` doesn't watch Cargo/Rust changes at all | `v5.7.4` |

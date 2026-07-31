@@ -18,6 +18,7 @@ import db, {
   getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
   searchAllTasks,
   addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK,
+  skipRecurrence,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -488,6 +489,30 @@ describe('recurring tasks', () => {
     expect(result.column_id).toBe(lastCol);
     const tasks = await getTasksForProject(project._id);
     expect(tasks).toHaveLength(1);
+  });
+
+  it('skipRecurrence advances the due date like a completion would, but leaves the task in its current column', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Gym', { checklist: [{ text: 'Warm up', done: true }] });
+    await updateTask(task._id!, { due_date: '2026-07-15', recurrence: 'weekly' });
+
+    const result = await skipRecurrence(task._id!);
+
+    expect(result.due_date).toBe('2026-07-22');
+    expect(result.column_id).toBe(firstCol);
+    expect(result.checklist).toEqual([{ text: 'Warm up', done: false }]);
+  });
+
+  it('skipRecurrence rejects a task that is not set to repeat', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'One-off');
+    await updateTask(task._id!, { due_date: '2026-07-15' });
+
+    await expect(skipRecurrence(task._id!)).rejects.toThrow();
   });
 
   it('does not re-trigger the reset when a recurring task is moved back out of the first column normally', async () => {

@@ -47,15 +47,13 @@ a bag of ideas.
 1. **Snooze.** One tap on any task: defer to tomorrow or next week
    without opening the editor. Extends the existing notification
    "Snooze 1h" to the task itself. Small.
-2. **Month view for Agenda.** Today's Agenda is a due-date list only —
-   add a real month grid, same view, both platforms. Small-medium.
-3. **Import converters.** One-way import from Trello/ClickUp/Jira
+2. **Import converters.** One-way import from Trello/ClickUp/Jira
    export files. A file conversion, not a live connection. Trello's
    JSON export first — most Kanban-shaped. Medium.
-4. **Voice input for Quick Add.** Dictate instead of typing, platform
+3. **Voice input for Quick Add.** Dictate instead of typing, platform
    speech-to-text feeding the existing parser, no cloud service of our
    own. Medium, Android-first.
-5. **Desktop tray-resident + global quick-capture shortcut.** Keep
+4. **Desktop tray-resident + global quick-capture shortcut.** Keep
    running in the system tray instead of quitting on window close, plus
    a global hotkey (e.g. Ctrl+Alt+O) that pops a small quick-add/quick-
    check window from anywhere, no need to have Offlog focused. Biggest
@@ -63,22 +61,22 @@ a bag of ideas.
    tray icon, close-to-tray vs. quit), Windows/Tauri-only. Also the
    thing that would make a live calendar-subscribe feed viable again if
    it ships (see DECISIONS.md). Medium-large.
-6. **"Blocked by," not just "related."** Task linking (v6.7.0) only does
+5. **"Blocked by," not just "related."** Task linking (v6.7.0) only does
    loose "related" links — add a real dependency: this task can't start
    until that one's done. Focus view should skip a task that's still
    blocked, which it can't tell today. Medium.
-7. **Skip one recurrence occurrence.** Recurrence only advances on
+6. **Skip one recurrence occurrence.** Recurrence only advances on
    completion today — miss one (sick day, travel) and it just sits
    overdue. Add a "skip to next" action that advances `due_date`
    without logging a completion. Small.
-8. **Custom recurrence intervals.** Only daily/weekly/monthly exist
+7. **Custom recurrence intervals.** Only daily/weekly/monthly exist
    today — no "every 2 weeks," "every 3 days," or "weekdays only."
    Flagged in `types.ts`'s own comment as deferred v1 scope. Medium.
-9. **Custom fields: filterable and sortable.** They're write-only right
+8. **Custom fields: filterable and sortable.** They're write-only right
    now — `FilterBar` never references `custom_values`, and `ListView`
    explicitly disables sorting on custom columns. Set a value per task,
    but can't filter or sort by it. Medium.
-10. **Search should look inside attachment filenames.** Unified search
+9. **Search should look inside attachment filenames.** Unified search
     (v6.10.0) covers title/tags/body/checklist but not the filename of
     an attached file — two features that shipped separately and never
     got wired together. Small.

@@ -1301,6 +1301,27 @@ function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc
   return { column_id: firstColId, due_date: nextDate, reminder_at: nextReminder, checklist: resetChecklist };
 }
 
+// Roadmap item "skip one recurrence occurrence": same date/reminder/
+// checklist advance computeRecurrenceReset() gives a real completion,
+// minus the column_id -- skipping isn't completing, so the task stays
+// wherever it currently sits instead of resetting to the first column.
+// Routing through the normal updateTask() (rather than writing directly)
+// means this gets the usual write-queue serialization, cache
+// invalidation, and a plain "update" log entry for free, and it can't
+// accidentally trigger computeRecurrenceReset() a second time since
+// column_id never changes here.
+export async function skipRecurrence(id: string): Promise<TaskDoc> {
+  const doc = await db.get<TaskDoc>(id);
+  if (!doc.recurrence) throw new Error('This task is not set to repeat.');
+  let proj: ProjectDoc | null = null;
+  try { proj = await db.get<ProjectDoc>(doc.project_id); } catch {}
+  if (!proj) throw new Error("Could not find this task's project.");
+  const reset = computeRecurrenceReset(doc, proj);
+  if (!reset) throw new Error('This task is not set to repeat.');
+  const { column_id, ...rest } = reset;
+  return updateTask(id, rest);
+}
+
 // Serializes concurrent updateTask() calls on the same doc id. Without this,
 // two overlapping get-then-put calls (e.g. notifications.ts's fire-and-forget
 // reminder_at clear racing a real edit on the same task) can both read the

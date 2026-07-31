@@ -17,6 +17,21 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v6.1.0
+
+### New
+- Agenda has a real Month view now — see the whole month at a glance,
+  tap any day to see what's due and add a new task straight onto that
+  day. Replaces the old Week view.
+- Recurring tasks can now be skipped just once — jump straight to the
+  next occurrence (from the task's Repeat & reminder section) without
+  marking today's as done, for the day you're not doing this one.
+
+### Fixed
+- The Month view's "Today" button moved after feedback — now on the
+  right, and only shows up once you've actually navigated to a
+  different month.
+
 ## v6.0.1
 
 No visible changes — a routine maintenance pass (internal cleanup only).
