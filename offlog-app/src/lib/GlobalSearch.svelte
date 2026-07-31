@@ -121,7 +121,7 @@
   // match already gets its own visible row (result-tags below), so this
   // hint only needs to cover the two matches that would otherwise be
   // invisible: text buried in Notes or a checklist item.
-  const MATCH_HINT: Partial<Record<string, string>> = { body: 'Matched in Notes', checklist: 'Matched in Checklist' };
+  const MATCH_HINT: Partial<Record<string, string>> = { body: 'Matched in Notes', checklist: 'Matched in Checklist', attachments: 'Matched in an attachment name' };
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->

@@ -65,21 +65,6 @@ a bag of ideas.
    loose "related" links — add a real dependency: this task can't start
    until that one's done. Focus view should skip a task that's still
    blocked, which it can't tell today. Medium.
-6. **Skip one recurrence occurrence.** Recurrence only advances on
-   completion today — miss one (sick day, travel) and it just sits
-   overdue. Add a "skip to next" action that advances `due_date`
-   without logging a completion. Small.
-7. **Custom recurrence intervals.** Only daily/weekly/monthly exist
-   today — no "every 2 weeks," "every 3 days," or "weekdays only."
-   Flagged in `types.ts`'s own comment as deferred v1 scope. Medium.
-8. **Custom fields: filterable and sortable.** They're write-only right
-   now — `FilterBar` never references `custom_values`, and `ListView`
-   explicitly disables sorting on custom columns. Set a value per task,
-   but can't filter or sort by it. Medium.
-9. **Search should look inside attachment filenames.** Unified search
-    (v6.10.0) covers title/tags/body/checklist but not the filename of
-    an attached file — two features that shipped separately and never
-    got wired together. Small.
 
 Declined ideas (stale-task triage, daily shutdown ritual, weekly
 review, checklist templates) aren't listed — don't re-propose them. A genuinely new idea

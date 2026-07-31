@@ -26,6 +26,8 @@
   export let filterCol = '';
   export let filterPrio = 0;
   export let filterTag = '';
+  export let filterFieldId = '';
+  export let filterFieldValue = '';
 
   const dispatch = createEventDispatcher();
 
@@ -36,7 +38,7 @@
     });
   }
 
-  $: visibleTasks = filterTasks(tasks, search, filterCol, filterPrio, filterTag);
+  $: visibleTasks = filterTasks(tasks, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue);
 
   $: tasksByCol = Object.fromEntries(
     project.columns.map(col => [

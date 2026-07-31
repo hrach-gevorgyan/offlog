@@ -129,6 +129,19 @@
   let recurrenceStr = task.recurrence ?? '';
   $: if (!due_date && recurrenceStr) recurrenceStr = '';
   $: recurrence = (recurrenceStr || null) as 'daily' | 'weekly' | 'monthly' | null;
+  // Roadmap "custom recurrence intervals" -- every N days/weeks/months
+  // instead of always N=1, plus a "weekdays only" toggle for daily.
+  // Kept as a plain string bound to the number input (not a number
+  // directly) so an in-progress empty/partial edit doesn't immediately
+  // collapse to NaN -- recurrenceInterval below is the derived, clamped
+  // value actually sent on save.
+  let recurrenceIntervalStr = String(task.recurrenceInterval ?? 1);
+  $: recurrenceInterval = Math.max(1, Math.min(365, parseInt(recurrenceIntervalStr, 10) || 1));
+  let recurrenceWeekdaysOnly = task.recurrenceWeekdaysOnly ?? false;
+  $: recurrenceIntervalUnitLabel = (() => {
+    const unit = recurrenceStr === 'daily' ? 'day' : recurrenceStr === 'weekly' ? 'week' : 'month';
+    return recurrenceInterval === 1 ? unit : `${unit}s`;
+  })();
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
@@ -204,11 +217,13 @@
   // analysis on the `$:` call actually re-runs this when any of them
   // changes.
   function formatExtrasSummary(
-    reminder: string, repeat: string | null,
+    reminder: string, repeat: string | null, interval: number, weekdaysOnly: boolean,
     cl: typeof checklist, related: TaskDoc[], atts: TaskAttachment[], notes: string,
   ): string {
     const parts: string[] = [];
-    if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
+    if (repeat === 'daily' && weekdaysOnly) parts.push('Repeats weekdays');
+    else if (repeat && interval > 1) parts.push(`Repeats every ${interval} ${repeat === 'daily' ? 'days' : repeat === 'weekly' ? 'weeks' : 'months'}`);
+    else if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
     if (reminder) parts.push(`${fmtTime(new Date(reminder))} reminder`);
     if (cl.length) parts.push(`${cl.filter(i => i.done).length}/${cl.length} checklist`);
     if (related.length) parts.push(`${related.length} related`);
@@ -216,7 +231,7 @@
     if (notes.trim()) parts.push('notes');
     return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, attachments, notes';
   }
-  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, checklist, relatedTasks, attachments, body);
+  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, attachments, body);
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -478,6 +493,8 @@
         reminder_at: reminder_at ? new Date(reminder_at).toISOString() : null,
         column_id, tags, pinned, remindOnDue,
         custom_values: customValues, checklist, recurrence,
+        recurrenceInterval: recurrence ? recurrenceInterval : undefined,
+        recurrenceWeekdaysOnly: recurrence === 'daily' ? recurrenceWeekdaysOnly : undefined,
       });
       await reloadTasks();
       requestClose();
@@ -652,6 +669,19 @@
                   <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
                   {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
                 </label>
+                {#if recurrenceStr}
+                  <div class="repeat-interval-row">
+                    <span>Every</span>
+                    <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat interval" />
+                    <span>{recurrenceIntervalUnitLabel}</span>
+                  </div>
+                  {#if recurrenceStr === 'daily'}
+                    <label class="repeat-weekdays-label">
+                      <input type="checkbox" bind:checked={recurrenceWeekdaysOnly} />
+                      Weekdays only (skip Sat/Sun)
+                    </label>
+                  {/if}
+                {/if}
                 {#if task.recurrence}
                   <button type="button" class="skip-recur-btn" on:click={skipToNext}>
                     Skip this one — jump to next occurrence
@@ -1035,6 +1065,26 @@
     cursor: pointer;
   }
   .skip-recur-btn:hover { text-decoration: underline; }
+
+  .repeat-interval-row {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .82rem; color: var(--muted); font-weight: 500;
+    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
+  }
+  .repeat-interval-input {
+    width: 52px; text-align: center;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    padding: .3rem .3rem; font-size: .82rem; color: var(--text);
+    background: var(--bg); font-family: inherit;
+  }
+  .repeat-interval-input:focus { border-color: var(--accent); outline: none; }
+  .repeat-weekdays-label {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .82rem; color: var(--muted); font-weight: 500;
+    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
+    cursor: pointer;
+  }
+  .repeat-weekdays-label input[type="checkbox"] { margin: 0; cursor: pointer; }
 
   /* flex:0 0 auto -- sizes to its own (nowrap, full-length) text and no
      further, so it doesn't stretch wider than its content and leave

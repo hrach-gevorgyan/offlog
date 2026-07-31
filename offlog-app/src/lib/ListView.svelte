@@ -31,18 +31,25 @@
   let filterCol = '';
   let filterPrio = 0;
   let filterTag = '';
+  let filterFieldId = '';
+  let filterFieldValue = '';
   let showArchived = false;
+  // Declared up here (not down by colLabel/isCustomCol below, where it's
+  // also used) so cmpOne()/sortIcons above can reference it without a
+  // temporal-dead-zone hazard -- `$:`/plain-`let` declaration order is
+  // still real JS execution order, unlike function declarations.
+  let customFields: CustomFieldDef[] = [];
 
   const colName = (id: string) => project.columns.find(c => c.id === id)?.name ?? '—';
   const lastColId = () => project.columns.at(-1)?.id ?? '';
 
   $: allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
-  $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag);
+  $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue);
   // Empty-state message (line ~585) needs to tell "no tasks at all" apart
   // from "filtered down to zero" — mirrors FilterBar.svelte's own
   // activeFilters, which only drives that popover's badge/clear-button,
   // not this view's empty-state text.
-  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0);
+  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0) + (filterFieldId && filterFieldValue ? 1 : 0);
 
   // ── Multi-column sort ──────────────────────────────────────────────────
   // Plain click sorts by that column alone (resets any prior multi-sort).
@@ -51,7 +58,13 @@
   // is an opt-in toggle (owner feedback, 2026-07-28) rather than always-on
   // — some users don't want pinned tasks to override their chosen sort.
   // Off by default, persisted per-device like `cols`/`colOrder` below.
-  type SortCol = 'title' | 'column' | 'priority' | 'due' | 'created' | 'updated' | 'source';
+  // Widened from a strict literal union to `string` (roadmap item "custom
+  // fields: filterable and sortable") -- a custom field's column key
+  // (its own `id`, "field:<nanoid>") is only known at runtime, same
+  // reasoning as ColKey below. cmpOne()'s `if` chain still only special-
+  // cases the built-ins by name; anything else falls through to the
+  // custom-field branch at the bottom.
+  type SortCol = string;
   // Default sort is priority descending (High → Medium → Low), matching
   // how the data is actually ordered/queried elsewhere (owner feedback,
   // 2026-07-28). cmpOne('priority') already returns high-first with
@@ -72,6 +85,17 @@
     if (col === 'created')  return a.created_at.localeCompare(b.created_at);
     if (col === 'updated')  return a.updated_at.localeCompare(b.updated_at);
     if (col === 'source')   return a.source.localeCompare(b.source);
+    if (col.startsWith('field:')) {
+      const av = a.custom_values?.[col], bv = b.custom_values?.[col];
+      // Missing/empty always sorts last regardless of direction -- an
+      // unset field isn't "less than" a real value in either direction.
+      if ((av ?? '') === '' && (bv ?? '') === '') return 0;
+      if ((av ?? '') === '') return 1;
+      if ((bv ?? '') === '') return -1;
+      const isNumber = customFields.find(f => f.id === col)?.type === 'number';
+      if (isNumber) return Number(av) - Number(bv);
+      return String(av).localeCompare(String(bv));
+    }
     return 0;
   }
 
@@ -137,15 +161,10 @@
   // live: sort order updated correctly on click, but the header arrow
   // didn't). A top-level `$:` statement is guaranteed to re-run whenever
   // sortSpec changes, since Svelte tracks it as an explicit dependency.
-  $: sortIcons = {
-    title: sortIconFor('title', sortSpec),
-    column: sortIconFor('column', sortSpec),
-    priority: sortIconFor('priority', sortSpec),
-    due: sortIconFor('due', sortSpec),
-    created: sortIconFor('created', sortSpec),
-    updated: sortIconFor('updated', sortSpec),
-    source: sortIconFor('source', sortSpec),
-  };
+  $: sortIcons = Object.fromEntries(
+    ['title', 'column', 'priority', 'due', 'created', 'updated', 'source', ...customFields.map(f => f.id)]
+      .map(col => [col, sortIconFor(col, sortSpec)])
+  ) as Record<string, string>;
 
   // B2 — the Filters button/popover + saved-filters feature moved into
   // shared FilterBar.svelte (also used by KanbanBoard.svelte now); this
@@ -176,7 +195,6 @@
   const COLS_KEY = 'offlog_list_columns';
   const ORDER_KEY = 'offlog_list_col_order';
 
-  let customFields: CustomFieldDef[] = [];
   function colLabel(key: ColKey): string { return COL_LABELS[key] ?? customFields.find(f => f.id === key)?.name ?? key; }
   function colWidth(key: ColKey): string { return COL_WIDTH[key] ?? '130px'; }
   function isCustomCol(key: ColKey): boolean { return key.startsWith('field:'); }
@@ -398,7 +416,7 @@
   // Same active search/status/priority/tag filters as the main list — the
   // archived section previously ignored them entirely, so narrowing the
   // main list did nothing to what showed up here.
-  $: archivedTasks = filterTasks(archivedTasksRaw, search, filterCol, filterPrio, filterTag);
+  $: archivedTasks = filterTasks(archivedTasksRaw, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue);
 
   // Full date (month/day/year) — with no truncation and horizontal scroll
   // available (B36), there's no reason to abbreviate away the year.
@@ -478,7 +496,7 @@
       </div>
 
     <div class="toolbar-actions">
-      <FilterBar {project} {allTags} bind:search bind:filterCol bind:filterPrio bind:filterTag />
+      <FilterBar {project} {allTags} {tasks} {customFields} bind:search bind:filterCol bind:filterPrio bind:filterTag bind:filterFieldId bind:filterFieldValue />
 
       <button class="action-btn" class:active={showArchived} on:click={() => showArchived = !showArchived} aria-label="Show archived tasks ({archivedTasksRaw.length})" title="Show archived tasks">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -563,7 +581,7 @@
         <span class="head-spacer"></span>
         <button class="th-btn" title="Click to sort. Shift+click to add as a secondary sort." on:click={(e) => toggleSort('title', e.shiftKey)}>Title <span class="sort-icon">{sortIcons.title}</span></button>
         {#each visibleOrder as key (key)}
-          {@const sortKey = isCustomCol(key) || key === 'tags' ? null : (key === 'status' ? 'column' : key) as SortCol | null}
+          {@const sortKey = key === 'tags' ? null : (key === 'status' ? 'column' : key) as SortCol | null}
           <button
             class="th-btn"
             class:drag-over-left={dragOverCol === key && dragOverSide === 'left'}

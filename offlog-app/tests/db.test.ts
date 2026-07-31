@@ -515,6 +515,56 @@ describe('recurring tasks', () => {
     await expect(skipRecurrence(task._id!)).rejects.toThrow();
   });
 
+  it('advances by recurrenceInterval instead of always 1, for daily/weekly/monthly', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+
+    const daily = await createTask(project._id, 'space:unsorted', firstCol, 'Every 3 days');
+    await updateTask(daily._id!, { due_date: '2026-07-15', recurrence: 'daily', recurrenceInterval: 3 });
+    const dailyResult = await updateTask(daily._id!, { column_id: lastCol });
+    expect(dailyResult.due_date).toBe('2026-07-18');
+
+    const weekly = await createTask(project._id, 'space:unsorted', firstCol, 'Every 2 weeks');
+    await updateTask(weekly._id!, { due_date: '2026-07-15', recurrence: 'weekly', recurrenceInterval: 2 });
+    const weeklyResult = await updateTask(weekly._id!, { column_id: lastCol });
+    expect(weeklyResult.due_date).toBe('2026-07-29');
+
+    const monthly = await createTask(project._id, 'space:unsorted', firstCol, 'Every 3 months');
+    await updateTask(monthly._id!, { due_date: '2026-07-15', recurrence: 'monthly', recurrenceInterval: 3 });
+    const monthlyResult = await updateTask(monthly._id!, { column_id: lastCol });
+    expect(monthlyResult.due_date).toBe('2026-10-15');
+  });
+
+  it('treats a missing recurrenceInterval as 1, same as every doc before this shipped', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Plain weekly');
+    await updateTask(task._id!, { due_date: '2026-07-15', recurrence: 'weekly' });
+
+    const result = await updateTask(task._id!, { column_id: lastCol });
+
+    expect(result.due_date).toBe('2026-07-22');
+  });
+
+  it('recurrenceWeekdaysOnly skips a landed-on Saturday/Sunday to the following Monday', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Recurring Project');
+    const firstCol = project.columns[0].id;
+    const lastCol = project.columns.at(-1)!.id;
+    // 2026-07-17 is a Friday -- a plain daily advance lands on Saturday
+    // the 18th; weekdaysOnly should push it to Monday the 20th instead.
+    const task = await createTask(project._id, 'space:unsorted', firstCol, 'Standup');
+    await updateTask(task._id!, { due_date: '2026-07-17', recurrence: 'daily', recurrenceWeekdaysOnly: true });
+
+    const result = await updateTask(task._id!, { column_id: lastCol });
+
+    expect(result.due_date).toBe('2026-07-20');
+  });
+
   it('does not re-trigger the reset when a recurring task is moved back out of the first column normally', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Recurring Project');
@@ -1130,6 +1180,17 @@ describe('searchAllTasks', () => {
 
     const [result] = await searchAllTasks('compare bids');
     expect(result.matchedIn).toBe('title');
+  });
+
+  it('matches by attachment filename and reports matchedIn: attachments', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A');
+    await addAttachment(task._id!, { filename: 'invoice_march.pdf', base64Data: btoa('x'), size: 1 });
+
+    const [result] = await searchAllTasks('invoice');
+    expect(result._id).toBe(task._id);
+    expect(result.matchedIn).toBe('attachments');
   });
 
   it('excludes deleted and archived tasks the same as a title-only search would', async () => {

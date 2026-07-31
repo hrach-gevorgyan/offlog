@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueRelative, dueDateShort, localDateStr } from '../src/lib/utils';
+import { dueRelative, dueDateShort, localDateStr, filterTasks } from '../src/lib/utils';
 
 function daysFromToday(n: number): string {
   const d = new Date();
@@ -28,5 +28,39 @@ describe('dueDateShort / dueRelative (regression: "Tomorrow · Tomorrow", 2026-0
       const due = daysFromToday(i);
       expect(dueRelative(due)).not.toBe(dueDateShort(due));
     }
+  });
+});
+
+// Roadmap item "custom fields: filterable and sortable" -- filterTasks()
+// gained an optional custom-field exact-match filter alongside its
+// existing search/status/priority/tag filters.
+describe('filterTasks — custom field filter', () => {
+  const base = { title: 'Task', column_id: 'col1', priority: 1, tags: [] as string[] };
+  const tasks = [
+    { ...base, title: 'A', custom_values: { 'field:client': 'Acme' } },
+    { ...base, title: 'B', custom_values: { 'field:client': 'Globex' } },
+    { ...base, title: 'C', custom_values: {} },
+    { ...base, title: 'D' }, // custom_values entirely absent
+  ];
+
+  it('matches only tasks whose custom field value equals filterFieldValue', () => {
+    const result = filterTasks(tasks, '', '', 0, '', 'field:client', 'Acme');
+    expect(result.map(t => t.title)).toEqual(['A']);
+  });
+
+  it('does not filter at all when filterFieldValue is empty ("Any value")', () => {
+    const result = filterTasks(tasks, '', '', 0, '', 'field:client', '');
+    expect(result).toHaveLength(4);
+  });
+
+  it('does not filter at all when filterFieldId is empty', () => {
+    const result = filterTasks(tasks, '', '', 0, '', '', 'Acme');
+    expect(result).toHaveLength(4);
+  });
+
+  it('treats a missing/empty custom_values map as no match for a real value filter', () => {
+    const result = filterTasks(tasks, '', '', 0, '', 'field:client', 'Acme');
+    expect(result.map(t => t.title)).not.toContain('C');
+    expect(result.map(t => t.title)).not.toContain('D');
   });
 });

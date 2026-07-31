@@ -161,18 +161,29 @@ export function findDuplicateChecklistItems(items: { text: string }[]): string[]
   return [...dupes];
 }
 
-export function filterTasks<T extends { title: string; column_id: string; priority: number; tags: string[] }>(
+export function filterTasks<T extends {
+  title: string; column_id: string; priority: number; tags: string[];
+  custom_values?: Record<string, string | number | null>;
+}>(
   tasks: T[],
   search: string,
   filterCol: string,
   filterPrio: number,
   filterTag: string,
+  // Roadmap item "custom fields: filterable and sortable" -- an exact-
+  // match filter against one custom field's value, same shape as the
+  // tag filter above (a dropdown of currently-used values, not a free-
+  // type box). Defaulted so every existing call site not yet passing
+  // these keeps working unchanged.
+  filterFieldId = '',
+  filterFieldValue = '',
 ): T[] {
   return tasks.filter(t => {
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterCol && t.column_id !== filterCol) return false;
     if (filterPrio && t.priority !== filterPrio) return false;
     if (filterTag && !t.tags.includes(filterTag)) return false;
+    if (filterFieldId && filterFieldValue && String(t.custom_values?.[filterFieldId] ?? '') !== filterFieldValue) return false;
     return true;
   });
 }

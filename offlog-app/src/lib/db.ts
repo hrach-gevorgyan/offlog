@@ -351,14 +351,19 @@ export async function getDashboardData() {
 // GlobalSearch.svelte which field actually matched (checked in this same
 // priority order) so it can show *why* a result surfaced when the title
 // itself doesn't contain the query -- tags already gets a result row of
-// its own there, so only 'body'/'checklist' need an extra hint.
-export type TaskSearchMatch = 'title' | 'tags' | 'body' | 'checklist';
+// its own there, so only 'body'/'checklist'/'attachments' need an extra
+// hint. 'attachments' (roadmap item 8) added after: file attachments
+// (v6.8.0) and unified search (v6.10.0) shipped separately and never
+// got wired together, so a task with "invoice_march.pdf" attached
+// wasn't findable by searching "invoice".
+export type TaskSearchMatch = 'title' | 'tags' | 'body' | 'checklist' | 'attachments';
 
 function taskSearchMatch(d: TaskDoc, q: string): TaskSearchMatch | null {
   if (d.title.toLowerCase().includes(q)) return 'title';
   if (d.tags?.some((t: string) => t.toLowerCase().includes(q))) return 'tags';
   if (d.body?.toLowerCase().includes(q)) return 'body';
   if (d.checklist?.some(i => i.text.toLowerCase().includes(q))) return 'checklist';
+  if (d.attachments?.some(a => a.filename.toLowerCase().includes(q))) return 'attachments';
   return null;
 }
 
@@ -1218,7 +1223,7 @@ export async function unlinkRelatedTask(taskId: string, otherId: string): Promis
 // what should read as one action.
 export async function createTask(
   projectId: string, spaceId: string, columnId: string, title: string,
-  overrides?: Partial<Pick<TaskDoc, 'priority' | 'due_date' | 'reminder_at' | 'tags' | 'body' | 'custom_values' | 'checklist' | 'recurrence'>>,
+  overrides?: Partial<Pick<TaskDoc, 'priority' | 'due_date' | 'reminder_at' | 'tags' | 'body' | 'custom_values' | 'checklist' | 'recurrence' | 'recurrenceInterval' | 'recurrenceWeekdaysOnly'>>,
 ): Promise<TaskDoc> {
   const existing = await getTasksForProject(projectId);
   const colTasks = existing.filter(t => t.column_id === columnId);
@@ -1232,6 +1237,7 @@ export async function createTask(
     tags: overrides?.tags ?? [],
     custom_values: overrides?.custom_values, checklist: overrides?.checklist,
     recurrence: overrides?.recurrence ?? null,
+    recurrenceInterval: overrides?.recurrenceInterval, recurrenceWeekdaysOnly: overrides?.recurrenceWeekdaysOnly,
     position: maxPos + 1024,
     deleted: false, created_at: ts, updated_at: ts, source: SOURCE,
   };
@@ -1243,18 +1249,35 @@ export async function createTask(
   return doc;
 }
 
-function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly'): string {
+// `interval` (roadmap "custom recurrence intervals") multiplies the
+// step -- every N days/weeks/months instead of always N=1. Defaults to
+// 1 so every call site written before this shipped keeps its exact old
+// behavior. `weekdaysOnly` only makes sense alongside daily; skips
+// forward past a landed-on Saturday/Sunday to the following Monday,
+// giving the standard "every weekday" pattern when combined with
+// interval 1 (the common case), and a sensible fallback for any other
+// interval too.
+function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly', interval = 1, weekdaysOnly = false): string {
+  const step = Math.max(1, interval);
   const d = new Date(`${dateStr}T00:00:00`);
-  if (freq === 'daily') { d.setDate(d.getDate() + 1); return localDateStr(d); }
-  if (freq === 'weekly') { d.setDate(d.getDate() + 7); return localDateStr(d); }
-  // Monthly: plain `d.setMonth(d.getMonth() + 1)` overflows into the
+  if (freq === 'daily') {
+    d.setDate(d.getDate() + step);
+    if (weekdaysOnly) {
+      const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
+      if (dow === 6) d.setDate(d.getDate() + 2);
+      else if (dow === 0) d.setDate(d.getDate() + 1);
+    }
+    return localDateStr(d);
+  }
+  if (freq === 'weekly') { d.setDate(d.getDate() + step * 7); return localDateStr(d); }
+  // Monthly: plain `d.setMonth(d.getMonth() + step)` overflows into the
   // month after next when the day-of-month doesn't exist there -- e.g.
   // Jan 31 + 1 month rolls to Mar 3 (Feb only has 28/29 days), silently
   // skipping February's occurrence entirely (v6.9.0 recurrence hardening,
   // 2026-07-29). Clamp to the target month's real last day instead, so a
   // task due the 31st recurs on the 28th/29th/30th of a shorter month.
   const day = d.getDate();
-  const targetMonth = d.getMonth() + 1; // may be 12 -- Date normalizes into next year
+  const targetMonth = d.getMonth() + step; // may exceed 11 -- Date normalizes into a later year
   const daysInTargetMonth = new Date(d.getFullYear(), targetMonth + 1, 0).getDate();
   d.setDate(1); // avoid overflow while still on the original month
   d.setMonth(targetMonth);
@@ -1279,7 +1302,7 @@ function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc
   // a Wednesday -- advancing from "today" would drift the schedule
   // forward every time a task is completed late.
   const baseDate = doc.due_date ?? localDateStr(new Date());
-  const nextDate = advanceDate(baseDate, doc.recurrence);
+  const nextDate = advanceDate(baseDate, doc.recurrence, doc.recurrenceInterval, doc.recurrenceWeekdaysOnly);
 
   let nextReminder: string | null = null;
   if (doc.remindOnDue) {

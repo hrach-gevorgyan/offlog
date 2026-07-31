@@ -110,14 +110,22 @@ export interface TaskDoc {
   // B18: a flat checklist, not nested/reorderable — deliberately simple.
   // Absent/undefined on old docs = no checklist, same as an empty array.
   checklist?: { text: string; done: boolean }[];
-  // Recurring tasks: no interval/custom-days field on purpose (v1 scope —
-  // "every N weeks" etc. can be added later if actually requested, not
-  // designed for up front). Requires due_date to be meaningful; db.ts's
+  // Recurring tasks. Requires due_date to be meaningful; db.ts's
   // updateTask() falls back to "today" as the base if due_date is
   // missing rather than skip advancing, since a recurrence rule with
   // deleted due_date shouldn't silently stop repeating. Absent/undefined
   // on old docs = doesn't repeat, same as null.
   recurrence?: 'daily' | 'weekly' | 'monthly' | null;
+  // Roadmap "custom recurrence intervals" — every N days/weeks/months
+  // instead of always N=1. Purely additive: absent/undefined means 1,
+  // same as every doc before this shipped. Only meaningful alongside
+  // `recurrence`; ignored when that's null.
+  recurrenceInterval?: number;
+  // "Weekdays only" — daily recurrence that skips Saturday/Sunday when
+  // advancing (the common "every weekday" pattern). Only meaningful
+  // alongside `recurrence: 'daily'`. Absent/undefined = false, same as
+  // every doc before this shipped.
+  recurrenceWeekdaysOnly?: boolean;
   // v6.7.0 — task linking. Non-directional "related to" only (no blocks/
   // blocked-by dependency semantics — owner decision, 2026-07-28). Other
   // task ids this task names as related; stored forward-only on

@@ -14,6 +14,7 @@ const FIELD_LABEL: Record<string, string> = {
   pinned: 'Pinned', archived: 'Archived', column_id: 'Status',
   checklist: 'Checklist', custom_values: 'Custom fields',
   color: 'Color', icon: 'Icon', recurrence: 'Repeat', related: 'Related tasks',
+  recurrenceInterval: 'Repeat interval', recurrenceWeekdaysOnly: 'Weekdays only',
 };
 
 const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };

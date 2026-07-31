@@ -5,7 +5,7 @@
   // are stored per-project (not per-view), so a filter saved from List
   // shows up in Kanban's popover too — same `offlog_saved_filters_<id>`
   // localStorage key either view would have used on its own.
-  import type { ProjectDoc } from './types';
+  import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
   import CustomSelect from './CustomSelect.svelte';
 
@@ -15,9 +15,26 @@
   export let filterCol = '';
   export let filterPrio = 0;
   export let filterTag = '';
+  // Roadmap item "custom fields: filterable and sortable" -- `tasks` is
+  // only needed to compute the distinct values a chosen field actually
+  // has (same "dropdown of what's really in use" pattern as allTags
+  // above), not for anything else here.
+  export let customFields: CustomFieldDef[] = [];
+  export let tasks: TaskDoc[] = [];
+  export let filterFieldId = '';
+  export let filterFieldValue = '';
 
   $: statusOptions = [{ value: '', label: 'All statuses' }, ...project.columns.map(col => ({ value: col.id, label: col.name }))];
   $: tagOptions = [{ value: '', label: 'All tags' }, ...allTags.map(t => ({ value: t, label: t }))];
+  $: fieldOptions = [{ value: '', label: 'All fields' }, ...customFields.map(f => ({ value: f.id, label: f.name }))];
+  $: fieldValueOptions = filterFieldId
+    ? [{ value: '', label: 'Any value' }, ...[...new Set(
+        tasks.map(t => t.custom_values?.[filterFieldId]).filter((v): v is string | number => v !== undefined && v !== null && v !== '')
+      )].map(v => ({ value: String(v), label: String(v) }))]
+    : [];
+  // A value chosen under a previously-selected field wouldn't mean
+  // anything once the field itself changes.
+  $: if (!filterFieldId) filterFieldValue = '';
   // Icon-only, no "Filters" text label — used where the button sits
   // paired with other icon buttons in a tight pill (App.svelte's board
   // header) rather than List's own roomier toolbar row.
@@ -40,7 +57,10 @@
     showFilterMenu = !showFilterMenu;
   }
 
-  interface SavedFilter { name: string; search: string; filterCol: string; filterPrio: number; filterTag: string }
+  // filterFieldId/filterFieldValue are optional on old saved filters
+  // (predate this feature) -- absent just means "no custom-field filter",
+  // same as an empty string would.
+  interface SavedFilter { name: string; search: string; filterCol: string; filterPrio: number; filterTag: string; filterFieldId?: string; filterFieldValue?: string }
   $: savedFiltersKey = `offlog_saved_filters_${project._id}`;
   let savedFilters: SavedFilter[] = [];
 
@@ -53,13 +73,14 @@
   function saveCurrentFilter() {
     const name = newFilterName.trim();
     if (!name) return;
-    savedFilters = [...savedFilters.filter(f => f.name !== name), { name, search, filterCol, filterPrio, filterTag }];
+    savedFilters = [...savedFilters.filter(f => f.name !== name), { name, search, filterCol, filterPrio, filterTag, filterFieldId, filterFieldValue }];
     localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
     newFilterName = '';
   }
 
   function applySavedFilter(f: SavedFilter) {
     search = f.search; filterCol = f.filterCol; filterPrio = f.filterPrio; filterTag = f.filterTag;
+    filterFieldId = f.filterFieldId ?? ''; filterFieldValue = f.filterFieldValue ?? '';
     showFilterMenu = false;
   }
 
@@ -68,8 +89,8 @@
     localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
   }
 
-  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0);
-  function clearFilters() { search = ''; filterCol = ''; filterPrio = 0; filterTag = ''; }
+  $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0) + (filterFieldId && filterFieldValue ? 1 : 0);
+  function clearFilters() { search = ''; filterCol = ''; filterPrio = 0; filterTag = ''; filterFieldId = ''; filterFieldValue = ''; }
 
   function onWindowClick(e: MouseEvent) {
     if (!showFilterMenu) return;
@@ -99,6 +120,14 @@
       {#if allTags.length}
         <div class="menu-label">Tag</div>
         <CustomSelect options={tagOptions} bind:value={filterTag} />
+      {/if}
+
+      {#if customFields.length}
+        <div class="menu-label">Custom field</div>
+        <CustomSelect options={fieldOptions} bind:value={filterFieldId} />
+        {#if filterFieldId}
+          <CustomSelect options={fieldValueOptions} bind:value={filterFieldValue} />
+        {/if}
       {/if}
 
       <div class="menu-label">Priority</div>

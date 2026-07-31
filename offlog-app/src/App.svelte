@@ -5,7 +5,8 @@
   import { scrimFade, toastFly } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
-  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow } from './lib/db';
+  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
+  import type { CustomFieldDef } from './lib/types';
   import { pendingOpenTaskId } from './lib/notifications';
   import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
   import { getCommands } from './lib/commands';
@@ -111,10 +112,17 @@
   let kbFilterCol = '';
   let kbFilterPrio = 0;
   let kbFilterTag = '';
+  let kbFilterFieldId = '';
+  let kbFilterFieldValue = '';
   $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
+  // Custom fields are global (not per-project), same as ListView's own
+  // copy — loaded once here so Kanban's FilterBar can offer the same
+  // custom-field filter List already got.
+  let customFieldDefs: CustomFieldDef[] = [];
+  getCustomFieldDefs().then(f => { customFieldDefs = f; });
   // Stale filter values from a previous project shouldn't silently narrow
   // the next project's board — reset on every genuine navigation.
-  $: $activeProjectId, (kbSearch = '', kbFilterCol = '', kbFilterPrio = 0, kbFilterTag = '');
+  $: $activeProjectId, (kbSearch = '', kbFilterCol = '', kbFilterPrio = 0, kbFilterTag = '', kbFilterFieldId = '', kbFilterFieldValue = '');
 
   // B9 — command palette, folded into GlobalSearch rather than a separate
   // overlay/shortcut. Sidebar's own openSettings/openTimeTravel/openTrash
@@ -556,7 +564,7 @@
             </button>
             {#if currentView === 'kanban'}
               <span class="search-filter-divider"></span>
-              <FilterBar compact project={$activeProject} allTags={kbAllTags} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} />
+              <FilterBar compact project={$activeProject} allTags={kbAllTags} tasks={$projectTasks} customFields={customFieldDefs} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} bind:filterFieldId={kbFilterFieldId} bind:filterFieldValue={kbFilterFieldValue} />
             {/if}
           </div>
 
@@ -583,6 +591,8 @@
             filterCol={kbFilterCol}
             filterPrio={kbFilterPrio}
             filterTag={kbFilterTag}
+            filterFieldId={kbFilterFieldId}
+            filterFieldValue={kbFilterFieldValue}
             on:projectUpdated={(e) => {
               projects.update(ps => ps.map(p => p._id === e.detail._id ? e.detail : p));
             }}
