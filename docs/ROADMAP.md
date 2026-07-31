@@ -37,38 +37,37 @@ any change: does it make Offlog nicer to use, or just bigger?
 - **C5, landing page.** One plain GitHub Pages page. On hold, no energy
   for it right now. Not blocking anything.
 
-## Next up — one at a time, no fixed order
+## Next up — the last two, then development stops
 
-A vetted backlog, not a schedule. Finish and ship one before starting
-the next, same as every release so far. Reordering needs an explicit
-owner call — this is priority-ranked, not a bag of ideas.
+**2026-07-31:** trimmed to just the two items below, plus C3 (Play
+Store listing, above) clearing whenever Google gets to it. Once both
+ship, that's the finite plan done — into maintenance mode (quarterly
+passes, Dependabot batches, patch fixes only when daily use actually
+hits something). Reordering needs an explicit owner call.
 
-1. **Snooze.** One tap on any task: defer to tomorrow or next week
-   without opening the editor. Extends the existing notification
-   "Snooze 1h" to the task itself. Small.
-2. **Import converters.** One-way import from Trello/ClickUp/Jira
-   export files. A file conversion, not a live connection. Trello's
-   JSON export first — most Kanban-shaped. Medium.
-3. **Voice input for Quick Add.** Dictate instead of typing, platform
-   speech-to-text feeding the existing parser, no cloud service of our
-   own. Medium, Android-first.
-4. **Desktop tray-resident + global quick-capture shortcut.** Keep
+1. **Desktop tray-resident + global quick-capture shortcut.** Keep
    running in the system tray instead of quitting on window close, plus
    a global hotkey (e.g. Ctrl+Alt+O) that pops a small quick-add/quick-
-   check window from anywhere, no need to have Offlog focused. Biggest
-   item on this list — real background-persistence work (autostart,
-   tray icon, close-to-tray vs. quit), Windows/Tauri-only. Also the
-   thing that would make a live calendar-subscribe feed viable again if
-   it ships (see DECISIONS.md). Medium-large.
-5. **"Blocked by," not just "related."** Task linking (v6.7.0) only does
+   check window from anywhere, no need to have Offlog focused. Real
+   background-persistence work (autostart, tray icon, close-to-tray vs.
+   quit), Windows/Tauri-only. Also the thing that would make a live
+   calendar-subscribe feed viable again if it ships (see DECISIONS.md).
+   Medium-large.
+2. **"Blocked by," not just "related."** Task linking (v6.7.0) only does
    loose "related" links — add a real dependency: this task can't start
    until that one's done. Focus view should skip a task that's still
    blocked, which it can't tell today. Medium.
 
+**Deprioritized, not declined — future ideas if daily use ever demands
+them, not part of the finite plan** (moved off this list 2026-07-31 to
+keep it down to just the two items above): Snooze (one-tap defer to
+tomorrow/next week, extending the existing notification "Snooze 1h" to
+the task itself), Import converters (one-way Trello/ClickUp/Jira export
+file conversion, not a live connection), Voice input for Quick Add
+(platform speech-to-text into the existing parser, Android-first).
+
 Declined ideas (stale-task triage, daily shutdown ritual, weekly
-review, checklist templates) aren't listed — don't re-propose them. A genuinely new idea
-either slots in at the end after owner vetting, or goes to DECISIONS.md's
-Open Questions unvetted.
+review, checklist templates) aren't listed — don't re-propose them.
 
 **Parked permanently:** rethinking positional "done," sub-projects —
 see archive for why.
