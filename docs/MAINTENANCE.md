@@ -4,10 +4,25 @@ Scheduled maintenance routine, tailored to this repo. This is NOT a
 feature session: external behavior must remain identical. Read this whole
 file before touching code. Cadence: **every 3 minor versions.**
 
-**Current pointer** — last pass: v6.2.1 (2026-07-31, eighteenth run,
-run ahead of its normal cadence at owner request right after the
-animation-harmonization/installer/splash-icon polish pass). Next pass
-due: **after v6.5.0 ships**.
+**Current pointer** — last pass: v6.3.0 (2026-07-31, nineteenth through
+twenty-first runs — three cycles back-to-back as the close-out of active
+development, the day before real daily use began). Next pass due:
+**2026-11-01, or on the first bug hit in daily use, whichever comes
+first** — the "every 3 minor versions" cadence no longer applies now that
+minor versions have stopped: the project is in maintenance mode and
+there is no v6.4.0 planned (see ROADMAP.md).
+
+Those three cycles were deliberately scoped differently rather than run
+as the same checklist three times: (1) the standard Phase 1 checklist
+below, (2) an adversarial data-loss/data-integrity audit, (3) a
+real-world stability audit aimed at what degrades over weeks of
+continuous use rather than what's wrong on a fresh install. Cycles 2 and
+3 found materially more than cycle 1 did — including a backup system
+that could not restore any backup containing an attachment, and the fact
+that making the desktop app tray-resident had silently disabled
+automatic backups and both retention prunes (they only ran at app
+start). **If a future pass is ever run in anger, use that scoping, not
+three identical sweeps.**
 This is the only tracker state that
 lives in this file; the full narrative history of every past pass is in
 [archive/changelog-archive.md](archive/changelog-archive.md)'s

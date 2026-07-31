@@ -17,6 +17,50 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v6.3.0
+
+### New
+- The Windows app now lives in your system tray. Closing the window tucks
+  it away instead of quitting, so reminders and phone sync keep working.
+  Press Ctrl+Alt+O from anywhere — even when Offlog isn't the app you're
+  looking at — to bring it straight back. Right-click the tray icon for
+  Quick Add, Settings, a "Start on login" switch, and Quit.
+- Tasks can now block other tasks. Set "Blocked by" on a task and it
+  won't show up in Focus until the thing it's waiting on is done. Its
+  card shows a small lock while it's still blocked, and Offlog won't let
+  you create a loop where two tasks wait on each other forever.
+
+### Fixed
+- **Please read this one if you have ever attached a file to a task:**
+  backups made before this version cannot be restored. A backup
+  containing any attachment would fail to import completely — not just
+  the file, the whole backup — and only said "Import failed. Please try
+  again." Backups made from this version on include your attachments and
+  restore properly. If you keep old backup files, make a fresh one now.
+- Restoring a backup also brings back your custom field setup and tag
+  colours, which used to be dropped — leaving restored tasks with custom
+  values that existed but showed up nowhere.
+- Automatic backups kept running on a computer that stays on for weeks.
+  Previously they only happened when the app started up, so leaving
+  Offlog open meant no new backups were being made, even though it still
+  showed a recent backup time.
+- A reminder that came due while the app was closed used to be thrown
+  away if it was more than an hour old. It now still reaches you for up
+  to a day.
+- Removing or dragging a status column changes which column counts as
+  "done" — that could silently mark a whole project's worth of tasks
+  complete, or bring finished ones back as overdue. Offlog now tells you
+  what will happen and asks first.
+- Clearing your history now asks for confirmation.
+- Offlog no longer starts a second copy of itself if you click its icon
+  while it's already running in the tray.
+- Deleting an attachment now actually frees up the space it was using.
+- Agenda notices when the day changes while the app is left open, so
+  "Overdue" and "Today" stay correct overnight.
+- Sync catching up after your phone was offline for a while is much
+  faster, and the app recovers on its own if it loses touch with the
+  database after the computer sleeps.
+
 ## v6.2.1
 
 No visible changes — a routine maintenance pass (internal cleanup only).

@@ -19,6 +19,7 @@ see the "Maintenance pass log" section at the bottom.
 
 | Version | Summary | Tag |
 |---|---|---|
+| 5.8.0 | `offlog-desktop` fully adopts NyxDB and drops real Apache CouchDB entirely — ~10x smaller installer, ~8x smaller install; two real NyxDB server bugs found live and fixed same-day; verified afterwards with a full scenario matrix (two-host detection, conflict create+resolve, offline/reconnect, uninstall/reinstall identity, multi-device merge). CouchDB-era naming cleaned out (`VITE_COUCH_*` → `VITE_SYNC_*`, `fetch-couchdb-win.ps1` → `fetch-nyxdb-win.ps1`); CodeQL least-privilege `permissions:` added to CI | `v5.8.0` |
 | 5.7.9 | Live-testing fallout from v5.7.6/5.7.7: reminder backlogs now stagger 15s apart instead of firing as a simultaneous burst; Kanban touch-drag and mouse-drag no longer share state (a stuck touch sequence could wedge drag entirely); desktop console-flash on launch fixed via redirecting the CouchDB sidecar's std handles; CustomFieldManager's field-type dropdown opens upward instead of off-screen; installer gained real branding + skipped the UAC prompt | `v5.7.9` |
 | 5.7.8 | Test release only -- version bump with no functional change, to exercise the new updater UX (v5.7.7) end-to-end from a real installed app | `v5.7.8` |
 | 5.7.7 | Desktop updater UX overhaul — real download progress, explicit restart prompt (no auto-restart), silent ~6h background check with a dismissible banner, `latest.json`'s release notes now pull from the real CHANGELOG row instead of being empty | `v5.7.7` |
@@ -399,6 +400,37 @@ output secret-leakage gate re-checked against a real `.env.local` —
 still clean. Dist size: 1.2MB, unchanged from the v5.8.2 baseline
 despite the whole v6.x feature batch landing since. No RISKY findings;
 no schema/sync/storage-format changes. Baselines re-verified clean
+
+Last passes: v6.3.0 (2026-07-31 — nineteenth, twentieth and twenty-first
+runs, three cycles back-to-back closing out active development on the eve
+of real daily use). Deliberately scoped differently instead of running
+one checklist three times, and the difference mattered: cycle 1 (the
+standard MAINTENANCE.md Phase 1 sweep) found a global-shortcut collision
+that would panic the app on startup, silently-swallowed notification-
+action failures, and three copy-pasted Kanban indicator loaders — all
+fixed, plus `npm audit` taken 2 → 0 and clippy to zero. Cycle 2, an
+adversarial data-loss audit, found the one that actually mattered: **no
+backup containing an attachment could be restored at all** — exports
+wrote attachment stubs with no bytes, and PouchDB rejects an entire
+`bulkDocs` batch on a `missing_stub`, so a single attached photo turned
+every backup file into a brick reporting only "Import failed." It also
+found restores silently dropping custom-field definitions and tag
+colours (orphaning restored `custom_values`), no structural validation
+on import (a project without `columns` imported fine, then crashed five
+views on `columns.at(-1)`), and status remove/reorder silently
+redefining project-wide done-ness with no warning. Cycle 3, a long-run
+stability audit, found that the *tray-resident change shipped that same
+day* had silently disabled automatic backups and both retention prunes
+(they only ran at app start, which used to happen daily and now might
+never), that the live change feed had no error handler and never
+restarted — going permanently deaf after a sleep/resume — that a sync
+burst fired one full reload per document, that `auto_compaction` was off
+so deleting an attachment freed no disk, that Agenda never noticed
+midnight, and that a second launch would fork a second NyxDB onto the
+same port and data directory. All fixed and verified; 5 new backup
+round-trip tests, 279 total. Lesson recorded for any future pass: scope
+successive cycles differently, because the second and third found
+materially more than the first.
 
 Last pass: v6.2.1 (2026-07-31 — eighteenth run, pulled forward at owner
 request right after the animation-harmonization/installer-branding/

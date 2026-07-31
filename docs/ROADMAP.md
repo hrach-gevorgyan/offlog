@@ -37,26 +37,25 @@ any change: does it make Offlog nicer to use, or just bigger?
 - **C5, landing page.** One plain GitHub Pages page. On hold, no energy
   for it right now. Not blocking anything.
 
-## Next up — the last two, then development stops
+## Next up — nothing. Development is done.
 
-**2026-07-31:** trimmed to just the two items below, plus C3 (Play
-Store listing, above) clearing whenever Google gets to it. Once both
-ship, that's the finite plan done — into maintenance mode (quarterly
-passes, Dependabot batches, patch fixes only when daily use actually
-hits something). Reordering needs an explicit owner call.
+**2026-07-31 — the finite plan is closed.** Both remaining items shipped
+in v6.3.0 (desktop tray-resident + global quick-capture shortcut, and
+"Blocked by" task dependencies), followed by three maintenance cycles
+specifically aimed at the things that break under real daily use rather
+than on a fresh install. From 2026-08-01 the author uses Offlog as their
+own primary task manager, and the project is in **maintenance mode**:
 
-1. **Desktop tray-resident + global quick-capture shortcut.** Keep
-   running in the system tray instead of quitting on window close, plus
-   a global hotkey (e.g. Ctrl+Alt+O) that pops a small quick-add/quick-
-   check window from anywhere, no need to have Offlog focused. Real
-   background-persistence work (autostart, tray icon, close-to-tray vs.
-   quit), Windows/Tauri-only. Also the thing that would make a live
-   calendar-subscribe feed viable again if it ships (see DECISIONS.md).
-   Medium-large.
-2. **"Blocked by," not just "related."** Task linking (v6.7.0) only does
-   loose "related" links — add a real dependency: this task can't start
-   until that one's done. Focus view should skip a task that's still
-   blocked, which it can't tell today. Medium.
+- Bugs hit in actual daily use get fixed. Nothing else does.
+- Quarterly maintenance passes and Dependabot batches continue (see the
+  bugfix/audit track below) — that's upkeep, not development.
+- **New features are not planned, and proposing them is not a
+  contribution to this project.** "Does daily use demand it?" is the
+  only question that reopens this section, and the answer has to come
+  from months of real use, not from an idea.
+
+The one thing still genuinely open is C3 (Play Store listing, above),
+and that's waiting on Google, not on any work here.
 
 **Deprioritized, not declined — future ideas if daily use ever demands
 them, not part of the finite plan** (moved off this list 2026-07-31 to
