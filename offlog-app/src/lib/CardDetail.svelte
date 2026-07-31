@@ -3,7 +3,7 @@
   import { fly, slide } from 'svelte/transition';
   import { popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, formatAttachmentSize } from './attachments';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { requestPermission, permissionState } from './notifications';
@@ -177,6 +177,22 @@
     relatedTasks = await getRelatedTasks(task._id!);
   }
 
+  // ROADMAP.md "Blocked by" — same immediate-write pattern as Related
+  // above, deliberately kept as its own separate block/field rather than
+  // folded into Related (v6.7.0 decision: Related stays non-directional
+  // and dependency-free).
+  let blockingTasks: TaskDoc[] = [];
+  let blockedByInput = '';
+  let blockedBySuggestions: TaskDoc[] = [];
+  let blockedByBusy = false;
+
+  async function loadBlockingTasks() {
+    blockingTasks = await getBlockingTasks(task._id!);
+  }
+
+  $: lastColByProject = Object.fromEntries($projects.map(p => [p._id, p.columns.at(-1)?.id]));
+  $: unresolvedBlockers = blockingTasks.filter(b => !isBlockerResolved(b, lastColByProject));
+
   // B16 (revised): field definitions are global (Settings → Organize →
   // Manage Custom Fields), not managed from here — CardDetail only reads
   // and fills in values. custom_values stays keyed by field id, not name
@@ -203,6 +219,7 @@
   let showChecklistBlock = false;
   let showCustomFieldsBlock = false;
   let showRelatedBlock = false;
+  let showBlockedByBlock = false;
   let showAttachmentsBlock = false;
   let showNotesBlock = false;
   // Cap how many custom fields show by default — a project with a dozen
@@ -221,7 +238,7 @@
   // changes.
   function formatExtrasSummary(
     reminder: string, repeat: string | null, interval: number, weekdaysOnly: boolean,
-    cl: typeof checklist, related: TaskDoc[], atts: TaskAttachment[], notes: string,
+    cl: typeof checklist, related: TaskDoc[], blocking: TaskDoc[], unresolvedCount: number, atts: TaskAttachment[], notes: string,
   ): string {
     const parts: string[] = [];
     if (repeat === 'daily' && weekdaysOnly) parts.push('Repeats weekdays');
@@ -230,11 +247,12 @@
     if (reminder) parts.push(`${fmtTime(new Date(reminder))} reminder`);
     if (cl.length) parts.push(`${cl.filter(i => i.done).length}/${cl.length} checklist`);
     if (related.length) parts.push(`${related.length} related`);
+    if (blocking.length) parts.push(unresolvedCount ? `blocked by ${unresolvedCount}` : `${blocking.length} blocked by (done)`);
     if (atts.length) parts.push(`${atts.length} attachment${atts.length > 1 ? 's' : ''}`);
     if (notes.trim()) parts.push('notes');
     return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, attachments, notes';
   }
-  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, attachments, body);
+  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, blockingTasks, unresolvedBlockers.length, attachments, body);
 
   // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
   // visible controls (3 flat footer buttons + a "Show history" text
@@ -262,7 +280,7 @@
   onMount(async () => {
     modalOpen.set(true);
     [allTags, projectTags, customFields] = await Promise.all([getAllTags(), getAllTags(project._id), getCustomFieldDefs()]);
-    await loadRelatedTasks();
+    await Promise.all([loadRelatedTasks(), loadBlockingTasks()]);
   });
   onDestroy(() => modalOpen.set(false));
 
@@ -336,6 +354,15 @@
     }
   }
 
+  $: {
+    const q = blockedByInput.trim();
+    if (q) {
+      searchTasksForLinking(q, task._id!, blockingTasks.map(t => t._id!)).then(r => blockedBySuggestions = r);
+    } else {
+      blockedBySuggestions = [];
+    }
+  }
+
   function projectNameFor(t: TaskDoc): string {
     return $projects.find(p => p._id === t.project_id)?.name ?? '—';
   }
@@ -363,6 +390,34 @@
       showError('Could not remove that link. Please try again.');
     } finally {
       relatedBusy = false;
+    }
+  }
+
+  async function addBlockedBy(otherId: string) {
+    blockedByInput = '';
+    blockedBySuggestions = [];
+    blockedByBusy = true;
+    try {
+      await linkBlockedBy(task._id!, otherId);
+      await loadBlockingTasks();
+    } catch (e) {
+      showError(e instanceof Error && e.message === 'circular dependency'
+        ? 'That would create a circular dependency.'
+        : 'Could not link that task. Please try again.');
+    } finally {
+      blockedByBusy = false;
+    }
+  }
+
+  async function removeBlockedBy(otherId: string) {
+    blockedByBusy = true;
+    try {
+      await unlinkBlockedBy(task._id!, otherId);
+      await loadBlockingTasks();
+    } catch {
+      showError('Could not remove that link. Please try again.');
+    } finally {
+      blockedByBusy = false;
     }
   }
 
@@ -819,6 +874,45 @@
                   <div class="tag-suggestions">
                     {#each relatedSuggestions as s (s._id)}
                       <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+
+          <div class="extra-block">
+            <button type="button" class="extra-block-toggle" on:click={() => showBlockedByBlock = !showBlockedByBlock} aria-expanded={showBlockedByBlock}>
+              <span class="field-label">
+                Blocked by{#if blockingTasks.length} <span class="checklist-progress" class:blocked-badge-active={unresolvedBlockers.length}>{blockingTasks.length}</span>{/if}
+              </span>
+              <svg class="section-chevron" class:open={showBlockedByBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
+            </button>
+            {#if showBlockedByBlock}
+              <div class="extra-block-body related-field" transition:slide={{ duration: 160 }}>
+                {#each blockingTasks as bt (bt._id)}
+                  {@const resolved = isBlockerResolved(bt, lastColByProject)}
+                  <div class="related-row" class:related-deleted={bt.deleted}>
+                    {#if bt.deleted}
+                      <span class="related-title">{bt.title} (deleted)</span>
+                    {:else}
+                      <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', bt._id!)}>{bt.title}</button>
+                    {/if}
+                    <span class="blocked-status" class:blocked-status-done={resolved}>{resolved ? 'Done' : 'Not done'}</span>
+                    <span class="related-proj">{projectNameFor(bt)}</span>
+                    <button type="button" class="checklist-remove" on:click={() => removeBlockedBy(bt._id!)} disabled={blockedByBusy} aria-label="Remove dependency">×</button>
+                  </div>
+                {/each}
+                <input
+                  class="checklist-input"
+                  bind:value={blockedByInput}
+                  placeholder="This task can't start until…"
+                  disabled={blockedByBusy}
+                />
+                {#if blockedBySuggestions.length}
+                  <div class="tag-suggestions">
+                    {#each blockedBySuggestions as s (s._id)}
+                      <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addBlockedBy(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
                     {/each}
                   </div>
                 {/if}
@@ -1296,6 +1390,17 @@
     text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
   }
   .related-deleted .related-title { color: var(--faint); font-style: italic; }
+
+  /* "Blocked by" reuses .related-row/.related-proj above — only the
+     done/not-done status pill and the badge's active (still-blocking)
+     tint are new. */
+  .blocked-status {
+    font-size: .68rem; font-weight: 700; white-space: nowrap;
+    padding: 1px 7px; border-radius: 999px;
+    color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent);
+  }
+  .blocked-status-done { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .blocked-badge-active { color: var(--danger); }
 
   .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
   .checklist-progress { color: var(--accent); font-weight: 600; margin-left: 4px; }

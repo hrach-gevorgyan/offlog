@@ -5,7 +5,7 @@
   import { cubicOut } from 'svelte/easing';
   import { popScale } from './motion';
   import type { ProjectDoc, TaskDoc } from './types';
-  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, getTagColorOverrides, subscribe } from './db';
+  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, getTaskIdsBlocked, getTagColorOverrides, subscribe } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
@@ -486,6 +486,13 @@
     return subscribe(() => { getTaskIdsWithRelatedLinks().then(ids => relatedIds = ids); });
   });
 
+  // ROADMAP.md "Blocked by" — same cheap-set pattern as relatedIds above.
+  let blockedIds = new Set<string>();
+  onMount(() => {
+    getTaskIdsBlocked().then(ids => blockedIds = ids);
+    return subscribe(() => { getTaskIdsBlocked().then(ids => blockedIds = ids); });
+  });
+
   onMount(() => {
     getTagColorOverrides().then(o => tagColorOverrides = o);
     return subscribe(() => { getTagColorOverrides().then(o => tagColorOverrides = o); });
@@ -666,6 +673,11 @@
                      2026-07-28: "move related button to close to date"). -->
                 <span class="meta-badge related-badge" title="Has related tasks">
                   <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
+                </span>
+              {/if}
+              {#if blockedIds.has(task._id!)}
+                <span class="meta-badge blocked-badge" title="Blocked by another task">
+                  <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="10" height="6" rx="1.5"/><path d="M4.5 6V4a2.5 2.5 0 0 1 5 0v2"/></svg>
                 </span>
               {/if}
               {#if task.checklist?.length}
@@ -956,6 +968,7 @@
   }
   .checklist-bar-fill { display: block; height: 100%; background: var(--success); border-radius: 2px; }
   .related-badge, .recur-badge { padding: .18rem .4rem; }
+  .blocked-badge { padding: .18rem .4rem; color: var(--danger); }
 
   /* redesign/v6, follow-up critique: tags were all identical gray
      (Tag Homogeneity) -- each tag now gets a consistent soft tint via

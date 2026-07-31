@@ -16,6 +16,7 @@ import db, {
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
   getCustomFieldDefs, addCustomFieldDef, updateCustomFieldDef, removeCustomFieldDef,
   getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask,
+  getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, getTaskIdsBlocked, getOpenTasksForFocusPicker,
   searchAllTasks,
   addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK,
   skipRecurrence,
@@ -1637,5 +1638,125 @@ describe('task linking (v6.7.0, related-only, non-directional)', () => {
 
     const results = await searchTasksForLinking('login', a._id!, []);
     expect(results.map(t => t._id)).toEqual([b._id]);
+  });
+});
+
+describe('"Blocked by" task dependencies (ROADMAP.md)', () => {
+  beforeEach(seedSpace);
+
+  it('linkBlockedBy stores the dependency directionally, never mirrored onto the blocker', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+
+    await linkBlockedBy(a._id!, b._id!); // a can't start until b is done
+
+    const aDoc = await db.get<any>(a._id!);
+    const bDoc = await db.get<any>(b._id!);
+    expect(aDoc.blocked_by).toEqual([b._id]);
+    expect(bDoc.blocked_by ?? []).toEqual([]);
+
+    expect((await getBlockingTasks(a._id!)).map(t => t._id)).toEqual([b._id]);
+    expect(await getBlockingTasks(b._id!)).toEqual([]); // not bidirectional, unlike related
+  });
+
+  it('linkBlockedBy is idempotent and refuses self-blocking', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+
+    await linkBlockedBy(a._id!, b._id!);
+    await linkBlockedBy(a._id!, b._id!); // repeat -- must not duplicate
+    await linkBlockedBy(a._id!, a._id!); // self -- must no-op
+
+    const aDoc = await db.get<any>(a._id!);
+    expect(aDoc.blocked_by).toEqual([b._id]);
+  });
+
+  it('linkBlockedBy throws on a direct cycle (A blocks B, B tries to block A)', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+
+    await linkBlockedBy(a._id!, b._id!); // a blocked by b
+    await expect(linkBlockedBy(b._id!, a._id!)).rejects.toThrow(); // b blocked by a would cycle
+
+    const bDoc = await db.get<any>(b._id!);
+    expect(bDoc.blocked_by ?? []).toEqual([]); // rejected write never landed
+  });
+
+  it('linkBlockedBy throws on a transitive cycle (A blocked by B blocked by C, C tries to block A)', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    const c = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task C');
+
+    await linkBlockedBy(a._id!, b._id!); // a blocked by b
+    await linkBlockedBy(b._id!, c._id!); // b blocked by c
+    await expect(linkBlockedBy(c._id!, a._id!)).rejects.toThrow(); // c blocked by a would close the loop
+  });
+
+  it('unlinkBlockedBy removes the dependency', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    await linkBlockedBy(a._id!, b._id!);
+
+    await unlinkBlockedBy(a._id!, b._id!);
+
+    expect(await getBlockingTasks(a._id!)).toEqual([]);
+  });
+
+  it('getBlockingTasks includes a soft-deleted blocker (shown as deleted, not dropped)', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    await linkBlockedBy(a._id!, b._id!);
+
+    await deleteTask(b._id!); // soft delete only
+
+    const blocking = await getBlockingTasks(a._id!);
+    expect(blocking).toHaveLength(1);
+    expect(blocking[0].deleted).toBe(true);
+  });
+
+  it('isBlockerResolved: false while the blocker sits outside the last column, true once moved there, true if soft-deleted', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    const lastColByProject = { [project._id]: project.columns.at(-1)!.id };
+
+    expect(isBlockerResolved(b, lastColByProject)).toBe(false);
+
+    const doneB = { ...b, column_id: project.columns.at(-1)!.id };
+    expect(isBlockerResolved(doneB, lastColByProject)).toBe(true);
+
+    const deletedB = { ...b, deleted: true };
+    expect(isBlockerResolved(deletedB, lastColByProject)).toBe(true);
+  });
+
+  it('getTaskIdsBlocked flags only tasks with an unresolved blocker, and clears once the blocker is done', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    await linkBlockedBy(a._id!, b._id!);
+
+    expect((await getTaskIdsBlocked()).has(a._id!)).toBe(true);
+
+    await updateTask(b._id!, { column_id: project.columns.at(-1)!.id }); // mark b done
+
+    expect((await getTaskIdsBlocked()).has(a._id!)).toBe(false);
+  });
+
+  it('getOpenTasksForFocusPicker excludes a task with an unresolved blocker, includes it once unblocked', async () => {
+    const project = await createProject('space:unsorted', 'Deps Project');
+    const a = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task A');
+    const b = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Task B');
+    await linkBlockedBy(a._id!, b._id!);
+
+    expect((await getOpenTasksForFocusPicker()).map(t => t._id)).not.toContain(a._id);
+
+    await updateTask(b._id!, { column_id: project.columns.at(-1)!.id }); // mark b done
+
+    expect((await getOpenTasksForFocusPicker()).map(t => t._id)).toContain(a._id);
   });
 });

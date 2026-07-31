@@ -390,7 +390,8 @@ export function setAutoUpdateCheckEnabled(enabled: boolean) {
   localStorage.setItem(AUTO_UPDATE_CHECK_KEY, String(enabled));
 }
 
-// B47 — Agenda's week view and DeadlinesView's "this week" grouping
+// B47 — Agenda's Month view (day-of-week column order) and DeadlinesView's
+// "this week" grouping
 // assumed a fixed Sunday week start (`d.getDate() - d.getDay()`, and
 // `getDay()` is 0-indexed from Sunday). Per-device, like the reminder
 // time above — this is a personal display preference, not data, so it

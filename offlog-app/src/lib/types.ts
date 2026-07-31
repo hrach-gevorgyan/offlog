@@ -134,6 +134,17 @@ export interface TaskDoc {
   // time instead of mirror-written to both docs. Absent/undefined on old
   // docs = no links, same as an empty array.
   related?: string[];
+  // ROADMAP.md "'Blocked by,' not just 'related'" — a real dependency,
+  // unlike `related` above: this task can't start until every task
+  // named here is done. Directional (stored only on the blocked task,
+  // never mirrored onto the blocker) and deliberately separate from
+  // `related` per the v6.7.0 decision not to overload it with
+  // dependency semantics. "Done" is computed at read time the same way
+  // everywhere else does — column_id equal to the blocker's own
+  // project's last column — not a stored boolean, so it can never drift
+  // out of sync with the blocker's actual status. Absent/undefined =
+  // no dependencies, same as an empty array.
+  blocked_by?: string[];
   // v6.8.0 — file attachments. The actual bytes live in PouchDB's own
   // `_attachments` map (native attachment support -- rides the existing
   // sync/replication with zero new code, dedupes unchanged content by

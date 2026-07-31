@@ -23,6 +23,10 @@ vi.mock('../src/lib/db', () => ({
   searchTasksForLinking: vi.fn().mockResolvedValue([]),
   linkRelatedTask: vi.fn().mockResolvedValue(undefined),
   unlinkRelatedTask: vi.fn().mockResolvedValue(undefined),
+  getBlockingTasks: vi.fn().mockResolvedValue([]),
+  linkBlockedBy: vi.fn().mockResolvedValue(undefined),
+  unlinkBlockedBy: vi.fn().mockResolvedValue(undefined),
+  isBlockerResolved: vi.fn().mockReturnValue(false),
 }));
 
 const reloadTasks = vi.fn().mockResolvedValue(undefined);

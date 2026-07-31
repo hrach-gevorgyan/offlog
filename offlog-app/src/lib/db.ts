@@ -1216,6 +1216,98 @@ export async function unlinkRelatedTask(taskId: string, otherId: string): Promis
   if (b?.related?.includes(taskId)) await updateTask(otherId, { related: b.related.filter(id => id !== taskId) });
 }
 
+// ── Blocked by ───────────────────────────────────────────────────────────────
+// ROADMAP.md "'Blocked by,' not just 'related'" — a real, directional
+// dependency (unlike `related` above, which is deliberately non-
+// directional and dependency-free per the v6.7.0 decision). Stored only on
+// the blocked task's own `blocked_by` array, never mirrored onto the
+// blocker doc.
+
+// Same soft-delete-friendly resolution as getRelatedTasks() — a blocker
+// that's been soft-deleted still resolves so the UI can show "(deleted)"
+// rather than silently dropping the link; only a genuinely purged task
+// (404) is filtered out.
+export async function getBlockingTasks(taskId: string): Promise<TaskDoc[]> {
+  const task = await getTaskById(taskId);
+  const ids = task?.blocked_by ?? [];
+  if (!ids.length) return [];
+  const resolved = await Promise.all(ids.map(id => getTaskById(id)));
+  return resolved.filter((t): t is TaskDoc => t !== null);
+}
+
+// "Done" is positional (column_id === the blocker's own project's last
+// column) — computed here at read time, same rule as every other done-
+// check in this file, so a blocker's status can never drift out of sync
+// with a separately-stored boolean.
+export function isBlockerResolved(blocker: TaskDoc, lastColByProject: Record<string, string | undefined>): boolean {
+  if (blocker.deleted) return true; // a deleted blocker can no longer hold anything up
+  const lastCol = lastColByProject[blocker.project_id];
+  return lastCol !== undefined && blocker.column_id === lastCol;
+}
+
+function computeBlockedTaskIds(all: TaskDoc[], lastColByProject: Record<string, string | undefined>): Set<string> {
+  const byId = new Map(all.map(t => [t._id!, t]));
+  const blocked = new Set<string>();
+  for (const t of all) {
+    if (!t.blocked_by?.length) continue;
+    const stillBlocked = t.blocked_by.some(id => {
+      const blocker = byId.get(id);
+      return blocker && !isBlockerResolved(blocker, lastColByProject);
+    });
+    if (stillBlocked) blocked.add(t._id!);
+  }
+  return blocked;
+}
+
+// Cheap board/list-card indicator, same pattern as getTaskIdsWithRelatedLinks
+// above — one full scan instead of a per-card query.
+export async function getTaskIdsBlocked(): Promise<Set<string>> {
+  const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
+  const lastColByProject = Object.fromEntries(allProjects.map(p => [p._id, p.columns.at(-1)?.id]));
+  return computeBlockedTaskIds(all, lastColByProject);
+}
+
+// Walks blockerId's own `blocked_by` chain looking for taskId — if found,
+// linking blockerId onto taskId would close a cycle (taskId waiting on
+// blockerId waiting on ... waiting on taskId, which can never resolve).
+// A plain visited-set DFS rather than anything cleverer; task dependency
+// graphs here are small and shallow by construction (a personal task
+// manager, not a project-scheduling tool).
+function wouldCreateCycle(taskId: string, blockerId: string, byId: Map<string, TaskDoc>): boolean {
+  const visited = new Set<string>();
+  const stack = [blockerId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (id === taskId) return true;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    for (const next of byId.get(id)?.blocked_by ?? []) stack.push(next);
+  }
+  return false;
+}
+
+// Immediate-write, same as linkRelatedTask above. Throws (rather than
+// silently no-op'ing) on a cycle specifically, so the UI can show a
+// distinct "that would create a circular dependency" message instead of
+// the generic failure toast every other write error gets.
+export async function linkBlockedBy(taskId: string, blockerId: string): Promise<void> {
+  if (taskId === blockerId) return;
+  const task = await getTaskById(taskId);
+  if (!task) return;
+  if (task.blocked_by?.includes(blockerId)) return;
+  const all = await getAllTasksRaw();
+  const byId = new Map(all.map(t => [t._id!, t]));
+  if (wouldCreateCycle(taskId, blockerId, byId)) throw new Error('circular dependency');
+  await updateTask(taskId, { blocked_by: [...(task.blocked_by ?? []), blockerId] });
+}
+
+export async function unlinkBlockedBy(taskId: string, blockerId: string): Promise<void> {
+  const task = await getTaskById(taskId);
+  if (task?.blocked_by?.includes(blockerId)) {
+    await updateTask(taskId, { blocked_by: task.blocked_by.filter(id => id !== blockerId) });
+  }
+}
+
 // `overrides` lets a caller (Quick Add's NLP parser, or the recurring-task
 // spawner below) set more than just the title in the same write as
 // creation, instead of a create() immediately followed by an update() --
@@ -1889,8 +1981,13 @@ export async function getOpenTasksForFocusPicker(): Promise<(TaskDoc & { project
   // archived project's leftover done tasks would resolve lastColOf() to
   // undefined and read as "not done" here, making them pickable in Focus.
   const notDone = (t: TaskDoc) => !t.deleted && !t.archived && !!projCache[t.project_id] && t.column_id !== lastColOf(t.project_id);
+  // ROADMAP.md "Blocked by" — a task still waiting on an unresolved
+  // dependency can't be picked up today, so it never even reaches the
+  // picker list (not just visually flagged once selected).
+  const lastColByProject = Object.fromEntries(allProjects.map(p => [p._id, p.columns.at(-1)?.id]));
+  const blockedIds = computeBlockedTaskIds(all, lastColByProject);
   return all
-    .filter(notDone)
+    .filter(t => notDone(t) && !blockedIds.has(t._id!))
     .map(t => ({ ...t, project_name: projCache[t.project_id]?.name }))
     .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''));
 }
