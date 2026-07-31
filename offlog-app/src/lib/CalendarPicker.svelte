@@ -218,7 +218,7 @@
   .cal-day {
     aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
     background: none; border: none; border-radius: 6px; cursor: pointer;
-    font-size: .78rem; color: var(--text); transition: background .1s, color .1s;
+    font-size: .78rem; color: var(--text); transition: background .12s, color .12s;
   }
   .cal-day:hover { background: var(--hover); }
   .cal-day.today { color: var(--accent); font-weight: 700; }

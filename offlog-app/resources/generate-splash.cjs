@@ -50,11 +50,16 @@ async function splashAt(width, height) {
 // safe-zone convention — stacking two rounds of padding shrinks an
 // already-padded foreground-only image well below where it reads as a
 // normal logo. Fix: a dedicated splash-only icon, transparent background
-// (the system composites it over windowSplashScreenBackground itself),
-// mark filling nearly the whole canvas instead of the 66% launcher ratio,
-// so after the API's own inset it lands at a normal, legible size.
+// (the system composites it over windowSplashScreenBackground itself).
+// First attempt filled the mark to 92% of canvas expecting the API's own
+// inset to bring it back down — overshot the other way (owner-reported
+// live testing, 2026-07-31: edges truncated by the API's circular mask,
+// oversized). 78% sits between the 66% launcher ratio (too small on its
+// own here) and 92% (too large) — split the difference instead of
+// re-guessing blind; re-verify on a real device before assuming this is
+// the final number.
 async function splashIcon(size) {
-  const markSize = Math.round(size * 0.92);
+  const markSize = Math.round(size * 0.78);
   const mark = await whiteSilhouette(markSize);
   const offset = Math.round((size - markSize) / 2);
   return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })

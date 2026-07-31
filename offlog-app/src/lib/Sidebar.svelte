@@ -196,7 +196,7 @@
       showTimeTravel = true;
     } catch (e) {
       timeTravelActive = false;
-      showError('Could not open Time Travel — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Time Travel. Please try again.');
     }
   }
   function onTimeTravelClosed() { showTimeTravel = false; timeTravelActive = false; }
@@ -214,7 +214,7 @@
       showTrash = true;
     } catch (e) {
       trashActive = false;
-      showError('Could not open Recycle — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Recycle. Please try again.');
     }
   }
   function onTrashClosed() { showTrash = false; trashActive = false; }
@@ -233,7 +233,7 @@
       showSettings = true;
     } catch (e) {
       settingsActive = false;
-      showError('Could not open Settings — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Settings. Please try again.');
     }
   }
   function onSettingsClosed() { showSettings = false; settingsActive = false; }
@@ -987,7 +987,7 @@
      active adds a second, more noticeable cue without any new color. */
   .space-header.active { color: var(--text); }
   .space-header.active .space-name { font-weight: 700; }
-  .space-chevron { flex-shrink: 0; color: var(--faint); transition: transform .18s ease, color .12s; }
+  .space-chevron { flex-shrink: 0; color: var(--faint); transition: transform .12s ease, color .12s; }
   .space-chevron.open { transform: rotate(90deg); }
   .space-icon {
     width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;

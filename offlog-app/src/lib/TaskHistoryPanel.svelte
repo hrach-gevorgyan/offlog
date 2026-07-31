@@ -45,7 +45,7 @@
 
 <div class="history">
   {#if !loaded}
-    <div class="history-empty">Loading…</div>
+    <div class="history-empty"><span class="spinner"></span>Loading…</div>
   {:else if history.length === 0}
     <div class="history-empty">No history recorded.</div>
   {:else}
@@ -67,7 +67,7 @@
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     overflow: hidden; font-size: .78rem;
   }
-  .history-empty { padding: 10px 12px; color: var(--faint); }
+  .history-empty { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: var(--faint); }
   .history-row {
     display: flex; align-items: flex-start; gap: 8px;
     padding: 7px 10px; border-bottom: 1px solid var(--border);

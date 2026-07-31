@@ -627,7 +627,7 @@
       showSpaceManager = true;
     } catch (e) {
       spaceManagerActive = false;
-      showError('Could not open Spaces — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Spaces. Please try again.');
     }
   }
   function onSpaceManagerClosed() { showSpaceManager = false; spaceManagerActive = false; }
@@ -645,7 +645,7 @@
       showTagManager = true;
     } catch (e) {
       tagManagerActive = false;
-      showError('Could not open Tags — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Tags. Please try again.');
     }
   }
   function onTagManagerClosed() { showTagManager = false; tagManagerActive = false; }
@@ -663,7 +663,7 @@
       showCustomFieldManager = true;
     } catch (e) {
       customFieldManagerActive = false;
-      showError('Could not open Custom Fields — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Custom Fields. Please try again.');
     }
   }
   function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
@@ -682,7 +682,7 @@
       showArchivedProjectsManager = true;
     } catch (e) {
       archivedProjectsManagerActive = false;
-      showError('Could not open Archived Projects — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to open Archived Projects. Please try again.');
     }
   }
   function onArchivedProjectsManagerClosed() { showArchivedProjectsManager = false; archivedProjectsManagerActive = false; }
@@ -1943,7 +1943,7 @@
   }
   .theme-seg-btn {
     padding: .35rem .75rem; border: none; background: var(--surface); color: var(--muted);
-    font-size: .8rem; font-weight: 500; cursor: pointer; transition: background .15s, color .15s;
+    font-size: .8rem; font-weight: 500; cursor: pointer; transition: background .12s, color .12s;
   }
   .theme-seg-btn + .theme-seg-btn { border-left: 1px solid var(--border-strong); }
   .theme-seg-btn:hover { background: var(--hover); }

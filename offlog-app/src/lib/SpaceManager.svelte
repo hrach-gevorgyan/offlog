@@ -99,7 +99,7 @@
     try {
       await deleteSpace(s._id);
     } catch (e: any) {
-      showError(e?.message ?? 'Failed to delete space. Please try again.');
+      showError('Failed to delete space. Please try again.');
     }
   }
 
@@ -276,7 +276,7 @@
   .icon-opt {
     width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
     background: none; border: none; border-radius: 6px; cursor: pointer;
-    color: var(--muted); transition: background .1s, color .1s;
+    color: var(--muted); transition: background .12s, color .12s;
   }
   .icon-opt:hover { background: var(--hover); color: var(--text); }
   .icon-opt.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
@@ -285,7 +285,7 @@
   .name-btn {
     flex: 1; text-align: left; background: none; border: none; cursor: pointer;
     font-size: 14px; color: var(--text); padding: .3rem .4rem; border-radius: 6px;
-    transition: background .1s;
+    transition: background .12s;
   }
   .name-btn:hover { background: var(--hover); }
 
@@ -299,7 +299,7 @@
   .reorder-btns button {
     background: none; border: none; cursor: pointer; color: var(--faint);
     padding: .25rem .4rem; border-radius: 6px; font-size: 13px;
-    transition: background .1s, color .1s;
+    transition: background .12s, color .12s;
   }
   .reorder-btns button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
   .reorder-btns button:disabled { opacity: .3; cursor: default; }
@@ -307,7 +307,7 @@
   .delete-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    flex-shrink: 0; transition: background .1s, color .1s;
+    flex-shrink: 0; transition: background .12s, color .12s;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 

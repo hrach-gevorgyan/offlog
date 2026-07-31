@@ -163,7 +163,7 @@
 
   <div class="tt-body" bind:this={bodyEl}>
     {#if loading && logs.length === 0}
-      <div class="empty">Loading…</div>
+      <div class="empty"><span class="spinner"></span>Loading…</div>
     {:else if groups.length === 0}
       <div class="empty">Nothing logged yet. Once you create or edit a task, it'll show up here.</div>
     {:else}
@@ -266,7 +266,7 @@
   .close-btn:hover { color: var(--text); background: var(--hover); }
 
   .tt-body { flex: 1; overflow-y: auto; padding: 8px 20px 20px; }
-  .empty { padding: 3rem; text-align: center; color: var(--faint); font-size: .88rem; }
+  .empty { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 3rem; text-align: center; color: var(--faint); font-size: .88rem; }
 
   .day-group { margin-bottom: 16px; }
   .day-head {

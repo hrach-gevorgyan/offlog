@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
+  import { slide } from 'svelte/transition';
   import { getAllTasksDue, updateTask, subscribe, getTaskById } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
@@ -220,7 +221,7 @@
         {/each}
       </div>
       {#if selectedDay}
-        <div class="month-day-panel">
+        <div class="month-day-panel" transition:slide={{ duration: 160 }}>
           <div class="month-day-panel-head">
             <span>{new Date(selectedDay + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
             <button class="month-day-close" on:click={() => selectedDay = null} aria-label="Close">×</button>
@@ -527,7 +528,7 @@
     height: 100%; overflow: hidden; padding: 5px 6px; text-align: left;
     background: var(--surface); border: none; cursor: pointer;
     border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    transition: background .1s;
+    transition: background .12s;
   }
   .month-cell:hover { background: var(--hover); }
   .month-cell:nth-child(7n) { border-right: none; }
@@ -596,7 +597,7 @@
     width: 100%; margin-top: 6px; padding: 9px 10px;
     border: 1px dashed var(--border-strong); border-radius: 10px;
     background: none; color: var(--muted); font-size: .82rem; font-weight: 500;
-    cursor: pointer; transition: background .1s, color .12s, border-color .12s;
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
   .month-add-card-btn:hover { background: var(--hover); color: var(--accent); border-color: var(--accent); }
 
@@ -663,7 +664,7 @@
     border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
-    transition: background .1s, box-shadow .1s;
+    transition: background .12s, box-shadow .12s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 

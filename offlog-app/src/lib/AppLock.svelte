@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
+  import { scrimFade } from './motion';
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import { verifyAppLockPin, clearAppLockPin, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, isNativePlatform } from '../config';
   import { trapFocus } from './focusTrap';
@@ -109,7 +110,7 @@
   }
 </script>
 
-<div class="lock-screen" use:trapFocus transition:fade={{ duration: 150 }}>
+<div class="lock-screen" use:trapFocus transition:fade={scrimFade}>
   {#if showRecovery}
     <div class="lock-card" class:shake={!!recoveryError}>
       <div class="lock-title">Enter your recovery code</div>

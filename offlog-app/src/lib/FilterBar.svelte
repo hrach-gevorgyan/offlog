@@ -8,6 +8,8 @@
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
   import type { CustomFieldFilter } from './utils';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
+  import { popScale } from './motion';
+  import { fly } from 'svelte/transition';
   import CustomSelect from './CustomSelect.svelte';
 
   export let project: ProjectDoc;
@@ -129,7 +131,7 @@
     {#if activeFilters > 0}<span class="filter-count">{activeFilters}</span>{/if}
   </button>
   {#if showFilterMenu}
-    <div class="col-menu filter-menu" style="top:{menuPos.top}px; left:{menuPos.left}px;">
+    <div class="col-menu filter-menu" style="top:{menuPos.top}px; left:{menuPos.left}px;" transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
       <div class="menu-label">Status</div>
       <CustomSelect options={statusOptions} bind:value={filterCol} />
 
@@ -232,7 +234,7 @@
     border: 1px solid var(--border-strong); border-radius: 7px;
     background: var(--bg); color: var(--muted);
     font-size: 12px; font-weight: 500; padding: 5px 9px;
-    cursor: pointer; transition: background .1s, color .1s, border-color .1s;
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
   .prio-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
   .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }

@@ -113,7 +113,7 @@
             </div>
             <span class="item-time">{timeAgo(t.updated_at)}</span>
             <button class="restore-btn" on:click={() => restore(t._id!)} title="Restore" aria-label="Restore">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="1 4 1 10 7 10"/>
                 <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
               </svg>
@@ -218,7 +218,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); padding: .3rem; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    transition: background .1s, color .1s; flex-shrink: 0;
+    transition: background .12s, color .12s; flex-shrink: 0;
   }
   .restore-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .forever-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }

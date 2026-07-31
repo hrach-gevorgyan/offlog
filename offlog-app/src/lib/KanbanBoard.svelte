@@ -274,7 +274,7 @@
       dispatch('projectUpdated', updated);
       await reloadTasks();
     } catch (e: any) {
-      showError(e?.message ?? 'Failed to remove status. Please try again.');
+      showError('Failed to remove status. Please try again.');
     }
   }
 
@@ -512,9 +512,9 @@
       on:dragover={(e) => onColDragOver(e, col.id)}
       on:drop={(e) => onColDrop(e, col.id)}
       on:dragend={() => { dragCol = null; dragOverCol = null; }}
-      in:scale={{ duration: 160, start: 0.95, easing: cubicOut }}
-      out:fade={{ duration: 130 }}
-      animate:flip={{ duration: 220, easing: cubicOut }}
+      in:scale={{ duration: 150, start: 0.92, easing: cubicOut }}
+      out:fade={{ duration: 120 }}
+      animate:flip={{ duration: 200, easing: cubicOut }}
     >
       <!-- Column header — this is the drag handle for reordering columns -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -796,7 +796,7 @@
     display: flex;
     flex-direction: column;
     border: 1.5px solid transparent;
-    transition: border-color .15s, background .15s;
+    transition: border-color .12s, background .12s;
   }
   .column.col-drag-over { border-color: var(--accent); }
 
@@ -847,7 +847,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; line-height: 1;
     border-radius: 5px; opacity: 0;
-    transition: opacity .15s, color .15s, background .12s;
+    transition: opacity .12s, color .12s, background .12s;
   }
   .col-rename:hover { color: var(--accent); background: var(--hover); }
   .col-header:hover .col-rename { opacity: 1; }
@@ -862,7 +862,7 @@
     gap: .55rem;
     min-height: 60px;
     border-radius: 0 0 var(--radius) var(--radius);
-    transition: background .1s;
+    transition: background .12s;
   }
   .card-list.cards-drag-over { background: color-mix(in srgb, var(--accent) 9%, var(--col-bg)); }
 
@@ -885,7 +885,7 @@
     box-shadow: 0 1px 2px rgba(0,0,0,.04);
     transition: box-shadow var(--dur) var(--ease),
                 transform var(--dur) var(--ease),
-                opacity .18s;
+                opacity var(--dur) var(--ease);
   }
   .card:hover {
     box-shadow: 0 4px 14px rgba(0,0,0,.10);
@@ -906,7 +906,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; padding: 0;
     background: none; border: none; border-radius: 5px; color: var(--faint);
-    opacity: 0; transition: opacity .15s, background .12s, color .12s;
+    opacity: 0; transition: opacity .12s, background .12s, color .12s;
     cursor: pointer;
   }
   .card:hover .card-menu-trigger, .card-menu-trigger:focus-visible { opacity: 1; }

@@ -164,7 +164,7 @@
   .delete-btn {
     flex-shrink: 0; background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    transition: background .1s, color .1s;
+    transition: background .12s, color .12s;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 </style>

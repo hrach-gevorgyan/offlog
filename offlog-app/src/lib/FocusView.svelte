@@ -448,7 +448,7 @@
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.05);
     transform: rotate(var(--tilt)) translateY(var(--jitter, 0px));
-    transition: transform .15s, box-shadow .15s, border-color .15s, background .15s;
+    transition: transform .12s, box-shadow .12s, border-color .12s, background .12s;
   }
   .note:hover { transform: rotate(0deg) translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
   .note.selected {
@@ -483,7 +483,7 @@
     border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
     margin-bottom: 8px; cursor: pointer;
-    transition: background .1s, box-shadow .1s;
+    transition: background .12s, box-shadow .12s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 

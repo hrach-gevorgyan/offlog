@@ -205,9 +205,9 @@
     {/if}
 
     {#if searching}
-      <div class="hint">Searching…</div>
+      <div class="hint"><span class="spinner"></span>Searching…</div>
     {:else if query.trim() && combinedLength === 0}
-      <div class="hint">No results for "{query}"</div>
+      <div class="hint hint-empty">No results for "{query}"</div>
     {/if}
   </div>
 
@@ -242,7 +242,7 @@
   .clear-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 13px; padding: 2px 5px;
-    border-radius: 4px; transition: color .1s;
+    border-radius: 4px; transition: color .12s;
   }
   .clear-btn:hover { color: var(--text); }
 
@@ -261,7 +261,7 @@
   .result-row {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 16px; cursor: pointer;
-    border-bottom: 1px solid var(--border); transition: background .08s;
+    border-bottom: 1px solid var(--border); transition: background .12s;
   }
   .result-row:last-child { border-bottom: none; }
   .result-row.selected { background: var(--hover); }
@@ -279,7 +279,12 @@
   .result-due { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
   .result-due.overdue { color: var(--danger); }
 
-  .hint { padding: 24px 16px; text-align: center; color: var(--faint); font-size: 13.5px; }
+  .hint { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 24px 16px; text-align: center; color: var(--faint); font-size: 13.5px; }
+  /* A terminal "nothing here" state, not a transient in-progress one —
+     same visual weight as every other view's true empty state (Trash,
+     Focus, Deadlines, Kanban, List all read distinctly muted/centered),
+     so it doesn't look like search is still spinning. */
+  .hint-empty { font-size: 14.5px; color: var(--muted); padding: 32px 16px; }
 
   .footer {
     display: flex; gap: 16px; padding: 8px 16px;

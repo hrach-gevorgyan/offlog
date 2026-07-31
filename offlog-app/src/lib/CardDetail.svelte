@@ -276,7 +276,7 @@
       }
       showHistory = true;
     } catch (e) {
-      showError('Could not load task history — ' + (e instanceof Error ? e.message : String(e)));
+      showError('Failed to load task history. Please try again.');
     } finally {
       loadingHistory = false;
     }
@@ -658,7 +658,7 @@
         <svg class="section-chevron" class:open={showExtras} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showExtras}
-        <div class="extras-panel" transition:slide={{ duration: 180 }}>
+        <div class="extras-panel" transition:slide={{ duration: 160 }}>
 
           <div class="extra-block">
             <button type="button" class="extra-block-toggle" on:click={() => showRepeatReminder = !showRepeatReminder} aria-expanded={showRepeatReminder}>
@@ -666,7 +666,7 @@
               <svg class="section-chevron" class:open={showRepeatReminder} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showRepeatReminder}
-              <div class="extra-block-body" transition:slide={{ duration: 150 }}>
+              <div class="extra-block-body" transition:slide={{ duration: 160 }}>
                 <div class="repeat-block">
                   <div class="repeat-row">
                     <div class="repeat-select-wrap" class:compact={!!recurrenceStr}>
@@ -727,7 +727,7 @@
               <svg class="section-chevron" class:open={showChecklistBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showChecklistBlock}
-              <div class="extra-block-body checklist-field" transition:slide={{ duration: 150 }}>
+              <div class="extra-block-body checklist-field" transition:slide={{ duration: 160 }}>
                 {#each checklist as item, i}
                   <div class="checklist-row">
                     <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
@@ -759,7 +759,7 @@
                 <svg class="section-chevron" class:open={showCustomFieldsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
               </button>
               {#if showCustomFieldsBlock}
-                <div class="extra-block-body custom-fields" transition:slide={{ duration: 150 }}>
+                <div class="extra-block-body custom-fields" transition:slide={{ duration: 160 }}>
                   {#each visibleFields as field (field.id)}
                     <label class="custom-field-label">
                       {field.name}
@@ -797,7 +797,7 @@
               <svg class="section-chevron" class:open={showRelatedBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showRelatedBlock}
-              <div class="extra-block-body related-field" transition:slide={{ duration: 150 }}>
+              <div class="extra-block-body related-field" transition:slide={{ duration: 160 }}>
                 {#each relatedTasks as rt (rt._id)}
                   <div class="related-row" class:related-deleted={rt.deleted}>
                     {#if rt.deleted}
@@ -834,7 +834,7 @@
               <svg class="section-chevron" class:open={showAttachmentsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showAttachmentsBlock}
-              <div class="extra-block-body attachments-field" transition:slide={{ duration: 150 }}>
+              <div class="extra-block-body attachments-field" transition:slide={{ duration: 160 }}>
                 {#each attachments as a (a.key)}
                   <div class="attachment-row">
                     <button type="button" class="attachment-open" on:click={() => openAttachment(a.key, a.filename)} title="Download {a.filename}">
@@ -874,7 +874,7 @@
               <svg class="section-chevron" class:open={showNotesBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showNotesBlock}
-              <div class="extra-block-body notes-wrap" transition:slide={{ duration: 150 }}>
+              <div class="extra-block-body notes-wrap" transition:slide={{ duration: 160 }}>
                 <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
                 {#if body.length > NOTES_SOFT_LIMIT}
                   <div class="notes-counter">{body.length} characters</div>
@@ -1113,7 +1113,7 @@
     border: 1px solid var(--border-strong); border-radius: 999px;
     font-size: .7rem; font-weight: 600; padding: 0 8px; cursor: pointer;
     white-space: nowrap;
-    transition: background .1s, color .1s, border-color .1s;
+    transition: background .12s, color .12s, border-color .12s;
   }
   .repeat-pill:hover { border-color: var(--accent); color: var(--text); }
   .repeat-pill.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -1194,7 +1194,7 @@
   .tag-remove {
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
     background: none; border: none; padding: 0;
-    transition: color .1s;
+    transition: color .12s;
   }
   .tag-remove:hover { color: var(--danger); }
   .tag-input {
@@ -1209,7 +1209,7 @@
   .tag-suggestion {
     background: var(--col-bg); color: var(--accent); border-radius: 5px;
     font-size: .78rem; font-weight: 500; padding: 2px 9px; cursor: pointer;
-    border: 1px solid var(--border); transition: background .1s;
+    border: 1px solid var(--border); transition: background .12s;
   }
   .tag-suggestion:hover { background: var(--hover); }
   .tag-suggestion-other { color: var(--muted); }
@@ -1309,12 +1309,12 @@
   }
   .checklist-check.done { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
   @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
-  .checklist-text { flex: 1; font-size: .84rem; color: var(--text); transition: color .15s; }
+  .checklist-text { flex: 1; font-size: .84rem; color: var(--text); transition: color .12s; }
   .checklist-text.done { color: var(--faint); text-decoration: line-through; }
   .checklist-remove {
     flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;
     color: var(--muted); background: none; border: none; padding: 0 2px;
-    transition: color .1s;
+    transition: color .12s;
   }
   .checklist-remove:hover { color: var(--danger); }
   .checklist-input {
@@ -1349,7 +1349,7 @@
   }
   .attach-file-btn {
     align-self: flex-start; font-size: .82rem; color: var(--accent); cursor: pointer;
-    padding: .3rem .2rem; border-radius: 6px; transition: background .1s;
+    padding: .3rem .2rem; border-radius: 6px; transition: background .12s;
     background: none; border: none; font-family: inherit;
   }
   .attach-file-btn:hover { background: var(--hover); }

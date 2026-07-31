@@ -607,6 +607,28 @@ powershell -ExecutionPolicy Bypass -File scripts/fetch-nyxdb-win.ps1   # once, o
 cargo tauri build   # → src-tauri/target/release/bundle/nsis/*.exe
 ```
 
+**Installer branding** (`tauri.conf.json`'s `bundle.windows.nsis`):
+`installerIcon`/`uninstallerIcon` point at the existing app `icon.ico`
+(setup.exe previously had no icon at all). `sidebarImage` is a
+brand-matched 24-bit BMP (dark `#181A20` background, indigo `#5457E0`
+mark) for the Welcome/Finish pages, generated from
+`offlog-app/resources/source-logo.svg` by
+`offlog-app/resources/generate-installer-art.cjs` (same manual, not-in-
+the-build-pipeline convention as `generate-icons.cjs`/`generate-splash.cjs`;
+re-run it and re-commit `installer-sidebar.bmp` whenever the logo or
+brand color changes). sharp has no BMP encoder, so that script hand-writes
+a minimal BITMAPFILEHEADER/BITMAPINFOHEADER — NSIS requires classic
+uncompressed 24-bit BMP specifically, nothing else. **No `headerImage`**:
+tried one, but NSIS renders it at native size in the header control's
+corner and fills the rest of that bar with the page's plain white
+background — there's no supported MUI2 define to recolor that remainder
+(`MUI_BGCOLOR`/`MUI_TEXTCOLOR` are a Classic-UI-only leftover, unread by
+Modern UI 2's Directory/Components/Install pages) — so a dark header
+image just clashes against white rather than reading as a themed banner.
+A fully dark installer wizard (every page, not just Welcome/Finish) would
+need custom compiled dialog resources replacing NSIS's own UI templates —
+real, but out of scope here; not attempted.
+
 **Content Security Policy** (`tauri.conf.json`'s `app.security.csp`):
 `script-src 'self'` (pre-paint dark-mode init lives in same-origin
 `public/theme-init.js`, no `'unsafe-inline'` needed); `style-src 'self'

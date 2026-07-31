@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { quickAddPop, scrimFade } from './motion';
+  import { quickAddPop, scrimFade, popScale } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask, findTasksByTitleInProject } from './db';
   import { closeOnBack } from './modalStack';
@@ -138,7 +138,7 @@
   </div>
 
   {#if showHelp}
-    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl} transition:fade={{ duration: 100 }}>
+    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl} transition:fade={{ duration: popScale.duration, easing: popScale.easing }}>
       <div class="help-title">Type it in plain text — Quick Add picks these out automatically:</div>
       <dl class="help-list">
         <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>

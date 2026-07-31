@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { fade, scale } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
-  import { scrimFade, toastFly } from './lib/motion';
+  import { scrimFade, toastFly, dialogScale, pageFade } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
@@ -503,21 +502,28 @@
 
     <main class="main">
       {#if showDashboard}
-        <DashboardView
-          on:menu={() => sidebarOpen = true}
-          on:openProject={(e) => {
-            showDashboard = false;
-            goToProject(e.detail);
-          }}
-          on:focus={goToFocus}
-          on:search={openSearch}
-          on:agenda={goToAgenda}
-        />
+        <div class="view-fade" transition:fade={pageFade}>
+          <DashboardView
+            on:menu={() => sidebarOpen = true}
+            on:openProject={(e) => {
+              showDashboard = false;
+              goToProject(e.detail);
+            }}
+            on:focus={goToFocus}
+            on:search={openSearch}
+            on:agenda={goToAgenda}
+          />
+        </div>
       {:else if showFocus}
-        <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
+        <div class="view-fade" transition:fade={pageFade}>
+          <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
+        </div>
       {:else if showDeadlines}
-        <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
+        <div class="view-fade" transition:fade={pageFade}>
+          <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
+        </div>
       {:else if $activeProject}
+      <div class="view-fade" transition:fade={pageFade}>
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
             <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -599,8 +605,10 @@
         {:else}
           <ListView project={$activeProject} tasks={$projectTasks} />
         {/if}
+      </div>
 
       {:else}
+        <div class="view-fade" transition:fade={pageFade}>
         <div class="empty-state">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
             <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -608,6 +616,7 @@
             </svg>
           </button>
           <span>Select or create a project.</span>
+        </div>
         </div>
       {/if}
     </main>
@@ -621,7 +630,7 @@
     <button class="retry-btn" on:click={retryInit}>Retry</button>
   </div>
 {:else}
-  <div class="loading">Loading…</div>
+  <div class="loading"><span class="spinner"></span>Loading…</div>
 {/if}
 
 <ConfirmDialog />
@@ -678,7 +687,7 @@
 {#if showShortcuts}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="scrim" on:click|self={closeShortcuts} transition:fade={scrimFade}>
-    <div class="shortcuts-panel" transition:scale={{ duration: 150, start: 0.96, easing: cubicOut }}>
+    <div class="shortcuts-panel" transition:scale={dialogScale}>
       <div class="shortcuts-head">
         <h3>Keyboard shortcuts</h3>
         <button class="shortcuts-close" on:click={closeShortcuts} aria-label="Close">✕</button>
@@ -732,6 +741,11 @@
     overflow: hidden;
   }
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); min-width: 0; }
+  /* Wraps each top-level view (Dashboard/Kanban/List/Agenda/Focus/empty-
+     state) so the page-fade transition has a single element to animate --
+     must mirror .main's own flex layout so the wrapped view still fills
+     the available height instead of shrinking to its content. */
+  .view-fade { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
   /* Mobile scrim */
   .mobile-scrim {
@@ -815,7 +829,7 @@
   .empty-state span { margin: auto; align-self: center; }
 
   .loading {
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
     height: 100dvh; color: var(--faint);
     font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
   }
@@ -858,7 +872,7 @@
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     box-shadow: 0 4px 16px rgba(0,0,0,.25);
     display: flex; align-items: center; justify-content: center;
-    transition: transform .15s, box-shadow .15s, opacity .15s;
+    transition: transform .12s, box-shadow .12s, opacity .12s;
   }
   .fab:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,.3); }
   .fab:active { transform: scale(.96); }

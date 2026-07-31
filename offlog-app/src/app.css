@@ -165,6 +165,19 @@ a { -webkit-tap-highlight-color: transparent; }
   z-index: 400;
 }
 
+/* shared loading spinner — every view's "Loading…"/"Searching…" text used
+   to just sit there inert (SettingsPanel's maintenance-pass steps were the
+   only place with an actual animated spinner). Global rather than
+   per-component since it's meant to be dropped into any view's existing
+   loading-text container as-is: `<span class="spinner"></span>`. */
+.spinner {
+  width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* calm scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {

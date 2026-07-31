@@ -119,7 +119,7 @@
   </div>
 
   {#if !data}
-    <div class="loading">Loading…</div>
+    <div class="loading"><span class="spinner"></span>Loading…</div>
   {:else}
     <div class="dash-body">
       <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -464,7 +464,7 @@
   .task-row {
     display: flex; align-items: stretch; gap: 9px;
     padding: 9px 12px; background: var(--surface);
-    cursor: pointer; transition: background .1s;
+    cursor: pointer; transition: background .12s;
   }
   .task-row:hover { background: var(--hover); }
   /* align-self:stretch, not a fixed height -- a wrapped (never
@@ -490,7 +490,7 @@
 
   .all-good { color: var(--faint); font-size: 13px; padding: 6px 0; }
   .no-projects { grid-column: 1 / -1; color: var(--faint); font-size: 13px; padding: 6px 0; }
-  .loading { padding: 3rem; color: var(--faint); font-family: var(--mono); font-size: .8rem; }
+  .loading { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 3rem; color: var(--faint); font-family: var(--mono); font-size: .8rem; }
 
   /* ── Responsive ── */
   @media (max-width: 900px) {
