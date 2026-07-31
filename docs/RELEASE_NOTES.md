@@ -17,6 +17,26 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v6.2.0
+
+### New
+- Recurring tasks can repeat every N days/weeks/months now, not just
+  every 1 — and daily repeats can be set to weekdays only, skipping
+  weekends automatically.
+- Filtering by a custom field now supports more than one at once — add
+  as many field filters as you like and they narrow the list together.
+- Custom fields can now be sorted by, not just filtered — click a
+  custom field's column header in List view.
+- Search now also finds tasks by an attached file's name, not just the
+  task's own title, tags, notes, or checklist.
+
+### Fixed
+- The Repeat section in a task's editor was reworked for clarity and to
+  fit properly on phone screens — same features, cleaner layout.
+- Month view: calendar rows no longer change height as you browse
+  between weeks; the "Today" button and the day-priority dots are
+  positioned more consistently.
+
 ## v6.1.0
 
 ### New
