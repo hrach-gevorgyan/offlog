@@ -208,6 +208,27 @@ fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Must be registered FIRST (plugin docs) so a second launch is
+        // rejected before it can start doing anything expensive.
+        //
+        // This became load-bearing the moment the window started closing to
+        // the tray (2026-07-31): the app can now be running with no visible
+        // window, so clicking the taskbar/Start shortcut again is the
+        // *natural* thing to do -- and every one of those launches used to
+        // start a whole second instance. Both instances read the same
+        // sync-host.json, so both spawned NyxDB against the same port and
+        // the same data directory, gave themselves a tray icon, advertised
+        // the same uuid over mDNS, and replicated against each other. Worse,
+        // terminate_nyxdb() can only kill the Job it owns, so quitting one
+        // left the other's sidecar running and holding the data dir.
+        // Autostart-on-login plus one manual click is the same collision
+        // with nobody watching.
+        //
+        // Now a second launch just surfaces the window that already exists
+        // and exits, which is also what the user actually wanted.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            bring_to_front(app);
+        }))
         // Owner-reported, 2026-07-16: the desktop app fell through to the
         // plain Web Notification API (same code path as a browser) for
         // reminders -- Tauri's embedded WebView2 has no default handler
