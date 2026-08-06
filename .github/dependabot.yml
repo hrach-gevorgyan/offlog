@@ -1,10 +1,47 @@
 version: 2
+
+# Grouped and monthly on purpose (2026-07-31). Two reasons:
+#
+# 1. ROADMAP.md's bugfix/audit track already states the real policy --
+#    "Dependabot: batched roughly monthly into whichever patch is next" --
+#    but this file still said weekly. Config now matches the documented
+#    intent instead of quietly contradicting it.
+#
+# 2. The project is in maintenance mode with one part-time maintainer.
+#    Six separate PRs in one batch (2026-07-31) is exactly the
+#    notification fatigue that stops a solo maintainer from reviewing
+#    *any* of them carefully -- and an ignored dependency PR is worse
+#    than a batched one. One PR per ecosystem per month is a review you
+#    actually do.
+#
+# Grouping covers minor + patch only. A **major** bump still opens its
+# own PR, because a major is the one that genuinely needs reading --
+# TypeScript 7 (ignored below) is the standing proof.
+#
+# Security advisories are NOT affected by any of this: Dependabot's
+# security updates are a separate mechanism and still open immediately,
+# off-schedule, which is what ROADMAP.md promises ("a security advisory
+# with a real fix ships immediately instead").
+#
+# Standing reminder for whoever reviews these: CI runs tsc + build +
+# vitest, but NOT `npx cap sync android`. Any bump touching build
+# tooling (TypeScript, Vite, Capacitor, Tauri) needs that run by hand --
+# a green checkmark is not sufficient evidence. See MAINTENANCE.md's
+# "Packaging paths" blind spot for the incident behind that rule.
+
 updates:
   - package-ecosystem: "npm"
     directory: "/offlog-app"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       # TypeScript 7's `requireTS` config loader breaks Capacitor CLI's
       # `npx cap sync android` (confirmed 2026-07-22, v5.7.3 release CI --
@@ -15,10 +52,24 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      github-actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "cargo"
     directory: "/offlog-desktop/src-tauri"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     open-pull-requests-limit: 5
+    groups:
+      cargo-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
