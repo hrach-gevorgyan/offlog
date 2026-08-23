@@ -21,8 +21,7 @@
   export let showFocus = false;
   export let open = false;
 
-  // ── Collapsible + resizable sidebar (owner-requested, 2026-07-30,
-  // ahead of the sidebar's own visual redesign pass) ──────────────────────
+  // ── Collapsible + resizable sidebar ─────────────────────────────────────
   // Per-device (localStorage), same reasoning as every other sidebar/list
   // preference in this app (expandedSpaces below, List view's saved
   // columns, etc.) — not synced, since a phone and a PC may reasonably
@@ -53,7 +52,7 @@
   // the full nav short of the same toggle. `collapsed` itself (the desktop
   // preference) stays untouched by viewport size -- only what's actually
   // rendered/toggleable is gated, so resizing back to desktop restores
-  // whatever the user last chose there (owner-flagged 2026-07-29).
+  // whatever the user last chose there.
   let isMobile = false;
   function checkMobile() { isMobile = window.innerWidth <= 768; }
   onMount(() => {
@@ -66,15 +65,14 @@
   // Collapsed rail's icons are meant for quick glancing/switching, not full
   // project browsing — clicking a space icon there expands back to the
   // full sidebar, opens that space, and jumps straight to its first
-  // project (owner feedback, 2026-07-30, 6th round) rather than expanding
-  // to an empty space header the user then has to click into again.
+  // project rather than expanding to an empty space header the user then
+  // has to click into again.
   //
-  // Owner feedback, 2026-07-30 (5th round): expanding used to just flip
-  // `collapsed` straight away, an instant width snap with no transition at
-  // all. `expanding` holds the rail's icons in a fading/lifting state
-  // (see .sidebar.expanding in <style>) for one width-transition's worth of
-  // time before the actual collapsed→expanded content swap happens, so the
-  // rail visibly opens instead of teleporting.
+  // `expanding` holds the rail's icons in a fading/lifting state (see
+  // .sidebar.expanding in <style>) for one width-transition's worth of
+  // time before the collapsed→expanded content swap, so the rail visibly
+  // opens instead of teleporting. Flipping `collapsed` directly snaps the
+  // width with no transition at all.
   let expanding = false;
   function expandToSpace(spaceId: string) {
     expanding = true;
@@ -113,7 +111,7 @@
   // handling lives in App.svelte's onKeydown, alongside its back-button
   // routing (closeSidebar) — the drawer's `open` state is bound two-way
   // from there, and closing it needs to go through that same routing
-  // (see modalStack.ts / ROADMAP.md A14), not set `open = false` directly
+  // (see modalStack.ts), not set `open = false` directly
   // here, which would desync the pushed history entry from what's visible.
 
   let showTimeTravel = false;
@@ -125,8 +123,8 @@
   let conflictCount = syncState.conflictCount;
   let newProjectName = '';
   let addingProjectFor: string | null = null;
-  // Owner-requested (2026-07-20) duplicate-name nudge — never blocks
-  // creation, just a dismissible-by-typing-something-else hint. Checked
+  // Duplicate-name nudge — never blocks creation, just a hint dismissed
+  // by typing something else. Checked
   // on every keystroke rather than debounced: findProjectsByName() is a
   // single in-memory array scan (getProjects() is already cached-cheap
   // at this app's scale), not worth debouncing.
@@ -139,7 +137,7 @@
     const spaceNames = matches.map(p => $spaces.find(s => s._id === p.space_id)?.name ?? 'another space');
     duplicateProjectHint = `A project named "${trimmed}" already exists in ${[...new Set(spaceNames)].join(', ')}.`;
   }
-  // B8: template mode is a separate explicit step (not folded into the
+  // Template mode is a separate explicit step (not folded into the
   // blur-to-submit input above) — the template CustomSelect's own click
   // would otherwise blur the name input and prematurely submit a blank
   // project before the user picks a template.
@@ -167,12 +165,11 @@
   // legitimate opens replenish it. Once history bottoms out, back() stops
   // firing popstate at all (browsers silently no-op there), and the
   // instance still waiting on that never-arriving popstate is stuck open
-  // forever with no working close control (owner-reported 2026-07-17,
-  // reproduced live after the first coalescing fix: a lingering
-  // opacity:0 scrim + panel that neither Escape, another scrim click, nor
-  // a manual history.back() could dismiss). Refusing to open a second
-  // instance until the first is fully gone makes that overlap impossible
-  // instead of trying to reconcile it after the fact.
+  // forever with no working close control — a lingering opacity:0 scrim +
+  // panel that neither Escape, a scrim click, nor a manual history.back()
+  // can dismiss. Refusing to open a second instance until the first is
+  // fully gone makes that overlap impossible rather than trying to
+  // reconcile it afterwards.
   let TimeTravelViewComp: typeof import('./TimeTravelView.svelte').default | null = null;
   let timeTravelActive = false;
   let timeTravelSession = 0;
@@ -183,10 +180,8 @@
   // does not expose a component's plain top-level functions through
   // bind:this the way Svelte 3/4 did -- without export, sidebarRef.
   // openTimeTravel is undefined and calling it throws, caught nowhere,
-  // so Ctrl+K's "Open Time Travel"/"Open Settings"/"Open Deleted" silently
-  // did nothing (found 2026-07-18 auditing Ctrl+K end-to-end; this
-  // predates today's other fixes -- unrelated latent bug, not a
-  // regression from them).
+  // so Ctrl+K's "Open Time Travel"/"Open Settings"/"Open Deleted" would
+  // silently do nothing.
   export async function openTimeTravel() {
     if (timeTravelActive) return;
     timeTravelActive = true;
@@ -250,10 +245,9 @@
     return subscribeDb(() => { loadBreakdown(); });
   });
 
-  // B59 (owner-flagged, 2026-07-20): a mobile-only user who's never
-  // paired a PC host structurally can't sync yet -- there's no URL to
-  // retry against, and clicking the sync button was previously just a
-  // silent no-op. Scoped to native/Android only: desktop web's
+  // A mobile-only user who has never paired a PC host structurally can't
+  // sync yet -- there's no URL to retry against, so the sync button would
+  // be a silent no-op. Scoped to native/Android only: desktop web's
   // DEFAULT_SYNC_URL always resolves to a real, potentially-working
   // loopback address even before any explicit setup (see config.ts), so
   // "no URL configured yet" isn't a meaningful signal there the way it
@@ -273,10 +267,9 @@
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
 
-  // Sync status is icon-only in the footer (owner feedback, 2026-07-30:
-  // "make them one row without any text just icons") -- the full message
-  // lives in this tooltip; only the icon's own glow (see .icon-btn-sync.*
-  // below) is visible without hovering.
+  // Sync status is icon-only in the footer -- the full message lives in
+  // this tooltip; only the icon's own glow (see .icon-btn-sync.* below)
+  // is visible without hovering.
   $: syncTooltip = $staleHostAlert
     ? `Paired host not found — a different Offlog host ("${$staleHostAlert.name}") is on this network. Re-pair from Settings → Sync.`
     : syncStatus === 'offline' ? 'Offline — will retry when back online'
@@ -284,12 +277,11 @@
     : syncStatus === 'error' ? (syncError ?? 'Sync error') + (retryCount > 1 ? ` (retry ${retryCount})` : '')
     : lastSynced ? `Synced ${fmtLastSynced(lastSynced)}` : 'Not synced yet';
 
-  // Owner feedback, 2026-07-30: "sync icon need to be very very very
-  // light glow highlighted about status, green synced, red error, blue
-  // syncing now, orange like there is conflicts". Mutually exclusive by
-  // construction (single derived value, not several independently-toggled
-  // classes) so there's never ambiguity about which color should win when
-  // more than one condition is true at once -- most urgent first: an
+  // Status color for the sync icon: green synced, red error, accent
+  // syncing, amber conflicts. Mutually exclusive by construction (a
+  // single derived value, not several independently-toggled classes) so
+  // there's never ambiguity about which color wins when more than one
+  // condition is true at once -- most urgent first: an
   // actual error beats "in progress", which beats a conflict needing
   // attention, which beats plain offline, which beats the default
   // all-clear green.
@@ -299,15 +291,14 @@
     : syncStatus === 'offline' ? 'offline'
     : 'synced';
 
-  // B34: pinned projects float to the top, same convention as
+  // Pinned projects float to the top, same convention as
   // TaskDoc.pinned elsewhere in the app — otherwise stable in whatever
   // order getProjects() already returns (by position).
   function projectsForSpace(spaceId: string, all: ProjectDoc[]): ProjectDoc[] {
     return all.filter(p => p.space_id === spaceId).sort((a, b) => (!!b.pinned) === (!!a.pinned) ? 0 : b.pinned ? 1 : -1);
   }
 
-  // Spaces + Projects merged into one collapsible tree (owner feedback,
-  // 2026-07-09 — sidebar felt overloaded as two separate flat lists).
+  // Spaces + Projects are one collapsible tree, not two flat lists.
   // Expand state is per-device (localStorage), not synced — same reasoning
   // as every other per-device sidebar/list preference in this app. The
   // active project's space always starts expanded even if the user
@@ -320,7 +311,7 @@
   // changing), never as a standing constraint — otherwise collapsing the
   // *currently* active space would immediately snap back open, since
   // expandedSpaces changing would itself re-trigger the same reactive
-  // check (the bug this replaced).
+  // check.
   let lastForceExpanded: string | null = null;
   onMount(() => {
     try {
@@ -359,15 +350,12 @@
     }
   }
 
-  // Real bug found live (2026-07-20, while testing the duplicate-name
-  // hint below): Escape's own keydown handler calls closeAddProject(),
-  // but Escape also blurs the input in some browsers, and blur fires
-  // its own doAddProject() call independently -- whichever one the
-  // browser happens to run first, the *other* still executes after,
-  // so "Escape to cancel" could still silently create a project (a real
-  // empty duplicate got created this way testing this exact feature).
+  // Escape's keydown handler calls closeAddProject(), but Escape also
+  // blurs the input in some browsers, and blur fires its own
+  // doAddProject() independently -- whichever runs first, the other still
+  // runs after, so "Escape to cancel" would still create the project.
   // Set synchronously in the Escape handler before closeAddProject()
-  // runs, checked by the blur handler so a cancel always wins.
+  // runs, and checked by the blur handler, so a cancel always wins.
   let cancellingAddProject = false;
 
   async function doAddProject(spaceId: string) {
@@ -406,10 +394,8 @@
     }
   }
 
-  // Spaces now have a real per-space icon choice (owner-reported,
-  // 2026-07-15) instead of a hardcoded-by-id map — see spaceIcons.ts for
-  // the picker options, the legacy per-id fallback (pre-existing
-  // databases), and the generic default.
+  // Per-space icon choice — see spaceIcons.ts for the picker options, the
+  // legacy per-id fallback (pre-existing databases), and the default.
 </script>
 
 <svelte:window on:mousemove={onResizeMove} on:mouseup={onResizeEnd} />
@@ -426,11 +412,9 @@
     {#if !effectiveCollapsed}<div class="logo">Offlog</div>{/if}
     {#if !isMobile}
     <button class="collapse-toggle" on:click={toggleCollapsed} title={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-      <!-- Owner feedback, 2026-07-30 (5th round): a plain rotating chevron
-           read as generic; a "sidebar panel" glyph (frame + a narrower rail
-           section + a chevron) reads unambiguously as a sidebar toggle even
-           at 13px. Two literal variants (not one icon rotated) since the
-           panel's chevron needs to flip sides, not just point the other way. -->
+      <!-- Two literal icon variants, not one icon rotated: the panel
+           glyph's chevron has to flip sides, not just point the other
+           way. -->
       {#if effectiveCollapsed}
         <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="2.5" width="12" height="11" rx="2"/>
@@ -448,13 +432,10 @@
     {/if}
   </div>
 
-  <!-- Real bug, owner-reported 2026-07-30: these three buttons only ever
-       toggled show{Dashboard,Focus,Deadlines} -- activeProjectId stayed
-       set to whatever project was last open, so .project-row.active's
-       highlight (below) kept showing that stale project as "current"
-       even while looking at Dashboard/Focus/Agenda instead. Each click
-       now clears it, since none of these three views are "inside" any
-       project. -->
+  <!-- Each of these three buttons must also clear activeProjectId: none
+       of these views is "inside" a project, and leaving it set keeps
+       .project-row.active (below) highlighting a stale project as
+       "current". -->
   <nav class="primary-nav">
     <button
       class="nav-btn"
@@ -504,9 +485,8 @@
   <div class="spaces-divider"></div>
 
   {#if effectiveCollapsed}
-    <!-- Collapsed rail (owner-requested, 2026-07-30, ahead of the sidebar
-         redesign pass): space icons only, no project tree -- this rail is
-         for quick glancing/switching, not full browsing. Clicking a space
+    <!-- Collapsed rail: space icons only, no project tree -- it is for
+         quick glancing/switching, not full browsing. Clicking a space
          expands back to the full sidebar (expandToSpace() above) rather
          than trying to cram a project flyout into 60px. -->
     <div class="tree-section-collapsed">
@@ -532,13 +512,10 @@
           <svg class="space-chevron" class:open={spaceOpen} viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="2,1 7,5 2,9"/>
           </svg>
-          <!-- 18% -> 12% (owner feedback, 2026-07-30, critique round:
-               too many competing saturated details -- a lighter fill
-               here is less visually loud while still distinguishing
-               each space by color). Collapsed rail's own space-icon-only
-               keeps its own (deliberately stronger) fill -- see its own
-               comment above on why that one needed more contrast, not
-               less. -->
+          <!-- Deliberately a lighter fill than the collapsed rail's
+               space-icon-only: that one needs more contrast against the
+               bare rail, this one only has to distinguish spaces by
+               color without adding visual noise to the tree. -->
           <span class="space-icon" style="color:{space.color}; background:color-mix(in srgb, {space.color} 12%, transparent)">
             {@html getSpaceIconSvg(space)}
           </span>
@@ -576,11 +553,11 @@
                   on:keydown={(e) => { if (e.key === 'Enter') doAddProject(space._id); if (e.key === 'Escape') { cancellingAddProject = true; closeAddProject(); } }}
                   on:blur={() => { if (!templateMode) doAddProject(space._id); }}
                   on:focus={(e) => {
-                    // Owner-reported 2026-07-22: the keyboard opening could
-                    // leave this input scrolled out of view within the
-                    // narrow sidebar drawer, especially in landscape where
-                    // the keyboard eats a much bigger share of the already-
-                    // short viewport. Delayed past one frame so this runs
+                    // The on-screen keyboard can leave this input scrolled
+                    // out of view within the narrow sidebar drawer,
+                    // especially in landscape where the keyboard eats a much
+                    // bigger share of the already-short viewport. Delayed
+                    // past one frame so this runs
                     // after adjustResize has actually finished shrinking the
                     // layout viewport -- scrolling immediately on focus races
                     // that resize and can measure the pre-keyboard geometry.
@@ -624,15 +601,10 @@
   {/if}
 
   <div class="bottom">
-    <!-- Icon-only, one row, no text labels (owner feedback, 2026-07-30:
-         "make them one row without any text just icons") -- title attrs
-         carry the label via tooltip instead, same pattern the collapsed
-         rail already used. syncTooltip/breakdown's count still fold into
-         their own title text below rather than disappearing, since the
-         tooltip is now the only place that information shows up. -->
-    <!-- Owner-picked order (owner feedback, 2026-07-30): Time Travel,
-         Recycle, Settings, Sync last (moved here from first per a
-         follow-up round). -->
+    <!-- Icon-only, one row, no text labels -- title attrs carry the
+         label via tooltip, same pattern as the collapsed rail. The
+         tooltip is the only place syncTooltip and the deleted count
+         show, so they must stay folded into the title text below. -->
     <div class="bottom-row" class:bottom-row-collapsed={effectiveCollapsed}>
       <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="Time Travel">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -651,19 +623,13 @@
         </svg>
       </button>
       {#if !syncNotConfigured}
-        <!-- Owner feedback, 2026-07-21: a device that's never been paired
-             has nothing to show here — no status, no action worth a
-             standing button — so the row stays a compact 3 buttons
-             (Time Travel / Recycle / Settings) instead of a 4th button
-             that just says "not set up yet". Sync setup now happens via
-             the post-first-run invite (see NamePrompt.svelte) or, if that
-             was skipped, Settings → Sync — never a permanent footer slot. -->
-        <!-- Owner feedback, 2026-07-30: click now opens Settings' Sync
-             category (same as the Settings icon, but pre-scrolled there)
-             instead of triggering a sync directly -- that action still
-             exists inside that panel (SettingsPanel.svelte's own "Sync
-             now" button), so nothing is lost, just moved one click deep
-             behind a clearer destination. -->
+        <!-- A device that's never been paired has no status and no
+             action worth a standing button, so the row stays a compact 3
+             buttons rather than a 4th saying "not set up yet". Sync setup
+             happens via the post-first-run invite (NamePrompt.svelte) or
+             Settings → Sync, never a permanent footer slot.
+             Clicking opens Settings' Sync category rather than syncing
+             directly; "Sync now" lives inside that panel. -->
         <button
           class="icon-btn icon-btn-sync"
           class:sync-synced={syncGlowState === 'synced'}
@@ -685,9 +651,9 @@
   </div>
 
   {#if !effectiveCollapsed}
-    <!-- Drag-to-resize (owner-requested, 2026-07-30). Hidden entirely on
-         mobile via the media query below -- the mobile drawer is a fixed-
-         width overlay, not a resizable column. -->
+    <!-- Drag-to-resize. Hidden entirely on mobile via the media query
+         below -- the mobile drawer is a fixed-width overlay, not a
+         resizable column. -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div class="resize-handle" on:mousedown={onResizeStart}></div>
   {/if}
@@ -698,11 +664,9 @@
        close-then-reopen can land while Svelte's outro transition for the
        previous show is still in flight, and Svelte *reverses* that outro
        into a fresh intro on the SAME component instance instead of
-       destroying and recreating it (2026-07-17, root cause of the "stuck,
-       can't get back to main screen" bug after rapid clicking -- traced
-       via a manual step-by-step repro, not fixable by timeTravelActive
-       above alone, which only stops a second *attempt* from starting,
-       not Svelte reviving the still-alive one). A revived instance never
+       destroying and recreating it. timeTravelActive above doesn't cover
+       this: it only stops a second *attempt* from starting, not Svelte
+       reviving the still-alive instance. A revived instance never
        re-runs its own closeOnBack() call (that only happens once, at
        component setup) -- its `requestClose` is the original, already
        spent one, and no new stack entry exists for it either: nothing
@@ -739,13 +703,10 @@
     display: flex; flex-direction: column;
     padding: 1.1rem .75rem; gap: .35rem; overflow: hidden;
     /* Follows the page theme via --sidebar-bg (light/dark in app.css) —
-       used to be pinned dark regardless of theme; owner feedback
-       2026-07-17 asked for a real light-mode sidebar instead. */
-    /* Owner feedback, 2026-07-30 (5th round): collapsing/expanding (both
-       the toggle button and clicking a space icon) used to snap the width
-       instantly with no transition at all. Suppressed during an actual
-       drag (.resizing) so live resizing stays 1:1 with the cursor instead
-       of lagging behind it. */
+       never pin this dark regardless of theme. */
+    /* Width transition animates collapse/expand. Suppressed during an
+       actual drag (.resizing) so live resizing stays 1:1 with the cursor
+       instead of lagging behind it. */
     transition: width .2s cubic-bezier(.4, 0, .2, 1);
   }
   .sidebar.resizing { transition: none; }
@@ -755,7 +716,7 @@
      alone often exceeds 768px (e.g. ~915px on a Pixel-class phone), which
      used to fall through to the "desktop" always-visible sidebar and eat
      a big chunk of the already-short landscape height with no way to
-     hide it (owner-reported 2026-07-22). max-height catches "phone in
+     hide it. max-height catches "phone in
      landscape" without also matching a genuinely short desktop window. */
   @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .sidebar {
@@ -775,13 +736,11 @@
       visibility: visible;
     }
   }
-  /* padding was .25rem .35rem .85rem -- the lopsided bottom value (meant
-     to add breathing room before the nav below) shifted this box's own
-     vertical center down, so align-items:center on .sidebar-top put the
-     logo visibly lower than the collapse toggle next to it instead of on
-     the same row (owner feedback, 2026-07-30, 6th round). That breathing
-     room now lives on .sidebar-top itself (padding-bottom, below) so the
-     logo's own box stays symmetric and centers evenly with the toggle. */
+  /* Keep this padding symmetric: a lopsided bottom value shifts the box's
+     own vertical center down, and align-items:center on .sidebar-top then
+     renders the logo lower than the collapse toggle beside it. The
+     breathing room before the nav lives on .sidebar-top's padding-bottom
+     instead. */
   .logo {
     font-family: var(--mono); font-weight: 600; font-size: .68rem; text-transform: uppercase;
     letter-spacing: .14em; padding: .1rem .35rem; color: var(--faint);
@@ -789,10 +748,8 @@
 
   .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding-bottom: .6rem; }
   .sidebar.collapsed .sidebar-top { justify-content: center; }
-  /* width/height bumped 22px -> 26px (owner feedback, 2026-07-30, 6th
-     round: "collapse button is too small") -- still ghost-until-hover in
-     expanded mode since it sits next to plain text (the logo), not other
-     boxed icons the way the collapsed-mode rail does. */
+  /* Ghost-until-hover in expanded mode, since it sits next to plain text
+     (the logo) rather than the boxed icons the collapsed rail has. */
   .collapse-toggle {
     display: flex; align-items: center; justify-content: center;
     width: 26px; height: 26px; flex-shrink: 0;
@@ -801,13 +758,9 @@
     transition: background .12s, color .12s, border-color .12s;
   }
   .collapse-toggle:hover { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
-  /* Owner feedback, 2026-07-30 (3rd round): a smaller ghost button read
-     as its own inconsistent 4th visual language next to the uniform
-     boxes below it. Collapsed mode now gives it the exact same box
-     treatment as .nav-btn/.icon-btn instead of trying to differentiate
-     it by size/weight. Size matches the rail icons -- 32px, shrunk to
-     28px in the 6th round ("make buttons bit smaller") then back to
-     32px in the round after that ("icons now supersmall ... bigger"). */
+  /* Collapsed mode gives this the same box treatment and 32px size as
+     .nav-btn/.icon-btn -- a differently-sized ghost button reads as a
+     fourth visual language next to the uniform boxes below it. */
   .sidebar.collapsed .collapse-toggle {
     width: 32px; height: 32px;
     background: var(--hover); border: 1px solid transparent; border-radius: 8px;
@@ -816,24 +769,13 @@
     background: var(--surface); border-color: var(--border-strong);
   }
 
-  /* Owner feedback, 2026-07-30 ("something is not good" -- three
-     different visual languages for one rail: nav icons were boxed only
-     when active, space icons always had a tinted box, footer icons
-     always had a bulky bordered box). transparent-until-hover (the
-     first attempt at this) turned out to be indistinguishable from the
-     old look in a static screenshot -- an *always-visible* box is what
-     actually reads as consistent with the space icons below, which are
-     always boxed too. Each control's own active/status color (accent
-     tint, sync-error red, etc.) still layers on top of this since it's
-     a lower layer, not a competing higher-specificity background.
-     .icon-btn's own box treatment moved to its base rule further down
-     and applies everywhere now, not just here -- see that rule's own
-     comment ("use same design and paddings as in collapsed ones", next
-     round). Only .nav-btn still needs a collapsed-only override, since
-     it shows full text in expanded mode and only becomes an icon-only
-     box once collapsed. 32px -> 28px (6th round: "make buttons bit
-     smaller") -> 32px again (round after: "icons now supersmall ...
-     bigger"). */
+  /* Every icon in the rail carries an always-visible box, matching the
+     always-boxed space icons below; transparent-until-hover leaves the
+     rail reading as several competing visual languages. This background
+     stays a low layer so each control's own active/status color (accent
+     tint, sync-error red) layers on top rather than competing on
+     specificity. Only .nav-btn needs a collapsed-only override, since it
+     shows full text when expanded and is icon-only only here. */
   .sidebar.collapsed .nav-btn {
     width: 32px; height: 32px; padding: 0;
     border-radius: 8px; justify-content: center;
@@ -842,42 +784,34 @@
   .sidebar.collapsed .nav-btn:hover {
     background: var(--surface); border-color: var(--border-strong);
   }
-  /* Real bug, found live in the browser (2026-07-30): .nav-btn.active's
-     own background (var(--hover)) is identical to every collapsed icon's
-     resting background above, so the active nav icon was indistinguishable
-     from Focus/Agenda -- no text to bold either, since labels are hidden
-     when collapsed. Icon color is the only signal left in a 32px icon-only
-     box, so tint it accent here specifically (expanded mode still relies
-     on background + bold text, unaffected by this). */
+  /* .nav-btn.active's background (var(--hover)) is identical to every
+     collapsed icon's resting background above, and labels are hidden when
+     collapsed, so icon color is the only signal left in a 32px icon-only
+     box -- hence the accent tint here specifically. Expanded mode still
+     relies on background + bold text. */
   .sidebar.collapsed .nav-btn.active { color: var(--accent); }
 
-  /* flex:1 + justify-content:center -- owner feedback, 2026-07-30 (4th
-     round): "spaces button bring middle of screen". This section used to
-     size to its own content (flex: 0 1 auto) and sit right below the nav,
-     leaving all the leftover rail height as dead space above the footer.
-     Growing to fill the remaining space and centering its icons within
-     that space puts the spaces column in the vertical middle of the rail
-     instead, with the footer naturally landing at the true bottom. */
+  /* flex:1 + justify-content:center puts the spaces column in the
+     vertical middle of the rail, with the footer landing at the true
+     bottom. Sizing to content (flex: 0 1 auto) instead leaves the
+     leftover rail height as dead space above the footer. */
   .tree-section-collapsed {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem;
     padding-top: .5rem; flex: 1 1 auto; min-height: 0; overflow-y: auto;
     transition: opacity .2s ease, transform .2s ease;
   }
-  /* Owner feedback, 2026-07-30 (5th round): "when I click on spaces there
-     need to be animations ... icons going up and open sidebar" -- clicking
-     a space icon now holds the rail in this lifted/faded state (see
-     expandToSpace()'s `expanding` flag) for one width-transition's worth of
-     time before swapping to the full tree, instead of teleporting straight
-     to the expanded sidebar with no visual connection between the two. */
+  /* Clicking a space icon holds the rail in this lifted/faded state (see
+     expandToSpace()'s `expanding` flag) for one width-transition's worth
+     of time before swapping to the full tree, so the two states stay
+     visually connected instead of teleporting. */
   .sidebar.expanding .tree-section-collapsed { opacity: 0; transform: translateY(-14px); }
   .space-icon-only {
     width: 32px; height: 32px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     border-radius: 8px; cursor: pointer;
-    /* A real border (not just a tinted background) so even a light/
-       neutral space color stays visible against the sidebar background
-       -- owner feedback, 2026-07-30: the default gray space nearly
-       vanished with just a translucent fill. */
+    /* A real border, not just a tinted background: with only a
+       translucent fill a light/neutral space color (the default gray)
+       nearly vanishes against the sidebar background. */
     border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
     opacity: .8; transition: opacity .12s, box-shadow .12s;
   }
@@ -887,11 +821,9 @@
   /* Thin drag strip along the sidebar's own right edge -- absolutely
      positioned so it doesn't take up any layout space of its own (the
      border-right the sidebar already has is purely visual, 1px, so this
-     needs a slightly wider invisible hit target overlapping it). A
-     small always-visible grip mark (owner feedback, 2026-07-30: "change
-     icon for this") gives it a real affordance instead of being
-     invisible until hovered; the hover/active tint is muted gray now,
-     not a strong accent flash. */
+     needs a slightly wider invisible hit target overlapping it). The
+     small always-visible grip mark is the affordance -- don't make it
+     invisible until hovered. */
   .resize-handle {
     position: absolute; top: 0; right: -3px; bottom: 0; width: 6px;
     cursor: col-resize; z-index: 5;
@@ -917,13 +849,9 @@
      there -- but once collapsed mode fixes it to a fixed size (below), a
      flex column's default cross-axis alignment is flex-start, leaving the
      fixed-width boxes stuck against the left edge instead of centered
-     under the (centered) collapse toggle above them. Owner feedback,
-     2026-07-30 (4th round): "all buttons center with same line". */
-  /* gap:.4rem -- owner feedback, 2026-07-30 (5th round): "padding top and
-     bottom icons are not same, make as bottom ones". The three collapsed
-     icon groups (nav/spaces/footer) had three different gaps (.1rem/.6rem/
-     .4rem); unified to the footer's .4rem for all three (spaces' own gap
-     fixed alongside .tree-section-collapsed above). */
+     under the (centered) collapse toggle above them. */
+  /* The three collapsed icon groups (nav/spaces/footer) share one .4rem
+     gap -- keep them in step if any one of them changes. */
   .sidebar.collapsed .primary-nav { align-items: center; gap: .4rem; }
   .nav-btn {
     display: flex; align-items: center; gap: .6rem;
@@ -934,34 +862,24 @@
     transition: background .12s, color .12s, box-shadow .12s;
   }
   .nav-btn svg { flex-shrink: 0; opacity: .85; }
-  /* Subtle hover shadow (owner reference, 2026-07-17), not just a flat
-     background swap -- same treatment applied to .space-header and
-     .project-row below for one consistent feel. */
+  /* Subtle hover shadow, not just a flat background swap -- same
+     treatment on .space-header and .project-row below. */
   .nav-btn:hover { background: var(--hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
-  /* Went from a 16% accent-tinted pill, to plain text with no background
-     at all, to this (owner feedback, 2026-07-30): "highlighted more like
-     project highlight but more lighter" -- text-only turned out to
-     genuinely disappear in practice (real bug report: looked completely
-     unhighlighted while on Dashboard). var(--hover) is the same flat
-     neutral tint this row's own :hover state already uses, just made
-     permanent for the active one -- lighter/flatter than
-     .project-row.active's bordered white card (no border, no shadow),
-     but still an actual visible fill instead of text-only. */
+  /* Needs an actual fill: a text-only active state disappears in
+     practice. var(--hover) is the same flat neutral tint this row's
+     :hover already uses, made permanent -- lighter than
+     .project-row.active's bordered card, but still visible. */
   .nav-btn.active { background: var(--hover); color: var(--text); font-weight: 700; }
   .nav-btn.active svg { opacity: 1; }
 
   .spaces-divider { height: 1px; background: var(--border); margin: .5rem 0; }
-  /* Owner feedback, 2026-07-30 (7th round): "make this dividers also bit
-     small" -- a full-width line reads heavier in the narrow 60px rail
-     than it does in the full-width sidebar. Shrunk to a short, centered
-     tick to match the smaller icons around it. */
+  /* A full-width line reads heavier in the narrow 60px rail than in the
+     full sidebar, so the collapsed divider is a short centered tick. */
   .sidebar.collapsed .spaces-divider { width: 20px; margin: .5rem auto; }
 
-  /* Spaces + Projects merged into one collapsible tree (owner feedback,
-     2026-07-09 — two separate flat lists felt like too many competing
-     sidebar blocks). Each space is a collapsible group; its projects
-     nest directly underneath instead of a second, separately-labeled
-     list below a divider. */
+  /* Spaces + Projects are one collapsible tree: each space is a
+     collapsible group and its projects nest directly underneath, rather
+     than a second separately-labeled list below a divider. */
   .tree-section {
     display: flex; flex-direction: column; gap: .05rem; padding-top: .3rem;
     flex: 1; min-height: 90px; overflow-y: auto;
@@ -975,16 +893,10 @@
     transition: background .12s, color .12s, box-shadow .12s;
   }
   .space-header:hover { background: var(--hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
-  /* Owner feedback, 2026-07-30: tried a lighter background tint, then a
-     left accent bar to fix its light-mode contrast -- the accent bar
-     read as "very bad". Text-only this time (idea #3 of a few offered:
-     no fill, no border, no new color at all -- just the same color bump
-     :hover already gets, made permanent) -- avoids introducing another
-     background/indigo debate entirely.
-     Color alone next to an unchanged font-weight (.space-name is 600
-     either way) turned out too subtle to tell apart from an inactive
-     row at a glance -- bumping .space-name's own weight to 700 when
-     active adds a second, more noticeable cue without any new color. */
+  /* Active space is marked by color plus weight, with no fill, border or
+     new color: the same color bump :hover gets, made permanent. Color
+     alone is too subtle to spot at a glance, hence .space-name's 700
+     weight as a second cue. */
   .space-header.active { color: var(--text); }
   .space-header.active .space-name { font-weight: 700; }
   .space-chevron { flex-shrink: 0; color: var(--faint); transition: transform .12s ease, color .12s; }
@@ -1000,13 +912,11 @@
     padding: .1rem 0 .3rem 1.55rem;
   }
 
-  /* opacity 0 at rest, not .35 (owner feedback, 2026-07-30, critique
-     round: "pin/x icons show on every project row, always" -- reveal on
-     row hover instead, same as most list UIs; a pinned project still
-     shows its pin permanently via .pinned below since that state is
-     meaningful even without hovering. Desktop only -- the touch-device
-     media query further down still forces these visible since there's
-     no hover to reveal them on a phone. */
+  /* opacity 0 at rest: these reveal on row hover, as in most list UIs. A
+     pinned project still shows its pin permanently via .pinned below,
+     since that state is meaningful without hovering. Desktop only -- the
+     touch-device media query further down forces them visible, since
+     there's no hover to reveal them on a phone. */
   .proj-pin-btn {
     background: none; border: none; cursor: pointer; padding: .15rem .35rem;
     color: var(--faint); display: flex; align-items: center; border-radius: 4px;
@@ -1024,14 +934,10 @@
     transition: background .12s, box-shadow .12s;
   }
   .project-row:hover { background: var(--hover); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
-  /* A left accent bar was tried here too and rejected as "very bad"
-     (owner feedback, 2026-07-30) -- back to the original var(--surface)
-     card, with an actual border added for contrast (--border-strong
-     reads clearly in either theme regardless of --surface vs
-     --sidebar-bg's own near-zero lightness gap in light mode). Then
-     toned down a notch (owner feedback, next round: "too strong") --
-     border -> var(--border) and a lighter shadow, still visibly a card
-     but no longer the boldest thing in the tree. */
+  /* A var(--surface) card needs an explicit border: --surface and
+     --sidebar-bg have a near-zero lightness gap in light mode, so the
+     card is otherwise invisible there. Kept at var(--border) with a light
+     shadow so it doesn't become the boldest thing in the tree. */
   .project-row.active {
     background: var(--surface); border: 1px solid var(--border);
     box-shadow: 0 1px 2px rgba(0,0,0,.05);
@@ -1084,15 +990,10 @@
   }
   .template-create-btn:disabled { opacity: .5; cursor: default; }
 
-  /* var(--faint) -> var(--muted) (owner feedback, 2026-07-30, critique
-     round: too low-contrast next to the project rows above it, which
-     default to --muted themselves). */
-  /* var(--muted) -> var(--accent) (owner feedback, 2026-07-30, 2nd
-     round: still blended in next to the project rows above it). A
-     colored "+ Add" CTA is a standard, expected use of the accent color
-     for an actionable link -- different from the background/highlight
-     fills rejected earlier in this same tree, which were about marking
-     passive "current state," not an action to take. */
+  /* Accent-colored, not --faint/--muted: anything dimmer blends into the
+     project rows above, which are --muted themselves. An accent "+ Add"
+     CTA marks an action to take, unlike the neutral fills used elsewhere
+     in this tree to mark passive "current state". */
   .add-project-btn {
     background: none; border: none; cursor: pointer;
     color: var(--accent); font-size: .82rem; font-weight: 500; text-align: left;
@@ -1117,32 +1018,21 @@
     width: 20px; height: 1px; background: var(--border);
   }
 
-  /* Icon-only rail (owner feedback, 2026-07-09): 4 buttons with text
-     labels squeezed into a ~200px row wrapped/truncated unreadably.
-     Tooltips (title attr) carry the label instead. */
-  /* One flex row, icon-only, no labels at all (owner feedback,
-     2026-07-30: "make them one row without any text just icons").
-     justify-content:center instead of flex:1-per-button (owner feedback,
-     next round: "don't forget ... on mobile maybe somebody will not use
-     sync so there can be case of 3 buttons so horizontally centered") --
-     a fixed-size icon group that centers as a unit handles 3 or 4
-     buttons identically, whereas flex:1 would have stretched 3 buttons
-     wider than 4, an inconsistent size depending on button count. */
+  /* One flex row, icon-only -- text labels wrap/truncate unreadably in a
+     ~200px row, so tooltips (title attr) carry them.
+     justify-content:center, not flex:1-per-button: the sync button is
+     conditional, and a centered fixed-size group handles 3 or 4 buttons
+     identically, where flex:1 would size buttons by how many there
+     are. */
   .bottom-row { display: flex; justify-content: center; gap: .4rem; }
-  /* Wider gap for the horizontal (expanded) row only -- owner feedback,
-     2026-07-30: "add horizontal spacing between bottom buttons". Scoped
-     with :not() rather than bumping the shared .bottom-row gap, so the
-     collapsed rail's vertical stack keeps matching the same .4rem gap
-     as the other collapsed icon groups (nav/spaces) above it. */
+  /* Wider gap for the horizontal (expanded) row only. Scoped with :not()
+     rather than bumping the shared .bottom-row gap, so the collapsed
+     rail's vertical stack keeps the same .4rem gap as the other collapsed
+     icon groups (nav/spaces) above it. */
   .bottom-row:not(.bottom-row-collapsed) { gap: .85rem; }
   .bottom-row.bottom-row-collapsed { flex-direction: column; align-items: center; }
-  /* Same box as the collapsed rail's icons, not a separate bigger
-     bordered card (owner feedback, 2026-07-30: "use same design and
-     paddings as in collapsed ones") -- now that the footer is icon-only
-     in both modes there's no reason for it to look different depending
-     on whether the sidebar happens to be collapsed. 32px, matching the
-     rest of the rail's icons (round after: "icons now supersmall ...
-     bigger"), then +1px again the round after that. */
+  /* Same box as the collapsed rail's icons: the footer is icon-only in
+     both modes, so it must not change appearance with collapse state. */
   .icon-btn {
     width: 33px; height: 33px; padding: 0; flex-shrink: 0;
     min-width: 0; position: relative;
@@ -1155,13 +1045,11 @@
   .icon-btn svg { flex-shrink: 0; opacity: .85; }
   .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
 
-  /* Owner feedback, 2026-07-30: went from a "very very very light glow"
-     to "as low as much" to dropping the glow/border tint entirely, to
-     finally muting the icon color itself too -- full-strength semantic
-     colors read as too saturated/loud for a status that's visible at
-     rest all the time, not just on a rare error. Blended toward
-     var(--muted) (the button's own default color) rather than full
-     strength, same semantic tokens as everywhere else in this app (green
+  /* No glow or border tint, and the icon color itself is blended toward
+     var(--muted) (the button's default): full-strength semantic colors
+     read as too loud for a status that's visible at rest all the time,
+     not just on a rare error. Same semantic tokens as everywhere else in
+     this app (green
      success / red danger / amber due-soon for conflicts / the app's own
      indigo accent standing in for "syncing now" blue). syncGlowState
      (script) is a single mutually-exclusive value, so exactly one of
@@ -1174,17 +1062,15 @@
   .icon-btn-sync.sync-conflict { color: color-mix(in srgb, var(--due-soon-ink) 55%, var(--muted)); }
   .icon-btn-sync.sync-offline { color: var(--faint); }
   .conflict-badge {
-    /* Absolutely positioned as a corner overlay on the icon (owner
-       feedback, 2026-07-30: the footer went icon-only, so there's no
-       inline label row left for this to sit next to -- back to the
-       standard notification-dot-on-an-icon treatment. The sidebar-bg
-       border punches a small "cutout" ring so the badge doesn't blend
-       into the button underneath it). */
+    /* Absolutely positioned as a corner overlay on the icon: the footer
+       is icon-only, so there's no inline label row for this to sit next
+       to. The sidebar-bg border punches a "cutout" ring so the badge
+       doesn't blend into the button underneath. */
     position: absolute; top: -3px; right: -3px;
-    /* --on-accent, not hardcoded #fff — maintenance pass caught this at
-       1.67:1 in dark mode (its background is --due-soon-ink, which is a
-       light amber there); --on-accent's white/dark-text split happens to
-       fit this token's per-theme lightness too. */
+    /* --on-accent, not hardcoded #fff — the background is
+       --due-soon-ink, a light amber in dark mode where #fff drops to
+       1.67:1. --on-accent's white/dark-text split fits this token's
+       per-theme lightness. */
     color: var(--on-accent); font-family: var(--mono); font-size: .55rem; font-weight: 700;
     min-width: 13px; height: 13px; border-radius: 999px; padding: 0 3px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -1198,8 +1084,7 @@
 
   /* Short viewports (landscape phone) — tighten spacing so the project
      tree (the primary navigation surface) gets more room in a squeezed
-     landscape window (real bug, owner-reported 2026-07-09: "non readable
-     sidebar" in landscape). */
+     landscape window, where it is otherwise unreadable. */
   @media (max-height: 480px) {
     .sidebar { padding-top: .7rem; padding-bottom: .7rem; gap: .2rem; }
     .bottom { padding-top: .5rem; gap: .3rem; }

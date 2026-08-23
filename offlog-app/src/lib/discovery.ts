@@ -2,16 +2,13 @@ import { writable } from 'svelte/store';
 import { setSyncUrl, getSyncUrl, setSyncCredentials, getPairedHostUuid, setPairedHostUuid } from '../config';
 import { startSync, clearLocalSeedBeforeFirstPair, syncState } from './db';
 
-// Android-side half of Track E's "no human ever types an IP" plan
-// (ROADMAP.md E1) — listens for the PC app's `_offlog._tcp` mDNS
-// broadcast (offlog-desktop/src-tauri/src/discovery.rs) and surfaces
-// found hosts so Settings can offer "Found '<name>' — Connect?" instead
-// of a blank URL field.
+// Device-side half of "no human ever types an IP": listens for the PC app's
+// `_offlog._tcp` mDNS broadcast and surfaces found hosts so Settings can
+// offer "Found '<name>' — Connect?" instead of a blank URL field.
 //
-// mDNS itself still carries no credentials (see discovery.rs's own
-// comment on why) — pairWithHost() below completes the handshake by
-// hitting the PC's one-shot pairing endpoint (pairing.rs) with a code
-// the user reads off the PC's own screen.
+// mDNS carries no credentials. pairWithHost() below completes the handshake
+// by hitting the PC's one-shot pairing endpoint with a code the user reads
+// off the PC's own screen.
 
 const SERVICE_TYPE = '_offlog._tcp.';
 const DOMAIN = 'local.';
@@ -43,10 +40,9 @@ function remove(uuid: string) {
   discoveredHosts.update((hosts) => hosts.filter((h) => h.uuid !== uuid));
 }
 
-// Scans for 10 seconds and stops automatically — mirrors the intent of
-// the "Find my server" one-shot action described in ROADMAP.md rather
-// than a permanent background listener (matches Settings being the only
-// place this is relevant, not a full-time drain on battery).
+// Scans for 10 seconds and stops automatically — a one-shot "Find my server"
+// action, not a permanent background listener: Settings is the only place
+// this is relevant, and a full-time listener would drain battery.
 export async function scanForHosts(): Promise<void> {
   if (!isNative()) return;
   const { ZeroConf } = await import('capacitor-zeroconf');
@@ -99,13 +95,12 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
   });
   if (!res.ok) throw new Error('Incorrect or expired code.');
   const data = (await res.json()) as PairResponse;
-  // Real bug found live: a freshly-installed phone's own default seed
-  // (space:unsorted/personal/work, project:draft — fixed ids, not
-  // per-install-random) collides with the PC's own independently-seeded
-  // copies the moment sync starts, producing a real conflict per doc.
-  // Clearing this device's pristine (zero-task) seed first lets the
-  // upcoming pull just adopt the host's versions cleanly. See
-  // clearLocalSeedBeforeFirstPair()'s own comment in db.ts.
+  // A freshly-installed device's own default seed (space:unsorted/personal/
+  // work, project:draft — fixed ids, not per-install-random) collides with
+  // the PC's independently-seeded copies the moment sync starts, producing a
+  // conflict per doc. Clearing this device's pristine (zero-task) seed first
+  // lets the upcoming pull adopt the host's versions cleanly. See
+  // clearLocalSeedBeforeFirstPair() in db.ts.
   await clearLocalSeedBeforeFirstPair();
   await setSyncCredentials(data.user, data.password);
   setSyncUrl(`http://${host.address}:${data.port}/offlog`);
@@ -113,27 +108,19 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
   startSync().catch(() => {});
 }
 
-// E2 (ROADMAP.md) — root cause of the owner's "not stable" report: this
-// module already does a real mDNS scan at pairing time, but nothing ever
-// re-checks afterward, so a DHCP-renewed LAN IP (or, rarer, a PC-side
-// port change from a fresh install) silently breaks sync until someone
-// notices and manually re-pairs. Matching by the server's stable `uuid`
-// (not its IP) lets a fresh scan confirm "is this still the same PC I
-// paired with, just at a different address" and self-heal.
+// mDNS is scanned again after pairing, not only at pairing time: a
+// DHCP-renewed LAN IP (or a PC-side port change from a fresh install) would
+// otherwise silently break sync until someone manually re-pairs. Matching on
+// the server's stable `uuid` rather than its IP lets a fresh scan confirm
+// "still the same PC, just at a different address" and self-heal.
 //
-// S4 (DECISIONS.md's Open Questions section, 2026-07-20): this used to
-// silently ignore any advertisement whose uuid didn't match the one being
-// looked for, so a genuinely-changed host identity (the PC was wiped/
-// reinstalled and got a fresh random uuid, or the phone was accidentally
-// paired with the wrong device) meant this just timed out to null forever
-// — reresolveHost() below returned false, and watchForStaleHost() did
-// nothing further, with zero user-facing signal that anything was wrong
-// beyond a generic "cannot reach sync server". Now also reports back the
-// first *other* `_offlog._tcp` advertisement seen (if any), so
-// watchForStaleHost() can distinguish "the paired host just isn't
-// reachable right now" from "a different Offlog host exists on this
-// network and it's not the one this device is paired with" — the latter
-// is actionable (re-pair), the former isn't.
+// Also reports back the first *other* `_offlog._tcp` advertisement seen, so
+// watchForStaleHost() can distinguish "the paired host just isn't reachable
+// right now" from "a different Offlog host exists on this network and it
+// isn't the one this device is paired with". Only the latter is actionable
+// (re-pair); ignoring non-matching advertisements entirely would leave a
+// wiped/reinstalled host (fresh uuid) or a mis-pairing with no signal at all
+// beyond a generic "cannot reach sync server".
 interface HostResolveResult {
   address: string | null;
   otherHost: { uuid: string; name: string } | null;
@@ -213,8 +200,7 @@ export function watchForStaleHost() {
     lastReresolveAttempt = now;
     // The startSync() promise is deliberately *returned*, not just called:
     // that chains it into the .catch below. Calling it bare would leave a
-    // floating promise, which is one of this project's documented blind
-    // spots (see MAINTENANCE.md).
+    // floating, unhandled promise.
     reresolveHost().then((updated) => (updated ? startSync() : undefined)).catch(() => {});
   });
 }

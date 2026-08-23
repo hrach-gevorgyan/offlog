@@ -1,16 +1,14 @@
-// LAN discovery — Track E (ROADMAP.md E1). Advertises this PC's embedded
-// sync host over mDNS/DNS-SD so a phone never needs a typed IP: Android's
-// side (a future NSD/zeroconf Capacitor plugin, not built yet) listens for
-// `_offlog._tcp.local.` and shows "Found '<name>' — Connect?".
+// LAN discovery. Advertises this PC's embedded sync host over mDNS/DNS-SD
+// so a phone never needs a typed IP; the client side browses for
+// `_offlog._tcp.local.`.
 //
-// Deliberately not broadcasting credentials in the TXT record — mDNS is
-// a plaintext LAN broadcast, and anything in it is visible to every device
-// on the network, trusted or not. Only the sync server's own `uuid`
-// (already public once someone knows the URL, since `GET /` returns it
-// unauthenticated) and the pairing server's port go out —
-// enough for a phone to find the right device and know where to send a
-// pairing code, without ever seeing a secret over the air. See
-// pairing.rs for the actual credential handshake this enables.
+// Never put credentials in the TXT record. mDNS is a plaintext LAN
+// broadcast visible to every device on the network, trusted or not. Only
+// the sync server's `uuid` (already public to anyone who knows the URL,
+// since `GET /` returns it unauthenticated), the device name, and the
+// pairing server's port go out — enough for a phone to find the right
+// device and know where to send a pairing code, without any secret going
+// over the air. pairing.rs carries the actual credential handshake.
 
 use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::time::{Duration, Instant};
@@ -23,16 +21,14 @@ pub struct OtherHost {
     pub name: String,
 }
 
-// S1 (DECISIONS.md's Open Questions section, 2026-07-20): `sync_host.rs`
-// unconditionally spawns its own NyxDB sidecar on every launch with no
-// check for an existing host already on the network — two PCs on one LAN
-// silently become two independent islands with no warning. This doesn't
-// change that spawn behavior (a real "join as client instead" mode is a
-// much bigger feature, deliberately not built — see DECISIONS.md for why);
-// it only detects the situation so the frontend can warn about it. Runs
-// once at startup, before this instance advertises itself, so it can
-// only see genuinely other hosts, never a self-echo of its own upcoming
-// advertisement.
+// `sync_host.rs` always spawns its own NyxDB sidecar, with no check for an
+// existing host on the network, so two PCs on one LAN become two
+// independent islands. This detects that situation so the frontend can
+// warn about it; it does not change the spawn behavior (there is no
+// "join as client instead" mode).
+//
+// Must run once at startup *before* this instance advertises itself, so
+// it can only see genuinely other hosts and never a self-echo.
 pub fn browse_for_others(timeout: Duration, exclude_uuid: &str) -> Vec<OtherHost> {
     let daemon = match ServiceDaemon::new() {
         Ok(d) => d,

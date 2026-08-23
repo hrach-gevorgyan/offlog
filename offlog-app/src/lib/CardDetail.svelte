@@ -33,10 +33,9 @@
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  // B25: one-tap relative shortcuts for the common "just remind me in a
-  // week" case — the exact-date picker stays for anything else. Local
-  // calendar dates (not UTC) so "Today" can't roll over to yesterday for
-  // anyone west of UTC, matching how <input type="date"> itself works.
+  // One-tap relative shortcuts; the exact-date picker covers everything
+  // else. Local calendar dates (not UTC) so "Today" can't roll over to
+  // yesterday west of UTC, matching how <input type="date"> works.
   function dateFromToday(days: number, months = 0): string {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -52,20 +51,17 @@
     { label: '1 month', days: 0, months: 1 },
   ];
 
-  // B30: soft guardrail only — a visible counter past this length, not a
-  // hard block. Notes are unbounded markdown; this just flags when one has
-  // grown long enough that it might belong in a separate doc instead.
+  // Soft guardrail only — a visible counter past this length, not a hard
+  // block. Notes are unbounded markdown.
   const NOTES_SOFT_LIMIT = 500;
 
   let title = task.title;
   let body = task.body;
 
-  // Owner-requested (2026-07-20) duplicate nudges — never block saving,
-  // see utils.ts's own header comment for the full reasoning. Debounced
-  // (maintenance pass, 2026-07-20): both re-fire on every keystroke via
-  // the two-way bound title/body inputs, and checkNotesSimilarity in
-  // particular scans every task's body in the whole app, not just this
-  // project — debouncing keeps that off the hot keystroke path.
+  // Duplicate nudges never block saving — see utils.ts's header comment.
+  // Debounced because both re-fire on every keystroke via the two-way
+  // bound title/body inputs, and checkNotesSimilarity scans every task's
+  // body in the whole app, not just this project.
   let duplicateTitleHint = '';
   let titleCheckTimer: ReturnType<typeof setTimeout> | undefined;
   $: { clearTimeout(titleCheckTimer); titleCheckTimer = setTimeout(() => checkTitleDuplicate(title, project._id, task._id), 350); }
@@ -104,7 +100,7 @@
   let reminder_at = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
   let remindOnDue = task.remindOnDue ?? false;
 
-  // B12: derives reminder_at from due_date + the configured default time
+  // Derives reminder_at from due_date + the configured default time
   // whenever the toggle is on and due_date changes — recomputed live, not
   // just once on enable, so editing the due date afterward keeps the
   // reminder in sync without needing to re-toggle.
@@ -118,15 +114,12 @@
   // rule is set would leave a rule nothing can act on, so clear it too
   // rather than silently keep a rule the UI no longer shows a control for.
   //
-  // Rewritten from scratch (2026-07-31, fourth pass, owner-specified
-  // shape): one select only -- "Not repeating" by default, Day/Week/
-  // Month as the other options -- no separate enable checkbox and no
-  // second unit dropdown duplicating it. Picking a real option reveals
-  // the rest of the row (interval number, Weekdays-only pill, Skip-this-
-  // one pill) inline, all sharing one explicit control height so the
-  // input/select/pills don't render at three different heights.
-  // recurrenceStr is the single source of truth; recurrence is a pure
-  // derived value, never assigned directly.
+  // One select only -- "Not repeating" by default, Day/Week/Month as the
+  // other options. Picking a real option reveals the rest of the row
+  // (interval number, Weekdays-only pill, Skip-this-one pill) inline, all
+  // sharing one explicit control height so the input/select/pills don't
+  // render at three different heights. recurrenceStr is the single source
+  // of truth; recurrence is a pure derived value, never assigned to.
   const recurrenceOptions = [
     { value: '', label: 'Not repeating' },
     { value: 'daily', label: 'Day' },
@@ -136,21 +129,20 @@
   let recurrenceStr = task.recurrence ?? '';
   $: if (!due_date && recurrenceStr) recurrenceStr = '';
   $: recurrence = (recurrenceStr || null) as 'daily' | 'weekly' | 'monthly' | null;
-  // Roadmap "custom recurrence intervals" -- every N days/weeks/months
-  // instead of always N=1, plus a "weekdays only" toggle for daily.
-  // Kept as a plain string bound to the number input (not a number
-  // directly) so an in-progress empty/partial edit doesn't immediately
-  // collapse to NaN -- recurrenceInterval below is the derived, clamped
-  // value actually sent on save.
+  // Custom recurrence intervals: every N days/weeks/months, plus a
+  // "weekdays only" toggle for daily. Kept as a plain string bound to the
+  // number input (not a number directly) so an in-progress empty/partial
+  // edit doesn't collapse to NaN -- recurrenceInterval below is the
+  // derived, clamped value actually sent on save.
   let recurrenceIntervalStr = String(task.recurrenceInterval ?? 1);
   $: recurrenceInterval = Math.max(1, Math.min(365, parseInt(recurrenceIntervalStr, 10) || 1));
   let recurrenceWeekdaysOnly = task.recurrenceWeekdaysOnly ?? false;
   let column_id = task.column_id;
   let tags: string[] = [...(task.tags ?? [])];
   let pinned = task.pinned ?? false;
-  // B18 — flat, not nested/reorderable. Same batched-into-save() pattern
-  // as tags/custom fields, not an immediate-write-per-toggle — consistent
-  // with every other field in this form.
+  // Flat, not nested/reorderable. Batched into save() like tags/custom
+  // fields, not an immediate write per toggle — consistent with every
+  // other field in this form.
   let checklist: { text: string; done: boolean }[] = (task.checklist ?? []).map(i => ({ ...i }));
   let checklistInput = '';
   $: duplicateChecklistItems = findDuplicateChecklistItems(checklist);
@@ -162,7 +154,7 @@
   let saving = false;
   let showHistory = false;
 
-  // v6.7.0 — task linking, non-directional "related to" only. Unlike
+  // Task linking, non-directional "related to" only. Unlike
   // Tags/Checklist above, this is immediate-write, not batched into
   // save() — a link can live on either of two different task docs
   // (db.ts's linkRelatedTask()/unlinkRelatedTask()), so it doesn't fit
@@ -177,10 +169,9 @@
     relatedTasks = await getRelatedTasks(task._id!);
   }
 
-  // ROADMAP.md "Blocked by" — same immediate-write pattern as Related
-  // above, deliberately kept as its own separate block/field rather than
-  // folded into Related (v6.7.0 decision: Related stays non-directional
-  // and dependency-free).
+  // "Blocked by" — same immediate-write pattern as Related above, kept as
+  // its own separate block/field rather than folded into Related, which
+  // stays non-directional and dependency-free.
   let blockingTasks: TaskDoc[] = [];
   let blockedByInput = '';
   let blockedBySuggestions: TaskDoc[] = [];
@@ -193,28 +184,22 @@
   $: lastColByProject = Object.fromEntries($projects.map(p => [p._id, p.columns.at(-1)?.id]));
   $: unresolvedBlockers = blockingTasks.filter(b => !isBlockerResolved(b, lastColByProject));
 
-  // B16 (revised): field definitions are global (Settings → Organize →
-  // Manage Custom Fields), not managed from here — CardDetail only reads
-  // and fills in values. custom_values stays keyed by field id, not name
-  // (see types.ts), so a field rename in Settings doesn't orphan values.
+  // Field definitions are global (Settings → Organize → Manage Custom
+  // Fields), not managed from here — CardDetail only reads and fills in
+  // values. custom_values stays keyed by field id, not name (see
+  // types.ts), so a field rename in Settings doesn't orphan values.
   let customFields: CustomFieldDef[] = [];
   let customValues: Record<string, string | number | null> = { ...(task.custom_values ?? {}) };
 
-  // Refined further (owner feedback, 2026-07-30): only the due date
-  // *value* itself is mandatory (joining Status/Priority/Tags) --
-  // Repeat and Reminder move into Extras along with Checklist/Custom
-  // fields/Related/Notes, all as their own compact blocks. Extras also
-  // no longer auto-opens just because it has content -- owner: "don't
-  // open extra also [on open], if user wants he/she will open extras
-  // and update or check information". Always starts collapsed now,
-  // full stop, regardless of what's already filled in underneath.
+  // Only the due date *value* is mandatory (joining Status/Priority/
+  // Tags); Repeat and Reminder live in Extras along with Checklist/Custom
+  // fields/Related/Notes, each as its own compact block. Extras always
+  // starts collapsed, regardless of what is already filled in underneath
+  // -- never auto-open it just because it has content.
   let showExtras = false;
-  // Owner feedback, 2026-07-30: each of the five blocks inside Extras
-  // gets its own collapse too, same "never auto-open, full stop" rule
-  // as the outer Extras toggle -- opening Extras used to dump all five
-  // open at once (blocks were just always-expanded cards); now each
-  // stays collapsed until clicked, regardless of whether it already
-  // has content.
+  // Each of the five blocks inside Extras has its own collapse, under the
+  // same never-auto-open rule as the outer Extras toggle: each stays
+  // collapsed until clicked, regardless of whether it has content.
   let showRepeatReminder = false;
   let showChecklistBlock = false;
   let showCustomFieldsBlock = false;
@@ -230,12 +215,10 @@
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
 
   const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
-  // Collapsed-state summary for the outer "Extras" toggle -- Repeat/
-  // Reminder now live in here too, so the summary covers them alongside
-  // checklist/related/notes. Every value read is passed in as an
-  // argument (not read from closure) so Svelte's static dependency
-  // analysis on the `$:` call actually re-runs this when any of them
-  // changes.
+  // Collapsed-state summary for the outer "Extras" toggle. Every value
+  // read must be passed in as an argument (not read from closure) so
+  // Svelte's static dependency analysis on the `$:` call re-runs this
+  // when any of them changes.
   function formatExtrasSummary(
     reminder: string, repeat: string | null, interval: number, weekdaysOnly: boolean,
     cl: typeof checklist, related: TaskDoc[], blocking: TaskDoc[], unresolvedCount: number, atts: TaskAttachment[], notes: string,
@@ -254,13 +237,10 @@
   }
   $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, blockingTasks, unresolvedBlockers.length, attachments, body);
 
-  // B49: Delete/Archive/Duplicate/history used to be 4 separate always-
-  // visible controls (3 flat footer buttons + a "Show history" text
-  // toggle competing with Notes for space). Consolidated into one "⋯"
-  // menu — same click-outside-closes pattern CustomSelect.svelte already
-  // uses, not a new mechanism. (Created/Updated timestamps were tried
-  // here too but dropped — once History is open the panel itself shows
-  // the same info, making the static menu text redundant/confusing.)
+  // Delete/Archive/Duplicate/history all live in one "⋯" menu — same
+  // click-outside-closes pattern CustomSelect.svelte uses, not a new
+  // mechanism. Created/Updated timestamps deliberately aren't repeated
+  // here: the History panel already shows them once opened.
   let showActionsMenu = false;
   let menuTriggerEl: HTMLButtonElement;
   let menuPanelEl: HTMLDivElement;
@@ -300,10 +280,9 @@
     }
   }
 
-  // B26: tags already used in *this* project are the most likely match,
-  // so they're suggested first — everywhere-else tags are still offered,
-  // just as a clearly separate, secondary group rather than one flat
-  // undifferentiated list.
+  // Tags already used in *this* project are the most likely match, so
+  // they're suggested first; tags from elsewhere are still offered, as a
+  // clearly separate secondary group rather than one flat list.
   $: {
     const q = tagInput.trim().toLowerCase();
     if (q) {
@@ -421,10 +400,9 @@
     }
   }
 
-  // v6.8.0 — file attachments. Immediate-write like Related above (same
-  // reasoning: attaching a file is its own discrete action, not part of
-  // the "collect locally, write on Save" pattern the rest of this form
-  // uses for title/tags/checklist/etc.), not batched into save().
+  // File attachments. Immediate-write like Related above: attaching a
+  // file is its own discrete action, not part of the "collect locally,
+  // write on Save" pattern the rest of this form uses.
   let attachments: TaskAttachment[] = [...(task.attachments ?? [])];
   let attachmentBusy = false;
   let attachmentError = '';
@@ -438,8 +416,7 @@
   // -- one predictable output format instead of format-specific quality/
   // compression tuning for each, and JPEG is universally previewable.
   // Downscaling first, not just re-compressing at full resolution, is what
-  // actually shrinks a modern phone photo (4000px+) meaningfully -- see the
-  // size-optimization discussion this came out of.
+  // actually shrinks a modern phone photo (4000px+) meaningfully.
   async function downscaleImage(file: File): Promise<{ filename: string; base64Data: string; size: number }> {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
@@ -594,10 +571,10 @@
     }
   }
 
-  // Roadmap: "skip one recurrence occurrence" -- advances due date/
-  // reminder/checklist to the next occurrence without logging a
-  // completion, for the day you're not doing this one but don't want
-  // the series stuck overdue. Closes afterward (same as archive/
+  // Skip one recurrence occurrence: advances due date/reminder/checklist
+  // to the next occurrence without logging a completion, for the day
+  // you're not doing this one but don't want the series stuck overdue.
+  // Closes afterward (same as archive/
   // duplicate/delete above) rather than patching local state, since the
   // task's due date/checklist just changed underneath this open editor.
   async function skipToNext() {
@@ -637,17 +614,11 @@
       </label>
     </div>
 
-    <!-- Owner feedback, 2026-07-30: only the due date value itself is
-         mandatory, same tier as Status/Priority/Tags -- always visible,
-         no toggle. Repeat/Reminder moved into Extras below (they're
-         optional add-ons to a due date, not mandatory themselves). -->
     <div class="detail-block">
       <label>
         Due date
-        <!-- Owner feedback, 2026-07-30: "one row with datepicker" -- the
-             picker and its shortcut pills used to stack on separate
-             rows; now share one, the picker keeping a fixed-ish width
-             so the pills have real room next to it. -->
+        <!-- Picker and shortcut pills share one row; the picker keeps a
+             fixed-ish width so the pills have real room next to it. -->
         <div class="due-date-row">
           <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
           <div class="due-shortcuts">
@@ -702,10 +673,6 @@
 
     <div class="section-divider"></div>
 
-    <!-- option B + fixes (owner feedback, 2026-07-30): Checklist/Custom
-         fields/Related/Notes share this one flat "Extras" disclosure --
-         open it and see all of them at once, not option C's nested-
-         toggle-per-section version. -->
     <div class="collapsible-section">
       <button type="button" class="section-toggle extras-toggle" on:click={() => showExtras = !showExtras} aria-expanded={showExtras}>
         <span class="field-label">Extras</span>
@@ -748,8 +715,6 @@
                 <div class="reminder-field">
                   <label>
                     Reminder
-                    <!-- Owner feedback, 2026-07-30: same "one row" treatment
-                         as the due-date picker + shortcuts above. -->
                     <div class="reminder-row">
                       <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
                       <label class="remind-on-due-row">
@@ -1024,12 +989,10 @@
 </div>
 
 <style>
-  /* Owner feedback, 2026-07-30: "wrong to show in sidebar, can we do
-     same kind of modal as we do settings now" -- was a full-height
-     right-side sliding drawer; now the same centered-card layout
-     SettingsPanel.svelte's .settings-overlay/.settings-panel use (flex-
-     centered overlay, fixed-width card, height fits content up to a
-     cap, no entrance transition on the overlay/panel itself). */
+  /* Same centered-card layout as SettingsPanel.svelte's
+     .settings-overlay/.settings-panel: flex-centered overlay,
+     fixed-width card, height fits content up to a cap, no entrance
+     transition on the overlay/panel itself. */
   .overlay {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.45);
@@ -1037,11 +1000,10 @@
     padding: env(safe-area-inset-top, 0px) 1rem env(safe-area-inset-bottom, 0px);
     /* Above every panel that can open a card while staying visible itself
        (TrashView/TimeTravelView z:402, GlobalSearch z:401, SettingsPanel
-       z:301, QuickAdd z:501) — was z:100, which put CardDetail BEHIND
-       TimeTravelView specifically, since that view deliberately doesn't
-       close itself when opening a card (so "back" returns to it). Not
-       just >402: still below ConfirmDialog's z:700/701, since CardDetail's
-       own Delete button opens one on top of itself. */
+       z:301, QuickAdd z:501) — TimeTravelView in particular deliberately
+       stays open behind a card, so "back" returns to it. Must also stay
+       below ConfirmDialog's z:700/701, since CardDetail's own Delete
+       button opens one on top of itself. */
     z-index: 600;
   }
   .panel {
@@ -1083,21 +1045,14 @@
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
   .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
-  /* Reverted the 2026-07-30 nowrap+horizontal-scroll version (2026-07-31
-     owner feedback: a scrollbar on a compact modal control row is worse
-     than the checkbox dropping to its own line, especially on mobile,
-     where this was the actual complaint). flex-wrap:wrap lets
-     .remind-on-due-row move to a full line below the date picker when
-     both don't fit side by side, instead of clipping into a horizontal
-     scroll area. */
+  /* flex-wrap:wrap, not nowrap + horizontal scroll: a scrollbar on a
+     compact modal control row reads worse on mobile than
+     .remind-on-due-row dropping to a full line below the date picker. */
   .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  /* Owner feedback, 2026-07-30: giving the checkbox flex:1 left it
-     stretched wider than its own (nowrap, full-length) text needed --
-     visible dead space trailing the pill. The checkbox only needs to
-     size to its content now (flex:0 0 auto, set on .remind-on-due-row
-     below); the picker takes flex:1 instead, so any leftover row width
-     actually goes to it ("give this space to datepicker") rather than
-     sitting empty behind the checkbox. */
+  /* The picker takes flex:1 so leftover row width goes to it; the
+     checkbox sizes to its content instead (flex:0 0 auto, on
+     .remind-on-due-row below). Giving the checkbox flex:1 stretches it
+     past its own nowrap text and leaves visible dead space. */
   .reminder-row :global(.cal-field) { flex: 1; min-width: 150px; }
   .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
@@ -1105,30 +1060,20 @@
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  /* Owner feedback, 2026-07-30: "not beautiful, make them ideal" -- was
-     cramped 5px-radius boxes with a visible border. Full pill shape,
-     borderless (background-only, like the app's other tag/chip
-     language elsewhere), a bit more breathing room, and separated from
-     the date field above instead of sitting flush against it. */
   /* The picker keeps a fixed-ish width (doesn't stretch to fill the row
      the way its own 100%-width trigger normally would) so the pills get
      real room next to it instead of being pushed off/wrapped. */
   .due-date-row { display: flex; align-items: center; gap: 8px; }
   .due-date-row :global(.cal-field) { flex: 0 0 auto; width: 150px; }
-  /* One row, always (owner feedback, 2026-07-30) -- nowrap + overflow-x
-     auto as a safety valve on very narrow widths (a horizontal scroll on
-     4 short pills reads better than an awkward 3+1 wrap). */
+  /* One row, always -- nowrap + overflow-x auto as a safety valve on very
+     narrow widths (a horizontal scroll on 4 short pills reads better than
+     an awkward 3+1 wrap). */
   .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 0; overflow-x: auto; flex: 1; min-width: 0; }
-  /* Real bug, found live on an actual phone-width viewport (2026-07-30):
-     the "safety valve" above was only ever exercised at the modal
-     shrinking on desktop, not a true ~380px phone screen -- there, the
-     150px calendar field alone eats most of the row's width, so the
-     shortcuts get squeezed into a sliver and clip hard at the modal
-     edge with zero indication there's more to scroll. Stacking the two
-     rows instead gives the shortcuts their own full-width row to work
-     with (often enough to fit all four without scrolling at all),
-     without reintroducing the wrap this row was deliberately built to
-     avoid. */
+  /* At true phone widths (~380px) the 150px calendar field eats most of
+     the row, squeezing the shortcuts into a sliver that clips at the
+     modal edge with no sign there's more to scroll. Stacking the two
+     rows gives the shortcuts a full-width row of their own without
+     reintroducing the wrap this row is built to avoid. */
   @media (max-width: 480px) {
     .due-date-row { flex-direction: column; align-items: stretch; }
     .due-date-row :global(.cal-field) { width: 100%; }
@@ -1155,41 +1100,33 @@
     margin-top: .2rem; display: block;
   }
 
-  /* Rewritten from scratch (2026-07-31, fourth pass). One select only
-     ("Not repeating" default, Day/Week/Month otherwise) -- no separate
-     enable checkbox, no second unit dropdown repeating the same choice.
-     Every control in the revealed row (select, number input, both
-     pills) shares one explicit height (--repeat-ctrl-h) instead of each
-     sizing itself from its own padding/font-size, which is what made
-     them render at three different heights before. .repeat-block gets
-     its own bottom margin so this section doesn't run straight into
-     Reminder below it with no visual break. */
+  /* Every control in the revealed row (select, number input, both pills)
+     must share one explicit height (--repeat-ctrl-h); letting each size
+     itself from its own padding/font-size renders them at three
+     different heights. .repeat-block's bottom margin keeps this section
+     from running straight into Reminder below it. */
   .repeat-block { --repeat-ctrl-h: 30px; margin-bottom: .5rem; }
   .repeat-row {
     display: flex; align-items: center; flex-wrap: wrap; gap: .25rem;
     font-size: .8rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
   }
-  /* Widths trimmed to fit the worst case (Day + Weekdays + Skip, every
-     word shown) on a real 375px phone -- the modal's own content width
-     there is ~260px, not the ~400px this looks roomy at on desktop, so
-     this was tuned against that number specifically, not just resized
-     until it looked fine on a wide screen. 86px only fits the *short*
-     option words (Day/Week/Month); the default "Not repeating" is a
-     real word 2.5x longer and truncated to "Not rep…" at that width
-     (caught live) -- .compact only applies once a real option is
-     chosen and the row actually needs the room back for the rest of
-     the controls sharing the line with it. */
+  /* Widths are tuned to the worst case (Day + Weekdays + Skip, every word
+     shown) inside a 375px phone's ~260px modal content width, not the
+     ~400px this looks roomy at on desktop. 86px fits only the short
+     option words (Day/Week/Month) -- the default "Not repeating"
+     truncates to "Not rep…" there, so .compact must apply only once a
+     real option is chosen and the row needs the room back. */
   .repeat-select-wrap { width: 150px; flex-shrink: 0; height: var(--repeat-ctrl-h); }
   .repeat-select-wrap.compact { width: 86px; }
   .repeat-select-wrap :global(.cs-trigger) {
     height: var(--repeat-ctrl-h); box-sizing: border-box; padding: 0 6px; font-size: .8rem;
   }
-  /* CustomSelect's own .cs-panel is `left:0;right:0` -- full width of
-     its trigger by default, which would force "Not repeating" to wrap
-     inside the option list at this trigger's compact 86px. Widening
-     just the panel (not the always-visible trigger) keeps the row
-     compact while the open dropdown stays readable. */
+  /* CustomSelect's .cs-panel is `left:0;right:0`, i.e. the full width of
+     its trigger -- at this trigger's compact 86px that wraps "Not
+     repeating" inside the option list. Widening just the panel (not the
+     always-visible trigger) keeps the row compact and the dropdown
+     readable. */
   .repeat-select-wrap :global(.cs-panel) { width: 150px; right: auto; }
   .repeat-every-text { flex-shrink: 0; }
   .repeat-interval-input {
@@ -1211,18 +1148,19 @@
   }
   .repeat-pill:hover { border-color: var(--accent); color: var(--text); }
   .repeat-pill.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-  /* Skip is a real action, not a state toggle like Weekdays-only -- an
-     accent outline (not accent fill) so it doesn't read as "currently
-     on" the way .active does. */
+  /* Skip is an action, not a state toggle like Weekdays-only -- accent
+     outline, not accent fill, so it doesn't read as "currently on" the
+     way .active does. */
   .repeat-pill-accent { border-color: var(--accent); color: var(--accent); }
   .repeat-pill-accent:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
-  /* flex:0 0 auto -- sizes to its own (nowrap, full-length) text and no
-     further, so it doesn't stretch wider than its content and leave
-     dead space of its own; the picker (flex:1 above) is what absorbs
-     any leftover row width now. nowrap keeps the full label
-     ("Remind me on the due date at 17:00" -- owner feedback, 2026-07-30:
-     "don't truncate text") on one line rather than wrapping to two. */
+  /* flex:0 0 auto -- sizes to its own nowrap text and no further, so it
+     leaves no dead space; the picker (flex:1 above) absorbs any leftover
+     row width. nowrap keeps the full label ("Remind me on the due date at
+     17:00") on one line rather than wrapping to two.
+     The display/flex-direction !importants are required: the generic
+     `label` rule above sets flex-direction:column and wins per-property
+     over this more specific class otherwise. */
   .remind-on-due-row {
     display: flex !important; flex-direction: row !important; align-items: center;
     gap: .4rem; flex: 0 0 auto; white-space: nowrap;
@@ -1255,11 +1193,9 @@
     background: var(--surface); color: var(--text); font-size: .84rem; font-family: inherit;
     text-transform: none; letter-spacing: normal;
   }
-  /* Owner feedback, 2026-07-30: "wtf is this lift buttons" -- the native
-     number-input spin buttons look like a stray, unstyled OS control
-     next to every other input in this form. Hidden entirely; the field
-     stays a plain text-like number input (still type="number" under the
-     hood -- numeric keyboard on mobile, no other behavior change). */
+  /* The native number-input spin buttons read as a stray unstyled OS
+     control next to the other inputs, so they're hidden; the field stays
+     type="number" (numeric keyboard on mobile, no behavior change). */
   /* standard `appearance` alongside the -moz- prefix: the prefixed one
      alone leaves non-Firefox engines on their default rendering. */
   .custom-field-label input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
@@ -1316,8 +1252,6 @@
 
   .collapsible-section { display: flex; flex-direction: column; gap: .35rem; }
 
-  /* option B + fixes (owner feedback, 2026-07-30): the one "Extras"
-     toggle covering Checklist/Custom fields/Related/Notes. */
   .section-toggle {
     display: flex; align-items: center; gap: 8px;
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
@@ -1341,23 +1275,15 @@
   }
   .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
-  /* .detail-block (the mandatory Due date field, always-visible, not
-     inside Extras) stays plain -- no card treatment, matching Status/
-     Priority/Tags right above it. */
+  /* .detail-block (the mandatory, always-visible Due date field) stays
+     plain -- no card treatment, matching Status/Priority/Tags above. */
   .detail-block { display: flex; flex-direction: column; gap: .3rem; }
 
-  /* Owner feedback, 2026-07-30 ("still need to make extras more
-     ideal"): a flat list separated only by thin divider lines didn't
-     read as distinct blocks -- everything just blended into one long
-     form. Extras' own outer background/border is dropped; each of the
-     five blocks (Repeat/Reminder, Checklist, Custom fields, Related,
-     Notes) is now its own small card instead, so the grouping is
-     visible at a glance, not just implied by a caption + hairline. */
-  /* Owner feedback, 2026-07-30: a bare margin-left with no visual
-     anchor read as a misalignment glitch, not an intentional indent
-     ("visible and not visible at the same time" -- a hairline that
-     explains the shift without the earlier bold 2px line being "too
-     much"). A faint, low-opacity 1px border-left threads that needle. */
+  /* Extras has no outer background/border of its own; each of the five
+     blocks inside is its own small card, so the grouping is visible
+     rather than implied by a caption + hairline. The faint 1px
+     border-left anchors the indent -- a bare margin-left with no visual
+     anchor reads as a misalignment glitch. */
   .extras-panel {
     display: flex; flex-direction: column; gap: .4rem;
     margin-left: 8px; padding-left: 8px;
@@ -1367,10 +1293,6 @@
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
     padding: .1rem .6rem;
   }
-  /* Owner feedback, 2026-07-30: each block also collapses on its own
-     now, never auto-open, same rule the outer Extras toggle already
-     follows -- opening Extras used to dump all five blocks open at
-     once. */
   .extra-block-toggle {
     display: flex; align-items: center; gap: 8px; width: 100%;
     background: none; border: none; cursor: pointer; text-align: left;
@@ -1432,7 +1354,7 @@
   .checklist-input:focus { border-color: var(--accent); }
   .checklist-input::placeholder { color: var(--faint); }
 
-  /* v6.8.0 -- file attachments */
+  /* File attachments */
   .attachments-field { display: flex; flex-direction: column; gap: .3rem; }
   .attachment-row { display: flex; align-items: center; gap: 7px; }
   .attachment-open {
@@ -1481,9 +1403,6 @@
   .save-btn { background: var(--text); color: var(--bg); border-color: var(--text); }
   .save-btn:disabled { opacity: .5; cursor: default; }
 
-  /* B49: Delete/Archive/Duplicate/history consolidated into one "⋯" menu
-     — was 3 flat footer buttons plus a text toggle competing with Notes.
-     Same click-outside-closes pattern as CustomSelect.svelte. */
   .menu-wrap { position: relative; }
   .menu-trigger {
     display: flex; align-items: center; justify-content: center;

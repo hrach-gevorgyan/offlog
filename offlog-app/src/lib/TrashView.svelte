@@ -178,13 +178,10 @@
   .item-list { flex: 1; overflow-y: auto; padding: 12px 24px 24px; }
   .empty { color: var(--faint); font-size: 13.5px; padding: 12px 0; line-height: 1.5; }
 
-  /* redesign/v6 (owner feedback, 2026-07-30): a border-left directly on
-     each row rendered as one continuous stripe across adjacent rows
-     (nothing visually separated them), especially when neighboring
-     rows shared the same priority color. Same fix as Dashboard's
-     Today/Pinned/Overdue lists: a 1px gap of the border color between
-     rows (so each row reads as its own card) plus a distinct rounded
-     .prio-bar segment per row instead of a border. */
+  /* A 1px gap of border color between rows plus a rounded .prio-bar
+     segment per row — not a border-left on the row, which renders as one
+     continuous stripe across adjacent rows of the same priority color.
+     Same construction as Dashboard's Today/Pinned/Overdue lists. */
   .item-rows {
     display: flex; flex-direction: column; gap: 1px;
     background: var(--border); border-radius: 10px; overflow: hidden;
@@ -196,8 +193,7 @@
   .prio-bar { width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; }
 
   .item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  /* Wrap, never truncate (owner feedback, 2026-07-30) -- matches the
-     no-truncation convention every other view already moved to. */
+  /* Wrap, never truncate — the app-wide convention for task titles. */
   .item-title {
     font-size: 13.5px; font-weight: 500; color: var(--muted);
     overflow-wrap: break-word;
@@ -209,11 +205,8 @@
     white-space: nowrap; flex-shrink: 0;
   }
 
-  /* redesign/v6 (owner feedback, 2026-07-30): was a single text-labeled
-     "Restore" pill next to a bare icon button -- now two matching icon
-     buttons (restore / delete forever), same size/shape, each colored
-     on hover for its own action instead of one being a filled button
-     and the other a plain icon. */
+  /* Two matching icon buttons (restore / delete forever), same size and
+     shape, distinguished only by hover color per action. */
   .restore-btn, .forever-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); padding: .3rem; border-radius: 6px;

@@ -12,13 +12,9 @@
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
 
-  // Replaces the old ChangelogView.svelte (2026-07-18, owner feedback:
-  // "both almost doing same thing") -- a flat 80-entry activity log and a
-  // day-grouped, clickable, further-back journal over the exact same
-  // log: docs were two surfaces doing one job. This is the merged one:
-  // ChangelogView's per-row detail (project badge, device/source pill,
-  // Clear all) plus the day grouping/pagination/click-to-open that made
-  // this worth keeping instead of just deleting it.
+  // The single surface over `log:` docs: day-grouped and paginated, with
+  // per-row detail (project badge, source pill, Clear all) and
+  // click-to-open on task entries.
   const dispatch = createEventDispatcher();
   const requestClose = closeOnBack(() => dispatch('close'));
 
@@ -26,9 +22,8 @@
     if (e.key === 'Escape') requestClose();
   }
 
-  // Reuses getRecentLogs() with a growing limit rather than a new
-  // date-range query -- simplest correct thing at personal-task-manager
-  // scale, no new query surface to get wrong.
+  // Pagination is a growing limit on getRecentLogs(), not a date-range
+  // query — adequate at single-user scale and adds no new query surface.
   const PAGE_SIZE = 150;
   let limit = PAGE_SIZE;
   let logs: any[] = [];
@@ -36,13 +31,11 @@
   let hasMore = true;
   let bodyEl: HTMLDivElement;
 
-  // subscribe() is db.ts's single global change feed -- it fires on
-  // *every* doc write app-wide, not just log: docs, so leaving this panel
-  // open while working elsewhere reruns getRecentLogs(limit) constantly.
-  // Preserve scroll position across the reload (a full-array replace
-  // otherwise snaps a scrolled-down reader back to the top on someone
-  // else's unrelated edit) and skip overlapping reloads if one is
-  // already in flight.
+  // subscribe() is db.ts's single global change feed: it fires on *every*
+  // doc write app-wide, not just log: docs, so this reruns constantly while
+  // the panel stays open. Scroll position must be preserved across the
+  // full-array replace (otherwise an unrelated edit snaps a scrolled reader
+  // to the top), and overlapping reloads are skipped.
   async function load() {
     if (loading && logs.length > 0) return; // already loading, not the initial mount
     loading = true;
@@ -61,10 +54,9 @@
     return subscribe(() => load());
   });
 
-  // Local calendar date, not a raw ISO slice -- ts is stored UTC (db.ts's
-  // now()), and slicing the string directly would group late-evening
-  // entries into "tomorrow" for anyone west of UTC. Same reasoning
-  // CardDetail's own dateFromToday() comment documents for due dates.
+  // Local calendar date, not a raw ISO slice: ts is stored UTC (db.ts's
+  // now()), so slicing the string groups late-evening entries into
+  // "tomorrow" for anyone west of UTC.
   function dayKey(ts: string): string {
     const d = new Date(ts);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -113,9 +105,10 @@
 
   let detailTask: TaskDoc | null = null;
   let detailProject: ProjectDoc | null = null;
-  // See KanbanBoard.svelte's identical detailOpenSession for why this
-  // exists -- {#key detailTask._id} alone doesn't change value on a fast
-  // close-then-reopen of the same task.
+  // Folded into CardDetail's {#key} below: {#key detailTask._id} alone
+  // doesn't change value on a fast close-then-reopen of the same task, so
+  // Svelte reverses the outro instead of remounting and the component's
+  // already-spent closeOnBack() handle leaves it stuck open.
   let detailOpenSession = 0;
 
   async function openEntry(log: any) {
@@ -157,10 +150,9 @@
   <div class="panel-head">
     <span class="panel-title">Time Travel</span>
     {#if logs.length > 0}
-      <!-- Confirmed like every other destructive action in the app (it was
-           the one exception): this permanently erases the entire change
-           history, which is also the only record of what a task looked
-           like before an unwanted edit or a conflict resolution. -->
+      <!-- Confirmed like every other destructive action: this permanently
+           erases the entire change history, the only record of what a task
+           looked like before an unwanted edit or conflict resolution. -->
       <button class="clear-btn" on:click={async () => {
         if (!(await confirmAction('Clear the entire history? This erases the record of every change ever made, and cannot be undone.', { danger: true, confirmLabel: 'Clear all' }))) return;
         try { await clearLogs(); logs = []; } catch { showError('Failed to clear history.'); }
@@ -211,11 +203,10 @@
                   <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
                   <span class="entry-time">{fmt(log.ts).split(' · ')[1]}</span>
                 </span>
-                <!-- Skipped for a project's own create/delete entry -- its
-                     name is already the main description's subject. Own
-                     grid row (not an inline suffix) so it never wraps mid-
-                     sentence or lands split across two lines depending on
-                     description length (owner-reported 2026-07-18). -->
+                <!-- Skipped for a project's own create/delete entry — its
+                     name is already the description's subject. Its own grid
+                     row, not an inline suffix, so it never wraps mid-
+                     sentence depending on description length. -->
                 {#if log.project_name && entityLabel(log) !== 'project'}
                   <span class="entry-project">{log.project_name}</span>
                 {/if}
@@ -284,31 +275,20 @@
   .day-label { font-weight: 700; font-size: 12.5px; }
   .day-summary { font-family: var(--mono); font-size: 10px; color: var(--faint); }
 
-  /* Grid, not flex -- with flex, the description's start position shifted
-     per row depending on how wide that row's own action-pill text was
-     ("Created" vs "Edited" vs "Moved" vs "Deleted"), so nothing lined up
-     (owner feedback, 2026-07-18: "make all text start from same line").
-     Fixed first/third/fourth columns pin every description to the same
-     x position regardless of pill/device-name length.
-     .entry-project is an optional second grid row, column 2 only -- it
-     used to be an inline "· ProjectName" suffix appended to entry-desc,
-     which wrapped unpredictably: sometimes staying on the description's
-     line, sometimes splitting across two depending on description length
-     (owner-reported 2026-07-18: "part on first row and part on second").
-     A dedicated row always lands in the same place regardless of how long
-     the description is. */
+  /* Grid, not flex: fixed columns pin every description to the same x
+     position regardless of how wide that row's action-pill text is
+     ("Created" vs "Deleted"). With flex the start position shifts per row.
+     .entry-project is an optional second grid row in column 2 rather than
+     an inline suffix, so it always lands in the same place instead of
+     wrapping unpredictably with the description. */
   .entry {
     display: grid; grid-template-columns: 60px 1fr auto; column-gap: 10px;
     row-gap: 4px; align-items: start;
     padding: 7px 8px; margin-bottom: 1px; border-radius: 5px; font-size: 12.5px; line-height: 1.45;
   }
-  /* Source pill + time used to be two separate fixed-width grid columns
-     (56px/54px) -- on a narrow phone that left too little room for the
-     description column and made the row look clipped/broken (owner-
-     reported 2026-07-22: "text is truncated ... need clean compact 3
-     column 1 row"). Merged into one flex group in the 3rd (auto-width)
-     column instead -- same visual result on desktop, but shrinks/wraps as
-     one unit instead of two independently-rigid columns on mobile. */
+  /* Source pill and time share one flex group in the 3rd (auto-width)
+     column rather than two fixed-width columns of their own, so they
+     shrink as a unit and leave the description room on a narrow phone. */
   .entry-meta {
     grid-column: 3; display: flex; align-items: center; gap: 6px; margin-top: 2px;
   }
@@ -322,12 +302,10 @@
     justify-self: start; width: fit-content;
   }
 
-  /* Wraps normally -- this used to be truncated with an ellipsis
-     (owner-reported 2026-07-18), which defeats the point of a view
-     meant to be read. */
+  /* Wraps rather than truncating — this view exists to be read. */
   .entry-desc { grid-column: 2; min-width: 0; color: var(--text); white-space: normal; word-break: break-word; }
   /* Own row directly under the description, column 2 only -- see the
-     .entry comment above for why this isn't an inline suffix anymore. */
+     .entry comment above for why this isn't an inline suffix. */
   .entry-project {
     grid-column: 2; font-family: var(--mono); font-size: 10px; color: var(--faint);
   }
@@ -341,19 +319,15 @@
   }
   .source-pill.source-mobile { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 
-  /* nowrap + a wide-enough column -- "09:53 AM" used to wrap onto two
-     lines in a 46px column, which silently inflated the whole row's
-     height (grid rows size to their tallest cell) and left a stray gap
-     between the description and the project-name row below it even
-     though neither of those had actually grown (owner-reported
-     2026-07-18: "empty rows between log and project name"). */
+  /* nowrap, and the column must stay wide enough: a wrapped "09:53 AM"
+     inflates the whole row's height (grid rows size to their tallest cell)
+     and leaves a stray gap above the project-name row. */
   .entry-time { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; }
 
-  /* align-items: start (not baseline) on .entry means these sit flush
-     with the top of the row; nudge down slightly to align with the
-     description text's cap-height instead of its extra line-height.
-     .entry-meta (not its two children) carries this now that source-pill/
-     entry-time are nested inside it, so the offset is applied once. */
+  /* align-items: start (not baseline) on .entry sits these flush with the
+     top of the row; nudge down to align with the description's cap-height
+     instead of its line-height. Applied to .entry-meta rather than its two
+     children so the offset lands once. */
   .action-pill { margin-top: 2px; }
 
   .load-more-btn {

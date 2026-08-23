@@ -50,14 +50,11 @@
   // project from the sidebar/dashboard) — see goToProject().
   let currentView: View = 'kanban';
 
-  // sessionStorage, not localStorage (owner-reported 2026-07-22: a hard
-  // close (swipe away from recents) should land back on Dashboard, but
-  // minimizing and reopening should still remember the view). Android's
-  // WebView keeps sessionStorage alive across a minimize (the Activity is
-  // only backgrounded, same WebView instance) but not across a real
-  // process kill -- a relaunch there gets a fresh WebView with empty
-  // sessionStorage, same as any other tab-session-scoped state. localStorage
-  // would survive both cases, which is what caused the original complaint.
+  // sessionStorage, not localStorage: a hard close (swipe away from
+  // recents) must land back on Dashboard, while minimizing and reopening
+  // remembers the view. Android's WebView keeps sessionStorage alive
+  // across a minimize (same WebView instance) but not across a real
+  // process kill. localStorage would survive both, which is wrong here.
   function saveView() {
     if (!ready) return;
     const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showDeadlines ? 'agenda' : 'project';
@@ -69,15 +66,9 @@
   // The one place `activeProjectId` should reset the view to Kanban —
   // called from deliberate "go to this project" actions (sidebar project/
   // space click, dashboard project card), never from state restoration.
-  //
-  // Real bug, found live (2026-07-30): this only ever set activeProjectId,
-  // never activeSpaceId -- Sidebar.svelte's own goToProject() sets both,
-  // but this one (used by Dashboard/Focus's "open project" dispatch) left
-  // activeSpaceId stale from whatever space was last browsed in the
-  // sidebar tree. App.svelte's own breadcrumb (`activeSpace`, below)
-  // reads activeSpaceId, not the opened project's real space_id, so it
-  // could show the wrong space name/color after opening a project from
-  // Dashboard while a different space's tree was last expanded.
+  // Must set activeSpaceId as well as activeProjectId: the breadcrumb
+  // (`activeSpace`, below) reads activeSpaceId rather than the opened
+  // project's space_id, so leaving it stale shows the wrong space.
   function goToProject(id: string) {
     const project = get(projects).find(p => p._id === id);
     if (project) activeSpaceId.set(project.space_id);
@@ -90,8 +81,8 @@
   let sidebarRef: Sidebar;
   // See modalStack.ts's mandatory {#key} pattern for any closeOnBack()
   // consumer — QuickAdd/GlobalSearch are reachable from multiple rapid
-  // triggers (FAB + Ctrl+N, search button + Ctrl+K), same risk class as
-  // Time Travel/Trash/Settings/CardDetail had before 2026-07-18's fix.
+  // triggers (FAB + Ctrl+N, search button + Ctrl+K), so their {#key} must
+  // change on every open.
   let quickAddSession = 0;
   let searchSession = 0;
   // Month view's "Add card" (a day cell tapped in Agenda's Month mode)
@@ -102,12 +93,9 @@
   function openQuickAdd(dueDate: string | null = null) { quickAddSession++; quickAddDueDate = dueDate; showQuickAdd = true; }
   function openSearch() { searchSession++; showSearch = true; }
 
-  // B2 — Kanban's filter state lives here (not inside KanbanBoard) so the
-  // Filters button can sit in this shared board-header row instead of a
-  // dedicated toolbar row that, with no search box next to it, wasted a
-  // full row for one button (owner feedback). List view keeps its own
-  // filter state internal to ListView.svelte — its toolbar row already has
-  // enough content (search box, Archived, Columns) to earn its own row.
+  // Kanban's filter state lives here (not inside KanbanBoard) so the
+  // Filters button can sit in this shared board-header row. List view
+  // keeps its own filter state internal to ListView.svelte.
   let kbSearch = '';
   let kbFilterCol = '';
   let kbFilterPrio = 0;
@@ -115,41 +103,31 @@
   let kbCustomFieldFilters: CustomFieldFilter[] = [];
   $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
   // Custom fields are global (not per-project), same as ListView's own
-  // copy — loaded once here so Kanban's FilterBar can offer the same
-  // custom-field filter List already got.
+  // copy — loaded once here for Kanban's FilterBar.
   let customFieldDefs: CustomFieldDef[] = [];
   getCustomFieldDefs().then(f => { customFieldDefs = f; });
   // Stale filter values from a previous project shouldn't silently narrow
   // the next project's board — reset on every genuine navigation.
-  // Written as a named call rather than the `dep, (a = 1, b = 2)` comma
-  // idiom: same reactive dependency on $activeProjectId, but the comma
-  // version reads to the type-checker as a chain of discarded expressions
-  // (correctly -- it flagged the left side as unused with no side effects).
   // Takes the project id as an argument purely so the reactive dependency
-  // is a real *use* of $activeProjectId rather than a discarded expression
-  // in a comma chain -- same behaviour, but honest to the type-checker.
+  // on $activeProjectId is a real *use* of it; the `dep, (a = 1, b = 2)`
+  // comma idiom behaves identically but the type-checker (correctly)
+  // flags its left side as an unused expression with no side effects.
   function resetKanbanFilters(_projectId: string | null) {
     kbSearch = ''; kbFilterCol = ''; kbFilterPrio = 0; kbFilterTag = ''; kbCustomFieldFilters = [];
   }
   $: resetKanbanFilters($activeProjectId);
 
-  // B9 — command palette, folded into GlobalSearch rather than a separate
-  // overlay/shortcut. Sidebar's own openSettings/openTimeTravel/openTrash
-  // are `export`ed top-level functions in its instance — required for
-  // Svelte 5's bind:this to reach them at all (see CLAUDE.md's Layer
-  // rules) — so a bind:this ref is enough to reach them without lifting
-  // that state.
-  // B35 — extracted so DashboardView's "Daily Brief" card (on:focus) can
-  // reuse the exact same navigation as the command palette's "Go to
-  // Focus" entry, instead of a second inline copy of these 3 assignments.
+  // The command palette lives inside GlobalSearch. Sidebar's
+  // openSettings/openTimeTravel/openTrash must stay `export`ed top-level
+  // functions in its instance — that's the only form Svelte 5's
+  // bind:this can reach — so a bind:this ref is enough to call them
+  // without lifting that state up here.
+  // These three navigation helpers are shared by the command palette,
+  // DashboardView's links, and the desktop tray/global-shortcut
+  // listeners below; keep them as the single definition rather than
+  // inlining the assignments at each call site.
   function goToFocus() { showDashboard = false; showDeadlines = false; showFocus = true; }
-  // B35-style extraction (2026-07-30) so DashboardView's Today/Overdue
-  // "View all" links can reuse the exact same navigation as the command
-  // palette's "Go to Agenda" entry, instead of a second inline copy.
   function goToAgenda() { showDashboard = false; showFocus = false; showDeadlines = true; }
-  // Same extraction, needed by the desktop tray/global-shortcut's
-  // "show-dashboard" event listener below (ROADMAP.md's tray-resident
-  // item) alongside the command palette entry.
   function goToDashboard() { showDeadlines = false; showFocus = false; showDashboard = true; }
 
   $: commands = getCommands({
@@ -188,7 +166,7 @@
   // always-mounted component, not a separate component that mounts/
   // unmounts per open — so unlike the other overlays (which each register
   // their own back-button layer via closeOnBack at component init), it
-  // needs it wired reactively. See modalStack.ts / ROADMAP.md A14.
+  // needs it wired reactively. See modalStack.ts.
   let popShortcutsLayer: (() => void) | null = null;
   $: if (showShortcuts && !popShortcutsLayer) {
     popShortcutsLayer = closeOnBack(() => { showShortcuts = false; popShortcutsLayer = null; });
@@ -200,12 +178,11 @@
   // inside it immediately opens something else (a project, Settings,
   // Trash…), which pushes its own history entry practically the same
   // instant the drawer closes. Routing the drawer's close through
-  // history.back() in that sequence raced against the newly-opened
-  // overlay's history.pushState() (back() resolves async via 'popstate',
-  // pushState runs sync) and could close the *new* overlay incorrectly.
-  // A plain direct close avoids the race; Escape and the scrim/hamburger
-  // still work as before, just without hardware-back support specifically
-  // for "drawer open, nothing else" (a much rarer state to be caught in).
+  // history.back() races the newly-opened overlay's history.pushState()
+  // (back() resolves async via 'popstate', pushState runs sync) and can
+  // close the *new* overlay instead. A plain direct close avoids that;
+  // the tradeoff is no hardware-back support for "drawer open, nothing
+  // else". Escape and the scrim/hamburger still close it.
   function closeSidebar() { sidebarOpen = false; }
 
   // Undo toast
@@ -281,35 +258,21 @@
     });
   }
 
-  // The combined home-screen widget (OffologWidgetProvider, B37) opens
-  // MainActivity with a com.offlog.app://<host>[?query] VIEW intent,
-  // depending on which part was tapped (brief → agenda, or one of the 3
-  // action buttons). This
-  // used to be forwarded via a custom native `triggerJSEvent` call in
-  // MainActivity.onCreate() — but that fired synchronously during native
-  // onCreate(), before the WebView had even loaded this script, let alone
-  // reached this onMount — so on a cold start (app not already running)
-  // the event was dispatched into the void and tapping a widget just
-  // opened the app with nothing else happening. Using @capacitor/app's
-  // own launch-URL handling instead: getLaunchUrl() reads the intent that
-  // started the app for cold start, and the 'appUrlOpen' listener (which
-  // Capacitor's own Bridge already fires for every plugin on onNewIntent,
-  // no custom native code needed) covers a warm start.
+  // The home-screen widget (OffologWidgetProvider) opens MainActivity
+  // with a com.offlog.app://<host>[?query] VIEW intent, depending on
+  // which part was tapped (brief → agenda, or one of the 3 action
+  // buttons). Handled through @capacitor/app's own launch-URL support:
+  // getLaunchUrl() for a cold start, the 'appUrlOpen' listener (which
+  // Capacitor's Bridge fires on onNewIntent) for a warm one. Do not
+  // route this through a custom native JS-event call from
+  // MainActivity.onCreate() — that fires before the WebView has loaded
+  // this script, so a cold-start tap is dispatched into the void.
   // Returns true if the url actually navigated somewhere, so the caller
   // can skip the localStorage view-restore below rather than have it race
   // and clobber a deliberate widget-driven navigation.
-  // v5.4.5 rewrite (owner-reported, 2026-07-21: "once it open quick add,
-  // then only open focus even if u click on dashboard" — every widget tap
-  // after the first re-opened whatever the FIRST tap opened, regardless
-  // of which button was actually pressed). Two changes from the previous
-  // version: (1) closeAll() itself is now synchronous (see modalStack.ts)
-  // instead of depending on an async popstate that rapid taps could get
-  // coalesced away, which was the real root cause; (2) host matching is
-  // now exact (new URL(url).hostname) instead of url.includes(host) --
-  // .includes() was never actually the bug here since none of these host
-  // strings are substrings of each other, but exact parsing is the
-  // correct way to read a URL's host and matches how the "project" case
-  // already had to be parsed for its query string.
+  // closeAll() must stay synchronous (see modalStack.ts): depending on an
+  // async popstate here lets rapid widget taps coalesce, so every tap
+  // after the first re-opens whatever the first one opened.
   function handleWidgetUrl(url: string | undefined | null): boolean {
     if (!url) return false;
     let host: string;
@@ -360,8 +323,7 @@
   // that then pops in as things load — tick() + a rAF here wait for
   // Svelte's actual DOM update to have painted before telling Rust to
   // reveal the window, so what the user sees on first frame is already
-  // the finished UI (owner-reported, "make it super fast showup",
-  // 2026-07-15). A no-op everywhere else (web, Android) since isTauri()
+  // the finished UI. A no-op everywhere else (web, Android) since isTauri()
   // is false there. Rust also has its own 5s timeout fallback in case
   // this is ever late or never called — see show_main_window's comment.
   async function revealTauriWindow() {
@@ -370,15 +332,15 @@
     requestAnimationFrame(() => { invokeTauri('show_main_window').catch(() => {}); });
   }
 
-  // Desktop tray-resident + global shortcut (ROADMAP.md): Rust's
+  // Desktop tray-resident + global shortcut: Rust's
   // global-shortcut handler and tray menu both already show/focus the
   // window themselves (lib.rs) before emitting any of these — by the time
   // one arrives here the app is already in front, each just needs to
   // trigger the same navigation every other entry point (command palette,
   // Sidebar) already uses. 'show-dashboard' is the global shortcut
-  // (Ctrl+Alt+O, "get back into Offlog fast" — owner feedback, 2026-07-31:
-  // not Quick Add, which already has its own in-app Ctrl+N); 'quick-
-  // capture'/'open-settings' are the tray menu's "Quick Add"/"Settings"
+  // (Ctrl+Alt+O, deliberately Dashboard rather than Quick Add, which
+  // already has its own in-app Ctrl+N); 'quick-capture' and
+  // 'open-settings' are the tray menu's "Quick Add"/"Settings"
   // items. A no-op everywhere else since isTauri() gates it, same pattern
   // as revealTauriWindow above.
   async function listenForTrayEvents() {
@@ -412,9 +374,9 @@
       const saved = JSON.parse(sessionStorage.getItem('offlog_view') ?? '{}');
       // saved.projectId can point to a project that no longer exists — a
       // wipeAndReseed(), a data reset, or a reinstall that kept
-      // localStorage but not IndexedDB all leave a stale id behind (A19).
-      // Blindly restoring it landed on a blank project view with nothing
-      // selected instead of falling back to Dashboard as intended.
+      // localStorage but not IndexedDB all leave a stale id behind.
+      // Restoring it blindly lands on a blank project view instead of
+      // falling back to Dashboard.
       const projectStillExists = saved.projectId && get(projects).some(p => p._id === saved.projectId);
       if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
       else if (saved.view === 'focus') { showDashboard = false; showFocus = true; }
@@ -430,7 +392,7 @@
     } catch {}
     ready = true;
     await revealTauriWindow();
-    // B46: asked once, ever, regardless of skip/save (markNamePromptShown()
+    // Asked once, ever, regardless of skip/save (markNamePromptShown()
     // fires immediately, not only on save) — never blocks reaching the app,
     // shown after `ready` so it layers on top of a fully usable UI rather
     // than gating it.
@@ -445,8 +407,8 @@
 
   // App lock: locks on every fresh page load (a reload/cold start always
   // re-checks isAppLockEnabled() below) plus after `timeout` minutes of
-  // being backgrounded or idle while foregrounded — see config.ts and
-  // DECISIONS.md for why this is a UI gate, not encryption.
+  // being backgrounded or idle while foregrounded. This is a UI gate,
+  // not encryption — see config.ts.
   let locked = false;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
   let hiddenAt: number | null = null;
@@ -494,7 +456,7 @@
   async function setView(v: View) {
     currentView = v;
     if (!$activeProject) return;
-    // Legacy field, no longer read back (see A27) — the view switch above
+    // Legacy field, no longer read back — the view switch above
     // already fully succeeded synchronously, so a failure here is a silent
     // background-persistence miss, not something the user needs an error
     // toast for (same "fire and forget" reasoning as rescheduleAll()).
@@ -591,14 +553,12 @@
           <div class="spacer"></div>
 
           <div class="search-filter-group">
-            <!-- redesign/v6 (owner feedback, 2026-07-28): List view already
-                 has its own local "Search tasks…" box in its toolbar --
-                 this same top-bar button also opening a *second* search felt
-                 confusing there. Since GlobalSearch already folds search and
-                 commands together (B9), the List-view button is relabeled
-                 "Command Palette" with a distinct icon instead of a second
-                 magnifying glass; Kanban (no local search box) keeps the
-                 plain search framing. Same click handler/modal either way. -->
+            <!-- One button and one modal either way: GlobalSearch folds
+                 search and commands together. List view has its own local
+                 "Search tasks…" box in its toolbar, so there this button is
+                 labelled "Command Palette" with a distinct icon to avoid
+                 reading as a second search; Kanban (no local search box)
+                 keeps the plain search framing. -->
             <button
               class="search-btn"
               on:click={openSearch}
@@ -626,8 +586,8 @@
               <!-- aria-label, not just the visible .view-label span -- that
                    span is display:none on mobile (icon-only there), which
                    removes it from the accessible-name computation too, so
-                   this button had no accessible name at all once collapsed
-                   (real bug, found live via automated screenshot capture). -->
+                   without it the button has no accessible name at all
+                   once collapsed. -->
               <button class="view-btn" class:active={currentView === v.key} on:click={() => setView(v.key)} aria-label={v.label} title={v.label}>
                 {@html ICONS[v.key]}
                 <span class="view-label" aria-hidden="true">{v.label}</span>
@@ -774,8 +734,8 @@
     height: env(safe-area-inset-top, 0px);
     /* --statusbar-fill, not --sidebar-bg — main.ts pins the Android
        status bar's icon style to Style.Dark (white icons) unconditionally,
-       so this strip must stay dark in both themes even now that
-       --sidebar-bg itself follows the page theme (2026-07-17). */
+       so this strip must stay dark in both themes, unlike --sidebar-bg
+       which follows the page theme. */
     background: var(--statusbar-fill);
     z-index: 10000;
   }
@@ -830,9 +790,8 @@
 
   .spacer { flex: 1; }
 
-  /* Search + Filters paired into one compact pill (owner feedback) rather
-     than two loose buttons — same grouped-pill language as .view-seg
-     below, so the two clusters read as a matched pair. */
+  /* Search + Filters paired into one compact pill — same grouped-pill
+     language as .view-seg below, so the two clusters read as a pair. */
   .search-filter-group {
     display: inline-flex; align-items: center; background: var(--col-bg);
     border: 1px solid var(--border-strong); border-radius: 8px;
@@ -840,10 +799,9 @@
   }
   .search-filter-divider { width: 1px; height: 14px; background: var(--border-strong); flex-shrink: 0; }
   .search-btn {
-    /* Explicit height (not just padding) matching .view-btn's own box --
-       owner feedback, 2026-07-31: this button and the Kanban/List toggle
-       next to it read as two different control heights. Same fix on
-       Agenda's analogous palette-btn/mode-btn pair in DeadlinesView. */
+    /* Explicit height (not just padding) matching .view-btn's own box, so
+       this button and the Kanban/List toggle next to it are the same
+       height. Agenda's palette-btn/mode-btn pair does the same. */
     display: flex; align-items: center; justify-content: center;
     height: 30px; box-sizing: border-box;
     background: none; border: none;
@@ -950,8 +908,8 @@
   /* ── Error toast ── */
   .error-toast {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    /* --on-accent, not hardcoded #fff — maintenance pass caught this at
-       2.77:1 in dark mode (--danger is a light red-pink there). */
+    /* --on-accent, not hardcoded #fff — --danger is a light red-pink in
+       dark mode, where #fff drops to 2.77:1 contrast. */
     background: var(--danger); color: var(--on-accent);
     padding: 11px 18px; border-radius: 10px;
     font-size: 13.5px; font-weight: 500;
@@ -990,7 +948,7 @@
   /* ── Mobile ── */
   /* Second condition mirrors Sidebar.svelte's own -- a phone in landscape
      needs the same off-canvas hamburger/scrim treatment even though its
-     width alone often exceeds 768px (owner-reported 2026-07-22). */
+     width alone often exceeds 768px. */
   @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .mobile-scrim { display: block; }
     .hamburger { display: flex; }

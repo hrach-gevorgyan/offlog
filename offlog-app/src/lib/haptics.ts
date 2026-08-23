@@ -1,10 +1,8 @@
-// B58 (ROADMAP.md): shared entry point for every haptic call site, so the
-// isNativePlatform()/isHapticsEnabled() gate lives in exactly one place
-// instead of being re-checked at each call site. Android only (this
-// project ships no other Capacitor-native platform, see DECISIONS.md/
-// DECISIONS.md) — web/desktop silently no-op rather than falling back to
-// the Vibration API, since a plain buzz on every checkbox click on
-// desktop would read as a bug, not a feature.
+// Shared entry point for every haptic call site, so the
+// isNativePlatform()/isHapticsEnabled() gate lives in exactly one place.
+// Android only — web/desktop deliberately no-op rather than falling back to
+// the Vibration API, since a buzz on every checkbox click on desktop reads as
+// a bug, not a feature.
 import { isNativePlatform, isHapticsEnabled } from '../config';
 
 async function fire(fn: (mod: typeof import('@capacitor/haptics')) => Promise<void>) {

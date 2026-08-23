@@ -1,9 +1,6 @@
-// PouchDB core is loaded as a UMD global via index.html <script src="/pouchdb.js">
-// — that bundle is core-only and does NOT include pouchdb-find (createIndex/
-// find), despite pouchdb-find being a project dependency and its types being
-// referenced. Register it as a real plugin against the global constructor;
-// without this, db.createIndex()/db.find() below would silently do nothing
-// useful (createIndex no-ops, find() throws) since the methods don't exist.
+// PouchDB core is loaded as a UMD global via index.html <script src="/pouchdb.js">.
+// That bundle is core-only: pouchdb-find must be registered as a plugin on the
+// global constructor, or createIndex() no-ops and find() throws.
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
 import PouchDBFind from 'pouchdb-find';
@@ -14,24 +11,17 @@ import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension
 
 (PouchDB as any).plugin(PouchDBFind);
 
-// B22: was a fixed platform-detected 'pc'/'mobile' — now the user-editable
-// per-device name (see config.ts). Read once per module load rather than
-// on every write — renaming a device via Settings triggers the same
-// location.reload() the sync-URL field already does, so a fresh SOURCE is
-// picked up on next load rather than needing this to be reactive.
+// Read once per module load, not per write: renaming a device triggers a
+// location.reload(), so a fresh value is picked up then.
 const SOURCE: Source = getDeviceName();
 const SOURCE_ID: string = getDeviceId();
 // auto_compaction discards superseded revision bodies as soon as a new
-// revision lands. Without it PouchDB keeps every historical revision of
-// every doc forever, and -- the case that actually bites -- deleting a
-// 10MB attachment frees zero disk space, because the previous revision
-// still references the blob. Compaction was previously only reachable
-// via the manual Settings → Maintenance button, i.e. only if the user
-// happened to remember it existed. Local-only setting; it has no effect
-// on (and no relationship to) the sync remote's own history, so
-// replication semantics are unchanged. Applies going forward on an
-// existing database -- the one-time cleanup of already-accumulated
-// revisions is still the manual button's job.
+// revision lands. Without it PouchDB keeps every historical revision
+// forever, and deleting a 10MB attachment frees zero disk space because the
+// previous revision still references the blob. Local-only: it does not
+// affect the sync remote's history, so replication semantics are unchanged.
+// It only applies going forward — clearing already-accumulated revisions on
+// an existing database is the manual Settings → Maintenance compaction.
 const db = new PouchDB('offlog', { auto_compaction: true });
 
 // ── Indexes ───────────────────────────────────────────────────────────────────
@@ -43,11 +33,10 @@ export function initIndexes(): Promise<void> {
   if (_indexesReady) return _indexesReady;
   _indexesReady = (async () => {
     try {
-      // `ddoc` names the design doc the index lives in -- a real, documented
-      // pouchdb-find option, but missing from @types/pouchdb-find's
-      // CreateIndexOptions. Cast rather than drop it: without an explicit
-      // ddoc each index gets its own generated design doc, which is slower
-      // to query and churns more on replication.
+      // `ddoc` names the design doc the index lives in -- a real pouchdb-find
+      // option missing from @types/pouchdb-find's CreateIndexOptions, hence
+      // the cast. Don't drop it: without an explicit ddoc each index gets its
+      // own generated design doc, slower to query and churnier on replication.
       await db.createIndex({ index: { fields: ['type', 'project_id'] }, ddoc: 'idx-type-project' } as PouchDB.Find.CreateIndexOptions);
       await db.createIndex({ index: { fields: ['type', 'ref'] }, ddoc: 'idx-type-ref' } as PouchDB.Find.CreateIndexOptions);
     } catch {
@@ -81,10 +70,8 @@ export function invalidateTaskCache(): void { _taskCache = null; }
 function now() { return new Date().toISOString(); }
 function nanoid(len = 8) { return Math.random().toString(36).slice(2, 2 + len); }
 
-// localDateStr lives in utils.ts (not here) to avoid a circular import --
-// this file already depends on utils.ts for wordOverlapSimilarity. Same
-// local-calendar-date convention due_date is stored in everywhere else in
-// this file and in nlpParse.ts's own isoDate().
+// localDateStr lives in utils.ts to avoid a circular import. It is the
+// local-calendar-date convention due_date is stored in everywhere.
 
 export function posBetween(before: number | null, after: number | null): number {
   if (before === null && after === null) return 1024;
@@ -93,13 +80,9 @@ export function posBetween(before: number | null, after: number | null): number 
   return (before + after) / 2;
 }
 
-// A9: KanbanBoard.svelte's HTML5-drag path (onCardListDrop) and touch-drag
-// path (onTouchEnd) each independently duplicated this exact neighbor-
-// selection logic before deciding where a dropped card lands. Extracted
-// here so it's a pure function testable directly (tests/db.test.ts),
-// instead of only reachable through a full jsdom drag/touch-event
-// simulation — which is exactly why this math went untested for so long
-// (see ROADMAP.md's A9).
+// Shared by KanbanBoard.svelte's HTML5-drag and touch-drag paths, which both
+// need the same neighbor selection to decide where a dropped card lands.
+// Kept a pure function so it's testable without simulating drag events.
 export function computeDropPosition(colTasks: { position: number }[], dragOverIndex: number | null): number {
   if (dragOverIndex === null) {
     const last = colTasks.at(-1);
@@ -141,18 +124,14 @@ export async function getRecentLogs(limit = 80): Promise<any[]> {
   return r.rows.map(r => r.doc!);
 }
 
-// B5: per-device last-seen list for Settings — scans a bounded window of
-// the most recent changelog entries (same range-scan-by-`log:`-prefix
-// pattern as getRecentLogs) rather than every log ever, same "cheap at
-// the scale of a personal task manager" reasoning used elsewhere in this
-// file. Descending order means the first entry seen for a given source
-// is already its most recent.
+// Per-device last-seen list for Settings. Scans a bounded window of the most
+// recent changelog entries rather than every log ever. Descending order means
+// the first entry seen for a given source is already its most recent.
 export async function getDeviceLastSeen(): Promise<{ device: string; lastSeen: string }[]> {
   const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, limit: 500, include_docs: true });
-  // B39: group by the stable source_id where present (so a rename doesn't
-  // split one device into two rows) — log entries written before this
-  // field existed have no source_id, so they fall back to grouping by the
-  // literal source string, same as before.
+  // Group by the stable source_id where present, so a rename doesn't split one
+  // device into two rows. Older log entries have no source_id and fall back to
+  // grouping by the literal source string.
   const seen = new Map<string, string>();
   const names = new Map<string, string>();
   for (const row of r.rows) {
@@ -272,22 +251,17 @@ export async function getStorageBreakdown(): Promise<StorageBreakdown> {
     if (d.deleted) deletedTasks++;
     else if (d.archived) archivedTasks++;
     else activeTasks++;
-    // Counted regardless of active/archived/deleted -- a soft-deleted
-    // task's attachments still occupy real disk space until emptied from
-    // Recycle, same as everything else about it (v6.8.0).
+    // Counted regardless of active/archived/deleted -- a soft-deleted task's
+    // attachments still occupy real disk space until the trash is emptied.
     for (const a of d.attachments ?? []) { attachmentCount++; attachmentBytes += a.size; }
   }
   const logRows = await db.allDocs({ startkey: 'log:', endkey: 'log:￰' });
   return { activeTasks, archivedTasks, deletedTasks, logEntries: logRows.rows.length, attachmentCount, attachmentBytes };
 }
 
-// v5.6.2 cleanup: getDashboardData()/searchAllTasks() each independently
-// built this identical Set to exclude an archived project's leaked done
-// tasks (see archiveProject()'s own comment for why those can still
-// carry archived:false) -- one shared helper instead of two copies of
-// the same line. (A third caller, getRecentlyModifiedTasks(), was
-// removed as dead code in the 6.0.0 maintenance pass once Sidebar's
-// "Recent" section it fed was dropped in the 5.9.0 redesign.)
+// Shared by getDashboardData()/searchAllTasks() to exclude an archived
+// project's leftover done tasks -- see archiveProject() for why those can
+// still carry archived:false.
 function getActiveProjectIds(allProjects: ProjectDoc[]): Set<string> {
   return new Set(allProjects.map(p => p._id!));
 }
@@ -297,10 +271,9 @@ export async function getDashboardData() {
   const all = await getAllTasksRaw();
   const activeProjectIds = getActiveProjectIds(allProjects);
   // archiveProject() only sweeps a project's non-done tasks into
-  // archived:true (done tasks are deliberately left alone -- see its own
-  // comment), so without this a done task from an archived project would
-  // still show up here as pinned/overdue/today with no project to resolve
-  // its name against (owner-reported "dash" bug, 2026-07-21).
+  // archived:true, so without this filter a done task from an archived
+  // project still shows up as pinned/overdue/today with no project to
+  // resolve its name against.
   const tasks = all.filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id));
   const today = localDateStr(new Date());
 
@@ -315,9 +288,8 @@ export async function getDashboardData() {
     if (t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id].lastColId) byProject[t.project_id].overdue++;
   }
 
-  // Owner-caught bug (2026-07-30): unlike overdueTasks/todayTasks below,
-  // this never excluded done tasks -- a pinned task already sitting in
-  // its project's last column kept showing up here indefinitely.
+  // Excludes done tasks (last column) like overdueTasks/todayTasks below --
+  // otherwise a completed pinned task shows here indefinitely.
   const pinnedTasks = tasks
     .filter(t => t.pinned && t.column_id !== byProject[t.project_id]?.lastColId)
     .slice(0, 10);
@@ -331,14 +303,13 @@ export async function getDashboardData() {
     .slice(0, 10);
   const projCache: Record<string, string> = Object.fromEntries(allProjects.map(p => [p._id, p.name]));
 
-  // B17 — "completed in the last week" for the Dashboard summary strip.
-  // No completed_at field exists; reusing updated_at + the same positional
-  // "done = last column" check already used above is simpler and more
-  // reliable than reconstructing it from log docs, since move-action logs
-  // only store the target column's *name* (not its id) — fragile against
-  // renames. Caveat worth noting: updated_at bumps on any edit, so a task
-  // completed earlier but merely edited within the window would
-  // false-positive here — acceptable for a glance-level dashboard stat.
+  // "Completed in the last week" for the Dashboard summary strip. There is no
+  // completed_at field; this uses updated_at plus the positional
+  // "done = last column" check rather than reconstructing from log docs
+  // (move logs store the target column's *name*, not its id — fragile against
+  // renames). updated_at bumps on any edit, so a task completed earlier but
+  // merely edited within the window false-positives — acceptable for a
+  // glance-level stat.
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const completedByProject: Record<string, number> = {};
   for (const t of tasks) {
@@ -361,17 +332,10 @@ export async function getDashboardData() {
   };
 }
 
-// v6.10.0 — unified search: title/tags/body ("Notes") already matched here;
-// this adds checklist item text so a task is findable by a step buried
-// inside its checklist, not just its own title/notes. `matchedIn` tells
-// GlobalSearch.svelte which field actually matched (checked in this same
-// priority order) so it can show *why* a result surfaced when the title
-// itself doesn't contain the query -- tags already gets a result row of
-// its own there, so only 'body'/'checklist'/'attachments' need an extra
-// hint. 'attachments' (roadmap item 8) added after: file attachments
-// (v6.8.0) and unified search (v6.10.0) shipped separately and never
-// got wired together, so a task with "invoice_march.pdf" attached
-// wasn't findable by searching "invoice".
+// Unified search across title/tags/body/checklist/attachment filenames.
+// `matchedIn` tells GlobalSearch.svelte which field matched (checked in the
+// order below) so it can show *why* a result surfaced when the title itself
+// doesn't contain the query.
 export type TaskSearchMatch = 'title' | 'tags' | 'body' | 'checklist' | 'attachments';
 
 function taskSearchMatch(d: TaskDoc, q: string): TaskSearchMatch | null {
@@ -397,11 +361,8 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
     .filter((x): x is { doc: TaskDoc; matchedIn: TaskSearchMatch } => x.matchedIn !== null);
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
   const spaceCache: Record<string, SpaceDoc> = Object.fromEntries(allSpaces.map(s => [s._id!, s]));
-  // Owner-requested (2026-07-20, after a real same-name-different-space
-  // "Draft" project caused real confusion): disambiguate with the space
-  // name whenever more than one project shares a name — a flat
-  // cross-project list like this is exactly where that collision is
-  // otherwise invisible.
+  // Disambiguate with the space name whenever more than one project shares a
+  // name — a flat cross-project list is where that collision is invisible.
   const nameCounts = new Map<string, number>();
   for (const p of allProjects) {
     const key = p.name.trim().toLowerCase();
@@ -425,23 +386,18 @@ export async function clearLogs(): Promise<void> {
 
 let _syncHandler: any = null;
 
-// Exported for tests/sync.test.ts (A16) — pure classification, no I/O, and
-// exactly the logic that decides what a flaky/dropped connection actually
-// tells the user, so it's worth covering deterministically rather than only
-// via a real (slow, network-dependent, sandbox-unreachable) db.sync() call.
+// Exported for tests — pure classification, no I/O, so what a dropped
+// connection tells the user is testable without a real db.sync() call.
 export function describeSyncError(err: any): string {
   if (!err) return 'Unknown sync error';
   const status = err.status ?? err.statusCode;
   if (status === 401 || status === 403) return 'Authentication failed — check sync credentials';
   if (status === 404) return 'Sync database not found on server';
   if (status === 0 || err.name === 'TypeError' || /network|failed to fetch/i.test(err.message ?? '')) {
-    // Owner-reported confusion (2026-07-06): the sync URL is a LAN IP
-    // (see DECISIONS.md — self-hosted sync server, no hosted alternative), so
-    // "cannot reach it" overwhelmingly means "not on that network right
-    // now" — a laptop on a different WiFi, a phone off home WiFi entirely.
-    // A device that's never synced before shows an empty/default-seeded
-    // app in exactly this situation, easy to mistake for lost data if the
-    // message doesn't say why in plain terms.
+    // The sync URL is a self-hosted LAN address, so "cannot reach it" almost
+    // always means "not on that network right now". A device that has never
+    // synced shows an empty/default-seeded app in this situation, easy to
+    // mistake for lost data unless the message says why in plain terms.
     return 'Cannot reach sync server — check you\'re on the same network/WiFi it runs on';
   }
   return err.message ?? err.reason ?? String(err);
@@ -483,11 +439,10 @@ function markError(err: any) {
   notify();
 }
 
-// Content shape a still-untouched default doc from seedIfEmpty() has —
-// compared field-by-field (ignoring _id/_rev/updated_at/source, which
-// always legitimately differ between two independently-seeded installs)
-// to tell a genuinely pristine copy apart from one the user actually
-// edited (renamed, recolored, reordered, or customized statuses on).
+// Content shape a still-untouched default doc from seedIfEmpty() has.
+// Compared field-by-field (ignoring _id/_rev/updated_at/source, which always
+// legitimately differ between two independently-seeded installs) to tell a
+// genuinely pristine copy apart from one the user edited.
 const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
   'space:unsorted': (d) => d.name === 'Unsorted' && d.color === '#6B7280' && d.position === 0,
   'space:personal': (d) => d.name === 'Personal' && d.color === '#10B981' && d.position === 1,
@@ -496,25 +451,17 @@ const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
                          && d.default_view === 'kanban' && JSON.stringify(d.columns) === JSON.stringify(DEFAULT_COLS),
 };
 
-// S2 (DECISIONS.md's Open Questions section, 2026-07-20): confirmed live
-// against a real 180-doc dataset — clearLocalSeedBeforeFirstPair() only
-// helps when THIS device's own copy of a fixed default id is still
-// pristine; it can't know or fix the *other* side's copy. A phone with
-// real accumulated history (which skips that guard, since it has real
-// tasks) pairing against a PC whose own defaults were never touched still
-// forks genuine, un-mergeable revision trees on these same fixed ids the
-// moment they sync — the same bug clearLocalSeedBeforeFirstPair() was
-// built for, just from the opposite direction, and the protocol's
-// deterministic winner isn't guaranteed to prefer the real content over
-// the pristine throwaway. Rather than trying to pre-empt every ordering before pairing,
-// this cleans up *after* the fact, symmetrically, regardless of which side
-// ends up holding the pristine loser (or winner) — a revision on one of
-// these 4 known ids that still exactly matches seedIfEmpty()'s pristine
-// shape is provably worthless, so it's discarded with no user interaction.
-// A revision that's been genuinely customized is never guessed at — this
-// only recognizes "nobody ever touched this one," never merges two real
-// edits, matching this app's existing declined-3-way-merge stance (see
-// DECISIONS.md).
+// clearLocalSeedBeforeFirstPair() only helps when THIS device's copy of a
+// fixed default id is still pristine; it can't fix the *other* side's copy.
+// A device with real history pairing against one whose defaults were never
+// touched still forks un-mergeable revision trees on those fixed ids, and
+// the protocol's deterministic winner isn't guaranteed to prefer the real
+// content over the pristine throwaway. So this cleans up after the fact,
+// symmetrically: a revision on one of these known ids that still exactly
+// matches seedIfEmpty()'s pristine shape is provably worthless and is
+// discarded with no user interaction. A genuinely customized revision is
+// never guessed at — this only recognizes "nobody ever touched this one",
+// and never merges two real edits.
 async function autoResolvePristineDefaultConflicts(): Promise<void> {
   for (const id of Object.keys(PRISTINE_DEFAULTS)) {
     let doc: any;
@@ -524,12 +471,10 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
     const isPristine = PRISTINE_DEFAULTS[id];
 
     if (isPristine(doc)) {
-      // The kept revision is the untouched default — if exactly one
-      // losing revision is a real edit, adopt it as the new current
-      // instead of silently keeping the throwaway one just because
-      // PouchDB's deterministic pick happened to favor it. More than one
-      // genuinely different edit is left alone — same "don't guess
-      // between two real edits" rule as everywhere else in this app.
+      // The kept revision is the untouched default — if exactly one losing
+      // revision is a real edit, adopt it rather than keeping the throwaway
+      // just because PouchDB's deterministic pick favored it. More than one
+      // real edit is left alone: never guess between two real edits.
       const edited: string[] = [];
       for (const rev of losingRevs) {
         try {
@@ -558,17 +503,14 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
   }
 }
 
-// Exported for store.ts's init() — conflict state should be visible from
-// a cold start too, not only after the next sync settles (see its own
-// call site comment).
+// Exported for store.ts's init() — conflict state must be visible from a
+// cold start, not only after the next sync settles.
 export async function scanConflicts(): Promise<number> {
   await autoResolvePristineDefaultConflicts();
-  // PouchDB only ever attaches conflict info to the fetched doc's own
-  // _conflicts field, never to row.value — so include_docs is required, and
-  // row.doc._conflicts (not row.value.conflicts) is the field to read. A
-  // prior version of this function checked row.value.conflicts, which never
-  // exists; the conflict count silently stayed at 0 regardless of real
-  // conflicts. Caught by tests/db.test.ts's manufactured-conflict test.
+  // PouchDB only attaches conflict info to the fetched doc's own _conflicts
+  // field, never to row.value — so include_docs is required, and
+  // row.doc._conflicts (not row.value.conflicts, which does not exist) is the
+  // field to read. Reading row.value.conflicts silently yields a zero count.
   const r = await db.allDocs({ include_docs: true, conflicts: true });
   const count = r.rows.filter((row: any) => row.doc?._conflicts?.length).length;
   syncState.conflictCount = count;
@@ -578,7 +520,7 @@ export async function scanConflicts(): Promise<number> {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    if (!isSyncEnabled()) return; // B13 — an explicit pause shouldn't auto-resume on reconnect
+    if (!isSyncEnabled()) return; // an explicit pause must not auto-resume on reconnect
     if (syncState.status === 'offline') { syncState.status = 'syncing'; notify(); }
     syncNow().catch(() => {});
   });
@@ -587,38 +529,25 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Both startSync() and syncNow() attach these same handlers to a *single*
-// live replication (_syncHandler) — syncNow() used to spin up its own
-// separate one-shot db.sync() alongside the already-running live one,
-// meaning two concurrent replications hit the same remote at once. Routing
-// both through one handler at a time avoids that redundant traffic and any
-// risk of the two racing to write the same doc.
+// Both startSync() and syncNow() attach these handlers to a *single* live
+// replication (_syncHandler). Never run a second concurrent db.sync() against
+// the same remote: two replications race to write the same docs and duplicate
+// the traffic.
 //
-// A32 (owner-reported, 2026-07-13): status showed "Connected — last synced"
-// on both devices while nothing was actually reaching the remote. Root
-// cause, traced through PouchDB's own source (node_modules/pouchdb/dist/
-// pouchdb.js): db.sync()'s combined Sync object always emits a bare
-// 'paused' (no error) whenever EITHER direction pauses — its internal
-// pushPaused()/pullPaused() listeners discard whatever argument the
-// underlying push/pull sub-replication's own 'paused' event carried. Under
-// `retry: true`, a connection failure triggers backOff(), which ALSO emits
-// 'paused' (this time *with* the error) on the sub-replication — but that
-// error never reaches the combined object, which just sees another bare
-// 'paused' and treats it identically to "genuinely caught up." The
-// combined object's own 'error' event only fires once the underlying
-// replication *promise rejects*, which never happens under `retry: true`
-// for an ordinary unreachable-host/timeout — PouchDB just retries forever,
-// silently. Net effect: any retryable connectivity failure reported as a
-// permanent "synced" success. Fixed by listening to the sub-replications
-// directly (handler.push/handler.pull — public instance properties on
-// PouchDB's Sync class) to recover the error the combined wrapper drops,
-// without giving up `retry: true`'s automatic reconnect behavior.
+// The push/pull sub-replication listeners are load-bearing, not redundant:
+// db.sync()'s combined Sync object emits a bare 'paused' (no error) whenever
+// either direction pauses, discarding the argument the underlying
+// sub-replication's own 'paused' carried. Under `retry: true` a connection
+// failure emits 'paused' *with* the error on the sub-replication only, and
+// the combined object's 'error' never fires because the replication promise
+// never rejects — PouchDB retries forever. Listening only to the combined
+// object therefore reports any retryable connectivity failure as a successful
+// "synced". handler.push/handler.pull are public properties of PouchDB's Sync
+// class; reading the error from them keeps `retry: true`'s auto-reconnect.
 //
-// Exported for tests/sync.test.ts (A16/A32) — takes a fake PouchDB-sync-
-// shaped object (chainable `.on(event, cb)`, optionally with `.push`/
-// `.pull` sub-objects of the same shape) so this can be verified without a
-// real replication (this project has no CI-reachable sync server to test a
-// genuinely dropped connection against).
+// Exported for tests — accepts any object with a chainable `.on(event, cb)`
+// and optional `.push`/`.pull` sub-objects of the same shape, so a dropped
+// connection can be exercised without a real replication.
 export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
   let settled = false;
   const settle = (err: any) => { if (!settled) { settled = true; onSettle?.(err); } };
@@ -647,23 +576,18 @@ export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) 
 
 export async function startSync(): Promise<void> {
   if (_syncHandler) { _syncHandler.cancel(); _syncHandler = null; }
-  // B13: an explicit pause takes priority over auto-starting on init —
-  // config.ts's isSyncEnabled() defaults to true, so existing installs
-  // keep syncing exactly as before until someone opts out in Settings.
+  // An explicit pause takes priority over auto-starting on init.
   if (!isSyncEnabled()) { syncState.status = 'idle'; notify(); return; }
-  // No server configured yet (fresh install, or DEFAULT_SYNC_URL's
-  // no-longer-hardcoded fallback) — don't attempt new PouchDB('', ...),
-  // which would create a nonsense local database instead of failing
-  // loudly. Stay 'idle'; Settings' Sync tab already shows "Not connected
-  // to another device yet" for this exact state (B43).
+  // No server configured yet — don't attempt new PouchDB('', ...), which
+  // creates a nonsense local database instead of failing loudly. Stay 'idle';
+  // Settings' Sync tab renders "Not connected to another device yet" for this.
   if (!getSyncUrl()) { syncState.status = 'idle'; notify(); return; }
   if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
   _syncHandler = attachSyncHandlers(db.sync(await remote(), { live: true, retry: true }));
 }
 
-// B13: the other half of the pause toggle — cancels the live replication
-// without touching the configured URL (setSyncUrl('') would drop the
-// server config entirely, which "pause for a while" shouldn't do).
+// Pause: cancels the live replication without touching the configured URL
+// (setSyncUrl('') would drop the server config entirely, which a pause must not do).
 export function cancelSync() {
   if (_syncHandler) { _syncHandler.cancel(); _syncHandler = null; }
   syncState.status = 'idle';
@@ -693,21 +617,14 @@ const DEFAULT_COLS = [
   { id: 'col:completed', name: 'Completed' },
 ];
 
-// Track E's pairing handshake (discovery.ts's pairWithHost()) surfaced a
-// real, repeatable bug: seedIfEmpty() below gives every fresh install its
-// own space:unsorted/personal/work + project:draft docs, using FIXED,
-// not per-install-random, ids. Two devices that each seed independently
-// before ever syncing (the exact "PC + phone, sync automatically" flow
-// this whole track exists for) are guaranteed to collide on those same 4
-// ids the moment they pair — confirmed live: pairing a freshly-seeded
-// phone against a freshly-seeded PC produced exactly 4 conflicts, one
-// per fixed id. Called from pairWithHost() right before sync starts:
-// if this device has never held real content (zero tasks — the seed
-// itself never creates any), its pristine seed is safe to discard so the
-// upcoming pull just creates the host's versions cleanly instead of
-// forking a divergent revision history for the same ids. A device
-// that's already in real use is left alone — the zero-tasks check is
-// what makes that distinction, not "is this the first pair attempt."
+// seedIfEmpty() gives every fresh install space:unsorted/personal/work +
+// project:draft under FIXED ids, so two independently-seeded devices collide
+// on those 4 ids the moment they first pair. Called from discovery.ts's
+// pairWithHost() right before sync starts: if this device has never held real
+// content (zero tasks — the seed creates none), its pristine seed is safe to
+// discard so the upcoming pull creates the host's versions cleanly instead of
+// forking a divergent revision history. The zero-tasks check is what protects
+// a device already in real use — not "is this the first pair attempt".
 export async function clearLocalSeedBeforeFirstPair(): Promise<void> {
   const tasks = await db.allDocs({ startkey: 'task:', endkey: 'task:￰' });
   if (tasks.rows.length > 0) return;
@@ -744,20 +661,13 @@ export async function wipeAndReseed(): Promise<void> {
 const SEEDED_KEY = 'offlog_seeded';
 
 export async function seedIfEmpty() {
-  // getSpaces() always runs -- the SEEDED_KEY flag used to skip it entirely
-  // once set, which is a real risk if the DB is ever legitimately empty
-  // again while the flag survives (a wipe that doesn't also clear
-  // localStorage, a corrupted/partial first run, etc.): a stale "already
-  // seeded" flag would then leave the app silently empty forever with no
-  // obvious way back short of manually creating a space (owner-reported,
-  // 2026-07-17, PC first launch). The scan itself is small (4 docs) and
-  // only relevant while genuinely empty, so paying for it unconditionally
-  // is cheap insurance, not a real cost.
+  // getSpaces() always runs -- never gate it behind SEEDED_KEY. If the DB is
+  // legitimately empty again while the flag survives (a wipe that doesn't
+  // clear localStorage, a partial first run), a stale flag would leave the app
+  // silently empty forever. The scan is tiny and only matters while empty.
   const existing = await getSpaces();
   if (existing.length > 0) { localStorage.setItem(SEEDED_KEY, '1'); return; }
 
-  // B24: down to 3 — Family dropped from the default seed (owner request;
-  // still creatable manually via "+ New space" for anyone who wants it).
   const SPACES = [
     { key: 'unsorted', name: 'Unsorted', color: '#6B7280' },
     { key: 'personal', name: 'Personal', color: '#10B981' },
@@ -783,10 +693,8 @@ export async function getSpaces(): Promise<SpaceDoc[]> {
   return r.rows.map(r => r.doc!).sort((a, b) => a.position - b.position);
 }
 
-// Owner-requested (2026-07-20) duplicate-name nudge — see utils.ts's own
-// header comment for the full reasoning. Case-insensitive/trimmed match,
-// never blocking; the caller (Sidebar's "+ New space") decides whether to
-// show a dismissible hint.
+// Duplicate-name nudge. Case-insensitive/trimmed match, never blocking; the
+// caller decides whether to show a dismissible hint.
 export async function findSpacesByName(name: string, excludeId?: string): Promise<SpaceDoc[]> {
   const key = name.trim().toLowerCase();
   if (!key) return [];
@@ -802,8 +710,6 @@ export async function createSpace(name: string, color: string, icon?: string): P
     updated_at: now(), source: SOURCE,
   };
   await db.put(doc);
-  // Spaces had zero changelog coverage at all (create/update/delete) —
-  // every other entity type (project, task) logs create+update.
   await logChange(doc._id!, 'create', undefined, undefined, undefined, { space_name: name });
   return doc;
 }
@@ -813,9 +719,8 @@ export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'n
   const updated = { ...doc, ...changes, updated_at: now(), source: SOURCE };
   await db.put(updated);
   const skip = new Set(['updated_at', 'source']);
-  // Keyed to what `changes` can actually contain, not all of SpaceDoc --
-  // `keyof SpaceDoc` was wider than the object being indexed, so every
-  // lookup below resolved to an implicit `any`.
+  // Keyed to what `changes` can contain, not all of SpaceDoc: `keyof SpaceDoc`
+  // is wider than the object being indexed, making every lookup implicit `any`.
   for (const key of Object.keys(changes) as (keyof typeof changes)[]) {
     if (skip.has(key)) continue;
     if (JSON.stringify(doc[key]) === JSON.stringify(changes[key])) continue;
@@ -824,9 +729,9 @@ export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'n
   return updated;
 }
 
-// Position-only reordering, same as why task drag-reorder within a column
-// isn't logged either (updateTask's diff skip set excludes `position`) —
-// changelog noise for a pure display-order tweak, not a real edit.
+// Deliberately unlogged, like task drag-reorder within a column (updateTask's
+// diff skip set excludes `position`): a pure display-order tweak is changelog
+// noise, not a real edit.
 export async function reorderSpaces(spaceIds: string[]): Promise<void> {
   const all = await getSpaces();
   const byId = new Map(all.map(s => [s._id, s]));
@@ -864,19 +769,16 @@ export async function getProjects(spaceId?: string): Promise<ProjectDoc[]> {
   return docs.sort((a, b) => a.position - b.position);
 }
 
-// B32 — archived projects are hidden from getProjects() the same way
-// archived tasks are hidden from getTasksForProject(); this is the
-// restore-list counterpart, mirroring getArchivedTasksForProject().
+// Archived projects are hidden from getProjects() the same way archived tasks
+// are hidden from getTasksForProject(); this is the restore-list counterpart.
 export async function getArchivedProjects(): Promise<ProjectDoc[]> {
   const r = await db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true });
   return r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted && !!d.archived)
     .sort((a, b) => a.position - b.position);
 }
 
-// Owner-requested (2026-07-20) duplicate-name nudge — cross-space on
-// purpose (the exact "two 'Draft' projects" case that prompted this was
-// two different spaces), so the caller can show which space(s) already
-// have this name rather than silently letting it happen unremarked.
+// Duplicate-name nudge — cross-space on purpose, so the caller can show which
+// space(s) already have this name.
 export async function findProjectsByName(name: string, excludeId?: string): Promise<ProjectDoc[]> {
   const key = name.trim().toLowerCase();
   if (!key) return [];
@@ -902,14 +804,12 @@ export async function createProject(spaceId: string, name: string): Promise<Proj
   return doc;
 }
 
-// B8: "New from template" — same shape as duplicateTask(), applied at the
-// project level. Copies the template's status structure (column names,
-// fresh ids) always; open (non-deleted, non-archived, not-in-last-column —
-// same positional-"done" check as everywhere else) tasks only if
-// copyOpenTasks is set. Copied tasks get fresh ids/timestamps, reset
-// due_date/reminder_at (a template's deadlines don't apply to a new
-// instance), and reset checklist items to unchecked — everything else
-// (title, body, priority, tags) carries over as-is.
+// "New from template". Always copies the template's status structure (column
+// names, fresh ids); copies open tasks (non-deleted, non-archived, not in the
+// last column — the positional "done" check) only if copyOpenTasks is set.
+// Copied tasks get fresh ids/timestamps, cleared due_date/reminder_at (a
+// template's deadlines don't apply to a new instance) and unchecked checklist
+// items; title, body, priority and tags carry over as-is.
 export async function createProjectFromTemplate(
   spaceId: string,
   name: string,
@@ -995,11 +895,10 @@ export async function reorderColumns(projectId: string, columns: Column[]): Prom
   return updateProject(projectId, { columns });
 }
 
-// B16 (revised, owner feedback 2026-07-09): custom fields are global, not
-// per-project — every task everywhere shares the same field definitions,
-// configured once from Settings → Organize, not invented ad hoc per card.
-// Stored as a single fixed-id doc rather than a `field:` range scan since
-// there's only ever one list to read/write, never a query over many.
+// Custom fields are global, not per-project: every task shares the same field
+// definitions, configured once from Settings → Organize. Stored as a single
+// fixed-id doc rather than a `field:` range scan — there's only ever one list
+// to read/write, never a query over many.
 const CUSTOM_FIELDS_DOC_ID = 'meta:custom_fields';
 
 export async function getCustomFieldDefs(): Promise<CustomFieldDef[]> {
@@ -1021,14 +920,10 @@ export async function addCustomFieldDef(name: string, type: CustomFieldDef['type
   return fields;
 }
 
-// Owner-reported bug, 2026-07-24: no way to rename a field or change its
-// type/options after creation — only add/remove existed. Renaming is
-// always safe (tasks store values keyed by field *id*, never by name).
-// Changing type/options is left to the caller's judgment, same as the
-// rest of this app's "trust the user" stance elsewhere (e.g. removing a
-// field leaves stale values rather than guarding against it) — an
-// existing text value under a field switched to 'number' just won't
-// parse as a number until the task is edited again, not a crash.
+// Renaming is always safe: tasks store values keyed by field *id*, never by
+// name. Changing type/options is left to the caller's judgment — an existing
+// text value under a field switched to 'number' simply won't parse until the
+// task is edited again, which is not a crash.
 export async function updateCustomFieldDef(fieldId: string, patch: { name?: string; type?: CustomFieldDef['type']; options?: string[] }): Promise<CustomFieldDef[]> {
   let doc: any;
   try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
@@ -1061,21 +956,16 @@ export async function deleteProject(id: string): Promise<void> {
   const projectTasks = all.filter(d => d.project_id === id);
   if (projectTasks.length) await db.bulkDocs(projectTasks.map(t => ({ ...t, _deleted: true })));
   invalidateTaskCache();
-  // Was the only project-level mutation with no changelog entry at all
-  // (create/update/archive/unarchive all log) -- logged after the doc is
-  // already gone, same as deleteTask logging against a soft-deleted doc;
-  // the ref just won't resolve to a live project if anyone ever clicks
-  // through from this entry, same as any other deleted-item log row.
+  // Logged after the doc is already gone, so this ref won't resolve to a live
+  // project if clicked through -- same as any other deleted-item log row.
   await logChange(id, 'delete', undefined, undefined, undefined, { project_name: doc.name });
 }
 
-// B32 — soft archive for a whole project: the project doc itself stays
-// (never db.remove()'d), and only its non-done tasks get archived: true —
-// tasks already sitting in the last column (positionally "done") are left
-// alone since they're not what a re-visit would need to see restored.
-// Restoring the project (unarchiveProject) only un-hides the project
-// itself; the tasks it swept up restore individually via the existing
-// per-task archived toggle (List view), same as any other archived task.
+// Soft archive for a whole project: the project doc stays (never
+// db.remove()'d) and only its non-done tasks get archived: true — tasks
+// already in the last column (positionally "done") are left alone.
+// unarchiveProject() only un-hides the project itself; the tasks it swept up
+// restore individually via the per-task archived toggle.
 export async function archiveProject(id: string): Promise<void> {
   const doc = await db.get<ProjectDoc>(id);
   const lastColId = doc.columns.at(-1)?.id;
@@ -1111,8 +1001,8 @@ export async function removeColumn(projectId: string, colId: string): Promise<Pr
 export async function getTasksForProject(projectId: string): Promise<TaskDoc[]> {
   await initIndexes();
   try {
-    // pouchdb-find defaults to a 25-result limit when none is specified —
-    // without this, any project past 25 tasks would silently truncate.
+    // pouchdb-find silently defaults to 25 results — always pass an explicit
+    // limit, or any project past 25 tasks truncates without warning.
     const r = await db.find({
       selector: { type: 'task', project_id: projectId },
       use_index: 'idx-type-project',
@@ -1126,12 +1016,9 @@ export async function getTasksForProject(projectId: string): Promise<TaskDoc[]> 
   }
 }
 
-// Owner-requested (2026-07-20) duplicate-name nudge — scoped to *within
-// one project* on purpose, unlike findProjectsByName/findSpacesByName:
-// task titles repeat far more often and far less meaningfully across a
-// whole workspace ("Follow up", "Review") than project/space names do, so
-// a global check would just be noise. Same title, same project is a much
-// stronger accidental-duplicate signal.
+// Duplicate-title nudge, scoped to *within one project* on purpose (unlike
+// findProjectsByName/findSpacesByName): task titles repeat harmlessly across a
+// workspace ("Follow up", "Review"), so a global check would just be noise.
 export async function findTasksByTitleInProject(projectId: string, title: string, excludeId?: string): Promise<TaskDoc[]> {
   const key = title.trim().toLowerCase();
   if (!key) return [];
@@ -1139,15 +1026,11 @@ export async function findTasksByTitleInProject(projectId: string, title: string
   return tasks.filter(t => t._id !== excludeId && t.title.trim().toLowerCase() === key);
 }
 
-// Owner-requested (2026-07-20) fuzzy duplicate-notes nudge — global scan
-// (unlike the task-title check above), since notes worth flagging as
-// accidental duplicates plausibly live in a different project than where
-// they were first written (e.g. a task copy-pasted into the wrong
-// project). Skips short bodies (<20 chars) — word-overlap similarity is
-// meaningless noise on a one-liner, everything looks "similar" to
-// everything else at that length. Local word-overlap only (utils.ts's
-// wordOverlapSimilarity) -- no network call, same reasoning as
-// nlpParse.ts's local-regex stance (see DECISIONS.md).
+// Fuzzy duplicate-notes nudge — a global scan (unlike the task-title check
+// above), since a duplicated note plausibly lives in a different project than
+// where it was first written. Skips bodies under 20 chars: word-overlap
+// similarity is meaningless noise at that length. Local word-overlap only,
+// never a network call.
 export async function findSimilarNotes(taskId: string | null, body: string, threshold = 0.6): Promise<{ taskId: string; title: string; similarity: number }[]> {
   const text = body.trim();
   if (text.length < 20) return [];
@@ -1161,18 +1044,13 @@ export async function findSimilarNotes(taskId: string | null, body: string, thre
   return out.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
 }
 
-// v6.7.0 — task linking. Non-directional "related to" only (owner
-// decision, 2026-07-28) — no blocks/blocked-by dependency semantics.
+// Task linking: non-directional "related to", with no dependency semantics.
 // Stored forward-only on whichever task the link was added from
-// (TaskDoc.related: string[]); the reverse direction is computed here by
-// scanning for any other task whose own `related` array names this task,
-// rather than mirror-writing both docs — PouchDB can't write two docs
-// atomically, so a mirrored write risks one side landing and the other
-// not. A soft-deleted linked task still resolves (getTaskById returns it,
-// the doc still exists) and is included so the UI can show it as
-// "(deleted)" rather than silently dropping it, same soft-delete-
-// everywhere philosophy as the rest of the app — only a genuinely
-// hard-deleted/purged task (404 from db.get) is filtered out.
+// (TaskDoc.related); the reverse direction is computed here by scanning for
+// tasks whose own `related` names this one. Do not mirror-write both docs —
+// PouchDB can't write two docs atomically, so one side could land and the
+// other not. A soft-deleted linked task still resolves and is included so the
+// UI can show it as "(deleted)"; only a purged task (404) is filtered out.
 export async function getRelatedTasks(taskId: string): Promise<TaskDoc[]> {
   const task = await getTaskById(taskId);
   const forwardIds = task?.related ?? [];
@@ -1183,12 +1061,10 @@ export async function getRelatedTasks(taskId: string): Promise<TaskDoc[]> {
   return resolved.filter((t): t is TaskDoc => t !== null);
 }
 
-// Cheap board/list-card indicator ("this task has related links") without
-// a per-card query -- one full scan of the already-cached task list
-// (getAllTasksRaw) builds the complete set of task ids that participate
-// in a link from *either* direction, then Kanban/List do an O(1) Set
-// lookup per rendered card instead of re-deriving getRelatedTasks() for
-// every card on the board.
+// Board/list-card indicator ("this task has related links") without a per-card
+// query: one scan of the cached task list yields every id participating in a
+// link from either direction, so rendering is an O(1) Set lookup per card
+// instead of re-deriving getRelatedTasks() for each one.
 export async function getTaskIdsWithRelatedLinks(): Promise<Set<string>> {
   const all = await getAllTasksRaw();
   const ids = new Set<string>();
@@ -1236,15 +1112,12 @@ export async function unlinkRelatedTask(taskId: string, otherId: string): Promis
 }
 
 // ── Blocked by ───────────────────────────────────────────────────────────────
-// ROADMAP.md "'Blocked by,' not just 'related'" — a real, directional
-// dependency (unlike `related` above, which is deliberately non-
-// directional and dependency-free per the v6.7.0 decision). Stored only on
-// the blocked task's own `blocked_by` array, never mirrored onto the
-// blocker doc.
+// A real, directional dependency (unlike `related` above, which is
+// deliberately non-directional). Stored only on the blocked task's own
+// `blocked_by` array, never mirrored onto the blocker doc.
 
-// Same soft-delete-friendly resolution as getRelatedTasks() — a blocker
-// that's been soft-deleted still resolves so the UI can show "(deleted)"
-// rather than silently dropping the link; only a genuinely purged task
+// Same soft-delete-friendly resolution as getRelatedTasks(): a soft-deleted
+// blocker still resolves so the UI can show "(deleted)"; only a purged task
 // (404) is filtered out.
 export async function getBlockingTasks(taskId: string): Promise<TaskDoc[]> {
   const task = await getTaskById(taskId);
@@ -1255,9 +1128,8 @@ export async function getBlockingTasks(taskId: string): Promise<TaskDoc[]> {
 }
 
 // "Done" is positional (column_id === the blocker's own project's last
-// column) — computed here at read time, same rule as every other done-
-// check in this file, so a blocker's status can never drift out of sync
-// with a separately-stored boolean.
+// column), computed at read time, so a blocker's status can never drift out of
+// sync with a separately-stored boolean.
 export function isBlockerResolved(blocker: TaskDoc, lastColByProject: Record<string, string | undefined>): boolean {
   if (blocker.deleted) return true; // a deleted blocker can no longer hold anything up
   const lastCol = lastColByProject[blocker.project_id];
@@ -1278,8 +1150,8 @@ function computeBlockedTaskIds(all: TaskDoc[], lastColByProject: Record<string, 
   return blocked;
 }
 
-// Cheap board/list-card indicator, same pattern as getTaskIdsWithRelatedLinks
-// above — one full scan instead of a per-card query.
+// Board/list-card indicator, same pattern as getTaskIdsWithRelatedLinks above
+// — one full scan instead of a per-card query.
 export async function getTaskIdsBlocked(): Promise<Set<string>> {
   const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
   const lastColByProject = Object.fromEntries(allProjects.map(p => [p._id, p.columns.at(-1)?.id]));
@@ -1289,9 +1161,8 @@ export async function getTaskIdsBlocked(): Promise<Set<string>> {
 // Walks blockerId's own `blocked_by` chain looking for taskId — if found,
 // linking blockerId onto taskId would close a cycle (taskId waiting on
 // blockerId waiting on ... waiting on taskId, which can never resolve).
-// A plain visited-set DFS rather than anything cleverer; task dependency
-// graphs here are small and shallow by construction (a personal task
-// manager, not a project-scheduling tool).
+// A plain visited-set DFS is enough: these dependency graphs are small and
+// shallow by construction.
 function wouldCreateCycle(taskId: string, blockerId: string, byId: Map<string, TaskDoc>): boolean {
   const visited = new Set<string>();
   const stack = [blockerId];
@@ -1327,11 +1198,9 @@ export async function unlinkBlockedBy(taskId: string, blockerId: string): Promis
   }
 }
 
-// `overrides` lets a caller (Quick Add's NLP parser, or the recurring-task
-// spawner below) set more than just the title in the same write as
-// creation, instead of a create() immediately followed by an update() --
-// that would double up as two log entries ("Created" then "Edited") for
-// what should read as one action.
+// `overrides` lets a caller set more than the title in the same write as
+// creation. A create() followed by an update() would log two entries
+// ("Created" then "Edited") for what should read as one action.
 export async function createTask(
   projectId: string, spaceId: string, columnId: string, title: string,
   overrides?: Partial<Pick<TaskDoc, 'priority' | 'due_date' | 'reminder_at' | 'tags' | 'body' | 'custom_values' | 'checklist' | 'recurrence' | 'recurrenceInterval' | 'recurrenceWeekdaysOnly'>>,
@@ -1360,14 +1229,9 @@ export async function createTask(
   return doc;
 }
 
-// `interval` (roadmap "custom recurrence intervals") multiplies the
-// step -- every N days/weeks/months instead of always N=1. Defaults to
-// 1 so every call site written before this shipped keeps its exact old
-// behavior. `weekdaysOnly` only makes sense alongside daily; skips
-// forward past a landed-on Saturday/Sunday to the following Monday,
-// giving the standard "every weekday" pattern when combined with
-// interval 1 (the common case), and a sensible fallback for any other
-// interval too.
+// `interval` multiplies the step -- every N days/weeks/months, defaulting to
+// 1. `weekdaysOnly` only applies to daily: it skips forward past a landed-on
+// Saturday/Sunday to the following Monday.
 function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly', interval = 1, weekdaysOnly = false): string {
   const step = Math.max(1, interval);
   const d = new Date(`${dateStr}T00:00:00`);
@@ -1381,12 +1245,11 @@ function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly', inte
     return localDateStr(d);
   }
   if (freq === 'weekly') { d.setDate(d.getDate() + step * 7); return localDateStr(d); }
-  // Monthly: plain `d.setMonth(d.getMonth() + step)` overflows into the
-  // month after next when the day-of-month doesn't exist there -- e.g.
-  // Jan 31 + 1 month rolls to Mar 3 (Feb only has 28/29 days), silently
-  // skipping February's occurrence entirely (v6.9.0 recurrence hardening,
-  // 2026-07-29). Clamp to the target month's real last day instead, so a
-  // task due the 31st recurs on the 28th/29th/30th of a shorter month.
+  // Monthly: plain `d.setMonth(d.getMonth() + step)` overflows into the month
+  // after next when the day-of-month doesn't exist there -- Jan 31 + 1 month
+  // rolls to Mar 3, skipping February's occurrence entirely. Clamp to the
+  // target month's real last day so a task due the 31st recurs on the
+  // 28th/29th/30th of a shorter month.
   const day = d.getDate();
   const targetMonth = d.getMonth() + step; // may exceed 11 -- Date normalizes into a later year
   const daysInTargetMonth = new Date(d.getFullYear(), targetMonth + 1, 0).getDate();
@@ -1397,21 +1260,16 @@ function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly', inte
 }
 
 // Computes the reset-in-place fields for a recurring task that just got
-// completed -- one task object for the whole series, matching how
-// Todoist/Google Tasks/Microsoft To Do/Apple Reminders all model
-// recurrence, instead of the kanban-native instinct to spawn a second
-// card (tried first, owner feedback 2026-07-19: "now we have two task
-// with same name"). The completion itself is recorded only in the log
-// entry updateTask() writes below -- there is never a second persisted
-// card sitting in the done column.
+// completed. A recurring series is ONE task doc that resets, never a second
+// spawned card -- completion is recorded only in the log entry updateTask()
+// writes, so no duplicate card is ever left sitting in the done column.
 function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc> | null {
   const firstColId = proj.columns[0]?.id;
   if (!firstColId || !doc.recurrence) return null;
 
-  // Advances from the task's ORIGINAL due_date, not from today, so a
-  // task due every Monday stays on Monday even if actually completed on
-  // a Wednesday -- advancing from "today" would drift the schedule
-  // forward every time a task is completed late.
+  // Advances from the task's ORIGINAL due_date, not from today: a task due
+  // every Monday stays on Monday even when completed on a Wednesday.
+  // Advancing from "today" would drift the schedule on every late completion.
   const baseDate = doc.due_date ?? localDateStr(new Date());
   const nextDate = advanceDate(baseDate, doc.recurrence, doc.recurrenceInterval, doc.recurrenceWeekdaysOnly);
 
@@ -1435,15 +1293,11 @@ function computeRecurrenceReset(doc: TaskDoc, proj: ProjectDoc): Partial<TaskDoc
   return { column_id: firstColId, due_date: nextDate, reminder_at: nextReminder, checklist: resetChecklist };
 }
 
-// Roadmap item "skip one recurrence occurrence": same date/reminder/
-// checklist advance computeRecurrenceReset() gives a real completion,
-// minus the column_id -- skipping isn't completing, so the task stays
-// wherever it currently sits instead of resetting to the first column.
-// Routing through the normal updateTask() (rather than writing directly)
-// means this gets the usual write-queue serialization, cache
-// invalidation, and a plain "update" log entry for free, and it can't
-// accidentally trigger computeRecurrenceReset() a second time since
-// column_id never changes here.
+// Skip one recurrence occurrence: the same date/reminder/checklist advance a
+// real completion gets, minus the column_id -- skipping isn't completing, so
+// the task stays where it sits. Routed through updateTask() for the usual
+// write-queue serialization, cache invalidation and log entry; because
+// column_id never changes here it can't re-trigger computeRecurrenceReset().
 export async function skipRecurrence(id: string): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(id);
   if (!doc.recurrence) throw new Error('This task is not set to repeat.');
@@ -1458,28 +1312,23 @@ export async function skipRecurrence(id: string): Promise<TaskDoc> {
 
 // Serializes concurrent updateTask() calls on the same doc id. Without this,
 // two overlapping get-then-put calls (e.g. notifications.ts's fire-and-forget
-// reminder_at clear racing a real edit on the same task) can both read the
-// same starting rev and one loses to "Document update conflict" -- caught
-// intermittently by tests/notifications.test.ts. Chaining onto the previous
+// reminder_at clear racing a real edit) both read the same starting rev and
+// one fails with "Document update conflict". Chaining onto the previous
 // call's promise (success or failure) makes every writer see the previous
-// writer's result before starting its own get(), regardless of whether
-// callers await updateTask() themselves.
+// writer's result before its own get(), whether or not callers await.
 const _taskWriteQueues = new Map<string, Promise<unknown>>();
 
-// Shared by updateTask() and the attachment writers below -- addAttachment()
-// does its own get-then-put on the same doc, so it needs the identical
-// per-id serialization or attaching two files back-to-back (or attaching
-// while another edit is in flight) can race the same way the comment above
-// describes.
+// Shared by updateTask() and the attachment writers below -- they do their own
+// get-then-put on the same doc and need identical per-id serialization, or
+// attaching two files back-to-back races the same way.
 function queueTaskWrite<T>(id: string, fn: () => Promise<T>): Promise<T> {
   const prev = _taskWriteQueues.get(id) ?? Promise.resolve();
   const run = prev.then(fn, fn);
   const settled = run.catch(() => {});
   _taskWriteQueues.set(id, settled);
-  // Drop the entry once nothing else has chained onto it. Without this the
-  // map kept one resolved-promise entry per task id ever written, for the
-  // life of the process -- fine when that was a browser tab, less fine now
-  // the desktop app is tray-resident for weeks (audit, 2026-07-31).
+  // Drop the entry once nothing else has chained onto it. Without this the map
+  // retains one resolved-promise entry per task id ever written for the life of
+  // the process -- the desktop app stays tray-resident for weeks.
   settled.then(() => {
     if (_taskWriteQueues.get(id) === settled) _taskWriteQueues.delete(id);
   });
@@ -1520,16 +1369,12 @@ async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<Ta
   // changed" (due date moved, checklist reset) rather than being
   // swallowed by comparing against itself.
   const skip = new Set(['updated_at', 'source', 'position', 'column_id']);
-  // undefined/null and an empty object/array both mean "nothing here" --
-  // CardDetail.save() always sends the full custom_values/checklist
-  // shape (defaulting to {}/[] when the task never had one), while a
-  // task that's never had either stores the field as undefined on the
-  // doc itself. Without this, every single save on such a task logged a
-  // false "Custom fields updated"/"Checklist updated" diff alongside
-  // whatever was actually changed (owner-reported 2026-07-18) --
-  // JSON.stringify(undefined) is the JS value undefined, not the string
-  // "undefined", which never equals "{}" or "[]" even though nothing was
-  // ever touched.
+  // undefined/null and an empty object/array both mean "nothing here".
+  // CardDetail.save() always sends the full custom_values/checklist shape
+  // (defaulting to {}/[]), while a task that never had either stores the field
+  // as undefined. Without this check every save on such a task logs a false
+  // "Custom fields updated"/"Checklist updated" diff: JSON.stringify(undefined)
+  // returns undefined, which never equals "{}" or "[]".
   const isEmpty = (v: any) => v == null || (typeof v === 'object' && Object.keys(v).length === 0);
   const diffs: Record<string, { from: any; to: any }> = {};
   for (const key of Object.keys(finalChanges) as (keyof TaskDoc)[]) {
@@ -1544,11 +1389,9 @@ async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<Ta
   const projName = proj?.name;
   const taskTitle = (changes.title as string | undefined) ?? doc.title;
 
-  // isDelete checked first: only one log entry is written per call, and a
-  // delete matters more than a same-call column move -- no current call
-  // site combines them (deleteTask() only ever sends { deleted: true }),
-  // but if one ever did, silently logging "moved" while dropping the
-  // delete from history would be a worse bug than the reverse.
+  // isDelete checked first: only one log entry is written per call, and if a
+  // caller ever combined a delete with a column move, logging "moved" and
+  // dropping the delete from history would be the worse outcome.
   if (isDelete) {
     await logChange(id, 'delete', undefined, undefined, undefined, { task_title: doc.title, project_name: projName });
   } else if (isMove) {
@@ -1570,14 +1413,13 @@ async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<Ta
   return { ...doc, ...finalChanges, updated_at: now(), source: SOURCE } as TaskDoc;
 }
 
-// ── Attachments (v6.8.0) ─────────────────────────────────────────────────────
-// The actual bytes live in PouchDB's own `_attachments` map on the task doc
-// itself -- native attachment support, so it rides the existing sync/
-// replication with no new code, and unchanged attachment content is
-// deduped by digest automatically on every subsequent sync. TaskDoc.attachments
-// is just the small, loggable/diffable metadata list (see types.ts). Reuses
-// queueTaskWrite() (above) since this is the same get-then-put shape as
-// updateTask(), on the same doc id, and needs the same per-id serialization.
+// ── Attachments ──────────────────────────────────────────────────────────────
+// The bytes live in PouchDB's own `_attachments` map on the task doc, so they
+// ride existing replication with no extra code and unchanged content is
+// deduped by digest on every sync. TaskDoc.attachments is only the small,
+// loggable/diffable metadata list (see types.ts). These writers use
+// queueTaskWrite() -- same get-then-put shape on the same doc id as
+// updateTask(), so they need the same per-id serialization.
 
 export const ATTACHMENT_MAX_PER_TASK = 10;
 
@@ -1600,10 +1442,9 @@ export async function addAttachment(taskId: string, input: AddAttachmentInput): 
 async function addAttachmentImpl(taskId: string, input: AddAttachmentInput): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(taskId);
   const prevMeta = doc.attachments ?? [];
-  // Checked here, inside the per-doc write queue, not in addAttachment()'s
-  // synchronous pre-check above -- two concurrent addAttachment() calls on
-  // the same task must each see the OTHER's count too, or both could pass
-  // a "9 < 10" check before either write lands and end up with 11.
+  // Checked inside the per-doc write queue, not in addAttachment()'s
+  // synchronous pre-check -- two concurrent calls on the same task must each
+  // see the other's count, or both pass a "9 < 10" check and end up with 11.
   if (prevMeta.length >= ATTACHMENT_MAX_PER_TASK) {
     throw new Error(`This task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task)`);
   }
@@ -1657,10 +1498,8 @@ export async function getAttachmentBlob(taskId: string, key: string): Promise<Bl
 }
 
 // ── Undo (recently deleted, sourced from the database) ────────────────────────
-// Tasks are soft-deleted (deleted: true), so "recently deleted" doesn't need
-// its own storage — it's just a query. This also means undo survives a page
-// refresh, unlike the old in-memory-only buffer which lost everything the
-// moment the tab reloaded even though the underlying task was still recoverable.
+// Tasks are soft-deleted (deleted: true), so "recently deleted" needs no
+// storage of its own — it's just a query, and undo survives a page refresh.
 
 const _undoListeners = new Set<() => void>();
 export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return () => _undoListeners.delete(fn); }
@@ -1716,16 +1555,13 @@ export async function undoDelete(id: string): Promise<void> {
   await logChange(id, 'update', 'deleted', true, false, { task_title: current.title, project_name: projName });
   // Deliberately no _undoListeners notify here (unlike deleteTask above) --
   // that listener is showUndoToast(), which pulls the single most-recently-
-  // deleted task. Firing it after an undo just found the *next* most-recent
-  // deleted task and popped a fresh "Undo" toast for it -- a second modal
-  // chained off clicking the first one's Undo button (found 2026-07-22).
+  // deleted task. Firing it after an undo pops a fresh "Undo" toast for the
+  // *next* most-recent deleted task, chaining toasts endlessly.
 }
 
 // ── Trash (its own view — see TrashView.svelte) ─────────────────────────────
-// The Settings panel used to embed a "last 10 deleted" list directly; it's a
-// full deleted-items view now, so it needs the complete list (not just the
-// last 10 getRecentlyDeleted() returns for the undo toast) plus permanent
-// deletion and a bulk "Empty Trash".
+// The full deleted-items list, unlike the last-10 getRecentlyDeleted()
+// returns for the undo toast, plus permanent deletion and bulk "Empty Trash".
 
 export async function getAllDeletedTasks(): Promise<(TaskDoc & { project_name?: string })[]> {
   const all = await getAllTasksRaw();
@@ -1760,9 +1596,7 @@ export async function getArchivedTasksForProject(projectId: string): Promise<Tas
 
 export async function unarchiveTask(id: string): Promise<void> {
   // Routed through updateTask() (like archiveTask() below), not a direct
-  // db.put(), so it logs a changelog entry the same way archiving already
-  // does -- was a direct put with no logChange() call, the only one of
-  // the archive/unarchive pair that didn't log.
+  // db.put(), so it logs a changelog entry the way archiving does.
   await updateTask(id, { archived: false } as any);
 }
 
@@ -1777,25 +1611,22 @@ export async function archiveColumnTasks(projectId: string, columnId: string): P
   await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true } as any)));
 }
 
-// Restoring a backup is the app's emergency exit -- it has to work on the
-// worst day, against a file that may be old, hand-edited, truncated, or
-// written by a much older version. Three failure modes were found and
-// fixed together (audit, 2026-07-31):
+// Restoring a backup is the app's emergency exit: it must work against a file
+// that may be old, hand-edited, truncated, or written by a much older version.
+// Three hazards it guards against:
 //
-//  1. Attachment stubs took the WHOLE restore down. Backups written before
-//     today stored `{stub: true}` with no bytes; PouchDB rejects an entire
-//     bulkDocs batch with `missing_stub` if any doc carries a stub it
-//     can't resolve -- so a single attached photo made every space,
-//     project and task in that file unrestorable, reported only as
-//     "Import failed. Please try again." Stubs are now dropped (the file
-//     genuinely doesn't contain those bytes; losing the attachment beats
-//     losing the entire backup), while real inlined base64 `data` is kept.
-//  2. Custom-field definitions and tag colours were filtered out, so
-//     restored tasks kept `custom_values` keyed to field ids that no
-//     longer existed -- values physically present but invisible in the UI.
-//  3. No structural validation: a project doc missing `columns` imported
-//     fine and then crashed the Dashboard, Kanban, List, FilterBar and
-//     CardDetail on `columns.at(-1)`. Now normalized on the way in.
+//  1. Attachment stubs take the WHOLE restore down. A backup can store
+//     `{stub: true}` with no bytes, and PouchDB rejects an entire bulkDocs
+//     batch with `missing_stub` if any doc carries a stub it can't resolve --
+//     one attached photo would make every doc in the file unrestorable. Stubs
+//     are dropped (losing an attachment beats losing the backup); real inlined
+//     base64 `data` is kept.
+//  2. Custom-field definitions and tag colours must not be filtered out, or
+//     restored tasks keep `custom_values` keyed to field ids that no longer
+//     exist -- values present but invisible in the UI.
+//  3. A project doc missing `columns` imports fine and then crashes the
+//     Dashboard, Kanban, List, FilterBar and CardDetail on `columns.at(-1)`,
+//     so structure is normalized on the way in.
 function sanitizeImportedDoc(d: any): any {
   const out = { ...d };
 
@@ -1840,25 +1671,19 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
     .filter(d =>
       d && d._id && typeof d._id === 'string' &&
       // 'meta' carries the custom-field definitions and 'tag_color' the
-      // per-tag colour overrides -- both were previously dropped, which
-      // is what orphaned restored custom values (see #2 above).
+      // per-tag colour overrides -- dropping either orphans restored custom
+      // values (see #2 above).
       ['space', 'project', 'task', 'meta', 'tag_color'].includes(d.type) &&
       // A task pointing at no project can never be rendered anywhere.
       !(d.type === 'task' && typeof d.project_id !== 'string')
     )
     .map(sanitizeImportedDoc);
-  // A doc whose id already exists locally is meant to overwrite it with
-  // the backup's content ("merges instead of duplicating" -- the Restore
-  // tab's own UI copy) -- fetch each existing doc's current _rev first
-  // and attach it, so bulkDocs treats a collision as a real update
-  // instead of a rejected create. Previously this stripped _rev
-  // unconditionally on every doc and let PouchDB reject every collision
-  // with a 409 -- counted as "ok" here, but silently leaving the
-  // existing (possibly stale/different) local doc completely untouched.
-  // A real gap between documented restore behavior and what actually
-  // happened (2026-07-18 audit) -- restoring a backup over data that had
-  // since diverged locally did nothing for every doc that collided,
-  // while reporting success.
+  // A doc whose id already exists locally must be overwritten with the
+  // backup's content (restore "merges instead of duplicating"). Fetch each
+  // existing doc's current _rev and attach it so bulkDocs treats a collision
+  // as a real update. Stripping _rev unconditionally instead makes PouchDB
+  // reject every collision with a 409, silently leaving the local doc
+  // untouched while still reporting success.
   const existing = await db.allDocs({ keys: valid.map(d => d._id) });
   const revById = new Map<string, string>();
   for (const row of existing.rows as any[]) {
@@ -1868,12 +1693,10 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
     const rev = revById.get(d._id);
     return rev ? { ...d, _rev: rev } : d;
   });
-  // bulkDocs normally reports per-doc results, but a few error classes
-  // (missing_stub being the one that actually bit us) reject the entire
-  // call, losing every good doc alongside the bad one. On a restore --
-  // the one operation someone runs *because* something already went
-  // wrong -- all-or-nothing is the wrong failure mode, so fall back to
-  // writing document by document and salvage whatever will land.
+  // bulkDocs normally reports per-doc results, but some error classes
+  // (missing_stub in particular) reject the entire call, losing every good doc
+  // alongside the bad one. All-or-nothing is the wrong failure mode for a
+  // restore, so fall back to writing doc by doc and salvage whatever lands.
   let results: any[];
   try {
     results = await db.bulkDocs(clean) as any[];
@@ -1895,14 +1718,11 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
   return { ok, skipped };
 }
 
-// B4 (import/export v2) — a lightweight, read-only pass over a parsed
-// import file so the UI can show "what will happen" before anything is
-// written. Doesn't check against the live DB (PouchDB has no clean
-// dry-run for bulkDocs) — "will be skipped" here means "malformed, not
-// one of space/project/task," which importJSON's own filter already
-// applies; a doc that collides with an existing id is still reported as
-// "created" here and genuinely overwritten (adopting the correct current
-// _rev first) by importJSON itself, consistent with its actual behavior.
+// Read-only pass over a parsed import file so the UI can preview "what will
+// happen" before anything is written. It does not check against the live DB
+// (PouchDB has no dry-run for bulkDocs): "will be skipped" means "malformed,
+// or not one of space/project/task". A doc colliding with an existing id is
+// reported as "created" and genuinely overwritten by importJSON.
 export function analyzeImport(docs: any[]): { toCreate: number; toSkip: number; byType: Record<string, number> } {
   const byType: Record<string, number> = { space: 0, project: 0, task: 0 };
   let toSkip = 0;
@@ -1913,21 +1733,18 @@ export function analyzeImport(docs: any[]): { toCreate: number; toSkip: number; 
   return { toCreate: docs.length - toSkip, toSkip, byType };
 }
 
-// Export a single project (B4) — the project doc plus its own tasks only,
-// not the space it belongs to (the destination side is expected to already
-// have a matching space, or the user re-targets on import — keeping this
-// export minimal avoids silently duplicating spaces on re-import).
+// Export a single project — the project doc plus its own tasks only, never
+// the space it belongs to: including the space would silently duplicate
+// spaces on re-import.
 export async function exportProjectDocs(projectId: string): Promise<any[]> {
   const project = await db.get(projectId);
   const tasks = (await getAllTasksRaw()).filter(t => t.project_id === projectId && !t.deleted);
   return [project, ...tasks];
 }
 
-// CSV export (B4) — every non-deleted task across every project, one row
-// each. Status/Priority are resolved to their display names (not raw
-// column_id / 1-2-3) since a spreadsheet is a human-facing destination,
-// not a re-importable format — CSV is one-way, JSON export is the
-// round-trippable one.
+// CSV export — every non-deleted task, one row each. Status/Priority resolve
+// to display names, not raw column_id / 1-2-3: CSV is a one-way, human-facing
+// format. JSON export is the round-trippable one.
 export async function exportTasksCSV(): Promise<string> {
   const [tasks, projects] = await Promise.all([getAllTasksRaw(), getProjects()]);
   const projById: Record<string, ProjectDoc> = Object.fromEntries(projects.map(p => [p._id, p]));
@@ -1947,9 +1764,8 @@ export async function exportTasksCSV(): Promise<string> {
   return lines.join('\r\n');
 }
 
-// Optional projectId narrows to just that project's tags (B26) — used to
-// rank tag-input suggestions "used in this project" first, with the
-// unfiltered call still available as the everywhere-else fallback list.
+// Optional projectId narrows to just that project's tags — used to rank
+// tag-input suggestions "used in this project" first.
 export async function getAllTags(projectId?: string): Promise<string[]> {
   const all = await getAllTasksRaw();
   const scoped = projectId ? all.filter(d => d.project_id === projectId) : all;
@@ -1967,9 +1783,8 @@ export async function getAllTags(projectId?: string): Promise<string[]> {
 // would drown out everything else in the activity log for what's really a
 // single admin action.
 
-// v6.11.0 — per-tag color override, one tiny doc per overridden tag
-// (`tag:<name>`), point-lookup only (never a range scan across other
-// prefixes) so this doesn't need its own logChange() entries either.
+// Per-tag color override: one small doc per overridden tag (`tag:<name>`),
+// point-lookup only, and unlogged like the bulk tag operations above.
 // ExistingDocument, not the bare TagColorDoc: `_rev` is optional on the
 // interface (a doc being *created* doesn't have one yet) but db.get() only
 // ever returns a doc that already exists, so it's always present here.
@@ -2082,14 +1897,12 @@ export async function getAllTasksDue(): Promise<(TaskDoc & { project_name?: stri
   return result.sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''));
 }
 
-// B35 (Focus view, revised) — a "daily commitment lock," not an
-// auto-computed priority list. The user picks up to 3 tasks each day;
-// Focus shows only those until each is done or the day rolls over. The
-// lock itself (which 3, which day) lives in localStorage (FocusView.svelte),
-// not a PouchDB doc — it's ephemeral per-day UI state, not data worth
-// syncing/persisting across devices. This function only supports the
-// *picker*: a flat list of open tasks to choose from. Reuses the same
-// "done = last column" exclusion as getAllTasksDue()/searchAllTasks().
+// Focus view is a daily commitment lock, not an auto-computed priority list:
+// the user picks up to 3 tasks a day. The lock itself (which 3, which day)
+// lives in localStorage (FocusView.svelte), not a PouchDB doc — ephemeral
+// per-day UI state, not data worth syncing. This function supports only the
+// picker: a flat list of open tasks, using the same "done = last column"
+// exclusion as getAllTasksDue()/searchAllTasks().
 export async function getOpenTasksForFocusPicker(): Promise<(TaskDoc & { project_name?: string })[]> {
   const [all, allProjects] = await Promise.all([getAllTasksRaw(), getProjects()]);
   const projCache: Record<string, ProjectDoc> = Object.fromEntries(allProjects.map(p => [p._id, p]));
@@ -2098,9 +1911,8 @@ export async function getOpenTasksForFocusPicker(): Promise<(TaskDoc & { project
   // archived project's leftover done tasks would resolve lastColOf() to
   // undefined and read as "not done" here, making them pickable in Focus.
   const notDone = (t: TaskDoc) => !t.deleted && !t.archived && !!projCache[t.project_id] && t.column_id !== lastColOf(t.project_id);
-  // ROADMAP.md "Blocked by" — a task still waiting on an unresolved
-  // dependency can't be picked up today, so it never even reaches the
-  // picker list (not just visually flagged once selected).
+  // A task still waiting on an unresolved dependency can't be picked up today,
+  // so it never reaches the picker list rather than being flagged once chosen.
   const lastColByProject = Object.fromEntries(allProjects.map(p => [p._id, p.columns.at(-1)?.id]));
   const blockedIds = computeBlockedTaskIds(all, lastColByProject);
   return all
@@ -2227,25 +2039,17 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
   return { fixed, skipped };
 }
 
-// A9 (ROADMAP.md): this used to live entirely inline inside SettingsPanel.svelte's
-// runMaintenance(), which made the 5-step sequencing/message-formatting logic
-// only reachable through a full component mount + mocking every one of that
-// file's many imports (sync, discovery, notifications, config...) just to
-// click one button — exactly why it went untested for so long. Extracted as
-// a pure orchestration function: SettingsPanel.svelte now just wires this to
-// its own reactive step-list UI via the onStep callback, and the actual
-// sequencing/error-handling is testable directly (tests/db.test.ts) against
-// a mocked db.ts, the same lightweight pattern CardDetail.test.ts already
-// uses.
+// Pure orchestration for Settings' maintenance run: SettingsPanel.svelte wires
+// this to its reactive step-list UI via the onStep callback, so the
+// sequencing/error-handling stays testable without mounting the component.
 type MaintStepKey = 'check' | 'repair' | 'history' | 'trash' | 'compact';
 export type MaintStatus = 'running' | 'done' | 'skipped' | 'error';
 export interface MaintStepResult { key: MaintStepKey; status: MaintStatus; note: string }
 
 // Emits a 'running' result for each step right before it starts (so the
-// caller's UI can show a live spinner per step, matching the original
-// inline behavior) and one final done/skipped/error result once it
-// settles -- callers that only care about the end state can filter for
-// `status !== 'running'`.
+// caller's UI can show a per-step spinner) and one final done/skipped/error
+// result once it settles -- callers that only care about the end state can
+// filter for `status !== 'running'`.
 export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => void): Promise<{ remainingIssues: IntegrityIssue[] }> {
   let remainingIssues: IntegrityIssue[] = [];
 
@@ -2326,12 +2130,11 @@ export async function resolveConflict(docId: string, keep: 'current' | 'other', 
     const winning = await db.get(docId, { rev: otherRev } as any) as any;
     await db.put({ ...winning, _id: docId, _rev: doc._rev });
   }
-  // Every conflicting revision still needs explicit removal —
-  // PouchDB/the sync server don't auto-prune losing branches just because a new revision
-  // was written. This includes the adopted "other" revision itself: its
-  // content was copied into a fresh revision on top of the current one
-  // above, but the old "other" leaf is still its own separate branch and
-  // stays a live conflict unless it's removed too, same as the rest.
+  // Every conflicting revision needs explicit removal — PouchDB and the sync
+  // server don't auto-prune losing branches when a new revision is written.
+  // That includes the adopted "other" revision: its content was copied into a
+  // fresh revision above, but its old leaf is still a separate branch and
+  // stays a live conflict unless removed too.
   for (const rev of losingRevs) {
     try { await db.remove(docId, rev); } catch {}
   }
@@ -2342,20 +2145,16 @@ export async function resolveConflict(docId: string, keep: 'current' | 'other', 
 // ── Live query ────────────────────────────────────────────────────────────────
 
 // The live feed is the app's only signal that anything changed elsewhere --
-// an incoming sync, or a write made from another view. It used to be
-// attached with `.on('change')` alone: no error handler, no restart. If the
-// feed ever died (an IndexedDB connection dropped across a laptop
-// sleep/resume, a quota error, a WebView renderer hiccup) the app went
-// silently deaf -- still running, still looking fine, but never seeing
-// another sync again until the process restarted. That was survivable when
-// closing the window quit the app; it is not now that the desktop app is
-// tray-resident across weeks and many sleep cycles (2026-07-31).
+// an incoming sync, or a write made from another view. The error handler and
+// restart are required, not optional: if the feed dies (IndexedDB dropped
+// across a sleep/resume, a quota error, a WebView renderer hiccup) the app
+// goes silently deaf, still running and looking fine but never seeing another
+// sync until the process restarts — and the desktop app stays tray-resident
+// across weeks of sleep cycles.
 //
-// So: catch the error, and rebuild the feed behind the same subscription.
-// The rebuilt feed uses `since: 'now'`, which means changes that landed
-// during the gap were never delivered -- hence the callback() fired on
-// every successful restart, to force a full reload and catch up rather
-// than resuming from a hole.
+// The rebuilt feed uses `since: 'now'`, so changes that landed during the gap
+// are never delivered -- hence callback() fires on every successful restart to
+// force a full reload rather than resuming from a hole.
 const CHANGE_FEED_RETRY_MS = 2000;
 
 export function subscribe(callback: () => void): () => void {

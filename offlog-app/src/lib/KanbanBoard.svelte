@@ -16,12 +16,10 @@
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
-  // B2 — the actual Filters button/popover lives in App.svelte's shared
-  // board-header now (a dedicated toolbar row for just one button wasted
-  // space, owner feedback) — these four are owned there and passed down,
-  // filtering which cards render per column without touching `tasks`
-  // itself (drag/drop, quick-add, etc. below all still operate on the
-  // full set).
+  // The Filters button/popover lives in App.svelte's shared board-header;
+  // these four are owned there and passed down. They only filter which
+  // cards render per column — `tasks` itself is untouched, so drag/drop,
+  // quick-add etc. below still operate on the full set.
   export let search = '';
   export let filterCol = '';
   export let filterPrio = 0;
@@ -121,13 +119,13 @@
   let detailTask: TaskDoc | null = null;
   // Bumped every time a card is opened, including reopening the *same*
   // card — {#key detailTask._id} alone doesn't change value on a
-  // close-then-reopen of the same task, so a fast reopen could land while
+  // close-then-reopen of the same task, so a fast reopen can land while
   // Svelte's outro for the previous CardDetail instance is still
-  // in-flight, and get reversed into an intro on that same (already
-  // closed-once) instance instead of a real remount — same root cause as
-  // modalStack.ts's 2026-07-17 stuck-panel bug: the revived instance's
-  // own closeOnBack() never re-runs, so its requestClose is a stale,
-  // already-spent closure that can never close it again.
+  // in-flight and get reversed into an intro on that same (already
+  // closed-once) instance instead of a real remount. The revived
+  // instance's closeOnBack() never re-runs, so its requestClose is a
+  // stale, already-spent closure and the panel can never close again.
+  // Any closeOnBack() consumer needs a key that changes on every open.
   let detailOpenSession = 0;
   // null = "use this board's own `project` prop" (the normal case, a task
   // from this board). Only set to a real ProjectDoc when a related-task
@@ -145,11 +143,10 @@
     detailProjectOverride = proj;
   }
 
-  // B53 — per-card "⋯" quick-actions menu (2026-07-19, folded into the
-  // B49 redesign at the owner's request). Immediate writes, not batched
-  // into a form save the way CardDetail's own fields are — a Kanban card
-  // action should take effect the moment it's clicked. Same click-outside
-  // pattern CustomSelect.svelte/CardDetail's own new menu use.
+  // Per-card "⋯" quick-actions menu. Writes immediately rather than
+  // batching into a form save the way CardDetail's fields do — a Kanban
+  // card action takes effect the moment it's clicked. Same click-outside
+  // pattern as CustomSelect.svelte and CardDetail's own menu.
   let openCardMenu: string | null = null;
   let cardMenuTriggerEl: HTMLButtonElement | null = null;
   let cardMenuPanelEl: HTMLDivElement | null = null;
@@ -222,9 +219,8 @@
     // redefines done-ness in both directions at once: everything in the
     // new last column becomes done (dropping off Agenda/Dashboard/Focus
     // and cancelling its reminders), and everything in the old last
-    // column comes back as not-done, possibly as a pile of overdue. This
-    // was reachable by one accidental drag with no confirmation at all,
-    // so it now asks — but only when the last position actually changes.
+    // column comes back as not-done, possibly as a pile of overdue. So
+    // confirm — but only when the last position actually changes.
     const oldLast = project.columns.at(-1);
     const newLast = cols.at(-1);
     if (oldLast && newLast && oldLast.id !== newLast.id) {
@@ -291,9 +287,8 @@
     // Removing the *last* status promotes the one before it, and "done"
     // is positional — so every task sitting in that now-last status
     // silently becomes complete: gone from Agenda, Dashboard and Focus,
-    // with its reminders cancelled. The old dialog said only that cards
-    // would move to the first status, which is the lesser half of what
-    // actually happens.
+    // with its reminders cancelled. The dialog must say that, not just
+    // that cards move to the first status.
     if (project.columns.at(-1)?.id === colId && project.columns.length > 1) {
       const promoted = project.columns.at(-2)!;
       const affected = tasksByCol[promoted.id]?.length ?? 0;
@@ -318,40 +313,28 @@
   let touchOffX = 0, touchOffY = 0;
   let boardEl: HTMLElement | null = null;
 
-  // Real bug found live-testing on Android, 2026-07-21 (owner-reported):
-  // dragging a card toward the left/right edge of the screen never
-  // scrolled the board to reveal an off-screen column — only a column
-  // already visible could be dropped into. `.board`'s own overflow-x:auto
-  // only responds to a real scroll gesture, which a single-finger drag
-  // (already busy carrying the card) can't also perform. Nudges
+  // Edge auto-scroll for touch drags. `.board`'s overflow-x:auto only
+  // responds to a real scroll gesture, which a single-finger drag
+  // (already busy carrying the card) can't also perform — without this,
+  // an off-screen column is unreachable on mobile. Nudges
   // `.board.scrollLeft` a fixed amount per touchmove event while the
-  // finger sits within EDGE_ZONE px of either edge — simple and good
-  // enough given touchmove already fires many times a second during a
-  // drag, no need for a rAF loop.
+  // finger sits within EDGE_ZONE px of either edge; touchmove already
+  // fires many times a second during a drag, so no rAF loop is needed.
   const EDGE_ZONE = 60;
-  // Owner feedback 2026-07-22: 18px/touchmove-tick was too aggressive --
-  // touchmove fires at up to ~60Hz during a drag, so it was compounding
-  // into a fast, hard-to-control scroll. Lowered to a gentler nudge.
+  // Keep this small: touchmove fires at up to ~60Hz during a drag, so a
+  // larger step compounds into a fast, hard-to-control scroll.
   const EDGE_SCROLL_SPEED = 6;
 
-  // Owner-reported (mobile, live use): drag-and-drop would sometimes get
-  // "stuck" -- a column move silently not committing -- and only a full
-  // app restart fixed it, not just retrying or leaving Kanban and coming
-  // back. Root cause candidate found on review: `touchTask` used to also
-  // write into `dragTask`, the *separate* state the desktop HTML5
-  // dragstart/dragover/drop path guards on (`if (!dragTask) return`) --
-  // sharing one mutable variable between two independently-reasoned-
-  // about code paths meant that if a touch sequence ever ended without
-  // onTouchEnd/onTouchCancel actually firing (the OS can swallow both
-  // if it takes over the gesture for its own edge-swipe/scroll handling
-  // mid-drag), `dragTask` stayed non-null forever with no touch listener
-  // left watching it -- a state no user action could clear, only an app
-  // restart (a fresh module reload) resetting the variable. Decoupled:
-  // touch and mouse drag now track entirely separate task references;
+  // Touch and mouse drag must track entirely separate task references:
+  // the desktop HTML5 dragstart/dragover/drop path guards on `dragTask`
+  // (`if (!dragTask) return`), and if a touch sequence writing into that
+  // same variable ends without onTouchEnd/onTouchCancel firing (the OS
+  // can swallow both when it takes over the gesture mid-drag), `dragTask`
+  // stays non-null forever with no touch listener left watching it —
+  // drag-and-drop then silently stops committing until a module reload.
   // `isDragging()` below is the only thing that needs to know about both.
-  // A watchdog (touchDragWatchdog) also force-clears touch state if a
-  // drag has been "active" implausibly long, as a second line of
-  // defense against whatever OS-level event-swallowing caused this.
+  // A watchdog (touchDragWatchdog) force-clears touch state if a drag has
+  // been "active" implausibly long, as a second line of defense.
   const TOUCH_DRAG_WATCHDOG_MS = 15_000;
   let touchDragWatchdog: ReturnType<typeof setTimeout> | null = null;
 
@@ -359,12 +342,10 @@
     return dragTask?._id === task._id || touchTask?._id === task._id;
   }
 
-  // redesign/v6, reference pass: color-graded due date instead of a
-  // binary overdue/not -- matches the owner's reference set (a due-date
-  // pill that ranges red/urgent -> amber/soon -> neutral/comfortable),
-  // not just red-or-plain. "Soon" threshold (<=3 days) matches
-  // FocusView.svelte's own due_soon bucket, so the two views agree on
-  // what counts as soon.
+  // Color-graded due date: red/urgent -> amber/soon -> neutral, not a
+  // binary overdue/not. The "soon" threshold (<=3 days) must stay in
+  // step with FocusView.svelte's due_soon bucket so the two views agree
+  // on what counts as soon.
   function dueDateClass(due: string): 'overdue' | 'soon' | '' {
     const days = Math.round((new Date(`${due}T00:00:00`).getTime() - new Date(`${localDateStr(new Date())}T00:00:00`).getTime()) / 86_400_000);
     if (days < 0) return 'overdue';
@@ -372,10 +353,10 @@
     return '';
   }
 
-  // v6.11.0: hash-to-palette fallback (tagColors.ts) plus any per-tag
-  // color a user picked in Settings -> Organize -> Manage Tags. Reloaded
-  // on any db change (below) since an override can be set from that
-  // panel while this board stays mounted.
+  // Hash-to-palette fallback (tagColors.ts) plus any per-tag color set in
+  // Settings -> Organize -> Manage Tags. Reloaded on any db change
+  // (below) since an override can be set from that panel while this board
+  // stays mounted.
   let tagColorOverrides: Record<string, string> = {};
   function tagColor(tag: string): string {
     return resolveTagColor(tag, tagColorOverrides);
@@ -454,45 +435,35 @@
     resetTouchDragState();
   }
 
-  // v5.4.2 bug (owner-reported live testing, 2026-07-21): "shadow of old
-  // is still hanging on screen" after a long-press drag, even without
-  // moving to another column, still visible after navigating to other
-  // pages. Only 'touchend' was wired — 'touchcancel' (which the OS fires
+  // 'touchcancel' must be handled alongside 'touchend': the OS fires it
   // instead when a system gesture, notification-shade pull, or app
-  // backgrounding interrupts the sequence, rather than the finger simply
-  // lifting) was never handled, orphaning the ghost element permanently.
-  // A cancel means the gesture was aborted, not completed — clean up
-  // state without committing whatever column it happened to be over.
+  // backgrounding interrupts the sequence, and leaving it unwired orphans
+  // the drag ghost on screen permanently. A cancel means the gesture was
+  // aborted, not completed — clean up state without committing whatever
+  // column it happened to be over.
   function onTouchCancel() {
     if (touchGhost) { touchGhost.remove(); touchGhost = null; }
     resetTouchDragState();
   }
 
-  // Belt-and-suspenders for the same bug: touchGhost is appended straight
-  // to document.body (needs to render above the whole app, not just this
-  // component's own stacking context), which means it lives OUTSIDE
-  // Svelte's tree — navigating away from Kanban while a ghost is still
-  // active would leave it behind even with touchcancel handled correctly,
-  // since unmounting this component never touches nodes it manually
-  // appended elsewhere.
-  // Second line of defense alongside `.board`'s own touchend/touchcancel
-  // bindings above: a capture-phase document-level listener that clears
-  // any still-active touch drag on ANY touchend/touchcancel anywhere,
-  // not just ones `.board` itself receives. Touch events are spec'd to
-  // keep targeting the original element for the whole gesture, so this
-  // should normally be a no-op duplicate of onTouchEnd/onTouchCancel --
-  // it only does anything if the OS-level event-swallowing suspected
-  // above (see onTouchStart's comment) really did drop the board-level
-  // handlers for a given gesture.
+  // touchGhost is appended straight to document.body (it must render
+  // above the whole app, not just this component's stacking context), so
+  // it lives OUTSIDE Svelte's tree: unmounting this component never
+  // touches it, and navigating away mid-drag would leave it behind.
+  // Hence this capture-phase document-level listener, which clears any
+  // still-active touch drag on ANY touchend/touchcancel anywhere, not
+  // just ones `.board` receives. Touch events are spec'd to keep
+  // targeting the original element for the whole gesture, so it is
+  // normally a no-op duplicate of onTouchEnd/onTouchCancel — it only
+  // matters when the OS drops the board-level handlers for a gesture.
   function onDocumentTouchEnd() {
     // Deferred, not immediate: this fires in the capture phase, which
     // runs BEFORE `.board`'s own target/bubble-phase touchend/touchcancel
-    // handler in the very same event dispatch -- resetting synchronously
-    // here would wipe dragOverColId/touchTask out from under a perfectly
-    // normal drop before onTouchEnd gets to read them. Deferring to a
-    // fresh task lets the normal handler run first; this only ever does
-    // something if touchTask is STILL set afterwards, i.e. genuinely
-    // orphaned.
+    // handler in the same event dispatch — resetting synchronously here
+    // would wipe dragOverColId/touchTask out from under a perfectly
+    // normal drop before onTouchEnd gets to read them. Deferring lets the
+    // normal handler run first; this then only acts if touchTask is STILL
+    // set, i.e. genuinely orphaned.
     setTimeout(() => {
       if (!touchTask) return;
       if (touchGhost) { touchGhost.remove(); touchGhost = null; }
@@ -512,21 +483,20 @@
   // follow the same shape: one cheap whole-board query up front instead of
   // re-deriving per rendered card, re-run on any db change since the
   // underlying data can be edited from another project's card, off this
-  // board. Extracted into one helper once the third copy landed — the
-  // `.catch` matters: these are read-only board decorations, so a failed
-  // refresh should leave the last-known value in place and log, never
-  // reject unhandled (maintenance pass, 2026-07-31).
+  // board. The `.catch` matters: these are read-only board decorations,
+  // so a failed refresh must leave the last-known value in place and log,
+  // never reject unhandled.
   function loadIndicator<T>(query: () => Promise<T>, apply: (value: T) => void) {
     const run = () => query().then(apply).catch(e => console.warn('board indicator refresh failed', e));
     run();
     return subscribe(run);
   }
 
-  // v6.7.0 — card-level "has related links" indicator.
+  // Card-level "has related links" indicator.
   let relatedIds = new Set<string>();
   onMount(() => loadIndicator(getTaskIdsWithRelatedLinks, ids => relatedIds = ids));
 
-  // ROADMAP.md "Blocked by" — an unresolved dependency shows a lock badge.
+  // An unresolved "blocked by" dependency shows a lock badge.
   let blockedIds = new Set<string>();
   onMount(() => loadIndicator(getTaskIdsBlocked, ids => blockedIds = ids));
 
@@ -575,12 +545,6 @@
           />
         {:else}
           <span class="col-name">{col.name}</span>
-          <!-- redesign/v6: all three action buttons (rename/archive/
-               remove) now cluster right next to the title, not just
-               rename (owner feedback, 2026-07-28: "all this icons move
-               to close to column title as not only edit button") --
-               the count alone stays pushed to the far right via the
-               spacer below. -->
           <button class="col-rename" title="Rename status" aria-label="Rename status" on:click|stopPropagation={() => { editingColId = col.id; editingColName = col.name; }}>
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z"/>
@@ -679,10 +643,6 @@
                 {/if}
               </div>
             </div>
-            <!-- redesign/v6, reference pass: every metadata item is its
-                 own small icon+text badge now (owner reference set), not
-                 boxless plain text -- due date is color-graded
-                 red/overdue -> amber/soon -> neutral, not just binary. -->
             <div class="card-meta">
               {#if task.due_date}
                 <span class="meta-badge due-badge {dueDateClass(task.due_date)}">
@@ -691,20 +651,11 @@
                 </span>
               {/if}
               {#if task.recurrence}
-                <!-- redesign/v6 (owner feedback, 2026-07-30): moved down
-                     here from the title-row icon cluster, same line as
-                     the related-task icon below -- same reasoning as
-                     that earlier move (owner feedback, 2026-07-28): a
-                     metadata icon belongs with the other metadata
-                     badges, not the title row. -->
                 <span class="meta-badge recur-badge" title="Repeats {task.recurrence}">
                   <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 0 1 8.5-3.5M12 2v3h-3"/><path d="M12 7a5 5 0 0 1-8.5 3.5M2 12V9h3"/></svg>
                 </span>
               {/if}
               {#if relatedIds.has(task._id!)}
-                <!-- redesign/v6: moved here, right next to the due date,
-                     from the title-row icon cluster (owner feedback,
-                     2026-07-28: "move related button to close to date"). -->
                 <span class="meta-badge related-badge" title="Has related tasks">
                   <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.5" cy="3.5" r="1.8"/><circle cx="10.5" cy="10.5" r="1.8"/><path d="M4.8 4.8l4.4 4.4"/></svg>
                 </span>
@@ -715,9 +666,6 @@
                 </span>
               {/if}
               {#if task.checklist?.length}
-                <!-- redesign/v6, follow-up critique: a mini progress bar
-                     makes completion visible at a glance instead of
-                     requiring the "X/Y" text to be read every time. -->
                 <span class="meta-badge checklist-badge" class:complete={task.checklist.every(i => i.done)}>
                   <span class="checklist-bar"><span class="checklist-bar-fill" style="width:{Math.round(task.checklist.filter(i => i.done).length / task.checklist.length * 100)}%"></span></span>
                   {task.checklist.filter(i => i.done).length}/{task.checklist.length}
@@ -779,15 +727,13 @@
 </div>
 
 {#if detailTask}
-  <!-- A30 — {#key} forces a full remount if `task` ever changes to a
-       different task while still open, so CardDetail's per-task `let`
-       state (collapsible-section flags, etc.) can't carry over stale from
-       a previous task instead of re-deriving. detailOpenSession is
-       included (2026-07-17) so reopening the *same* task quickly also
-       forces a remount — _id alone doesn't change value then, which
-       risked Svelte reversing an in-flight outro into an intro on the
-       same (already-closed-once) instance instead of a real remount; see
-       the stuck-Time-Travel (née Changelog) fix in Sidebar.svelte for the full story. -->
+  <!-- {#key} forces a full remount if `task` changes to a different task
+       while still open, so CardDetail's per-task `let` state
+       (collapsible-section flags, etc.) can't carry over stale. It must
+       also include detailOpenSession so reopening the *same* task quickly
+       remounts too: _id alone doesn't change value then, and Svelte
+       reverses the in-flight outro into an intro on the already-closed
+       instance, whose closeOnBack() is spent. -->
   {#key detailTask._id + ':' + detailOpenSession}
     <CardDetail
       task={detailTask}
@@ -864,16 +810,10 @@
     background: transparent; color: var(--text); padding: 0;
   }
   .col-name-input:focus { outline: none; }
-  /* redesign/v6: was bare floating text, no shape, sitting oddly next
-     to the status name (owner feedback, 2026-07-28: "awful"). A small
-     pill badge, same rounded/muted language as the card's own meta
-     badges, with a min-width so 1 vs. 2-digit counts don't shift the
-     column name's position. */
-  /* redesign/v6: was var(--hover), which equals --col-bg exactly in
-     light mode -- the pill had no visible fill there at all, only
-     showing up in dark mode where the two tokens differ (owner
-     feedback, 2026-07-28). --surface contrasts with --col-bg in both
-     themes. */
+  /* min-width so 1- vs. 2-digit counts don't shift the column name's
+     position. Background must be --surface, not --hover: --hover equals
+     --col-bg exactly in light mode, leaving the pill with no visible
+     fill there. */
   .col-count {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 20px; height: 20px;
@@ -881,12 +821,9 @@
     color: var(--muted); background: var(--surface);
     border-radius: 20px; padding: 0 .4rem;
   }
-  /* redesign/v6: all three action buttons share one fixed 20x20 flex
-     box now -- .col-rename used to have its own smaller padding-only
-     box, .col-remove was a bare "×" text glyph sized by font-size, only
-     .col-archive was already a proper icon-in-flex-box. Different
-     sizing models made them visibly inconsistent/misaligned (owner
-     feedback, 2026-07-28). */
+  /* All three action buttons share one fixed 20x20 flex box — mixing
+     padding-only, font-size-driven and flex-box sizing here leaves them
+     visibly misaligned. */
   .col-rename, .col-archive, .col-remove {
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 20px;
@@ -912,16 +849,8 @@
   }
   .card-list.cards-drag-over { background: color-mix(in srgb, var(--accent) 9%, var(--col-bg)); }
 
-  /* redesign/v6, reference pass (owner-provided screenshot set,
-     2026-07-28): no left priority bar, no static border -- cards float
-     on the column via whitespace + a soft shadow only, priority moves
-     to its own pill above the title. */
-  /* redesign/v6: priority pill tried and reverted, then a colored
-     left-edge glow tried and also reverted (owner feedback, 2026-07-28)
-     -- plain thin edge color, no glow. */
-  /* redesign/v6: top-right priority dot tested and reverted (owner,
-     2026-07-28: "edge color was good") -- back to the left-edge bar.
-     Padding bump (12px -> 16px) kept, that wasn't the issue. */
+  /* Priority reads as a plain thin color on the card's left edge — no
+     glow, no pill, no dot. */
   .card {
     background: var(--surface);
     border-radius: var(--radius);
@@ -939,10 +868,8 @@
   }
   .card.dragging { opacity: .35; transition: none; transform: none; }
   .card.insert-before { box-shadow: inset 0 2px 0 var(--accent), 0 1px 2px rgba(0,0,0,.04); }
-  /* redesign/v6: pin-star icon removed, pinned status now reads as a
-     thin accent-colored right edge (owner feedback, 2026-07-28) --
-     mirrors the priority left edge, opposite side so the two never
-     compete for the same space. */
+  /* Pinned reads as a thin accent right edge — mirrors the priority left
+     edge, on the opposite side so the two never compete for space. */
   .card.pinned { border-right: 1px solid var(--accent); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
@@ -975,10 +902,6 @@
   .card-menu-item-danger { color: var(--danger); }
   .card-menu-item-danger svg { color: var(--danger); }
   .card-menu-item-danger:hover { background: var(--overdue-bg); }
-  /* redesign/v6, reference pass: every item is its own icon+text badge
-     (owner reference set) instead of plain inline text. Vertical gap
-     bumped +3px (owner feedback, 2026-07-28: metadata rows felt
-     cramped). */
   .card-meta { display: flex; align-items: center; gap: .4rem; margin-top: .65rem; flex-wrap: wrap; }
   .meta-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -986,14 +909,10 @@
     color: var(--muted); background: var(--hover);
     padding: .18rem .5rem; border-radius: 20px;
   }
-  /* redesign/v6, date-hierarchy critique (2026-07-28): a filled amber
-     "soon" pill read as equally urgent as the overdue red one --
-     "save fill colors exclusively for urgent time alerts." Only overdue
-     gets a colored fill now; every other date (soon or comfortably
-     future) shares the same plain neutral pill as the rest of the meta
-     badges (inherits .meta-badge's --hover background), no separate
-     amber tier. dueDateClass() still distinguishes 'soon' for any
-     future non-visual use, just not styled differently here. */
+  /* Colored fills are reserved for urgent time alerts, so only overdue
+     gets one; every other date (soon or comfortably future) keeps the
+     plain neutral .meta-badge pill. dueDateClass() still distinguishes
+     'soon' for non-visual use, it just isn't styled differently here. */
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
   .checklist-badge.complete { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .checklist-bar {
@@ -1004,15 +923,10 @@
   .related-badge, .recur-badge { padding: .18rem .4rem; }
   .blocked-badge { padding: .18rem .4rem; color: var(--danger); }
 
-  /* redesign/v6, follow-up critique: tags were all identical gray
-     (Tag Homogeneity) -- each tag now gets a consistent soft tint via
-     tagColor()'s hash, same filled-pill language as the priority/date
-     badges instead of a plain border. Vertical gap bumped to match
-     .card-meta above. Text itself stays var(--text) rather than the raw
-     hash color -- a saturated hue as both text and its own tinted
-     background failed contrast/readability (owner feedback, 2026-07-28,
-     e.g. pink text unreadable on its own dark-maroon tint) -- the color
-     identity now lives in a small dot instead. */
+  /* Each tag gets a consistent soft tint from tagColor()'s hash. Text
+     stays var(--text), never the raw hash color: a saturated hue as both
+     text and its own tinted background fails contrast (e.g. pink on
+     dark-maroon). The color identity lives in the small dot instead. */
   .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: .55rem; }
   .card-tag {
     display: inline-flex; align-items: center; gap: 5px;
@@ -1021,9 +935,6 @@
   }
   .card-tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
-  /* redesign/v6, follow-up critique: was plain unstyled text, read as an
-     afterthought rather than a real control -- a dashed-outline button
-     matches the reference wireframe's drop-zone treatment. */
   .add-card-btn {
     border: 1.5px dashed var(--border-strong); background: none; cursor: pointer;
     color: var(--faint); font-size: .82rem; font-weight: 500;

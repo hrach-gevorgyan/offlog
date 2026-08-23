@@ -1,20 +1,14 @@
-// v6.8.0 — file attachments: shared size cap and mime mapping used by
-// both CardDetail.svelte (validates on pick, before doing any work) and
-// db.ts (validates again on write -- defense in depth, same reasoning as
-// every other input boundary in this app).
+// File attachments: shared size cap and mime mapping, used by both
+// CardDetail.svelte (validates on pick, before doing any work) and db.ts
+// (validates again on write -- defense in depth).
 //
-// Owner decision, 2026-07-30: no format allowlist -- any file type is
-// attachable except HEIC/HEIF. An extension check on top of that would
-// mostly be curation, not protection (Offlog never executes an
-// attachment, just stores and downloads bytes -- the same trust decision
-// as any downloaded file, and trivially bypassed by renaming anyway), and
-// most formats already can't be previewed in-app regardless of whether
-// they're "allowed" (docx/xlsx/pdf all just show as a generic file chip +
-// download). HEIC/HEIF stays rejected on its own technical merit: the
-// default format iPhone cameras save to, but canvas-based downscaling
-// (CardDetail's compression step) can't reliably decode it in a browser/
-// webview today -- rejected with a clear message rather than silently
-// failing to compress/preview.
+// There is deliberately no format allowlist: any file type is attachable
+// except HEIC/HEIF. An extension check would be curation, not protection --
+// attachments are never executed, only stored and downloaded, and a rename
+// bypasses it anyway. HEIC/HEIF is rejected on technical merit: canvas-based
+// downscaling (CardDetail's compression step) can't reliably decode it in a
+// browser/webview, so it's rejected with a clear message rather than silently
+// failing to compress or preview.
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024; // 10MB, hard cap regardless of format
 
 export const ATTACHMENT_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;

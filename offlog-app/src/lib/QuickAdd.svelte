@@ -10,10 +10,8 @@
   import { parseQuickAdd } from './nlpParse';
   import { fmtTime } from './utils';
 
-  // Set when opened from Month view's "Add card" (a tapped day) — seeds
-  // the due date so the new task lands on that day without retyping it.
-  // A date phrase the user actually types (parsed.due_date) still wins,
-  // same precedence as any other NLP-parsed field overriding a default.
+  // Seeds the due date when opened from Month view's "Add card" on a
+  // tapped day. A typed date phrase (parsed.due_date) still wins.
   export let initialDueDate: string | null = null;
 
   const dispatch = createEventDispatcher<{ close: void; created: void }>();
@@ -33,21 +31,17 @@
     return { value: p._id, label: p.name, group: sp?.name ?? '' };
   });
 
-  // Live parse on every keystroke -- pure/cheap regex work, no debounce
-  // needed. Only affects the dropdown's *selection*, never removes a
-  // project the user picked by hand (projectManuallyChosen below), so
-  // typing "@fitness" after already choosing a project from the dropdown
-  // doesn't fight the user's explicit choice.
+  // Live parse on every keystroke -- pure, cheap regex work, no debounce
+  // needed. It only changes the dropdown's selection, and never overrides a
+  // project the user picked by hand (projectManuallyChosen).
   $: parsed = parseQuickAdd(title, $projects);
   $: if (parsed.projectId && !projectManuallyChosen) projectId = parsed.projectId;
-  // A typed date phrase always wins over the prefilled default -- same
-  // precedence any other parsed field already has over its own default.
+  // A typed date phrase wins over the prefilled default.
   $: effectiveDueDate = parsed.due_date ?? initialDueDate;
 
-  // Owner-requested (2026-07-20) duplicate-title nudge — never blocks
-  // Quick Add's fast create-and-close flow, just a dismissible-by-typing
-  // hint. Scoped to the target project only, same reasoning as
-  // findTasksByTitleInProject()'s own comment in db.ts.
+  // Duplicate-title nudge: a hint only, never blocking the create-and-close
+  // flow. Scoped to the target project — see findTasksByTitleInProject() in
+  // db.ts.
   let duplicateTitleHint = '';
   let titleCheckTimer: ReturnType<typeof setTimeout> | undefined;
   $: { clearTimeout(titleCheckTimer); titleCheckTimer = setTimeout(() => checkTitleDuplicate(parsed.title, projectId), 350); }
@@ -62,11 +56,10 @@
 
   const PRIORITY_LABEL: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 
-  // Syntax cheat-sheet popover -- a lightweight local popover (outside-
-  // click + its own Escape handling), not a closeOnBack()-tracked overlay:
-  // it's inline help anchored to a button, the same class of UI as
-  // CustomSelect's own dropdown, not a real modal blocking the rest of the
-  // app. Mirrors CustomSelect.svelte's onWindowClick/Escape pattern.
+  // Syntax cheat-sheet popover: inline help anchored to a button, not a
+  // modal, so it stays a local popover (outside-click + its own Escape
+  // handling) rather than a closeOnBack()-tracked overlay. Mirrors
+  // CustomSelect.svelte's onWindowClick/Escape pattern.
   let showHelp = false;
   let helpTriggerEl: HTMLButtonElement;
   let helpPanelEl: HTMLDivElement;

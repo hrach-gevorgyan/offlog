@@ -3,33 +3,17 @@
   import CustomSelect from './CustomSelect.svelte';
   import { getTimeFormat24h } from '../config';
 
-  // B50 — replaces native <input type="time"> (which renders as the bare
-  // OS picker on Android, same reason CustomSelect replaced native
-  // <select>) with two (or three, in 12h mode) themed CustomSelect
-  // dropdowns sharing this app's existing picker look. Value/emit format
-  // is always 'HH:MM' (24h, zero-padded), matching what <input
-  // type="time"> already produced — every call site swaps in this
-  // component with no format change needed. Only the *displayed* hour
-  // dropdown (and an added AM/PM toggle) switches based on Settings ->
-  // Appearance's 24h/12h choice (getTimeFormat24h) — found 2026-07-23:
-  // this picker previously always showed a 00-23 dropdown regardless of
-  // that setting.
-  //
-  // 2026-07-24: tried a hand-rolled scroll wheel, the timepicker-ui
-  // library, and native <input type="time"> as replacements, in that
-  // order — reverted every one (wheel: too rough visually; library:
-  // ~117KB for one field; native: its OS popup can't be styled with CSS
-  // at all and ignores the 12h/24h setting entirely, showing whatever
-  // format the OS/browser locale picks). This dropdown version is the
-  // only one that's simultaneously compact, fully CSS-themeable, and
-  // respects the app's own setting — same conclusion the original B50
-  // note already reached.
+  // Themed replacement for native <input type="time">, which renders as
+  // the unstyleable OS picker on Android and ignores the app's own
+  // 12h/24h setting. Built from two (three in 12h mode) CustomSelect
+  // dropdowns. Value and emitted format are always 'HH:MM' (24h,
+  // zero-padded); only the *displayed* hour dropdown and the AM/PM
+  // toggle follow getTimeFormat24h(). Keep it that way — a nicer-looking
+  // scroll wheel or a picker library costs either fidelity or ~100KB.
   export let value = '09:00';
   export let disabled = false;
-  // Forwarded straight to each CustomSelect (owner feedback, 2026-07-30) --
-  // a picker sitting near the bottom of a scrollable panel (e.g. Quiet
-  // hours) needs its dropdown to open upward or it renders clipped/
-  // fighting the panel's own scroll instead of just showing above.
+  // Forwarded to each CustomSelect: a picker near the bottom of a
+  // scrollable panel must open upward or its dropdown renders clipped.
   export let placement: 'up' | 'down' = 'down';
 
   const dispatch = createEventDispatcher<{ change: string }>();
@@ -40,9 +24,8 @@
   // dropdown is normally read.
   const HOURS_12 = [12, ...Array.from({ length: 11 }, (_, i) => i + 1)].map(h => ({ value: pad(h), label: String(h) }));
   const PERIODS = [{ value: 'AM', label: 'AM' }, { value: 'PM', label: 'PM' }];
-  // Every minute, not 5-minute steps — matches what the native <input
-  // type="time"> this replaced actually allowed (owner-reported,
-  // 2026-07-16: 5-minute steps couldn't express an exact minute).
+  // Every minute, not 5-minute steps — coarser steps can't express an
+  // exact minute.
   const MINUTES = Array.from({ length: 60 }, (_, m) => ({ value: pad(m), label: pad(m) }));
 
   $: is24h = getTimeFormat24h();

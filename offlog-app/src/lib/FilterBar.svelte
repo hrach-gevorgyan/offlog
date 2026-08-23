@@ -1,18 +1,14 @@
 <script lang="ts">
-  // B2 — extracted from ListView.svelte (its original, List-only filter
-  // popover) so Kanban can get the identical filter bar + saved-filters
-  // feature without duplicating ~150 lines of state/logic. Saved filters
-  // are stored per-project (not per-view), so a filter saved from List
-  // shows up in Kanban's popover too — same `offlog_saved_filters_<id>`
-  // localStorage key either view would have used on its own.
+  // Shared by List and Kanban. Saved filters are stored per-project, not
+  // per-view (one `offlog_saved_filters_<id>` localStorage key), so a
+  // filter saved from List also appears in Kanban's popover.
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
   import type { CustomFieldFilter } from './utils';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
 
-  // Declared here with an explicit tuple type rather than inline in the
-  // {#each}: inline, TS widened it to (string | number)[][], so `v` came
-  // out as string|number and both the filterPrio assignment and the
-  // PRIO_COLOR index below silently degraded to `any`.
+  // Explicit tuple type, declared outside the {#each}: inline, TS widens it
+  // to (string | number)[][], which silently degrades the filterPrio
+  // assignment and the PRIO_COLOR index below to `any`.
   const PRIO_CHIPS: [number, string][] = [[0, 'All'], [1, 'Low'], [2, 'Med'], [3, 'High']];
   import { popScale } from './motion';
   import { fly } from 'svelte/transition';
@@ -24,13 +20,10 @@
   export let filterCol = '';
   export let filterPrio = 0;
   export let filterTag = '';
-  // Roadmap item "custom fields: filterable and sortable" -- `tasks` is
-  // only needed to compute the distinct values a chosen field actually
-  // has (same "dropdown of what's really in use" pattern as allTags
-  // above), not for anything else here. A *list* of filters, not one --
-  // owner feedback, 2026-07-31: filtering by a single custom field
-  // wasn't enough; every row must match (AND), same as Status/Tag/
-  // Priority already stacking together.
+  // `tasks` is used only to compute the distinct values a chosen custom
+  // field actually has (same "dropdown of what's really in use" pattern as
+  // allTags above). customFieldFilters is a list: every row must match
+  // (AND), stacking with Status/Tag/Priority.
   export let customFields: CustomFieldDef[] = [];
   export let tasks: TaskDoc[] = [];
   export let customFieldFilters: CustomFieldFilter[] = [];
@@ -58,18 +51,16 @@
     customFieldFilters = customFieldFilters.map((f, idx) => idx === i ? { fieldId, value: '' } : f);
   }
   $: canAddFieldFilter = customFieldFilters.length < customFields.length;
-  // Icon-only, no "Filters" text label — used where the button sits
-  // paired with other icon buttons in a tight pill (App.svelte's board
-  // header) rather than List's own roomier toolbar row.
+  // Icon-only, no "Filters" text label — for tight icon-button pills
+  // (App.svelte's board header) rather than List's roomier toolbar row.
   export let compact = false;
 
   let showFilterMenu = false;
   let newFilterName = '';
-  // Fixed-position, computed from the button's own rect on open — not
-  // absolute-anchored to an ancestor — because both ListView's .list-panel
-  // and a short Kanban board can be shorter than the popover itself, and
-  // `overflow: hidden`/auto on that ancestor was clipping the bottom half
-  // (same class of bug as the Columns popover fix in v4.6.5).
+  // Fixed-position, computed from the button's rect on open — not
+  // absolute-anchored to an ancestor. ListView's .list-panel and a short
+  // Kanban board can both be shorter than the popover, and their
+  // `overflow: hidden`/auto would clip its bottom half.
   let menuPos = { top: 0, left: 0 };
   const MENU_WIDTH = 280;
   function toggleFilterMenu(e: MouseEvent) {
@@ -80,9 +71,8 @@
     showFilterMenu = !showFilterMenu;
   }
 
-  // customFieldFilters is optional on old saved filters (predate this
-  // feature, or predate it becoming a list) -- absent just means "no
-  // custom-field filters", same as an empty array would.
+  // customFieldFilters is optional: saved filters already in localStorage
+  // may not have it. Absent means "no custom-field filters".
   interface SavedFilter { name: string; search: string; filterCol: string; filterPrio: number; filterTag: string; customFieldFilters?: CustomFieldFilter[] }
   $: savedFiltersKey = `offlog_saved_filters_${project._id}`;
   let savedFilters: SavedFilter[] = [];
@@ -245,10 +235,8 @@
   .prio-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
   .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
-  /* One row per active custom-field filter (owner feedback, 2026-07-31:
-     a single field/value pair wasn't enough) -- field select on top,
-     its value select below once a field is chosen, a remove button on
-     the row's right edge. */
+  /* One row per active custom-field filter: field select on top, its value
+     select below once a field is chosen, remove button on the right edge. */
   .field-filter-row { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 2px; }
   .field-filter-selects { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .field-filter-remove {

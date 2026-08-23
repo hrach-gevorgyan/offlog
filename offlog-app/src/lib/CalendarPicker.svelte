@@ -3,14 +3,12 @@
   import TimePicker from './TimePicker.svelte';
   import { fmtTime } from './utils';
 
-  // B38 — custom calendar/date picker instead of the native OS one.
+  // Themed calendar/date picker replacing the native OS one.
   // Two value formats, chosen by `withTime`:
-  //   withTime=false: plain 'YYYY-MM-DD' (matches <input type=date>)
-  //   withTime=true:  'YYYY-MM-DDTHH:mm' (matches <input type=datetime-local>,
-  //                   which is what CardDetail's reminder_at is kept in)
-  // Emits 'change' with the new string in that same format — the parent
-  // still owns the actual field (due_date/reminder_at), same as the
-  // native inputs it replaces.
+  //   withTime=false: 'YYYY-MM-DD'       (as <input type=date>)
+  //   withTime=true:  'YYYY-MM-DDTHH:mm' (as <input type=datetime-local>)
+  // Emits 'change' with the new string in that same format; the parent
+  // owns the actual field (due_date/reminder_at).
   export let value: string = '';
   export let withTime = false;
   export let disabled = false;
@@ -22,14 +20,10 @@
   let wrapEl: HTMLDivElement;
   let triggerEl: HTMLButtonElement;
   let popoverEl: HTMLDivElement;
-  // Owner feedback, 2026-07-30 (found via CardDetail's move to a
-  // capped-height centered modal): .cal-popover used to be a plain
-  // absolutely-positioned child, which gets clipped by any ancestor
-  // with overflow:hidden/auto once it extends past that ancestor's box
-  // -- exactly what CardDetail's own scrollable .panel does. Same fix
-  // as ListView.svelte's .col-menu--fixed: position:fixed with JS-
-  // measured coordinates escapes that clipping entirely, flipping to
-  // open upward if there's no room below.
+  // .cal-popover is position:fixed with JS-measured coordinates: an
+  // absolutely-positioned popover is clipped by any ancestor with
+  // overflow:hidden/auto (e.g. a scrollable modal panel). Flips to open
+  // upward when there's no room below.
   let popoverStyle = '';
   async function positionPopover() {
     await tick();
@@ -61,10 +55,9 @@
   $: selected = parseDate(value);
   let viewYear = new Date().getFullYear();
   let viewMonth = new Date().getMonth();
-  // Re-sync the visible month to the selected date only when opening, not
-  // on every keystroke-level reactivity — otherwise navigating to a
-  // different month while picking a time (withTime) would keep snapping
-  // back to the currently-selected date's month.
+  // Re-sync the visible month to the selected date only while opening —
+  // otherwise navigating to another month while picking a time (withTime)
+  // keeps snapping back to the selected date's month.
   $: if (open) { const d = selected ?? new Date(); viewYear = d.getFullYear(); viewMonth = d.getMonth(); }
 
   let timeVal = '09:00';
@@ -77,9 +70,8 @@
   }
   function close() { open = false; }
 
-  // Re-measure on month navigation too -- a 5-week vs 6-week month
-  // changes the grid's height, which can change whether it still fits
-  // below the trigger.
+  // Re-measure on month navigation: a 5-week vs 6-week month changes the
+  // grid's height, and so whether it still fits below the trigger.
   function prevMonth() { if (viewMonth === 0) { viewMonth = 11; viewYear -= 1; } else viewMonth -= 1; positionPopover(); }
   function nextMonth() { if (viewMonth === 11) { viewMonth = 0; viewYear += 1; } else viewMonth += 1; positionPopover(); }
 
@@ -188,9 +180,8 @@
   .cal-trigger.open, .cal-trigger:hover { border-color: var(--accent); }
   .cal-trigger:disabled { opacity: .55; cursor: default; }
 
-  /* position:fixed with JS-measured top/left (see positionPopover())
-     instead of absolute + top/left CSS -- escapes ancestor clipping
-     (e.g. CardDetail's scrollable modal), see the script comment above. */
+  /* position:fixed with JS-measured top/left (see positionPopover());
+     absolute positioning would be clipped by scrollable ancestors. */
   .cal-popover {
     position: fixed; z-index: 220;
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);

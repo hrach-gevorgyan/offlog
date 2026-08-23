@@ -398,9 +398,24 @@ debug-keystore-signed `release` APK go out as a real release build.
 
 - Match existing code: compact CSS (one-line related properties), Svelte 5
   with `on:` event syntax, TypeScript everywhere, no CSS framework.
-- Comments explain **constraints and why**, not what the next line does.
-  The codebase has a strong tradition of comments documenting non-obvious
-  invariants (see db.ts) — follow it.
+- Comments state **the rule, not the story.** A comment earns its place by
+  telling a future editor something that stops them breaking the code:
+  a non-obvious constraint, a surprising API behaviour, or why a line that
+  looks wrong is deliberate. Keep it to the fewest words that carry the
+  rule.
+  **Do not write** dates, owner attributions or quotes ("owner feedback,
+  2026-07-28: …"), ticket ids (`B22`, `A33`, `C8`), version archaeology
+  ("was X in v5.4.1, now Y"), or an account of what was tried and
+  reverted. None of that survives contact with a reader who wasn't there,
+  and it actively misleads: a comment describing a decision's *history*
+  gets read as describing its *current* rationale. That history already
+  lives in git and in `docs/STORY.md` — the two places built for it.
+  - Bad: `// redesign/v6: was bare floating text (owner feedback,
+    2026-07-28: "awful"). Moved into a pill to match the badges.`
+  - Good: *(nothing — the code shows a pill; there is no rule here)*
+  - Good: `// column.id, never the column object — a task whose column_id`
+    `// doesn't match any column vanishes from Kanban while staying a`
+    `// valid, queryable doc.`
 - User-facing wording: statuses are called **"Status"**, never "Column"
   (internal field names still say `column_id` — that's a frozen legacy name).
 - Dates in docs are absolute (e.g. "2026-07"), not relative.

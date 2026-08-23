@@ -1,10 +1,7 @@
-// B51 — shared transition parameters so every panel/dialog/popover/toast
-// animates in AND out with the same feel, instead of each component
-// hand-rolling its own CSS `animation:` (which only ever covered mount,
-// never unmount — closing every panel used to snap instantly). Values
-// mirror the durations/easing that were already established ad-hoc
-// across the codebase (--ease in app.css is the same curve) — this
-// doesn't invent a new style, just makes the existing one reusable.
+// Shared transition parameters so every panel/dialog/popover/toast animates
+// in AND out with the same feel. Prefer these over a component-local CSS
+// `animation:`, which only covers mount and leaves close snapping instantly.
+// Durations/easing match --ease in app.css.
 import { cubicOut } from 'svelte/easing';
 import { prefersReducedMotion } from './theme';
 

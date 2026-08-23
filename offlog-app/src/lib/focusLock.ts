@@ -1,9 +1,7 @@
-// B35 — the day's Focus commitment lock, extracted out of FocusView.svelte
-// so DashboardView.svelte's new "Daily Brief" card (B35) can read the same
-// state without duplicating the parsing/date-staleness logic. Deliberately
-// NOT a PouchDB doc, still — this is ephemeral per-day UI state, not data
-// worth syncing across devices (see FocusView.svelte's own original
-// comment on this).
+// The day's Focus commitment lock, shared by FocusView.svelte and
+// DashboardView.svelte's "Daily Brief" card so the parsing/date-staleness
+// logic isn't duplicated. Deliberately NOT a PouchDB doc — this is ephemeral
+// per-day UI state, not data worth syncing across devices.
 import { localDateStr } from './utils';
 
 const STORAGE_KEY = 'offlog_focus_lock';

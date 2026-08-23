@@ -1,11 +1,10 @@
 // Pairing handshake — getting real credentials onto a phone safely, without
 // ever putting them on the wire in the clear over mDNS (discovery.rs
-// carries only the sync server's uuid). Threat model: this is a same-Wi-Fi
-// handshake between two devices one person owns (DECISIONS.md: "private, not
-// public, secure enough on its own" — same posture DECISIONS.md already
-// applied when declining mesh sync's much larger security investment for
-// a single-user project). A short-lived, single-use, human-read code is
-// the right amount of security here, not TLS/PKI.
+// carries only the sync server's uuid — never credentials).
+//
+// Threat model: a same-Wi-Fi handshake between two devices one person
+// owns. A short-lived, single-use, human-read code is the intended level
+// of security here, not TLS/PKI.
 
 use crate::sync_host::SyncHostInfo;
 use serde::Serialize;
@@ -14,14 +13,11 @@ use std::time::{Duration, Instant};
 use tiny_http::{Response, Server};
 
 const CODE_TTL: Duration = Duration::from_secs(5 * 60);
-// Security audit finding, 2026-07-16: try_consume() had no attempt limit --
-// a fast LAN attacker within the 5-minute window could submit unlimited
-// sequential guesses against the 6-digit (1M-value) code space with
-// nothing to stop them. Capping failed guesses per generated code bounds
-// any brute-force attempt to a handful of tries regardless of how fast
-// the attacker can send requests, without needing real rate-limiting
-// machinery -- consistent with this file's own "human-read code, not
-// TLS/PKI" threat model above.
+// Failed guesses are capped per generated code. Without a cap, a LAN
+// attacker could submit unlimited sequential guesses against the 6-digit
+// (1M-value) space inside the TTL window. This bounds any brute-force
+// attempt to a handful of tries however fast the requests arrive, with
+// no rate-limiting machinery needed.
 const MAX_ATTEMPTS: u32 = 8;
 
 struct PendingCode {
@@ -89,15 +85,16 @@ pub fn spawn_server(state: Arc<PairingState>, uuid: String) -> std::io::Result<u
         .map_err(|e| std::io::Error::other(format!("failed to bind pairing server: {e}")))?;
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
 
-    // Every response needs Access-Control-Allow-Origin -- discovered live
-    // debugging a real phone: curl (used for every manual verification
-    // above) doesn't enforce CORS at all, so it never caught this, but a
-    // WebView's fetch() silently rejects a cross-origin response with no
-    // CORS header, surfacing as a bare "Failed to fetch" indistinguishable
-    // from real unreachability. `*` is fine here (no credentials/cookies
-    // involved, and the actual secret is the pairing code itself, not
-    // origin-based access control) -- also answer OPTIONS defensively in
-    // case some WebView/fetch combination does send a CORS preflight.
+    // Every response must carry Access-Control-Allow-Origin, including the
+    // error ones. A WebView's fetch() silently rejects a cross-origin
+    // response with no CORS header, surfacing as a bare "Failed to fetch"
+    // indistinguishable from the host being unreachable; curl doesn't
+    // enforce CORS, so manual testing won't catch a missing header.
+    //
+    // `*` is deliberate and safe here: no credentials or cookies are
+    // involved, and the secret protecting this endpoint is the pairing
+    // code itself, not origin-based access control. OPTIONS is answered
+    // defensively in case a WebView/fetch combination sends a preflight.
     fn cors_header() -> tiny_http::Header {
         tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap()
     }

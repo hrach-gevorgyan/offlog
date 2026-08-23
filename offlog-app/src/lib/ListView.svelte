@@ -17,15 +17,12 @@
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
 
-  // B36 — List view power customization (2026-07-03, owner direction):
-  // saved filters, column selection, column reordering, native horizontal
-  // scroll (no truncation, ever), multi-column sort, and more columns.
-  // Design baseline stays the from-scratch rewrite (see DECISIONS.md):
-  // real data grid, generous columns, plain colored text for dates instead
-  // of pill badges. Every preference here is per-device (`localStorage`),
-  // not per-project or synced — a phone and a PC may reasonably want
-  // different columns/filters, and syncing UI state isn't obviously
-  // desirable.
+  // A real data grid: saved filters, column selection and reordering,
+  // native horizontal scroll (no truncation, ever), multi-column sort,
+  // generous columns, plain colored text for dates instead of pill badges.
+  // Every preference here is per-device (`localStorage`), never per-project
+  // or synced — a phone and a PC may reasonably want different
+  // columns/filters.
 
   let search = '';
   let filterCol = '';
@@ -44,31 +41,26 @@
 
   $: allTags = [...new Set(tasks.flatMap(t => t.tags))].sort();
   $: filtered = filterTasks(tasks, search, filterCol, filterPrio, filterTag, customFieldFilters);
-  // Empty-state message (line ~585) needs to tell "no tasks at all" apart
-  // from "filtered down to zero" — mirrors FilterBar.svelte's own
-  // activeFilters, which only drives that popover's badge/clear-button,
-  // not this view's empty-state text.
+  // The empty-state message needs to tell "no tasks at all" apart from
+  // "filtered down to zero". Mirrors FilterBar.svelte's own activeFilters,
+  // which only drives that popover's badge/clear-button, not this text.
   $: activeFilters = (search ? 1 : 0) + (filterCol ? 1 : 0) + (filterPrio ? 1 : 0) + (filterTag ? 1 : 0)
     + customFieldFilters.filter(f => f.fieldId && f.value).length;
 
   // ── Multi-column sort ──────────────────────────────────────────────────
   // Plain click sorts by that column alone (resets any prior multi-sort).
   // Shift-click adds it as a secondary/tertiary tiebreaker instead of
-  // replacing the sort — the standard spreadsheet pattern. Pinned-first
-  // is an opt-in toggle (owner feedback, 2026-07-28) rather than always-on
-  // — some users don't want pinned tasks to override their chosen sort.
-  // Off by default, persisted per-device like `cols`/`colOrder` below.
-  // Widened from a strict literal union to `string` (roadmap item "custom
-  // fields: filterable and sortable") -- a custom field's column key
-  // (its own `id`, "field:<nanoid>") is only known at runtime, same
-  // reasoning as ColKey below. cmpOne()'s `if` chain still only special-
-  // cases the built-ins by name; anything else falls through to the
-  // custom-field branch at the bottom.
+  // replacing the sort — the standard spreadsheet pattern. Pinned-first is
+  // an opt-in toggle rather than always-on, off by default, persisted
+  // per-device like `cols`/`colOrder` below.
+  // `string` rather than a literal union: a custom field's column key (its
+  // own `id`, "field:<nanoid>") is only known at runtime, same reasoning
+  // as ColKey below. cmpOne()'s `if` chain special-cases only the built-ins
+  // by name; anything else falls through to the custom-field branch.
   type SortCol = string;
   // Default sort is priority descending (High → Medium → Low), matching
-  // how the data is actually ordered/queried elsewhere (owner feedback,
-  // 2026-07-28). cmpOne('priority') already returns high-first with
-  // asc:true, so this is just picking a different starting column.
+  // how the data is ordered/queried elsewhere. cmpOne('priority') returns
+  // high-first with asc:true.
   let sortSpec: { col: SortCol; asc: boolean }[] = [{ col: 'priority', asc: true }];
   let pinnedFirst = false;
   const PINNED_FIRST_KEY = 'offlog_list_pinned_first';
@@ -108,17 +100,13 @@
     return 0;
   });
 
-  // redesign/v6 fix (owner feedback, 2026-07-28): the title column used
-  // to be `minmax(220px, max-content)`, but .grid-head/each .grid-row are
-  // independent CSS grids (grid-template-columns is set per-element, not
-  // once on a shared container) -- `max-content` resolves separately per
-  // row, sized only to that row's own title. A long-title row got a
-  // wider title column than a short-title row, so Status/Priority/Due/
-  // Tags landed at different x-offsets row to row -- read as the title
-  // text bleeding into the next column and the grid not behaving like a
-  // real table. Fix: measure the widest visible title once (canvas,
-  // matching .cell-title's font) and use that one fixed pixel width for
-  // every row's title column, so every row shares identical boundaries.
+  // The title track must be a fixed pixel width, never `max-content`:
+  // .grid-head and each .grid-row are independent CSS grids
+  // (grid-template-columns is set per-element, not once on a shared
+  // container), so `max-content` resolves per row against that row's own
+  // title and the later columns land at different x-offsets row to row.
+  // Measure the widest visible title once (canvas, matching .cell-title's
+  // font) and give every row that same track width.
   let measureCanvas: HTMLCanvasElement | null = null;
   function measureTextWidth(text: string, font: string): number {
     if (!measureCanvas) measureCanvas = document.createElement('canvas');
@@ -128,9 +116,9 @@
     return ctx.measureText(text).width;
   }
   const TITLE_FONT = '500 14px "Hanken Grotesk", sans-serif';
-  // Flat buffer for the recurrence mark that can trail the title inline
-  // (pin/checklist/related marks were dropped from this view, 2026-07-28
-  // owner feedback — pinned now shows via the row's left accent instead).
+  // Flat buffer for the recurrence mark that can trail the title inline.
+  // It's the only inline mark in this view — pinned shows via the row's
+  // left accent instead.
   const TITLE_ICON_BUFFER = 24;
   $: titleColWidth = Math.min(480, Math.max(220, Math.ceil(
     Math.max(0, ...sorted.map(t => measureTextWidth(t.title, TITLE_FONT))) + TITLE_ICON_BUFFER
@@ -156,21 +144,19 @@
   }
 
   // Precomputed as a `$:` reactive map, not called as a plain function
-  // straight from the template inside a {#each} block — a plain function
-  // call there doesn't reliably re-run when `sortSpec` changes (verified
-  // live: sort order updated correctly on click, but the header arrow
-  // didn't). A top-level `$:` statement is guaranteed to re-run whenever
-  // sortSpec changes, since Svelte tracks it as an explicit dependency.
+  // from inside a {#each} block — a plain call there doesn't reliably
+  // re-run when `sortSpec` changes (the sort updates but the header arrow
+  // doesn't). A top-level `$:` statement re-runs whenever sortSpec
+  // changes, since Svelte tracks it as an explicit dependency.
   $: sortIcons = Object.fromEntries(
     ['title', 'column', 'priority', 'due', 'created', 'updated', 'source', ...customFields.map(f => f.id)]
       .map(col => [col, sortIconFor(col, sortSpec)])
   ) as Record<string, string>;
 
-  // B2 — the Filters button/popover + saved-filters feature moved into
-  // shared FilterBar.svelte (also used by KanbanBoard.svelte now); this
-  // view keeps only the filter *values* (search/filterCol/filterPrio/
-  // filterTag, declared above) since filterTasks() and the archived-tasks
-  // filter below both still need them directly.
+  // The Filters button/popover + saved filters live in shared
+  // FilterBar.svelte (also used by KanbanBoard.svelte); this view keeps
+  // only the filter *values* (declared above), which filterTasks() and the
+  // archived-tasks filter below both need directly.
 
   // ── Column selection + order ────────────────────────────────────────────
   // Title (and the mark-done circle) are always shown and always first —
@@ -178,10 +164,10 @@
   // column key; order is a plain array so drag-reorder is just an array
   // splice.
   // ColKey covers the 7 built-ins plus, dynamically, one per global custom
-  // field (B16) — a field's own `id` (already namespaced "field:<nanoid>",
-  // see types.ts) doubles as its column key, so it can't collide with a
-  // built-in. Widened to `string` rather than a strict union since the set
-  // of custom fields isn't known at compile time.
+  // field — a field's own `id` (already namespaced "field:<nanoid>", see
+  // types.ts) doubles as its column key, so it can't collide with a
+  // built-in. `string` rather than a strict union, since the set of custom
+  // fields isn't known at compile time.
   type ColKey = string;
   const COL_LABELS: Record<string, string> = {
     status: 'Status', priority: 'Priority', due: 'Due', tags: 'Tags',
@@ -199,9 +185,8 @@
   function colWidth(key: ColKey): string { return COL_WIDTH[key] ?? '130px'; }
   function isCustomCol(key: ColKey): boolean { return key.startsWith('field:'); }
 
-  // Priority off by default (owner feedback, 2026-07-28) -- the row's
-  // left-edge color already carries priority; the column is available to
-  // turn back on via the column menu for anyone who wants it explicit.
+  // Priority column off by default: the row's left-edge color already
+  // carries priority. It can be turned on via the column menu.
   let cols: Record<ColKey, boolean> = { status: true, priority: false, due: true, tags: true, created: false, updated: false, source: false };
   let colOrder: ColKey[] = [...DEFAULT_ORDER];
   let showColMenu = false;
@@ -216,9 +201,8 @@
   }
   // Drag state for column reordering. `dragOverCol`/`dragOverSide` drive
   // the visual insertion indicator (a highlighted edge on the header
-  // being dragged over) — without them, dragging gave no feedback about
-  // whether dropping would place the column to the left or right of the
-  // one under the cursor.
+  // being dragged over), showing whether dropping would place the column
+  // to the left or right of the one under the cursor.
   let dragCol: ColKey | null = null;
   let dragOverCol: ColKey | null = null;
   let dragOverSide: 'left' | 'right' | null = null;
@@ -295,17 +279,15 @@
   // truncating or dropping columns on a narrow viewport — .grid-head/
   // .grid-row are `width: max-content`, so they size to their natural
   // (unclipped) content width and the scroll container takes over once
-  // that's wider than the viewport, instead of the old responsive
-  // column-hiding tiers. Title track is `titleColWidth`px (computed above),
-  // not `max-content` — every row now shares the exact same track sizes,
-  // so columns actually line up instead of drifting per row.
+  // that's wider than the viewport. Title track is `titleColWidth`px
+  // (computed above), not `max-content`, so every row shares the exact
+  // same track sizes and columns line up instead of drifting per row.
   $: gridTemplate = (selectionMode ? '20px ' : '') + `24px ${titleColWidth}px` + visibleOrder.map(k => ` ${colWidth(k)}`).join('');
 
-  // B19 (revised, owner feedback 2026-07-09): plain checkboxes-everywhere
-  // was rejected as a UI — checkboxes only appear once "Select" mode is
-  // explicitly turned on (matching Filters/Archived/Columns as a toggle in
-  // the same action group), and there's no shift-click range-select.
-  // `selected` is per-project-view state only, never persisted.
+  // Checkboxes appear only once "Select" mode is explicitly turned on
+  // (a toggle in the same action group as Filters/Archived/Columns);
+  // there's deliberately no shift-click range-select. `selected` is
+  // per-project-view state only, never persisted.
   let selectionMode = false;
   let selected = new Set<string>();
   let bulkStatus = '';
@@ -408,35 +390,29 @@
     detailProjectOverride = proj;
   }
 
-  // B27 — loaded regardless of showArchived (not just while the section is
-  // open) so the toggle button itself can carry a count badge; previously
-  // the only way to know archived tasks existed was to open the toggle.
+  // Loaded regardless of showArchived (not just while the section is open)
+  // so the toggle button itself can carry a count badge.
   let archivedTasksRaw: TaskDoc[] = [];
   $: getArchivedTasksForProject(project._id).then(t => { archivedTasksRaw = t; });
-  // Same active search/status/priority/tag filters as the main list — the
-  // archived section previously ignored them entirely, so narrowing the
-  // main list did nothing to what showed up here.
+  // The archived section honors the same active search/status/priority/tag
+  // filters as the main list.
   $: archivedTasks = filterTasks(archivedTasksRaw, search, filterCol, filterPrio, filterTag, customFieldFilters);
 
-  // Full date (month/day/year) — with no truncation and horizontal scroll
-  // available (B36), there's no reason to abbreviate away the year.
+  // Full date (month/day/year) — nothing truncates and the grid scrolls
+  // horizontally, so there's no reason to abbreviate away the year.
   function fmtDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  // A22: the mark-done circle is a single click with no confirmation — an
-  // accidental click previously had no way back short of reopening the
-  // card and changing status manually. Remember the task's prior state
-  // briefly so a mis-click can be undone with one tap, matching the undo
-  // pattern already used for deletion (App.svelte's undo toast).
+  // The mark-done circle is a single click with no confirmation, so the
+  // task's prior state is remembered briefly and a mis-click can be undone
+  // with one tap — same undo pattern as deletion (App.svelte's undo toast).
   //
-  // Snapshotting more than just column_id (also due_date/reminder_at/
-  // checklist) since a recurring task's completion now resets those too
-  // in the same write (db.ts's updateTask() — one task object per
-  // series, not a new card per completion) — restoring only column_id
-  // on undo would leave the due date/checklist changes stuck even though
-  // the task visually looks "undone" (found while implementing recurring
-  // tasks, 2026-07-19).
+  // The snapshot must cover due_date/reminder_at/checklist as well as
+  // column_id: completing a recurring task resets those in the same write
+  // (db.ts's updateTask() — one task object per series, not a new card per
+  // completion), so restoring only column_id would leave those changes
+  // stuck while the task looks "undone".
   let undoMarkDone: {
     id: string; title: string;
     fromColId: string; fromDueDate: string | null; fromReminderAt: string | null;
@@ -448,9 +424,8 @@
     const { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist } = task;
     // lastColId() falls back to '' on a project with no columns; writing
     // that would orphan the task into a column that doesn't exist (which
-    // checkIntegrity then flags as invalid_column). DeadlinesView, FocusView
-    // and notifications.ts all guard this already -- this was the one path
-    // that didn't.
+    // checkIntegrity then flags as invalid_column). Every path that moves a
+    // task to the last column guards this.
     const target = lastColId();
     if (!target) { showError('This project has no statuses to mark done into.'); return; }
     try {
@@ -488,8 +463,8 @@
        a flexible search box plus three fixed-size icon buttons (Filters /
        Archived / Columns). All filter controls (status, tag, priority,
        saved filters) live inside the Filters popover rather than inline —
-       inline controls could never be made to fit one row on a phone
-       without wrapping or horizontal scrolling, both explicitly rejected.
+       inline controls cannot fit one row on a phone without wrapping or
+       horizontal scrolling, neither of which is acceptable here.
        The funnel button carries a count badge so active filters stay
        visible even though the controls themselves are collapsed. -->
   <div class="list-panel">
@@ -751,9 +726,8 @@
     border-radius: 13px; overflow: hidden; margin-bottom: 20px;
   }
   /* One row, guaranteed, at every viewport width — no wrapping, no
-     horizontal scrolling, no breakpoints (owner requirement after several
-     failed wrap/scroll attempts). This only works because the row's
-     content is minimal by construction: a shrinkable search box + three
+     horizontal scrolling, no breakpoints. This only works because the
+     row's content is minimal by construction: a shrinkable search box + three
      fixed-size icon buttons ≈ 220px minimum, which fits even a 320px
      phone. Everything else lives inside the Filters popover — don't add
      inline controls back into this row without re-checking that math. */
@@ -765,9 +739,7 @@
   .toolbar-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 
   /* Genuine footnote -- outside the table panel entirely, muted, small,
-     out of the way of the actual data (owner feedback, 2026-07-28: was
-     sitting right under the toolbar inside the panel, too prominent for
-     a hint). */
+     out of the way of the actual data. */
   .sort-hint {
     font-size: 10.5px; color: var(--faint); opacity: .65;
     padding: 0 4px; margin: 10px 0 4px;
@@ -838,14 +810,11 @@
   .toggle-mini.on .toggle-mini-knob { left: 15px; }
 
   /* ── Data grid ───────────────────────────────────────────────────────── */
-  /* Horizontal scroll instead of hiding/truncating columns (B36): the grid
-     card sizes to its natural content width (`width: max-content` on head/
-     row) and this wrapper scrolls once that's wider than the *actual*
-     available space — no artificial max-width here. An earlier version
-     capped this at 1080px, which forced a scrollbar even when there was
-     plenty of empty space to the right (title uses `max-content`, not
-     `1fr`, so it never stretches to fill that space on its own — the cap
-     was solving a problem that no longer exists with that column gone).
+  /* Horizontal scroll instead of hiding/truncating columns: the grid card
+     sizes to its natural content width (`width: max-content` on head/row)
+     and this wrapper scrolls once that's wider than the actual available
+     space. Don't add a max-width here — it forces a scrollbar even when
+     there's empty space to the right, since no track stretches to fill it.
      Nothing in the grid ever ellipsizes — see .cell-title/.cell-status
      below, both plain `white-space: nowrap` with no text-overflow. */
   .grid-scroll {
@@ -909,24 +878,20 @@
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
   .grid-row.row-selected { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-  /* redesign/v6 (owner feedback, 2026-07-30): a border-left spanning the
-     row's full height read as one continuous stripe across adjacent
-     rows whenever they shared a priority color -- the border-bottom
-     hairline between rows wasn't enough to visually break it. Inset the
-     bar a few px top/bottom via ::before instead of a full-height
-     border, so each row's accent reads as its own discrete segment
-     (same fix as Dashboard/Recycle's row lists). */
+  /* An inset ::before bar, not a full-height border-left: a full-height
+     border reads as one continuous stripe across adjacent rows sharing a
+     priority color, since the border-bottom hairline isn't enough to break
+     it. Same approach as Dashboard/Recycle's row lists. */
   .grid-row::before {
     content: '';
     position: absolute; left: 0; top: 3px; bottom: 3px;
     width: 3px; border-radius: 2px;
     background: var(--prio-color, var(--border));
   }
-  /* redesign/v6 (owner feedback, 2026-07-28): pinned no longer shows as an
-     icon in the title cell -- instead a short indigo segment interrupts
-     the middle of the row's own priority-color left border, e.g. a
-     yellow-priority row reads yellow / indigo / yellow top-to-bottom.
-     ::after now that ::before is the base accent bar above. */
+  /* Pinned shows as a short indigo segment interrupting the middle of the
+     row's priority-color left bar (e.g. a yellow-priority row reads
+     yellow / indigo / yellow), not as an icon in the title cell. ::after,
+     since ::before is the base accent bar above. */
   .grid-row.pinned::after {
     content: '';
     position: absolute; left: 0; top: 50%; transform: translateY(-50%);
@@ -967,11 +932,8 @@
   .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
   .bulk-clear { margin-left: auto; }
 
-  /* redesign/v6 (owner feedback, 2026-07-28): was a plain circle filled
-     solid green when done, then a solid-accent-filled checkbox -- still
-     too heavy a block per the owner. Now stays fully transparent at
-     every state; only the border and checkmark pick up accent color when
-     done, no fill at all -- the minimal version of the checkbox idea. */
+  /* Fully transparent at every state: only the border and checkmark pick
+     up accent color when done, never a fill. */
   .circle {
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
@@ -982,7 +944,7 @@
   .circle:hover { border-color: var(--accent); }
   .circle.done { border-color: var(--accent); }
 
-  /* No truncation, anywhere in the grid (B36) — plain nowrap, never
+  /* No truncation, anywhere in the grid — plain nowrap, never
      text-overflow: ellipsis. Long content makes the row (and the whole
      grid, via .grid-scroll) wider instead of hiding characters. */
   .cell-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
@@ -1025,7 +987,7 @@
   }
   .unarchive-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-  /* ── Undo toast (A22) — matches App.svelte's delete-undo toast ───────── */
+  /* ── Undo toast — matches App.svelte's delete-undo toast ─────────────── */
   .undo-toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 10px; z-index: 999;

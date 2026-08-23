@@ -13,24 +13,19 @@
   // Escape/scrim-click on step 1 or 3).
   const dispatch = createEventDispatcher<{ close: void; setupSync: void }>();
 
-  // Pre-filled with the same auto-generated default Settings already
-  // shows ("PC" / "Android phone") — saving without changing it is a
-  // no-op, same as skipping, just via a different button.
+  // Pre-filled with the same auto-generated default Settings shows
+  // ("PC" / "Android phone"), so saving unchanged is a no-op.
   let name = getDeviceName();
 
-  // Owner feedback, 2026-07-21: don't put a standing "set up sync" button
-  // in the sidebar footer for people who've never paired — instead offer
-  // it once, right here, as step 2 of the same one-time prompt. Only
-  // meaningful on native: desktop/web always have a real default sync URL
-  // (see config.ts's DEFAULT_SYNC_URL), so "not configured" only exists
-  // as a native/Android state.
+  // Sync is offered once here, as step 2, rather than via a standing
+  // button elsewhere. Only meaningful on native: desktop/web always have
+  // a default sync URL (config.ts's DEFAULT_SYNC_URL), so "not
+  // configured" is a native-only state.
   const offerSync = isNativePlatform() && !getSyncUrl();
 
   // Step 3 is a quick-preferences screen (theme/week-start/time-format +
-  // a notification-permission ask) — same controls SettingsPanel.svelte
-  // already exposes, just surfaced once up front instead of only
-  // discoverable by opening Settings later. Shown on every platform
-  // (unlike step 2, which is native-unpaired-only).
+  // a notification-permission ask) duplicating controls SettingsPanel
+  // also exposes. Shown on every platform, unlike step 2.
   let step: 1 | 2 | 3 = 1;
 
   let themeMode: ThemeMode = getThemeMode();
@@ -49,10 +44,7 @@
     setTimeFormat24h(is24h);
   }
 
-  // Owner feedback, 2026-07-21: "Skip" means get out of the whole flow,
-  // full stop, at every step — not "skip this one step, keep going."
-  // Someone who declines naming the device or setting up sync almost
-  // certainly doesn't want a 3rd screen either.
+  // Step 1's "Skip" leaves the whole flow, not just that step.
   function dismiss() {
     dispatch('close');
   }
@@ -66,9 +58,8 @@
     dispatch('setupSync');
   }
 
-  // Owner feedback, 2026-07-21 (2nd round): step 2's decline should still
-  // land on step 3's preferences — only step 1's "Skip" bails out of the
-  // whole flow. Declining sync isn't the same as declining everything.
+  // Declining sync still lands on step 3's preferences — only step 1's
+  // "Skip" bails out of the whole flow.
   function declineSync() {
     step = 3;
   }

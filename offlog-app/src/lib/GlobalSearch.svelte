@@ -24,13 +24,13 @@
 
   onMount(() => { inputEl?.focus(); });
 
-  // Same plain substring matching as searchAllTasks() (db.ts) — no fuzzy
-  // library, kept consistent with the rest of the app's search.
+  // Plain substring matching, same as searchAllTasks() in db.ts — no fuzzy
+  // library, so command and task matching stay consistent.
   $: matchingCommands = query.trim()
     ? commands.filter(c => (c.label + ' ' + c.keywords).toLowerCase().includes(query.trim().toLowerCase()))
     : commands;
-  // Commands and task results share one keyboard-navigable list —
-  // commands first since they're instant actions, tasks below.
+  // Commands and task results share one keyboard-navigable index —
+  // commands first, tasks below.
   $: combinedLength = matchingCommands.length + results.length;
 
   let debounce: ReturnType<typeof setTimeout> | undefined;
@@ -53,34 +53,25 @@
   function openResult(r: TaskDoc & { project_name: string }) {
     const proj = $projects.find(p => p._id === r.project_id);
     if (!proj) return;
-    // discardTop(), not requestClose() — this search panel is being
-    // immediately replaced by the task's CardDetail, not dismissed
-    // outright. See modalStack.ts's discardTop() comment for why routing
-    // this through history.back() races the CardDetail that's about to
-    // mount and push its own entry.
+    // discardTop(), not requestClose(): this panel is immediately replaced
+    // by the task's CardDetail rather than dismissed. requestClose()'s real
+    // history.back() would race the CardDetail's own pushState — see
+    // modalStack.ts's discardTop().
     discardTop();
     dispatch('open', { task: r, project: proj });
   }
 
   function runCommand(c: Command) {
-    // discardTop() for commands that open another closeOnBack()-tracked
-    // overlay (QuickAdd/Settings/Time Travel/Trash) -- same reasoning as
-    // openResult() above: requestClose()'s real history.back() races the
-    // new overlay's own pushState and can silently swallow it. Plain
-    // requestClose() for everything else (navigation, toggles, Sync Now),
-    // which don't open anything and need a real, proper close.
+    // Commands that open another closeOnBack()-tracked overlay
+    // (QuickAdd/Settings/Time Travel/Trash) must use discardTop() — same
+    // reasoning as openResult() above. Everything else (navigation,
+    // toggles, Sync Now) opens nothing and needs a real close.
     //
-    // Unlike openResult() though, discardTop() alone isn't enough here:
-    // openResult()'s dispatch('open', ...) is caught by App.svelte's
-    // on:open handler, which explicitly sets showSearch = false itself.
-    // Commands have no equivalent payload to piggyback that on, so this
-    // dispatches 'close' directly (the same event requestClose()'s
-    // popstate→close() chain would eventually dispatch) -- discardTop()
-    // already handles the stack/history bookkeeping; this just tells the
-    // parent to actually clear showSearch, which nothing else did
-    // (2026-07-18: without this, running "Open Time Travel" left the
-    // search palette still mounted/visible while it opened
-    // underneath it).
+    // discardTop() alone isn't enough here: it only does the stack/history
+    // bookkeeping. openResult() relies on App.svelte's on:open handler to
+    // clear showSearch, but commands carry no such payload, so 'close' must
+    // be dispatched explicitly or the palette stays mounted over the
+    // overlay it just opened.
     if (c.opensOverlay) { discardTop(); dispatch('close'); }
     else requestClose();
     c.run();
@@ -113,10 +104,9 @@
 
   const today = localDateStr(new Date());
 
-  // v6.10.0 -- the title itself is always highlighted above, and a tags
-  // match already gets its own visible row (result-tags below), so this
-  // hint only needs to cover the two matches that would otherwise be
-  // invisible: text buried in Notes or a checklist item.
+  // Only for matches that would otherwise be invisible in the row: the
+  // title is already highlighted and tags get their own row (result-tags),
+  // so neither needs a hint.
   const MATCH_HINT: Partial<Record<string, string>> = { body: 'Matched in Notes', checklist: 'Matched in Checklist', attachments: 'Matched in an attachment name' };
 </script>
 
@@ -276,10 +266,8 @@
   .result-due.overdue { color: var(--danger); }
 
   .hint { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 24px 16px; text-align: center; color: var(--faint); font-size: 13.5px; }
-  /* A terminal "nothing here" state, not a transient in-progress one —
-     same visual weight as every other view's true empty state (Trash,
-     Focus, Deadlines, Kanban, List all read distinctly muted/centered),
-     so it doesn't look like search is still spinning. */
+  /* Styled as a terminal empty state, matching every other view's, so it
+     doesn't read as search still being in progress. */
   .hint-empty { font-size: 14.5px; color: var(--muted); padding: 32px 16px; }
 
   .footer {

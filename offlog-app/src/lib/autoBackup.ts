@@ -1,15 +1,11 @@
-// B62 — automatic local backup. The manual Backup/Restore flow
-// (SettingsPanel.svelte's doBackup()) is a real safety net, but manual
-// backups only happen after someone remembers to make one -- usually
-// right after a disaster, not before. This runs silently on app start,
-// at most once a day, writing a rotating set of JSON snapshots to the
-// app's own private storage (no permission prompt, no user interaction)
-// so a corrupted/wiped local database has a recent recovery point
-// without anyone having to think about it.
+// Automatic local backup, complementing the manual Backup/Restore flow in
+// SettingsPanel.svelte. Runs silently at most once a day,
+// writing a rotating set of JSON snapshots to the app's own private storage
+// (no permission prompt, no user interaction), so a corrupted or wiped local
+// database has a recent recovery point without anyone having to think of it.
 //
-// Native (Capacitor) and Tauri only -- deliberately a no-op on plain
-// web, which has no reliable silent local-file API and is a dev/test
-// surface anyway (see README's "Which build is 'the app'" section).
+// Native (Capacitor) and Tauri only -- deliberately a no-op on plain web,
+// which has no reliable silent local-file API and is a dev/test surface.
 import { isTauri, isNativePlatform } from '../config';
 
 const ENABLED_KEY = 'offlog_auto_backup_enabled';
@@ -57,11 +53,11 @@ async function collectBackupJson(): Promise<string> {
   const PouchDBCtor = (window as any).PouchDB;
   const db = new PouchDBCtor('offlog');
   // `attachments: true, binary: false` inlines each attachment as base64
-  // `data` instead of a `{stub: true}` placeholder. Without it a backup
-  // containing any attachment was not merely missing the file -- restoring
-  // it failed *entirely*, because PouchDB rejects a whole bulkDocs batch
-  // with `missing_stub` when a stub has no matching blob, taking every
-  // space/project/task in the file down with it (audit, 2026-07-31).
+  // `data` instead of a `{stub: true}` placeholder. Without it, a backup
+  // containing any attachment doesn't merely lose the file -- restoring it
+  // fails *entirely*, because PouchDB rejects a whole bulkDocs batch with
+  // `missing_stub` when a stub has no matching blob, taking every
+  // space/project/task in the file down with it.
   const all = await db.allDocs({ include_docs: true, attachments: true, binary: false });
   const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
   return JSON.stringify(docs, null, 2);
@@ -98,10 +94,11 @@ async function runTauri(json: string, now: Date): Promise<void> {
   }
 }
 
-// Called once from store.ts's init(), fire-and-forget (same pattern as
-// maybePruneOldLogs()/maybePruneOldDeletedTasks() alongside it) -- a
-// backup running a moment late, or failing silently on one launch, is
-// not worth blocking app startup over.
+// Called from store.ts's periodic housekeeping (and once at init),
+// fire-and-forget. It must NOT be tied to app start alone: the desktop app
+// is tray-resident, so a session can last weeks and "next launch" may never
+// come -- backups would silently stop while still reporting a recent
+// timestamp. The isBackupDue() check above makes calling it often cheap.
 export async function runAutoBackupIfDue(): Promise<void> {
   if (!isAutoBackupEnabled()) return;
   if (!isNativePlatform() && !isTauri()) return;

@@ -3,32 +3,24 @@
 
 import { writable } from 'svelte/store';
 
-// Real bug found 2026-07-21 (owner live-testing on Android): Vite loads
-// `.env.local` for EVERY build mode, not just `npm run dev` -- so
-// without the `import.meta.env.DEV` gate below, a developer's own
-// .env.local (real sync server URL + credentials, meant purely for
-// local `npm run dev` convenience) got compiled directly into the production
-// `dist/` bundle, and from there into the shipped Android APK and
-// Windows installer. `import.meta.env.DEV` is statically known at
-// build time, so gating on it here means Vite's minifier dead-code-
-// eliminates the literal secret values out of any non-dev build
-// entirely, not just skips using them at runtime.
+// Vite loads `.env.local` for EVERY build mode, not just `npm run dev`, so
+// without this `import.meta.env.DEV` gate a developer's own sync URL and
+// credentials would be compiled into production bundles (and from there into
+// the shipped APK/installer). `import.meta.env.DEV` is statically known at
+// build time, so gating on it lets the minifier dead-code-eliminate the
+// literal secret values out of any non-dev build entirely.
 const envUrl = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_URL as string | undefined) : undefined;
 const envUser = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_USER as string | undefined) : undefined;
 const envPass = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_PASS as string | undefined) : undefined;
 
-// Exported (was module-private) so SettingsPanel.svelte can gate the
-// biometric-unlock note to Android only — this project ships no other
-// Capacitor-native platform (see DECISIONS.md: no iOS), so
+// Android is the only Capacitor-native platform this project ships, so
 // "native platform" and "Android" are the same thing here in practice.
 export function isNativePlatform(): boolean {
   return !!(window as any).Capacitor?.isNativePlatform?.();
 }
 
-// Maintenance pass (2026-07-19): exported so SettingsPanel.svelte doesn't
-// re-declare its own copy of this check, and pairs with invokeTauri()
-// below so every `window.__TAURI_INTERNALS__.invoke(...)` call site
-// shares one `as any` cast instead of five independent ones.
+// Pairs with invokeTauri() below so every `window.__TAURI_INTERNALS__.invoke(...)`
+// call site shares one `as any` cast instead of repeating it.
 export function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
 }
@@ -37,45 +29,32 @@ export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>
   return (window as any).__TAURI_INTERNALS__.invoke(cmd, args);
 }
 
-// Owner-reported real bug (2026-07-13): this used to fall back to a
-// hardcoded real LAN IP, which goes stale the moment the sync host's IP
-// changes (DHCP, router restart, new network) — and a fresh install or
-// reinstall wipes localStorage, silently reverting to that same wrong
-// address with no indication anything was misconfigured (exactly what
-// happened: a phone reinstall silently pointed sync at a year-old IP).
+// Never hardcode a LAN IP as the fallback: it goes stale the moment the sync
+// host's address changes, and a reinstall wipes localStorage, silently
+// reverting to that wrong address with no sign anything is misconfigured.
 //
-// The fix has three parts now. On Android/native, there's no way to
-// guess a working address — falls back to '' ("not configured");
-// startSync()/syncNow() treat that as a no-op, and Settings' Sync tab
-// already shows a friendly "Not connected to another device yet" for
-// it (B43).
-//
-// On plain desktop web, a real default *is* structurally guaranteed
-// correct: this app's architecture is "the PC is the host" (DECISIONS.md) —
-// a manually-installed sync server runs on the same machine as the
-// browser tab, on the standard CouchDB-protocol port — so
-// loopback:5984 is always right there.
-//
-// The Tauri desktop app (Track E) is a THIRD case, easy to conflate
-// with plain desktop web since both are "not Capacitor" — but its
-// embedded NyxDB sidecar (sync_host.rs) binds a random port, chosen
-// fresh per install, never 5984. Falling through to the desktop-web
-// branch above silently pointed the Tauri app at port 5984 regardless
-// — whatever else happened to be listening there — rather than its own
-// sidecar, reporting "synced" successfully against the wrong database
-// the whole time. No synchronous default is possible here (the real port is only
-// knowable via the async get_sync_info Tauri command) — falls back to
-// '' like Android, resolved by initTauriSyncDefaults() below before
-// the first sync attempt.
+// Three distinct cases:
+//   - Android/native: no way to guess a working address — falls back to ''
+//     ("not configured"). startSync()/syncNow() treat that as a no-op, and
+//     Settings' Sync tab shows "Not connected to another device yet".
+//   - Plain desktop web: the PC is the host, so a manually-installed sync
+//     server runs on the same machine as the browser tab on the standard
+//     CouchDB-protocol port — loopback:5984 is structurally correct.
+//   - Tauri desktop: easy to conflate with desktop web since both are "not
+//     Capacitor", but its embedded NyxDB sidecar binds a random port chosen
+//     fresh per install, never 5984. Falling through to the desktop-web
+//     branch would point it at whatever else is listening on 5984 and report
+//     "synced" against the wrong database. No synchronous default is possible
+//     (the real port is only knowable via the async get_sync_info Tauri
+//     command), so it falls back to '' like Android and is resolved by
+//     initTauriSyncDefaults() below before the first sync attempt.
 const DEFAULT_SYNC_URL = envUrl ?? (typeof window !== 'undefined' && !isNativePlatform() && !isTauri() ? 'http://127.0.0.1:5984/offlog' : '');
 
-// Called once at app boot (store.ts's initApp(), before startSync()) —
-// if this is the Tauri desktop app and nothing has been explicitly
-// configured yet (no saved URL, meaning either a fresh install or an
-// install still carrying the old wrong 5984 default from before this
-// fix), points it at its own embedded sidecar instead of guessing.
-// Never overrides an explicit choice someone already made (e.g.
-// pairing with, or manually configuring, a different machine).
+// Called once at app boot (store.ts's initApp(), before startSync()) — if
+// this is the Tauri desktop app and no URL has been explicitly configured,
+// points it at its own embedded sidecar instead of guessing. Must never
+// override an explicit choice someone already made (e.g. pairing with, or
+// manually configuring, a different machine).
 export async function initTauriSyncDefaults(): Promise<void> {
   if (!isTauri()) return;
   const saved = localStorage.getItem('offlog_sync_url');
@@ -90,18 +69,14 @@ export async function initTauriSyncDefaults(): Promise<void> {
   }
 }
 
-// S1 (DECISIONS.md's Open Questions section, 2026-07-20): the desktop
-// app's embedded sidecar never checked whether another Offlog host
-// already exists on the LAN before spawning its own -- two PCs on one
-// network silently become two independent islands with no warning. This
-// doesn't change that (a real "join as client instead" mode is a much
-// bigger feature, deliberately not built), it only surfaces what the
-// Rust side's one-time startup scan (discovery.rs's browse_for_others())
-// found, so Settings can show a warning. Polled a couple of times after
-// launch rather than once immediately, since the scan itself only runs
-// after the embedded NyxDB has finished booting (a few seconds) --
-// calling this too early just gets an empty list, which is not the same
-// as "no other host exists".
+// The desktop app's embedded sidecar spawns its own host without checking
+// whether another Offlog host already exists on the LAN, so two PCs on one
+// network become two independent islands. This does not change that (a
+// "join as client instead" mode is deliberately not built); it only surfaces
+// what the Rust side's one-time startup scan found so Settings can warn.
+// Polled a few times after launch rather than once immediately: the scan
+// only runs after the embedded NyxDB has finished booting, and calling too
+// early returns an empty list, which is not the same as "no other host".
 export const otherHostsDetected = writable<{ uuid: string; name: string }[]>([]);
 
 export async function checkForOtherHosts(): Promise<void> {
@@ -123,30 +98,22 @@ export function setSyncUrl(url: string) {
   localStorage.setItem('offlog_sync_url', url);
 }
 
-// Track E's pairing handshake (offlog-desktop/src-tauri/src/pairing.rs):
-// the PC app generates a random password per install, so a fixed
-// COUCH_USER/COUCH_PASS baked into the JS bundle can never match every
-// PC a device might sync to. Credentials are now per-device, stored the
-// same way the URL already is.
+// The PC app's pairing handshake generates a random password per install, so
+// a fixed user/password baked into the JS bundle could never match every PC a
+// device might sync to. Credentials are per-device, stored like the URL.
 //
-// C7 (ROADMAP.md Track C, mandatory release-gate item): this used to
-// fall back to a real hardcoded password when nothing was configured
-// — present in git history too, a real public-repo blocker on its own,
-// independent of pairing. No real credential lives in source at all now
-// — VITE_SYNC_USER/VITE_SYNC_PASS come from `.env.local` only
-// (git-ignored, never committed) for local dev against a manually-
-// configured sync server; anyone else gets '' until they pair or type
-// credentials in manually, same "not configured yet" semantics
-// DEFAULT_SYNC_URL already uses for native/Tauri above — Settings
-// already shows a friendly "Not connected" for an empty URL, and an
-// empty password just fails auth cleanly (401) rather than silently
-// working against a hardcoded default that shouldn't exist.
+// No credential may ever be hardcoded here as a fallback.
+// VITE_SYNC_USER/VITE_SYNC_PASS come from `.env.local` only (git-ignored) for
+// local dev; everyone else gets '' until they pair or type credentials in,
+// the same "not configured yet" semantics DEFAULT_SYNC_URL uses above.
+// Settings shows "Not connected" for an empty URL, and an empty password
+// fails auth cleanly (401).
 const DEFAULT_SYNC_USER = envUser ?? '';
 const DEFAULT_SYNC_PASS = envPass ?? '';
 
-// C8 (ROADMAP.md): the sync password is a real secret (a paired
-// device's actual credential), unlike the URL/port above -- stored
-// encrypted at rest where a real platform primitive exists for it:
+// The sync password is a real secret (a paired device's actual credential),
+// unlike the URL/port above -- stored encrypted at rest where a real
+// platform primitive exists for it:
 //   - Tauri (Windows): DPAPI-encrypted, via offlog-desktop's
 //     store_sync_secret/get_sync_secret commands (secure_storage.rs) --
 //     tied to the current Windows user account, transparent, no prompt.
@@ -155,25 +122,21 @@ const DEFAULT_SYNC_PASS = envPass ?? '';
 //     (AES/GCM, unlockedDeviceRequired -- no biometric prompt needed at
 //     sync time, just requires the device to have been unlocked since
 //     boot).
-//   - Plain web: no OS-level secure-storage primitive exists in a
-//     browser to use here at all, and this build is already a dev/test
-//     surface, not the primary way to use the app (see README) -- kept
-//     as plain localStorage, a known and accepted limitation specific
-//     to that surface, not something worth inventing fake protection
-//     for (an app-level "encryption" key that's also sitting in
-//     localStorage next to the ciphertext protects against nothing).
+//   - Plain web: no OS-level secure-storage primitive exists in a browser,
+//     and this build is a dev/test surface rather than the primary way to
+//     use the app -- kept as plain localStorage. An accepted limitation;
+//     don't invent fake protection for it (an app-level "encryption" key
+//     sitting in localStorage next to the ciphertext protects against
+//     nothing).
 const LEGACY_SYNC_USER_KEY = 'offlog_sync_user';
 const LEGACY_SYNC_PASS_KEY = 'offlog_sync_pass';
 const BIOMETRIC_SYNC_SERVER = 'offlog-sync';
 
 async function migrateLegacyCredentialsIfNeeded(): Promise<void> {
-  // One-time: an existing install upgrading past C8 still has its real
-  // credentials sitting in the old plaintext keys. Only Tauri/Android
-  // actually have a *different* place to move them to -- plain web has
-  // no separate secure store, so setSyncCredentials() there writes
-  // right back to these same keys; deleting them unconditionally after
-  // "migrating" would just erase the value on that platform (real bug
-  // caught by this exact scenario in tests/config.test.ts).
+  // Migrates credentials out of the old plaintext localStorage keys. Only
+  // Tauri/Android have a *different* place to move them to -- on plain web
+  // setSyncCredentials() writes right back to these same keys, so deleting
+  // them unconditionally after "migrating" would erase the value there.
   if (!isTauri() && !isNativePlatform()) return;
   const user = localStorage.getItem(LEGACY_SYNC_USER_KEY);
   const pass = localStorage.getItem(LEGACY_SYNC_PASS_KEY);
@@ -229,13 +192,10 @@ export async function setSyncCredentials(user: string, pass: string): Promise<vo
   localStorage.setItem(LEGACY_SYNC_PASS_KEY, pass);
 }
 
-// B22: `source` on every doc used to be a fixed 'pc' | 'pc2' | 'mobile'
-// enum — not enough once there's more than one PC or phone in play. Now a
-// free-form per-device name, generated once on first run and editable in
-// Settings; stored (and everywhere `source` already showed up) as plain
-// text instead. Kept in its own localStorage key, not reusing
-// offlog_sync_url's pattern, since this identifies the device rather than
-// configuring where it syncs to.
+// `source` on every doc is a free-form per-device name, generated once on
+// first run and editable in Settings. Kept in its own localStorage key
+// rather than alongside the sync config, since it identifies the device
+// rather than configuring where it syncs to.
 const DEVICE_NAME_KEY = 'offlog_device_name';
 
 function defaultDeviceName(): string {
@@ -256,15 +216,12 @@ export function setDeviceName(name: string) {
   localStorage.setItem(DEVICE_NAME_KEY, trimmed || defaultDeviceName());
 }
 
-// B39: the display name is user-editable and used to be the *only* thing
-// identifying a device — renaming it left every past log entry stamped
-// with the old name forever, so "Devices seen recently" and card history
-// showed the old and new names as if they were two separate devices.
-// This id is generated once, persisted, and never changes even if the
-// name does; logChange() stamps it alongside `source` (the display name)
-// on every new log doc as a new `source_id` field, and lookups group by
-// this id first, falling back to the literal `source` string for log
-// entries written before this field existed.
+// The display name is user-editable, so it can't identify a device on its
+// own — renaming it would make old and new log entries look like two
+// separate devices. This id is generated once, persisted, and never changes
+// even if the name does; logChange() stamps it on every log doc as
+// `source_id`, and lookups group by this id first, falling back to the
+// literal `source` string for log entries written before it existed.
 const DEVICE_ID_KEY = 'offlog_device_id';
 
 export function getDeviceId(): string {
@@ -275,13 +232,10 @@ export function getDeviceId(): string {
   return generated;
 }
 
-// B46: a lightweight first-run prompt asks for this device's name once,
-// ever — regardless of whether the user names it or skips (skipping is as
-// valid a choice as naming it, per C2's zero-config-first-run principle,
-// so this flag is set either way, not only on save). Separate key from
-// DEVICE_NAME_KEY itself, since getDeviceName() already silently
-// auto-generates a default the first time it's called — that alone can't
-// signal "has this device actually been asked yet."
+// A first-run prompt asks for this device's name once, ever. Set whether the
+// user names it or skips — skipping is as valid a choice as naming it.
+// Separate key from DEVICE_NAME_KEY, since getDeviceName() auto-generates a
+// default on first call and so can't signal "has this device been asked yet."
 const NAME_PROMPTED_KEY = 'offlog_name_prompted';
 
 export function hasShownNamePrompt(): boolean {
@@ -292,25 +246,19 @@ export function markNamePromptShown() {
   localStorage.setItem(NAME_PROMPTED_KEY, '1');
 }
 
-// B13: explicit sync on/off, independent of the configured URL — clearing
-// the URL to "pause" sync also drops the server config, which isn't what
-// "stop syncing for a while" should mean. Defaults to enabled (true) so
-// existing installs keep syncing exactly as before until someone opts out.
+// Explicit sync on/off, independent of the configured URL — clearing the URL
+// to "pause" sync would also drop the server config, which isn't what "stop
+// syncing for a while" should mean.
 const SYNC_ENABLED_KEY = 'offlog_sync_enabled';
 
 export function isSyncEnabled(): boolean {
   const stored = localStorage.getItem(SYNC_ENABLED_KEY);
   if (stored !== null) return stored !== 'false';
-  // Real bug found live-testing, 2026-07-21: a native device that's never
-  // been paired (getSyncUrl() falls back to DEFAULT_SYNC_URL, which is ''
-  // for native — see its own comment) still read as "enabled" under the
-  // unconditional default above, showing a misleading "Sync enabled"
-  // toggle and a "Save & restart sync" button for something that was
-  // never configured in the first place, before anyone ever declined the
-  // onboarding sync offer. Default true only where there's actually
-  // something to sync with (a real saved URL, or desktop/web's structural
-  // loopback default) — existing installs that already have a working
-  // syncUrl are unaffected, this only changes the untouched-native case.
+  // Default to enabled only where there is actually something to sync with
+  // (a real saved URL, or desktop/web's structural loopback default). An
+  // unconditional `true` would make a never-paired native device — whose
+  // getSyncUrl() is '' — show a misleading "Sync enabled" toggle and a
+  // "Save & restart sync" button for something never configured.
   return !!getSyncUrl();
 }
 
@@ -318,11 +266,10 @@ export function setSyncEnabled(enabled: boolean) {
   localStorage.setItem(SYNC_ENABLED_KEY, String(enabled));
 }
 
-// B12: "remind me on the due date" derives reminder_at from due_date at
-// this time-of-day, so the exact date+time doesn't need picking twice for
-// the common case. Per-device (not synced) — a phone and a PC may
-// reasonably want a different default nudge time, same reasoning as
-// B36's per-device localStorage choices.
+// "Remind me on the due date" derives reminder_at from due_date at this
+// time-of-day, so the exact date+time doesn't need picking twice in the
+// common case. Per-device (not synced) — a phone and a PC may reasonably
+// want a different default nudge time.
 const DEFAULT_REMINDER_TIME_KEY = 'offlog_default_reminder_time';
 
 export function getDefaultReminderTime(): string {
@@ -333,14 +280,12 @@ export function setDefaultReminderTime(time: string) {
   localStorage.setItem(DEFAULT_REMINDER_TIME_KEY, time);
 }
 
-// Master in-app toggle for task reminders (owner feedback, 2026-07-30) --
-// independent of the OS-level notification permission, which can only ever
-// be *granted* from inside the app (no platform lets you programmatically
-// revoke it — the "Enable" button in Settings has no "Disable" counterpart
-// for exactly that reason, same as any other app). This flag is the actual
-// on/off switch: rescheduleAll() (notifications.ts) treats it as "no tasks
-// to schedule" when off, cancelling anything already pending, same as the
-// Sync tab's own enabled/disabled toggle gates its own sub-settings.
+// Master in-app toggle for task reminders, independent of the OS-level
+// notification permission -- which can only ever be *granted* from inside the
+// app, since no platform lets you programmatically revoke it (hence Settings'
+// "Enable" button having no "Disable" counterpart). This flag is the actual
+// on/off switch: rescheduleAll() (notifications.ts) treats it as "no tasks to
+// schedule" when off, cancelling anything already pending.
 const NOTIFICATIONS_ENABLED_KEY = 'offlog_notifications_enabled';
 
 export function getNotificationsEnabled(): boolean {
@@ -390,26 +335,20 @@ export function setAutoUpdateCheckEnabled(enabled: boolean) {
   localStorage.setItem(AUTO_UPDATE_CHECK_KEY, String(enabled));
 }
 
-// B47 — Agenda's Month view (day-of-week column order) and DeadlinesView's
-// "this week" grouping
-// assumed a fixed Sunday week start (`d.getDate() - d.getDay()`, and
-// `getDay()` is 0-indexed from Sunday). Per-device, like the reminder
-// time above — this is a personal display preference, not data, so it
-// doesn't need to sync.
+// Week-start preference, consumed by Agenda's Month view (day-of-week column
+// order) and DeadlinesView's "this week" grouping — neither may assume a
+// Sunday start (note `getDay()` is 0-indexed from Sunday). Per-device, like
+// the reminder time above: a display preference, not data, so it doesn't sync.
 //
-// Timezone was the other half of B47's original scope, deliberately
-// NOT built: the app already uses the device's local time throughout
-// (`new Date()`, no UTC conversion layer anywhere in db.ts) which is
-// correct for a single-device-local personal task manager per
-// DECISIONS.md — a timezone *setting* only matters if a due date needs
-// to mean the same instant across devices in different zones, which
-// isn't a real scenario for how this app is used. Revisit only if an
-// owner actually hits that case.
+// There is deliberately no timezone setting. The app uses the device's local
+// time throughout (`new Date()`, no UTC conversion layer anywhere), which is
+// correct for a local single-user task manager; a timezone setting would only
+// matter if a due date had to mean the same instant across devices in
+// different zones.
 const WEEK_STARTS_MONDAY_KEY = 'offlog_week_starts_monday';
 
 export function getWeekStartsMonday(): boolean {
-  // Owner preference, 2026-07-16: default to Monday rather than Sunday
-  // (still overridable per-device in Settings -> Appearance, B47).
+  // Defaults to Monday, overridable per-device in Settings -> Appearance.
   const stored = localStorage.getItem(WEEK_STARTS_MONDAY_KEY);
   return stored === null ? true : stored === 'true';
 }
@@ -419,9 +358,8 @@ export function setWeekStartsMonday(monday: boolean) {
 }
 
 // Same per-device override pattern as WEEK_STARTS_MONDAY_KEY above.
-// Owner preference, 2026-07-18: default to 24h display rather than
-// following the browser/OS locale (unlike most locale-driven formatting
-// elsewhere in the app) — 12h AM/PM is the override, not the default.
+// Defaults to 24h display rather than following the browser/OS locale
+// (unlike most locale-driven formatting elsewhere in the app) — 12h AM/PM is the override, not the default.
 const TIME_FORMAT_24H_KEY = 'offlog_time_format_24h';
 
 export function getTimeFormat24h(): boolean {
@@ -433,12 +371,11 @@ export function setTimeFormat24h(is24h: boolean) {
   localStorage.setItem(TIME_FORMAT_24H_KEY, String(is24h));
 }
 
-// B58 (ROADMAP.md): tactile feedback on checkbox/drag/toggle actions.
-// Defaults ON (unlike App Lock's biometric, which defaults off because
-// it's a security-relevant opt-in) — this is pure polish with no
-// downside to a first-time user, matching how haptics ship by default in
-// most native apps; the toggle exists for the minority who find it
-// distracting, same role as Reduce Motion for animation. Android only —
+// Tactile feedback on checkbox/drag/toggle actions. Defaults ON (unlike App
+// Lock's biometric, which defaults off as a security-relevant opt-in) — this
+// is pure polish with no downside to a first-time user; the toggle exists for
+// the minority who find it distracting, the same role Reduce Motion plays for
+// animation. Android only —
 // haptics.ts checks isNativePlatform() itself, this flag alone doesn't
 // gate platform.
 const HAPTICS_KEY = 'offlog_haptics_enabled';
@@ -452,48 +389,37 @@ export function setHapticsEnabled(enabled: boolean): void {
   localStorage.setItem(HAPTICS_KEY, String(enabled));
 }
 
-// App lock: a PIN gate on the UI, not data encryption — see DECISIONS.md
-// for why. Per-device, like every other setting in this file: the PIN
-// itself never syncs, so a phone and a PC can have different PINs, or one
-// locked and the other not. Stores a salted hash, not the plaintext PIN —
-// this isn't a real cryptographic secret either way (it only gates the
-// UI), but there's no reason to leave the literal PIN sitting in
-// localStorage when a random salt + SHA-256 costs nothing.
+// App lock: a PIN gate on the UI, not data encryption. Per-device, like
+// every other setting in this file — the PIN never syncs, so a phone and a
+// PC can have different PINs, or one locked and the other not. Stores a
+// salted hash, not the plaintext PIN: not a real cryptographic secret
+// either way, but a random salt + SHA-256 costs nothing.
 const APP_LOCK_HASH_KEY = 'offlog_app_lock_hash';
 const APP_LOCK_SALT_KEY = 'offlog_app_lock_salt';
 const APP_LOCK_TIMEOUT_KEY = 'offlog_app_lock_timeout_minutes';
-// A self-written reminder ("my old street address"), not a secret
-// question with a verified answer — there's no server to check an
-// answer against, so a real Q&A flow would just be a second PIN typed
-// in plaintext for no extra security. Optional, shown on the lock
-// screen so someone who forgot their PIN can jog their own memory
-// before reaching for full recovery below (owner, 2026-07-19).
+// A self-written reminder ("my old street address"), not a secret question
+// with a verified answer — there's no server to check an answer against, so
+// a real Q&A flow would just be a second PIN typed in plaintext for no extra
+// security. Optional, shown on the lock screen so someone who forgot their
+// PIN can jog their own memory before reaching for full recovery below.
 const APP_LOCK_HINT_KEY = 'offlog_app_lock_hint';
 
-// Recovery code: a random code shown to the user exactly ONCE, at the
-// moment they first set a PIN — they save it themselves (password
-// manager, notes, written down). "Forgot PIN" on the lock screen requires
-// this code, not a button click. First version just let "Forgot PIN"
-// clear the lock outright with a plain confirm dialog — owner feedback,
-// 2026-07-19: "it is just removing pin... like when there is wall as
-// block of road but in middle there is door u just open and go". That's
-// right: a bypass reachable with zero knowledge isn't a lock at all. This
-// is the closest thing to a real recovery *route* achievable with no
-// accounts/server (see DECISIONS.md) — it requires possessing a secret that
-// was only ever shown once, not just intent. Only the salted hash is
-// ever stored, same as the PIN itself; the plaintext code is returned
-// once from setAppLockPin() below and never persisted anywhere.
+// Recovery code: a random code shown to the user exactly ONCE, at the moment
+// they first set a PIN — they save it themselves. "Forgot PIN" on the lock
+// screen must require this code, never just a confirm dialog: a bypass
+// reachable with zero knowledge isn't a lock at all. Requiring a secret that
+// was only ever shown once is the closest thing to a real recovery route
+// achievable with no accounts or server. Only the salted hash is stored, same
+// as the PIN itself; the plaintext code is returned once from setAppLockPin()
+// below and never persisted anywhere.
 const APP_LOCK_RECOVERY_HASH_KEY = 'offlog_app_lock_recovery_hash';
 const APP_LOCK_RECOVERY_SALT_KEY = 'offlog_app_lock_recovery_salt';
 
-// Biometric unlock: sits alongside the PIN, never replaces it (owner,
-// 2026-07-20) — the PIN stays the only thing that can set/change/remove
-// the lock or drive recovery. This is just a faster unlock path on top,
-// opt-in per device via Settings (Android only — no Capacitor biometric
-// plugin ships an iOS build here since this project doesn't ship iOS, see
-// DECISIONS.md). No new secret to store — the OS itself holds
-// the enrolled biometric, this flag only remembers whether the user opted
-// in on this device.
+// Biometric unlock sits alongside the PIN and never replaces it — the PIN
+// stays the only thing that can set/change/remove the lock or drive recovery.
+// This is only a faster unlock path, opt-in per device via Settings (Android
+// only). No new secret is stored: the OS holds the enrolled biometric, and
+// this flag just remembers whether the user opted in on this device.
 const APP_LOCK_BIOMETRIC_KEY = 'offlog_app_lock_biometric_enabled';
 
 // Excludes visually-ambiguous characters (0/O, 1/I/L) since this gets
@@ -602,24 +528,16 @@ export function setAppLockTimeoutMinutes(minutes: number): void {
   localStorage.setItem(APP_LOCK_TIMEOUT_KEY, String(minutes));
 }
 
-// B55 (ROADMAP.md): a PIN on the lock screen still leaks a full
-// screenshot preview of open tasks in Android's recent-apps switcher —
-// the OS snapshots whatever was on screen the instant the app
-// backgrounds, before AppLock.svelte gets a chance to cover it. Privacy
-// Screen (@capacitor/privacy-screen) closes that gap by dimming the
-// content in that snapshot instead.
+// A PIN on the lock screen still leaks a full screenshot preview of open
+// tasks in Android's recent-apps switcher: the OS snapshots whatever was on
+// screen the instant the app backgrounds, before AppLock.svelte can cover it.
+// @capacitor/privacy-screen closes that gap by dimming that snapshot.
 //
-// v5.4.2 correction (owner-reported live testing, 2026-07-21): this
-// originally auto-enabled whenever a PIN was set, no separate control —
-// but Android's FLAG_SECURE (what PrivacyScreen.enable() actually sets)
+// Kept a separate, explicit, OFF-by-default toggle rather than auto-enabling
+// with the PIN: Android's FLAG_SECURE (what PrivacyScreen.enable() sets)
 // blocks ALL screenshots while the app is foregrounded, not just the
-// recents-switcher snapshot; there's no way to have one without the
-// other. Silently taking away the ability to screenshot the app the
-// moment someone turns on App Lock is too big a side effect to bundle
-// in automatically — now a separate, explicit, OFF-by-default toggle
-// (Settings → App Lock), independent of whether a PIN is set. Still only
-// shown once a PIN exists (no reason to offer it otherwise), same as
-// biometric.
+// recents-switcher snapshot, and there is no way to have one without the
+// other. Only offered once a PIN exists.
 const PRIVACY_SCREEN_KEY = 'offlog_privacy_screen_enabled';
 
 export function isPrivacyScreenEnabled(): boolean {
@@ -646,13 +564,12 @@ export async function syncPrivacyScreen(): Promise<void> {
   }
 }
 
-// E2 (ROADMAP.md) — the sync server's own `uuid` (returned by
-// pairing.rs's handshake, also broadcast unauthenticated in the mDNS TXT
-// record per discovery.rs) is a stable identity for "the PC I paired
-// with" that survives an IP/port change, unlike the frozen `sync_url`
-// itself. Persisted alongside credentials so discovery.ts can re-resolve
-// the current address for this same uuid when the stored URL stops
-// working, instead of the phone being stuck on a stale LAN IP forever.
+// The sync server's own `uuid` (returned by the pairing handshake, also
+// broadcast unauthenticated in the mDNS TXT record) is a stable identity for
+// "the PC I paired with" that survives an IP/port change, unlike the stored
+// `sync_url`. Persisted alongside credentials so discovery.ts can re-resolve
+// the current address for the same uuid when the stored URL stops working,
+// instead of the device being stuck on a stale LAN address.
 const PAIRED_HOST_UUID_KEY = 'offlog_paired_host_uuid';
 
 export function getPairedHostUuid(): string | null {

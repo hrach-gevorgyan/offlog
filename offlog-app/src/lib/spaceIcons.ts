@@ -1,10 +1,7 @@
-// Spaces originally had no icon field at all — Sidebar.svelte hardcoded a
-// glyph per the 3 seeded space ids (+ the no-longer-seeded "family"), and
-// any other space fell back to a generic default that visually collided
-// with the Dashboard nav button's own icon (owner-reported, 2026-07-15,
-// see DEFAULT_ICON below). This adds a real per-space icon choice, kept
-// deliberately small ("a basic icon picker," not a full icon library) —
-// SpaceManager.svelte renders SPACE_ICONS as the picker grid.
+// Per-space icon choice, kept deliberately small — a basic icon picker, not
+// a full icon library. SpaceManager.svelte renders SPACE_ICONS as the picker
+// grid. Note DEFAULT_ICON below must not collide with the Dashboard nav
+// button's own icon.
 export const SPACE_ICONS: { key: string; svg: string }[] = [
   { key: 'folder', svg: `<path d="M2.5 5.5a1.5 1.5 0 0 1 1.5-1.5h3l1.8 2h7.2a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5z"/>` },
   { key: 'briefcase', svg: `<rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>` },
@@ -35,9 +32,9 @@ export const SPACE_ICONS: { key: string; svg: string }[] = [
 
 export const DEFAULT_SPACE_ICON_KEY = 'folder';
 
-// Legacy hardcoded glyphs for the 3 seeded space ids (+ no-longer-seeded
-// "family") — kept as-is for any database created before the icon field
-// existed, so an old install's spaces don't all suddenly show "folder".
+// Fallback glyphs by seeded space id, for databases created before the icon
+// field existed — without them an old install's spaces would all show
+// "folder".
 const LEGACY_ID_ICON: Record<string, string> = {
   'space:unsorted': `<rect x="2" y="3" width="16" height="14" rx="2"/><polyline points="2,9 20,9"/><polyline points="6,13 10,13 10,16 14,16"/>`,
   'space:personal': SPACE_ICONS.find(i => i.key === 'person')!.svg,

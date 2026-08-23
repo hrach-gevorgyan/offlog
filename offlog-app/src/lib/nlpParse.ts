@@ -1,17 +1,15 @@
 // Local, offline, regex-based natural-language parsing for Quick Add --
-// no network call, no bundled model. See DECISIONS.md for why this stays
-// rule-based rather than reaching for an LLM API (matches the project's
-// no-AI/no-backend mission — DECISIONS.md).
+// no network call, no bundled model. This stays rule-based rather than
+// reaching for an LLM API, matching the project's no-AI/no-backend mission.
 //
 // Scope is deliberately small: a handful of date/time phrases, #tags,
-// !priority, and an @project mention. Ambiguous or unrecognized text is
-// left alone in the title rather than guessed at — a wrong silent guess
-// is worse than no parse for a task manager (the whole point of the due
-// date is trusting it).
+// !priority, and an @project mention. Ambiguous or unrecognized text is left
+// alone in the title rather than guessed at — for a task manager, a wrong
+// silent guess is worse than no parse, since the due date is only useful if
+// it can be trusted.
 //
-// Two escape hatches for text that legitimately needs a sigil character
-// or a date-like word (owner, 2026-07-19 — "how about escapechars if I
-// want to miss this nlp"):
+// Two escape hatches exist for text that legitimately needs a sigil character
+// or a date-like word:
 //   - `\#`, `\@`, `\!` keep that one character literal (e.g. "Reply to
 //     ticket \#42") while the rest of the title still gets parsed.
 //   - Wrapping the WHOLE title in double quotes turns off parsing
@@ -62,15 +60,14 @@ const SIGIL_ESCAPE: Record<string, string> = { '#': HASH_SENTINEL, '@': AT_SENTI
 const SIGIL_UNESCAPE: Record<string, string> = { [HASH_SENTINEL]: '#', [AT_SENTINEL]: '@', [BANG_SENTINEL]: '!' };
 const SENTINEL_RE = new RegExp(`[${HASH_SENTINEL}${AT_SENTINEL}${BANG_SENTINEL}]`, 'g');
 
-// A separate sentinel for an @mention that didn't match any project --
-// extractProject deliberately leaves it in the title untouched (so a
-// typo is visible, not silently eaten), but that means the "@" is gone
-// from around it by the time extractDate/extractTime run, leaving a
-// clean \b boundary that can misread "@friday" or "@august 3" as a real
-// date (found in a 2026-07-19 audit). Hiding the whole mention behind one
-// placeholder char until after date/time extraction, then swapping the
-// original text back in, keeps the "leave typos visible" behavior
-// without exposing them to the date/time regexes.
+// A separate sentinel for an @mention that didn't match any project.
+// extractProject deliberately leaves it in the title untouched (so a typo is
+// visible, not silently eaten), but the "@" is gone from around it by the
+// time extractDate/extractTime run, leaving a clean \b boundary that would
+// misread "@friday" or "@august 3" as a real date. Hiding the whole mention
+// behind one placeholder char until after date/time extraction, then swapping
+// the original text back in, keeps typos visible without exposing them to the
+// date/time regexes.
 const MENTION_SENTINEL = String.fromCharCode(0xE003);
 
 function protectEscapedSigils(text: string): string {

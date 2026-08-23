@@ -22,12 +22,11 @@
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
 
-  // Reactive, not a one-shot const: the desktop app is tray-resident as of
-  // 2026-07-31, so this view can stay mounted across midnight. Captured
-  // once, it kept yesterday's date — "Overdue" showed a stale set, today's
-  // tasks sat filed under "This week", and nothing looked broken enough to
-  // notice. Re-checked on a timer, and immediately on tab focus so waking
-  // a laptop corrects it without waiting out the interval.
+  // Reactive, not a one-shot const: the desktop app is tray-resident, so
+  // this view can stay mounted across midnight. Captured once, it would
+  // keep yesterday's date and silently mis-group Overdue/Today/This week.
+  // Re-checked on a timer, and immediately on tab focus so waking a laptop
+  // corrects it without waiting out the interval.
   let today = localDateStr(new Date());
   const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
   function refreshToday() {
@@ -35,13 +34,9 @@
     if (current !== today) today = current;
   }
 
-  // Agenda's second view mode alongside the flat list — Month (roadmap
-  // item 2), which replaced an earlier Week grid: Week's whole value was
-  // seeing the current week laid out by day, which List's own "This
-  // week" section already covers, and Month's per-day drill-in replaces
-  // the rest. Same underlying getAllTasksDue() query, just re-laid out.
-  // Per-device preference (localStorage), same as every other view-mode
-  // toggle.
+  // Agenda's second view mode alongside the flat list. Same underlying
+  // getAllTasksDue() query, just re-laid out. Per-device preference
+  // (localStorage), same as every other view-mode toggle.
   const VIEW_KEY = 'offlog_agenda_view';
   const storedMode = typeof localStorage !== 'undefined' ? localStorage.getItem(VIEW_KEY) : null;
   let mode: 'list' | 'month' = storedMode === 'month' ? 'month' : 'list';
@@ -51,12 +46,11 @@
   function toDateStr(d: Date): string {
     return localDateStr(d);
   }
-  // A reactive lookup, not a plain function called from the template — a
-  // plain `tasksOnDay(day)` call inside {#each monthGridDays as day} only
-  // references `tasksOnDay` and `day` in the compiler's eyes, not `all`
-  // (that's hidden inside the function body), so the grid silently never
-  // re-rendered once `all` loaded async. `$:` makes the `all` dependency
-  // explicit.
+  // A reactive lookup, not a plain function called from the template: a
+  // `tasksOnDay(day)` call inside {#each monthGridDays as day} references
+  // only `tasksOnDay` and `day` as far as the compiler is concerned, not
+  // `all` (hidden in the function body), so the grid never re-renders once
+  // `all` loads async. `$:` makes the `all` dependency explicit.
   $: tasksByDate = all.reduce<Record<string, DueTask[]>>((acc, t) => {
     if (t.due_date) (acc[t.due_date] ??= []).push(t);
     return acc;
@@ -178,9 +172,8 @@
       <span class="dl-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
     </div>
     <div class="dl-header-actions">
-      <!-- redesign/v6 (owner feedback, 2026-07-28): same Command Palette
-           button/icon as List view's top bar, since Agenda has its own
-           header rather than the shared board-header. -->
+      <!-- Same Command Palette button/icon as List view's top bar; Agenda
+           has its own header rather than the shared board-header. -->
       <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
@@ -397,8 +390,8 @@
 
   .dl-header {
     /* flex-start, not center — see DashboardView.svelte's .dash-header
-       comment for why (consistent hamburger position across pages with
-       a different number of subtitle lines, owner-reported 2026-07-16). */
+       comment: keeps the hamburger at the same position across pages with
+       different numbers of subtitle lines. */
     display: flex; align-items: flex-start; gap: 10px;
     padding: 20px 28px 14px;
     border-bottom: 1px solid var(--border);
@@ -420,9 +413,9 @@
   .dl-header-actions {
     display: flex; align-items: center; gap: 8px;
     flex-shrink: 0; margin-left: auto;
-    /* header is align-items:flex-start now (see .dl-header comment) —
-       this control cluster still wants to sit centered against the row,
-       not pinned to the top like the title block. */
+    /* header is align-items:flex-start — this control cluster sits
+       centered against the row, not pinned to the top like the title
+       block. */
     align-self: center;
   }
   .palette-btn {
@@ -437,12 +430,10 @@
     overflow: hidden; flex-shrink: 0;
   }
   .mode-btn {
-    /* Explicit height (not just padding), matching .palette-btn's own
-       32px box next to it -- owner feedback, 2026-07-31: this cluster
-       and the palette button read as two different control heights,
-       inconsistent across pages that pair a toggle group with the
-       command-palette button (Agenda, Kanban/List). Same fix on that
-       button in App.svelte. */
+    /* Explicit height (not just padding) so this cluster matches the
+       adjacent .palette-btn's 32px box — padding alone leaves the two
+       reading as different control heights. App.svelte's equivalent
+       button does the same. */
     display: flex; align-items: center; justify-content: center;
     height: 30px; box-sizing: border-box; padding: 0 14px;
     border: none; background: var(--surface); color: var(--muted);
@@ -467,33 +458,21 @@
     padding: 12px 28px 4px; flex-shrink: 0;
   }
   .month-nav-center { display: flex; align-items: center; gap: 14px; }
-  /* A real button (not a small text link buried in the label, owner
-     feedback 2026-07-31: that was easy to miss and not worth clicking
-     for) -- pinned to the nav bar's right edge, out of the centered
-     prev/label/next group. Only rendered once you've navigated away
-     from the current month, same as before -- no point offering a jump
-     to where you already are. */
+  /* A real button pinned to the nav bar's right edge, out of the centered
+     prev/label/next group. Only rendered once you've navigated away from
+     the current month — no point offering a jump to where you already are. */
   .month-today-btn {
-    /* top:50%+translateY -- no `top` at all (previous version) left the
-       browser to compute this button's position from its "static
-       position" fallback instead of a real anchor, since it's the only
-       absolutely-positioned child pulled out of a `justify-content:
-       center` flex row. That's genuinely ambiguous cross-browser and
-       is what let it drift up to the page header instead of staying
-       inside .month-nav (caught live) -- an explicit top anchors it to
-       this row specifically, not wherever the fallback algorithm guessed. */
-    /* right:9% matches .month-scroll's own side padding (also 9%) so
-       this button's right edge lines up with the calendar grid's right
-       edge below it -- a fixed 28px here drifted away from that edge
-       once the grid's gutter became percentage-based (the "make the
-       calendar smaller, not fixed size" change), since 28px and 9% of
-       the container only coincidentally matched at one specific width. */
-    /* top: 50% + 4px, not plain 50% -- .month-nav's padding is
-       asymmetric (12px top, 4px bottom), so 50% of the FULL box
-       (padding included, which is what `top` percentages resolve
-       against) sits 4px above where .month-nav-center's flex-centered
-       content actually falls. Plain 50% put this button visibly higher
-       than the month label row it needs to line up with. */
+    /* An explicit `top` is required: as the only absolutely-positioned
+       child pulled out of a `justify-content: center` flex row, omitting
+       it leaves the browser to use the ambiguous "static position"
+       fallback and the button can drift out of .month-nav entirely.
+       right:9% must match .month-scroll's side padding (also 9%) so this
+       button's right edge lines up with the calendar grid's right edge
+       below; a fixed px value only coincides at one window width.
+       top is 50% + 4px, not plain 50%: .month-nav's padding is asymmetric
+       (12px top, 4px bottom) and `top` percentages resolve against the
+       full padded box, so plain 50% sits 4px above where
+       .month-nav-center's flex-centered content actually falls. */
     position: absolute; top: calc(50% + 4px); right: 9%; transform: translateY(-50%);
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     color: var(--accent); font-size: .78rem; font-weight: 600;
@@ -501,36 +480,27 @@
   }
   .month-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
-  /* flex:1 + overflow-y:auto on the *scroll container*, not the grid
-     itself — the grid sizes to its own content (6 rows max). Stretching
-     a short grid to fill all leftover flex space just leaves a blank
-     gap before whatever comes after it (the day panel here) — found
-     live while building this view, fixed by moving the scroll behavior
-     up a level instead. */
-  /* Percentage side gutter, not a fixed max-width on the grid itself
-     (owner feedback, 2026-07-31: a hard px cap either looks cramped on
-     a small window or leaves a huge dead gutter on a big one) -- the
-     grid still stretches to fill whatever room is left, so the ratio
-     of "calendar" to "breathing room" stays proportional at any window
-     size instead of being clamped to one fixed pixel width. */
+  /* flex:1 + overflow-y:auto belong on this scroll container, not the grid
+     itself — the grid sizes to its own content (6 rows max), and
+     stretching a short grid to fill leftover flex space leaves a blank gap
+     before the day panel below it.
+     Percentage side gutter, not a fixed max-width on the grid: a hard px
+     cap looks cramped on a small window and leaves a dead gutter on a big
+     one, whereas a percentage keeps calendar-to-breathing-room
+     proportional at any window size. */
   .month-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 9% 16px; }
-  /* grid-auto-rows: every week row is the same fixed height regardless
-     of content (owner feedback, 2026-07-31: rows sizing to their own
-     busiest day -- normal grid "stretch to tallest cell" behavior --
-     read as the whole calendar resizing while browsing between weeks,
-     even though clicking a day itself never touched row height). A
-     day's own content is already capped (day number + up to 4 dots +
-     2 title chips + one "+N more" line, never more regardless of how
-     many tasks are actually due), so 100px comfortably fits the busiest
-     real case with room to spare; overflow:hidden on the cell is a
-     safety net, not something normal content should ever hit. */
+  /* grid-auto-rows keeps every week row the same fixed height regardless
+     of content — with normal grid "stretch to tallest cell" behavior the
+     whole calendar appears to resize while browsing between months. A
+     day's content is capped by construction (day number + up to 4 dots +
+     2 title chips + one "+N more" line), so the fixed height fits the
+     busiest real case; overflow:hidden on the cell is a safety net. */
   .month-grid {
-    /* grid-template-rows: auto -- ONLY the explicit first row (the day-
-       of-week header, .month-dow x7) -- grid-auto-rows then covers
-       every row after that (the actual day cells). Missed this the
-       first time and set grid-auto-rows alone, which sizes *every*
-       implicit row including the header, forcing MON/TUE/... to a
-       100px-tall band instead of hugging its own small content. */
+    /* grid-template-rows: auto covers ONLY the explicit first row (the
+       day-of-week header, .month-dow x7); grid-auto-rows then sizes every
+       row after it (the day cells). grid-auto-rows alone would size the
+       header row too, forcing MON/TUE/... into a tall band instead of
+       hugging its own small content. */
     display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: auto; grid-auto-rows: 78px;
     border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
@@ -554,15 +524,11 @@
   .month-cell.out-month .month-daynum { color: var(--faint); }
   .month-cell.today { background: color-mix(in srgb, var(--accent) 6%, transparent); }
   .month-cell.selected { box-shadow: inset 0 0 0 2px var(--accent); }
-  /* min-height:20px (and the flex centering) apply to EVERY day, not
-     just "today" -- the fixed-size circle badge below only changes
-     today's cell, so every other day's plain-text number was a
-     different, shorter height. That mismatch is what threw off dot
-     alignment on both desktop (row layout) and mobile (column layout):
-     whichever cell was "today" reserved more vertical space than every
-     other cell, so dots centered/positioned against a different height
-     depending on which day they belonged to. Same box height everywhere
-     fixes it at the source instead of patching each layout separately. */
+  /* min-height:20px (and the flex centering) must apply to EVERY day, not
+     just "today": the fixed-size circle badge below only changes today's
+     cell, so without it every other day's plain-text number is shorter and
+     dots align against a different height depending on the day — on both
+     the desktop row layout and the mobile column layout. */
   .month-daynum {
     display: flex; align-items: center; justify-content: center;
     min-height: 20px; font-size: .78rem; font-weight: 700; color: var(--text);
@@ -572,17 +538,13 @@
     border-radius: 50%; width: 20px; height: 20px; font-size: .72rem;
   }
   /* Desktop: day number top-left, dots pinned to the cell's top-right
-     corner (owner call, 2026-07-31 -- final position after trying an
-     inline fixed-gap placement first). Mobile keeps the original
-     stacked layout -- overridden back to column in the 700px media
-     query below. */
-  /* min-height:20px matches .month-cell.today .month-daynum's fixed
-     20x20 circle badge below -- without it, "today"'s row is taller
-     than every other day's (plain text has no fixed box), so
-     align-items:center centers each day's dots within a DIFFERENT row
-     height and they land at different y-coordinates across the week
-     (caught live: today's dot sat visibly lower than the rest). Same
-     height on every row regardless of which day is "today" fixes it. */
+     corner. Mobile stacks them — overridden back to column in the 700px
+     media query below.
+     min-height:20px matches .month-cell.today .month-daynum's fixed 20x20
+     circle badge: without it "today"'s row is taller than every other
+     day's (plain text has no fixed box), so align-items:center centers
+     each day's dots within a different row height and they land at
+     different y-coordinates across the week. */
   .month-daynum-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 20px; }
   .month-dots { display: flex; gap: 3px; flex-wrap: wrap; }
   .month-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -621,11 +583,9 @@
 
   @media (max-width: 700px) {
     .month-titles { display: none; }
-    /* Centering the dots against the full cell width (previous version)
-       pulled them away from the day number they belong to -- visually
-       disconnected once the cell has any width to it. Left-aligned,
-       directly under the number, is what "belongs to this day" actually
-       looks like; the gap above still gives it real breathing room. */
+    /* Dots stay left-aligned directly under the day number rather than
+       centered against the full cell width, which visually disconnects
+       them from the number they belong to. */
     .month-daynum-row { flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; }
     .month-grid { grid-auto-rows: 60px; }
     .month-cell { padding: 4px 3px; }
@@ -657,12 +617,11 @@
   .later-label   { color: var(--faint); }
 
   .badge-count {
-    /* --on-accent, not hardcoded #fff — maintenance pass caught this
-       failing contrast badly on 3 of its 4 backgrounds in dark mode
-       (worst: 1.74:1 on --success). --on-accent's white/dark-text split
-       matches --overdue-ink/--accent/--faint's per-theme lightness swap;
-       --success needs its own override below since it's bright in both
-       themes rather than swapping. */
+    /* --on-accent, not a hardcoded #fff, which fails contrast badly on
+       most of these backgrounds in dark mode. --on-accent's white/dark
+       split matches --overdue-ink/--accent/--faint's per-theme lightness
+       swap; --success needs its own override below since it stays bright
+       in both themes rather than swapping. */
     color: var(--on-accent); opacity: .9;
     font-size: 9px; padding: 1px 5px; border-radius: 8px; font-weight: 700;
   }
@@ -686,8 +645,8 @@
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 
-  /* Same minimal checkbox language as ListView.svelte's .circle (owner
-     feedback, 2026-07-28) -- rounded square, no fill, border-only. */
+  /* Same minimal checkbox language as ListView.svelte's .circle:
+     rounded square, no fill, border-only. */
   .circle {
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
@@ -697,9 +656,8 @@
   .circle:hover { border-color: var(--accent); }
 
   /* Title + project stacked (same primary/secondary pattern as
-     DashboardView's .task-body) instead of a same-line project chip that
-     used to just vanish below 700px (owner-reported, 2026-07-16) —
-     project context now survives at every width, no breakpoint needed. */
+     DashboardView's .task-body) so project context survives at every
+     width, with no breakpoint needed. */
   .task-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title {
     font-size: 14px; font-weight: 500; color: var(--text);

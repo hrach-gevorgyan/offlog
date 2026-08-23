@@ -1,5 +1,5 @@
-// Embedded sync host — Track E (ROADMAP.md E1). Manages a bundled NyxDB
-// instance (github.com/hrach-gevorgyan/nyxdb) as a child process so a
+// Embedded sync host. Manages a bundled NyxDB instance
+// (github.com/hrach-gevorgyan/nyxdb) as a child process so a
 // non-technical user never installs or configures a sync server
 // themselves: this module generates its own random port/credentials on
 // first launch, persists them, and starts/stops the process alongside
@@ -28,8 +28,7 @@ pub struct SyncHostInfo {
 }
 
 impl SyncHostInfo {
-    /// Not called yet -- for the frontend's config.ts integration, still
-    /// pending (ROADMAP.md E1's "explicitly not done" list).
+    /// Not called yet -- kept for the frontend's config.ts integration.
     #[allow(dead_code)]
     pub fn url(&self) -> String {
         format!("http://127.0.0.1:{}/offlog", self.port)
@@ -102,14 +101,17 @@ pub fn nyxdb_binary_path(resource_dir: Option<PathBuf>) -> PathBuf {
         .join("nyxdb.exe")
 }
 
-/// Same hardening a bundled sidecar binary always needs regardless of
-/// which server it is: `CREATE_NO_WINDOW` (a spawned exe otherwise flashes
-/// a console on launch) and a Windows Job Object with
-/// `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` so the OS guarantees this process
-/// dies the instant this app's own process handle closes, for any reason
-/// (normal exit, crash, or an external force-kill) — no app-side cleanup
-/// code required on that path. NyxDB is a single process, so there's no
-/// nested-child console-flash workaround needed here.
+/// Sidecar hardening, all of it load-bearing:
+/// - `CREATE_NO_WINDOW`, or the spawned exe flashes a console on launch.
+/// - stdin/stdout/stderr to null: nothing reads the sidecar's pipes, and a
+///   filled pipe buffer would block the child. Its diagnostics come from
+///   the app's own log instead.
+/// - A Windows Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so
+///   the OS kills this process the instant the app's process handle
+///   closes for any reason — normal exit, crash, or external force-kill —
+///   with no app-side cleanup needed on that path. The returned Job must
+///   be kept alive for the app's lifetime; dropping it closes the handle
+///   and kills the sidecar.
 #[cfg(windows)]
 pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> std::io::Result<(Child, win32job::Job)> {
     use std::os::windows::io::AsRawHandle;

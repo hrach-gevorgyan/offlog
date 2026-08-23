@@ -25,25 +25,21 @@ export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Local calendar date (not toISOString().slice(0,10), which is UTC and can
-// land on the wrong day for anyone off UTC — both directions: west of UTC
-// during the local evening, east of UTC during the local early morning).
-// Real bug found live-testing on a UTC+4 device, 2026-07-21: this file's
-// own TODAY() and 6 other call sites across the app each independently
-// reimplemented "today" using the wrong UTC-based approach, inconsistent
-// with how due_date itself is actually stored (db.ts's own local-date
-// convention) — causing Agenda/Kanban/Search/Focus's day-boundary math to
-// disagree with storage during the ~offset-sized daily window where the
-// UTC and local calendar dates differ. One shared correct implementation
-// now (db.ts imports this instead of keeping its own copy, to avoid a
-// circular import — db.ts already depends on this file).
+// Local calendar date. Never use toISOString().slice(0,10) for this: it is
+// UTC and lands on the wrong day for anyone off UTC (west of UTC during the
+// local evening, east of UTC during the local early morning), which disagrees
+// with how due_date itself is stored (db.ts's local-date convention) during
+// the offset-sized daily window where the two calendar dates differ.
+// Every day-boundary calculation in the app must go through this one
+// implementation — db.ts imports it from here rather than keeping its own
+// copy (and this file must never import db.ts, to keep that acyclic).
 export function localDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const TODAY = () => localDateStr(new Date());
 
-// B47 — `Date.getDay()` is 0-indexed from Sunday; this converts it to
+// `Date.getDay()` is 0-indexed from Sunday; this converts it to
 // "days since the start of the week" for either week-start convention,
 // so callers doing `d.getDate() - daysSinceWeekStart(d, monday)` get a
 // correct start-of-week regardless of the setting.
@@ -55,11 +51,10 @@ function daysDiff(due: string): number {
   return Math.round((new Date(due + 'T00:00:00').getTime() - new Date(TODAY() + 'T00:00:00').getTime()) / 86400000);
 }
 
-// B5: relative-time formatting for "edited on <device>, 2h ago" in
-// CardDetail's history panel and Settings' per-device last-seen list —
-// distinct from the due-date-specific dueLabel/dueRelative above (which
-// assume a date-only, possibly-future value; this takes a full ISO
-// timestamp that's always in the past).
+// Relative-time formatting for "edited on <device>, 2h ago" in CardDetail's
+// history panel and Settings' per-device last-seen list — distinct from the
+// due-date-specific dueLabel/dueRelative above (which assume a date-only,
+// possibly-future value; this takes a full ISO timestamp always in the past).
 export function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(ms / 60000);
@@ -94,7 +89,7 @@ export function dueLabelLong(due: string): string {
 // Plain weekday+date, no relative wording ("Today"/"Tomorrow"/"Nd overdue")
 // -- for pairing next to dueRelative() without producing "Tomorrow ·
 // Tomorrow" (both functions independently collapse day===1 to the same
-// literal word; found in Agenda's "This week" chip, 2026-07-22).
+// literal word).
 export function dueDateShort(due: string): string {
   return new Date(due + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
@@ -115,33 +110,29 @@ export function dueInk(due: string | null): string {
   return 'var(--muted)';
 }
 
-// A30 — was duplicated byte-for-byte in Sidebar.svelte and SettingsPanel.svelte
-// (last-synced display). Same-day shows just the time, otherwise a short
-// date + time.
+// Last-synced display, shared by Sidebar.svelte and SettingsPanel.svelte.
+// Same-day shows just the time, otherwise a short date + time.
 export function fmtLastSynced(ts: string): string {
   const d = new Date(ts);
   const sameDay = d.toDateString() === new Date().toDateString();
   return sameDay ? fmtTime(d) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + fmtTime(d);
 }
 
-// A30 — was duplicated byte-for-byte in CardDetail.svelte and
-// TaskHistoryPanel.svelte (full created/updated/history timestamps).
+// Full created/updated/history timestamps, shared by CardDetail.svelte and
+// TaskHistoryPanel.svelte.
 export function fmtFullTimestamp(ts: string): string {
   const d = new Date(ts);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d);
 }
 
-// Owner-requested (2026-07-20, after spotting a real duplicate "Draft"
-// project from two independently-seeded devices merging): a lightweight
-// "did you mean to do this" nudge for accidental duplicates, never a
-// blocking rule — same-name projects/spaces/tasks and similar notes are
-// all legitimate, this only helps notice when they weren't intentional.
+// A lightweight "did you mean to do this" nudge for accidental duplicates
+// (e.g. two independently-seeded devices merging), never a blocking rule —
+// same-name projects/spaces/tasks and similar notes are all legitimate.
 
-// Pure, local word-overlap similarity (Jaccard over normalized word sets)
-// — no network call, no new dependency, same reasoning as nlpParse.ts's
-// local-regex-not-an-LLM stance (see DECISIONS.md): notes are often the
-// most sensitive text in the app, and "is this similar to that" doesn't
-// need a network round-trip to answer well enough for a soft hint.
+// Pure, local word-overlap similarity (Jaccard over normalized word sets):
+// no network call, no new dependency. Notes are often the most sensitive text
+// in the app, and "is this similar to that" doesn'''t need a network round-trip
+// to answer well enough for a soft hint.
 export function wordOverlapSimilarity(a: string, b: string): number {
   const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
   const setA = words(a), setB = words(b);
@@ -179,13 +170,10 @@ export function filterTasks<T extends {
   filterCol: string,
   filterPrio: number,
   filterTag: string,
-  // Roadmap item "custom fields: filterable and sortable" -- exact-match
-  // filters against custom field values, same "dropdown of currently-
-  // used values" shape as the tag filter above, but a *list* (owner
-  // feedback, 2026-07-31: filtering by only one field at a time wasn't
-  // enough) -- every entry must match (AND), same as stacking Status +
-  // Tag + Priority already do. Defaulted so every existing call site not
-  // yet passing this keeps working unchanged.
+  // Exact-match filters against custom field values, same "dropdown of
+  // currently-used values" shape as the tag filter above, but a *list*:
+  // every entry must match (AND), the same way stacking Status + Tag +
+  // Priority does. Defaulted so call sites that don't pass it are unaffected.
   customFieldFilters: CustomFieldFilter[] = [],
 ): T[] {
   return tasks.filter(t => {

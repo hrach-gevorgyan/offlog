@@ -5,36 +5,26 @@
   import { updateState, showUpdateModal, downloadUpdate, installUpdate } from './updateChecker';
   import { escapeHtml } from './utils';
 
-  // Desktop-only (App.svelte only mounts this behind isTauri()). Shows
-  // whichever phase updateChecker.ts's state machine is in — 'available'
-  // (offer to download, with release notes), 'downloading' (progress
-  // bar), 'ready' (offer to restart), or 'error'. Closing via Escape/
-  // scrim/Later never cancels an in-flight download or a completed one —
-  // it just hides the modal; the next open (banner click or "Check for
-  // updates") picks up wherever the state machine actually is.
+  // Desktop-only (App.svelte mounts it behind isTauri()). Renders
+  // whichever phase updateChecker.ts's state machine is in: 'available',
+  // 'downloading', 'ready', or 'error'. Closing via Escape/scrim/Later
+  // only hides the modal — it never cancels an in-flight or completed
+  // download; the next open picks up wherever the state machine is.
   function close() { showUpdateModal.set(false); }
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); close(); }
   }
 
-  // The release notes body only ever uses the restricted subset
-  // RELEASE_NOTES.md's own writing rule requires: `### Heading` and
-  // `- bullet` lines, nothing else — this renders exactly that instead
-  // of dumping the raw markdown text (previously shown literally,
-  // "### New" and all, in a <pre> block). Escaped first since this ends
-  // up in {@html}, even though the source is our own CHANGELOG-derived
-  // text, not user input.
+  // Minimal renderer for the restricted Markdown subset RELEASE_NOTES.md
+  // is allowed to use: `### Heading` and `- bullet` lines, nothing else.
+  // Every piece of text is escaped because the result goes through
+  // {@html}.
   //
-  // Real bug, found live (2026-07-30): every entry in RELEASE_NOTES.md
-  // soft-wraps a long bullet across multiple source lines (real Markdown
-  // treats a following non-blank line as a continuation of the same list
-  // item, and GitHub's own renderer handles this fine on the Releases
-  // page) -- but this line-by-line parser didn't join continuation
-  // lines back onto the current <li>, so a wrapped bullet got cut off
-  // mid-sentence and its remainder appeared as a stray unbulleted
-  // paragraph instead. A continuation line is now appended (with a
-  // joining space) to the last <li> whenever one is open.
+  // Bullets soft-wrap across several source lines, and Markdown treats a
+  // following non-blank line as a continuation of the same list item —
+  // so a non-bullet line while a list is open must be appended (with a
+  // joining space) to the last <li>, not emitted as its own paragraph.
   function renderNotes(body: string): string {
     const lines = body.split('\n');
     let html = '';

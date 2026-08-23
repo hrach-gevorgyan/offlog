@@ -4,13 +4,12 @@ import { invokeTauri, isTauri as isTauriPlatform, getQuietHours, getNotification
 import type { TaskDoc, ProjectDoc } from './types';
 
 // Spread queued reminders out instead of letting them all land on the
-// window's end instant — a real risk found while testing quiet hours: a
-// dozen overdue reminders all firing in the same tick would present to
-// Android's notification manager (or Windows toast queue) as a burst,
-// which some OSes throttle/collapse rather than showing individually.
+// window's end instant: a dozen reminders firing in the same tick present to
+// Android's notification manager (or the Windows toast queue) as a burst,
+// which some OSes throttle or collapse rather than showing individually.
 // 15s * a reminder's position in the current scheduling pass keeps a
-// realistic queue (a handful to a few dozen reminders) spread over
-// seconds-to-minutes without meaningfully delaying anyone.
+// realistic queue spread over seconds-to-minutes without meaningfully
+// delaying anyone.
 const QUIET_HOURS_STAGGER_STEP_MS = 15_000;
 
 // Quiet hours: if `at` falls inside the configured local wall-clock
@@ -48,13 +47,11 @@ export const pendingOpenTaskId = writable<string | null>(null);
 // A notification action ("Done"/"Snooze 1h" straight from the toast) that
 // failed its underlying updateTask() write. Same store-and-let-App-react
 // pattern as pendingOpenTaskId above, deliberately NOT a direct
-// showError() import: store.ts already imports this module, so importing
-// it back would be a circular import and would break CLAUDE.md's
-// one-directional layer rule. These handlers can't be awaited by their
-// caller (they run inside a plain OS-callback), and swallowing the
-// rejection outright is the exact bug class the v5.4.6 fireWebNotification
-// incident is about -- the user taps "Done" on a reminder, nothing
-// happens, and nothing ever says so.
+// showError() import: store.ts already imports this module, so importing it
+// back would be a circular import and would break the one-directional layer
+// rule. These handlers can't be awaited by their caller (they run inside a
+// plain OS callback), and swallowing the rejection outright would mean the
+// user taps "Done" on a reminder, nothing happens, and nothing says so.
 export const notificationActionError = writable<string>('');
 
 export type PermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
@@ -92,12 +89,11 @@ export async function requestExactAlarmPermission(): Promise<void> {
 const isNative = () => !!(window as any).Capacitor?.isNativePlatform?.();
 // Desktop (Tauri) is neither Capacitor-native nor a plain browser — it
 // embeds a real WebView2, but that WebView has no default handler for the
-// browser Notification permission-prompt flow, so Notification.
-// requestPermission() silently resolved to "denied" with no real OS
-// prompt ever shown (owner-reported, 2026-07-16). tauri-plugin-
+// browser Notification permission-prompt flow: Notification.requestPermission()
+// silently resolves to "denied" with no OS prompt ever shown. tauri-plugin-
 // notification talks to real Windows toast notifications instead,
 // sidestepping WebView2's permission model entirely — same reasoning as
-// why Android needed @capacitor/local-notifications instead of the web API.
+// why Android needs @capacitor/local-notifications instead of the web API.
 // Deterministic 32-bit integer id from a task's string id — Capacitor's
 // local-notifications plugin requires numeric ids.
 function numericId(taskId: string): number {
@@ -141,16 +137,13 @@ export function checkPermission(): void {
 // ── Web scheduling (best-effort — see TECH.md for the "app must stay
 // running" caveat; there's no push backend behind this local-first app) ──
 //
-// A12 audit note on DST/timezone: reminder_at is stored as an absolute
-// ISO instant (UTC epoch under the hood). Every delay computed below is
+// DST/timezone: reminder_at is stored as an absolute ISO instant (UTC epoch
+// under the hood). Every delay computed below is
 // `new Date(reminder_at).getTime() - Date.now()` — plain epoch-ms
-// arithmetic, which is DST-safe by construction; there's no local-time
-// component in this math for a DST transition to corrupt. The native
-// path (scheduleNative below) hands Android's AlarmManager an absolute
-// Date for the same reason. The one real gap this audit found wasn't a
-// DST bug — it was catchUpWeb() below leaving very-stale reminders
-// dangling forever instead of ever resolving them one way or the other;
-// see its own comment.
+// arithmetic, DST-safe by construction, with no local-time component for a
+// DST transition to corrupt. Keep it that way. The native path
+// (scheduleNative below) hands Android's AlarmManager an absolute Date for
+// the same reason.
 
 const _webTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const MAX_TIMEOUT = 2_147_483_647; // setTimeout's 32-bit signed int limit (~24.8 days)
@@ -163,25 +156,21 @@ const MAX_TIMEOUT = 2_147_483_647; // setTimeout's 32-bit signed int limit (~24.
 // clears reminder_at has round-tripped back through the reactive
 // reload chain, producing 2-3 duplicate notifications for one reminder.
 //
-// Keyed by `${id}:${reminder_at}`, not just the task id -- a task id
-// alone meant that once ANY reminder on a task fired, _firedIds (never
-// cleared) would permanently block every future reminder ever set on
-// that same task again for the rest of the session, silently, since the
-// guard couldn't tell a brand-new reminder_at apart from the one that
-// already fired (2026-07-18 audit finding). Keying by the exact instant
-// still blocks the original race (both paths would compute the identical
-// key for the same still-pending reminder_at) while correctly treating a
-// later, different reminder_at on the same task as fireable again.
+// Must be keyed by `${id}:${reminder_at}`, not by task id alone: a task id
+// on its own means that once ANY reminder on a task fires, this set (never
+// cleared) silently blocks every future reminder on that task for the rest of
+// the session. Keying by the exact instant still blocks the race above (both
+// paths compute the identical key for the same pending reminder_at) while
+// treating a later, different reminder_at on the same task as fireable.
 const _firedIds = new Set<string>();
 function firedKey(task: TaskDoc): string { return `${task._id}:${task.reminder_at}`; }
 
 // The set is only a short-lived duplicate-suppression guard -- once a
-// reminder has fired and its write has settled, the key has no further
-// job. Left unbounded it grew by one string per fired reminder for the
-// life of the process, which used to mean "until the tab closed" and now
-// means "until the tray-resident desktop app is quit", possibly weeks
-// (audit, 2026-07-31). Trim oldest-first well above any plausible
-// same-session backlog, so the dedupe behaviour is unchanged in practice.
+// reminder has fired and its write has settled, the key has no further job.
+// Left unbounded it grows by one string per fired reminder for the life of
+// the process, which for the tray-resident desktop app can be weeks. Trim
+// oldest-first, well above any plausible same-session backlog, so the dedupe
+// behaviour is unchanged in practice.
 const FIRED_IDS_MAX = 500;
 function rememberFired(key: string) {
   _firedIds.add(key);
@@ -192,12 +181,9 @@ function rememberFired(key: string) {
 }
 
 // Returns the clearing write's promise (rather than firing it detached) so
-// catchUpWeb() can actually wait for it to land -- production callers are
-// free to ignore the returned promise same as before, but tests no longer
-// need to pad with an arbitrary setTimeout "give it a tick" that isn't
-// guaranteed long enough under load (real flakiness found 2026-07-22: the
-// padding was too short whenever other test files added enough parallel
-// load to slow PouchDB's actual write down past one macrotask tick).
+// catchUpWeb() can wait for it to land. Production callers may ignore the
+// returned promise; tests must await it rather than padding with an arbitrary
+// setTimeout, which isn't reliably long enough under parallel load.
 function fireWebNotification(task: TaskDoc): Promise<void> {
   const id = task._id!;
   const key = firedKey(task);
@@ -229,11 +215,10 @@ function scheduleWeb(task: TaskDoc, staggerIndex = 0) {
   if (delay <= 0) return; // handled by the catch-up check instead
   // Too far out to schedule now — picked up on a later reload() once it's
   // within range instead (every app open + every live sync change calls
-  // rescheduleAll()). A12 audit: the only way this actually drops a
-  // reminder is a reminder >24.8 days out AND the web app never being
-  // opened again until after it's already due — accepted as a residual,
-  // low-probability edge case rather than adding a background re-check
-  // timer for it; the native path has no such limit at all.
+  // rescheduleAll()). This only drops a reminder if it is >24.8 days out AND
+  // the web app is never opened again until after it is due — an accepted
+  // residual edge case rather than a background re-check timer. The native
+  // path has no such limit.
   if (delay > MAX_TIMEOUT) return;
   _webTimers.set(id, setTimeout(() => { fireWebNotification(task); _webTimers.delete(id); }, delay));
 }
@@ -247,29 +232,22 @@ function cancelWeb(taskId: string) {
 // server behind this app) — fire them immediately on load instead, as
 // long as they're not too stale to be useful.
 //
-// A12 audit finding: a reminder past this window used to just sit there
-// forever — never fired (too stale), never cleared (nothing here touched
-// it), so it silently stayed "active" indefinitely and would keep
-// re-entering this same dead-end check on every future reload. Fixed by
-// explicitly clearing reminder_at once something is too stale to be a
-// useful notification, same as fireWebNotification() already does for the
-// reminders that DO fire — a stale reminder is closed out one way or the
-// other, never left dangling.
-// Exported for tests/notifications.test.ts (A12) — the stale-reminder
-// cleanup fix above is worth a real regression test.
-// Returns a promise resolving once every fire/clear write below has landed
-// -- production callers still don't need to await this (same fire-and-
-// forget usage as always), but tests can, instead of racing an arbitrary
-// setTimeout against real (occasionally slow-under-load) PouchDB writes.
-// A reminder that came due while the app wasn't running gets fired late
-// rather than dropped. The window was 1 hour, and anything older had its
-// `reminder_at` set to null -- i.e. the user's own setting was silently
-// destroyed, never having fired once. That's easy to hit on the desktop:
-// scheduling there is setTimeout-based, so it needs the app running, and
-// a reminder set for 23:00 (deferred to 07:00 by quiet hours) on a machine
-// that's off overnight was simply erased by morning. Widened to 24h so a
-// normal overnight or workday gap still notifies, late but present
-// (audit, 2026-07-31).
+// A reminder past this window must be explicitly cleared, not just skipped:
+// otherwise it is never fired (too stale) and never cleared, stays "active"
+// indefinitely, and re-enters this same dead-end check on every reload. Every
+// stale reminder gets closed out one way or the other, never left dangling.
+// Exported for tests/notifications.test.ts. Returns a promise resolving once
+// every fire/clear write below has landed -- production callers need not
+// await it, but tests must, rather than racing a setTimeout against real
+// PouchDB writes.
+//
+// The 24h window is deliberately generous: a reminder that came due while the
+// app wasn't running is fired late rather than dropped. Anything past the
+// window has its reminder_at cleared, so too short a window silently destroys
+// the user's setting without it ever firing -- easy to hit on desktop, where
+// scheduling is setTimeout-based and needs the app running (e.g. a 23:00
+// reminder deferred to 07:00 by quiet hours on a machine that's off
+// overnight). 24h covers a normal overnight or workday gap.
 const CATCH_UP_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
@@ -311,17 +289,14 @@ export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
 // (Android reads the action type at schedule time, not at display time).
 const REMINDER_ACTION_TYPE = 'REMINDER_ACTIONS';
 
-// A33 (owner-reported, 2026-07-13): reminders fired but "silent, not fully
-// functional." Root cause — nothing here ever created an Android
-// notification channel, and every scheduled notification also omitted
-// channelId. Android 8+ requires a channel per notification; without an
-// explicit one, the OS/plugin falls back to an auto-created "Default"
-// channel at IMPORTANCE_DEFAULT-or-lower — no guaranteed sound, no
-// heads-up popup, and (worse) its importance is fixed forever at whatever
-// it was on first auto-creation, since apps can't alter a channel's
-// importance after creation, only the user can via system settings. An
-// explicit high-importance channel, created once up front, is the only
-// way to guarantee sound + heads-up on every install.
+// Android 8+ requires a notification channel per notification, and every
+// scheduled notification must carry a matching channelId. Without an explicit
+// one, the OS/plugin falls back to an auto-created "Default" channel at
+// IMPORTANCE_DEFAULT or lower: no guaranteed sound, no heads-up popup, and
+// its importance is then fixed forever at whatever it was on first
+// auto-creation (apps cannot change a channel's importance afterwards, only
+// the user can, via system settings). An explicit high-importance channel,
+// created once up front, is the only way to guarantee sound + heads-up.
 const REMINDER_CHANNEL_ID = 'reminders';
 
 async function ensureReminderChannel() {
@@ -369,34 +344,23 @@ async function scheduleNative(tasks: TaskDoc[]) {
 // ── Native (Tauri desktop) scheduling — real Windows toast notifications,
 // but on a JS timer, same mechanism as scheduleWeb() above ──
 //
-// Owner-reported, 2026-07-16: reminders never fired after enabling
-// notification permission. Root cause, confirmed by reading
-// tauri-plugin-notification's own source (desktop.rs): the desktop
-// backend's show()/notify() never reads the `schedule` field at all —
-// scheduling is only implemented on mobile (mobile.rs), where the OS
-// itself owns the wakeup. Desktop has no equivalent, so a "scheduled"
-// notification either silently did nothing or fired immediately,
-// completely ignoring the requested future time. There's no fix on the
-// plugin side to reach for — the correct desktop equivalent is exactly
-// what scheduleWeb() above already does (a JS setTimeout, since the app
-// stays running), just displaying a real native toast at fire time
-// instead of the browser Notification API. Reuses _webTimers/_firedIds
-// — mutually exclusive with the web path at runtime (one platform per
-// session), so sharing that state is safe.
+// tauri-plugin-notification's desktop backend never reads the `schedule`
+// field — scheduling is only implemented on mobile, where the OS owns the
+// wakeup. A "scheduled" notification on desktop therefore either does nothing
+// or fires immediately, ignoring the requested time. So the desktop path must
+// do what scheduleWeb() does (a JS setTimeout, since the app stays running)
+// and display a real native toast at fire time instead of using the browser
+// Notification API. Reuses _webTimers/_firedIds — mutually exclusive with the
+// web path at runtime (one platform per session), so sharing that is safe.
 
-// Owner-reported, 2026-07-16: clicking a fired notification didn't open
-// the task. Root cause, confirmed by reading tauri-plugin-notification's
-// own source: its desktop backend never wires up any click/action
-// callback at all -- there's no event it could ever emit back to us, on
-// a bare click or an action button. isPermissionGranted()/
-// requestPermission() are also both hardcoded to always return granted
-// on desktop, unconditionally -- the plugin has no real desktop
-// permission model, so the channel/actionType concepts it offers are
-// meaningless for our purposes here. Bypassing it for reminders
-// entirely: a custom Rust command (send_task_notification, lib.rs)
-// builds the toast directly with tauri-winrt-notification, whose
-// on_activated callback genuinely works, and emits a real Tauri event
-// we can listen for below.
+// tauri-plugin-notification's desktop backend wires up no click or action
+// callback at all, so a clicked toast can never reach the app. Its
+// isPermissionGranted()/requestPermission() are also hardcoded to return
+// granted on desktop, and its channel/actionType concepts are meaningless
+// there. Reminders therefore bypass the plugin entirely: a custom Rust
+// command (send_task_notification) builds the toast with
+// tauri-winrt-notification, whose on_activated callback works, and emits a
+// real Tauri event listened for below.
 function fireTauriNotification(task: TaskDoc): Promise<void> {
   const id = task._id!;
   const key = firedKey(task);
@@ -408,8 +372,7 @@ function fireTauriNotification(task: TaskDoc): Promise<void> {
     taskId: id,
   }).catch(() => {});
   // Return the updateTask promise rather than swallowing it silently, same
-  // as fireWebNotification() above -- this path was added later and missed
-  // that fix (MAINTENANCE.md 16th-pass finding).
+  // as fireWebNotification() above.
   return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
 }
 
@@ -428,9 +391,9 @@ function scheduleTauriTimer(task: TaskDoc, staggerIndex = 0) {
 // header comment), so fire it on load instead if it's not too stale.
 function catchUpTauri(tasks: TaskDoc[]) {
   const now = Date.now();
-  // Shares catchUpWeb()'s 24h window — this is the desktop path, and the
-  // owner's primary build, so it's the one where an overnight gap wiping
-  // a reminder actually bit. See that constant's comment.
+  // Shares catchUpWeb()'s 24h window — desktop scheduling is setTimeout-based,
+  // so this is the path where an overnight gap would otherwise wipe a
+  // reminder. See that constant's comment.
   let queuedCount = 0;
   for (const t of tasks) {
     if (!t.reminder_at) continue;
@@ -459,8 +422,8 @@ async function scheduleTauri(tasks: TaskDoc[]) {
 }
 
 // Moves a task to its project's last column — the same "done" rule used
-// everywhere else in the app (see db.ts / CLAUDE.md: "Done" is positional,
-// column_id === columns.at(-1), there's no separate done boolean).
+// everywhere else in the app: "done" is positional, column_id ===
+// columns.at(-1), and there is no separate done boolean.
 async function completeTaskFromNotification(taskId: string): Promise<void> {
   const task = await getTaskById(taskId);
   if (!task) return;
@@ -481,11 +444,9 @@ async function snoozeTaskFromNotification(taskId: string): Promise<void> {
 export async function initNotificationListeners(): Promise<void> {
   if (isTauriPlatform()) {
     // tauri-plugin-notification's isPermissionGranted()/requestPermission()
-    // are hardcoded to always return granted on desktop (confirmed by
-    // reading its source) -- there's no real desktop permission model
-    // behind them at all, so checking it here would be theater. Desktop
-    // notification display isn't actually gated on anything we can
-    // observe; 'granted' is the honest answer.
+    // are hardcoded to return granted on desktop -- there is no real desktop
+    // permission model behind them, so checking would be theater. Desktop
+    // notification display isn't gated on anything observable here.
     permissionState.set('granted');
     const { listen } = await import('@tauri-apps/api/event');
     await listen<[string, string]>('notification-action', (event) => {

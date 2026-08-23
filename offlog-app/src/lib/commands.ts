@@ -1,21 +1,18 @@
-// B9 — command palette. Deliberately a small, fixed list of navigation/
-// action shortcuts (not a plugin system) — matched against GlobalSearch's
-// existing query box by plain substring on label+keywords, same matching
-// style as searchAllTasks() (db.ts), no fuzzy library added for this.
+// Command palette: deliberately a small, fixed list of navigation/action
+// shortcuts, not a plugin system. Matched against GlobalSearch's existing
+// query box by plain substring on label+keywords, the same matching style as
+// searchAllTasks() in db.ts — no fuzzy-matching library.
 export interface Command {
   id: string;
   label: string;
   keywords: string; // lowercase, space-separated extra match terms
   run: () => void;
   // True for commands whose run() opens another closeOnBack()-tracked
-  // overlay (QuickAdd/Settings/Time Travel/Trash) rather than just
-  // navigating or toggling a setting. GlobalSearch.svelte needs this to
-  // close itself via discardTop() instead of requestClose() for these --
-  // routing through requestClose()'s real history.back() races the new
-  // overlay's own pushState (both async/sync interleaving unpredictably),
-  // which silently prevented the new overlay from ever appearing
-  // (2026-07-18, found auditing Ctrl+K: "Open Time Travel" [then "Open Changelog"] from the command
-  // palette did nothing at all). See modalStack.ts's discardTop() comment.
+  // overlay (QuickAdd/Settings/Time Travel/Trash) rather than just navigating
+  // or toggling a setting. GlobalSearch.svelte must close itself via
+  // discardTop() rather than requestClose() for these: requestClose()'s real
+  // history.back() races the new overlay's own pushState, and the new overlay
+  // then never appears. See modalStack.ts's discardTop() comment.
   opensOverlay?: boolean;
 }
 

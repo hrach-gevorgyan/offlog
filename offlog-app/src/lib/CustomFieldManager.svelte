@@ -52,10 +52,9 @@
     }
   }
 
-  // Owner-reported, 2026-07-24: no way to rename a field or change its
-  // type/options after creation — inline edit, same row, rather than a
-  // separate modal (this list is already small by design, per the panel's
-  // own hint text).
+  // Renaming a field or changing its type/options edits inline in the same
+  // row rather than in a separate modal — the list is small by design (see
+  // the panel's own hint text).
   let editingId: string | null = null;
   let editName = '';
   let editType: CustomFieldDef['type'] = 'text';

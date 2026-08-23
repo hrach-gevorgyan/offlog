@@ -11,17 +11,11 @@
 
   const ACTION_LABEL: Record<string, string> = { create: 'Created', update: 'Edited', move: 'Moved', delete: 'Deleted' };
 
-  // FIELD_LABEL/describeField/hasRealChange used to be duplicated here
-  // (drifted from logFormat.ts's copy — this file's describeField was
-  // missing the 'name' rename case and hasRealChange was missing the
-  // isEmpty() no-op filter logFormat.ts already got in its 2026-07-18
-  // fix, so a no-op checklist/custom_values diff could still show a
-  // false "Checklist updated"/"Custom fields updated" here after
-  // TimeTravelView had already stopped showing it). Now imported from
-  // logFormat.ts, the single source both views share — this panel keeps
-  // its own simpler describeLog()/MAX_CLAUSES join below since its
-  // create/move/delete phrasing is intentionally different (task-scoped,
-  // no entity-type/who context needed).
+  // describeField/hasRealChange come from logFormat.ts, the single source
+  // this panel and TimeTravelView share — never re-implement them here, or
+  // the two views disagree about what counts as a real change. describeLog()
+  // below stays local: its create/move/delete phrasing is deliberately
+  // task-scoped, with no entity-type context.
   const MAX_CLAUSES = 3;
 
   function describeLog(log: any): string {

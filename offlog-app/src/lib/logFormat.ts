@@ -1,9 +1,6 @@
-// Shared plain-English formatting for `log:` changelog docs — extracted
-// from the old ChangelogView.svelte (2026-07-18, since replaced by
-// TimeTravelView.svelte) so the Time Travel journal view can render the
-// exact same descriptions instead of re-deriving its own, drifting copy
-// over time. See git history predating the rename for the readability
-// passes that shaped this logic.
+// Shared plain-English formatting for `log:` changelog docs, so every view
+// that renders history (TimeTravelView, TaskHistoryPanel) produces identical
+// descriptions rather than each deriving its own drifting copy.
 
 import { fmtTime } from './utils';
 
@@ -57,17 +54,15 @@ export function describeField(field: string, from: any, to: any): string {
   return `${FIELD_LABEL[field] ?? field} changed`;
 }
 
-// See the pre-rename ChangelogView.svelte's own comment history for why this can't
-// reuse fmtVal for the comparison (fmtVal collapses checklist/custom-
-// field edits to a fixed display string, which would make every real
-// edit there look like a no-op).
+// Must not reuse fmtVal for this comparison: fmtVal collapses checklist and
+// custom-field edits to a fixed display string, which would make every real
+// edit there look like a no-op.
 //
-// undefined/null and an empty object/array count as the same "nothing
-// here" state -- same fix as db.ts's updateTask() (2026-07-18), kept
-// here too as a display-layer filter so log docs written before that fix
-// (which already have a stored {from: undefined, to: {}}-shaped diff)
-// also stop showing a false "Custom fields updated"/"Checklist updated"
-// clause, not just newly-written ones.
+// undefined/null and an empty object/array count as the same "nothing here"
+// state. db.ts's updateTask() applies the same rule when writing, but this
+// display-layer filter is still needed so already-stored diffs of the shape
+// {from: undefined, to: {}} don't show a false "Custom fields updated" /
+// "Checklist updated" clause.
 function isEmpty(v: any): boolean {
   return v == null || (typeof v === 'object' && Object.keys(v).length === 0);
 }
@@ -97,9 +92,9 @@ export function fmt(ts: string) {
     + ' · ' + fmtTime(d);
 }
 
-// Derived from the ref id's own prefix, same convention CLAUDE.md
-// documents db.ts relying on everywhere else -- create/delete otherwise
-// always read as "task" regardless of what was actually created/deleted.
+// Derived from the ref id's own prefix (space:/project:/task:), the same
+// convention db.ts relies on -- otherwise create/delete always read as
+// "task" regardless of what was actually created or deleted.
 export function entityLabel(log: any): string {
   if (typeof log.ref !== 'string') return 'task';
   if (log.ref.startsWith('project:')) return 'project';
@@ -127,10 +122,9 @@ export function describeLog(log: any): string {
   if (log.diffs) return fmtDiffs(log.diffs) + (who ? ` on ${who}` : '');
 
   // undoDelete() logs a single-field 'deleted' true->false update rather
-  // than reusing the 'delete' action (that's reserved for the forward
-  // delete, whose entity type varies by ref prefix) -- without this case
-  // it fell through to the generic field formatter below and showed the
-  // raw "deleted: Yes → No" (owner-reported 2026-07-22).
+  // than reusing the 'delete' action (reserved for the forward delete, whose
+  // entity type varies by ref prefix). Without this case it falls through to
+  // the generic field formatter below and shows a raw "deleted: Yes → No".
   if (log.field === 'deleted') return `Restored ${entityLabel(log)} ${who ?? ''}`.trim();
 
   if (log.field) {

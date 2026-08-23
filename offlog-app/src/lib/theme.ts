@@ -1,11 +1,11 @@
-// B21 (dark mode follows OS) + B11 (high contrast mode). Kept separate from
-// config.ts since these are pure presentation toggles applied directly to
-// `document.body`, not app config read by db.ts/store.ts.
+// Dark mode (with a follow-the-OS option) and high contrast mode. Kept
+// separate from config.ts since these are pure presentation toggles applied
+// directly to `document.body`, not app config read by db.ts/store.ts.
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 const MODE_KEY = 'theme_mode';
-const LEGACY_DARK_KEY = 'dark'; // pre-B21: presence alone meant "dark"
+const LEGACY_DARK_KEY = 'dark'; // legacy key: presence alone meant "dark"
 const CONTRAST_KEY = 'high_contrast';
 const REDUCE_MOTION_KEY = 'reduce_motion';
 
@@ -68,15 +68,13 @@ export function applyTheme(): void {
   syncTauriWindowTheme(dark);
 }
 
-// Owner-reported, 2026-07-24: the desktop window's native title bar kept
-// whatever theme Windows itself was set to, ignoring this app's own
-// Light/Dark/System choice — a light in-app theme with a Windows-dark
-// title bar (or the reverse) reads as visually broken. Tauri's window API
-// can force the native chrome's theme independent of the OS setting;
-// `!!(window as any).__TAURI_INTERNALS__` mirrors config.ts's isTauri()
-// without importing it here (theme.ts intentionally has no app-config
-// dependency — see this file's header comment). No-op everywhere else
-// (web, Android) since only a real native window frame has this to sync.
+// The desktop window's native title bar otherwise follows the OS theme and
+// ignores this app's Light/Dark/System choice, which reads as visually broken
+// when the two disagree. Tauri's window API can force the native chrome's
+// theme independent of the OS setting. `!!(window as any).__TAURI_INTERNALS__`
+// mirrors config.ts's isTauri() without importing it — theme.ts intentionally
+// has no app-config dependency. No-op on web and Android, which have no
+// native window frame to sync.
 function syncTauriWindowTheme(dark: boolean): void {
   if (!(window as any).__TAURI_INTERNALS__) return;
   import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {

@@ -5,14 +5,13 @@
   import { trapFocus } from './focusTrap';
   import { dialogPop, scrimFade } from './motion';
 
-  // ConfirmDialog is mounted once, permanently, at the App.svelte root —
-  // it never mounts/unmounts per dialog the way other overlays do, it just
-  // toggles {#if $confirmRequest}. So the back-button history layer (see
-  // modalStack.ts / ROADMAP.md A14) has to be pushed/popped reactively
-  // instead of at component init. `pendingResult` carries which button was
-  // pressed through the async history.back() -> popstate round-trip, since
-  // the actual promise resolution happens inside the registered close
-  // callback, not synchronously in respond().
+  // Mounted once, permanently, at the App.svelte root — unlike other
+  // overlays it never mounts/unmounts per dialog, it just toggles
+  // {#if $confirmRequest}. The back-button history layer (modalStack.ts)
+  // must therefore be pushed/popped reactively, not at component init.
+  // `pendingResult` carries which button was pressed through the async
+  // history.back() -> popstate round-trip, since the promise resolves
+  // inside the registered close callback, not synchronously in respond().
   let popLayer: (() => void) | null = null;
   let pendingResult = false;
 

@@ -1,15 +1,12 @@
 // Shared between KanbanBoard.svelte (card tag chips) and TagManager.svelte
-// (the color picker) so the hash-to-palette fallback and the override
-// lookup live in exactly one place. See db.ts's getTagColorOverrides()/
-// setTagColor() for how an override is persisted (v6.11.0).
+// (the color picker) so the hash-to-palette fallback and the override lookup
+// live in exactly one place. See db.ts's getTagColorOverrides()/setTagColor()
+// for how an override is persisted.
 //
-// redesign/v6, follow-up critique (2026-07-28): tags all rendered as
-// identical gray, forcing the user to read each one rather than
-// recognize it by color. Offlog tags are free-text, not a fixed
-// taxonomy (no built-in "bug"=red mapping) -- a deterministic hash to
-// a small fixed palette gives every tag its own consistent color
-// across the whole app (same tag always looks the same) without
-// inventing a category system that doesn't exist in the data model.
+// Tags are free-text, not a fixed taxonomy (there is no built-in "bug"=red
+// mapping), so the fallback is a deterministic hash into a small fixed
+// palette: every tag gets its own color, consistent everywhere in the app,
+// without inventing a category system the data model doesn't have.
 export const TAG_PALETTE = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 
 export function hashTagColor(tag: string): string {

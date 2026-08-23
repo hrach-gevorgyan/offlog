@@ -63,8 +63,7 @@
   // closeOnBack (on top of the one this component's own requestClose
   // already pushed for the whole panel) — so hardware/gesture back and
   // Escape both step from detail back to the category list first, and
-  // only close Settings entirely on a second press. See modalStack.ts and
-  // ROADMAP.md A14.
+  // only close Settings entirely on a second press. See modalStack.ts.
   // Lets a caller (e.g. the post-first-run sync invite) open Settings
   // straight into a specific tab instead of always landing on Appearance.
   export let initialCategory: Category | null = null;
@@ -130,10 +129,10 @@
   }
 
   // ── Appearance ──────────────────────────────────────────────────────────
-  // B21: three-way Light/Dark/System instead of a boolean toggle — System
-  // is the default for anyone who's never touched this setting (see
-  // theme.ts's migration). B11: a separate high-contrast toggle, layered
-  // on top of whichever of Light/Dark is currently effective.
+  // Three-way Light/Dark/System, not a boolean toggle — System is the
+  // default for anyone who's never touched this setting (see theme.ts's
+  // migration). High contrast is a separate toggle, layered on top of
+  // whichever of Light/Dark is currently effective.
   let themeMode: ThemeMode = getThemeMode();
   function selectThemeMode(mode: ThemeMode) {
     themeMode = mode;
@@ -155,9 +154,9 @@
     setReduceMotion(reduceMotion);
   }
 
-  // B58 — Android only (haptics.ts itself also checks isNativePlatform(),
-  // this toggle just decides whether to show the control at all). Defaults
-  // on, see config.ts's own comment for why.
+  // Android only (haptics.ts also checks isNativePlatform(); this toggle
+  // just decides whether to show the control at all). Defaults on — see
+  // config.ts.
   let hapticsEnabled = isHapticsEnabled();
   function toggleHaptics() {
     hapticsEnabled = !hapticsEnabled;
@@ -166,8 +165,8 @@
 
   // ── Notifications ───────────────────────────────────────────────────────
   const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
-  // Master in-app toggle (owner feedback, 2026-07-30) -- same pattern as
-  // the Sync tab's own enabled/disabled switch gating its sub-settings.
+  // Master in-app toggle -- same pattern as the Sync tab's own
+  // enabled/disabled switch gating its sub-settings.
   // Independent of the OS permission below: that one can only ever be
   // *granted* from in-app (no platform lets you revoke it programmatically,
   // hence no "Disable" button next to "Enable" there) — this is the real
@@ -178,9 +177,9 @@
     setNotificationsEnabled(notificationsEnabled);
     rescheduleAll().catch(() => {});
   }
-  // B12: default time-of-day used when a task's "remind me on the due
-  // date" toggle derives reminder_at — per-device, same reasoning as B36's
-  // localStorage choices (see config.ts's getDefaultReminderTime()).
+  // Default time-of-day used when a task's "remind me on the due date"
+  // toggle derives reminder_at — per-device, like the app's other
+  // localStorage preferences (see config.ts's getDefaultReminderTime()).
   let defaultReminderTime = getDefaultReminderTime();
   function saveDefaultReminderTime(e: CustomEvent<string>) {
     defaultReminderTime = e.detail;
@@ -200,12 +199,11 @@
     rescheduleAll().catch(() => {});
   }
 
-  // B47 — reactively re-derives Agenda's week math on toggle; DeadlinesView
-  // itself reads getWeekStartsMonday() once at mount, so it needs a reload
-  // (route re-entry) or a live subscribe to see the new setting take
-  // effect immediately. Simplest correct fix: it's a rarely-changed
-  // display preference, not something that needs a live-reactive bridge —
-  // same tradeoff as the theme mode toggle's own page-level effect.
+  // Re-derives Agenda's week math on toggle. DeadlinesView reads
+  // getWeekStartsMonday() once at mount, so an already-open Agenda needs a
+  // route re-entry/reload to pick this up — an accepted tradeoff for a
+  // rarely-changed display preference, rather than a live-reactive
+  // bridge. Same as the theme mode toggle's page-level effect.
   let weekStartsMonday = getWeekStartsMonday();
   function setWeekStart(monday: boolean) {
     weekStartsMonday = monday;
@@ -232,8 +230,8 @@
   let appLockTimeout = getAppLockTimeoutMinutes();
   // A dropdown, not the segmented control Theme/Week-starts-on use —
   // those read fine at 2-3 short options, but 4 numeric ones ("1m 5m 15m
-  // 30m") in a row felt cramped (owner feedback, 2026-07-19). Same
-  // CustomSelect pattern as CardDetail's Repeat picker.
+  // 30m") in a row are cramped. Same CustomSelect pattern as
+  // CardDetail's Repeat picker.
   const LOCK_TIMEOUT_OPTIONS = [
     { value: '1', label: '1 minute' },
     { value: '5', label: '5 minutes' },
@@ -255,8 +253,8 @@
   let recoveryCodeSavedAck = false;
   let recoveryCopied = false;
 
-  // B56 (ROADMAP.md): the code is dense and easy to mistype re-copying by
-  // hand — Clipboard removes that risk entirely. Falls back to
+  // The code is dense and easy to mistype when re-copied by hand, so it
+  // is copied via Clipboard. Falls back to
   // navigator.clipboard on web/desktop, where @capacitor/clipboard's web
   // implementation already wraps it.
   async function copyRecoveryCode() {
@@ -271,12 +269,11 @@
     }
   }
 
-  // v5.4.2 correction — was auto-tied to isAppLockEnabled() with no
-  // separate control (see config.ts's own comment). OFF by default:
-  // Android's FLAG_SECURE (what this actually sets) blocks ALL
-  // screenshots while the app is foregrounded, not just the recents-
-  // switcher preview it was meant to hide — too big a side effect to
-  // silently bundle into turning on a PIN.
+  // Its own control, deliberately not tied to isAppLockEnabled() (see
+  // config.ts). OFF by default: Android's FLAG_SECURE (what this sets)
+  // blocks ALL screenshots while the app is foregrounded, not just the
+  // recents-switcher preview it's meant to hide — too big a side effect
+  // to bundle into turning on a PIN.
   let privacyScreenEnabled = isPrivacyScreenEnabled();
   function togglePrivacyScreen() {
     privacyScreenEnabled = !privacyScreenEnabled;
@@ -287,8 +284,8 @@
   let biometricEnabled = isAppLockBiometricEnabled();
   let biometricError = '';
   let biometricBusy = false;
-  // B57 (ROADMAP.md): distinguishes "nothing enrolled" from any other
-  // failure so the "Open Settings" deep-link only shows when it'd
+  // Distinguishes "nothing enrolled" from any other failure so the
+  // "Open Settings" deep-link only shows when it'd
   // actually help — a wrong-fingerprint or cancelled prompt isn't fixed
   // by visiting enrollment settings.
   let biometricNoneEnrolled = false;
@@ -296,8 +293,8 @@
   // Enabling requires a live device check + a real successful prompt —
   // not just flipping a flag — so a device with no fingerprint/face
   // enrolled never silently ends up "enabled" with no way to actually
-  // unlock (owner scope, 2026-07-20: biometric sits alongside the PIN,
-  // opt-in, Android only). Disabling never needs the device, it just
+  // unlock. Biometric sits alongside the PIN: opt-in, Android only.
+  // Disabling never needs the device, it just
   // turns the faster path back off; the PIN keeps working either way.
   async function toggleBiometric() {
     biometricError = '';
@@ -332,9 +329,8 @@
   // screen instead of silently doing nothing. @capacitor/app-launcher's
   // openUrl() falls through to `new Intent(url)` when the string isn't a
   // URL or package name, which Android's Intent(String action)
-  // constructor treats as a genuine intent action — not documented
-  // behavior of the plugin, but confirmed by reading its Android source
-  // (AppLauncherPlugin.java) rather than assumed.
+  // constructor treats as a genuine intent action — undocumented plugin
+  // behavior, verified in its Android source (AppLauncherPlugin.java).
   async function openBiometricEnrollment() {
     try {
       const { AppLauncher } = await import('@capacitor/app-launcher');
@@ -370,11 +366,10 @@
     }
   }
 
-  // B61: Change/Remove both pass through ConfirmPinGate first — proving
-  // knowledge of the *current* PIN, like any password change. The gate
-  // replaces removePin()'s old confirmAction() dialog entirely: entering
-  // the PIN IS the confirmation, a second "are you sure" on top would be
-  // pure friction. Initial setup (no PIN exists yet) never gates.
+  // Change/Remove both pass through ConfirmPinGate first, proving
+  // knowledge of the *current* PIN like any password change. Entering the
+  // PIN IS the confirmation — don't add an "are you sure" on top. Initial
+  // setup (no PIN exists yet) never gates.
   let pinGateMode: 'change' | 'remove' | null = null;
 
   function onPinGateVerified() {
@@ -397,9 +392,9 @@
 
   // ── Sync ────────────────────────────────────────────────────────────────
   let syncUrl = getSyncUrl();
-  // C8: getSyncCredentials() is async now (platform-appropriate secure
-  // storage, not a synchronous localStorage read) -- seeded empty here,
-  // populated in the onMount below rather than blocking component init.
+  // getSyncCredentials() is async (platform-appropriate secure storage,
+  // not a synchronous localStorage read) -- seeded empty here, populated
+  // in the onMount below rather than blocking component init.
   let credentialUser = '';
   let credentialPass = '';
   onMount(async () => {
@@ -412,13 +407,10 @@
   // already exists as syncState.status/lastSynced/error, just not
   // surfaced as one human sentence before this.
   //
-  // C2 finding (2026-07-19): this used to point everyone at "Developer
-  // options" to connect — a scary label for a first-time non-technical
-  // user, and no longer even the easy path once Track E's pairing flow
-  // (isAndroid's "Find my computer" section, above this in the template)
-  // shipped. Android gets pointed at that instead; anyone else (plain
-  // desktop web, no PC-app pairing available there) keeps the old
-  // wording, since the Advanced tab really is the only path for them.
+  // Android is pointed at the "Find my computer" pairing section above,
+  // not at "Developer options" — a scary label for a first-time
+  // non-technical user. Plain desktop web has no pairing flow, so there
+  // the Advanced tab genuinely is the only path and is named as such.
   $: connectionStatus =
     !syncEnabled ? { text: 'Sync is paused.', tone: 'muted' } :
     !syncUrl ? (isAndroid
@@ -436,7 +428,7 @@
     if (syncEnabled) startSync().catch(() => {}); else cancelSync();
   }
 
-  // ── Track E discovery/pairing (ROADMAP.md E1) ─────────────────────────────
+  // ── Device discovery/pairing ──────────────────────────────────────────────
   // Android: find the PC via mDNS, then exchange a code shown on the PC's
   // own screen for real credentials (discovery.ts's pairWithHost()).
   // Desktop/Tauri: generate that code in the first place.
@@ -450,11 +442,9 @@
   let pairingCode = '';
   let pairingBusy = false;
   let pairingError = '';
-  // Owner-reported, 2026-07-17: on success the modal just reset back to
-  // its initial "Find my computer" screen with no confirmation at all —
-  // read as "stuck," since nothing visibly acknowledged the pairing had
-  // actually worked. A distinct success state instead of silently
-  // reverting to the scan screen.
+  // A distinct success state, rather than resetting to the initial "Find
+  // my computer" screen: with nothing acknowledging that pairing worked,
+  // the modal reads as stuck.
   let pairSuccessName: string | null = null;
 
   function startDeviceScan() {
@@ -472,12 +462,10 @@
       const pairedName = selectedHost.name;
       await pairWithHost(selectedHost, pairingCode);
       syncUrl = getSyncUrl();
-      // Real bug found live: without this, the Advanced tab's form still
-      // held whatever stale username/password it was mounted with —
-      // invisible for the URL (which did refresh) but silent for the
-      // masked password field, so tapping "Save & restart sync"
-      // afterward would overwrite the just-paired credentials right
-      // back to the old ones.
+      // Required: without it the Advanced tab's form keeps whatever
+      // username/password it was mounted with — invisible in the masked
+      // password field — so a later "Save & restart sync" overwrites the
+      // just-paired credentials with the old ones.
       ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
       selectedHost = null;
       pairingCode = '';
@@ -491,9 +479,9 @@
 
   let pcPairingCode = '';
   let pcPairingBusy = false;
-  // Owner-reported, 2026-07-17: same "stuck, no confirmation" gap as the
-  // phone side above, but the PC has no direct signal that pairing
-  // finished — the phone drives that handshake entirely. Polling
+  // Same confirmation need as the phone side above, but the PC has no
+  // direct signal that pairing finished — the phone drives that
+  // handshake entirely. Polling
   // getDeviceLastSeen() for a name that wasn't there when the code was
   // generated is the only way this side can tell; 3s is frequent enough
   // to feel live without hammering the local DB read.
@@ -540,10 +528,10 @@
     resetBusy = true;
     try {
       // Two halves, both needed: wipeAndReseed() clears this PC's own
-      // local PouchDB (the WebView's IndexedDB) — discovered live that
-      // the Rust-only reset below never touched this, since it's a
-      // completely separate local database from the embedded NyxDB
-      // server, same local-first split every device in this app has.
+      // local PouchDB (the WebView's IndexedDB), which the Rust-only
+      // reset below never touches — it's a completely separate database
+      // from the embedded NyxDB server, the same local-first split every
+      // device in this app has.
       // Letting sync push the resulting deletion tombstones out first
       // (before the server itself gets wiped) is what actually clears
       // an already-paired phone's copy too, not just this PC's view.
@@ -604,14 +592,12 @@
   $: if (activeCategory === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
   // ── Organize (Manage Spaces / Manage Tags) ─────────────────────────────
-  // All four managers below get the same two fixes (2026-07-18 audit):
-  // an error-handled, reentrancy-guarded lazy import (matching Sidebar.
-  // svelte's openTimeTravel/openTrash/openSettings — an unguarded import
-  // that rejects used to leave showX stuck false with no feedback), and
-  // an *Session counter folded into their {#key} in the template below
-  // (matching CardDetail/Time Travel/Trash/Settings/QuickAdd/GlobalSearch
-  // — all four call closeOnBack(), so all four were exposed to the same
-  // stuck-panel bug a fast reopen could trigger).
+  // All four managers below need the same two things: an error-handled,
+  // reentrancy-guarded lazy import (an unguarded import that rejects
+  // leaves showX stuck false with no feedback), and an *Session counter
+  // folded into their {#key} in the template below — all four call
+  // closeOnBack(), so a fast reopen would otherwise revive an instance
+  // whose requestClose is already spent and can never close again.
   let SpaceManagerComp: typeof import('./SpaceManager.svelte').default | null = null;
   let showSpaceManager = false;
   let spaceManagerActive = false;
@@ -666,7 +652,7 @@
   }
   function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
 
-  // B32 — same lazy-modal pattern as Spaces/Tags/Custom Fields above
+  // Same lazy-modal pattern as Spaces/Tags/Custom Fields above
   let ArchivedProjectsManagerComp: typeof import('./ArchivedProjectsManager.svelte').default | null = null;
   let showArchivedProjectsManager = false;
   let archivedProjectsManagerActive = false;
@@ -693,8 +679,7 @@
     return subscribeDb(() => loadBreakdown());
   });
 
-  // A17/B14 — same screen, same navigator.storage.estimate() call: explain
-  // what the quota number actually means (a browser-assigned ceiling based
+  // Explain what the quota number actually means (a browser-assigned ceiling based
   // on free disk space, not an Offlog-imposed limit — most users have never
   // seen this number before), and only actually warn once usage is close
   // enough to it to matter. At personal-task-list scale this essentially
@@ -718,15 +703,13 @@
   // just come back from the OS "Alarms & reminders" settings screen.
   onMount(() => { if (isAndroid) checkExactAlarmPermission(); });
 
-  // v5.4.1 bug (owner-reported live testing, 2026-07-20): the floating
-  // Quick Add button only hides for CardDetail's modalOpen store (see
-  // CardDetail.svelte) — Settings never set it, so the FAB stayed
-  // visible and clickable on top of the Settings overlay on every
-  // platform. Same on/off pattern as CardDetail.
+  // The floating Quick Add button hides on the modalOpen store, so every
+  // full-screen overlay must set it or the FAB stays visible and
+  // clickable on top. Same on/off pattern as CardDetail.
   onMount(() => modalOpen.set(true));
   onDestroy(() => modalOpen.set(false));
 
-  // B4 — guided import: parse + preview counts before writing anything,
+  // Guided import: parse + preview counts before writing anything,
   // instead of importing the instant a file is picked. `pendingImportDocs`
   // holds the parsed array between "file chosen" and "user confirms."
   let importStatus = '';
@@ -770,8 +753,8 @@
     setTimeout(() => { importStatus = ''; }, 4000);
   }
 
-  // A34 (owner-reported, 2026-07-13): the blob-URL + <a download> trick
-  // below is a no-op inside a Capacitor Android WebView — there's no
+  // The blob-URL + <a download> trick below is a no-op inside a
+  // Capacitor Android WebView — there's no
   // browser download manager to hand it to. On native, write the file to
   // app storage via @capacitor/filesystem and hand it to the OS share
   // sheet via @capacitor/share instead, so the user picks where it ends
@@ -789,21 +772,16 @@
       await Share.share({ title: filename, url: written.uri });
       return;
     }
-    // Same gap A34 found on Android's WebView — Tauri's embedded WebView2
-    // has no download manager for the blob-URL + <a download> trick either
-    // (owner-reported, 2026-07-16). A native "Save As" dialog + a real
-    // file write is the desktop equivalent of Android's Filesystem+Share
-    // fix — lets the user pick where it actually goes, same as any other
-    // desktop app's export/save flow.
+    // Same gap as Android's WebView: Tauri's embedded WebView2 has no
+    // download manager for the blob-URL + <a download> trick either. A
+    // native "Save As" dialog + a real file write is the desktop
+    // equivalent of the Filesystem+Share path above.
     if (isTauri) {
-      // Owner-reported, 2026-07-16: defaultPath as a bare filename (no
-      // directory) didn't reliably pre-fill the dialog's filename field —
-      // the plugin's own docs note a non-existing-directory path only
-      // populates the filename input when it's actually resolvable as
-      // "some directory + a name," which a directory-less relative string
-      // isn't guaranteed to satisfy. An absolute path (Documents + name)
-      // works correctly. `filters` also gets the right extension
-      // pre-selected instead of the user having to type it themselves.
+      // defaultPath must be an absolute path (Documents + name): a bare
+      // filename doesn't reliably pre-fill the dialog's filename field,
+      // since the plugin only populates it for a path resolvable as
+      // "some directory + a name". `filters` pre-selects the right
+      // extension so the user doesn't have to type it.
       const { save } = await import('@tauri-apps/plugin-dialog');
       const { writeTextFile } = await import('@tauri-apps/plugin-fs');
       const { documentDir, join } = await import('@tauri-apps/api/path');
@@ -824,13 +802,10 @@
     a.click();
   }
 
-  // B45 — was four flat, loosely-related buttons (Export JSON, Export CSV,
-  // Export Project, Import JSON), reading as bolted-on rather than one
-  // backup/restore story. Redesigned into two groups: "Back up" (scope —
-  // everything vs one project — is a single control, not implied by which
-  // button you tap) and "Restore". CSV stays a separate, clearly-labeled
-  // one-way export (it isn't round-trippable, so it doesn't belong in the
-  // Back up / Restore pair conceptually, just alongside it).
+  // Two groups: "Back up" (scope — everything vs one project — is a
+  // single control, not implied by which button you tap) and "Restore".
+  // CSV stays a separate, clearly-labeled one-way export: it isn't
+  // round-trippable, so it doesn't belong in the Back up / Restore pair.
   let autoBackupEnabled = isAutoBackupEnabled();
   let lastAutoBackupAt = getLastAutoBackupAt();
   function toggleAutoBackup() {
@@ -864,10 +839,9 @@
     }
   }
 
-  // ── Maintenance (owner request 2026-07-16: folded into Advanced as a
-  // "Run maintenance" modal, rather than its own always-visible tab —
-  // the step list/progress bar is the one genuinely multi-step flow in
-  // this file, so it's the clearest case for the modal pattern) ──
+  // ── Maintenance: lives in Advanced as a "Run maintenance" modal rather
+  // than its own tab — the step list/progress bar is the clearest case
+  // for this file's multi-step-flows-open-as-a-modal rule ──
   type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
   // key is the same narrow union db.ts's MaintStepResult uses, not a bare
   // string -- setMaintStep() requires that union, so a plain `string` here
@@ -877,14 +851,14 @@
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];
 
-  // E3 (ROADMAP.md, done 2026-07-23): tauri.conf.json's plugins.updater
-  // block points at a real signed endpoint (GitHub Releases' "latest"
-  // download URL) with a real pubkey from `cargo tauri signer generate`.
-  // v5.7.6 follow-up: the actual check/download/install state machine now
-  // lives in updateChecker.ts (shared with App.svelte's background check
-  // + banner) — this panel just drives it and shows its own status line
-  // for the "you're on the latest version" / error cases the shared
-  // UpdateModal doesn't cover (it only appears once an update exists).
+  // tauri.conf.json's plugins.updater block points at a signed endpoint
+  // (GitHub Releases' "latest" download URL) with a pubkey from
+  // `cargo tauri signer generate`. The check/download/install state
+  // machine lives in updateChecker.ts (shared with App.svelte's
+  // background check + banner); this panel just drives it and shows its
+  // own status line for the "you're on the latest version" / error cases
+  // the shared UpdateModal doesn't cover (it only appears once an update
+  // exists).
   let updateChecking = false;
   let updateStatus = '';
   let appVersion = '';
@@ -924,8 +898,8 @@
     maintSteps = maintSteps.map(s => s.key === key ? { ...s, ...patch } : s);
   }
 
-  // A9 (ROADMAP.md): the actual step sequencing/message-formatting now
-  // lives in db.ts's runMaintenanceSteps() — testable directly against a
+  // Step sequencing/message-formatting lives in db.ts's
+  // runMaintenanceSteps() — testable directly against a
   // mocked db.ts, without mounting this whole file. This is just the thin
   // UI wiring: forward each emitted step into the reactive step list, and
   // handle the one thing that's genuinely this component's job (marking
@@ -949,17 +923,13 @@
 
   $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
 
-  // v5.4.1 bug (owner-reported live testing, 2026-07-20): this was
-  // unconditional — every tab shares one footer Save button, but every
-  // OTHER tab's settings already apply live on interaction (theme,
-  // reminders, App Lock, etc. all call their own setters directly, no
-  // buffering). Only syncUrl/credentialUser/credentialPass are buffered
-  // in local state waiting for Save. Reloading unconditionally meant
-  // clicking Save on e.g. Appearance forced a full page reload for no
-  // reason — and with App Lock on, a reload re-triggers the cold-start
-  // lock check, which read as "Save opens the PIN screen" even though
-  // nothing PIN-related was touched. Now only reloads if the sync
-  // URL/credentials actually changed.
+  // Reload only when the sync URL/credentials actually changed. Every tab
+  // shares one footer Save button, but every OTHER tab's settings apply
+  // live on interaction (theme, reminders, App Lock all call their
+  // setters directly); only syncUrl/credentialUser/credentialPass are
+  // buffered waiting for Save. Reloading unconditionally forces a full
+  // page reload for nothing — and with App Lock on it re-triggers the
+  // cold-start lock check, which reads as "Save opens the PIN screen".
   async function saveSettings() {
     let storedUser = '', storedPass = '';
     try {
@@ -1271,10 +1241,6 @@
             {:else if activeCategory === 'data'}
               <div class="setting-group">
                 <div class="setting-section-title">Storage</div>
-                <!-- B44: plain-language headline first, raw MB/quota numbers
-                     demoted to a small secondary line — "quota" is browser
-                     jargon nobody asked to learn, and at personal-task-list
-                     scale there's essentially never anything to act on. -->
                 <div class="storage-summary">
                   {#if !storageAvailable}
                     <span class="storage-headline">Storage info not available in this browser</span>
@@ -1785,9 +1751,8 @@
        match a longer tab's height. Capped so a tab that outgrows this
        (future settings) scrolls inside .detail-content instead of the
        whole modal growing past a sane size. The actual tab-to-tab resize
-       is animated from script.ts's selectCategory() (owner feedback,
-       2026-07-17: switching tabs "jumping" from one size to another read
-       as broken) — a plain CSS `transition: height` can't animate an
+       is animated from selectCategory() in the script above — a plain
+       CSS `transition: height` can't animate an
        otherwise-auto-sized element, so it's done as a measured FLIP
        (capture old height, let Svelte re-render, measure new height,
        animate between the two pixel values, then release back to auto).
@@ -1844,17 +1809,15 @@
     flex: 1; overflow-y: auto; padding: 1.25rem 1.4rem;
     display: flex; flex-direction: column;
   }
-  /* Wraps each tab's content so switching tabs fades it in (owner
-     feedback, 2026-07-17: the outer panel resize was smooth but the
-     content itself popped instantly, reading as disjointed) — same
-     flex/gap the content used to have directly on .detail-content,
-     since this wrapper is now the thing actually holding it. */
+  /* Wraps each tab's content so switching tabs fades it in — without it
+     the outer panel resize animates while the content pops instantly.
+     Carries the flex/gap, since this wrapper holds the content. */
   .detail-fade {
     display: flex; flex-direction: column; gap: 1rem;
   }
 
-  /* Narrow: category list OR full-width detail, never both — see script
-     comment (A14) for why this avoids a two-column squeeze on phones. */
+  /* Narrow: category list OR full-width detail, never both — see the
+     script comment for why a two-column squeeze fails on phones. */
   @media (max-width: 640px) {
     .settings-panel { width: 94vw; max-height: min(88vh, 640px); }
     .settings-nav { width: 100%; border-right: none; }
@@ -1866,13 +1829,11 @@
     .chevron { display: block; }
   }
 
-  /* Every group of related rows is a card — gives each tab real visual
-     structure instead of loose rows floating directly on the panel
-     background (owner feedback 2026-07-16: "too plain/bland"). A flat
-     var(--bg) fill looked right in light mode but reads as a heavy dark
-     block in dark mode, since --bg (#181a20) is *darker* than the panel's
-     own --surface (#242934) there — a subtle tint off --text stays a
-     gentle, barely-there card in both themes instead of a hole. */
+  /* Every group of related rows is a card, giving each tab visual
+     structure instead of loose rows on the panel background. The fill is
+     a subtle tint off --text, not a flat var(--bg): --bg is *darker* than
+     the panel's own --surface in dark mode, so a flat fill reads as a
+     hole there even though it looks right in light mode. */
   .setting-group {
     display: flex; flex-direction: column; gap: .6rem;
     background: color-mix(in srgb, var(--text) 4%, transparent);
@@ -1905,7 +1866,7 @@
   .setting-value { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 
-  /* B44 — headline reads as a plain sentence; the raw MB/quota numbers are
+  /* Headline reads as a plain sentence; the raw MB/quota numbers are
      demoted to a small mono detail line underneath, not the first thing
      a non-technical person sees. */
   .storage-summary { display: flex; flex-direction: column; gap: 2px; }
@@ -1998,8 +1959,7 @@
   .conflict-item-row { display: flex; align-items: center; gap: .75rem; }
   .conflict-item-meta { font-size: .72rem; color: var(--muted); flex: 1; }
 
-  /* B15 — Maintenance step list, folded in from the deleted standalone
-     modal overlay it used to live in; styles carried over as-is. */
+  /* Maintenance step list */
   .progress-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
   .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s var(--ease); }
 

@@ -192,7 +192,6 @@
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 
-  /* v6.11.0 — tag color override picker. */
   .color-dot {
     width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
     border: 1.5px solid var(--border-strong); cursor: pointer; padding: 0;

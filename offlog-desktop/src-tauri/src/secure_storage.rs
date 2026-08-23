@@ -1,13 +1,14 @@
-// C8 (ROADMAP.md): encrypts the stored sync password at rest via
-// Windows DPAPI (CryptProtectData/CryptUnprotectData), instead of the
-// plain-JSON `sync-host.json` pattern used for the port/username (which
-// aren't secrets on their own). Ties the ciphertext to the current
-// Windows user account -- transparent, no prompt, and useless if copied
-// to another machine or user account. This intentionally is NOT a
-// cross-platform abstraction (no keyring crate) -- Android gets its own
-// real solution (Android Keystore via the already-installed biometric
-// plugin, see config.ts), and the plain web build has no OS-level
-// secure-storage primitive to use at all (documented limitation there).
+// Encrypts the stored sync password at rest via Windows DPAPI
+// (CryptProtectData/CryptUnprotectData), rather than the plain-JSON
+// `sync-host.json` used for the port/username, which aren't secrets on
+// their own. DPAPI ties the ciphertext to the current Windows user
+// account: transparent, no prompt, and useless if copied to another
+// machine or user account.
+//
+// Deliberately not a cross-platform abstraction (no keyring crate).
+// Android uses the Android Keystore via the biometric plugin (see
+// config.ts), and the plain web build has no OS-level secure-storage
+// primitive at all.
 
 use std::ffi::c_void;
 use windows::Win32::Foundation::LocalFree;

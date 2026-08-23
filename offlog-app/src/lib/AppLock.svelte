@@ -5,10 +5,10 @@
   import { verifyAppLockPin, clearAppLockPin, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, isNativePlatform } from '../config';
   import { trapFocus } from './focusTrap';
 
-  // Deliberately does NOT use modalStack.ts's closeOnBack() — every other
-  // overlay in the app is dismissible via Escape/back/scrim-click by
-  // design, but a lock screen that closes on Escape isn't a lock. The only
-  // ways out are a correct PIN or the explicit "Forgot PIN" reset below.
+  // Deliberately does NOT use modalStack.ts's closeOnBack(), and has no
+  // Escape/scrim dismissal, unlike every other overlay: a lock screen
+  // that closes on Escape isn't a lock. The only ways out are a correct
+  // PIN or the recovery-code path below.
   const dispatch = createEventDispatcher<{ unlocked: void }>();
 
   let pin = '';
@@ -32,11 +32,10 @@
     if (biometricEnabled) tryBiometric();
   });
 
-  // Fires automatically on mount, and again from the "Try again" link —
-  // a cancelled/failed attempt is not a wrong PIN, so it never triggers
-  // the shake/error state below. The PIN input stays usable the whole
-  // time; biometric is just a faster path on top of it, never a
-  // replacement (owner, 2026-07-20 — see config.ts's own comment).
+  // Fires automatically on mount, and again from the "Try again" link.
+  // A cancelled/failed attempt is not a wrong PIN, so it never triggers
+  // the shake/error state below. The PIN input stays usable throughout:
+  // biometric is a faster path on top of it, never a replacement.
   async function tryBiometric() {
     if (biometricBusy) return;
     biometricBusy = true;
@@ -63,9 +62,9 @@
     error = true;
     wrongCount++;
     pin = '';
-    // A light throttle, not real rate-limiting — this gates a UI, not a
-    // vault (see DECISIONS.md), so the point is just to slow down idle
-    // guessing, not withstand a determined attacker.
+    // A light throttle, not real rate-limiting: this gates a UI, not a
+    // vault — data on disk is unencrypted either way. The point is to
+    // slow idle guessing, not to withstand a determined attacker.
     if (wrongCount >= 3) {
       cooldown = true;
       setTimeout(() => { cooldown = false; wrongCount = 0; }, 3000);
@@ -84,14 +83,11 @@
     pin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8);
   }
 
-  // v1 shipped this as a plain confirm-and-clear — owner feedback,
-  // 2026-07-19: "it is just removing pin... like when there is wall as
-  // block of road but in middle there is door u just open and go". Right:
-  // a bypass reachable with zero knowledge isn't a lock. Now requires the
-  // one-time recovery code shown at PIN setup (config.ts) — a real
-  // route back in, not a button. Still no server/account to verify
-  // identity against (see DECISIONS.md), so this is the strongest recovery
-  // achievable without one: possessing a secret only ever shown once.
+  // The "Forgot PIN" path must require the one-time recovery code shown
+  // at PIN setup (config.ts); never make it a plain confirm-and-clear,
+  // since a bypass reachable with zero knowledge isn't a lock. With no
+  // server or account to verify identity against, possession of a secret
+  // shown exactly once is the strongest recovery available here.
   async function submitRecovery() {
     if (recoverySaving || !recoveryCode.trim()) return;
     recoverySaving = true;
@@ -212,12 +208,10 @@
     border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); outline: none;
     transition: border-color .12s;
-    /* text-align:center visually centers the typed dots, but leaves the
-       blinking text caret jumping to the middle of the field as you type
-       — reads as broken (owner-reported, 2026-07-20). Hiding the caret
-       is the standard fix for centered PIN/OTP-style inputs; the digits
-       themselves are still the only visible feedback, same as any native
-       PIN screen. */
+    /* text-align:center centers the typed dots but leaves the caret
+       jumping around mid-field as you type, which reads as broken.
+       Hiding the caret is the standard fix for centered PIN/OTP inputs;
+       the dots remain the visible feedback. */
     caret-color: transparent;
   }
   .lock-input:focus { border-color: var(--accent); }

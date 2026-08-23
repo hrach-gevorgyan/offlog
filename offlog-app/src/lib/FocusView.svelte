@@ -10,11 +10,10 @@
 
   const dispatch = createEventDispatcher<{ menu: void; search: void }>();
 
-  // B35 (revised) — a daily commitment lock, not an auto-computed priority
-  // list. Up to 3 tasks, picked once, locked until each is done or the day
-  // rolls over. Lock read/write lives in focusLock.ts now, shared with
-  // DashboardView.svelte's "Daily Brief" card (B35) — see its own comment
-  // for why this is deliberately not a PouchDB doc.
+  // A daily commitment lock, not an auto-computed priority list: up to 3
+  // tasks, picked once, locked until each is done or the day rolls over.
+  // Lock read/write lives in focusLock.ts, shared with DashboardView's
+  // "Daily Brief" card — see it for why this isn't a PouchDB doc.
   const MAX_COMMIT = 3;
 
   let lock: FocusLock | null = loadFocusLock();
@@ -31,8 +30,8 @@
   // suggestion, not just a recency dump: pinned and overdue outrank
   // due-soon, which outranks priority alone. Equal-score tasks are
   // shuffled against each other (no fixed alphabetical/insertion bias).
-  // The reason a task made the cut is surfaced as a colored label, not a
-  // bare star — "why" matters more than "that" when deciding what to commit to.
+  // The reason a task made the cut is surfaced as a colored label — "why"
+  // matters more than "that" when deciding what to commit to.
   function scoreAndReason(t: TaskDoc): { s: number; reason: SuggestReason } {
     if (t.pinned) return { s: 1000, reason: 'pinned' };
     if (t.due_date) {
@@ -49,9 +48,7 @@
   // Round-robin across reason buckets (best-first within each bucket) so
   // the daily 3 suggestions are a genuine spread — "what's overdue AND
   // what's pinned AND what's next" — instead of collapsing to "the 3 most
-  // overdue tasks" whenever overdue items dominate the raw score. That
-  // repetitive sameness is exactly what made the plain top-N-by-score
-  // version feel useless morning after morning.
+  // overdue tasks" whenever overdue items dominate the raw score.
   function rankPicker(tasks: (TaskDoc & { project_name?: string })[]) {
     const withScore = tasks.map(t => ({ t, ...scoreAndReason(t), r: Math.random() }));
     const buckets: Record<SuggestReason, typeof withScore> = { pinned: [], overdue: [], due_soon: [], priority: [] };
@@ -75,17 +72,14 @@
     }
     suggestedReasons = new Map(suggestedReasons); // trigger Svelte reactivity
 
-    // redesign/v6 (owner feedback, 2026-07-29): the 3 suggested (bigger)
-    // notes need to land somewhere near the top of the board -- but
-    // spread across roughly the first 10 cards, not stacked as a
-    // consecutive block of exactly 3 (owner: "top 10, not 3 together").
-    // Bucket-major order alone didn't even guarantee "near the top": a
-    // handful of non-suggested pinned tasks could all list before the
-    // overdue bucket's one suggested pick, burying it well past the top
-    // row. Build a "top window" of up to 10 slots, place the suggested
-    // picks at evenly-spaced slots within it (in their own round-robin
-    // pick order — the Map's insertion order), fill the gaps with the
-    // rest in bucket-major order, then append whatever's left over.
+    // The suggested notes must land near the top of the board but spread
+    // across roughly the first 10 cards, not stacked as a consecutive
+    // block. Bucket-major order alone doesn't guarantee "near the top" —
+    // several non-suggested pinned tasks can list before the overdue
+    // bucket's suggested pick. So: build a "top window" of up to 10 slots,
+    // place the suggested picks at evenly-spaced slots within it (in their
+    // round-robin pick order — the Map's insertion order), fill the gaps
+    // with the rest in bucket-major order, then append the leftovers.
     const byBucket = BUCKET_ORDER.flatMap(reason => buckets[reason].map(x => x.t));
     const byId = new Map(byBucket.map(t => [t._id!, t]));
     const suggestedFirst = [...suggestedReasons.keys()].map(id => byId.get(id)!).filter(Boolean);
@@ -113,10 +107,9 @@
   async function loadLockedTasks() {
     if (!lock) { lockedTasks = []; return; }
     const fetched = await Promise.all(lock.taskIds.map(id => getTaskById(id)));
-    // !archived too, not just !deleted — every other read path in the
-    // app (getOpenTasksForFocusPicker, getAllTasksDue, etc.) excludes
-    // both; a task archived elsewhere while locked as one of today's 3
-    // commitments used to stay visible/actionable here regardless.
+    // !archived too, not just !deleted — every other read path in the app
+    // (getOpenTasksForFocusPicker, getAllTasksDue, etc.) excludes both, so
+    // a task archived elsewhere must not stay actionable here.
     lockedTasks = fetched.filter((t): t is TaskDoc => !!t && !t.deleted && !t.archived);
   }
 
@@ -169,9 +162,8 @@
 
   // Remembers, per task, which column it was in right before markDone()
   // moved it to the last column — in-memory only (resets on reload), just
-  // enough to let the same checkbox undo a done-mark by clicking again
-  // (owner feedback, 2026-07-29). Falls back to the project's first
-  // column if that memory is gone (e.g. after a refresh).
+  // enough to let the same checkbox undo a done-mark by clicking again.
+  // Falls back to the project's first column when that memory is gone.
   let doneFromCol: Record<string, string> = {};
 
   async function markDone(t: TaskDoc) {
@@ -193,23 +185,18 @@
     }
   }
 
-  // v5.4.1 bug (owner-reported live testing, 2026-07-20): markDone() was
-  // correctly updating the task (confirmed via Time Travel) but the row
-  // itself never reflected it — no isDone check anywhere in the
-  // template, so a "done" task looked identical to an untouched one and
-  // stayed clickable forever. allDone already computed this per-task
-  // inline; extracted so the row template can reuse it too.
+  // Shared by allDone and the row template, so a done task actually reads
+  // as done rather than looking identical to an untouched one.
   function isDone(t: TaskDoc): boolean {
     const proj = $projects.find(p => p._id === t.project_id);
     return !!proj && t.column_id === proj.columns.at(-1)?.id;
   }
   $: allDone = lock !== null && lockedTasks.length > 0 && lockedTasks.every(isDone);
 
-  // B41 — the picker uses the full available space as a scattered
-  // "brainstorm corkboard" of varying-size note cards rather than a
-  // plain capped-width list, per owner direction (2026-07-09). Size and
-  // tilt are derived deterministically from the task id (a stable hash,
-  // not Math.random()) so cards don't jitter to a new size/angle on
+  // The picker uses the full available space as a scattered "brainstorm
+  // corkboard" of varying-size note cards rather than a capped-width list.
+  // Size and tilt are derived deterministically from the task id (a stable
+  // hash, not Math.random()) so cards don't jitter to a new size/angle on
   // every reactive re-render — same task always looks the same until the
   // picker itself reloads. Actual layout is still flow-based (flex-wrap),
   // not true absolute-random positioning — real floating/overlapping
@@ -224,28 +211,21 @@
   const SIZES = ['note-sm', 'note-md', 'note-lg'] as const;
   function noteSize(t: TaskDoc & { project_name?: string }): string {
     if (suggestedReasons.has(t._id!)) return 'note-lg'; // suggested tasks are always at least this big
-    // Full 3-way size mix, not just sm/md (owner feedback, 2026-07-30:
-    // the corkboard is a signature feature, lean into the variety) --
-    // a non-suggested note can land on note-lg too now; what still marks
-    // a *suggested* one out is the accent border tint + its suggest-chip,
-    // not size alone.
+    // Full 3-way size mix — a non-suggested note can land on note-lg too.
+    // What marks a *suggested* note out is the accent border tint plus its
+    // suggest-chip, not size alone.
     return SIZES[hashId(t._id!) % 3];
   }
-  // A deliberately varied, mostly-non-zero spread (owner feedback,
-  // 2026-07-29: dialing tilt down to mostly-flat killed the "real
-  // corkboard" character this page is meant to have — it's one of the
-  // app's signature touches, not just a detail to tone down). Only 1 of
-  // 8 buckets is dead flat; the rest vary in both directions but stay
-  // gentle (owner feedback, 2026-07-30: the wider range read as too
-  // aggressive) rather than the earlier, more dramatic swing.
+  // A deliberately varied, mostly-non-zero spread: the corkboard character
+  // is intentional, so don't flatten these. Only 1 of 8 buckets is dead
+  // flat; the rest vary in both directions but stay gentle.
   const TILTS = [-2, -1.2, -0.5, 0, 0.7, 1.5, 2.2, -1.7];
   function noteTilt(t: TaskDoc): number {
     return TILTS[hashId(t._id!) % TILTS.length];
   }
-  // A little vertical stagger alongside the tilt (owner feedback,
-  // 2026-07-29: "more freedom of card positions like it was before") --
-  // keeps the flex-grow tiling (no dead gaps) but the row no longer
-  // looks perfectly ruled-off, closer to loose stickers than a table.
+  // A little vertical stagger alongside the tilt — keeps the flex-grow
+  // tiling (no dead gaps) while the row reads as loose stickers rather
+  // than a ruled-off table.
   function noteJitter(t: TaskDoc): number {
     const h = hashId(t._id!);
     return (h % 9) - 4; // -4..4 px
@@ -272,10 +252,9 @@
     {#if lock}
       <button class="reset-btn" on:click={resetCommitment}>Reset</button>
     {/if}
-    <!-- redesign/v6 (owner feedback, 2026-07-30): same Command Palette
-         button as List/Agenda/Dashboard -- every full-page view needs
-         its own visible entry point, not just the Ctrl+K shortcut,
-         since it's unreachable on mobile with no physical keyboard. -->
+    <!-- Every full-page view needs a visible Command Palette entry point,
+         not just the Ctrl+K shortcut — unreachable on mobile with no
+         physical keyboard. -->
     <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
@@ -368,8 +347,8 @@
 
   .fc-header {
     /* flex-start, not center — see DashboardView.svelte's .dash-header
-       comment for why (consistent hamburger position across pages with
-       a different number of subtitle lines, owner-reported 2026-07-16). */
+       comment: keeps the hamburger at the same position across pages with
+       different numbers of subtitle lines. */
     display: flex; align-items: flex-start; gap: 10px;
     padding: 20px 28px 14px;
     border-bottom: 1px solid var(--border);
@@ -389,15 +368,14 @@
   .hamburger:hover { background: var(--hover); }
 
   /* Same shape family as .commit-btn (rounded, bold, outline instead of
-     filled) but scaled down for a header button rather than matching its
-     footer-CTA size exactly -- a literal match (owner feedback,
-     2026-07-29) ended up too big for this spot. */
+     filled) but scaled down for a header button — matching the footer
+     CTA's size exactly is too big for this spot. */
   .reset-btn {
     background: none; border: 1.5px solid var(--border-strong); color: var(--muted);
     font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 9px; cursor: pointer;
     flex-shrink: 0; transition: background .12s, color .12s, border-color .12s;
-    /* header is align-items:flex-start now (see .fc-header comment) —
-       this button still wants to sit centered against the row. */
+    /* header is align-items:flex-start — this button sits centered
+       against the row instead. */
     align-self: center;
   }
   .reset-btn:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
@@ -417,26 +395,20 @@
     width: 100%; box-sizing: border-box;
   }
 
-  /* Owner feedback (2026-07-29): the "X of Y done" progress stat didn't
-     read as motivating, just as a metric being tracked -- removed. The
-     bigger locked-row treatment it shipped alongside stays; that part
-     landed well on its own. */
   .picker-hint { color: var(--faint); opacity: .7; font-size: 12.5px; margin: 0 0 16px; max-width: 640px; }
   .empty { color: var(--faint); font-size: 14px; padding: 12px 0; }
 
-  /* B41 — the corkboard. flex-wrap, not a grid with fixed tracks, so
+  /* The corkboard. flex-wrap, not a grid with fixed tracks, so
      differently-sized notes can sit next to each other naturally instead
      of being forced into uniform cells. */
   .board {
     display: flex; flex-wrap: wrap; align-content: flex-start;
     gap: 18px 22px;
   }
-  /* redesign/v6 (owner feedback, 2026-07-28): priority moved off the
-     small dot entirely -- a thin colored top edge now, same "color =
-     priority" language as Kanban/List/Agenda, just on top instead of the
-     left since these notes tilt and sit in a scattered board rather than
-     a vertical list. Selected/suggested state stays communicated via
-     border + a touch of the accent color, unrelated to priority. */
+  /* Priority is the thin colored top edge — same "color = priority"
+     language as Kanban/List/Agenda, on top rather than the left since
+     these notes tilt and sit in a scattered board. Selected/suggested
+     state is communicated via border + accent color, never priority. */
   .note {
     position: relative;
     display: flex; flex-direction: column; gap: 10px;
@@ -461,8 +433,8 @@
 
   /* flex-grow (not a fixed width) so trailing space at the end of a row
      gets absorbed by the notes already in it instead of sitting empty --
-     "a real board of stickers" should look tiled edge to edge, not leave
-     a gap where one more note almost fit (owner feedback, 2026-07-29). */
+     the board should look tiled edge to edge, not leave a gap where one
+     more note almost fit. */
   .note-sm { flex: 1 1 160px; max-width: 220px; }
   .note-md { flex: 1 1 210px; max-width: 280px; }
   .note-lg { flex: 1 1 260px; max-width: 340px; padding: 18px 20px; }
@@ -499,8 +471,8 @@
   .suggest-chip.due_soon  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
   .suggest-chip.priority  { background: var(--col-bg); color: var(--faint); }
 
-  /* Same minimal checkbox language as ListView/DeadlinesView's .circle
-     (owner feedback, 2026-07-28) -- rounded square, no fill, border-only. */
+  /* Same minimal checkbox language as ListView/DeadlinesView's .circle:
+     rounded square, no fill, border-only. */
   .circle {
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
@@ -516,11 +488,9 @@
      language (like ListView's bulk-select .row-check), not the plain
      border-only "done" checkbox style used elsewhere: this one means
      "chosen", not "complete". Absolutely positioned in the note's own
-     top-right corner rather than inline with the footer's badges (owner
-     feedback, 2026-07-28: sharing a flex row with proj-badge/suggest-chip
-     made its alignment look off whenever badge heights/widths varied) --
-     a solid background so it always reads cleanly against the title text
-     underneath, regardless of how many lines the title wraps to. */
+     top-right corner rather than inline with the footer's badges, whose
+     varying heights/widths would throw off its alignment. Solid
+     background so it reads cleanly over however far the title wraps. */
   .check {
     position: absolute; top: 10px; right: 10px;
     width: 18px; height: 18px; border-radius: 5px;
@@ -532,24 +502,19 @@
   .check.checked { background: var(--accent); border-color: var(--accent); }
 
   /* Locked task-row's title + project stacked (same primary/secondary
-     pattern as DashboardView/DeadlinesView's .task-body) instead of a
-     same-line project chip that used to just vanish below 700px
-     (owner-reported, 2026-07-16) — survives at every width now. The
-     corkboard note's own .proj-badge (in .note-foot below) keeps its
-     chip look; that one has room to spare and pairs visually with
-     .suggest-chip, so it's left as-is. */
+     pattern as DashboardView/DeadlinesView's .task-body) so project
+     context survives at every width, with no breakpoint needed. The
+     corkboard note's own .proj-badge (in .note-foot below) keeps its chip
+     look — it has room to spare and pairs visually with .suggest-chip. */
   .task-row .task-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title {
     font-size: 15px; font-weight: 600; color: var(--text);
     min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  /* Plain text, not a chip -- the general .proj-badge rule below (used by
-     the corkboard note's own project badge) sets a background/padding
-     that this override was meant to remove but never actually did
-     (background/padding aren't shadowed by setting other properties in
-     CSS), so this row's project name was rendering as a chip that could
-     look stretched/oversized (owner feedback, 2026-07-29: "project pill
-     is too long"). Explicit `none`/`0` here actually clears it. */
+  /* Plain text, not a chip. The general .proj-badge rule below (used by
+     the corkboard note's badge) sets a background/padding that only an
+     explicit `none`/`0` clears — setting other properties here does not
+     shadow them. */
   .task-row .proj-badge {
     font-family: var(--mono); font-size: 10px; color: var(--faint);
     background: none; padding: 0;

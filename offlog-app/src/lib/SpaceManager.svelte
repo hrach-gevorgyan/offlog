@@ -20,8 +20,8 @@
   let newColor = '#6366f1';
   let newIcon = DEFAULT_SPACE_ICON_KEY;
   let adding = false;
-  // Owner-requested (2026-07-20) duplicate-name nudge — never blocks, see
-  // db.ts's findSpacesByName() for the full reasoning.
+  // Duplicate-name nudge: a hint only, never blocking. See
+  // findSpacesByName() in db.ts.
   let duplicateSpaceHint = '';
   async function checkSpaceNameDuplicate(name: string) {
     const trimmed = name.trim();
@@ -103,11 +103,10 @@
     }
   }
 
-  // Same real race found in Sidebar.svelte's project-add flow
-  // (2026-07-20): Escape can also blur the input, and blur fires its own
-  // submit independently of the Escape keydown handler's cancel — whichever
-  // the browser runs first, the other still executes after. Set before
-  // cancelling so a genuine cancel always wins over a same-tick blur-submit.
+  // Escape also blurs the input, and blur fires its own submit independently
+  // of the Escape keydown handler's cancel — whichever runs first, the other
+  // still runs after. Set before cancelling so a real cancel beats the
+  // same-tick blur-submit. Same race as Sidebar.svelte's project-add flow.
   let cancellingAddSpace = false;
 
   async function addSpace() {

@@ -1,16 +1,14 @@
-// B22: used to be a fixed 'pc' | 'pc2' | 'mobile' enum — widened to a
-// free-form per-device name (see config.ts's getDeviceName()/setDeviceName()),
-// since a fixed 3-value set isn't enough once there's more than one PC or
-// phone in play. Old docs may still literally contain 'pc'/'pc2'/'mobile'
-// from before this widening — that's fine, they just display as their old
-// literal value until next edited on that device.
+// A free-form per-device name (see config.ts's getDeviceName()/
+// setDeviceName()). Old docs may literally contain 'pc'/'pc2'/'mobile' from
+// an earlier fixed enum — they simply display as that literal value until
+// next edited on that device.
 export type Source = string;
 
 export interface SpaceDoc {
-  // "space:unsorted" | "space:personal" | "space:work" (B24: default seed
-  // is 3 spaces, not 4) | "space:family" (no longer seeded by default, but
-  // still a valid id — old databases or a manually-recreated space can
-  // still have one; Sidebar.svelte keeps its icon mapping for that reason
+  // "space:unsorted" | "space:personal" | "space:work" (the default seed) |
+  // "space:family" (not seeded, but still a valid id — old databases or a
+  // manually-recreated space can have one; Sidebar.svelte keeps its icon
+  // mapping for that reason
   _id: string;
   _rev?: string;
   type: 'space';
@@ -22,12 +20,11 @@ export interface SpaceDoc {
   source: Source;
 }
 
-// v6.11.0 — optional per-tag color override. Tags themselves are still
-// plain free-text on TaskDoc.tags (no schema change needed there) --
-// this is a separate, tiny doc only for tags a user explicitly picked a
-// color for, keyed directly by tag name (`tag:<name>`) since lookups are
-// always by name, never a range scan. Absent = falls back to
-// tagColors.ts's deterministic hash color.
+// Optional per-tag color override. Tags themselves are plain free-text on
+// TaskDoc.tags; this is a separate, tiny doc written only for tags a user
+// explicitly picked a color for, keyed directly by tag name (`tag:<name>`)
+// since lookups are always by name, never a range scan. Absent = falls back
+// to tagColors.ts's deterministic hash color.
 export interface TagColorDoc {
   _id: string;          // "tag:<tag-name>"
   _rev?: string;
@@ -43,9 +40,9 @@ export interface Column {
   name: string;
 }
 
-// B16: a handful of typed fields per project, not a schema editor —
-// deliberately just these 4 types, no nesting, no per-field validation
-// rules. `options` only applies to `select`.
+// A handful of typed fields per project, not a schema editor — deliberately
+// just these 4 types, no nesting, no per-field validation rules. `options`
+// only applies to `select`.
 export interface CustomFieldDef {
   id: string;            // "field:<nanoid>"
   name: string;
@@ -61,18 +58,17 @@ export interface ProjectDoc {
   name: string;
   position: number;
   columns: Column[];
-  // 'table' was valid before ListView/TableView merged (2026-07) — old
-  // docs may still have it stored; App.svelte treats it as 'list' at
-  // read time rather than migrating every doc. Not offered as a choice
-  // for new writes.
+  // 'table' is a legacy value some docs still carry; App.svelte treats it as
+  // 'list' at read time rather than migrating every doc. Not offered as a
+  // choice for new writes.
   default_view: 'kanban' | 'list' | 'table';
-  pinned?: boolean; // B34 — same always-sorts-to-top mechanism as TaskDoc.pinned
-  archived?: boolean; // B32 — soft-archive; project stays, non-done tasks get archived: true too
+  pinned?: boolean; // same always-sorts-to-top mechanism as TaskDoc.pinned
+  archived?: boolean; // soft-archive; project stays, non-done tasks get archived: true too
   updated_at: string;
   source: Source;
 }
 
-// v6.8.0 — one entry per file attached to a task; see TaskDoc.attachments.
+// One entry per file attached to a task; see TaskDoc.attachments.
 export interface TaskAttachment {
   key: string;           // "att:<nanoid>" -- the key into the doc's PouchDB _attachments map
   filename: string;
@@ -98,16 +94,16 @@ export interface TaskDoc {
   deleted: boolean;
   pinned?: boolean;
   archived?: boolean;
-  // B12: when true, reminder_at is derived from due_date + config.ts's
+  // When true, reminder_at is derived from due_date + config.ts's
   // getDefaultReminderTime() rather than set independently — CardDetail
   // recomputes it whenever due_date (or the default time) changes while
   // this is on. Optional/undefined on old docs = manual reminder, same as
   // always.
   remindOnDue?: boolean;
-  // B16: keyed by CustomFieldDef.id, not name — a field rename doesn't
+  // Keyed by CustomFieldDef.id, not name — a field rename doesn't
   // orphan existing values. Absent/undefined keys just render empty.
   custom_values?: Record<string, string | number | null>;
-  // B18: a flat checklist, not nested/reorderable — deliberately simple.
+  // A flat checklist, not nested or reorderable — deliberately simple.
   // Absent/undefined on old docs = no checklist, same as an empty array.
   checklist?: { text: string; done: boolean }[];
   // Recurring tasks. Requires due_date to be meaningful; db.ts's
@@ -116,42 +112,37 @@ export interface TaskDoc {
   // deleted due_date shouldn't silently stop repeating. Absent/undefined
   // on old docs = doesn't repeat, same as null.
   recurrence?: 'daily' | 'weekly' | 'monthly' | null;
-  // Roadmap "custom recurrence intervals" — every N days/weeks/months
-  // instead of always N=1. Purely additive: absent/undefined means 1,
-  // same as every doc before this shipped. Only meaningful alongside
+  // Custom recurrence interval — every N days/weeks/months instead of
+  // always N=1. Absent/undefined means 1. Only meaningful alongside
   // `recurrence`; ignored when that's null.
   recurrenceInterval?: number;
   // "Weekdays only" — daily recurrence that skips Saturday/Sunday when
-  // advancing (the common "every weekday" pattern). Only meaningful
-  // alongside `recurrence: 'daily'`. Absent/undefined = false, same as
-  // every doc before this shipped.
+  // advancing. Only meaningful alongside `recurrence: 'daily'`.
+  // Absent/undefined = false.
   recurrenceWeekdaysOnly?: boolean;
-  // v6.7.0 — task linking. Non-directional "related to" only (no blocks/
-  // blocked-by dependency semantics — owner decision, 2026-07-28). Other
-  // task ids this task names as related; stored forward-only on
-  // whichever task the link was added from — see db.ts's
-  // getRelatedTasks() for how the reverse direction is computed at read
-  // time instead of mirror-written to both docs. Absent/undefined on old
-  // docs = no links, same as an empty array.
+  // Task linking: non-directional "related to" only, deliberately carrying
+  // no blocks/blocked-by dependency semantics (see `blocked_by` below for
+  // that). Other task ids this task names as related, stored forward-only on
+  // whichever task the link was added from — see db.ts's getRelatedTasks()
+  // for how the reverse direction is computed at read time instead of
+  // mirror-written to both docs. Absent/undefined = no links.
   related?: string[];
-  // ROADMAP.md "'Blocked by,' not just 'related'" — a real dependency,
-  // unlike `related` above: this task can't start until every task
-  // named here is done. Directional (stored only on the blocked task,
-  // never mirrored onto the blocker) and deliberately separate from
-  // `related` per the v6.7.0 decision not to overload it with
-  // dependency semantics. "Done" is computed at read time the same way
-  // everywhere else does — column_id equal to the blocker's own
-  // project's last column — not a stored boolean, so it can never drift
-  // out of sync with the blocker's actual status. Absent/undefined =
-  // no dependencies, same as an empty array.
+  // A real dependency, unlike `related` above: this task can't start until
+  // every task named here is done. Directional (stored only on the blocked
+  // task, never mirrored onto the blocker) and deliberately kept separate
+  // from `related` rather than overloading it with dependency semantics.
+  // "Done" is computed at read time the way it is everywhere else —
+  // column_id equal to the blocker's own project's last column — not a
+  // stored boolean, so it can never drift out of sync with the blocker's
+  // actual status. Absent/undefined = no dependencies.
   blocked_by?: string[];
-  // v6.8.0 — file attachments. The actual bytes live in PouchDB's own
+  // File attachments. The actual bytes live in PouchDB's own
   // `_attachments` map (native attachment support -- rides the existing
   // sync/replication with zero new code, dedupes unchanged content by
   // digest automatically). This array is just small, loggable/diffable
   // metadata per attachment -- `key` is the matching key into
   // `_attachments`, not the filename, since two attachments could share
-  // a filename. See attachments.ts for the format allowlist/size cap and
+  // a filename. See attachments.ts for the size cap and
   // db.ts's addAttachment()/deleteAttachment() for the actual writes.
   attachments?: TaskAttachment[];
   created_at: string;

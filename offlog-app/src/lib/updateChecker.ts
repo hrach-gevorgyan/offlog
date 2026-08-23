@@ -2,12 +2,10 @@ import { writable, get, type Writable } from 'svelte/store';
 import { isTauri, getAutoUpdateCheckEnabled } from '../config';
 import type { Update } from '@tauri-apps/plugin-updater';
 
-// Desktop-only auto-updater flow (E3/ROADMAP.md). Split into explicit
-// phases rather than SettingsPanel's old single downloadAndInstall() call
-// so the UI can show real progress and let the user defer installing —
-// `@tauri-apps/plugin-updater`'s `Update` exposes download()/install() as
-// separate steps specifically to support this (confirmed by reading its
-// own type definitions, dist-js/index.d.ts).
+// Desktop-only auto-updater flow. Split into explicit phases rather than a
+// single downloadAndInstall() call so the UI can show real progress and let
+// the user defer installing — `@tauri-apps/plugin-updater`'s `Update` exposes
+// download() and install() as separate steps specifically to support this.
 type UpdatePhase = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
 interface UpdateState {
@@ -82,8 +80,8 @@ export async function installUpdate(): Promise<void> {
   }
 }
 
-// Unattended background check (E3 follow-up): on desktop startup, and
-// every ~6h while the app stays running, silently checks for an update if
+// Unattended background check: on desktop startup, and every ~6h while the
+// app stays running, silently checks for an update if
 // the user hasn't turned this off in Settings. Never downloads or
 // installs by itself — only ever flips `updateState` to 'available' so
 // App.svelte's banner can offer it. The manual "Check for updates" button

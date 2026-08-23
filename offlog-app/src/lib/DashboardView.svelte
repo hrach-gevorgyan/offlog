@@ -10,13 +10,10 @@
 
   const dispatch = createEventDispatcher<{ openProject: string; menu: void; focus: void; search: void; agenda: void }>();
 
-  // redesign/v6 (owner feedback, 2026-07-30): Today/Pinned/Overdue were
-  // unbounded -- Dashboard's job is a glanceable overview, not a second
-  // full task browser (that's already List/Agenda's job). Capped with a
-  // muted "View all" -- Today/Overdue link out to Agenda (which already
-  // groups Overdue/Today at the top of its own list); Pinned has no
-  // dedicated cross-project view anywhere in the app yet, so its "View
-  // all" just expands the list in place instead of linking nowhere.
+  // Dashboard is a glanceable overview, not a second task browser (that's
+  // List/Agenda's job), so Today/Pinned/Overdue are capped. Today/Overdue
+  // "View all" links out to Agenda; Pinned has no cross-project view
+  // anywhere else, so its "View all" expands the list in place.
   const TASK_CAP = 6;
   let pinnedExpanded = false;
 
@@ -27,17 +24,12 @@
   // exists -- {#key detailTask._id} alone doesn't change value on a fast
   // close-then-reopen of the same task.
   let detailOpenSession = 0;
-  // B27 — archived tasks previously only surfaced inside List view's own
-  // toggle, easy to forget exists; this is a glance-level count only, not
-  // a full archived-task browser (that stays in List view).
+  // Glance-level count only; the full archived-task browser stays in List view.
   let archivedCount = 0;
 
-  // B35 — "Daily Brief" card: Dashboard previously had zero visibility
-  // into Focus's daily commitment lock, so there was no way to tell "did
-  // I already pick today's 3, and how am I doing" without leaving for
-  // Focus itself. Deliberately doesn't re-show Today/Pinned/Overdue
-  // (already their own sections below) -- this card is specifically the
-  // one piece of state only Focus otherwise has.
+  // "Daily Brief" card: surfaces Focus's daily commitment lock, the one
+  // piece of state only Focus otherwise has. Deliberately doesn't re-show
+  // Today/Pinned/Overdue — those are their own sections below.
   let focusLock: FocusLock | null = null;
   let focusLockedTasks: TaskDoc[] = [];
 
@@ -50,9 +42,9 @@
     focusLock = loadFocusLock();
     if (!focusLock) { focusLockedTasks = []; return; }
     const fetched = await Promise.all(focusLock.taskIds.map(id => getTaskById(id)));
-    // Same !deleted/!archived filter as FocusView.svelte's own
-    // loadLockedTasks() -- a task removed elsewhere while locked as one
-    // of today's 3 shouldn't still count here either.
+    // Same !deleted/!archived filter as FocusView.svelte's loadLockedTasks():
+    // a task removed elsewhere while locked as one of today's 3 must not
+    // still count here.
     focusLockedTasks = fetched.filter((t): t is TaskDoc => !!t && !t.deleted && !t.archived);
   }
 
@@ -107,10 +99,9 @@
         </span>
       {/if}
     </div>
-    <!-- redesign/v6 (owner feedback, 2026-07-30): same Command Palette
-         button as List/Agenda -- every full-page view needs its own
-         visible entry point, not just the Ctrl+K shortcut, since it's
-         unreachable on mobile with no physical keyboard. -->
+    <!-- Every full-page view needs a visible Command Palette entry point,
+         not just the Ctrl+K shortcut — unreachable on mobile with no
+         physical keyboard. -->
     <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
@@ -286,12 +277,11 @@
   .dash { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
   .dash-header {
-    /* flex-start, not center -- centering against the whole title-block
-       put the hamburger at a different vertical spot depending on how
-       many subtitle lines a page has (Dashboard's 3 vs Agenda/Focus's 1),
-       which read as inconsistent/misaligned across pages (owner-reported,
-       2026-07-16). Top-aligning plus the hamburger's own small top
-       margin below lines it up with the title's own first line instead. */
+    /* flex-start, not center: centering against the whole title-block puts
+       the hamburger at a different vertical spot depending on how many
+       subtitle lines a page has (Dashboard's 3 vs Agenda/Focus's 1). Top
+       alignment plus the hamburger's own small top margin lines it up with
+       the title's first line on every page. */
     display: flex; align-items: flex-start; gap: 10px;
     padding: 20px 28px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
@@ -314,9 +304,9 @@
     width: 32px; height: 32px; margin-left: auto; flex-shrink: 0;
     background: none; border: 1px solid var(--border-strong); border-radius: 8px;
     color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
-    /* header is align-items:flex-start (see the header comment below) --
-       this button still wants to sit centered against the row, not
-       pinned to the top like the (multi-line) title block. */
+    /* header is align-items:flex-start, but this button sits centered
+       against the row rather than pinned to the top like the (multi-line)
+       title block. */
     align-self: center;
   }
   .palette-btn:hover { color: var(--text); background: var(--hover); }
@@ -327,7 +317,7 @@
     display: flex; flex-direction: column;
   }
 
-  /* B35 — "Daily Brief" card, full-width above the two-column layout. */
+  /* "Daily Brief" card, full-width above the two-column layout. */
   .brief {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
     padding: 14px 20px; margin-bottom: 20px; cursor: pointer;
@@ -366,9 +356,8 @@
 
   .section { display: flex; flex-direction: column; }
 
-  /* Deliberately understated -- a secondary "there's more, if you want
-     it" affordance, not a second call to action competing with the task
-     rows themselves (owner feedback, 2026-07-30: "very muted"). */
+  /* Deliberately understated: a secondary "there's more" affordance, not a
+     call to action competing with the task rows themselves. */
   .view-all {
     background: none; border: none; cursor: pointer;
     color: var(--faint); opacity: .7;
@@ -382,9 +371,8 @@
     letter-spacing: .08em; font-weight: 700; color: var(--faint);
     margin-bottom: 10px;
   }
-  /* redesign/v6 (owner feedback, 2026-07-30): dropped the ★/⚠ text
-     glyphs -- every other view already signals pinned/overdue through
-     color alone (chip tint, edge accent), not an emoji-style icon. */
+  /* Pinned/overdue are signalled through color alone here, matching every
+     other view — no ★/⚠ glyphs. */
   .pinned-title { color: var(--accent); }
   .overdue-title { color: var(--danger); }
 
@@ -394,17 +382,11 @@
     grid-auto-rows: minmax(130px, auto);
     gap: 12px;
     align-content: start;
-    /* align-items:start was tried here (redesign/v6, 2026-07-30) to stop
-       a 2-line-wrapped title from stretching every sibling in its row
-       taller too -- but .proj-name's own min-height (below) was added
-       right after specifically to reserve 2 lines' worth of title height
-       unconditionally, which already neutralizes that exact cause. Left
-       in place afterward, align-items:start instead produced a new, more
-       visible problem with real (uneven-badge-count) data: cards no
-       longer stretch to match their row's tallest sibling at all, so
-       rows read as a ragged, misaligned grid (owner-reported, "grid is
-       damaged") -- default stretch is what's actually correct now that
-       the title-height variance is handled elsewhere. */
+    /* Don't add align-items:start here. Cards must keep the default
+       stretch so each row's cards match its tallest sibling — with an
+       uneven number of stat badges per card, start-alignment gives a
+       ragged grid. Title-height variance is already handled by
+       .proj-name's min-height below. */
   }
   .proj-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -416,11 +398,9 @@
 
   .proj-card-top { display: flex; align-items: center; gap: 6px; }
   .space-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  /* redesign/v6 (owner feedback, 2026-07-30): task count moves to the
-     card's top-right corner, same placement/pill language as Kanban's
-     column-header count. margin-left:auto (not a separate spacer div)
-     since this row has no other trailing element to push against --
-     works whether or not the space-dot/name are present. */
+  /* Task count in the card's top-right corner, same pill language as
+     Kanban's column-header count. margin-left:auto rather than a spacer
+     div, so it works whether or not the space-dot/name are present. */
   .task-count {
     margin-left: auto; flex-shrink: 0;
     display: inline-flex; align-items: center; justify-content: center;
@@ -428,28 +408,18 @@
     font-family: var(--mono); font-size: .68rem; font-weight: 600;
     color: var(--muted); background: var(--hover); border-radius: 20px;
   }
-  /* Wrap, never truncate (owner feedback, 2026-07-30) -- min-width:0 is
-     required for a flex child to actually wrap instead of overflowing
-     its row, since flex items default to a content-based min-width. The
-     grid's own grid-auto-rows: minmax(130px, auto) already equalizes
-     row heights around whatever a wrapped title needs, so this doesn't
-     "damage" the grid -- it's already built to absorb variable heights. */
+  /* Wrap, never truncate. min-width:0 is required for a flex child to wrap
+     instead of overflowing its row (flex items default to a content-based
+     min-width). The grid's grid-auto-rows: minmax(130px, auto) absorbs the
+     resulting variable heights. */
   .space-name { font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; min-width: 0; overflow-wrap: break-word; }
-  /* redesign/v6 (owner feedback, 2026-07-30): align-items:start (added
-     last pass to stop cards stretching) fixed the dead-gap bug but
-     traded it for a genuinely uneven grid -- a 2-line title made just
-     that one card taller than its row-mates, with no room reserved for
-     it elsewhere. Reserving 2 lines' worth of height up front means
-     every card budgets the same space for its title regardless of
-     whether it actually wraps, so the grid reads as uniform again --
-     without reintroducing truncation for a title that needs 2 lines. */
+  /* min-height reserves 2 lines' worth of title height unconditionally, so
+     every card budgets the same space whether or not its title wraps and
+     the grid stays uniform without truncating 2-line titles. */
   .proj-name { font-size: 16px; font-weight: 700; line-height: 1.3; min-height: 2.6em; color: var(--text); overflow-wrap: break-word; margin-top: 2px; }
-  /* Chips, not bare wrapped text — at the card's narrower widths three
-     plain text runs ("7 tasks" / "★ 1 pinned" / "⚠ 1 overdue") wrapped
-     onto three separate lines with uneven spacing (owner-reported,
-     2026-07-28). Pill-shaped chips still wrap when the card is narrow,
-     but each one reads as a single self-contained unit instead of a
-     ragged text flow. */
+  /* Chips, not bare wrapped text — at narrow card widths plain text runs
+     wrap onto separate lines with uneven spacing. Pill chips still wrap,
+     but each reads as one self-contained unit. */
   .proj-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: auto; padding-top: 8px; }
   .stat {
     font-family: var(--mono); font-size: 11px; color: var(--muted);
@@ -467,18 +437,13 @@
     cursor: pointer; transition: background .12s;
   }
   .task-row:hover { background: var(--hover); }
-  /* align-self:stretch, not a fixed height -- a wrapped (never
-     truncated) title/project line can make the row taller than the
-     28px this bar used to be hardcoded to, leaving visible gaps above
-     and below it (owner feedback, 2026-07-30). Stretching to the row's
-     actual height keeps it a full edge accent at any row height. */
+  /* align-self:stretch, not a fixed height — titles wrap rather than
+     truncate, so row height varies; stretching keeps this a full edge
+     accent at any row height. */
   .prio-bar { width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; }
-  /* Used to cram title + project (max-width: 72px, hard-truncated) + due
-     date onto a single line inside the 320px right column -- badly
-     over-truncated everything ("Refact...", "Conference ...") except on
-     the shortest names (owner-reported, 2026-07-16). A second line for
-     project/date (the standard primary/secondary list-row pattern) gives
-     each its own full-width line instead of splitting one cramped one. */
+  /* Title on one line, project/date on a second (primary/secondary list-row
+     pattern) — cramming all three onto one line inside the 320px right
+     column forces heavy truncation. */
   .task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .task-title { font-size: 13px; font-weight: 500; color: var(--text); overflow-wrap: break-word; }
   .task-proj {
@@ -496,9 +461,9 @@
   @media (max-width: 900px) {
     /* minmax(0, 1fr), not bare 1fr — a bare fr track's implicit minimum
        is auto (= its content's max-content size), so it doesn't actually
-       clamp to the container width. Confirmed at 375px: this track grew
-       to 405px, wider than its own 337px container, clipping the second
-       card column with no way to reach it. */
+       clamp to the container width — at a 375px viewport a bare 1fr track
+       grows past its own container and clips the second card column with
+       no way to reach it. */
     .dash-cols { grid-template-columns: minmax(0, 1fr); }
     .col-tasks { gap: 16px; }
   }

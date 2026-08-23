@@ -1,7 +1,6 @@
 <script lang="ts">
-  // The task-pin star. One shared shape instead of the same polygon
-  // hardcoded in CardDetail/KanbanBoard/ListView — keep all pin stars
-  // visually identical by construction.
+  // The task-pin star. Single shared shape — don't re-hardcode the
+  // polygon in CardDetail/KanbanBoard/ListView, or the stars drift apart.
   export let size = 11;
   export let filled = true;
   export let stroked = false; // CardDetail's toggle button keeps an outline even when unfilled

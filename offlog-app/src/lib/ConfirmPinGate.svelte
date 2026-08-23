@@ -1,10 +1,9 @@
 <script lang="ts">
-  // B61: changing or removing the App Lock PIN used to need nothing but
-  // an unlocked device — anyone holding it could silently disable the
-  // lock. This gate makes both paths behave like a password change
-  // anywhere else: prove you know the *current* PIN first. A separate
-  // component (not inline SettingsPanel state) so the flow is directly
-  // unit-testable without mounting the whole settings panel.
+  // Changing or removing the App Lock PIN must prove knowledge of the
+  // *current* PIN first — otherwise anyone holding an unlocked device
+  // can silently disable the lock. Kept as its own component (rather
+  // than inline SettingsPanel state) so the flow is unit-testable
+  // without mounting the whole settings panel.
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import { verifyAppLockPin } from '../config';
 

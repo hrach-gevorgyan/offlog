@@ -65,12 +65,11 @@ async function reload() {
   rescheduleAll().catch(() => {});
 }
 
-// PouchDB's change feed emits one event *per document*, so a phone that
-// was offline for a week pushing 300 changed docs used to trigger 300
-// full reloads back-to-back -- each one four queries plus a complete
-// reminder reschedule, all on the main thread, exactly when the app is
-// opened in the morning. Coalescing into a single reload per quiet
-// period turns that into one. Kept short (120ms) so a *local* write
+// PouchDB's change feed emits one event *per document*, so a device that was
+// offline for a week pushing 300 changed docs would otherwise trigger 300
+// full reloads back-to-back -- each one four queries plus a complete reminder
+// reschedule, all on the main thread. Coalescing into a single reload per
+// quiet period turns that into one. Kept short (120ms) so a *local* write
 // still feels instant: local mutation paths call reloadTasks() directly
 // anyway, this only backstops the change feed.
 const RELOAD_DEBOUNCE_MS = 120;
@@ -114,16 +113,12 @@ export async function init() {
   checkPermission();
   initNotificationListeners().catch(() => {});
   runHousekeeping();
-  // Housekeeping used to run only here, once per app start -- which was
-  // fine while closing the window quit the app, so "app start" happened
-  // at least daily. The desktop app is tray-resident as of 2026-07-31
-  // (close-to-tray, ROADMAP.md's tray item), so a session can now last
-  // weeks and "next launch" may never come: automatic backups would
-  // silently stop while still *reporting* a real last-backup timestamp,
-  // and neither retention cap would ever be enforced. Re-run on a timer
-  // instead. Each of the three has its own internal "is it due yet"
-  // check, so calling hourly is cheap -- it just means the daily backup
-  // actually happens on a machine that never restarts the app.
+  // Housekeeping must run on a timer, not only once per app start: the
+  // desktop app is tray-resident, so a session can last weeks and "next
+  // launch" may never come -- automatic backups would silently stop while
+  // still *reporting* a real last-backup timestamp, and neither retention cap
+  // would ever be enforced. Each of the three has its own internal "is it due
+  // yet" check, so calling hourly is cheap.
   setInterval(runHousekeeping, HOUSEKEEPING_INTERVAL_MS);
 }
 

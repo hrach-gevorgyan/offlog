@@ -36,11 +36,9 @@
     return [...groups.entries()];
   }
 
-  // A30 — opening via mouse click left DOM focus on the trigger button,
-  // so arrow keys did nothing until the panel was separately tabbed/
-  // clicked into (onPanelKey is wired to panelEl's keydown, not the
-  // trigger's). Moving focus into the panel on every open fixes both the
-  // mouse-click and keyboard-open paths the same way.
+  // Focus must move into the panel on every open: onPanelKey is wired to
+  // panelEl's keydown, not the trigger's, so leaving focus on the trigger
+  // (as a mouse click does) makes the arrow keys dead.
   async function openPanel() {
     if (disabled) return;
     open = true;
@@ -140,10 +138,9 @@
     position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20;
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     box-shadow: 0 12px 32px rgba(0,0,0,.22); overflow-y: auto;
-    /* Exactly 7 options visible before scrolling (owner feedback,
-       2026-07-30) -- .cs-option is ~30px tall (padding .4rem top/bottom +
-       .85rem text) with a 1px gap between each, plus this panel's own
-       .3rem padding: 7*30 + 6*1 + 2*4.8 ≈ 225.6px. */
+    /* Exactly 7 options visible before scrolling: .cs-option is ~30px
+       tall (.4rem padding top/bottom + .85rem text), 1px gap between
+       each, plus this panel's own .3rem padding — 7*30 + 6*1 + 2*4.8. */
     max-height: 225.6px;
     padding: .3rem; display: flex; flex-direction: column; gap: 1px;
   }
