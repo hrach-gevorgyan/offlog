@@ -114,9 +114,9 @@ rewritten, and the backup bug caught twelve hours before it mattered.
 
 ## Features
 
-Built up from months of real daily use — some features came from the
-original plan, plenty came from just noticing something was missing
-while using the app for real. Full detail on all of it:
+Built over July 2026 — some features came from the original plan,
+plenty came from noticing something was missing while testing the app
+against real work. Full detail on all of it:
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent releases) and
 [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)
 (everything older, one line per release).
@@ -124,12 +124,15 @@ while using the app for real. Full detail on all of it:
 **Core task management**
 - Spaces & Projects — organize work into colored spaces, each holding
   multiple projects, each with its own set of statuses
-- Kanban, List, Table, and Agenda (deadline-focused) views per project,
-  with saved filters, column selection/reordering, and multi-column sort
-  in List/Table
-- Focus view — a daily-commitment lock: pick up to 3 tasks for the day
-  from a round-robin-ranked picker, instead of an auto-computed priority
-  list nobody trusts
+- Two views per project — Kanban and a table-shaped List — with saved
+  filters, column selection/reordering, and multi-column sort in List
+- Agenda — a deadline-focused view across every project, as a grouped
+  list (overdue / today / this week / later) or a month calendar you can
+  tap into
+- Focus view — a daily-commitment lock: pick up to 3 tasks for the day,
+  ranked pinned → overdue → due-soon → priority, instead of an
+  auto-computed list nobody trusts. Tasks still blocked by an unfinished
+  dependency don't appear at all
 - Checklists with a progress badge, tags with project-local
   autocomplete and an optional per-tag color, custom fields (global, not
   per-project)
@@ -137,6 +140,11 @@ while using the app for real. Full detail on all of it:
   due date, reminder time (independent of due date), status, checklist,
   custom fields, related-task links, file attachments, and a per-card
   changelog of every change made to it
+- Task dependencies — mark a task "blocked by" another and it stays out
+  of Focus until the blocker is done, with a lock badge on its card
+  meanwhile. Circular dependencies are refused rather than silently
+  creating a pair of tasks that can never start. Separate from the
+  looser "related" links, which imply no ordering
 - File attachments — photos, PDFs, spreadsheets, or any other file
   (except HEIC/HEIF, not supported yet), up to 10MB each and 10 per
   task. Images are downscaled and re-encoded on-device before saving,
@@ -151,8 +159,10 @@ while using the app for real. Full detail on all of it:
 - Dashboard — every project at a glance, pinned tasks, overdue tasks,
   a weekly "N completed this past week" summary
 - Quick Add (Ctrl+N) and Global Search (Ctrl+K) from anywhere — search
-  covers task titles, notes, and checklist text, not just titles — plus
-  a command palette that matches actions, not just tasks
+  covers task titles, notes, tags, checklist text, and attachment
+  filenames, and tells you *where* it matched when the title alone
+  doesn't show it — plus a command palette that matches actions, not
+  just tasks
 - Undo & Recycle — soft-delete everywhere with undo, a full Recycle view
   with restore/delete-forever, and a configurable retention policy
 
@@ -232,6 +242,14 @@ on Windows.)
 **Windows desktop app — the intended "app for humans"**
 - Native app via Tauri, wrapping the same web build unmodified, with an
   embedded NyxDB sync host (see Sync above)
+- **Lives in the system tray.** Closing the window tucks it away instead
+  of quitting, so reminders keep firing and your phone keeps syncing.
+  The tray menu has Show, Quick Add, Settings, a "Start on login"
+  toggle, and the only real Quit
+- **`Ctrl+Alt+O` from anywhere** — even when Offlog isn't the app you're
+  looking at — brings it straight to the front on Dashboard. If another
+  app already owns that shortcut, Offlog logs it and carries on rather
+  than refusing to start
 - Native Windows notifications with click-to-open and working scheduled
   reminders (not just a browser notification fallback)
 - Native "Save As" dialogs for backup/export instead of a silent no-op
@@ -243,13 +261,18 @@ light — dead code removed, unused dependencies dropped, and the
 Windows app's embedded sync host switched to a self-authored,
 purpose-built server (NyxDB) instead of a general-purpose database
 engine, cutting the installer roughly 10x. Bundle-size checks are part
-of the release routine. This isn't accidental; a maintenance pass runs
-every few releases specifically to catch bloat and regressions before
-they ship (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
+of the release routine. This isn't accidental — 21 structured
+maintenance passes ran during the build specifically to catch bloat and
+regressions before they shipped (see
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
 
 **Data, backup, and integrity**
 - Full Back up (with a scope selector) / Restore flow, JSON and CSV
-  export
+  export. Backups include your attachments, custom-field definitions and
+  tag colours — a restore brings the workspace back, not just the task
+  text
+- Automatic local backups on a rolling schedule, kept to the last 7, so
+  there's a recent copy even if you never think about it
 - A Check Database / Repair Issues tool that finds and fixes orphaned
   tasks/projects, invalid status references, and unresolved sync
   conflicts
@@ -283,9 +306,14 @@ own Releases page, not a mirror.
 
 **Windows** is the intended app for day-to-day use — bundles its own
 sync server, nothing else to install, and checks for updates
-automatically (signed installer, in-app changelog, explicit restart
-prompt). **Android** works the same way via side-loaded APK today, Play
-Store (with its own auto-update) once published. The **web build**
+automatically, with an in-app changelog and an explicit restart prompt
+(it never restarts itself behind your back). Update downloads are
+verified against a cryptographic signature before they're installed, so
+a tampered or corrupt download is rejected — that's a different thing
+from the Windows code-signing certificate mentioned above, which is
+what would stop SmartScreen warning you in the first place and is still
+outstanding. **Android** works the same way via side-loaded APK today,
+Play Store (with its own auto-update) once published. The **web build**
 (`npm run dev`) is a dev/test surface, not the primary way to use the
 app.
 
@@ -352,10 +380,14 @@ Everything beyond this pitch lives in [docs/](docs/):
 
 | Document | What's in it |
 |---|---|
+| [docs/STORY.md](docs/STORY.md) | How it actually got built, written on the last day of development — the plan, the rewrite, the near-misses |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Manifesto, open questions worth outside input, and why non-obvious choices were made |
 | [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens, release/signing pipeline |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Current status and still-open planned work |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Recent version history in full detail |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Recent version history in full detail (maintainer-level) |
+| [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) | The same releases in plain language — what actually changed for you |
+| [docs/MAINTENANCE.md](docs/MAINTENANCE.md) | The maintenance-pass checklist, including the blind spots earned by real shipped bugs |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | Privacy policy (short, because the app collects nothing) |
 | [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md) | Older releases, one line each, plus the full maintenance-pass log |
 | [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
 | [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
