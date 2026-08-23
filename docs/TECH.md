@@ -86,7 +86,14 @@ src/
   main.ts                 Svelte mount entry point
 
   lib/
-    db.ts                 All PouchDB operations + sync + changelog
+    db.ts                 Barrel — re-exports db/*; import everything from here
+    db/
+      core.ts             PouchDB instance, indexes, task cache, logChange, subscribe
+      entities.ts         CRUD: spaces, projects, tasks, blocked-by, attachments, undo, trash
+      sync.ts             Live replication + conflict resolution
+      tags.ts             Tag colors and tag rename/delete
+      stats.ts            Dashboard + storage-breakdown aggregate reads
+      maintenance.ts      Retention pruning, integrity check/repair, import/export
     store.ts              Svelte stores — the only reactive state layer
     types.ts              TypeScript interfaces: SpaceDoc, ProjectDoc, TaskDoc, Column
     constants.ts          Priority colors, priority labels, default column definitions

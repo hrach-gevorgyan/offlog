@@ -205,6 +205,17 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
 
 ## Database invariants (db.ts)
 
+`db.ts` is a barrel over `src/lib/db/` — `core.ts` (instance, indexes,
+task cache, `logChange`, `subscribe`), `entities.ts` (spaces, projects,
+tasks, blocked-by, attachments, undo, trash), `sync.ts`, `tags.ts`,
+`stats.ts`, `maintenance.ts`. **Always import from `./db`, never from a
+`db/` module directly** — the barrel is the public surface. Dependencies
+run one way: `core` ← `entities` ← {`sync`, `tags`, `stats`,
+`maintenance`}; never add an import that points back up. Projects and
+tasks stay in one module on purpose: the positional-"done" rule below
+makes `updateTask` need a project's columns while `deleteProject`
+cascades into tasks, so separating them would be a cycle.
+
 - **PouchDB is a UMD global** loaded via `index.html` (`public/pouchdb.js`),
   core-only. Plugins (e.g. `pouchdb-find`) must be registered explicitly with
   `PouchDB.plugin(...)` — importing them is not enough.
