@@ -203,6 +203,15 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
   `changelogSession`/`trashSession`/`settingsSession` or
   `KanbanBoard.svelte`'s `detailOpenSession` for the pattern.
 
+**Splitting a component's markup into children**: move the parent's CLASS
+rules for that markup to `:global()` under a parent-owned wrapper, but keep
+bare ELEMENT rules (`button`, `label`, `textarea`) scoped and copy them into
+each child instead. A `:global(button)` also matches any nested component's
+internal buttons (CustomSelect, CalendarPicker), silently restyling them —
+the scoped original never did. Verify a split by fingerprinting computed
+styles of every rendered element before and after; element counts matching
+is not enough.
+
 ## Database invariants (db.ts)
 
 `db.ts` is a barrel over `src/lib/db/` — `core.ts` (instance, indexes,

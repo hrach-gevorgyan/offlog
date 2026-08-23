@@ -120,7 +120,24 @@ src/
     ListView.svelte             List/Table view with search, filter, sort, archive
     FilterBar.svelte            Shared Kanban/List search+filter row
     AgendaView.svelte           Agenda: flat list (Overdue/Today/This Week/Later) + month-grid view
-    CardDetail.svelte           Full task editor modal with history
+    CardDetail.svelte           Task editor modal shell - all card state, save(), history.
+                                 Owns the card's CLASS rules: those targeting Extras
+                                 markup are `.extras-panel :global(...)`, since that
+                                 markup lives in children and scoping would drop them.
+                                 Bare ELEMENT rules (button/label/textarea) must NOT be
+                                 globalised - a `:global(button)` also matches nested
+                                 components' internals (CustomSelect, CalendarPicker),
+                                 restyling them. Each child carries those few rules in
+                                 its own scoped <style> instead.
+    carddetail/
+      RepeatReminderBlock.svelte  Repeat & reminder Extras block
+      ChecklistBlock.svelte       Checklist Extras block
+      CustomFieldsBlock.svelte    Custom fields Extras block
+      RelatedBlock.svelte         Related-tasks Extras block
+      BlockedByBlock.svelte       Blocked-by Extras block
+      AttachmentsBlock.svelte     Attachments Extras block
+      NotesBlock.svelte           Notes (markdown) Extras block
+      helpers.ts                  Pure helpers (date/summary/image-encoding)
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
     QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector); live-parses
                                  the title via nlpParse.ts for dates/times/#tags/!priority/
@@ -200,7 +217,7 @@ All documents live in one PouchDB database named `offlog`. The `_id` prefix acts
   mime map in `attachments.ts` (shared by `db.ts` and `CardDetail.svelte`,
   falls back to `application/octet-stream`). Images are downscaled to
   ~1600px longest side and re-encoded to JPEG client-side
-  (`CardDetail.svelte`'s `downscaleImage()`) before reaching
+  (`carddetail/helpers.ts`'s `downscaleImage()`) before reaching
   `addAttachment()` — the one format where client-side compression
   actually helps.
 - **Task linking** (`related?: string[]`): non-directional
@@ -510,7 +527,7 @@ The last active view is saved to `localStorage` key `offlog_view` as `{ view: 'd
 
 ### Reminder field
 
-`TaskDoc.reminder_at: string | null` — an absolute ISO timestamp, independent of `due_date`. Set via a `datetime-local` input in `CardDetail.svelte`; converted to/from local time explicitly (not `toISOString().slice(0,16)`, which would silently shift the displayed time to UTC) via a small `isoToLocalInput()` helper.
+`TaskDoc.reminder_at: string | null` — an absolute ISO timestamp, independent of `due_date`. Set via a `datetime-local` input in `CardDetail.svelte`; converted to/from local time explicitly (not `toISOString().slice(0,16)`, which would silently shift the displayed time to UTC) via a small `isoToLocalInput()` helper in `carddetail/helpers.ts`.
 
 ### Scheduling model: cancel-all-then-reschedule-from-scratch
 

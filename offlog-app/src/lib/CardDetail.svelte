@@ -4,18 +4,24 @@
   import { popScale } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
-  import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, formatAttachmentSize } from './attachments';
+  import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension } from './attachments';
   import { reloadTasks, showError, modalOpen, projects } from './store';
-  import { requestPermission, permissionState } from './notifications';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import PinStar from './PinStar.svelte';
   import CalendarPicker from './CalendarPicker.svelte';
   import CustomSelect from './CustomSelect.svelte';
-  import { getDefaultReminderTime } from '../config';
-  import { fmtTime, findDuplicateChecklistItems } from './utils';
+  import { findDuplicateChecklistItems } from './utils';
   import { hapticToggle } from './haptics';
+  import RepeatReminderBlock from './carddetail/RepeatReminderBlock.svelte';
+  import ChecklistBlock from './carddetail/ChecklistBlock.svelte';
+  import CustomFieldsBlock from './carddetail/CustomFieldsBlock.svelte';
+  import RelatedBlock from './carddetail/RelatedBlock.svelte';
+  import BlockedByBlock from './carddetail/BlockedByBlock.svelte';
+  import AttachmentsBlock from './carddetail/AttachmentsBlock.svelte';
+  import NotesBlock from './carddetail/NotesBlock.svelte';
+  import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, downscaleImage } from './carddetail/helpers';
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -27,23 +33,6 @@
     if (e.key === 'Escape') requestClose();
   }
 
-  function isoToLocalInput(iso: string): string {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  // One-tap relative shortcuts; the exact-date picker covers everything
-  // else. Local calendar dates (not UTC) so "Today" can't roll over to
-  // yesterday west of UTC, matching how <input type="date"> works.
-  function dateFromToday(days: number, months = 0): string {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    if (months) d.setMonth(d.getMonth() + months);
-    d.setDate(d.getDate() + days);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }
   const DUE_SHORTCUTS: { label: string; days: number; months?: number }[] = [
     { label: 'Today', days: 0 },
     { label: 'Tomorrow', days: 1 },
@@ -100,14 +89,6 @@
   let reminder_at = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
   let remindOnDue = task.remindOnDue ?? false;
 
-  // Derives reminder_at from due_date + the configured default time
-  // whenever the toggle is on and due_date changes — recomputed live, not
-  // just once on enable, so editing the due date afterward keeps the
-  // reminder in sync without needing to re-toggle.
-  function dueDateToReminderInput(date: string): string {
-    const [h, m] = getDefaultReminderTime().split(':');
-    return `${date}T${h}:${m}`;
-  }
   $: if (remindOnDue && due_date) reminder_at = dueDateToReminderInput(due_date);
   // Recurrence needs a due_date to advance from — see db.ts's
   // spawnNextRecurrence() comment. Clearing the due date while a repeat
@@ -214,27 +195,6 @@
   let showAllFields = false;
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
 
-  const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
-  // Collapsed-state summary for the outer "Extras" toggle. Every value
-  // read must be passed in as an argument (not read from closure) so
-  // Svelte's static dependency analysis on the `$:` call re-runs this
-  // when any of them changes.
-  function formatExtrasSummary(
-    reminder: string, repeat: string | null, interval: number, weekdaysOnly: boolean,
-    cl: typeof checklist, related: TaskDoc[], blocking: TaskDoc[], unresolvedCount: number, atts: TaskAttachment[], notes: string,
-  ): string {
-    const parts: string[] = [];
-    if (repeat === 'daily' && weekdaysOnly) parts.push('Repeats weekdays');
-    else if (repeat && interval > 1) parts.push(`Repeats every ${interval} ${repeat === 'daily' ? 'days' : repeat === 'weekly' ? 'weeks' : 'months'}`);
-    else if (repeat) parts.push(RECURRENCE_LABEL[repeat]);
-    if (reminder) parts.push(`${fmtTime(new Date(reminder))} reminder`);
-    if (cl.length) parts.push(`${cl.filter(i => i.done).length}/${cl.length} checklist`);
-    if (related.length) parts.push(`${related.length} related`);
-    if (blocking.length) parts.push(unresolvedCount ? `blocked by ${unresolvedCount}` : `${blocking.length} blocked by (done)`);
-    if (atts.length) parts.push(`${atts.length} attachment${atts.length > 1 ? 's' : ''}`);
-    if (notes.trim()) parts.push('notes');
-    return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, attachments, notes';
-  }
   $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, blockingTasks, unresolvedBlockers.length, attachments, body);
 
   // Delete/Archive/Duplicate/history all live in one "⋯" menu — same
@@ -407,40 +367,6 @@
   let attachmentBusy = false;
   let attachmentError = '';
   let thumbnailUrls: Record<string, string> = {};
-  let attachFileInputEl: HTMLInputElement;
-
-  const MAX_IMAGE_DIMENSION = 1600;
-  const IMAGE_JPEG_QUALITY = 0.8;
-
-  // Re-encodes to JPEG regardless of the source image format (jpg/png/webp)
-  // -- one predictable output format instead of format-specific quality/
-  // compression tuning for each, and JPEG is universally previewable.
-  // Downscaling first, not just re-compressing at full resolution, is what
-  // actually shrinks a modern phone photo (4000px+) meaningfully.
-  async function downscaleImage(file: File): Promise<{ filename: string; base64Data: string; size: number }> {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
-    const w = Math.round(bitmap.width * scale);
-    const h = Math.round(bitmap.height * scale);
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(bitmap, 0, 0, w, h);
-    bitmap.close();
-    const blob: Blob = await new Promise((resolve, reject) => {
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', IMAGE_JPEG_QUALITY);
-    });
-    return { filename: file.name.replace(/\.[^.]+$/, '') + '.jpg', base64Data: await blobToBase64(blob), size: blob.size };
-  }
-
-  function blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-  }
 
   async function attachOneFile(file: File) {
     if (attachments.length >= ATTACHMENT_MAX_PER_TASK) {
@@ -682,266 +608,45 @@
       {#if showExtras}
         <div class="extras-panel" transition:slide={{ duration: 160 }}>
 
-          <div class="extra-block">
-            <button type="button" class="extra-block-toggle" on:click={() => showRepeatReminder = !showRepeatReminder} aria-expanded={showRepeatReminder}>
-              <span class="field-label">Repeat &amp; reminder</span>
-              <svg class="section-chevron" class:open={showRepeatReminder} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-            </button>
-            {#if showRepeatReminder}
-              <div class="extra-block-body" transition:slide={{ duration: 160 }}>
-                <div class="repeat-block">
-                  <div class="repeat-row">
-                    <div class="repeat-select-wrap" class:compact={!!recurrenceStr}>
-                      <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
-                    </div>
-                    {#if recurrenceStr}
-                      <span class="repeat-every-text" aria-hidden="true">×</span>
-                      <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat every N {recurrenceStr === 'daily' ? 'days' : recurrenceStr === 'weekly' ? 'weeks' : 'months'}" />
-                      {#if recurrenceStr === 'daily'}
-                        <button type="button" class="repeat-pill" class:active={recurrenceWeekdaysOnly} on:click={() => recurrenceWeekdaysOnly = !recurrenceWeekdaysOnly}>
-                          Weekdays
-                        </button>
-                      {/if}
-                      {#if task.recurrence}
-                        <button type="button" class="repeat-pill repeat-pill-accent" on:click={skipToNext}>
-                          Skip
-                        </button>
-                      {/if}
-                    {/if}
-                  </div>
-                  {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
-                </div>
+          <RepeatReminderBlock
+            {task} bind:showRepeatReminder {recurrenceOptions} bind:recurrenceStr
+            bind:recurrenceIntervalStr bind:recurrenceWeekdaysOnly {due_date}
+            bind:reminder_at bind:remindOnDue {skipToNext}
+          />
 
-                <div class="reminder-field">
-                  <label>
-                    Reminder
-                    <div class="reminder-row">
-                      <CalendarPicker value={reminder_at} withTime on:change={(e) => reminder_at = e.detail} disabled={remindOnDue} />
-                      <label class="remind-on-due-row">
-                        <input type="checkbox" bind:checked={remindOnDue} disabled={!due_date} />
-                        Remind me on the due date{#if due_date}&nbsp;at {fmtTime(new Date(`1970-01-01T${getDefaultReminderTime()}`))}{/if}
-                      </label>
-                    </div>
-                  </label>
-                  {#if reminder_at && $permissionState !== 'granted'}
-                    <div class="reminder-hint">
-                      {#if $permissionState === 'unsupported'}
-                        Notifications aren't supported in this browser.
-                      {:else}
-                        Notifications aren't enabled yet —
-                        <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>
-                        so this reminder can actually notify you.
-                      {/if}
-                    </div>
-                  {/if}
-                </div>
-              </div>
-            {/if}
-          </div>
-
-          <div class="extra-block">
-            <button type="button" class="extra-block-toggle" on:click={() => showChecklistBlock = !showChecklistBlock} aria-expanded={showChecklistBlock}>
-              <span class="field-label">
-                Checklist{#if checklist.length} <span class="checklist-progress">{checklist.filter(i => i.done).length}/{checklist.length}</span>{/if}
-              </span>
-              <svg class="section-chevron" class:open={showChecklistBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-            </button>
-            {#if showChecklistBlock}
-              <div class="extra-block-body checklist-field" transition:slide={{ duration: 160 }}>
-                {#each checklist as item, i}
-                  <div class="checklist-row">
-                    <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>
-                      {#if item.done}✓{/if}
-                    </button>
-                    <span class="checklist-text" class:done={item.done}>{item.text}</span>
-                    <button type="button" class="checklist-remove" on:click={() => removeChecklistItem(i)} aria-label="Remove item">×</button>
-                  </div>
-                {/each}
-                <input
-                  class="checklist-input"
-                  bind:value={checklistInput}
-                  placeholder="Add item…"
-                  enterkeyhint="done"
-                  on:keydown={onChecklistKey}
-                  on:blur={() => setTimeout(addChecklistItem, 150)}
-                />
-                {#if duplicateChecklistItems.length}
-                  <p class="dup-name-hint">Repeated item{duplicateChecklistItems.length > 1 ? 's' : ''}: {duplicateChecklistItems.join(', ')}</p>
-                {/if}
-              </div>
-            {/if}
-          </div>
+          <ChecklistBlock
+            bind:showChecklistBlock {checklist} bind:checklistInput {duplicateChecklistItems}
+            {toggleChecklistItem} {removeChecklistItem} {addChecklistItem} {onChecklistKey}
+          />
 
           {#if customFields.length > 0}
-            <div class="extra-block">
-              <button type="button" class="extra-block-toggle" on:click={() => showCustomFieldsBlock = !showCustomFieldsBlock} aria-expanded={showCustomFieldsBlock}>
-                <span class="field-label">Custom fields</span>
-                <svg class="section-chevron" class:open={showCustomFieldsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-              </button>
-              {#if showCustomFieldsBlock}
-                <div class="extra-block-body custom-fields" transition:slide={{ duration: 160 }}>
-                  {#each visibleFields as field (field.id)}
-                    <label class="custom-field-label">
-                      {field.name}
-                      {#if field.type === 'select'}
-                        <CustomSelect
-                          options={[{ value: '', label: '—' }, ...(field.options ?? []).map(o => ({ value: o, label: o }))]}
-                          value={(customValues[field.id] as string) ?? ''}
-                          on:change={(e) => customValues[field.id] = e.detail || null}
-                        />
-                      {:else if field.type === 'date'}
-                        <CalendarPicker value={(customValues[field.id] as string) ?? ''} on:change={(e) => customValues[field.id] = e.detail || null} />
-                      {:else}
-                        <input
-                          type={field.type === 'number' ? 'number' : 'text'}
-                          bind:value={customValues[field.id]}
-                        />
-                      {/if}
-                    </label>
-                  {/each}
-                  {#if customFields.length > VISIBLE_FIELD_CAP}
-                    <button type="button" class="add-field-btn" on:click={() => showAllFields = !showAllFields}>
-                      {showAllFields ? 'Show fewer fields' : `Show ${customFields.length - VISIBLE_FIELD_CAP} more field${customFields.length - VISIBLE_FIELD_CAP > 1 ? 's' : ''}`}
-                    </button>
-                  {/if}
-                </div>
-              {/if}
-            </div>
+            <CustomFieldsBlock
+              bind:showCustomFieldsBlock {customFields} {visibleFields}
+              bind:customValues bind:showAllFields {VISIBLE_FIELD_CAP}
+            />
           {/if}
 
-          <div class="extra-block">
-            <button type="button" class="extra-block-toggle" on:click={() => showRelatedBlock = !showRelatedBlock} aria-expanded={showRelatedBlock}>
-              <span class="field-label">
-                Related{#if relatedTasks.length} <span class="checklist-progress">{relatedTasks.length}</span>{/if}
-              </span>
-              <svg class="section-chevron" class:open={showRelatedBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-            </button>
-            {#if showRelatedBlock}
-              <div class="extra-block-body related-field" transition:slide={{ duration: 160 }}>
-                {#each relatedTasks as rt (rt._id)}
-                  <div class="related-row" class:related-deleted={rt.deleted}>
-                    {#if rt.deleted}
-                      <span class="related-title">{rt.title} (deleted)</span>
-                    {:else}
-                      <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
-                    {/if}
-                    <span class="related-proj">{projectNameFor(rt)}</span>
-                    <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
-                  </div>
-                {/each}
-                <input
-                  class="checklist-input"
-                  bind:value={relatedInput}
-                  placeholder="Link another task…"
-                  disabled={relatedBusy}
-                />
-                {#if relatedSuggestions.length}
-                  <div class="tag-suggestions">
-                    {#each relatedSuggestions as s (s._id)}
-                      <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addRelated(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            {/if}
-          </div>
+          <RelatedBlock
+            bind:showRelatedBlock {relatedTasks} bind:relatedInput {relatedSuggestions}
+            {relatedBusy} {projectNameFor} {addRelated} {removeRelated}
+            on:openRelated={(e) => dispatch('openRelated', e.detail)}
+          />
 
-          <div class="extra-block">
-            <button type="button" class="extra-block-toggle" on:click={() => showBlockedByBlock = !showBlockedByBlock} aria-expanded={showBlockedByBlock}>
-              <span class="field-label">
-                Blocked by{#if blockingTasks.length} <span class="checklist-progress" class:blocked-badge-active={unresolvedBlockers.length}>{blockingTasks.length}</span>{/if}
-              </span>
-              <svg class="section-chevron" class:open={showBlockedByBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-            </button>
-            {#if showBlockedByBlock}
-              <div class="extra-block-body related-field" transition:slide={{ duration: 160 }}>
-                {#each blockingTasks as bt (bt._id)}
-                  {@const resolved = isBlockerResolved(bt, lastColByProject)}
-                  <div class="related-row" class:related-deleted={bt.deleted}>
-                    {#if bt.deleted}
-                      <span class="related-title">{bt.title} (deleted)</span>
-                    {:else}
-                      <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', bt._id!)}>{bt.title}</button>
-                    {/if}
-                    <span class="blocked-status" class:blocked-status-done={resolved}>{resolved ? 'Done' : 'Not done'}</span>
-                    <span class="related-proj">{projectNameFor(bt)}</span>
-                    <button type="button" class="checklist-remove" on:click={() => removeBlockedBy(bt._id!)} disabled={blockedByBusy} aria-label="Remove dependency">×</button>
-                  </div>
-                {/each}
-                <input
-                  class="checklist-input"
-                  bind:value={blockedByInput}
-                  placeholder="This task can't start until…"
-                  disabled={blockedByBusy}
-                />
-                {#if blockedBySuggestions.length}
-                  <div class="tag-suggestions">
-                    {#each blockedBySuggestions as s (s._id)}
-                      <button type="button" class="tag-suggestion" on:mousedown|preventDefault={() => addBlockedBy(s._id!)}>{s.title} <span class="related-proj">{projectNameFor(s)}</span></button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            {/if}
-          </div>
+          <BlockedByBlock
+            bind:showBlockedByBlock {blockingTasks} {unresolvedBlockers} {lastColByProject}
+            bind:blockedByInput {blockedBySuggestions} {blockedByBusy} {projectNameFor}
+            {addBlockedBy} {removeBlockedBy}
+            on:openRelated={(e) => dispatch('openRelated', e.detail)}
+          />
 
-          <div class="extra-block">
-            <button type="button" class="extra-block-toggle" on:click={() => showAttachmentsBlock = !showAttachmentsBlock} aria-expanded={showAttachmentsBlock}>
-              <span class="field-label">
-                Attachments{#if attachments.length} <span class="checklist-progress">{attachments.length}</span>{/if}
-              </span>
-              <svg class="section-chevron" class:open={showAttachmentsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-            </button>
-            {#if showAttachmentsBlock}
-              <div class="extra-block-body attachments-field" transition:slide={{ duration: 160 }}>
-                {#each attachments as a (a.key)}
-                  <div class="attachment-row">
-                    <button type="button" class="attachment-open" on:click={() => openAttachment(a.key, a.filename)} title="Download {a.filename}">
-                      {#if thumbnailUrls[a.key]}
-                        <img class="attachment-thumb" src={thumbnailUrls[a.key]} alt="" />
-                      {:else}
-                        <span class="attachment-file-icon" aria-hidden="true">
-                          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.5h6l4 4v9a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5z"/><path d="M9 1.5v4h4"/></svg>
-                        </span>
-                      {/if}
-                      <span class="attachment-name">{a.filename}</span>
-                      <span class="attachment-size">{formatAttachmentSize(a.size)}</span>
-                    </button>
-                    <button type="button" class="checklist-remove" on:click={() => removeAttachment(a.key)} disabled={attachmentBusy} aria-label="Remove attachment {a.filename}">×</button>
-                  </div>
-                {/each}
-                <button type="button" class="attach-file-btn" disabled={attachmentBusy || attachments.length >= ATTACHMENT_MAX_PER_TASK} on:click={() => attachFileInputEl.click()}>
-                  {attachmentBusy ? 'Attaching…' : attachments.length >= ATTACHMENT_MAX_PER_TASK ? `Max ${ATTACHMENT_MAX_PER_TASK} attachments reached` : '+ Attach a file'}
-                </button>
-                <!-- No `accept` restriction -- any file type is attachable except
-                     HEIC/HEIF (rejected in attachOneFile() with a clear message);
-                     `accept` can't express a negation, so this intentionally lets
-                     the OS picker show everything and relies on the JS check. -->
-                <input
-                  bind:this={attachFileInputEl}
-                  type="file" multiple style="display:none"
-                  on:change={onFilesPicked}
-                />
-                {#if attachmentError}<p class="dup-name-hint">{attachmentError}</p>{/if}
-              </div>
-            {/if}
-          </div>
+          <AttachmentsBlock
+            bind:showAttachmentsBlock {attachments} {thumbnailUrls} {attachmentBusy}
+            {attachmentError} {openAttachment} {removeAttachment} {onFilesPicked}
+          />
 
-          <div class="extra-block">
-            <button type="button" class="extra-block-toggle" on:click={() => showNotesBlock = !showNotesBlock} aria-expanded={showNotesBlock}>
-              <span class="field-label">Notes (markdown)</span>
-              <svg class="section-chevron" class:open={showNotesBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
-            </button>
-            {#if showNotesBlock}
-              <div class="extra-block-body notes-wrap" transition:slide={{ duration: 160 }}>
-                <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
-                {#if body.length > NOTES_SOFT_LIMIT}
-                  <div class="notes-counter">{body.length} characters</div>
-                {/if}
-                {#if similarNotesHint}<p class="dup-name-hint">{similarNotesHint}</p>{/if}
-              </div>
-            {/if}
-          </div>
+          <NotesBlock
+            bind:showNotesBlock bind:body {similarNotesHint} {NOTES_SOFT_LIMIT}
+          />
 
         </div>
       {/if}
@@ -1044,16 +749,16 @@
   }
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-  .reminder-field { display: flex; flex-direction: column; gap: .35rem; }
+  .extras-panel :global(.reminder-field) { display: flex; flex-direction: column; gap: .35rem; }
   /* flex-wrap:wrap, not nowrap + horizontal scroll: a scrollbar on a
      compact modal control row reads worse on mobile than
      .remind-on-due-row dropping to a full line below the date picker. */
-  .reminder-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .extras-panel :global(.reminder-row) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   /* The picker takes flex:1 so leftover row width goes to it; the
      checkbox sizes to its content instead (flex:0 0 auto, on
      .remind-on-due-row below). Giving the checkbox flex:1 stretches it
      past its own nowrap text and leaves visible dead space. */
-  .reminder-row :global(.cal-field) { flex: 1; min-width: 150px; }
+  .extras-panel :global(.reminder-row .cal-field) { flex: 1; min-width: 150px; }
   .section-divider { height: 1px; background: var(--border); margin: .05rem 0; }
   label {
     display: flex; flex-direction: column; gap: .22rem;
@@ -1088,13 +793,13 @@
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
   .due-shortcut.active { background: var(--accent); color: var(--on-accent); }
 
-  .reminder-hint {
+  .extras-panel :global(.reminder-hint) {
     font-size: .72rem; color: var(--faint); line-height: 1.35;
     background: var(--col-bg); border-radius: var(--radius-sm);
     padding: .4rem .55rem;
   }
 
-  .repeat-hint {
+  .extras-panel :global(.repeat-hint) {
     font-size: .72rem; color: var(--faint); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
     margin-top: .2rem; display: block;
@@ -1105,8 +810,8 @@
      itself from its own padding/font-size renders them at three
      different heights. .repeat-block's bottom margin keeps this section
      from running straight into Reminder below it. */
-  .repeat-block { --repeat-ctrl-h: 30px; margin-bottom: .5rem; }
-  .repeat-row {
+  .extras-panel :global(.repeat-block) { --repeat-ctrl-h: 30px; margin-bottom: .5rem; }
+  .extras-panel :global(.repeat-row) {
     display: flex; align-items: center; flex-wrap: wrap; gap: .25rem;
     font-size: .8rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
@@ -1117,9 +822,9 @@
      option words (Day/Week/Month) -- the default "Not repeating"
      truncates to "Not rep…" there, so .compact must apply only once a
      real option is chosen and the row needs the room back. */
-  .repeat-select-wrap { width: 150px; flex-shrink: 0; height: var(--repeat-ctrl-h); }
-  .repeat-select-wrap.compact { width: 86px; }
-  .repeat-select-wrap :global(.cs-trigger) {
+  .extras-panel :global(.repeat-select-wrap) { width: 150px; flex-shrink: 0; height: var(--repeat-ctrl-h); }
+  .extras-panel :global(.repeat-select-wrap.compact) { width: 86px; }
+  .extras-panel :global(.repeat-select-wrap .cs-trigger) {
     height: var(--repeat-ctrl-h); box-sizing: border-box; padding: 0 6px; font-size: .8rem;
   }
   /* CustomSelect's .cs-panel is `left:0;right:0`, i.e. the full width of
@@ -1127,17 +832,17 @@
      repeating" inside the option list. Widening just the panel (not the
      always-visible trigger) keeps the row compact and the dropdown
      readable. */
-  .repeat-select-wrap :global(.cs-panel) { width: 150px; right: auto; }
-  .repeat-every-text { flex-shrink: 0; }
-  .repeat-interval-input {
+  .extras-panel :global(.repeat-select-wrap .cs-panel) { width: 150px; right: auto; }
+  .extras-panel :global(.repeat-every-text) { flex-shrink: 0; }
+  .extras-panel :global(.repeat-interval-input) {
     width: 30px; height: var(--repeat-ctrl-h); box-sizing: border-box;
     text-align: center; flex-shrink: 0;
     border: 1px solid var(--border-strong); border-radius: 6px;
     padding: 0 .15rem; font-size: .8rem; color: var(--text);
     background: var(--bg); font-family: inherit;
   }
-  .repeat-interval-input:focus { border-color: var(--accent); outline: none; }
-  .repeat-pill {
+  .extras-panel :global(.repeat-interval-input:focus) { border-color: var(--accent); outline: none; }
+  .extras-panel :global(.repeat-pill) {
     flex-shrink: 0; height: var(--repeat-ctrl-h); box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
     background: var(--surface); color: var(--muted);
@@ -1146,13 +851,13 @@
     white-space: nowrap;
     transition: background .12s, color .12s, border-color .12s;
   }
-  .repeat-pill:hover { border-color: var(--accent); color: var(--text); }
-  .repeat-pill.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .extras-panel :global(.repeat-pill:hover) { border-color: var(--accent); color: var(--text); }
+  .extras-panel :global(.repeat-pill.active) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   /* Skip is an action, not a state toggle like Weekdays-only -- accent
      outline, not accent fill, so it doesn't read as "currently on" the
      way .active does. */
-  .repeat-pill-accent { border-color: var(--accent); color: var(--accent); }
-  .repeat-pill-accent:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .extras-panel :global(.repeat-pill-accent) { border-color: var(--accent); color: var(--accent); }
+  .extras-panel :global(.repeat-pill-accent:hover) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   /* flex:0 0 auto -- sizes to its own nowrap text and no further, so it
      leaves no dead space; the picker (flex:1 above) absorbs any leftover
@@ -1161,7 +866,7 @@
      The display/flex-direction !importants are required: the generic
      `label` rule above sets flex-direction:column and wins per-property
      over this more specific class otherwise. */
-  .remind-on-due-row {
+  .extras-panel :global(.remind-on-due-row) {
     display: flex !important; flex-direction: row !important; align-items: center;
     gap: .4rem; flex: 0 0 auto; white-space: nowrap;
     font-size: .74rem; color: var(--muted); font-weight: 500;
@@ -1169,26 +874,26 @@
     padding: .3rem .55rem; border-radius: var(--radius-sm);
     background: var(--col-bg); cursor: pointer; transition: background .12s, color .12s;
   }
-  .remind-on-due-row:has(input:checked) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, var(--col-bg)); }
-  .remind-on-due-row:has(input:disabled) { opacity: .55; cursor: default; }
-  .remind-on-due-row input[type=checkbox] {
+  .extras-panel :global(.remind-on-due-row:has(input:checked)) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, var(--col-bg)); }
+  .extras-panel :global(.remind-on-due-row:has(input:disabled)) { opacity: .55; cursor: default; }
+  .extras-panel :global(.remind-on-due-row input[type=checkbox]) {
     accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
     width: 13px; height: 13px; margin: 0;
   }
-  .remind-on-due-row input[type=checkbox]:disabled { cursor: default; }
-  .reminder-enable-btn {
+  .extras-panel :global(.remind-on-due-row input[type=checkbox]:disabled) { cursor: default; }
+  .extras-panel :global(.reminder-enable-btn) {
     background: none; border: none; padding: 0; cursor: pointer;
     color: var(--accent); font-weight: 600; font-size: inherit;
     text-decoration: underline;
   }
   .tags-field { display: flex; flex-direction: column; gap: .22rem; }
-  .custom-fields { display: flex; flex-direction: column; gap: .3rem; }
-  .custom-field-label {
+  .extras-panel :global(.custom-fields) { display: flex; flex-direction: column; gap: .3rem; }
+  .extras-panel :global(.custom-field-label) {
     display: flex; flex-direction: column; gap: .22rem;
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  .custom-field-label input {
+  .extras-panel :global(.custom-field-label input) {
     padding: .38rem .5rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .84rem; font-family: inherit;
     text-transform: none; letter-spacing: normal;
@@ -1198,16 +903,16 @@
      type="number" (numeric keyboard on mobile, no behavior change). */
   /* standard `appearance` alongside the -moz- prefix: the prefixed one
      alone leaves non-Firefox engines on their default rendering. */
-  .custom-field-label input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-  .custom-field-label input[type="number"]::-webkit-outer-spin-button,
-  .custom-field-label input[type="number"]::-webkit-inner-spin-button {
+  .extras-panel :global(.custom-field-label input[type="number"]) { -moz-appearance: textfield; appearance: textfield; }
+  .extras-panel :global(.custom-field-label input[type="number"]::-webkit-outer-spin-button),
+  .extras-panel :global(.custom-field-label input[type="number"]::-webkit-inner-spin-button) {
     -webkit-appearance: none; margin: 0;
   }
-  .add-field-btn {
+  .extras-panel :global(.add-field-btn) {
     align-self: flex-start; background: none; border: none; cursor: pointer;
     color: var(--accent); font-size: .76rem; font-weight: 500; padding: .15rem 0;
   }
-  .field-label {
+  .field-label, .extras-panel :global(.field-label) {
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
@@ -1235,15 +940,15 @@
   }
   .tag-input::placeholder { color: var(--faint); }
 
-  .tag-suggestions {
+  .tag-suggestions, .extras-panel :global(.tag-suggestions) {
     display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 2px;
   }
-  .tag-suggestion {
+  .tag-suggestion, .extras-panel :global(.tag-suggestion) {
     background: var(--col-bg); color: var(--accent); border-radius: 5px;
     font-size: .78rem; font-weight: 500; padding: 2px 9px; cursor: pointer;
     border: 1px solid var(--border); transition: background .12s;
   }
-  .tag-suggestion:hover { background: var(--hover); }
+  .tag-suggestion:hover, .extras-panel :global(.tag-suggestion:hover) { background: var(--hover); }
   .tag-suggestion-other { color: var(--muted); }
   .tag-suggestions-divider {
     width: 100%; font-size: .68rem; color: var(--faint); font-weight: 600;
@@ -1264,16 +969,16 @@
     font-family: 'Hanken Grotesk', sans-serif; font-size: .78rem;
     text-transform: none; letter-spacing: normal; color: var(--muted);
   }
-  .section-chevron { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
-  .section-chevron.open { transform: rotate(90deg); }
+  .section-chevron, .extras-panel :global(.section-chevron) { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
+  .section-chevron.open, .extras-panel :global(.section-chevron.open) { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
-  .notes-wrap { display: block; }
-  .notes-textarea { width: 100%; box-sizing: border-box; }
-  .notes-counter {
+  .extras-panel :global(.notes-wrap) { display: block; }
+  .extras-panel :global(.notes-textarea) { width: 100%; box-sizing: border-box; }
+  .extras-panel :global(.notes-counter) {
     font-family: var(--mono); font-size: .68rem; color: var(--faint);
     text-align: right; margin-top: 3px;
   }
-  .dup-name-hint { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
+  .dup-name-hint, .extras-panel :global(.dup-name-hint) { font-size: .72rem; color: var(--due-soon-ink); margin: 4px 0 0; line-height: 1.3; }
 
   /* .detail-block (the mandatory, always-visible Due date field) stays
      plain -- no card treatment, matching Status/Priority/Tags above. */
@@ -1289,100 +994,100 @@
     margin-left: 8px; padding-left: 8px;
     border-left: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   }
-  .extra-block {
+  .extras-panel :global(.extra-block) {
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
     padding: .1rem .6rem;
   }
-  .extra-block-toggle {
+  .extras-panel :global(.extra-block-toggle) {
     display: flex; align-items: center; gap: 8px; width: 100%;
     background: none; border: none; cursor: pointer; text-align: left;
     padding: .45rem 0;
   }
-  .extra-block-toggle .field-label { flex: 1; }
-  .extra-block-body { display: flex; flex-direction: column; gap: .3rem; padding-bottom: .5rem; }
+  .extras-panel :global(.extra-block-toggle .field-label) { flex: 1; }
+  .extras-panel :global(.extra-block-body) { display: flex; flex-direction: column; gap: .3rem; padding-bottom: .5rem; }
 
-  .related-field { display: flex; flex-direction: column; gap: .3rem; }
-  .related-row { display: flex; align-items: center; gap: 7px; }
-  .related-title { flex: 1; font-size: .84rem; color: var(--text); }
-  .related-title-link {
+  .extras-panel :global(.related-field) { display: flex; flex-direction: column; gap: .3rem; }
+  .extras-panel :global(.related-row) { display: flex; align-items: center; gap: 7px; }
+  .extras-panel :global(.related-title) { flex: 1; font-size: .84rem; color: var(--text); }
+  .extras-panel :global(.related-title-link) {
     background: none; border: none; padding: 0; text-align: left;
     cursor: pointer; font-family: inherit;
   }
-  .related-title-link:hover { color: var(--accent); text-decoration: underline; }
-  .related-proj {
+  .extras-panel :global(.related-title-link:hover) { color: var(--accent); text-decoration: underline; }
+  .extras-panel :global(.related-proj) {
     font-family: var(--mono); font-size: .68rem; color: var(--faint);
     text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
   }
-  .related-deleted .related-title { color: var(--faint); font-style: italic; }
+  .extras-panel :global(.related-deleted .related-title) { color: var(--faint); font-style: italic; }
 
   /* "Blocked by" reuses .related-row/.related-proj above — only the
      done/not-done status pill and the badge's active (still-blocking)
      tint are new. */
-  .blocked-status {
+  .extras-panel :global(.blocked-status) {
     font-size: .68rem; font-weight: 700; white-space: nowrap;
     padding: 1px 7px; border-radius: 999px;
     color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent);
   }
-  .blocked-status-done { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
-  .blocked-badge-active { color: var(--danger); }
+  .extras-panel :global(.blocked-status-done) { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .extras-panel :global(.blocked-badge-active) { color: var(--danger); }
 
-  .checklist-field { display: flex; flex-direction: column; gap: .3rem; }
-  .checklist-progress { color: var(--accent); font-weight: 600; margin-left: 4px; }
-  .checklist-row { display: flex; align-items: center; gap: 7px; }
-  .checklist-check {
+  .extras-panel :global(.checklist-field) { display: flex; flex-direction: column; gap: .3rem; }
+  .extras-panel :global(.checklist-progress) { color: var(--accent); font-weight: 600; margin-left: 4px; }
+  .extras-panel :global(.checklist-row) { display: flex; align-items: center; gap: 7px; }
+  .extras-panel :global(.checklist-check) {
     flex-shrink: 0; width: 17px; height: 17px; border-radius: 5px;
     border: 1.5px solid var(--border-strong); background: var(--surface);
     display: flex; align-items: center; justify-content: center;
     font-size: .68rem; color: var(--on-accent); cursor: pointer; padding: 0;
     transition: background .12s, border-color .12s;
   }
-  .checklist-check.done { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
+  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
   @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
-  .checklist-text { flex: 1; font-size: .84rem; color: var(--text); transition: color .12s; }
-  .checklist-text.done { color: var(--faint); text-decoration: line-through; }
-  .checklist-remove {
+  .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); transition: color .12s; }
+  .extras-panel :global(.checklist-text.done) { color: var(--faint); text-decoration: line-through; }
+  .extras-panel :global(.checklist-remove) {
     flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;
     color: var(--muted); background: none; border: none; padding: 0 2px;
     transition: color .12s;
   }
-  .checklist-remove:hover { color: var(--danger); }
-  .checklist-input {
+  .extras-panel :global(.checklist-remove:hover) { color: var(--danger); }
+  .extras-panel :global(.checklist-input) {
     border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); outline: none;
     font-size: .84rem; color: var(--text); padding: .35rem .5rem;
   }
-  .checklist-input:focus { border-color: var(--accent); }
-  .checklist-input::placeholder { color: var(--faint); }
+  .extras-panel :global(.checklist-input:focus) { border-color: var(--accent); }
+  .extras-panel :global(.checklist-input::placeholder) { color: var(--faint); }
 
   /* File attachments */
-  .attachments-field { display: flex; flex-direction: column; gap: .3rem; }
-  .attachment-row { display: flex; align-items: center; gap: 7px; }
-  .attachment-open {
+  .extras-panel :global(.attachments-field) { display: flex; flex-direction: column; gap: .3rem; }
+  .extras-panel :global(.attachment-row) { display: flex; align-items: center; gap: 7px; }
+  .extras-panel :global(.attachment-open) {
     flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;
     background: none; border: none; padding: .2rem 0; text-align: left; cursor: pointer;
     font-family: inherit; color: var(--text); border-radius: 6px;
   }
-  .attachment-open:hover .attachment-name { color: var(--accent); text-decoration: underline; }
-  .attachment-thumb {
+  .extras-panel :global(.attachment-open:hover .attachment-name) { color: var(--accent); text-decoration: underline; }
+  .extras-panel :global(.attachment-thumb) {
     width: 26px; height: 26px; border-radius: 5px; object-fit: cover;
     flex-shrink: 0; border: 1px solid var(--border);
   }
-  .attachment-file-icon {
+  .extras-panel :global(.attachment-file-icon) {
     width: 26px; height: 26px; border-radius: 5px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--surface); border: 1px solid var(--border); color: var(--faint);
   }
-  .attachment-name { flex: 1; font-size: .84rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .attachment-size {
+  .extras-panel :global(.attachment-name) { flex: 1; font-size: .84rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .extras-panel :global(.attachment-size) {
     font-family: var(--mono); font-size: .68rem; color: var(--faint); flex-shrink: 0;
   }
-  .attach-file-btn {
+  .extras-panel :global(.attach-file-btn) {
     align-self: flex-start; font-size: .82rem; color: var(--accent); cursor: pointer;
     padding: .3rem .2rem; border-radius: 6px; transition: background .12s;
     background: none; border: none; font-family: inherit;
   }
-  .attach-file-btn:hover { background: var(--hover); }
-  .attach-file-btn:disabled { color: var(--faint); cursor: default; }
+  .extras-panel :global(.attach-file-btn:hover) { background: var(--hover); }
+  .extras-panel :global(.attach-file-btn:disabled) { color: var(--faint); cursor: default; }
   textarea {
     flex: 1; resize: vertical; min-height: 90px;
     padding: .55rem .65rem; border: 1px solid var(--border);
