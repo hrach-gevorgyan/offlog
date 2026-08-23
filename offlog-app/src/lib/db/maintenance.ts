@@ -196,10 +196,15 @@ export async function importJSON(docs: ImportedDoc[]): Promise<{ ok: number; ski
 // or not one of space/project/task". A doc colliding with an existing id is
 // reported as "created" and genuinely overwritten by importJSON.
 export function analyzeImport(docs: ImportedDoc[]): { toCreate: number; toSkip: number; byType: Record<string, number> } {
-  const byType: Record<string, number> = { space: 0, project: 0, task: 0 };
+  // Must accept exactly what importJSON() writes, or the preview shown
+  // before a restore under-reports it: 'meta' (custom-field definitions)
+  // and 'tag_color' were counted as skipped and then imported anyway.
+  const byType: Record<string, number> = { space: 0, project: 0, task: 0, meta: 0, tag_color: 0 };
   let toSkip = 0;
   for (const d of docs) {
-    if (d?._id && typeof d._id === 'string' && d.type in byType) byType[d.type]++;
+    const usable = !!d && typeof d._id === 'string' && d.type in byType
+      && !(d.type === 'task' && typeof d.project_id !== 'string');
+    if (usable) byType[d.type]++;
     else toSkip++;
   }
   return { toCreate: docs.length - toSkip, toSkip, byType };

@@ -39,6 +39,7 @@ vi.mock('../src/config', () => ({
 
 vi.mock('../src/lib/db', () => ({
   default: { allDocs: vi.fn().mockResolvedValue({ rows: [] }) },
+  __esModule: true,
   syncState: { status: 'idle', error: null, listeners: new Set() },
   syncNow: vi.fn(), startSync: vi.fn(), cancelSync: vi.fn(),
   importJSON: vi.fn(), analyzeImport: vi.fn(),
@@ -87,6 +88,7 @@ vi.mock('../src/lib/theme', () => ({
   getReduceMotion: () => false, setReduceMotion: vi.fn(),
 }));
 
+import dbDefault from '../src/lib/db';
 import SettingsPanel from '../src/lib/SettingsPanel.svelte';
 
 // saveSettings() calls location.reload() after a sync change; jsdom has no
@@ -171,5 +173,28 @@ describe('SettingsPanel sync save', () => {
 
     expect(setSyncUrl).toHaveBeenCalled();
     expect(setSyncCredentials).toHaveBeenCalled();
+  });
+});
+
+// doBackup() is the Back up button's handler. Its options are the whole
+// reason a backup is restorable: without `attachments: true, binary: false`
+// each attachment serialises as a {stub:true} placeholder with no bytes, and
+// PouchDB then rejects the entire restore batch on missing_stub — taking
+// every unrelated space, project and task down with one attached file.
+describe('SettingsPanel backup export', () => {
+  it('exports with attachment bytes inlined, not as stubs', async () => {
+    const { container } = render(SettingsPanel, { initialCategory: 'data' });
+    const nav = [...container.querySelectorAll('.nav-item')]
+      .find(b => /Backup/i.test((b as HTMLElement).textContent!)) as HTMLButtonElement;
+    await fireEvent.click(nav);
+
+    const backup = [...container.querySelectorAll('button')]
+      .find(b => b.textContent!.trim() === 'Back up') as HTMLButtonElement;
+    expect(backup).toBeTruthy();
+    await fireEvent.click(backup);
+
+    expect(vi.mocked(dbDefault.allDocs)).toHaveBeenCalledWith(
+      expect.objectContaining({ include_docs: true, attachments: true, binary: false }),
+    );
   });
 });
