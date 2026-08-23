@@ -17,6 +17,25 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
+## v6.4.0
+
+### New
+- On a Kanban board, a card's "..." menu now has a **Move to** section
+  listing the other statuses. Tap one and the card moves there. Until now
+  the only way to change a card's status from the board was to drag it,
+  which is awkward on a phone and impossible with a keyboard.
+
+### Fixed
+- Opening Settings could fail silently on a device where the saved sync
+  password could not be read back (a rare storage hiccup). Settings now
+  opens normally with the fields blank instead.
+
+Most of this release is under the hood: a large amount of new automated
+testing and internal tidying, so future changes are less likely to break
+something you rely on. Nothing you use day to day should look or behave
+differently.
+
+
 ## v6.3.0
 
 ### New
