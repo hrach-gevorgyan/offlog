@@ -316,12 +316,13 @@ before shipping — this suite already caught two real bugs (broken conflict
 detection, an incomplete conflict resolution) that had been silently
 shipping. Components are tested with `@testing-library/svelte` against
 mocked `db`/`store` modules (`CardDetail`, `QuickAdd`, `KanbanBoard`,
-`AppLock`, `ConfirmPinGate`, `SettingsPanel`) — mock the module, render,
+`AppLock`, `ConfirmPinGate`, `SettingsPanel`, `ListView`) — mock the module,
+render,
 `fireEvent`,
 assert the write's arguments. Cover the failure path too: every mutating
 call site must surface `showError()`, and a test that only checks the
 happy path won't catch a swallowed one. Views with no component test yet
-(`ListView`, `AgendaView`, `Sidebar`) still rely on manual/browser-preview
+(`AgendaView`, `Sidebar`) still rely on manual/browser-preview
 verification. A new test is only worth its line count if it fails when the
 behaviour breaks — check that by mutating the source and re-running, not by
 watching it go green.
