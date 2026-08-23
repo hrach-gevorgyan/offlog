@@ -54,7 +54,7 @@ Real captures from a real build — no mockups, no Lorem Ipsum.
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/images/screenshot-list-desktop.png" alt="List/Table view">
+      <img src="docs/images/screenshot-list-desktop.png" alt="List view">
       <br><sub><b>List</b> — sortable columns, saved filters, multi-column sort</sub>
     </td>
     <td width="50%" align="center">
@@ -320,11 +320,20 @@ app.
 ## Built like a real product, not a prototype
 
 Every release: zero-warning production build, clean type check, full
-test suite, manual light/dark verification — enforced by CI, with a
-maintenance pass every few releases catching dead code and regressions
-(see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)). Went through a full
-security audit and git-history credential purge before going public
-(see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public release" section).
+test suite (279 of them), manual light/dark verification — enforced by
+CI. 21 structured maintenance passes over the build, each working
+through a written checklist of blind spots earned from real shipped
+bugs (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)). Went through a
+full security audit and git-history credential purge before going
+public (see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public release"
+section).
+
+The last three of those passes ran on the final day, deliberately
+scoped to ask *what could destroy real data* and *what breaks after
+weeks without a restart* rather than *what's untidy* — which is how a
+backup system that couldn't restore any backup containing an attachment
+got found and fixed before it was ever needed. That story is in
+[docs/STORY.md](docs/STORY.md).
 
 ## Getting Started
 
@@ -401,20 +410,30 @@ from a single owner acting as product manager and QA — the codebase is
 documented (`CLAUDE.md` + `docs/`) specifically so an AI assistant (or a
 human) can pick it up the same way for a fork.
 
-There's a real, honest wishlist of help that
-would move it forward — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup
-and PR mechanics, but in short, the most valuable contributions right
-now are:
+**Read this before opening a feature PR:** the app is feature-complete
+on purpose and in maintenance mode — see
+[docs/ROADMAP.md](docs/ROADMAP.md). New features need a real need found
+in daily use, not a good idea, so a large unsolicited feature PR will
+probably be declined however well built it is. That's not a reflection
+on the work; it's the whole point of the project having an ending. Ask
+in an issue first and you'll get a straight answer before you spend the
+time.
+
+That said, there's a real, honest wishlist — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup and PR mechanics, but in
+short, the most valuable contributions are:
 
 - Real code-signing (Windows) and Google Play publishing — the build/
-  release pipeline itself is already automated (see below), what's
-  missing is the paid credentials themselves and someone to own that
-  ongoing cost/process
+  release pipeline is already automated (see
+  [docs/TECH.md](docs/TECH.md)'s CI section), what's missing is the paid
+  credentials themselves and someone to own that ongoing cost/process
 - An iOS build — there's currently no bandwidth to open that front
   solo, so this is entirely open for someone who wants to take it on
-- General ideas, fixes, and code review — if something looks like it
-  could be simpler, safer, or better structured, that feedback is
-  genuinely wanted, not just accepted
+- **Bug reports from real use** — the single most useful thing, and now
+  the main way the project changes at all
+- Fixes and code review — if something looks like it could be simpler,
+  safer, or better structured, that feedback is genuinely wanted, not
+  just tolerated
 
 The codebase is deliberately structured to be forkable and AI-legible —
 [CLAUDE.md](CLAUDE.md) documents the invariants an assistant (or a
