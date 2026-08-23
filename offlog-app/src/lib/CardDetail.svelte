@@ -1260,7 +1260,9 @@
      next to every other input in this form. Hidden entirely; the field
      stays a plain text-like number input (still type="number" under the
      hood -- numeric keyboard on mobile, no other behavior change). */
-  .custom-field-label input[type="number"] { -moz-appearance: textfield; }
+  /* standard `appearance` alongside the -moz- prefix: the prefixed one
+     alone leaves non-Firefox engines on their default rendering. */
+  .custom-field-label input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .custom-field-label input[type="number"]::-webkit-outer-spin-button,
   .custom-field-label input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none; margin: 0;

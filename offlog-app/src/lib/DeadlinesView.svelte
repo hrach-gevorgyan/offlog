@@ -101,7 +101,12 @@
   function toggleSelectedDay(dStr: string) { selectedDay = selectedDay === dStr ? null : dStr; }
   // "Add card" in the day panel — QuickAdd (opened at the App level)
   // prefills its due date from this, same as any other Quick Add open.
-  function addCardOnDay(dStr: string) { dispatch('addTask', dStr); }
+  // Accepts null because the call site reads `selectedDay` inside an
+  // {#if selectedDay} block -- true at runtime, but Svelte can't narrow a
+  // template guard into an event-handler closure, so the type stays
+  // string|null there. Guarding here is honest; asserting non-null at the
+  // call site would just be hiding it.
+  function addCardOnDay(dStr: string | null) { if (dStr) dispatch('addTask', dStr); }
 
   function startOfWeek(): string {
     const d = new Date();

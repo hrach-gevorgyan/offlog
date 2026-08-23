@@ -471,7 +471,10 @@
   .note-title {
     font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4;
     padding-right: 22px; /* clears the absolutely-positioned .check corner */
-    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+    /* standard `line-clamp` paired with the -webkit- prefix -- the prefixed
+       property is still what most engines act on, but the unprefixed one is
+       the shipping standard and is what newer engines will honour. */
+    display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
   .note-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
 

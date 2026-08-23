@@ -37,7 +37,7 @@ tracker here again.
    what TECH.md describes, updating TECH.md is itself a finding.
 2. Confirm the baseline is green BEFORE any change (all from `offlog-app/`):
    - `npm run build` — must succeed with **zero Svelte warnings**
-   - `npx tsc --noEmit -p .` — clean
+   - `npm run check` — svelte-check + tsc, clean
    - `npm test` — vitest suite passes
    If any fail, report and stop — fix the baseline first.
    (There is no lint config in this project — the zero-warning build IS

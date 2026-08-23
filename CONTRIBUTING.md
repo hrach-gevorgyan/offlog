@@ -52,7 +52,7 @@ the desktop (`offlog-desktop/`, Tauri) build steps.
 ```bash
 cd offlog-app
 npm run build            # must succeed with zero Svelte warnings
-npx tsc --noEmit -p .    # must be clean
+npm run check            # svelte-check + tsc, must be clean
 npm test                 # must pass
 ```
 

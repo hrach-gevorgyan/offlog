@@ -149,7 +149,7 @@ CouchDB-protocol server). Full tech stack table in
 cd offlog-app
 npm run dev             # dev server at http://localhost:5173
 npm run build           # production build → dist/  (must be warning-free, see below)
-npx tsc --noEmit -p .   # type check
+npm run check          # svelte-check + tsc (real type gate)
 npm test                # vitest — db.ts unit tests against pouchdb-adapter-memory
 npx cap sync android    # copy dist/ into the Android project (run after build)
 ```
@@ -366,7 +366,7 @@ docs/ROADMAP.md's Track C, item C3 — Play Store); don't let a
 debug-keystore-signed `release` APK go out as a real release build.
 
 1. `npm run build` — must succeed with **zero warnings**
-2. `npx tsc --noEmit -p .` — clean
+2. `npm run check` — svelte-check + tsc, clean
 3. `npm test` — clean
 4. Verify visually in the browser preview (light **and** dark mode)
 5. Bump version in `package.json`, `android/app/build.gradle`

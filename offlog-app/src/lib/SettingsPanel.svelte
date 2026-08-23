@@ -871,7 +871,10 @@
   // the step list/progress bar is the one genuinely multi-step flow in
   // this file, so it's the clearest case for the modal pattern) ──
   type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
-  interface MaintStep { key: string; label: string; status: MaintStatus; note: string }
+  // key is the same narrow union db.ts's MaintStepResult uses, not a bare
+  // string -- setMaintStep() requires that union, so a plain `string` here
+  // meant every call site was one typo away from silently matching nothing.
+  interface MaintStep { key: MaintStepResult['key']; label: string; status: MaintStatus; note: string }
   let maintRunning = false;
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];

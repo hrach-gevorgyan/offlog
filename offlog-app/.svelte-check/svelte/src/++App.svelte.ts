@@ -1,32 +1,63 @@
-<script lang="ts">
-  import { onMount, tick } from 'svelte';
-  import { fade, scale } from 'svelte/transition';
-  import { scrimFade, toastFly, dialogScale, pageFade } from './lib/motion';
-  import { get } from 'svelte/store';
-  import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
-  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
-  import type { CustomFieldDef } from './lib/types';
-  import type { CustomFieldFilter } from './lib/utils';
-  import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
-  import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
-  import { getCommands } from './lib/commands';
-  import Sidebar from './lib/Sidebar.svelte';
-  import KanbanBoard from './lib/KanbanBoard.svelte';
-  import ListView from './lib/ListView.svelte';
-  import DeadlinesView from './lib/DeadlinesView.svelte';
-  import FocusView from './lib/FocusView.svelte';
-  import DashboardView from './lib/DashboardView.svelte';
-  import GlobalSearch from './lib/GlobalSearch.svelte';
-  import FilterBar from './lib/FilterBar.svelte';
-  import CardDetail from './lib/CardDetail.svelte';
-  import QuickAdd from './lib/QuickAdd.svelte';
-  import ConfirmDialog from './lib/ConfirmDialog.svelte';
-  import NamePrompt from './lib/NamePrompt.svelte';
-  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
-  import { closeOnBack, closeAll } from './lib/modalStack';
-  import AppLock from './lib/AppLock.svelte';
-  import UpdateModal from './lib/UpdateModal.svelte';
-  import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
+///<reference types="svelte" />
+;
+import { onMount, tick } from 'svelte';
+import { fade, scale } from 'svelte/transition';
+import { scrimFade, toastFly, dialogScale, pageFade } from './lib/motion';
+import { get } from 'svelte/store';
+import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
+import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
+import type { CustomFieldDef } from './lib/types';
+import type { CustomFieldFilter } from './lib/utils';
+import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
+import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
+import { getCommands } from './lib/commands';
+import Sidebar from './lib/Sidebar.svelte';
+import KanbanBoard from './lib/KanbanBoard.svelte';
+import ListView from './lib/ListView.svelte';
+import DeadlinesView from './lib/DeadlinesView.svelte';
+import FocusView from './lib/FocusView.svelte';
+import DashboardView from './lib/DashboardView.svelte';
+import GlobalSearch from './lib/GlobalSearch.svelte';
+import FilterBar from './lib/FilterBar.svelte';
+import CardDetail from './lib/CardDetail.svelte';
+import QuickAdd from './lib/QuickAdd.svelte';
+import ConfirmDialog from './lib/ConfirmDialog.svelte';
+import NamePrompt from './lib/NamePrompt.svelte';
+import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
+import { closeOnBack, closeAll } from './lib/modalStack';
+import AppLock from './lib/AppLock.svelte';
+import UpdateModal from './lib/UpdateModal.svelte';
+import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
+function $$render() {
+/*Ωignore_startΩ*/;let $activeProject = __sveltets_2_store_get(activeProject);;let $activeProjectId = __sveltets_2_store_get(activeProjectId);;let $activeSpaceId = __sveltets_2_store_get(activeSpaceId);;let $projectTasks = __sveltets_2_store_get(projectTasks);;let $projects = __sveltets_2_store_get(projects);;let $spaces = __sveltets_2_store_get(spaces);;let $errorToast = __sveltets_2_store_get(errorToast);;let $modalOpen = __sveltets_2_store_get(modalOpen);;let $pendingOpenTaskId = __sveltets_2_store_get(pendingOpenTaskId);;let $notificationActionError = __sveltets_2_store_get(notificationActionError);;let $updateState = __sveltets_2_store_get(updateState);;let $showUpdateModal = __sveltets_2_store_get(showUpdateModal);/*Ωignore_endΩ*/
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   // The version an already-dismissed banner shouldn't reappear for until
   // a *different* update is found — background checks re-run every ~6h
@@ -64,7 +95,7 @@
     sessionStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
   }
 
-  $: if (ready) { showDashboard; showDeadlines; showFocus; $activeProjectId; currentView; saveView(); }
+  ;() => {$: if (ready) { showDashboard; showDeadlines; showFocus; $activeProjectId; currentView; saveView(); }}
 
   // The one place `activeProjectId` should reset the view to Kanban —
   // called from deliberate "go to this project" actions (sidebar project/
@@ -113,7 +144,7 @@
   let kbFilterPrio = 0;
   let kbFilterTag = '';
   let kbCustomFieldFilters: CustomFieldFilter[] = [];
-  $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
+  let  kbAllTags = __sveltets_2_invalidate(() => [...new Set($projectTasks.flatMap(t => t.tags))].sort());
   // Custom fields are global (not per-project), same as ListView's own
   // copy — loaded once here so Kanban's FilterBar can offer the same
   // custom-field filter List already got.
@@ -131,7 +162,7 @@
   function resetKanbanFilters(_projectId: string | null) {
     kbSearch = ''; kbFilterCol = ''; kbFilterPrio = 0; kbFilterTag = ''; kbCustomFieldFilters = [];
   }
-  $: resetKanbanFilters($activeProjectId);
+  ;() => {$: resetKanbanFilters($activeProjectId);}
 
   // B9 — command palette, folded into GlobalSearch rather than a separate
   // overlay/shortcut. Sidebar's own openSettings/openTimeTravel/openTrash
@@ -152,7 +183,7 @@
   // item) alongside the command palette entry.
   function goToDashboard() { showDeadlines = false; showFocus = false; showDashboard = true; }
 
-  $: commands = getCommands({
+  let  commands = __sveltets_2_invalidate(() => getCommands({
     goToDashboard,
     goToFocus,
     goToAgenda,
@@ -163,7 +194,7 @@
     openTimeTravel: () => sidebarRef?.openTimeTravel(),
     openTrash: () => sidebarRef?.openTrash(),
     syncNow: () => { syncNow(); },
-  });
+  }));
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;
   // See KanbanBoard.svelte's identical detailOpenSession for why this
@@ -190,9 +221,9 @@
   // their own back-button layer via closeOnBack at component init), it
   // needs it wired reactively. See modalStack.ts / ROADMAP.md A14.
   let popShortcutsLayer: (() => void) | null = null;
-  $: if (showShortcuts && !popShortcutsLayer) {
+  ;() => {$: if (showShortcuts && !popShortcutsLayer) {
     popShortcutsLayer = closeOnBack(() => { showShortcuts = false; popShortcutsLayer = null; });
-  }
+  }}
   function closeShortcuts() { if (popShortcutsLayer) popShortcutsLayer(); else showShortcuts = false; }
 
   // The mobile sidebar drawer deliberately does NOT get a closeOnBack
@@ -243,16 +274,16 @@
     pendingOpenTaskId.set(null);
   }
 
-  $: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);
+  ;() => {$: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);}
 
   // A "Done"/"Snooze" tap straight from a notification toast whose write
   // failed — surfaced here rather than via a showError() call inside
   // notifications.ts, which would be a circular import (see that store's
   // own comment).
-  $: if ($notificationActionError) {
+  ;() => {$: if ($notificationActionError) {
     showError($notificationActionError);
     notificationActionError.set('');
-  }
+  }}
 
   function onKeydown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
@@ -504,7 +535,7 @@
     } catch {}
   }
 
-  $: activeSpace = $spaces.find(s => s._id === $activeSpaceId);
+  let  activeSpace = __sveltets_2_invalidate(() => $spaces.find(s => s._id === $activeSpaceId));
 
   const ICONS: Record<View, string> = {
     kanban: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="4" height="11" rx="1"/><rect x="6.5" y="2.5" width="4" height="7" rx="1"/><rect x="11.5" y="2.5" width="3" height="9" rx="1"/></svg>',
@@ -515,489 +546,210 @@
     { key: 'kanban', label: 'Kanban' },
     { key: 'list',   label: 'List' },
   ];
-</script>
+;
+async () => {
 
-<svelte:window on:keydown={onKeydown}/>
+  { svelteHTML.createElement("svelte:window", {  "on:keydown":onKeydown,});}
 
-{#if locked}
-  <AppLock on:unlocked={onUnlocked} />
-{/if}
+if(locked){
+   { const $$_kcoLppA0C = __sveltets_2_ensureComponent(AppLock); const $$_kcoLppA0 = new $$_kcoLppA0C({ target: __sveltets_2_any(), props: {   }});$$_kcoLppA0.$on("unlocked", onUnlocked);}
+}
 
-{#if ready}
-  <!-- inert (not just visually covered by AppLock's z-index) so a
-       keyboard user can't Tab past the lock screen into the app behind
-       it, and so screen readers don't expose it either — display:contents
-       keeps this wrapper out of the flex/layout tree it sits inside. -->
-  <div inert={locked} style="display:contents">
-  <div class="status-bar-fill"></div>
-  <div class="layout">
-    <Sidebar
-      bind:this={sidebarRef}
-      bind:showDeadlines
-      bind:showDashboard
-      bind:showFocus
-      bind:open={sidebarOpen}
-      on:navigate={() => { closeSidebar(); currentView = 'kanban'; }}
-      on:openTask={(e) => { openSearchDetail(e.detail.task, e.detail.project); closeSidebar(); }}
-    />
+if(ready){
+  
+   { svelteHTML.createElement("div", {   "inert":locked,"style":`display:contents`,});
+   { svelteHTML.createElement("div", { "class":`status-bar-fill`,}); }
+   { svelteHTML.createElement("div", { "class":`layout`,});
+     { const $$_rabediS2C = __sveltets_2_ensureComponent(Sidebar); const $$_rabediS2 = new $$_rabediS2C({ target: __sveltets_2_any(), props: {           showDeadlines,showDashboard,showFocus,open:sidebarOpen,}});sidebarRef = $$_rabediS2;/*Ωignore_startΩ*/() => showDeadlines = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_rabediS2.$$bindings = 'showDeadlines';/*Ωignore_startΩ*/() => showDashboard = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_rabediS2.$$bindings = 'showDashboard';/*Ωignore_startΩ*/() => showFocus = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_rabediS2.$$bindings = 'showFocus';/*Ωignore_startΩ*/() => sidebarOpen = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_rabediS2.$$bindings = 'open';$$_rabediS2.$on("navigate", () => { closeSidebar(); currentView = 'kanban'; });$$_rabediS2.$on("openTask", (e) => { openSearchDetail(e.detail.task, e.detail.project); closeSidebar(); });}
 
-    <!-- Mobile scrim -->
-    {#if sidebarOpen}
-      <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-      <div class="mobile-scrim" on:click={closeSidebar} transition:fade={scrimFade}></div>
-    {/if}
+    
+    if(sidebarOpen){
+      
+       { svelteHTML.createElement("div", {     "class":`mobile-scrim`,"on:click":closeSidebar,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(scrimFade))); }
+    }
 
-    <main class="main">
-      {#if showDashboard}
-        <div class="view-fade" transition:fade={pageFade}>
-          <DashboardView
-            on:menu={() => sidebarOpen = true}
-            on:openProject={(e) => {
+     { svelteHTML.createElement("main", { "class":`main`,});
+      if(showDashboard){
+         { svelteHTML.createElement("div", {   "class":`view-fade`,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(pageFade)));
+           { const $$_weiVdraobhsaD4C = __sveltets_2_ensureComponent(DashboardView); const $$_weiVdraobhsaD4 = new $$_weiVdraobhsaD4C({ target: __sveltets_2_any(), props: {           }});$$_weiVdraobhsaD4.$on("menu", () => sidebarOpen = true);$$_weiVdraobhsaD4.$on("openProject", (e) => {
               showDashboard = false;
               goToProject(e.detail);
-            }}
-            on:focus={goToFocus}
-            on:search={openSearch}
-            on:agenda={goToAgenda}
-          />
-        </div>
-      {:else if showFocus}
-        <div class="view-fade" transition:fade={pageFade}>
-          <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
-        </div>
-      {:else if showDeadlines}
-        <div class="view-fade" transition:fade={pageFade}>
-          <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
-        </div>
-      {:else if $activeProject}
-      <div class="view-fade" transition:fade={pageFade}>
-        <header class="board-header">
-          <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
-            <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
-            </svg>
-          </button>
+            });$$_weiVdraobhsaD4.$on("focus", goToFocus);$$_weiVdraobhsaD4.$on("search", openSearch);$$_weiVdraobhsaD4.$on("agenda", goToAgenda);}
+         }
+      } else if (showFocus){
+         { svelteHTML.createElement("div", {   "class":`view-fade`,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(pageFade)));
+           { const $$_weiVsucoF4C = __sveltets_2_ensureComponent(FocusView); const $$_weiVsucoF4 = new $$_weiVsucoF4C({ target: __sveltets_2_any(), props: {     }});$$_weiVsucoF4.$on("menu", () => sidebarOpen = true);$$_weiVsucoF4.$on("search", openSearch);}
+         }
+      } else if (showDeadlines){
+         { svelteHTML.createElement("div", {   "class":`view-fade`,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(pageFade)));
+           { const $$_weiVsenildaeD4C = __sveltets_2_ensureComponent(DeadlinesView); const $$_weiVsenildaeD4 = new $$_weiVsenildaeD4C({ target: __sveltets_2_any(), props: {       }});$$_weiVsenildaeD4.$on("menu", () => sidebarOpen = true);$$_weiVsenildaeD4.$on("search", openSearch);$$_weiVsenildaeD4.$on("addTask", (e) => openQuickAdd(e.detail));}
+         }
+      } else if ($activeProject){
+       { svelteHTML.createElement("div", {   "class":`view-fade`,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(pageFade)));
+         { svelteHTML.createElement("header", { "class":`board-header`,});
+           { svelteHTML.createElement("button", {     "class":`hamburger`,"on:click":() => sidebarOpen = true,"aria-label":`Menu`,});
+             { svelteHTML.createElement("svg", {             "viewBox":`0 0 20 20`,"width":`20`,"height":`20`,"fill":`none`,"stroke":`currentColor`,"stroke-width":`1.8`,"stroke-linecap":`round`,});
+                { svelteHTML.createElement("line", {       "x1":`3`,"y1":`5`,"x2":`17`,"y2":`5`,});}  { svelteHTML.createElement("line", {       "x1":`3`,"y1":`10`,"x2":`17`,"y2":`10`,});}  { svelteHTML.createElement("line", {       "x1":`3`,"y1":`15`,"x2":`17`,"y2":`15`,});}
+             }
+           }
 
-          <div class="title-block">
-            {#if activeSpace}
-              <div class="breadcrumb">
-                <span class="bc-dot" style="background:{activeSpace.color}"></span>
-                {activeSpace.name}
-              </div>
-            {/if}
-            <h1 class="board-title">{$activeProject.name}</h1>
-          </div>
+           { svelteHTML.createElement("div", { "class":`title-block`,});
+            if(activeSpace){
+               { svelteHTML.createElement("div", { "class":`breadcrumb`,});
+                 { svelteHTML.createElement("span", {   "class":`bc-dot`,"style":`background:${activeSpace.color}`,}); }
+                activeSpace.name;
+               }
+            }
+             { svelteHTML.createElement("h1", { "class":`board-title`,});$activeProject.name; }
+           }
 
-          <div class="spacer"></div>
+           { svelteHTML.createElement("div", { "class":`spacer`,}); }
 
-          <div class="search-filter-group">
-            <!-- redesign/v6 (owner feedback, 2026-07-28): List view already
-                 has its own local "Search tasks…" box in its toolbar --
-                 this same top-bar button also opening a *second* search felt
-                 confusing there. Since GlobalSearch already folds search and
-                 commands together (B9), the List-view button is relabeled
-                 "Command Palette" with a distinct icon instead of a second
-                 magnifying glass; Kanban (no local search box) keeps the
-                 plain search framing. Same click handler/modal either way. -->
-            <button
-              class="search-btn"
-              on:click={openSearch}
-              title={currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)'}
-              aria-label={currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)'}
-            >
-              {#if currentView === 'list'}
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
-                </svg>
-              {:else}
-                <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                  <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
-                </svg>
-              {/if}
-            </button>
-            {#if currentView === 'kanban'}
-              <span class="search-filter-divider"></span>
-              <FilterBar compact project={$activeProject} allTags={kbAllTags} tasks={$projectTasks} customFields={customFieldDefs} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} bind:customFieldFilters={kbCustomFieldFilters} />
-            {/if}
-          </div>
+           { svelteHTML.createElement("div", { "class":`search-filter-group`,});
+            
+             { svelteHTML.createElement("button", {         "class":`search-btn`,"on:click":openSearch,"title":currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)',"aria-label":currentView === 'list' ? 'Command Palette (Ctrl+K)' : 'Search (Ctrl+K)',});
+              if(currentView === 'list'){
+                 { svelteHTML.createElement("svg", {               "viewBox":`0 0 24 24`,"width":`15`,"height":`15`,"fill":`none`,"stroke":`currentColor`,"stroke-width":`2.1`,"stroke-linecap":`round`,"stroke-linejoin":`round`,});
+                    { svelteHTML.createElement("path", { "d":`M18 3a3 3 0 0 0-3 3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z`,});}
+                 }
+              }else{
+                 { svelteHTML.createElement("svg", {             "viewBox":`0 0 16 16`,"width":`15`,"height":`15`,"fill":`none`,"stroke":`currentColor`,"stroke-width":`1.8`,"stroke-linecap":`round`,});
+                    { svelteHTML.createElement("circle", {     "cx":`6.5`,"cy":`6.5`,"r":`4.5`,});}  { svelteHTML.createElement("line", {       "x1":`10.5`,"y1":`10.5`,"x2":`14`,"y2":`14`,});}
+                 }
+              }
+             }
+            if(currentView === 'kanban'){
+               { svelteHTML.createElement("span", { "class":`search-filter-divider`,}); }
+               { const $$_raBretliF6C = __sveltets_2_ensureComponent(FilterBar); const $$_raBretliF6 = new $$_raBretliF6C({ target: __sveltets_2_any(), props: {                  "compact":true,"project":$activeProject,"allTags":kbAllTags,"tasks":$projectTasks,"customFields":customFieldDefs,search:kbSearch,filterCol:kbFilterCol,filterPrio:kbFilterPrio,filterTag:kbFilterTag,customFieldFilters:kbCustomFieldFilters,}});/*Ωignore_startΩ*/() => kbSearch = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_raBretliF6.$$bindings = 'search';/*Ωignore_startΩ*/() => kbFilterCol = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_raBretliF6.$$bindings = 'filterCol';/*Ωignore_startΩ*/() => kbFilterPrio = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_raBretliF6.$$bindings = 'filterPrio';/*Ωignore_startΩ*/() => kbFilterTag = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_raBretliF6.$$bindings = 'filterTag';/*Ωignore_startΩ*/() => kbCustomFieldFilters = __sveltets_2_any(null);/*Ωignore_endΩ*/$$_raBretliF6.$$bindings = 'customFieldFilters';}
+            }
+           }
 
-          <div class="view-seg">
-            {#each VIEWS as v}
-              <!-- aria-label, not just the visible .view-label span -- that
-                   span is display:none on mobile (icon-only there), which
-                   removes it from the accessible-name computation too, so
-                   this button had no accessible name at all once collapsed
-                   (real bug, found live via automated screenshot capture). -->
-              <button class="view-btn" class:active={currentView === v.key} on:click={() => setView(v.key)} aria-label={v.label} title={v.label}>
-                {@html ICONS[v.key]}
-                <span class="view-label" aria-hidden="true">{v.label}</span>
-              </button>
-            {/each}
-          </div>
-        </header>
+           { svelteHTML.createElement("div", { "class":`view-seg`,});
+              for(let v of __sveltets_2_ensureArray(VIEWS)){
+              
+               { svelteHTML.createElement("button", {        "class":`view-btn`,"on:click":() => setView(v.key),"aria-label":v.label,"title":v.label,});currentView === v.key;
+                 ICONS[v.key];
+                 { svelteHTML.createElement("span", {   "class":`view-label`,"aria-hidden":`true`,});v.label; }
+               }
+            }
+           }
+         }
 
-        {#if currentView === 'kanban'}
-          <KanbanBoard
-            project={$activeProject}
-            tasks={$projectTasks}
-            search={kbSearch}
-            filterCol={kbFilterCol}
-            filterPrio={kbFilterPrio}
-            filterTag={kbFilterTag}
-            customFieldFilters={kbCustomFieldFilters}
-            on:projectUpdated={(e) => {
+        if(currentView === 'kanban'){
+           { const $$_draoBnabnaK4C = __sveltets_2_ensureComponent(KanbanBoard); const $$_draoBnabnaK4 = new $$_draoBnabnaK4C({ target: __sveltets_2_any(), props: {                 "project":$activeProject,"tasks":$projectTasks,"search":kbSearch,"filterCol":kbFilterCol,"filterPrio":kbFilterPrio,"filterTag":kbFilterTag,"customFieldFilters":kbCustomFieldFilters,}});$$_draoBnabnaK4.$on("projectUpdated", (e) => {
               projects.update(ps => ps.map(p => p._id === e.detail._id ? e.detail : p));
-            }}
-          />
-        {:else}
-          <ListView project={$activeProject} tasks={$projectTasks} />
-        {/if}
-      </div>
+            });}
+        }else{
+           { const $$_weiVtsiL4C = __sveltets_2_ensureComponent(ListView); new $$_weiVtsiL4C({ target: __sveltets_2_any(), props: {    "project":$activeProject,"tasks":$projectTasks,}});}
+        }
+       }
 
-      {:else}
-        <div class="view-fade" transition:fade={pageFade}>
-        <div class="empty-state">
-          <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
-            <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
-            </svg>
-          </button>
-          <span>Select or create a project.</span>
-        </div>
-        </div>
-      {/if}
-    </main>
-  </div>
-  </div>
-{:else if initError}
-  <div class="crash-recovery">
-    <h2>Offlog couldn't start</h2>
-    <p class="crash-hint">This usually clears up on a retry. If it keeps happening, back up your data from another device or an earlier working session first, if you can, before trying anything else.</p>
-    <p class="crash-msg">Details: {initError}</p>
-    <button class="retry-btn" on:click={retryInit}>Retry</button>
-  </div>
-{:else}
-  <div class="loading"><span class="spinner"></span>Loading…</div>
-{/if}
+      }else{
+         { svelteHTML.createElement("div", {   "class":`view-fade`,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(pageFade)));
+         { svelteHTML.createElement("div", { "class":`empty-state`,});
+           { svelteHTML.createElement("button", {     "class":`hamburger`,"on:click":() => sidebarOpen = true,"aria-label":`Menu`,});
+             { svelteHTML.createElement("svg", {             "viewBox":`0 0 20 20`,"width":`20`,"height":`20`,"fill":`none`,"stroke":`currentColor`,"stroke-width":`1.8`,"stroke-linecap":`round`,});
+                { svelteHTML.createElement("line", {       "x1":`3`,"y1":`5`,"x2":`17`,"y2":`5`,});}  { svelteHTML.createElement("line", {       "x1":`3`,"y1":`10`,"x2":`17`,"y2":`10`,});}  { svelteHTML.createElement("line", {       "x1":`3`,"y1":`15`,"x2":`17`,"y2":`15`,});}
+             }
+           }
+           { svelteHTML.createElement("span", {});     }
+         }
+         }
+      }
+     }
+   }
+   }
+} else if (initError){
+   { svelteHTML.createElement("div", { "class":`crash-recovery`,});
+     { svelteHTML.createElement("h2", {});   }
+     { svelteHTML.createElement("p", { "class":`crash-hint`,});                               }
+     { svelteHTML.createElement("p", { "class":`crash-msg`,}); initError; }
+     { svelteHTML.createElement("button", {   "class":`retry-btn`,"on:click":retryInit,});  }
+   }
+}else{
+   { svelteHTML.createElement("div", { "class":`loading`,}); { svelteHTML.createElement("span", { "class":`spinner`,}); }  }
+}
 
-<ConfirmDialog />
-{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; sidebarRef?.openSettings('sync'); }} />{/if}
+ { const $$_golaiDmrifnoC0C = __sveltets_2_ensureComponent(ConfirmDialog); new $$_golaiDmrifnoC0C({ target: __sveltets_2_any(), props: {}});}
+if(showNamePrompt){ { const $$_tpmorPemaN0C = __sveltets_2_ensureComponent(NamePrompt); const $$_tpmorPemaN0 = new $$_tpmorPemaN0C({ target: __sveltets_2_any(), props: {     }});$$_tpmorPemaN0.$on("close", () => showNamePrompt = false);$$_tpmorPemaN0.$on("setupSync", () => { showNamePrompt = false; sidebarRef?.openSettings('sync'); });}}
 
-{#if isTauri()}
-  <UpdateModal />
-  {#if $updateState.phase === 'available' && $updateState.version !== dismissedUpdateVersion && !$showUpdateModal}
-    <div class="update-banner" transition:fade={scrimFade}>
-      <span>Offlog {$updateState.version} is available</span>
-      <div class="update-banner-actions">
-        <button class="update-banner-dismiss" on:click={() => dismissedUpdateVersion = $updateState.version ?? null}>Dismiss</button>
-        <button class="update-banner-view" on:click={() => showUpdateModal.set(true)}>View</button>
-      </div>
-    </div>
-  {/if}
-{/if}
-
-{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showDeadlines && !showFocus}
-<button class="fab" on:click={() => openQuickAdd()} title="Quick add task (Ctrl+N)">
-  <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-    <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
-  </svg>
-</button>
-{/if}
-
-{#if showQuickAdd}
-  {#key quickAddSession}
-    <QuickAdd initialDueDate={quickAddDueDate} on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
-  {/key}
-{/if}
-
-{#if showSearch}
-  {#key searchSession}
-    <GlobalSearch
-      {commands}
-      on:close={() => showSearch = false}
-      on:open={(e) => { openSearchDetail(e.detail.task, e.detail.project); showSearch = false; }}
-    />
-  {/key}
-{/if}
-
-{#if searchDetailTask && searchDetailProject}
-  {#key searchDetailTask._id + ':' + searchDetailSession}
-    <CardDetail
-      task={searchDetailTask}
-      project={searchDetailProject}
-      on:close={async () => { searchDetailTask = null; searchDetailProject = null; await reloadTasks(); }}
-      on:openRelated={(e) => openRelatedTask(e.detail)}
-    />
-  {/key}
-{/if}
-
-{#if showShortcuts}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="scrim" on:click|self={closeShortcuts} transition:fade={scrimFade}>
-    <div class="shortcuts-panel" transition:scale={dialogScale}>
-      <div class="shortcuts-head">
-        <h3>Keyboard shortcuts</h3>
-        <button class="shortcuts-close" on:click={closeShortcuts} aria-label="Close">✕</button>
-      </div>
-      <div class="shortcuts-list">
-        <div class="shortcut-row"><kbd>Ctrl</kbd><span>+</span><kbd>K</kbd><span class="shortcut-desc">Global search</span></div>
-        <div class="shortcut-row"><kbd>Ctrl</kbd><span>+</span><kbd>N</kbd><span class="shortcut-desc">Quick add task</span></div>
-        <div class="shortcut-row"><kbd>?</kbd><span class="shortcut-desc">Show this list</span></div>
-        <div class="shortcut-row"><kbd>Esc</kbd><span class="shortcut-desc">Close any open panel</span></div>
-        <div class="shortcut-row"><kbd>Enter</kbd><span class="shortcut-desc">Open a focused card, save a rename</span></div>
-      </div>
-    </div>
-  </div>
-{/if}
-
-{#if $errorToast}
-  <div class="error-toast" transition:toastFly>{$errorToast}</div>
-{/if}
-
-{#if undoToasts.length}
-  <div class="toast-stack">
-    {#each undoToasts as t (t.id)}
-      <div class="toast" transition:toastFly>
-        <span class="toast-msg">Deleted "{t.title.length > 30 ? t.title.slice(0,30)+'…' : t.title}"</span>
-        <button class="toast-undo" on:click={() => handleUndo(t.id)}>Undo</button>
-        <button class="toast-close" on:click={() => { clearTimeout(t.timer); undoToasts = undoToasts.filter(u => u.id !== t.id); }}>✕</button>
-      </div>
-    {/each}
-  </div>
-{/if}
-
-<style>
-  /* Colored strip behind the transparent Android status bar (edge-to-edge).
-     env(safe-area-inset-top) is 0 on desktop/browser, so this is invisible there. */
-  .status-bar-fill {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: env(safe-area-inset-top, 0px);
-    /* --statusbar-fill, not --sidebar-bg — main.ts pins the Android
-       status bar's icon style to Style.Dark (white icons) unconditionally,
-       so this strip must stay dark in both themes even now that
-       --sidebar-bg itself follows the page theme (2026-07-17). */
-    background: var(--statusbar-fill);
-    z-index: 10000;
+if(isTauri()){
+   { const $$_ladoMetadpU0C = __sveltets_2_ensureComponent(UpdateModal); new $$_ladoMetadpU0C({ target: __sveltets_2_any(), props: {}});}
+  if($updateState.phase === 'available' && $updateState.version !== dismissedUpdateVersion && !$showUpdateModal){
+     { svelteHTML.createElement("div", {   "class":`update-banner`,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(scrimFade)));
+       { svelteHTML.createElement("span", {}); $updateState.version;   }
+       { svelteHTML.createElement("div", { "class":`update-banner-actions`,});
+         { svelteHTML.createElement("button", {   "class":`update-banner-dismiss`,"on:click":() => dismissedUpdateVersion = $updateState.version ?? null,});  }
+         { svelteHTML.createElement("button", {   "class":`update-banner-view`,"on:click":() => showUpdateModal.set(true),});  }
+       }
+     }
   }
+}
 
-  .layout {
-    display: flex;
-    height: 100dvh;
-    padding-top: env(safe-area-inset-top, 0px);
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); min-width: 0; }
-  /* Wraps each top-level view (Dashboard/Kanban/List/Agenda/Focus/empty-
-     state) so the page-fade transition has a single element to animate --
-     must mirror .main's own flex layout so the wrapped view still fills
-     the available height instead of shrinking to its content. */
-  .view-fade { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+if(!showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showDeadlines && !showFocus){
+ { svelteHTML.createElement("button", {     "class":`fab`,"on:click":() => openQuickAdd(),"title":`Quick add task (Ctrl+N)`,});
+   { svelteHTML.createElement("svg", {             "viewBox":`0 0 16 16`,"width":`20`,"height":`20`,"fill":`none`,"stroke":`currentColor`,"stroke-width":`2`,"stroke-linecap":`round`,});
+      { svelteHTML.createElement("line", {       "x1":`8`,"y1":`2`,"x2":`8`,"y2":`14`,});}  { svelteHTML.createElement("line", {       "x1":`2`,"y1":`8`,"x2":`14`,"y2":`8`,});}
+   }
+ }
+}
 
-  /* Mobile scrim */
-  .mobile-scrim {
-    display: none;
-    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 199;
+if(showQuickAdd){
+  quickAddSession; {
+     { const $$_ddAkciuQ0C = __sveltets_2_ensureComponent(QuickAdd); const $$_ddAkciuQ0 = new $$_ddAkciuQ0C({ target: __sveltets_2_any(), props: {      "initialDueDate":quickAddDueDate,}});$$_ddAkciuQ0.$on("close", () => showQuickAdd = false);$$_ddAkciuQ0.$on("created", () => reloadTasks());}
   }
+}
 
-  .board-header {
-    display: flex; align-items: center; gap: 16px;
-    padding: 16px 24px 14px;
-    border-bottom: 1px solid var(--border); flex-shrink: 0;
+if(showSearch){
+  searchSession; {
+     { const $$_hcraeSlabolG0C = __sveltets_2_ensureComponent(GlobalSearch); const $$_hcraeSlabolG0 = new $$_hcraeSlabolG0C({ target: __sveltets_2_any(), props: {      commands,}});$$_hcraeSlabolG0.$on("close", () => showSearch = false);$$_hcraeSlabolG0.$on("open", (e) => { openSearchDetail(e.detail.task, e.detail.project); showSearch = false; });}
   }
+}
 
-  /* Hamburger — hidden on desktop, shown on mobile */
-  .hamburger {
-    display: none;
-    background: none; border: none; cursor: pointer;
-    color: var(--text); padding: 4px; border-radius: 6px;
-    flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
+if(searchDetailTask && searchDetailProject){
+  searchDetailTask._id + ':' + searchDetailSession; {
+     { const $$_liateDdraC0C = __sveltets_2_ensureComponent(CardDetail); const $$_liateDdraC0 = new $$_liateDdraC0C({ target: __sveltets_2_any(), props: {         "task":searchDetailTask,"project":searchDetailProject,}});$$_liateDdraC0.$on("close", async () => { searchDetailTask = null; searchDetailProject = null; await reloadTasks(); });$$_liateDdraC0.$on("openRelated", (e) => openRelatedTask(e.detail));}
   }
-  .hamburger:hover { background: var(--hover); }
+}
 
-  .title-block { min-width: 0; }
-  .breadcrumb {
-    display: flex; align-items: center; gap: 6px;
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--faint); margin-bottom: 3px;
-  }
-  .bc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .board-title {
-    margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.015em;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
+if(showShortcuts){
+  
+   { svelteHTML.createElement("div", {     "class":`scrim`,"on:click":closeShortcuts,});__sveltets_2_ensureTransition(fade(svelteHTML.mapElementTag('div'),(scrimFade)));
+     { svelteHTML.createElement("div", {   "class":`shortcuts-panel`,});__sveltets_2_ensureTransition(scale(svelteHTML.mapElementTag('div'),(dialogScale)));
+       { svelteHTML.createElement("div", { "class":`shortcuts-head`,});
+         { svelteHTML.createElement("h3", {});  }
+         { svelteHTML.createElement("button", {     "class":`shortcuts-close`,"on:click":closeShortcuts,"aria-label":`Close`,});  }
+       }
+       { svelteHTML.createElement("div", { "class":`shortcuts-list`,});
+         { svelteHTML.createElement("div", { "class":`shortcut-row`,}); { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", {});  } { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", { "class":`shortcut-desc`,});  } }
+         { svelteHTML.createElement("div", { "class":`shortcut-row`,}); { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", {});  } { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", { "class":`shortcut-desc`,});   } }
+         { svelteHTML.createElement("div", { "class":`shortcut-row`,}); { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", { "class":`shortcut-desc`,});   } }
+         { svelteHTML.createElement("div", { "class":`shortcut-row`,}); { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", { "class":`shortcut-desc`,});    } }
+         { svelteHTML.createElement("div", { "class":`shortcut-row`,}); { svelteHTML.createElement("kbd", {});  } { svelteHTML.createElement("span", { "class":`shortcut-desc`,});       } }
+       }
+     }
+   }
+}
 
-  .spacer { flex: 1; }
+if($errorToast){
+   { svelteHTML.createElement("div", {  "class":`error-toast`,});__sveltets_2_ensureTransition(toastFly(svelteHTML.mapElementTag('div')));$errorToast; }
+}
 
-  /* Search + Filters paired into one compact pill (owner feedback) rather
-     than two loose buttons — same grouped-pill language as .view-seg
-     below, so the two clusters read as a matched pair. */
-  .search-filter-group {
-    display: inline-flex; align-items: center; background: var(--col-bg);
-    border: 1px solid var(--border-strong); border-radius: 8px;
-    padding: 3px; gap: 1px; flex-shrink: 0;
-  }
-  .search-filter-divider { width: 1px; height: 14px; background: var(--border-strong); flex-shrink: 0; }
-  .search-btn {
-    /* Explicit height (not just padding) matching .view-btn's own box --
-       owner feedback, 2026-07-31: this button and the Kanban/List toggle
-       next to it read as two different control heights. Same fix on
-       Agenda's analogous palette-btn/mode-btn pair in DeadlinesView. */
-    display: flex; align-items: center; justify-content: center;
-    height: 30px; box-sizing: border-box;
-    background: none; border: none;
-    border-radius: 6px; padding: 0 8px; cursor: pointer;
-    color: var(--muted);
-    transition: color .12s, background .12s;
-    flex-shrink: 0;
-  }
-  .search-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
+if(undoToasts.length){
+   { svelteHTML.createElement("div", { "class":`toast-stack`,});
+       for(let t of __sveltets_2_ensureArray(undoToasts)){t.id;
+       { svelteHTML.createElement("div", {  "class":`toast`,});__sveltets_2_ensureTransition(toastFly(svelteHTML.mapElementTag('div')));
+         { svelteHTML.createElement("span", { "class":`toast-msg`,}); t.title.length > 30 ? t.title.slice(0,30)+'…' : t.title;  }
+         { svelteHTML.createElement("button", {   "class":`toast-undo`,"on:click":() => handleUndo(t.id),});  }
+         { svelteHTML.createElement("button", {   "class":`toast-close`,"on:click":() => { clearTimeout(t.timer); undoToasts = undoToasts.filter(u => u.id !== t.id); },});  }
+       }
+    }
+   }
+}
 
-  .view-seg {
-    display: inline-flex; background: var(--col-bg); border: 1px solid var(--border-strong);
-    border-radius: 10px; padding: 3px; gap: 2px; flex-shrink: 0;
-  }
-  .view-btn {
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-    height: 30px; box-sizing: border-box;
-    border: none; cursor: pointer; font-family: inherit; font-size: 13px;
-    font-weight: 600; padding: 0 13px; border-radius: 7px;
-    background: transparent; color: var(--muted);
-    transition: background .12s, color .12s, box-shadow .12s;
-  }
-  .view-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
-  .view-btn:not(.active):hover { color: var(--text); }
 
-  .empty-state {
-    display: flex; flex-direction: column; align-items: flex-start;
-    gap: 1rem; padding: 16px 24px; color: var(--muted); font-size: .95rem;
-  }
-  .empty-state span { margin: auto; align-self: center; }
-
-  .loading {
-    display: flex; align-items: center; justify-content: center; gap: 9px;
-    height: 100dvh; color: var(--faint);
-    font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
-  }
-
-  .crash-recovery {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    height: 100dvh; padding: 24px; text-align: center; gap: 10px;
-    background: var(--bg); color: var(--text);
-  }
-  .crash-recovery h2 { margin: 0; font-size: 18px; }
-  .crash-msg { color: var(--danger); font-size: 13px; max-width: 380px; }
-  .crash-hint { color: var(--faint); font-size: 12.5px; max-width: 380px; line-height: 1.5; }
-  .retry-btn {
-    margin-top: 8px; padding: 8px 20px; border-radius: var(--radius-sm);
-    border: 1px solid var(--text); background: var(--text); color: var(--bg);
-    cursor: pointer; font-size: 13px; font-weight: 600;
-  }
-
-  /* ── Update banner (desktop only) ── */
-  .update-banner {
-    position: fixed; bottom: 24px; left: 24px; z-index: 300;
-    display: flex; align-items: center; gap: .9rem;
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    box-shadow: 0 8px 24px rgba(0,0,0,.25);
-    padding: .7rem 1rem; font-size: .85rem; color: var(--text);
-  }
-  .update-banner-actions { display: flex; gap: .5rem; flex-shrink: 0; }
-  .update-banner-dismiss, .update-banner-view {
-    padding: .35rem .7rem; border-radius: var(--radius-sm); font-size: .78rem; font-weight: 600; cursor: pointer;
-    border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
-  }
-  .update-banner-view { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .update-banner-dismiss:hover { background: var(--hover); }
-  .update-banner-view:hover { opacity: .88; }
-
-  /* ── FAB ── */
-  .fab {
-    position: fixed; bottom: 24px; right: 24px; z-index: 300;
-    width: 50px; height: 50px; border-radius: 50%;
-    background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0,0,0,.25);
-    display: flex; align-items: center; justify-content: center;
-    transition: transform .12s, box-shadow .12s, opacity .12s;
-  }
-  .fab:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,.3); }
-  .fab:active { transform: scale(.96); }
-
-  /* ── Shortcuts panel ── */
-  .scrim { display: flex; align-items: center; justify-content: center; }
-  .shortcuts-panel {
-    position: relative; z-index: 401;
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 1.25rem 1.4rem; width: min(360px, 90vw);
-    box-shadow: 0 20px 50px rgba(0,0,0,.18);
-  }
-  .shortcuts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .9rem; }
-  .shortcuts-head h3 { margin: 0; font-size: 1rem; letter-spacing: -.01em; }
-  .shortcuts-close {
-    background: var(--hover); border: none; cursor: pointer;
-    width: 26px; height: 26px; border-radius: 6px; color: var(--muted); font-size: .8rem;
-  }
-  .shortcuts-close:hover { background: var(--border-strong); color: var(--text); }
-  .shortcuts-list { display: flex; flex-direction: column; gap: .6rem; }
-  .shortcut-row { display: flex; align-items: center; gap: .3rem; font-size: .85rem; color: var(--text); }
-  .shortcut-row kbd {
-    font-family: var(--mono); font-size: .74rem; background: var(--col-bg);
-    border: 1px solid var(--border-strong); border-radius: 5px; padding: .15rem .4rem;
-  }
-  .shortcut-desc { margin-left: .5rem; color: var(--muted); }
-
-  /* ── Error toast ── */
-  .error-toast {
-    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    /* --on-accent, not hardcoded #fff — maintenance pass caught this at
-       2.77:1 in dark mode (--danger is a light red-pink there). */
-    background: var(--danger); color: var(--on-accent);
-    padding: 11px 18px; border-radius: 10px;
-    font-size: 13.5px; font-weight: 500;
-    box-shadow: 0 4px 20px rgba(0,0,0,.25);
-    z-index: 1000; white-space: nowrap;
-  }
-
-  /* ── Undo toast ── */
-  .toast-stack {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; gap: 8px; z-index: 999;
-    pointer-events: none;
-  }
-  .toast {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--text); color: var(--bg);
-    padding: 11px 14px; border-radius: 10px;
-    font-size: 13.5px; font-weight: 500;
-    box-shadow: 0 4px 20px rgba(0,0,0,.25);
-    pointer-events: all;
-    white-space: nowrap;
-  }
-  .toast-msg { flex: 1; }
-  .toast-undo {
-    background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
-    padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
-    transition: opacity .12s;
-  }
-  .toast-undo:hover { opacity: .85; }
-  .toast-close {
-    background: none; border: none; cursor: pointer; color: inherit;
-    opacity: .5; font-size: 13px; padding: 0 2px;
-  }
-  .toast-close:hover { opacity: 1; }
-
-  /* ── Mobile ── */
-  /* Second condition mirrors Sidebar.svelte's own -- a phone in landscape
-     needs the same off-canvas hamburger/scrim treatment even though its
-     width alone often exceeds 768px (owner-reported 2026-07-22). */
-  @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
-    .mobile-scrim { display: block; }
-    .hamburger { display: flex; }
-    .board-header { padding: 12px 16px 10px; gap: 10px; }
-    .board-title { font-size: 17px; }
-    .breadcrumb { display: none; }
-    .view-label { display: none; }
-    .view-btn { padding: 6px 9px; }
-  }
-</style>
+};
+return { props: {} as Record<string, never>, exports: {}, bindings: "", slots: {}, events: {} }}
+const App__SvelteComponent_ = __sveltets_2_isomorphic_component(__sveltets_2_with_any_event($$render()));
+/*Ωignore_startΩ*/type App__SvelteComponent_ = InstanceType<typeof App__SvelteComponent_>;
+/*Ωignore_endΩ*/export default App__SvelteComponent_;

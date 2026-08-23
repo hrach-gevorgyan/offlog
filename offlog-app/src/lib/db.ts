@@ -43,8 +43,13 @@ export function initIndexes(): Promise<void> {
   if (_indexesReady) return _indexesReady;
   _indexesReady = (async () => {
     try {
-      await db.createIndex({ index: { fields: ['type', 'project_id'] }, ddoc: 'idx-type-project' });
-      await db.createIndex({ index: { fields: ['type', 'ref'] }, ddoc: 'idx-type-ref' });
+      // `ddoc` names the design doc the index lives in -- a real, documented
+      // pouchdb-find option, but missing from @types/pouchdb-find's
+      // CreateIndexOptions. Cast rather than drop it: without an explicit
+      // ddoc each index gets its own generated design doc, which is slower
+      // to query and churns more on replication.
+      await db.createIndex({ index: { fields: ['type', 'project_id'] }, ddoc: 'idx-type-project' } as PouchDB.Find.CreateIndexOptions);
+      await db.createIndex({ index: { fields: ['type', 'ref'] }, ddoc: 'idx-type-ref' } as PouchDB.Find.CreateIndexOptions);
     } catch {
       // Index creation failing (e.g. unsupported adapter) shouldn't break
       // the app — queries fall back to their allDocs equivalents, just slower.
@@ -808,7 +813,10 @@ export async function updateSpace(id: string, changes: Partial<Pick<SpaceDoc, 'n
   const updated = { ...doc, ...changes, updated_at: now(), source: SOURCE };
   await db.put(updated);
   const skip = new Set(['updated_at', 'source']);
-  for (const key of Object.keys(changes) as (keyof SpaceDoc)[]) {
+  // Keyed to what `changes` can actually contain, not all of SpaceDoc --
+  // `keyof SpaceDoc` was wider than the object being indexed, so every
+  // lookup below resolved to an implicit `any`.
+  for (const key of Object.keys(changes) as (keyof typeof changes)[]) {
     if (skip.has(key)) continue;
     if (JSON.stringify(doc[key]) === JSON.stringify(changes[key])) continue;
     await logChange(id, 'update', key, doc[key], changes[key], { space_name: doc.name });
@@ -1962,7 +1970,12 @@ export async function getAllTags(projectId?: string): Promise<string[]> {
 // v6.11.0 — per-tag color override, one tiny doc per overridden tag
 // (`tag:<name>`), point-lookup only (never a range scan across other
 // prefixes) so this doesn't need its own logChange() entries either.
-async function getTagColorDoc(tag: string): Promise<TagColorDoc | undefined> {
+// ExistingDocument, not the bare TagColorDoc: `_rev` is optional on the
+// interface (a doc being *created* doesn't have one yet) but db.get() only
+// ever returns a doc that already exists, so it's always present here.
+// Saying so is what lets callers pass the result straight to db.remove(),
+// which requires a real _rev.
+async function getTagColorDoc(tag: string): Promise<PouchDB.Core.ExistingDocument<TagColorDoc> | undefined> {
   try { return await db.get<TagColorDoc>(`tag:${tag}`); } catch { return undefined; }
 }
 

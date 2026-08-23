@@ -8,6 +8,12 @@
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
   import type { CustomFieldFilter } from './utils';
   import { PRIORITY_COLOR as PRIO_COLOR } from './constants';
+
+  // Declared here with an explicit tuple type rather than inline in the
+  // {#each}: inline, TS widened it to (string | number)[][], so `v` came
+  // out as string|number and both the filterPrio assignment and the
+  // PRIO_COLOR index below silently degraded to `any`.
+  const PRIO_CHIPS: [number, string][] = [[0, 'All'], [1, 'Low'], [2, 'Med'], [3, 'High']];
   import { popScale } from './motion';
   import { fly } from 'svelte/transition';
   import CustomSelect from './CustomSelect.svelte';
@@ -160,7 +166,7 @@
 
       <div class="menu-label">Priority</div>
       <div class="prio-chips">
-        {#each [[0,'All'],[1,'Low'],[2,'Med'],[3,'High']] as [v,label]}
+        {#each PRIO_CHIPS as [v, label]}
           <button class="prio-chip" class:active={filterPrio === v} on:click={() => filterPrio = filterPrio === v ? 0 : v}>
             {#if v !== 0}<span class="chip-dot" style="background:{PRIO_COLOR[v]}"></span>{/if}
             {label}
