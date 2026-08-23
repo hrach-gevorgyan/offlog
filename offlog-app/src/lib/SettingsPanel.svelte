@@ -1,8 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
-  import CustomSelect from './CustomSelect.svelte';
-  import TimePicker from './TimePicker.svelte';
-  import ConfirmPinGate from './ConfirmPinGate.svelte';
+  import AppearanceSettings from './settings/AppearanceSettings.svelte';
+  import NotificationSettings from './settings/NotificationSettings.svelte';
+  import SyncSettings from './settings/SyncSettings.svelte';
+  import OrganizeSettings from './settings/OrganizeSettings.svelte';
+  import DataSettings from './settings/DataSettings.svelte';
+  import SecuritySettings from './settings/SecuritySettings.svelte';
+  import AdvancedSettings from './settings/AdvancedSettings.svelte';
+  import { downloadBlob, freshMaintSteps, formatStorageEstimate, type MaintStep } from './settings/helpers';
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from './autoBackup';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
@@ -12,12 +17,11 @@
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
     wipeAndReseed,
   } from './db';
-  import { formatAttachmentSize } from './attachments';
   import { projects as projectsStore } from './store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, otherHostsDetected } from '../config';
-  import { timeAgo, fmtLastSynced, localDateStr } from './utils';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../config';
+  import { fmtLastSynced, localDateStr } from './utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from './discovery';
-  import { requestPermission, permissionState, exactAlarmState, checkExactAlarmPermission, requestExactAlarmPermission, rescheduleAll } from './notifications';
+  import { checkExactAlarmPermission, rescheduleAll } from './notifications';
   import { updateState, showUpdateModal, checkForUpdate } from './updateChecker';
   import { showError, modalOpen } from './store';
   import { closeOnBack } from './modalStack';
@@ -228,16 +232,6 @@
   // panel uses.
   let appLockEnabled = isAppLockEnabled();
   let appLockTimeout = getAppLockTimeoutMinutes();
-  // A dropdown, not the segmented control Theme/Week-starts-on use —
-  // those read fine at 2-3 short options, but 4 numeric ones ("1m 5m 15m
-  // 30m") in a row are cramped. Same CustomSelect pattern as
-  // CardDetail's Repeat picker.
-  const LOCK_TIMEOUT_OPTIONS = [
-    { value: '1', label: '1 minute' },
-    { value: '5', label: '5 minutes' },
-    { value: '15', label: '15 minutes' },
-    { value: '30', label: '30 minutes' },
-  ];
   let lockTimeoutStr = String(appLockTimeout);
   let showPinForm = false;
   let newPin = '';
@@ -689,12 +683,10 @@
   let storageInfo = '';
   let storagePercent = 0;
   let storageAvailable = true;
-  const STORAGE_WARN_THRESHOLD = 0.8;
   async function loadStorage() {
     if (navigator.storage?.estimate) {
       const { usage = 0, quota = 0 } = await navigator.storage.estimate();
-      storageInfo = `${(usage / 1048576).toFixed(1)} MB used / ${(quota / 1048576).toFixed(0)} MB quota`;
-      storagePercent = quota > 0 ? usage / quota : 0;
+      ({ info: storageInfo, percent: storagePercent } = formatStorageEstimate(usage, quota));
       storageAvailable = true;
     } else { storageInfo = 'Not available'; storageAvailable = false; }
   }
@@ -753,55 +745,6 @@
     setTimeout(() => { importStatus = ''; }, 4000);
   }
 
-  // The blob-URL + <a download> trick below is a no-op inside a
-  // Capacitor Android WebView — there's no
-  // browser download manager to hand it to. On native, write the file to
-  // app storage via @capacitor/filesystem and hand it to the OS share
-  // sheet via @capacitor/share instead, so the user picks where it ends
-  // up (Files, Drive, email, etc.) same as any other Android share flow.
-  async function downloadBlob(content: string, mime: string, filename: string) {
-    if ((window as any).Capacitor?.isNativePlatform?.()) {
-      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
-      const { Share } = await import('@capacitor/share');
-      const written = await Filesystem.writeFile({
-        path: filename,
-        data: content,
-        directory: Directory.Cache,
-        encoding: Encoding.UTF8,
-      });
-      await Share.share({ title: filename, url: written.uri });
-      return;
-    }
-    // Same gap as Android's WebView: Tauri's embedded WebView2 has no
-    // download manager for the blob-URL + <a download> trick either. A
-    // native "Save As" dialog + a real file write is the desktop
-    // equivalent of the Filesystem+Share path above.
-    if (isTauri) {
-      // defaultPath must be an absolute path (Documents + name): a bare
-      // filename doesn't reliably pre-fill the dialog's filename field,
-      // since the plugin only populates it for a path resolvable as
-      // "some directory + a name". `filters` pre-selects the right
-      // extension so the user doesn't have to type it.
-      const { save } = await import('@tauri-apps/plugin-dialog');
-      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-      const { documentDir, join } = await import('@tauri-apps/api/path');
-      const ext = filename.split('.').pop() ?? 'txt';
-      const defaultPath = await join(await documentDir(), filename).catch(() => filename);
-      const path = await save({
-        defaultPath,
-        filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
-      });
-      if (!path) return; // user cancelled the dialog
-      await writeTextFile(path, content);
-      return;
-    }
-    const blob = new Blob([content], { type: mime });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-  }
-
   // Two groups: "Back up" (scope — everything vs one project — is a
   // single control, not implied by which button you tap) and "Restore".
   // CSV stays a separate, clearly-labeled one-way export: it isn't
@@ -842,11 +785,6 @@
   // ── Maintenance: lives in Advanced as a "Run maintenance" modal rather
   // than its own tab — the step list/progress bar is the clearest case
   // for this file's multi-step-flows-open-as-a-modal rule ──
-  type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
-  // key is the same narrow union db.ts's MaintStepResult uses, not a bare
-  // string -- setMaintStep() requires that union, so a plain `string` here
-  // meant every call site was one typo away from silently matching nothing.
-  interface MaintStep { key: MaintStepResult['key']; label: string; status: MaintStatus; note: string }
   let maintRunning = false;
   let maintSteps: MaintStep[] = [];
   let maintRemainingIssues: IntegrityIssue[] = [];
@@ -883,15 +821,6 @@
     setAutoUpdateCheckEnabled(autoUpdateCheckEnabled);
   }
 
-  function freshMaintSteps(): MaintStep[] {
-    return [
-      { key: 'check',   label: 'Checking your data for problems', status: 'pending', note: '' },
-      { key: 'repair',  label: 'Repairing anything fixable',      status: 'pending', note: '' },
-      { key: 'history', label: 'Clearing old activity history',   status: 'pending', note: '' },
-      { key: 'trash',   label: 'Clearing old items from Recycle', status: 'pending', note: '' },
-      { key: 'compact', label: 'Freeing up unused space',         status: 'pending', note: '' },
-    ];
-  }
   maintSteps = freshMaintSteps();
 
   function setMaintStep(key: MaintStepResult['key'], patch: Partial<MaintStep>) {
@@ -988,513 +917,58 @@
             {#key activeCategory}
             <div class="detail-fade" in:fade={{ duration: 140 }}>
             {#if activeCategory === 'appearance'}
-              <div class="setting-group">
-                <div class="setting-section-title">Display</div>
-                <div class="setting-row">
-                  <div class="setting-label">Theme</div>
-                  <div class="theme-segment" role="radiogroup" aria-label="Theme">
-                    {#each (['light', 'dark', 'system'] as ThemeMode[]) as mode}
-                      <button
-                        class="theme-seg-btn"
-                        class:active={themeMode === mode}
-                        role="radio"
-                        aria-checked={themeMode === mode}
-                        on:click={() => selectThemeMode(mode)}
-                      >
-                        {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'System'}
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-                <p class="setting-hint">"System" follows your device's light/dark setting automatically.</p>
-
-                <div class="setting-row">
-                  <div class="setting-label">Week starts on</div>
-                  <div class="theme-segment" role="radiogroup" aria-label="Week starts on">
-                    <button
-                      class="theme-seg-btn"
-                      class:active={!weekStartsMonday}
-                      role="radio"
-                      aria-checked={!weekStartsMonday}
-                      on:click={() => setWeekStart(false)}
-                    >Sunday</button>
-                    <button
-                      class="theme-seg-btn"
-                      class:active={weekStartsMonday}
-                      role="radio"
-                      aria-checked={weekStartsMonday}
-                      on:click={() => setWeekStart(true)}
-                    >Monday</button>
-                  </div>
-                </div>
-                <p class="setting-hint">Controls Agenda's month grid and "this week" grouping.</p>
-
-                <div class="setting-row">
-                  <div class="setting-label">Time format</div>
-                  <div class="theme-segment" role="radiogroup" aria-label="Time format">
-                    <button
-                      class="theme-seg-btn"
-                      class:active={!timeFormat24h}
-                      role="radio"
-                      aria-checked={!timeFormat24h}
-                      on:click={() => setTimeFormat(false)}
-                    >12h</button>
-                    <button
-                      class="theme-seg-btn"
-                      class:active={timeFormat24h}
-                      role="radio"
-                      aria-checked={timeFormat24h}
-                      on:click={() => setTimeFormat(true)}
-                    >24h</button>
-                  </div>
-                </div>
-                <p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>
-              </div>
-
-              <div class="setting-group">
-                <div class="setting-section-title">Accessibility</div>
-                <div class="setting-row">
-                  <div class="setting-label">High contrast</div>
-                  <button class="toggle-btn" class:on={highContrast} on:click={toggleHighContrast} aria-label="Toggle high contrast" role="switch" aria-checked={highContrast}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <p class="setting-hint">Raises border and text contrast throughout, on top of Light or Dark.</p>
-
-                <div class="setting-row">
-                  <div class="setting-label">Reduce motion</div>
-                  <button class="toggle-btn" class:on={reduceMotion} on:click={toggleReduceMotion} aria-label="Toggle reduce motion" role="switch" aria-checked={reduceMotion}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <p class="setting-hint">Turns off panel/dialog slide and fade animations throughout the app.</p>
-
-                {#if isNativePlatform()}
-                  <div class="setting-row">
-                    <div class="setting-label">Haptic feedback</div>
-                    <button class="toggle-btn" class:on={hapticsEnabled} on:click={toggleHaptics} aria-label="Toggle haptic feedback" role="switch" aria-checked={hapticsEnabled}>
-                      <span class="toggle-knob"></span>
-                    </button>
-                  </div>
-                  <p class="setting-hint">A small vibration on checkbox toggles and drag-and-drop.</p>
-                {/if}
-              </div>
+              <AppearanceSettings
+                {themeMode} {selectThemeMode} {weekStartsMonday} {setWeekStart}
+                {timeFormat24h} {setTimeFormat} {highContrast} {toggleHighContrast}
+                {reduceMotion} {toggleReduceMotion} {hapticsEnabled} {toggleHaptics}
+              />
 
             {:else if activeCategory === 'notifications'}
-              <div class="setting-group">
-                <div class="setting-section-title">Status</div>
-                <div class="setting-row">
-                  <span class="setting-label">{notificationsEnabled ? 'Task reminders enabled' : 'Task reminders off'}</span>
-                  <button class="toggle-btn" class:on={notificationsEnabled} on:click={toggleNotificationsEnabled} aria-label="Toggle task reminders" role="switch" aria-checked={notificationsEnabled}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <p class="setting-hint">Turn this off to stop all reminders in-app, regardless of the OS permission below.</p>
-              </div>
-
-              {#if notificationsEnabled}
-              <div class="setting-group">
-                <div class="setting-section-title">Permission</div>
-                <div class="setting-row">
-                  <span class="setting-label">
-                    {#if $permissionState === 'granted'}Enabled — task reminders will notify you
-                    {:else if $permissionState === 'denied'}Blocked — {isTauri ? 'allow notifications for Offlog in Windows Settings → Notifications' : 'allow notifications for this site in your browser settings'}
-                    {:else if $permissionState === 'unsupported'}Not supported in this browser
-                    {:else}Not enabled yet{/if}
-                  </span>
-                  {#if $permissionState !== 'granted' && $permissionState !== 'unsupported'}
-                    <button class="export-btn" on:click={() => requestPermission()}>Enable</button>
-                  {/if}
-                </div>
-                {#if isAndroid}
-                  <div class="setting-row">
-                    <span class="setting-label">
-                      {#if $exactAlarmState === 'granted'}Precise timing enabled — reminders fire exactly on time
-                      {:else if $exactAlarmState === 'denied'}Not enabled — reminders may arrive a few minutes late
-                      {:else}Checking…{/if}
-                    </span>
-                    {#if $exactAlarmState === 'denied'}
-                      <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Enable</button>
-                    {/if}
-                  </div>
-                  <p class="setting-hint">
-                    This is a separate Android permission from notifications themselves ("Alarms & reminders", since Android 12) — it's a system settings toggle with no in-app prompt, so it's easy to miss. Without it, reminders still arrive, just batched into the OS's next low-power wakeup window instead of at the exact minute you set.
-                  </p>
-                {/if}
-              </div>
-
-              <div class="setting-group">
-                <div class="setting-section-title">Reminder timing</div>
-                <label class="field-label">
-                  Default "remind me on the due date" time
-                  <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
-                </label>
-                <p class="setting-hint">Used whenever a task's "Remind me on the due date" checkbox is on, instead of picking the exact time yourself.</p>
-              </div>
-
-              <div class="setting-group">
-                <div class="setting-section-title">Quiet hours</div>
-                <div class="setting-row">
-                  <span class="setting-label">Queue reminders during quiet hours</span>
-                  <button class="toggle-btn" class:on={quietHours.enabled} on:click={() => saveQuietHours({ enabled: !quietHours.enabled })} aria-label="Toggle quiet hours" role="switch" aria-checked={quietHours.enabled}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                {#if quietHours.enabled}
-                  <div class="setting-row">
-                    <span class="setting-label">From</span>
-                    <TimePicker value={quietHours.start} placement="up" on:change={(e) => saveQuietHours({ start: e.detail })} />
-                    <span class="setting-label">to</span>
-                    <TimePicker value={quietHours.end} placement="up" on:change={(e) => saveQuietHours({ end: e.detail })} />
-                  </div>
-                {/if}
-                <p class="setting-hint">A reminder due in this window fires as soon as it ends instead of interrupting you.</p>
-              </div>
-              {/if}
+              <NotificationSettings
+                {isAndroid} {isTauri} {notificationsEnabled} {toggleNotificationsEnabled}
+                {defaultReminderTime} {saveDefaultReminderTime} {quietHours} {saveQuietHours}
+              />
 
             {:else if activeCategory === 'sync'}
-              <div class="setting-group">
-                <div class="setting-section-title">Status</div>
-                <div class="setting-row">
-                  <span class="setting-label">{syncEnabled ? 'Sync enabled' : 'Sync paused'}</span>
-                  <button class="toggle-btn" class:on={syncEnabled} on:click={toggleSyncEnabled} aria-label="Toggle sync" role="switch" aria-checked={syncEnabled}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
-                {#if syncEnabled && isTauri && $otherHostsDetected.length}
-                  <p class="setting-hint setting-hint-warn">
-                    Another Offlog host ("{$otherHostsDetected[0].name}") was found on this
-                    network. Running two hosts on the same network means they won't share
-                    data — make sure every device pairs with only one.
-                  </p>
-                {/if}
-              </div>
-
-              {#if syncEnabled}
-                <div class="setting-group">
-                  <div class="setting-section-title">Connect a device</div>
-                  {#if isAndroid || isTauri}
-                    <button class="link-row link-row-compact" on:click={() => showConnectModal = true}>
-                      <span class="link-row-title">Connect a device</span>
-                      <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                    </button>
-                  {:else}
-                    <p class="setting-hint">Happens from the Android app (Settings → Sync → "Find my computer") or the PC app (Settings → Sync → "Generate a code") — not from a plain web browser.</p>
-                  {/if}
-                </div>
-
-                <div class="setting-group">
-                  <div class="setting-section-title">This device</div>
-                  <label class="field-label">
-                    Name
-                    <input bind:value={deviceName} placeholder="PC" on:blur={saveDeviceName} enterkeyhint="done"
-                      on:keydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
-                  </label>
-                  <p class="setting-hint">Shown on this device's own edits from now on — changelog entries, task history, and the list below.</p>
-                </div>
-
-                {#if deviceLastSeen.length}
-                  <div class="setting-group">
-                    <div class="setting-section-title">Devices seen recently</div>
-                    {#each deviceLastSeen as d (d.device)}
-                      <div class="setting-row">
-                        <span class="storage-info">{d.device}</span>
-                        <span class="storage-info" style="color: var(--faint)">{timeAgo(d.lastSeen)}</span>
-                      </div>
-                    {/each}
-                  </div>
-                {/if}
-
-                {#if conflictCount > 0 || conflictList.length > 0}
-                  <div class="setting-group">
-                    <div class="setting-section-title">Conflicts</div>
-                    <button class="link-row link-row-compact" on:click={() => showConflictsModal = true}>
-                      <span class="link-row-title">Resolve conflicts</span>
-                      <span class="nav-badge">{conflictList.length || conflictCount}</span>
-                    </button>
-                  </div>
-                {/if}
-              {/if}
+              <SyncSettings
+                {isAndroid} {isTauri} {syncEnabled} {toggleSyncEnabled} {connectionStatus}
+                bind:showConnectModal bind:showConflictsModal
+                bind:deviceName {saveDeviceName} {deviceLastSeen} {conflictCount} {conflictList}
+              />
 
             {:else if activeCategory === 'organize'}
-              <div class="setting-group">
-                <div class="setting-section-title">Manage</div>
-                <button class="link-row link-row-compact" on:click={openSpaceManager}>
-                  <span class="link-row-title">Spaces</span>
-                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                </button>
-                <button class="link-row link-row-compact" on:click={openTagManager}>
-                  <span class="link-row-title">Tags</span>
-                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                </button>
-                <button class="link-row link-row-compact" on:click={openCustomFieldManager}>
-                  <span class="link-row-title">Custom Fields</span>
-                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                </button>
-                <button class="link-row link-row-compact" on:click={openArchivedProjectsManager}>
-                  <span class="link-row-title">Archived Projects</span>
-                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                </button>
-              </div>
+              <OrganizeSettings
+                {openSpaceManager} {openTagManager}
+                {openCustomFieldManager} {openArchivedProjectsManager}
+              />
 
             {:else if activeCategory === 'data'}
-              <div class="setting-group">
-                <div class="setting-section-title">Storage</div>
-                <div class="storage-summary">
-                  {#if !storageAvailable}
-                    <span class="storage-headline">Storage info not available in this browser</span>
-                  {:else if storagePercent >= STORAGE_WARN_THRESHOLD}
-                    <span class="storage-headline storage-headline-warn">Storage is getting full ({(storagePercent * 100).toFixed(0)}%)</span>
-                    <span class="storage-detail">{storageInfo}</span>
-                  {:else}
-                    <span class="storage-headline">Your data is tiny — nothing to worry about</span>
-                    <span class="storage-detail">{storageInfo || 'Calculating…'}</span>
-                  {/if}
-                </div>
-                {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
-                  <p class="setting-hint setting-hint-warn">
-                    Try the maintenance tools in Advanced (prune old history, empty Recycle), or free up
-                    space on this device — once storage is truly full, new changes would stop saving.
-                  </p>
-                {/if}
-                {#if breakdown}
-                  <p class="setting-hint">
-                    {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
-                    {breakdown.archivedTasks} archived ·
-                    {breakdown.deletedTasks} in Recycle ·
-                    {breakdown.logEntries} history entries
-                    {#if breakdown.attachmentCount}
-                      · {breakdown.attachmentCount} attachment{breakdown.attachmentCount === 1 ? '' : 's'} ({formatAttachmentSize(breakdown.attachmentBytes)})
-                    {/if}
-                  </p>
-                {/if}
-              </div>
-
-              {#if isNativePlatform() || isTauriCheck()}
-              <div class="setting-group">
-                <div class="setting-section-title">Automatic backups</div>
-                <div class="setting-row">
-                  <span class="setting-label">Back up automatically</span>
-                  <button class="toggle-btn" class:on={autoBackupEnabled} on:click={toggleAutoBackup} aria-label="Toggle automatic backups" role="switch" aria-checked={autoBackupEnabled}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <p class="setting-hint">
-                  {#if lastAutoBackupAt}
-                    Last saved: {fmtLastSynced(lastAutoBackupAt)}. This stays on your device, so it won't
-                    help if your device is lost or breaks — use "Back up" below for a copy you can keep
-                    somewhere else too.
-                  {:else}
-                    Saves a safety copy on your device every day, automatically. This won't help if your
-                    device is lost or breaks — use "Back up" below for a copy you can keep somewhere else too.
-                  {/if}
-                </p>
-              </div>
-              {/if}
-
-              <div class="setting-group">
-                <div class="setting-section-title">Back up</div>
-                <p class="setting-hint">Everything, or just one project — either can be restored later.</p>
-                <div class="setting-row">
-                  <div class="project-export-select">
-                    <CustomSelect options={backupScopeOptions} bind:value={backupScope} />
-                  </div>
-                  <button class="export-btn" on:click={doBackup}>Back up</button>
-                </div>
-                <div class="setting-row">
-                  <span class="storage-info" style="color: var(--muted)">Every task, one row, for a spreadsheet (one-way, can't be restored)</span>
-                  <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
-                </div>
-              </div>
-
-              <div class="setting-group">
-                <div class="setting-section-title">Restore</div>
-                <div class="setting-row">
-                  <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
-                  <button class="export-btn" on:click={handleImport}>Choose backup file</button>
-                </div>
-              </div>
+              <DataSettings
+                {storageAvailable} {storagePercent} {storageInfo} {breakdown}
+                {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
+                bind:backupScope {backupScopeOptions} {doBackup} {doExportCSV}
+                {importStatus} {handleImport}
+              />
 
             {:else if activeCategory === 'security'}
-              <div class="setting-group">
-                <div class="setting-section-title">PIN lock</div>
-                <p class="setting-hint">Require a PIN to open Offlog. This is a screen lock, not encryption — it keeps a passer-by from casually opening the app, not a substitute for your device's own lock.</p>
-
-                {#if !appLockEnabled}
-                  {#if !showPinForm}
-                    <button class="export-btn" on:click={openPinForm}>Set a PIN</button>
-                  {:else}
-                    <label class="field-label">
-                      New PIN
-                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
-                    </label>
-                    <label class="field-label">
-                      Confirm PIN
-                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
-                    </label>
-                    <label class="field-label">
-                      Hint (optional)
-                      <input type="text" maxlength="60" bind:value={pinHint} placeholder="A reminder only you'd understand" />
-                    </label>
-                    {#if pinError}<p class="setting-hint setting-hint-warn">{pinError}</p>{/if}
-                    <div class="setting-row">
-                      <button class="export-btn" on:click={() => showPinForm = false}>Cancel</button>
-                      <button class="export-btn" on:click={savePin} disabled={pinSaving}>{pinSaving ? 'Saving…' : 'Save PIN'}</button>
-                    </div>
-                  {/if}
-                {:else if pinGateMode}
-                  <ConfirmPinGate
-                    message={pinGateMode === 'remove'
-                      ? 'Turn off the PIN lock? Offlog will no longer require a PIN to open. Enter your current PIN to confirm.'
-                      : 'Enter your current PIN to change it.'}
-                    confirmLabel={pinGateMode === 'remove' ? 'Turn off' : 'Continue'}
-                    danger={pinGateMode === 'remove'}
-                    on:verified={onPinGateVerified}
-                    on:cancel={() => pinGateMode = null}
-                  />
-                {:else if !showPinForm}
-                  <div class="setting-row">
-                    <span class="setting-label">PIN is set</span>
-                    <div class="setting-row">
-                      <button class="export-btn" on:click={() => pinGateMode = 'change'}>Change PIN</button>
-                      <button class="export-btn" on:click={() => pinGateMode = 'remove'}>Remove PIN</button>
-                    </div>
-                  </div>
-                {:else}
-                  <label class="field-label">
-                    New PIN
-                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
-                  </label>
-                  <label class="field-label">
-                    Confirm PIN
-                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
-                  </label>
-                  <label class="field-label">
-                    Hint (optional)
-                    <input type="text" maxlength="60" bind:value={pinHint} placeholder="A reminder only you'd understand" />
-                  </label>
-                  {#if pinError}<p class="setting-hint setting-hint-warn">{pinError}</p>{/if}
-                  <div class="setting-row">
-                    <button class="export-btn" on:click={() => showPinForm = false}>Cancel</button>
-                    <button class="export-btn" on:click={savePin} disabled={pinSaving}>{pinSaving ? 'Saving…' : 'Save PIN'}</button>
-                  </div>
-                {/if}
-              </div>
-
-              {#if appLockEnabled}
-                <div class="setting-group">
-                  <div class="setting-section-title">Lock after</div>
-                  <label class="field-label">
-                    Lock after this much idle/background time
-                    <CustomSelect options={LOCK_TIMEOUT_OPTIONS} bind:value={lockTimeoutStr} on:change={(e) => onLockTimeoutChange(e.detail)} />
-                  </label>
-                  <p class="setting-hint">Also locks whenever Offlog is closed and reopened, regardless of this setting.</p>
-                </div>
-              {/if}
-
-              {#if isNativePlatform() && appLockEnabled}
-                <div class="setting-group">
-                  <div class="setting-section-title">Biometric unlock</div>
-                  <div class="setting-row">
-                    <div class="setting-label">Unlock with fingerprint/face</div>
-                    <button class="toggle-btn" class:on={biometricEnabled} on:click={toggleBiometric} disabled={biometricBusy} aria-label="Toggle biometric unlock" role="switch" aria-checked={biometricEnabled}>
-                      <span class="toggle-knob"></span>
-                    </button>
-                  </div>
-                  <p class="setting-hint">A faster path on top of your PIN, not a replacement — the PIN still works, and is still the only way to change or recover the lock.</p>
-                  {#if biometricError}<p class="setting-hint setting-hint-error">{biometricError}</p>{/if}
-                  {#if biometricNoneEnrolled}
-                    <button class="export-btn" on:click={openBiometricEnrollment}>Open enrollment settings</button>
-                  {/if}
-                </div>
-
-                <div class="setting-group">
-                  <div class="setting-section-title">Privacy screen</div>
-                  <div class="setting-row">
-                    <div class="setting-label">Hide preview when backgrounded</div>
-                    <button class="toggle-btn" class:on={privacyScreenEnabled} on:click={togglePrivacyScreen} aria-label="Toggle privacy screen" role="switch" aria-checked={privacyScreenEnabled}>
-                      <span class="toggle-knob"></span>
-                    </button>
-                  </div>
-                  <p class="setting-hint">Extra privacy, beyond the PIN lock: when on, nobody can see your tasks in the recent-apps switcher or in a screenshot — Android blocks both at the same time, there's no way to have one without the other. Off by default since blocking screenshots is a real tradeoff (you can't screenshot your own tasks either), not just a cosmetic choice.</p>
-                </div>
-              {/if}
+              <SecuritySettings
+                {appLockEnabled} bind:showPinForm {openPinForm}
+                bind:newPin bind:confirmPin bind:pinHint {pinError} {pinSaving} {savePin}
+                bind:pinGateMode {onPinGateVerified}
+                bind:lockTimeoutStr {onLockTimeoutChange}
+                {biometricEnabled} {biometricBusy} {biometricError} {biometricNoneEnrolled}
+                {toggleBiometric} {openBiometricEnrollment}
+                {privacyScreenEnabled} {togglePrivacyScreen}
+              />
 
             {:else if activeCategory === 'advanced'}
-              <div class="setting-group">
-                <div class="setting-section-title">Maintenance</div>
-                <button class="link-row link-row-compact" on:click={() => showMaintenanceModal = true}>
-                  <span class="link-row-title">Run maintenance</span>
-                  <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
-                </button>
-                <p class="setting-hint">Checks your data for problems, repairs what it safely can, and clears old history.</p>
-              </div>
-
-              {#if isTauri}
-                <div class="setting-group">
-                  <div class="setting-section-title">Software updates</div>
-                  <div class="setting-row">
-                    <span class="setting-label">Check automatically in the background</span>
-                    <button class="toggle-btn" class:on={autoUpdateCheckEnabled} on:click={toggleAutoUpdateCheck} aria-label="Toggle automatic update checks" role="switch" aria-checked={autoUpdateCheckEnabled}>
-                      <span class="toggle-knob"></span>
-                    </button>
-                  </div>
-                  <div class="setting-row compact-row">
-                    <span class="setting-label">Version {appVersion || '—'}</span>
-                    <button class="export-btn" on:click={onCheckForUpdate} disabled={updateChecking}>
-                      {updateChecking ? 'Checking…' : 'Check for updates'}
-                    </button>
-                  </div>
-                  {#if updateStatus}<p class="setting-hint compact-hint">{updateStatus}</p>{/if}
-                </div>
-              {:else if isNativePlatform()}
-                <div class="setting-group">
-                  <div class="setting-section-title">About</div>
-                  <div class="setting-row">
-                    <span class="setting-label">Version</span>
-                    <span class="setting-value">{appVersion || '—'}</span>
-                  </div>
-                  <p class="setting-hint">Updates on this platform come through the Play Store.</p>
-                </div>
-              {/if}
-
-              {#if syncEnabled}
-                <div class="setting-group">
-                  <div class="setting-section-title">Manual server connection (advanced)</div>
-                  <p class="setting-hint">Most people never need this — the "Find my computer" option above already handles connecting for you. This is only for advanced users running their own sync server by hand, instead of pairing a device.</p>
-                  <label class="field-label">
-                    Server address (must be a CouchDB-protocol-compatible server)
-                    <input bind:value={syncUrl} placeholder="http://192.168.1.100:5984/offlog" />
-                  </label>
-                  <label class="field-label">
-                    Username
-                    <input bind:value={credentialUser} placeholder="offlog" />
-                  </label>
-                  <label class="field-label">
-                    Password
-                    <input type="password" bind:value={credentialPass} />
-                  </label>
-                  {#if syncError && lastErrorAt}
-                    <p class="setting-hint setting-hint-warn">Last error at {fmtLastSynced(lastErrorAt)}: {syncError}</p>
-                  {/if}
-                </div>
-              {:else}
-                <div class="setting-group">
-                  <div class="setting-section-title">Manual server connection (advanced)</div>
-                  <p class="setting-hint">Turn on Sync (in the Sync tab) to configure this.</p>
-                </div>
-              {/if}
-
-              {#if isTauriDebug}
-                <div class="setting-group">
-                  <div class="setting-section-title">Debug build only</div>
-                  <p class="setting-hint">Wipes every task/project on this PC and restarts — for testing what a real first-run install looks like, never shown in a release build.</p>
-                  <button class="export-btn" on:click={resetPcTestData} disabled={resetBusy}>
-                    {resetBusy ? 'Resetting…' : 'Reset test data'}
-                  </button>
-                </div>
-              {/if}
+              <AdvancedSettings
+                {isTauri} {isTauriDebug} bind:showMaintenanceModal
+                {autoUpdateCheckEnabled} {toggleAutoUpdateCheck} {appVersion}
+                {updateChecking} {updateStatus} {onCheckForUpdate}
+                {syncEnabled} bind:syncUrl bind:credentialUser bind:credentialPass
+                {syncError} {lastErrorAt} {resetBusy} {resetPcTestData}
+              />
             {/if}
             </div>
             {/key}
@@ -1781,7 +1255,7 @@
   .nav-item:hover { background: var(--hover); }
   .nav-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .nav-item.active svg { opacity: 1; }
-  .nav-badge {
+  .nav-badge, .detail-content :global(.nav-badge) {
     font-family: var(--mono); font-size: .62rem; font-weight: 700;
     background: var(--due-soon-bg); color: var(--due-soon-ink);
     display: inline-flex; align-items: center; justify-content: center;
@@ -1834,27 +1308,27 @@
      a subtle tint off --text, not a flat var(--bg): --bg is *darker* than
      the panel's own --surface in dark mode, so a flat fill reads as a
      hole there even though it looks right in light mode. */
-  .setting-group {
+  .detail-content :global(.setting-group) {
     display: flex; flex-direction: column; gap: .6rem;
     background: color-mix(in srgb, var(--text) 4%, transparent);
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .85rem .9rem;
   }
-  .setting-section-title {
+  .detail-content :global(.setting-section-title) {
     display: flex; align-items: center; gap: .4rem;
     font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
     letter-spacing: .08em; color: var(--muted); font-weight: 600;
   }
-  .setting-section-title::before {
+  .detail-content :global(.setting-section-title)::before {
     content: ''; width: 6px; height: 6px; border-radius: 50%;
     background: var(--accent); flex-shrink: 0;
   }
-  .setting-row { display: flex; align-items: center; gap: .75rem; }
-  .setting-row.compact-row { margin-top: -.3rem; }
-  .setting-hint { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
-  .setting-hint.compact-hint { margin-top: -.3rem; }
-  .setting-hint-error { color: var(--danger); }
-  .setting-hint-warn {
+  .setting-row, .detail-content :global(.setting-row) { display: flex; align-items: center; gap: .75rem; }
+  .detail-content :global(.setting-row.compact-row) { margin-top: -.3rem; }
+  .setting-hint, .detail-content :global(.setting-hint) { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
+  .detail-content :global(.setting-hint.compact-hint) { margin-top: -.3rem; }
+  .detail-content :global(.setting-hint-error) { color: var(--danger); }
+  .setting-hint-warn, .detail-content :global(.setting-hint-warn) {
     color: var(--due-soon-ink); background: var(--due-soon-bg);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 500;
   }
@@ -1862,19 +1336,19 @@
     color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 600;
   }
-  .setting-label { font-size: .88rem; color: var(--text); flex: 1; }
-  .setting-value { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .storage-info { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
+  .detail-content :global(.setting-label) { font-size: .88rem; color: var(--text); flex: 1; }
+  .detail-content :global(.setting-value) { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .storage-info, .detail-content :global(.storage-info) { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
 
   /* Headline reads as a plain sentence; the raw MB/quota numbers are
      demoted to a small mono detail line underneath, not the first thing
      a non-technical person sees. */
-  .storage-summary { display: flex; flex-direction: column; gap: 2px; }
-  .storage-headline { font-size: .9rem; color: var(--text); font-weight: 500; }
-  .storage-headline-warn { color: var(--danger); }
-  .storage-detail { font-family: var(--mono); font-size: .7rem; color: var(--faint); }
+  .detail-content :global(.storage-summary) { display: flex; flex-direction: column; gap: 2px; }
+  .detail-content :global(.storage-headline) { font-size: .9rem; color: var(--text); font-weight: 500; }
+  .detail-content :global(.storage-headline-warn) { color: var(--danger); }
+  .detail-content :global(.storage-detail) { font-family: var(--mono); font-size: .7rem; color: var(--faint); }
 
-  .project-export-select { flex: 1; min-width: 0; }
+  .detail-content :global(.project-export-select) { flex: 1; min-width: 0; }
 
   /* Shared primary-action style for the main CTA inside a modal (Connect,
      Import, Run Maintenance) — consistent accent treatment instead of
@@ -1890,64 +1364,64 @@
 
   .setting-row-end { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; }
 
-  .field-label {
+  .field-label, .detail-content :global(.field-label) {
     display: flex; flex-direction: column; gap: .35rem;
     font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
     text-transform: uppercase; color: var(--faint);
   }
-  .field-label input {
+  .field-label input, .detail-content :global(.field-label input) {
     padding: .5rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .9rem;
   }
-  .field-label input:focus { outline: none; border-color: var(--accent); }
-  .field-label input:disabled { opacity: .5; cursor: default; }
+  .field-label input:focus, .detail-content :global(.field-label input:focus) { outline: none; border-color: var(--accent); }
+  .field-label input:disabled, .detail-content :global(.field-label input:disabled) { opacity: .5; cursor: default; }
 
-  .theme-segment {
+  .detail-content :global(.theme-segment) {
     display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     overflow: hidden; flex-shrink: 0;
   }
-  .theme-seg-btn {
+  .detail-content :global(.theme-seg-btn) {
     padding: .35rem .75rem; border: none; background: var(--surface); color: var(--muted);
     font-size: .8rem; font-weight: 500; cursor: pointer; transition: background .12s, color .12s;
   }
-  .theme-seg-btn + .theme-seg-btn { border-left: 1px solid var(--border-strong); }
-  .theme-seg-btn:hover { background: var(--hover); }
-  .theme-seg-btn.active { background: var(--accent); color: var(--on-accent); }
+  .detail-content :global(.theme-seg-btn + .theme-seg-btn) { border-left: 1px solid var(--border-strong); }
+  .detail-content :global(.theme-seg-btn:hover) { background: var(--hover); }
+  .detail-content :global(.theme-seg-btn.active) { background: var(--accent); color: var(--on-accent); }
 
-  .toggle-btn {
+  .detail-content :global(.toggle-btn) {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
     background: var(--border-strong); position: relative; transition: background .2s;
     flex-shrink: 0; padding: 0;
   }
-  .toggle-btn.on { background: var(--accent); }
-  .toggle-knob {
+  .detail-content :global(.toggle-btn.on) { background: var(--accent); }
+  .detail-content :global(.toggle-knob) {
     position: absolute; top: 3px; left: 3px;
     width: 18px; height: 18px; border-radius: 50%;
     background: var(--toggle-knob); transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
   }
-  .toggle-btn.on .toggle-knob { left: 21px; }
+  .detail-content :global(.toggle-btn.on .toggle-knob) { left: 21px; }
 
-  .export-btn {
+  .export-btn, .detail-content :global(.export-btn) {
     padding: .35rem .8rem; border-radius: var(--radius-sm);
     border: 1px solid var(--border-strong); cursor: pointer;
     background: var(--surface); color: var(--text); font-size: .8rem; font-weight: 500;
     white-space: nowrap;
   }
-  .export-btn:hover { background: var(--hover); }
-  .export-btn:disabled { opacity: .5; cursor: default; }
+  .export-btn:hover, .detail-content :global(.export-btn:hover) { background: var(--hover); }
+  .export-btn:disabled, .detail-content :global(.export-btn:disabled) { opacity: .5; cursor: default; }
 
-  .link-row {
+  .detail-content :global(.link-row) {
     display: flex; align-items: center; gap: .75rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .75rem .9rem; cursor: pointer; text-align: left; width: 100%;
     transition: background .12s, border-color .12s;
   }
-  .link-row:hover { background: var(--hover); border-color: var(--border-strong); }
-  .link-row-title { flex: 1; font-size: .88rem; font-weight: 600; color: var(--text); }
-  .link-row-compact { padding: .5rem .9rem; }
-  .link-row-compact .link-row-title { font-weight: 500; }
-  .link-row svg { flex-shrink: 0; opacity: .5; }
-  .link-row .nav-badge { flex-shrink: 0; }
+  .detail-content :global(.link-row:hover) { background: var(--hover); border-color: var(--border-strong); }
+  .detail-content :global(.link-row-title) { flex: 1; font-size: .88rem; font-weight: 600; color: var(--text); }
+  .detail-content :global(.link-row-compact) { padding: .5rem .9rem; }
+  .detail-content :global(.link-row-compact .link-row-title) { font-weight: 500; }
+  .detail-content :global(.link-row svg) { flex-shrink: 0; opacity: .5; }
+  .detail-content :global(.link-row .nav-badge) { flex-shrink: 0; }
 
   .conflict-item {
     display: flex; flex-direction: column; gap: .3rem;

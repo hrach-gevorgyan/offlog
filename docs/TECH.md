@@ -62,7 +62,7 @@ flowchart TB
         Card["CardDetail<br/>task editor modal"]
         Quick["QuickAdd<br/>Ctrl+N fast-add"]
         Search["GlobalSearch<br/>Ctrl+K cross-project"]
-        Settings["SettingsPanel<br/>6-tab settings"]
+        Settings["SettingsPanel<br/>7-tab settings"]
         Time["TimeTravelView<br/>log: journal by day"]
     end
     Store["Store Layer — store.ts<br/>Svelte writable stores: spaces, projects, tasks,<br/>activeSpaceId, activeProjectId<br/>persisted to localStorage, reload on DB change"]
@@ -133,8 +133,19 @@ src/
                                  device/source pill, Clear all) and click-to-open on a task
                                  entry. Opened from Sidebar's bottom icon row — a history
                                  *utility*, not a primary Dashboard/Focus/Agenda-style view.
-    SettingsPanel.svelte        Settings — 6 tabs (View & Accessibility, Notifications, Sync,
-                                 Organize, Backup & Storage, Advanced), a standalone panel
+    SettingsPanel.svelte        Settings shell — category nav, shared state, save/close.
+                                 Owns ALL settings CSS: rules for category markup are
+                                 `.detail-content :global(...)`, since that markup now
+                                 lives in children and Svelte scoping would drop them.
+    settings/
+      AppearanceSettings.svelte   View & Accessibility tab
+      NotificationSettings.svelte Notifications tab
+      SyncSettings.svelte         Sync tab
+      OrganizeSettings.svelte     Organize tab
+      DataSettings.svelte         Backup & Storage tab
+      SecuritySettings.svelte     App Lock tab
+      AdvancedSettings.svelte     Advanced tab
+      helpers.ts                  Pure helpers (download, storage math, maint steps)
     TrashView.svelte            Recycle bin for soft-deleted tasks
     SpaceManager.svelte         Manage spaces (Settings → Organize)
     TagManager.svelte           Manage tags (Settings → Organize)
