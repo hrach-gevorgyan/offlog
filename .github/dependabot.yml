@@ -16,7 +16,9 @@ version: 2
 #
 # Grouping covers minor + patch only. A **major** bump still opens its
 # own PR, because a major is the one that genuinely needs reading --
-# TypeScript 7 (ignored below) is the standing proof.
+# TypeScript 7 is the standing proof: it passed build, tsc and tests,
+# then broke `cap sync android` on the next release tag. (Since fixed
+# upstream and now unblocked, but the lesson stands.)
 #
 # Security advisories are NOT affected by any of this: Dependabot's
 # security updates are a separate mechanism and still open immediately,
@@ -42,12 +44,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    ignore:
-      # TypeScript 7's `requireTS` config loader breaks Capacitor CLI's
-      # `npx cap sync android` (confirmed 2026-07-22, v5.7.3 release CI --
-      # see DECISIONS.md). Re-enable once @capacitor/cli ships TS7 support.
-      - dependency-name: "typescript"
-        versions: ["7.x"]
+    # No ignores. The long-standing TypeScript 7.x block was lifted
+    # 2026-07-31 once @capacitor/cli 8.5.0 fixed the config-loader bug
+    # that broke `npx cap sync android` -- retested against all four
+    # gates including a diff of the generated capacitor.config.json,
+    # see DECISIONS.md.
 
   - package-ecosystem: "github-actions"
     directory: "/"

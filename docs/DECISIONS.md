@@ -368,13 +368,23 @@ unsound path is only reached through this app's own local, non-
 adversarial code — no network-facing input touches it. Re-check whenever
 Tauri/Cargo deps next get bumped for any other reason.
 
-### TypeScript stays pinned to ~6.0.2, not 7.x (2026-07-22)
+### TypeScript 7: blocked 2026-07-22, unblocked 2026-07-31
 A Dependabot bump to 7.0.2 passed every local check (build/tsc/tests)
 but broke the release pipeline's `cap sync android` step on the very
 next tag — a Capacitor CLI config-loader bug none of the local checks
-actually exercise. Reverted, with a Dependabot `ignore` rule so it
-doesn't get silently re-proposed. Re-enable once `@capacitor/cli`
-confirms real TS7 support in its own changelog.
+actually exercise. Reverted at the time, with a Dependabot `ignore`
+rule so it couldn't be silently re-proposed.
+
+**Resolved 2026-07-31**, after `@capacitor/cli` 8.4.2 → 8.5.0. Retested
+TS 7.0.2 against all four gates — `tsc`, zero-warning build, 279 tests,
+and `cap sync android` — all clean. Then verified the *actual failure
+mode* rather than trusting the exit code: the generated
+`android/app/src/main/assets/capacitor.config.json` was diffed against
+`capacitor.config.ts` and every value survived, including the nested
+`plugins.LocalNotifications.smallIcon`/`iconColor` pair that a
+silent loader fallback to defaults would have dropped. A config that
+parses to the right values is the real bar here, not a command that
+exits 0. `ignore` rule removed.
 
 ---
 
