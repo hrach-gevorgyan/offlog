@@ -181,6 +181,15 @@
       showError('Failed to duplicate task.');
     }
   }
+  async function cardMove(task: TaskDoc, colId: string) {
+    const colTasks = tasksByCol[colId] ?? [];
+    try {
+      await updateTask(task._id!, { column_id: colId, position: computeDropPosition(colTasks, null) });
+      await reloadTasks();
+    } catch {
+      showError('Failed to move task. Please try again.');
+    }
+  }
   async function cardDelete(task: TaskDoc) {
     if (!(await confirmAction('Delete this task?', { danger: true, confirmLabel: 'Delete' }))) return;
     try {
@@ -634,6 +643,15 @@
                       <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4.5" y="4.5" width="8" height="8" rx="1"/><path d="M9.5 4.5V2.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>
                       Duplicate
                     </button>
+                    {#if project.columns.length > 1}
+                      <div class="card-menu-divider"></div>
+                      <div class="card-menu-label">Move to</div>
+                      {#each project.columns.filter(c => c.id !== task.column_id) as col (col.id)}
+                        <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; cardMove(task, col.id); }}>
+                          {col.name}
+                        </button>
+                      {/each}
+                    {/if}
                     <div class="card-menu-divider"></div>
                     <button type="button" class="card-menu-item card-menu-item-danger" on:click={() => { openCardMenu = null; cardDelete(task); }}>
                       <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 3.5h9M5.5 3.5V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M3.5 3.5l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8"/></svg>
@@ -899,6 +917,11 @@
   .card-menu-item:hover { background: var(--hover); }
   .card-menu-item svg { flex-shrink: 0; color: var(--muted); }
   .card-menu-divider { height: 1px; background: var(--border); margin: .25rem .15rem; }
+  .card-menu-label {
+    font-family: var(--mono); font-size: .64rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--faint); padding: .3rem .55rem .15rem;
+  }
   .card-menu-item-danger { color: var(--danger); }
   .card-menu-item-danger svg { color: var(--danger); }
   .card-menu-item-danger:hover { background: var(--overdue-bg); }
