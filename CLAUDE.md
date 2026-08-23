@@ -323,6 +323,14 @@ one. Purely presentational children (`settings/*`, `carddetail/*`,
 `PinStar`) are covered through their parents; `App.svelte` is
 integration-level and has none.
 
+`tests/perfGuard.test.ts` gates performance **deterministically** — it counts
+database round-trips, never wall-clock time. `perf.bench.ts` stays a
+reporting tool (`npm run bench`); its own header explains why hardcoding a
+timing threshold is wrong. Assert invariance (a repeat read adds zero task
+scans; cost is identical at 4x the data), not absolute counts — how many
+round-trips a cold call makes is an implementation detail, but growth is a
+regression.
+
 `tests/replication.test.ts` runs PouchDB's real replicator between the app's
 `db` and a second in-memory database — convergence, soft-delete propagation,
 attachment bytes, conflict creation/resolution, and the first-pair seed
