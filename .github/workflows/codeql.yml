@@ -44,13 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: github/codeql-action/init@v4.37.5
+      - uses: github/codeql-action/init@v4.37.7
         with:
           languages: ${{ matrix.language }}
           build-mode: none
           config-file: ./.github/codeql/codeql-config.yml
 
-      - uses: github/codeql-action/analyze@v4.37.5
+      - uses: github/codeql-action/analyze@v4.37.7
         with:
           category: '/language:${{ matrix.language }}'
 
@@ -89,7 +89,7 @@ jobs:
         working-directory: offlog-app
         run: npx cap sync android
 
-      - uses: github/codeql-action/init@v4.37.5
+      - uses: github/codeql-action/init@v4.37.7
         with:
           languages: java-kotlin
           build-mode: manual
@@ -103,6 +103,6 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
-      - uses: github/codeql-action/analyze@v4.37.5
+      - uses: github/codeql-action/analyze@v4.37.7
         with:
           category: '/language:java-kotlin'
