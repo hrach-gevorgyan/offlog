@@ -204,13 +204,18 @@ notifications.ts → db.ts   (one direction only; db.ts must never import notifi
   `KanbanBoard.svelte`'s `detailOpenSession` for the pattern.
 
 **Splitting a component's markup into children**: move the parent's CLASS
-rules for that markup to `:global()` under a parent-owned wrapper, but keep
-bare ELEMENT rules (`button`, `label`, `textarea`) scoped and copy them into
-each child instead. A `:global(button)` also matches any nested component's
-internal buttons (CustomSelect, CalendarPicker), silently restyling them —
-the scoped original never did. Verify a split by fingerprinting computed
-styles of every rendered element before and after; element counts matching
-is not enough.
+rules to `:global()` under a parent-owned wrapper, but keep bare ELEMENT
+rules (`button`, `label`, `textarea`) scoped and copy them into each child.
+A `:global(button)` also matches nested components' internal buttons
+(CustomSelect, CalendarPicker) and silently restyles them — the scoped
+original never did. Verify by fingerprinting computed styles of every
+rendered element before and after: matching element counts prove nothing,
+that regression had identical DOM.
+
+**A pure type change must emit byte-identical JavaScript.** Hash the build
+assets before and after (normalise the content-hash out of the filename); if
+a digest moves, something changed at runtime. No `as unknown as X`, no
+`@ts-expect-error`, no runtime guards added to satisfy the compiler.
 
 ## Database invariants (db.ts)
 
@@ -323,34 +328,34 @@ one. Purely presentational children (`settings/*`, `carddetail/*`,
 `PinStar`) are covered through their parents; `App.svelte` is
 integration-level and has none.
 
-`tests/perfGuard.test.ts` gates performance **deterministically** — it counts
-database round-trips, never wall-clock time. `perf.bench.ts` stays a
-reporting tool (`npm run bench`); its own header explains why hardcoding a
-timing threshold is wrong. Assert invariance (a repeat read adds zero task
-scans; cost is identical at 4x the data), not absolute counts — how many
-round-trips a cold call makes is an implementation detail, but growth is a
-regression.
+**Test rules, in order of how often they save you:**
 
-`tests/replication.test.ts` runs PouchDB's real replicator between the app's
-`db` and a second in-memory database — convergence, soft-delete propagation,
-attachment bytes, conflict creation/resolution, and the first-pair seed
-collision. Prefer extending it over adding another mocked sync test:
-`sync.test.ts` can only cover error classification and handler wiring, never
-whether two databases actually agree. Note a wiped document leaves a
-tombstone that outranks an incoming rev-1 for the same id, so tests that
-replicate a fresh document must use an id nothing has deleted.
+1. **Judge a run by its exit code, not its summary.** Vitest prints
+   "565 passed" and still exits 1 on an unhandled rejection (an unguarded
+   `await` in `onMount`, a missing jsdom API). Grepping pass counts hides it;
+   CI does not. `npx vitest run; echo $?`
+2. **A test that survives a mutation asserts nothing.** Break the source
+   (invert a condition, drop a guard, swallow an error), confirm THAT test
+   fails, revert. If it still passes, rewrite or delete it — never keep it
+   for the count.
+3. **Cover the failure path.** Every mutating call site must surface
+   `showError()`. A happy-path-only test won't catch a swallowed error.
+4. **Assert invariance, not absolute numbers.** `perfGuard.test.ts` counts
+   database round-trips, never wall-clock time (timings are machine-dependent
+   — that's why `perf.bench.ts` has no threshold and stays a `npm run bench`
+   reporting tool). A repeat read adds zero task scans; cost is identical at
+   4x the data. Growth is the regression; the cold count is an implementation
+   detail.
+5. **Test the real thing where the risk is real.** `replication.test.ts` runs
+   PouchDB's actual replicator between two databases — `sync.test.ts`'s mocks
+   can only prove error classification, never that two devices agree.
+   `backupRestore.test.ts` takes a real database through export → wipe →
+   restore. Mocking either would test the mock.
 
-**Judge a test run by its exit code, not its summary lines.** Vitest
-prints "540 passed" and still exits 1 when an unhandled rejection escapes
-a component (an unguarded `await` in `onMount`, a jsdom API that doesn't
-exist). Grepping for the pass counts hides it; CI does not. Run
-`npx vitest run; echo $?` when in doubt.
-
-**A test is only worth its line count if it fails when the behaviour
-breaks.** Prove it: mutate the source (invert a condition, drop a guard,
-swallow an error), confirm THAT test fails, revert. A test that survives
-the mutation asserts nothing — rewrite or delete it rather than keep it
-for the count.
+Gotchas that cost real time: a deleted doc's tombstone outranks an incoming
+rev-1 for the same id, so replication tests need ids nothing has deleted;
+`vi.mock` factories are hoisted above every `const`, so a factory needing a
+store must create it inside and import it back.
 
 ## Android gotchas (hard-won — read before touching)
 
