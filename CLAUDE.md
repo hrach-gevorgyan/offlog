@@ -314,19 +314,20 @@ Dev Workflows" for how `tests/setup.ts` shims PouchDB/localStorage. When
 adding a new `db.ts` function with any non-trivial logic, add a test here
 before shipping — this suite already caught two real bugs (broken conflict
 detection, an incomplete conflict resolution) that had been silently
-shipping. Components are tested with `@testing-library/svelte` against
-mocked `db`/`store` modules (`CardDetail`, `QuickAdd`, `KanbanBoard`,
-`AppLock`, `ConfirmPinGate`, `SettingsPanel`, `ListView`, `AgendaView`) —
-mock the module,
-render,
-`fireEvent`,
-assert the write's arguments. Cover the failure path too: every mutating
-call site must surface `showError()`, and a test that only checks the
-happy path won't catch a swallowed one. Views with no component test yet
-(`Sidebar`) still rely on manual/browser-preview
-verification. A new test is only worth its line count if it fails when the
-behaviour breaks — check that by mutating the source and re-running, not by
-watching it go green.
+shipping. Every component with real logic has a test file under `tests/`,
+using `@testing-library/svelte` against mocked `db`/`store`/`config`
+modules — mock the module, render, `fireEvent`, assert the write's exact
+arguments. Cover the failure path too: every mutating call site must
+surface `showError()`, and a happy-path-only test won't catch a swallowed
+one. Purely presentational children (`settings/*`, `carddetail/*`,
+`PinStar`) are covered through their parents; `App.svelte` is
+integration-level and has none.
+
+**A test is only worth its line count if it fails when the behaviour
+breaks.** Prove it: mutate the source (invert a condition, drop a guard,
+swallow an error), confirm THAT test fails, revert. A test that survives
+the mutation asserts nothing — rewrite or delete it rather than keep it
+for the count.
 
 ## Android gotchas (hard-won — read before touching)
 
