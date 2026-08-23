@@ -44,6 +44,24 @@ Object.defineProperty(window, 'localStorage', {
 // with the shape transitions expect is enough for tests, which only
 // care that the component renders/behaves correctly, not that the
 // animation itself plays.
+// jsdom implements no media queries, but components that switch layout on
+// viewport width (SettingsPanel's narrow/detail mode, theme.ts's "system"
+// mode) call matchMedia() on mount. The stub always reports "does not
+// match", i.e. the desktop/light branch; a test needing the other branch
+// should override it for that test rather than change this default.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
 if (!Element.prototype.animate) {
   Element.prototype.animate = function () {
     return {
