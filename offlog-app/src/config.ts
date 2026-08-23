@@ -336,7 +336,7 @@ export function setAutoUpdateCheckEnabled(enabled: boolean) {
 }
 
 // Week-start preference, consumed by Agenda's Month view (day-of-week column
-// order) and DeadlinesView's "this week" grouping — neither may assume a
+// order) and AgendaView's "this week" grouping — neither may assume a
 // Sunday start (note `getDay()` is 0-indexed from Sunday). Per-device, like
 // the reminder time above: a display preference, not data, so it doesn't sync.
 //

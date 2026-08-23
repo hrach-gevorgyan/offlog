@@ -58,7 +58,7 @@ flowchart TB
         Focus["FocusView<br/>daily commitment lock"]
         Kanban["KanbanBoard<br/>drag-and-drop columns"]
         List["ListView<br/>sortable + filterable"]
-        Agenda["DeadlinesView<br/>list + month grid"]
+        Agenda["AgendaView<br/>list + month grid"]
         Card["CardDetail<br/>task editor modal"]
         Quick["QuickAdd<br/>Ctrl+N fast-add"]
         Search["GlobalSearch<br/>Ctrl+K cross-project"]
@@ -112,7 +112,7 @@ src/
     KanbanBoard.svelte          Drag-and-drop kanban (mouse + touch)
     ListView.svelte             List/Table view with search, filter, sort, archive
     FilterBar.svelte            Shared Kanban/List search+filter row
-    DeadlinesView.svelte        Agenda: flat list (Overdue/Today/This Week/Later) + month-grid view
+    AgendaView.svelte           Agenda: flat list (Overdue/Today/This Week/Later) + month-grid view
     CardDetail.svelte           Full task editor modal with history
     TaskHistoryPanel.svelte     Lazy-loaded change history for one task
     QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector); live-parses
@@ -224,7 +224,7 @@ Invalidation is centralized in `subscribe()` — the same function every live sy
 
 - `App.svelte`'s `onMount` wraps `init()` in a try/catch. If startup fails (corrupted IndexedDB, storage quota exceeded, etc.) the app shows a dedicated recovery screen with the error message and a Retry button instead of hanging on "Loading…".
 - `main.ts` registers `window.addEventListener('unhandledrejection'/'error', ...)` as a last-resort net — any error that would otherwise fail silently surfaces the red error toast instead of leaving the UI in an unexplained broken state.
-- Every task-mutating call site is wrapped in try/catch + `showError()` (the pattern `CardDetail.svelte` uses) — Kanban quick-add, card drag-drop, column rename/add/remove/reorder, archive-column and touch drag; ListView and DeadlinesView "mark done"; Sidebar's create/delete project and export.
+- Every task-mutating call site is wrapped in try/catch + `showError()` (the pattern `CardDetail.svelte` uses) — Kanban quick-add, card drag-drop, column rename/add/remove/reorder, archive-column and touch drag; ListView and AgendaView "mark done"; Sidebar's create/delete project and export.
 
 ### Database integrity checker + repair utility
 
@@ -262,8 +262,8 @@ All date-formatting and filter logic is centralized here — no duplication acro
 | Export | Used by |
 |---|---|
 | `dueLabel(due, fallback)` | ListView |
-| `dueLabelLong(due)` | DashboardView, DeadlinesView |
-| `dueRelative(due)` | DeadlinesView |
+| `dueLabelLong(due)` | DashboardView, AgendaView |
+| `dueRelative(due)` | AgendaView |
 | `dueState(due)` | ListView |
 | `dueInk(due)` | ListView |
 | `filterTasks(tasks, search, col, prio, tag)` | ListView |

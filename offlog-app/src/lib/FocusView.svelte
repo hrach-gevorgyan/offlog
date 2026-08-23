@@ -471,7 +471,7 @@
   .suggest-chip.due_soon  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
   .suggest-chip.priority  { background: var(--col-bg); color: var(--faint); }
 
-  /* Same minimal checkbox language as ListView/DeadlinesView's .circle:
+  /* Same minimal checkbox language as ListView/AgendaView's .circle:
      rounded square, no fill, border-only. */
   .circle {
     width: 18px; height: 18px; border-radius: 5px;
@@ -502,7 +502,7 @@
   .check.checked { background: var(--accent); border-color: var(--accent); }
 
   /* Locked task-row's title + project stacked (same primary/secondary
-     pattern as DashboardView/DeadlinesView's .task-body) so project
+     pattern as DashboardView/AgendaView's .task-body) so project
      context survives at every width, with no breakpoint needed. The
      corkboard note's own .proj-badge (in .note-foot below) keeps its chip
      look — it has room to spare and pairs visually with .suggest-chip. */

@@ -160,18 +160,18 @@
   }
 </script>
 
-<div class="deadlines">
-  <div class="dl-header">
+<div class="agenda">
+  <div class="agenda-header">
     <button class="hamburger" on:click={() => dispatch('menu')} aria-label="Menu">
       <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
       </svg>
     </button>
     <div class="title-block">
-      <h1 class="dl-title">Agenda</h1>
-      <span class="dl-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
+      <h1 class="agenda-title">Agenda</h1>
+      <span class="agenda-count">{all.length} task{all.length === 1 ? '' : 's'} with due dates</span>
     </div>
-    <div class="dl-header-actions">
+    <div class="agenda-header-actions">
       <!-- Same Command Palette button/icon as List view's top bar; Agenda
            has its own header rather than the shared board-header. -->
       <button class="palette-btn" on:click={() => dispatch('search')} title="Command Palette (Ctrl+K)" aria-label="Command Palette (Ctrl+K)">
@@ -268,7 +268,7 @@
       {/if}
     </div>
   {:else}
-  <div class="dl-body">
+  <div class="agenda-body">
     {#if all.length === 0}
       <div class="empty">No tasks with due dates across any project.</div>
     {:else}
@@ -386,9 +386,9 @@
 {/if}
 
 <style>
-  .deadlines { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .agenda { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
-  .dl-header {
+  .agenda-header {
     /* flex-start, not center — see DashboardView.svelte's .dash-header
        comment: keeps the hamburger at the same position across pages with
        different numbers of subtitle lines. */
@@ -398,8 +398,8 @@
     flex-shrink: 0;
   }
   .title-block { min-width: 0; }
-  .dl-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
-  .dl-count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .agenda-title { margin: 0 0 3px; font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
+  .agenda-count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 
   .hamburger {
     display: none;
@@ -410,7 +410,7 @@
   }
   .hamburger:hover { background: var(--hover); }
 
-  .dl-header-actions {
+  .agenda-header-actions {
     display: flex; align-items: center; gap: 8px;
     flex-shrink: 0; margin-left: auto;
     /* header is align-items:flex-start — this control cluster sits
@@ -594,7 +594,7 @@
     .month-today-btn { right: 12px; font-size: .72rem; padding: 4px 9px; }
   }
 
-  .dl-body {
+  .agenda-body {
     flex: 1; min-height: 0; overflow-y: auto;
     padding: 20px 28px 40px;
     width: 100%; box-sizing: border-box;
@@ -683,9 +683,9 @@
   }
 
   @media (max-width: 700px) {
-    .dl-header { padding: 14px 16px 10px; }
-    .dl-body   { padding: 14px 14px 32px; }
-    .dl-title  { font-size: 17px; }
+    .agenda-header { padding: 14px 16px 10px; }
+    .agenda-body   { padding: 14px 14px 32px; }
+    .agenda-title  { font-size: 17px; }
   }
 
   /* Small — collapse chip to short form */

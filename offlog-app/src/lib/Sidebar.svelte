@@ -16,7 +16,7 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
 
-  export let showDeadlines = false;
+  export let showAgenda = false;
   export let showDashboard = false;
   export let showFocus = false;
   export let open = false;
@@ -336,7 +336,7 @@
   }
 
   function goToProject(project: ProjectDoc) {
-    showDeadlines = false; showDashboard = false; showFocus = false;
+    showAgenda = false; showDashboard = false; showFocus = false;
     activeSpaceId.set(project.space_id);
     activeProjectId.set(project._id);
     dispatch('navigate');
@@ -441,7 +441,7 @@
       class="nav-btn"
       class:active={showDashboard}
       title="Dashboard"
-      on:click={() => { showDashboard = true; showDeadlines = false; showFocus = false; activeProjectId.set(''); dispatch('navigate'); }}
+      on:click={() => { showDashboard = true; showAgenda = false; showFocus = false; activeProjectId.set(''); dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <rect x="2" y="2" width="6" height="6" rx="1"/>
@@ -456,7 +456,7 @@
       class="nav-btn"
       class:active={showFocus}
       title="Focus"
-      on:click={() => { showFocus = true; showDashboard = false; showDeadlines = false; activeProjectId.set(''); dispatch('navigate'); }}
+      on:click={() => { showFocus = true; showDashboard = false; showAgenda = false; activeProjectId.set(''); dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <circle cx="9" cy="9" r="7"/>
@@ -468,9 +468,9 @@
 
     <button
       class="nav-btn"
-      class:active={showDeadlines}
+      class:active={showAgenda}
       title="Agenda"
-      on:click={() => { showDeadlines = true; showDashboard = false; showFocus = false; activeProjectId.set(''); dispatch('navigate'); }}
+      on:click={() => { showAgenda = true; showDashboard = false; showFocus = false; activeProjectId.set(''); dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
         <rect x="2" y="3" width="14" height="12" rx="2"/>

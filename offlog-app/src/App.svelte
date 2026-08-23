@@ -13,7 +13,7 @@
   import Sidebar from './lib/Sidebar.svelte';
   import KanbanBoard from './lib/KanbanBoard.svelte';
   import ListView from './lib/ListView.svelte';
-  import DeadlinesView from './lib/DeadlinesView.svelte';
+  import AgendaView from './lib/AgendaView.svelte';
   import FocusView from './lib/FocusView.svelte';
   import DashboardView from './lib/DashboardView.svelte';
   import GlobalSearch from './lib/GlobalSearch.svelte';
@@ -37,7 +37,7 @@
   let ready = false;
   let initError: string | null = null;
   let showNamePrompt = false;
-  let showDeadlines = false;
+  let showAgenda = false;
   let showDashboard = true;
   let showFocus = false;
   let sidebarOpen = false;
@@ -57,11 +57,11 @@
   // process kill. localStorage would survive both, which is wrong here.
   function saveView() {
     if (!ready) return;
-    const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showDeadlines ? 'agenda' : 'project';
+    const view = showDashboard ? 'dashboard' : showFocus ? 'focus' : showAgenda ? 'agenda' : 'project';
     sessionStorage.setItem('offlog_view', JSON.stringify({ view, projectId: get(activeProjectId), mode: currentView }));
   }
 
-  $: if (ready) { showDashboard; showDeadlines; showFocus; $activeProjectId; currentView; saveView(); }
+  $: if (ready) { showDashboard; showAgenda; showFocus; $activeProjectId; currentView; saveView(); }
 
   // The one place `activeProjectId` should reset the view to Kanban —
   // called from deliberate "go to this project" actions (sidebar project/
@@ -126,9 +126,9 @@
   // DashboardView's links, and the desktop tray/global-shortcut
   // listeners below; keep them as the single definition rather than
   // inlining the assignments at each call site.
-  function goToFocus() { showDashboard = false; showDeadlines = false; showFocus = true; }
-  function goToAgenda() { showDashboard = false; showFocus = false; showDeadlines = true; }
-  function goToDashboard() { showDeadlines = false; showFocus = false; showDashboard = true; }
+  function goToFocus() { showDashboard = false; showAgenda = false; showFocus = true; }
+  function goToAgenda() { showDashboard = false; showFocus = false; showAgenda = true; }
+  function goToDashboard() { showAgenda = false; showFocus = false; showDashboard = true; }
 
   $: commands = getCommands({
     goToDashboard,
@@ -287,9 +287,9 @@
     // new view. No-ops if nothing's open (cold start, the common case).
     closeAll();
     if (host === 'quickadd') { openQuickAdd(); return false; } // an overlay, not a view change
-    if (host === 'agenda') { showDashboard = false; showDeadlines = true; return true; }
-    if (host === 'focus') { showDashboard = false; showDeadlines = false; showFocus = true; return true; }
-    if (host === 'dashboard') { showDeadlines = false; showFocus = false; showDashboard = true; return true; }
+    if (host === 'agenda') { showDashboard = false; showAgenda = true; return true; }
+    if (host === 'focus') { showDashboard = false; showAgenda = false; showFocus = true; return true; }
+    if (host === 'dashboard') { showAgenda = false; showFocus = false; showDashboard = true; return true; }
     if (host === 'project') {
       // The project-list widget's row may point at a project that's since
       // been deleted — same "don't land on a broken view" caution as the
@@ -378,10 +378,10 @@
       // Restoring it blindly lands on a blank project view instead of
       // falling back to Dashboard.
       const projectStillExists = saved.projectId && get(projects).some(p => p._id === saved.projectId);
-      if (saved.view === 'agenda') { showDashboard = false; showDeadlines = true; }
+      if (saved.view === 'agenda') { showDashboard = false; showAgenda = true; }
       else if (saved.view === 'focus') { showDashboard = false; showFocus = true; }
       else if (saved.view === 'project' && projectStillExists) {
-        showDashboard = false; showDeadlines = false; showFocus = false;
+        showDashboard = false; showAgenda = false; showFocus = false;
         // Restore via the plain store, not goToProject() — this is state
         // restoration on reload, not a deliberate navigation, so the
         // in-progress Kanban/List choice (below) must survive too.
@@ -495,7 +495,7 @@
   <div class="layout">
     <Sidebar
       bind:this={sidebarRef}
-      bind:showDeadlines
+      bind:showAgenda
       bind:showDashboard
       bind:showFocus
       bind:open={sidebarOpen}
@@ -527,9 +527,9 @@
         <div class="view-fade" transition:fade={pageFade}>
           <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
         </div>
-      {:else if showDeadlines}
+      {:else if showAgenda}
         <div class="view-fade" transition:fade={pageFade}>
-          <DeadlinesView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
+          <AgendaView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
         </div>
       {:else if $activeProject}
       <div class="view-fade" transition:fade={pageFade}>
@@ -656,7 +656,7 @@
   {/if}
 {/if}
 
-{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showDeadlines && !showFocus}
+{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showAgenda && !showFocus}
 <button class="fab" on:click={() => openQuickAdd()} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>

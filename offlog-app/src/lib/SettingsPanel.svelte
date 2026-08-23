@@ -199,7 +199,7 @@
     rescheduleAll().catch(() => {});
   }
 
-  // Re-derives Agenda's week math on toggle. DeadlinesView reads
+  // Re-derives Agenda's week math on toggle. AgendaView reads
   // getWeekStartsMonday() once at mount, so an already-open Agenda needs a
   // route re-entry/reload to pick this up — an accepted tradeoff for a
   // rarely-changed display preference, rather than a live-reactive
