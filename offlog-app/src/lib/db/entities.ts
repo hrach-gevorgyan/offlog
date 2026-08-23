@@ -3,7 +3,7 @@
 // "done" rule (updateTask needs the project's last column; deleteProject
 // cascades into tasks), so they deliberately live in one module.
 import { getDefaultReminderTime } from '../../config';
-import type { SpaceDoc, ProjectDoc, TaskDoc, Column, CustomFieldDef, TaskAttachment } from '../types';
+import type { SpaceDoc, ProjectDoc, TaskDoc, Column, CustomFieldDef, TaskAttachment, Source } from '../types';
 import { wordOverlapSimilarity, localDateStr } from '../utils';
 import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension, attachmentMimeType } from '../attachments';
 import { db, SOURCE, DEFAULT_COLS, initIndexes, getAllTasksRaw, invalidateTaskCache, now, nanoid, logChange, queueTaskWrite } from './core';
@@ -157,7 +157,7 @@ export async function deleteSpace(id: string): Promise<void> {
 
 export async function getProjects(spaceId?: string): Promise<ProjectDoc[]> {
   const r = await db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true });
-  let docs = r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted && !d.archived);
+  let docs = r.rows.map(r => r.doc!).filter(d => d && !(d as ProjectDoc & PouchDB.Core.ChangesMeta)._deleted && !d.archived);
   if (spaceId) docs = docs.filter(d => d.space_id === spaceId);
   return docs.sort((a, b) => a.position - b.position);
 }
@@ -166,7 +166,7 @@ export async function getProjects(spaceId?: string): Promise<ProjectDoc[]> {
 // are hidden from getTasksForProject(); this is the restore-list counterpart.
 export async function getArchivedProjects(): Promise<ProjectDoc[]> {
   const r = await db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true });
-  return r.rows.map(r => r.doc!).filter(d => d && !(d as any)._deleted && !!d.archived)
+  return r.rows.map(r => r.doc!).filter(d => d && !(d as ProjectDoc & PouchDB.Core.ChangesMeta)._deleted && !!d.archived)
     .sort((a, b) => a.position - b.position);
 }
 
@@ -294,6 +294,18 @@ export async function reorderColumns(projectId: string, columns: Column[]): Prom
 // to read/write, never a query over many.
 const CUSTOM_FIELDS_DOC_ID = 'meta:custom_fields';
 
+// The single fixed-id doc holding every custom-field definition. `fields` is
+// optional: the doc is created on first write, and the catch branches below
+// synthesize a bare one when it doesn't exist yet.
+interface CustomFieldsDoc {
+  _id: string;
+  _rev?: string;
+  type: 'meta';
+  fields?: CustomFieldDef[];
+  updated_at?: string;
+  source?: Source;
+}
+
 export async function getCustomFieldDefs(): Promise<CustomFieldDef[]> {
   try {
     const doc = await db.get<{ fields: CustomFieldDef[] }>(CUSTOM_FIELDS_DOC_ID);
@@ -305,8 +317,8 @@ export async function getCustomFieldDefs(): Promise<CustomFieldDef[]> {
 
 export async function addCustomFieldDef(name: string, type: CustomFieldDef['type'], options?: string[]): Promise<CustomFieldDef[]> {
   const field: CustomFieldDef = { id: `field:${nanoid()}`, name, type, ...(options ? { options } : {}) };
-  let doc: any;
-  try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { doc = { _id: CUSTOM_FIELDS_DOC_ID, type: 'meta' }; }
+  let doc: CustomFieldsDoc;
+  try { doc = await db.get<CustomFieldsDoc>(CUSTOM_FIELDS_DOC_ID); } catch { doc = { _id: CUSTOM_FIELDS_DOC_ID, type: 'meta' }; }
   const fields = [...(doc.fields ?? []), field];
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
   await logChange(field.id, 'create', undefined, undefined, undefined, { field_name: name });
@@ -318,9 +330,9 @@ export async function addCustomFieldDef(name: string, type: CustomFieldDef['type
 // text value under a field switched to 'number' simply won't parse until the
 // task is edited again, which is not a crash.
 export async function updateCustomFieldDef(fieldId: string, patch: { name?: string; type?: CustomFieldDef['type']; options?: string[] }): Promise<CustomFieldDef[]> {
-  let doc: any;
-  try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
-  const fields = (doc.fields ?? []).map((f: CustomFieldDef) => f.id === fieldId ? { ...f, ...patch } : f);
+  let doc: CustomFieldsDoc;
+  try { doc = await db.get<CustomFieldsDoc>(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
+  const fields = (doc.fields ?? []).map(f => f.id === fieldId ? { ...f, ...patch } : f);
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
   await logChange(fieldId, 'update', undefined, undefined, undefined, { field_name: patch.name });
   return fields;
@@ -332,10 +344,10 @@ export async function updateCustomFieldDef(fieldId: string, patch: { name?: stri
 // and CardDetail only ever renders values for fields still in this list,
 // so a stale key is simply never shown again.
 export async function removeCustomFieldDef(fieldId: string): Promise<CustomFieldDef[]> {
-  let doc: any;
-  try { doc = await db.get(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
-  const removed = (doc.fields ?? []).find((f: CustomFieldDef) => f.id === fieldId);
-  const fields = (doc.fields ?? []).filter((f: CustomFieldDef) => f.id !== fieldId);
+  let doc: CustomFieldsDoc;
+  try { doc = await db.get<CustomFieldsDoc>(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
+  const removed = (doc.fields ?? []).find(f => f.id === fieldId);
+  const fields = (doc.fields ?? []).filter(f => f.id !== fieldId);
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
   if (removed) await logChange(fieldId, 'delete', undefined, undefined, undefined, { field_name: removed.name });
   return fields;
@@ -366,7 +378,7 @@ export async function archiveProject(id: string): Promise<void> {
   await logChange(id, 'update', 'archived', false, true, { project_name: doc.name });
   const all = await getAllTasksRaw();
   const toArchive = all.filter(t => t.project_id === id && !t.deleted && !t.archived && t.column_id !== lastColId);
-  if (toArchive.length) await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true } as any)));
+  if (toArchive.length) await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true })));
   invalidateTaskCache();
 }
 
@@ -745,8 +757,8 @@ async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<Ta
   // as undefined. Without this check every save on such a task logs a false
   // "Custom fields updated"/"Checklist updated" diff: JSON.stringify(undefined)
   // returns undefined, which never equals "{}" or "[]".
-  const isEmpty = (v: any) => v == null || (typeof v === 'object' && Object.keys(v).length === 0);
-  const diffs: Record<string, { from: any; to: any }> = {};
+  const isEmpty = (v: unknown) => v == null || (typeof v === 'object' && Object.keys(v).length === 0);
+  const diffs: Record<string, { from: unknown; to: unknown }> = {};
   for (const key of Object.keys(finalChanges) as (keyof TaskDoc)[]) {
     if (skip.has(key)) continue;
     const from = doc[key], to = finalChanges[key];
@@ -831,9 +843,9 @@ async function addAttachmentImpl(taskId: string, input: AddAttachmentInput): Pro
     // requested -- PouchDB recognizes stub entries on put() and keeps their
     // existing content as-is rather than requiring every attachment to be
     // re-sent on every write. Only the new key needs real `data` here.
-    _attachments: { ...(doc as any)._attachments, [key]: { content_type: contentType, data: input.base64Data } },
+    _attachments: { ...doc._attachments, [key]: { content_type: contentType, data: input.base64Data } },
     updated_at: now(), source: SOURCE,
-  } as any);
+  });
   invalidateTaskCache();
   await logChange(taskId, 'update', 'attachments', prevMeta, nextMeta, { task_title: doc.title });
   return db.get<TaskDoc>(taskId);
@@ -847,7 +859,7 @@ async function deleteAttachmentImpl(taskId: string, key: string): Promise<TaskDo
   const doc = await db.get<TaskDoc>(taskId);
   const prevMeta = doc.attachments ?? [];
   const nextMeta = prevMeta.filter(a => a.key !== key);
-  const nextAttachments = { ...(doc as any)._attachments };
+  const nextAttachments = { ...doc._attachments };
   delete nextAttachments[key];
 
   await db.put({
@@ -855,7 +867,7 @@ async function deleteAttachmentImpl(taskId: string, key: string): Promise<TaskDo
     attachments: nextMeta,
     _attachments: nextAttachments,
     updated_at: now(), source: SOURCE,
-  } as any);
+  });
   invalidateTaskCache();
   await logChange(taskId, 'update', 'attachments', prevMeta, nextMeta, { task_title: doc.title });
   return db.get<TaskDoc>(taskId);
@@ -966,18 +978,18 @@ export async function getArchivedTasksForProject(projectId: string): Promise<Tas
 export async function unarchiveTask(id: string): Promise<void> {
   // Routed through updateTask() (like archiveTask() below), not a direct
   // db.put(), so it logs a changelog entry the way archiving does.
-  await updateTask(id, { archived: false } as any);
+  await updateTask(id, { archived: false });
 }
 
 export async function archiveTask(id: string): Promise<void> {
-  await updateTask(id, { archived: true } as any);
+  await updateTask(id, { archived: true });
 }
 
 export async function archiveColumnTasks(projectId: string, columnId: string): Promise<void> {
   const tasks = await getTasksForProject(projectId);
   const toArchive = tasks.filter(t => t.column_id === columnId && !t.archived);
   if (!toArchive.length) return;
-  await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true } as any)));
+  await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true })));
 }
 
 // Focus view is a daily commitment lock, not an auto-computed priority list:

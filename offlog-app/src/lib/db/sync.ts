@@ -3,6 +3,24 @@
 /// <reference types="pouchdb-find" />
 import { getSyncUrl, getSyncCredentials, isSyncEnabled } from '../../config';
 import { db, invalidateTaskCache, now, DEFAULT_COLS } from './core';
+import type { ProjectDoc, Column, Source } from '../types';
+
+// PouchDB.Core.Error minus the fields this file never reads, plus statusCode:
+// the HTTP adapter sets `status`, while a fetch-layer failure surfaces
+// `statusCode` instead, and neither is guaranteed present.
+export interface SyncError extends PouchDB.Core.Error {
+  statusCode?: number;
+}
+
+// @types/pouchdb-replication's Sync declares no `push`/`pull`, though the real
+// Sync object exposes both sub-replications (see attachSyncHandlers below for
+// why they're load-bearing). Structural rather than PouchDB.Replication.Sync
+// so the tests' hand-rolled chainable-`.on` double satisfies it too.
+interface SyncEmitter {
+  on(event: string, listener: (err?: SyncError) => void): SyncEmitter;
+  push?: SyncEmitter;
+  pull?: SyncEmitter;
+}
 
 async function remote() {
   const { user, pass } = await getSyncCredentials();
@@ -12,11 +30,11 @@ async function remote() {
 
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
-let _syncHandler: any = null;
+let _syncHandler: PouchDB.Replication.Sync<{}> | null = null;
 
 // Exported for tests — pure classification, no I/O, so what a dropped
 // connection tells the user is testable without a real db.sync() call.
-export function describeSyncError(err: any): string {
+export function describeSyncError(err?: SyncError | null): string {
   if (!err) return 'Unknown sync error';
   const status = err.status ?? err.statusCode;
   if (status === 401 || status === 403) return 'Authentication failed — check sync credentials';
@@ -56,7 +74,7 @@ function markSynced() {
   notify();
 }
 
-function markError(err: any) {
+function markError(err?: SyncError) {
   // A genuine offline state takes priority over whatever sync error
   // surfaced — it's almost certainly just the network being down.
   if (!navigator.onLine) { syncState.status = 'offline'; syncState.error = null; notify(); return; }
@@ -71,7 +89,18 @@ function markError(err: any) {
 // Compared field-by-field (ignoring _id/_rev/updated_at/source, which always
 // legitimately differ between two independently-seeded installs) to tell a
 // genuinely pristine copy apart from one the user edited.
-const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
+// One predicate map covers both a space doc and a project doc, so the union of
+// the fields either predicate reads is optional here.
+interface PristineDoc {
+  name?: string;
+  color?: string;
+  position?: number;
+  space_id?: string;
+  default_view?: ProjectDoc['default_view'];
+  columns?: Column[];
+}
+
+const PRISTINE_DEFAULTS: Record<string, (doc: PristineDoc) => boolean> = {
   'space:unsorted': (d) => d.name === 'Unsorted' && d.color === '#6B7280' && d.position === 0,
   'space:personal': (d) => d.name === 'Personal' && d.color === '#10B981' && d.position === 1,
   'space:work':     (d) => d.name === 'Work' && d.color === '#3B82F6' && d.position === 2,
@@ -92,8 +121,8 @@ const PRISTINE_DEFAULTS: Record<string, (doc: any) => boolean> = {
 // and never merges two real edits.
 async function autoResolvePristineDefaultConflicts(): Promise<void> {
   for (const id of Object.keys(PRISTINE_DEFAULTS)) {
-    let doc: any;
-    try { doc = await db.get(id, { conflicts: true } as any); } catch { continue; }
+    let doc: PouchDB.Core.Document<PristineDoc> & PouchDB.Core.GetMeta;
+    try { doc = await db.get<PristineDoc>(id, { conflicts: true }); } catch { continue; }
     const losingRevs: string[] = doc._conflicts ?? [];
     if (!losingRevs.length) continue;
     const isPristine = PRISTINE_DEFAULTS[id];
@@ -106,12 +135,12 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
       const edited: string[] = [];
       for (const rev of losingRevs) {
         try {
-          const losing = await db.get(id, { rev } as any) as any;
+          const losing = await db.get<PristineDoc>(id, { rev });
           if (!isPristine(losing)) edited.push(rev);
         } catch { /* already gone — ignore */ }
       }
       if (edited.length === 1) {
-        const winning = await db.get(id, { rev: edited[0] } as any) as any;
+        const winning = await db.get<PristineDoc>(id, { rev: edited[0] });
         await db.put({ ...winning, _id: id, _rev: doc._rev });
         for (const rev of losingRevs) { try { await db.remove(id, rev); } catch {} }
       } else if (edited.length === 0) {
@@ -123,7 +152,7 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
       // whichever losing revisions are still provably untouched.
       for (const rev of losingRevs) {
         try {
-          const losing = await db.get(id, { rev } as any) as any;
+          const losing = await db.get<PristineDoc>(id, { rev });
           if (isPristine(losing)) await db.remove(id, rev);
         } catch { /* already gone — ignore */ }
       }
@@ -140,7 +169,7 @@ export async function scanConflicts(): Promise<number> {
   // row.doc._conflicts (not row.value.conflicts, which does not exist) is the
   // field to read. Reading row.value.conflicts silently yields a zero count.
   const r = await db.allDocs({ include_docs: true, conflicts: true });
-  const count = r.rows.filter((row: any) => row.doc?._conflicts?.length).length;
+  const count = r.rows.filter(row => row.doc?._conflicts?.length).length;
   syncState.conflictCount = count;
   notify();
   return count;
@@ -176,29 +205,29 @@ if (typeof window !== 'undefined') {
 // Exported for tests — accepts any object with a chainable `.on(event, cb)`
 // and optional `.push`/`.pull` sub-objects of the same shape, so a dropped
 // connection can be exercised without a real replication.
-export function attachSyncHandlers(handler: any, onSettle?: (err: any) => void) {
+export function attachSyncHandlers<H extends SyncEmitter>(handler: H, onSettle?: (err?: SyncError) => void): H {
   let settled = false;
-  const settle = (err: any) => { if (!settled) { settled = true; onSettle?.(err); } };
+  const settle = (err?: SyncError) => { if (!settled) { settled = true; onSettle?.(err); } };
 
-  let pushErr: any = undefined, pullErr: any = undefined;
+  let pushErr: SyncError | undefined = undefined, pullErr: SyncError | undefined = undefined;
   if (handler.push && typeof handler.push.on === 'function') {
-    handler.push.on('paused', (err: any) => { pushErr = err ?? undefined; });
+    handler.push.on('paused', (err) => { pushErr = err ?? undefined; });
     handler.push.on('active', () => { pushErr = undefined; });
   }
   if (handler.pull && typeof handler.pull.on === 'function') {
-    handler.pull.on('paused', (err: any) => { pullErr = err ?? undefined; });
+    handler.pull.on('paused', (err) => { pullErr = err ?? undefined; });
     handler.pull.on('active', () => { pullErr = undefined; });
   }
 
   handler
     .on('change', () => { syncState.status = 'syncing'; notify(); })
     .on('active', () => { syncState.status = 'syncing'; notify(); })
-    .on('paused', (err: any) => {
+    .on('paused', (err) => {
       const real = err ?? pushErr ?? pullErr;
       if (real) markError(real); else markSynced();
       settle(real);
     })
-    .on('error', (err: any) => { markError(err); settle(err); });
+    .on('error', (err) => { markError(err); settle(err); });
   return handler;
 }
 
@@ -244,18 +273,30 @@ export async function syncNow(): Promise<void> {
 // side of a genuine edit conflict. These two functions let Settings show
 // both versions of a conflicted doc and let the user decide.
 
+// The only fields Settings' conflict UI reads off a conflicted doc, which can
+// be of any type -- `title` for tasks, `name` for spaces/projects.
+interface ConflictContent {
+  type: string;
+  title?: string;
+  name?: string;
+  source?: Source;
+  created_at?: string;
+  updated_at?: string;
+}
+type ConflictDoc = PouchDB.Core.ExistingDocument<ConflictContent>;
+
 export interface ConflictInfo {
   docId: string;
   type: string;
   label: string;
-  current: any;
-  other: { rev: string; doc: any };
+  current: ConflictDoc;
+  other: { rev: string; doc: ConflictDoc };
 }
 
 export async function getConflicts(): Promise<ConflictInfo[]> {
-  const r = await db.allDocs({ include_docs: true, conflicts: true });
+  const r = await db.allDocs<ConflictContent>({ include_docs: true, conflicts: true });
   const out: ConflictInfo[] = [];
-  for (const row of r.rows as any[]) {
+  for (const row of r.rows) {
     // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
     // never on row.value.
     const revs: string[] = row.doc?._conflicts ?? [];
@@ -264,7 +305,7 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
     // Only the first conflicting revision is shown — multi-way conflicts are
     // rare for a single-user app and repairDatabase() remains available for
     // those as a blunter "keep current, discard the rest" fallback.
-    const other = await db.get(row.id, { rev: revs[0] } as any) as any;
+    const other = await db.get<ConflictContent>(row.id, { rev: revs[0] });
     out.push({
       docId: row.id,
       type: current.type,
@@ -277,10 +318,10 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
 }
 
 export async function resolveConflict(docId: string, keep: 'current' | 'other', otherRev?: string): Promise<void> {
-  const doc = await db.get(docId, { conflicts: true } as any) as any;
+  const doc = await db.get<ConflictContent>(docId, { conflicts: true });
   const losingRevs: string[] = doc._conflicts ?? [];
   if (keep === 'other' && otherRev) {
-    const winning = await db.get(docId, { rev: otherRev } as any) as any;
+    const winning = await db.get<ConflictContent>(docId, { rev: otherRev });
     await db.put({ ...winning, _id: docId, _rev: doc._rev });
   }
   // Every conflicting revision needs explicit removal — PouchDB and the sync

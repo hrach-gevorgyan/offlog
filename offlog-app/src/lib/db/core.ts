@@ -15,7 +15,7 @@ import type { TaskDoc, Source } from '../types';
 // them; ../db.ts's barrel deliberately does not re-export those, keeping the
 // public surface of './db' exactly what it was before the split.
 
-(PouchDB as any).plugin(PouchDBFind);
+PouchDB.plugin(PouchDBFind);
 
 // Read once per module load, not per write: renaming a device triggers a
 // location.reload(), so a fresh value is picked up then.
@@ -114,13 +114,31 @@ export const DEFAULT_COLS = [
 
 export type LogAction = 'create' | 'update' | 'move' | 'delete';
 
+// The changelog doc every mutation writes. The index signature is the
+// per-call-site `meta` (task_title, project_name, space_name, ...): the keys
+// vary by mutation type and are read back only for display.
+export interface LogDoc {
+  _id: string;
+  _rev?: string;
+  type: 'log';
+  ts: string;
+  source: Source;
+  source_id?: string;
+  ref: string;
+  action: LogAction;
+  field?: string;
+  from?: unknown;
+  to?: unknown;
+  [meta: string]: any;
+}
+
 export async function logChange(
   ref: string,
   action: LogAction,
   field?: string,
-  from?: any,
-  to?: any,
-  meta?: Record<string, any>,
+  from?: unknown,
+  to?: unknown,
+  meta?: Record<string, unknown>,
 ) {
   const ts = now();
   await db.put({
@@ -131,8 +149,8 @@ export async function logChange(
   });
 }
 
-export async function getRecentLogs(limit = 80): Promise<any[]> {
-  const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, limit, include_docs: true });
+export async function getRecentLogs(limit = 80): Promise<LogDoc[]> {
+  const r = await db.allDocs<LogDoc>({ startkey: 'log:￰', endkey: 'log:', descending: true, limit, include_docs: true });
   return r.rows.map(r => r.doc!);
 }
 
@@ -140,14 +158,14 @@ export async function getRecentLogs(limit = 80): Promise<any[]> {
 // recent changelog entries rather than every log ever. Descending order means
 // the first entry seen for a given source is already its most recent.
 export async function getDeviceLastSeen(): Promise<{ device: string; lastSeen: string }[]> {
-  const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, limit: 500, include_docs: true });
+  const r = await db.allDocs<LogDoc>({ startkey: 'log:￰', endkey: 'log:', descending: true, limit: 500, include_docs: true });
   // Group by the stable source_id where present, so a rename doesn't split one
   // device into two rows. Older log entries have no source_id and fall back to
   // grouping by the literal source string.
   const seen = new Map<string, string>();
   const names = new Map<string, string>();
   for (const row of r.rows) {
-    const doc: any = row.doc;
+    const doc = row.doc;
     if (!doc?.source) continue;
     const key = doc.source_id ?? doc.source;
     if (seen.has(key)) continue;
@@ -159,7 +177,7 @@ export async function getDeviceLastSeen(): Promise<{ device: string; lastSeen: s
     .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
 }
 
-export async function getLogsForTask(taskId: string): Promise<any[]> {
+export async function getLogsForTask(taskId: string): Promise<LogDoc[]> {
   await initIndexes();
   try {
     // idx-type-ref lets this skip scanning every log doc in the database —
@@ -169,10 +187,10 @@ export async function getLogsForTask(taskId: string): Promise<any[]> {
       use_index: 'idx-type-ref',
       limit: 100000,
     });
-    return (r.docs as any[]).sort((a, b) => (b.ts ?? '').localeCompare(a.ts ?? ''));
+    return (r.docs as LogDoc[]).sort((a, b) => (b.ts ?? '').localeCompare(a.ts ?? ''));
   } catch {
-    const r = await db.allDocs({ startkey: 'log:￰', endkey: 'log:', descending: true, include_docs: true });
-    return r.rows.map(r => r.doc!).filter((d: any) => d.ref === taskId);
+    const r = await db.allDocs<LogDoc>({ startkey: 'log:￰', endkey: 'log:', descending: true, include_docs: true });
+    return r.rows.map(r => r.doc!).filter(d => d.ref === taskId);
   }
 }
 
@@ -219,7 +237,7 @@ const CHANGE_FEED_RETRY_MS = 2000;
 
 export function subscribe(callback: () => void): () => void {
   let cancelled = false;
-  let handler: { cancel: () => void } | null = null;
+  let handler: PouchDB.Core.Changes<{}> | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
   const attach = (isRestart: boolean) => {
@@ -234,7 +252,7 @@ export function subscribe(callback: () => void): () => void {
         try { handler?.cancel(); } catch { /* already dead */ }
         handler = null;
         retryTimer = setTimeout(() => attach(true), CHANGE_FEED_RETRY_MS);
-      }) as unknown as { cancel: () => void };
+      });
     // Anything that changed while the feed was down was never delivered.
     if (isRestart) { invalidateTaskCache(); callback(); }
   };

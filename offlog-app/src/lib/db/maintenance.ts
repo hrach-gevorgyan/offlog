@@ -1,7 +1,8 @@
 // Housekeeping: log/deleted-task retention, integrity check + repair, the
 // Settings maintenance run, and backup import/export.
-import type { SpaceDoc, ProjectDoc, TaskDoc } from '../types';
+import type { SpaceDoc, ProjectDoc, TaskDoc, Column } from '../types';
 import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS } from './core';
+import type { LogDoc } from './core';
 import { getProjects } from './entities';
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
@@ -22,9 +23,9 @@ export async function pruneOldLogs(): Promise<number> {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - LOG_RETENTION_MONTHS);
   const cutoffIso = cutoff.toISOString();
-  const r = await db.allDocs({ startkey: 'log:', endkey: 'log:￰', include_docs: true });
-  const stale = r.rows.map(row => row.doc!).filter((d: any) => d.ts && d.ts < cutoffIso);
-  if (stale.length) await db.bulkDocs(stale.map((d: any) => ({ ...d, _deleted: true })));
+  const r = await db.allDocs<LogDoc>({ startkey: 'log:', endkey: 'log:￰', include_docs: true });
+  const stale = r.rows.map(row => row.doc!).filter(d => d.ts && d.ts < cutoffIso);
+  if (stale.length) await db.bulkDocs(stale.map(d => ({ ...d, _deleted: true })));
   return stale.length;
 }
 
@@ -89,25 +90,34 @@ export function maybePruneOldDeletedTasks(): void {
 //  3. A project doc missing `columns` imports fine and then crashes the
 //     Dashboard, Kanban, List, FilterBar and CardDetail on `columns.at(-1)`,
 //     so structure is normalized on the way in.
-function sanitizeImportedDoc(d: any): any {
+// A record straight out of a backup file: arbitrary, unvalidated JSON. Nothing
+// about its shape is known until the checks below run, so every field reads as
+// `any` on purpose.
+type ImportedDoc = Record<string, any>;
+
+// bulkDocs' per-doc result, narrowed to the only field read here plus the two
+// minimal stand-ins the per-document fallback pushes.
+type ImportResult = { ok?: boolean; error?: unknown };
+
+function sanitizeImportedDoc(d: ImportedDoc): ImportedDoc {
   const out = { ...d };
 
   if (out._attachments && typeof out._attachments === 'object') {
-    const kept: Record<string, any> = {};
-    for (const [key, att] of Object.entries<any>(out._attachments)) {
+    const kept: Record<string, Partial<PouchDB.Core.FullAttachment>> = {};
+    for (const [key, att] of Object.entries<Partial<PouchDB.Core.FullAttachment>>(out._attachments)) {
       if (att && typeof att.data === 'string') kept[key] = att; // real base64 payload
     }
     if (Object.keys(kept).length) out._attachments = kept;
     else delete out._attachments;
     // Keep the metadata array honest about what actually came back.
     if (Array.isArray(out.attachments)) {
-      out.attachments = out.attachments.filter((a: any) => a?.key && kept[a.key]);
+      out.attachments = out.attachments.filter((a: { key?: string } | null) => a?.key && kept[a.key]);
     }
   }
 
   if (out.type === 'project') {
     const cols = Array.isArray(out.columns)
-      ? out.columns.filter((c: any) => c && typeof c.id === 'string' && typeof c.name === 'string')
+      ? out.columns.filter((c: Partial<Column> | null) => c && typeof c.id === 'string' && typeof c.name === 'string')
       : [];
     // A project with no usable columns is the shape that crashes every
     // view reading columns.at(-1). Give it the standard starter set
@@ -128,7 +138,7 @@ function sanitizeImportedDoc(d: any): any {
   return out;
 }
 
-export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: number }> {
+export async function importJSON(docs: ImportedDoc[]): Promise<{ ok: number; skipped: number }> {
   const valid = docs
     .filter(d =>
       d && d._id && typeof d._id === 'string' &&
@@ -148,7 +158,7 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
   // untouched while still reporting success.
   const existing = await db.allDocs({ keys: valid.map(d => d._id) });
   const revById = new Map<string, string>();
-  for (const row of existing.rows as any[]) {
+  for (const row of existing.rows as Array<{ id: string; error?: string; value?: { rev: string } }>) {
     if (!row.error && row.value?.rev) revById.set(row.id, row.value.rev);
   }
   const clean = valid.map(({ _rev, ...d }) => {
@@ -159,9 +169,9 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
   // (missing_stub in particular) reject the entire call, losing every good doc
   // alongside the bad one. All-or-nothing is the wrong failure mode for a
   // restore, so fall back to writing doc by doc and salvage whatever lands.
-  let results: any[];
+  let results: ImportResult[];
   try {
-    results = await db.bulkDocs(clean) as any[];
+    results = await db.bulkDocs(clean) as ImportResult[];
   } catch (e) {
     console.warn('bulk import rejected wholesale, retrying per-document', e);
     results = [];
@@ -175,8 +185,8 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
     }
   }
   invalidateTaskCache();
-  const ok = results.filter((r: any) => !r.error).length;
-  const skipped = results.filter((r: any) => r.error).length;
+  const ok = results.filter(r => !r.error).length;
+  const skipped = results.filter(r => r.error).length;
   return { ok, skipped };
 }
 
@@ -185,7 +195,7 @@ export async function importJSON(docs: any[]): Promise<{ ok: number; skipped: nu
 // (PouchDB has no dry-run for bulkDocs): "will be skipped" means "malformed,
 // or not one of space/project/task". A doc colliding with an existing id is
 // reported as "created" and genuinely overwritten by importJSON.
-export function analyzeImport(docs: any[]): { toCreate: number; toSkip: number; byType: Record<string, number> } {
+export function analyzeImport(docs: ImportedDoc[]): { toCreate: number; toSkip: number; byType: Record<string, number> } {
   const byType: Record<string, number> = { space: 0, project: 0, task: 0 };
   let toSkip = 0;
   for (const d of docs) {
@@ -198,8 +208,8 @@ export function analyzeImport(docs: any[]): { toCreate: number; toSkip: number; 
 // Export a single project — the project doc plus its own tasks only, never
 // the space it belongs to: including the space would silently duplicate
 // spaces on re-import.
-export async function exportProjectDocs(projectId: string): Promise<any[]> {
-  const project = await db.get(projectId);
+export async function exportProjectDocs(projectId: string): Promise<Array<ProjectDoc | TaskDoc>> {
+  const project = await db.get<ProjectDoc>(projectId);
   const tasks = (await getAllTasksRaw()).filter(t => t.project_id === projectId && !t.deleted);
   return [project, ...tasks];
 }
@@ -237,12 +247,12 @@ export interface IntegrityIssue {
 
 export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; checked: number }> {
   const issues: IntegrityIssue[] = [];
-  const r = await db.allDocs({ include_docs: true, conflicts: true });
-  const docs = r.rows.map(row => row.doc!).filter(d => !(d as any)._id.startsWith('_'));
+  const r = await db.allDocs<SpaceDoc | ProjectDoc | TaskDoc>({ include_docs: true, conflicts: true });
+  const docs = r.rows.map(row => row.doc!).filter(d => !d._id.startsWith('_'));
 
-  const spaces = docs.filter((d: any) => d.type === 'space') as SpaceDoc[];
-  const projects = docs.filter((d: any) => d.type === 'project') as ProjectDoc[];
-  const tasks = docs.filter((d: any) => d.type === 'task') as TaskDoc[];
+  const spaces = docs.filter(d => d.type === 'space') as SpaceDoc[];
+  const projects = docs.filter(d => d.type === 'project') as ProjectDoc[];
+  const tasks = docs.filter(d => d.type === 'task') as TaskDoc[];
   const spaceIds = new Set(spaces.map(s => s._id));
   const projectIds = new Set(projects.map(p => p._id));
 
@@ -267,7 +277,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
     }
   }
 
-  for (const row of r.rows as any[]) {
+  for (const row of r.rows) {
     // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
     // never on row.value.
     if (row.doc?._conflicts?.length) {
@@ -306,7 +316,7 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
         await db.put({ ...doc, space_id: 'space:unsorted', updated_at: now(), source: SOURCE });
         fixed++;
       } else if (issue.type === 'conflict') {
-        const doc = await db.get(issue.docId, { conflicts: true } as any) as any;
+        const doc = await db.get(issue.docId, { conflicts: true });
         const conflicts: string[] = doc._conflicts ?? [];
         for (const rev of conflicts) await db.remove(issue.docId, rev);
         if (conflicts.length) fixed++; else skipped++;
