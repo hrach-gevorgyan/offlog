@@ -108,12 +108,6 @@
   // call site would just be hiding it.
   function addCardOnDay(dStr: string | null) { if (dStr) dispatch('addTask', dStr); }
 
-  function startOfWeek(): string {
-    const d = new Date();
-    d.setDate(d.getDate() - daysSinceWeekStart(d, weekStartsMonday));
-    return localDateStr(d);
-  }
-
   function endOfWeek(): string {
     const d = new Date();
     d.setDate(d.getDate() + (6 - daysSinceWeekStart(d, weekStartsMonday)));

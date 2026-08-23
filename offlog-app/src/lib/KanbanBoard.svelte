@@ -310,7 +310,7 @@
     }
   }
 
-  import { PRIORITY_COLOR, PRIORITY_LABEL_SHORT as PRIORITY_LABEL } from './constants';
+  import { PRIORITY_COLOR } from './constants';
 
   // ── Touch drag ─────────────────────────────────────────────────────────────
   let touchTask: TaskDoc | null = null;

@@ -573,7 +573,6 @@
   let lastSynced = syncState.lastSynced;
   let syncError = syncState.error;
   let lastErrorAt = syncState.lastErrorAt;
-  let retryCount = syncState.retryCount;
   let conflictCount = syncState.conflictCount;
 
   function onSyncChange() {
@@ -581,7 +580,6 @@
     lastSynced = syncState.lastSynced;
     syncError = syncState.error;
     lastErrorAt = syncState.lastErrorAt;
-    retryCount = syncState.retryCount;
     conflictCount = syncState.conflictCount;
   }
   syncState.listeners.add(onSyncChange);

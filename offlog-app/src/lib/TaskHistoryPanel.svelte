@@ -30,7 +30,7 @@
     if (log.action === 'move') return `Moved from "${log.from}" to "${log.to}"`;
     if (log.diffs) {
       const clauses = Object.entries(log.diffs)
-        .filter(([f, d]: [string, any]) => hasRealChange(f, d.from, d.to))
+        .filter(([, d]: [string, any]) => hasRealChange(d.from, d.to))
         .map(([f, d]: [string, any]) => describeField(f, d.from, d.to));
       if (clauses.length === 0) return 'Details updated';
       if (clauses.length > MAX_CLAUSES) {

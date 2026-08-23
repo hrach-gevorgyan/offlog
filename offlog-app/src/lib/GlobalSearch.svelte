@@ -6,7 +6,7 @@
   import { projects } from './store';
   import type { TaskDoc, ProjectDoc } from './types';
   import type { Command } from './commands';
-  import { PRIORITY_COLOR, PRIORITY_LABEL } from './constants';
+  import { PRIORITY_COLOR } from './constants';
   import { closeOnBack, discardTop } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { localDateStr, escapeHtml } from './utils';

@@ -72,7 +72,7 @@ function isEmpty(v: any): boolean {
   return v == null || (typeof v === 'object' && Object.keys(v).length === 0);
 }
 
-export function hasRealChange(field: string, from: any, to: any): boolean {
+export function hasRealChange(from: any, to: any): boolean {
   if (typeof from === 'boolean' || typeof to === 'boolean') return !!from !== !!to;
   if (isEmpty(from) && isEmpty(to)) return false;
   return JSON.stringify(from) !== JSON.stringify(to);
@@ -82,7 +82,7 @@ const MAX_CLAUSES = 3;
 
 function fmtDiffs(diffs: Record<string, any>): string {
   const clauses = Object.entries(diffs)
-    .filter(([field, d]: [string, any]) => hasRealChange(field, d.from, d.to))
+    .filter(([, d]: [string, any]) => hasRealChange(d.from, d.to))
     .map(([field, d]: [string, any]) => describeField(field, d.from, d.to));
   if (clauses.length === 0) return 'Details updated';
   if (clauses.length > MAX_CLAUSES) {

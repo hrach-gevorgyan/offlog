@@ -31,7 +31,6 @@ export interface ParsedQuickAdd {
   raw: boolean; // true when the whole-title quote escape was used -- caller can show "parsing off" instead of chips
 }
 
-const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const WEEKDAY_ALIASES: Record<string, number> = {
   sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2,
   wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4,
@@ -161,7 +160,7 @@ function extractDate(text: string, today: Date): { date: Date | null; rest: stri
 // Only parses a time when the text unambiguously signals one (an "at "
 // prefix, an am/pm suffix, or a colon) -- otherwise a plain number in the
 // title ("buy 5 apples") would get misread as a time.
-function extractTime(text: string, today: Date): { hours: number | null; minutes: number; rest: string } {
+function extractTime(text: string): { hours: number | null; minutes: number; rest: string } {
   let m = /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i.exec(text);
   if (!m) m = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i.exec(text);
   if (!m) m = /\b(\d{1,2}):(\d{2})\b/.exec(text);
@@ -245,7 +244,7 @@ export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date =
   const tagResult = extractTags(rest); rest = tagResult.rest;
   const prioResult = extractPriority(rest); rest = prioResult.rest;
   const projResult = extractProject(rest, projects); rest = projResult.rest;
-  const timeResult = extractTime(rest, now); rest = timeResult.rest;
+  const timeResult = extractTime(rest); rest = timeResult.rest;
   const dateResult = extractDate(rest, now); rest = dateResult.rest;
 
   let due_date: string | null = dateResult.date ? isoDate(dateResult.date) : null;

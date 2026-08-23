@@ -211,7 +211,11 @@ export function watchForStaleHost() {
     const now = Date.now();
     if (now - lastReresolveAttempt < RERESOLVE_COOLDOWN_MS) return;
     lastReresolveAttempt = now;
-    reresolveHost().then((updated) => { if (updated) return startSync(); }).catch(() => {});
+    // The startSync() promise is deliberately *returned*, not just called:
+    // that chains it into the .catch below. Calling it bare would leave a
+    // floating promise, which is one of this project's documented blind
+    // spots (see MAINTENANCE.md).
+    reresolveHost().then((updated) => (updated ? startSync() : undefined)).catch(() => {});
   });
 }
 

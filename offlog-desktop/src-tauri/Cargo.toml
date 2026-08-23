@@ -45,7 +45,7 @@ tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
 rand = "0.10"
 ureq = "3"
-mdns-sd = "0.20"
+mdns-sd = "0.21"
 tiny_http = "0.12"
 
 [target.'cfg(windows)'.dependencies]
