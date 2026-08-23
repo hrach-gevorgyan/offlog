@@ -144,10 +144,15 @@ typing pass had surfaced earlier the same day, each with a mutation-
 verified test: a docless `allDocs` row (deletion tombstone) threw mid-
 backup; `invokeTauri()` asserted Tauri's IPC global rather than rejecting
 off-Tauri; and a dead `??` in the import error path masked non-Error
-rejections. Two blind-spot ledger notes carried forward: the installer/APK
-size half of the drift ledger is still empty — no build was available to
-capture it — and the Android Gradle build remains owner-only, so the
-incremental-vs-clean build class stays uncovered by this pass.)
+rejections. Size-drift ledger completed for the first time: v6.5.0's release
+artifacts give dist 1.2MB, Android APK 4.72MB and Windows installer 4.96MB
+— the installer flat against the v5.7.10 "~5MB" note, and both halves of
+the ledger now populated after three passes with only the dist figure. One
+note still carried forward: the Android Gradle build remains owner-only, so
+the incremental-vs-clean build class stays uncovered by this pass. The
+v6.5.0 release also confirmed the signing pipeline end to end — a signed
+APK plus an installer and its `.sig`, with `latest.json` generated for the
+desktop updater.)
 
 Full narrative history of every maintenance pass (process defined in
 [../MAINTENANCE.md](../MAINTENANCE.md)), moved here from that file's old

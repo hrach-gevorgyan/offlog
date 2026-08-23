@@ -126,10 +126,10 @@ Produce a findings report covering:
     NyxDB swap: dist 1.1MB, Windows installer ~5MB. Updated at v5.8.2,
     16th pass: dist 1.2MB — ~9% growth, under the 10% threshold and
     plausibly explained by C8's password-at-rest UI/App Lock work
-    shipped since v5.7.10; no installer/APK figure was ever actually
-    recorded to compare against, so that half of the ledger is still
-    empty going into the next pass — capture it then if a build is
-    available.)
+    shipped since v5.7.10. **Both halves are now populated**, captured
+    from v6.5.0's release artifacts: dist 1.2MB, Android APK 4.72MB,
+    Windows installer 4.96MB (against the v5.7.10 note of "~5MB", i.e.
+    flat). That is the baseline the next pass compares against.)
   - **Optional deeper sweeps** (no repo dependency added — dev-run
     tools only, results are *candidates* requiring judgment, both
     false-positive-prone with Svelte/Tauri): `npx knip` (unused files/
