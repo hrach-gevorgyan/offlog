@@ -17,7 +17,7 @@ bump) gets a one-line "No visible changes" entry, not padding.
 
 ---
 
-## v6.4.0
+## v6.5.0
 
 ### New
 - On a Kanban board, a card's "..." menu now has a **Move to** section

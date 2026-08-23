@@ -130,7 +130,7 @@ see the "Maintenance pass log" section at the bottom.
 
 ## Maintenance pass log
 
-Last pass: v6.4.0 (2026-08-24 — twenty-second run, the first since daily
+Last pass: v6.5.0 (2026-08-24 — twenty-second run, the first since daily
 use began. Run against a codebase that had just been through a large
 hardening cycle, so most of Phase 1 came back empty and that is the
 finding: zero floating promises across 30 async writers, zero raw-UTC

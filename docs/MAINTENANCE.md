@@ -4,7 +4,7 @@ Scheduled maintenance routine, tailored to this repo. This is NOT a
 feature session: external behavior must remain identical. Read this whole
 file before touching code. Cadence: **every 3 minor versions.**
 
-**Current pointer** — last pass: v6.4.0 (2026-08-24, twenty-second run,
+**Current pointer** — last pass: v6.5.0 (2026-08-24, twenty-second run,
 triggered by the "first bug hit in daily use" half of the previous
 pointer rather than its calendar date). Next pass due: **2026-12-01, or
 on the next bug hit in daily use, whichever comes first** — the "every 3
