@@ -147,10 +147,13 @@ CouchDB-protocol server). Full tech stack table in
 
 ```bash
 cd offlog-app
+npm ci                  # first run; Node 22+ (CI pins 22, there is no engines field)
 npm run dev             # dev server at http://localhost:5173
 npm run build           # production build → dist/  (must be warning-free, see below)
 npm run check          # svelte-check + tsc (real type gate)
-npm test                # vitest — db.ts unit tests against pouchdb-adapter-memory
+npm test                # vitest — full suite (db, components, replication, backup, perf guard)
+npx vitest run tests/db.test.ts   # one file, while iterating
+npm run bench           # perf benchmarks — reporting only, no pass/fail
 npx cap sync android    # copy dist/ into the Android project (run after build)
 ```
 
