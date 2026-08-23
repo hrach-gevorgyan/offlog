@@ -289,8 +289,13 @@ Dev Workflows" section.
 - Every modal/panel closes on Escape. Hover-only controls need a visible
   fallback on touch (see the Kanban column-action `@media (max-width: 768px)`
   pattern).
-- Legitimate remaining `svelte-ignore` uses: scrim click-to-close (Escape is
-  the keyboard path) and intentional `a11y-autofocus` on inline editors.
+- Legitimate remaining `svelte-ignore` uses, in four categories: scrim/overlay
+  click-to-close (Escape is the keyboard path), intentional `a11y-autofocus`
+  on inline editors, HTML5 drag-and-drop handlers on Kanban columns/cards
+  (a `dragover` cannot take a keyboard equivalent), and `role="option"` rows
+  whose arrow/Enter handling lives on the owning input. Every directive in
+  the tree is load-bearing: removing all of them and building surfaces a
+  matching warning for each, which is how to re-check for stale ones.
 
 ## Testing
 

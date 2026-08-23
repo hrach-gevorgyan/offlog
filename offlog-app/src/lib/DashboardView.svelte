@@ -113,7 +113,6 @@
     <div class="loading"><span class="spinner"></span>Loading…</div>
   {:else}
     <div class="dash-body">
-      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
       <div class="brief" role="button" tabindex="0" on:click={() => dispatch('focus')} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch('focus'); } }}>
         {#if focusLock}
           {@const doneCount = focusLockedTasks.filter(isFocusTaskDone).length}

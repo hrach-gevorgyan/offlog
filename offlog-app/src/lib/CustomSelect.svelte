@@ -97,7 +97,6 @@
   </button>
 
   {#if open}
-    <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
     <div class="cs-panel" class:placement-up={placement === 'up'} bind:this={panelEl} role="listbox" tabindex="-1" on:keydown={onPanelKey} transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
       {#each grouped as [group, opts] (group)}
         {#if group}<div class="cs-group-label">{group}</div>{/if}
