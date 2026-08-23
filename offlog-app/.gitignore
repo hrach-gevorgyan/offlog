@@ -25,3 +25,6 @@ src/config.local.ts
 *.njsproj
 *.sln
 *.sw?
+
+# svelte-check --tsgo scratch output (generated on every run)
+.svelte-check/
