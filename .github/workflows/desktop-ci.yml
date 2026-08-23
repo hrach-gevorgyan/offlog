@@ -23,6 +23,13 @@ on:
 
 # Least-privilege default -- this workflow only checks out code and runs
 # a cargo build, it never needs to write anything back to the repo.
+# A newer push supersedes an in-flight run for the same ref. Without this a
+# burst of pushes leaves several full builds racing, and CodeQL's parallel
+# SARIF uploads for one ref collide.
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

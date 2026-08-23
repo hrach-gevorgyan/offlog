@@ -30,6 +30,13 @@ on:
     # Matches the cadence GitHub's Default setup used.
     - cron: '0 6 * * 1'
 
+# A newer push supersedes an in-flight run for the same ref. Without this a
+# burst of pushes leaves several full builds racing, and CodeQL's parallel
+# SARIF uploads for one ref collide.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   security-events: write
