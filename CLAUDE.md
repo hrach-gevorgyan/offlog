@@ -323,6 +323,15 @@ one. Purely presentational children (`settings/*`, `carddetail/*`,
 `PinStar`) are covered through their parents; `App.svelte` is
 integration-level and has none.
 
+`tests/replication.test.ts` runs PouchDB's real replicator between the app's
+`db` and a second in-memory database — convergence, soft-delete propagation,
+attachment bytes, conflict creation/resolution, and the first-pair seed
+collision. Prefer extending it over adding another mocked sync test:
+`sync.test.ts` can only cover error classification and handler wiring, never
+whether two databases actually agree. Note a wiped document leaves a
+tombstone that outranks an incoming rev-1 for the same id, so tests that
+replicate a fresh document must use an id nothing has deleted.
+
 **Judge a test run by its exit code, not its summary lines.** Vitest
 prints "540 passed" and still exits 1 when an unhandled rejection escapes
 a component (an unguarded `await` in `onMount`, a jsdom API that doesn't
