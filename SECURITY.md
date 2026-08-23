@@ -3,7 +3,17 @@
 Offlog is a single-maintainer, local-first personal project (see
 [docs/DECISIONS.md](docs/DECISIONS.md) for the full context) — there's
 no dedicated security team, but real vulnerabilities are taken
-seriously and fixed promptly.
+seriously and fixed promptly. The project is actively maintained:
+security review is one of the few things that still gets regular
+attention now that the feature roadmap is complete (see
+[docs/ROADMAP.md](docs/ROADMAP.md)).
+
+## Supported versions
+
+Only the **latest release** is supported. There are no backported
+security fixes to older versions — the app auto-updates on Windows, and
+Android updates via a new APK (Play Store once published). If you're
+running something older, update first.
 
 ## Reporting a vulnerability
 
@@ -24,42 +34,85 @@ specifics.
 
 ## Scope
 
-Relevant here: anything that could let one device read/write another
-user's data without authorization, credential handling (sync
-username/password, pairing codes), the local CouchDB sync host bundled
-with the desktop app, or the widget/deep-link URL handling in the
-Android app.
+In scope — anything that could let one device read or write another
+user's data without authorization, plus:
+
+- **Credential handling** — the sync username/password and the pairing
+  code exchange.
+- **The embedded sync host.** The Windows desktop app bundles
+  [NyxDB](https://github.com/hrach-gevorgyan/nyxdb), a self-authored
+  CouchDB-*protocol* server, and runs it as a managed child process. (It
+  was real Apache CouchDB through v5.7.10 — anything referencing
+  "the bundled CouchDB" is describing a version that's no longer
+  shipped.)
+- **Pairing and discovery** — the mDNS advertisement (`_offlog._tcp`)
+  and the one-time-code pairing endpoint.
+- **The widget/deep-link URL handling** in the Android app
+  (`com.offlog.app://...`).
+- **The desktop updater** — signature verification on downloaded
+  updates.
+
+Out of scope: the plain web build (`npm run dev`) is a development and
+testing surface, not a distribution target, and is documented as such.
 
 **Already known, deliberate tradeoffs — not vulnerabilities to report:**
-sync traffic is plain HTTP on the local network by design (no TLS on
-LAN CouchDB sync — see [docs/DECISIONS.md](docs/DECISIONS.md)), and the
-pairing endpoint's CORS policy is intentionally permissive (also
-documented there). Check DECISIONS.md before reporting either of these.
+
+- Sync traffic is plain HTTP on the local network by design. No TLS on
+  LAN sync — see [docs/DECISIONS.md](docs/DECISIONS.md).
+- The pairing endpoint's CORS policy is intentionally permissive (also
+  documented there).
+- App Lock's PIN gates the **UI, not the data** — it is not encryption,
+  and is documented as such. Someone with filesystem access to the
+  device can read the database regardless.
+- Security posture overall is deliberately minimal for a single-user,
+  LAN-only, no-account app, and has **not** had a third-party audit.
+
+Please check DECISIONS.md before reporting any of the above.
+
+## What is protected
+
+For clarity on where the bar actually is:
+
+- **The stored sync password is encrypted at rest** on both real
+  platforms — Windows DPAPI (tied to the Windows user account) and
+  Android's Keystore via `capacitor-native-biometric`. The plain web
+  build keeps it in `localStorage`, which is why that build is out of
+  scope above. (Shipped in v5.8.1 as ROADMAP item C8.)
+- **Pairing** uses a single-use, 5-minute, 8-attempt-lockout 6-digit
+  code, with uniform failure responses and **zero credentials in the
+  mDNS TXT record** — nothing sensitive goes over the air before a
+  successful handshake.
+- **App Lock** supports a PIN plus optional biometrics, with only a
+  salted hash stored, never the PIN itself.
+- **Updates** are verified against a minisign signature before install;
+  a tampered or corrupt download is rejected.
 
 ## Known, accepted dependency advisories
 
-Dependabot currently flags 2 open alerts (down from 17 after removing an
-unused `@capacitor/assets` devDependency, 2026-07-21):
+**Current status (2026-07-31): `npm audit` reports 0 vulnerabilities.**
 
-- **`uuid` buffer-bounds issue** (moderate, npm, `offlog-app/package-lock.json`),
-  pulled in transitively by `pouchdb-find` and *is* in the shipped web/
-  Android bundle. It's used only for PouchDB's local query-index IDs (no
-  security-sensitive use), `pouchdb-find` is already at its latest
-  version, and there's no upstream fix yet — `npm audit fix`'s only
-  suggestion is a downgrade, not a real fix.
-- **`glib` iterator unsoundness** (moderate, Rust, `offlog-desktop/src-tauri/Cargo.lock`),
-  pulled in transitively by Tauri's Linux-only GTK/WebKitGTK backend
-  (`gtk`/`webkit2gtk`/`gdk`/`soup3` → `glib`). It appears in the lockfile
-  for every platform Tauri could target, but is never compiled into the
-  Windows build actually distributed (`cfg(target_os = "linux")`-gated) —
-  `cargo update -p glib` confirms no newer compatible version exists yet
-  either way.
+One Rust advisory remains, accepted:
 
-Both tracked, not forgotten; re-checked at every maintenance pass (see
-docs/MAINTENANCE.md).
+- **`glib` iterator unsoundness** (moderate, `offlog-desktop/src-tauri/Cargo.lock`)
+  — pulled in transitively by Tauri's Linux-only GTK stack
+  (`gtk`/`libappindicator` → `atk` → `glib`). It appears in the lockfile
+  because Cargo resolves every platform Tauri *could* target, but it is
+  **not compiled into the Windows build that actually ships** — verified
+  with `cargo tree -i glib --target x86_64-pc-windows-msvc`, which
+  returns nothing. No newer compatible version exists upstream.
+
+Historical note: an earlier `uuid` advisory (via `pouchdb-find`) and a
+`nanoid` advisory (via `vite` → `postcss`, build tooling only, never in
+the shipped bundle) were both resolved and are no longer open.
+
+All of this is re-checked at every maintenance pass — see
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md), whose checklist includes a
+**build-output** secret scan specifically, because a source-only scan
+once missed real credentials that had been compiled into a shipped APK
+(see [docs/STORY.md](docs/STORY.md) for that incident).
 
 ## Response
 
-Offlog has no SLA (this is a personal project, not a company), but
-genuine reports get looked at promptly — expect an initial response
+Offlog has no SLA — this is a personal project, not a company. But
+genuine reports get looked at promptly; expect an initial response
 within a few days.

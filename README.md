@@ -104,13 +104,15 @@ that got reversed, is written down: [docs/DECISIONS.md](docs/DECISIONS.md)
 and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) back to the first
 release.
 
-**Status: finished and in daily use — not abandoned, not in active
-development.** Built over July 2026; since 2026-08-01 it's the author's
-own primary task manager. Ongoing work is bugfixes found in real use,
-dependency updates, and security review. New features need a real need,
-not an idea. [docs/STORY.md](docs/STORY.md) is the honest account of how
-it got built — including the month the foundation was thrown out and
-rewritten, and the backup bug caught twelve hours before it mattered.
+**Status: feature-complete, actively maintained, and in daily use.**
+Built over July 2026; since 2026-08-01 it's the author's own primary
+task manager. Bugs get fixed, dependencies get updated, security reports
+get answered — what it doesn't have is a feature roadmap. New features
+are judged against real daily use rather than a backlog, so open an
+issue before building one. [docs/STORY.md](docs/STORY.md) is the honest
+account of how it got built — including the month the foundation was
+thrown out and rewritten, and the backup bug caught twelve hours before
+it mattered.
 
 ## Features
 
@@ -410,16 +412,13 @@ from a single owner acting as product manager and QA — the codebase is
 documented (`CLAUDE.md` + `docs/`) specifically so an AI assistant (or a
 human) can pick it up the same way for a fork.
 
-**Read this before opening a feature PR:** the app is feature-complete
-on purpose and in maintenance mode — see
-[docs/ROADMAP.md](docs/ROADMAP.md). New features need a real need found
-in daily use, not a good idea, so a large unsolicited feature PR will
-probably be declined however well built it is. That's not a reflection
-on the work; it's the whole point of the project having an ending. Ask
-in an issue first and you'll get a straight answer before you spend the
-time.
+**Before opening a feature PR:** the app is feature-complete on purpose
+— see [docs/ROADMAP.md](docs/ROADMAP.md). Feature ideas are welcome, but
+they're judged against "does daily use actually demand this," which is a
+higher bar than "this would be good." Open an issue first and you'll get
+a straight yes/no before spending real time on it.
 
-That said, there's a real, honest wishlist — see
+There's also a genuine wishlist — see
 [CONTRIBUTING.md](CONTRIBUTING.md) for setup and PR mechanics, but in
 short, the most valuable contributions are:
 

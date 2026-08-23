@@ -58,22 +58,27 @@ any change: does it make Offlog nicer to use, or just bigger?
 - **C5, landing page.** One plain GitHub Pages page. On hold, no energy
   for it right now. Not blocking anything.
 
-## Next up — nothing. Development is done.
+## Next up — empty, and that's the finished state
 
-**2026-07-31 — the finite plan is closed.** Both remaining items shipped
-in v6.3.0 (desktop tray-resident + global quick-capture shortcut, and
-"Blocked by" task dependencies), followed by three maintenance cycles
-specifically aimed at the things that break under real daily use rather
-than on a fresh install. From 2026-08-01 the author uses Offlog as their
-own primary task manager, and the project is in **maintenance mode**:
+**2026-07-31 — the finite plan is complete.** Both remaining items
+shipped in v6.3.0 (desktop tray-resident + global quick-capture
+shortcut, and "Blocked by" task dependencies), followed by three
+maintenance cycles specifically aimed at the things that break under
+real daily use rather than on a fresh install. From 2026-08-01 the
+author uses Offlog as their own primary task manager.
 
-- Bugs hit in actual daily use get fixed. Nothing else does.
-- Quarterly maintenance passes and Dependabot batches continue (see the
-  bugfix/audit track below) — that's upkeep, not development.
-- **New features are not planned, and proposing them is not a
-  contribution to this project.** "Does daily use demand it?" is the
-  only question that reopens this section, and the answer has to come
-  from months of real use, not from an idea.
+An empty "Next up" is the goal being met, not the project stalling. The
+project stays **actively maintained**:
+
+- Bugs hit in actual daily use get fixed — that's now the main driver
+  of change.
+- Dependency batches, security review, and maintenance passes continue
+  (see the bugfix/audit track below).
+- **New features aren't planned in advance, but they're not refused
+  either.** The bar is "does daily use actually demand this," not "is
+  this a good idea" — and the answer usually has to come from living
+  with the app, not from imagining it. Anything that clears that bar
+  gets built and lands back in this section.
 
 The one thing still genuinely open is C3 (Play Store listing, above),
 and that's waiting on Google, not on any work here.
