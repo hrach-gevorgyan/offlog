@@ -59,12 +59,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: github/codeql-action/init@v4.37.5
-        with:
-          languages: java-kotlin
-          build-mode: manual
-          config-file: ./.github/codeql/codeql-config.yml
-
+      # Everything the Java extractor needs must exist BEFORE codeql init:
+      # init configures the extractor against the JDK present at that
+      # moment, so installing Java afterwards leaves it analyzing with a
+      # different toolchain than the build uses and it sees no source.
+      # Only the Gradle compile belongs between init and analyze.
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
@@ -90,8 +89,16 @@ jobs:
         working-directory: offlog-app
         run: npx cap sync android
 
+      - uses: github/codeql-action/init@v4.37.5
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
+
       - name: Build debug APK (for CodeQL's dependency classpath only, not published)
         working-directory: offlog-app/android
+        # gradlew's executable bit doesn't always survive a checkout on a
+        # repo also worked on from Windows -- set it explicitly.
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug
