@@ -314,8 +314,14 @@ Dev Workflows" for how `tests/setup.ts` shims PouchDB/localStorage. When
 adding a new `db.ts` function with any non-trivial logic, add a test here
 before shipping — this suite already caught two real bugs (broken conflict
 detection, an incomplete conflict resolution) that had been silently
-shipping. UI components have no test coverage yet; that's still manual/
-browser-preview verification.
+shipping. Components are tested with `@testing-library/svelte` against
+mocked `db`/`store` modules (`CardDetail`, `QuickAdd`, `KanbanBoard`,
+`AppLock`, `ConfirmPinGate`) — mock the module, render, `fireEvent`,
+assert the write's arguments. Cover the failure path too: every mutating
+call site must surface `showError()`, and a test that only checks the
+happy path won't catch a swallowed one. Views with no component test yet
+(`SettingsPanel`, `ListView`, `AgendaView`, `Sidebar`) still rely on
+manual/browser-preview verification.
 
 ## Android gotchas (hard-won — read before touching)
 
