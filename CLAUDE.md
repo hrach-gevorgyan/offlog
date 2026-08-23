@@ -323,6 +323,12 @@ one. Purely presentational children (`settings/*`, `carddetail/*`,
 `PinStar`) are covered through their parents; `App.svelte` is
 integration-level and has none.
 
+**Judge a test run by its exit code, not its summary lines.** Vitest
+prints "540 passed" and still exits 1 when an unhandled rejection escapes
+a component (an unguarded `await` in `onMount`, a jsdom API that doesn't
+exist). Grepping for the pass counts hides it; CI does not. Run
+`npx vitest run; echo $?` when in doubt.
+
 **A test is only worth its line count if it fails when the behaviour
 breaks.** Prove it: mutate the source (invert a condition, drop a guard,
 swallow an error), confirm THAT test fails, revert. A test that survives

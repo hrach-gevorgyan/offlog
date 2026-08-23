@@ -161,9 +161,11 @@ describe('SettingsPanel sync save', () => {
   // A secure-storage *read* failure must not wedge the panel: the save
   // falls through treating it as "nothing stored yet".
   it('still saves when the stored credentials cannot be read back', async () => {
-    getSyncCredentials.mockRejectedValueOnce(new Error('read failed'));
     const { container } = render(SettingsPanel, { initialCategory: 'advanced' });
     await openAdvancedTab(container);
+    // queued after mount, so it lands on saveSettings' read rather than the
+    // one onMount performs
+    getSyncCredentials.mockRejectedValueOnce(new Error('read failed'));
 
     await fireEvent.click(saveButton(container));
 

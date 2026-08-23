@@ -62,6 +62,14 @@ if (!window.matchMedia) {
   })) as unknown as typeof window.matchMedia;
 }
 
+// jsdom implements no layout, so it has no scrollIntoView — components
+// that keep the active row in view (Sidebar, CustomSelect) call it on
+// mount. Unstubbed it throws as an unhandled error, which fails the run
+// even when every test passes.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function () {};
+}
+
 if (!Element.prototype.animate) {
   Element.prototype.animate = function () {
     return {

@@ -392,7 +392,11 @@
   let credentialUser = '';
   let credentialPass = '';
   onMount(async () => {
-    ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
+    // A secure-storage read can fail on a platform quirk; leave the fields
+    // empty rather than letting the rejection escape unhandled.
+    try {
+      ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
+    } catch { /* seeded empty above */ }
   });
   let deviceName = getDeviceName();
   let syncEnabled = isSyncEnabled();
