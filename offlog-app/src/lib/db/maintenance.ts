@@ -93,7 +93,7 @@ export function maybePruneOldDeletedTasks(): void {
 // A record straight out of a backup file: arbitrary, unvalidated JSON. Nothing
 // about its shape is known until the checks below run, so every field reads as
 // `any` on purpose.
-type ImportedDoc = Record<string, any>;
+export type ImportedDoc = Record<string, any>;
 
 // bulkDocs' per-doc result, narrowed to the only field read here plus the two
 // minimal stand-ins the per-document fallback pushes.

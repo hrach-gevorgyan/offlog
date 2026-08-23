@@ -417,7 +417,7 @@
     id: string; title: string;
     fromColId: string; fromDueDate: string | null; fromReminderAt: string | null;
     fromChecklist: { text: string; done: boolean }[] | undefined;
-    timer: any;
+    timer: ReturnType<typeof setTimeout>;
   } | null = null;
 
   async function markDone(task: TaskDoc) {

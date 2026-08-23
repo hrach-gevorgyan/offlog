@@ -50,7 +50,7 @@ function backupFilename(now: Date): string {
 }
 
 async function collectBackupJson(): Promise<string> {
-  const PouchDBCtor = (window as any).PouchDB;
+  const PouchDBCtor = window.PouchDB;
   const db = new PouchDBCtor('offlog');
   // `attachments: true, binary: false` inlines each attachment as base64
   // `data` instead of a `{stub: true}` placeholder. Without it, a backup
@@ -59,7 +59,7 @@ async function collectBackupJson(): Promise<string> {
   // `missing_stub` when a stub has no matching blob, taking every
   // space/project/task in the file down with it.
   const all = await db.allDocs({ include_docs: true, attachments: true, binary: false });
-  const docs = all.rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+  const docs = all.rows.map(r => r.doc!).filter(d => !d._id.startsWith('_'));
   return JSON.stringify(docs, null, 2);
 }
 

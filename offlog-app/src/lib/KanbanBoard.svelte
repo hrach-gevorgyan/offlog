@@ -309,7 +309,7 @@
       project = updated;
       dispatch('projectUpdated', updated);
       await reloadTasks();
-    } catch (e: any) {
+    } catch (e) {
       showError('Failed to remove status. Please try again.');
     }
   }

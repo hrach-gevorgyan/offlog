@@ -2,6 +2,7 @@
   import { getLogsForTask } from './db';
   import { timeAgo, fmtFullTimestamp, ACTION_COLOR } from './utils';
   import { describeField, hasRealChange } from './logFormat';
+  import type { LogEntry } from './logFormat';
 
   export let taskId: string;
 
@@ -18,14 +19,14 @@
   // task-scoped, with no entity-type context.
   const MAX_CLAUSES = 3;
 
-  function describeLog(log: any): string {
+  function describeLog(log: LogEntry): string {
     if (log.action === 'create') return 'Task created';
     if (log.action === 'delete') return 'Task deleted';
     if (log.action === 'move') return `Moved from "${log.from}" to "${log.to}"`;
     if (log.diffs) {
       const clauses = Object.entries(log.diffs)
-        .filter(([, d]: [string, any]) => hasRealChange(d.from, d.to))
-        .map(([f, d]: [string, any]) => describeField(f, d.from, d.to));
+        .filter(([, d]) => hasRealChange(d.from, d.to))
+        .map(([f, d]) => describeField(f, d.from, d.to));
       if (clauses.length === 0) return 'Details updated';
       if (clauses.length > MAX_CLAUSES) {
         return clauses.slice(0, MAX_CLAUSES).join('; ') + `; +${clauses.length - MAX_CLAUSES} more change${clauses.length - MAX_CLAUSES === 1 ? '' : 's'}`;

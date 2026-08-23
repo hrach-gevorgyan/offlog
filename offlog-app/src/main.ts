@@ -20,7 +20,7 @@ window.addEventListener('error', (e) => {
   showError('Something went wrong. Please try again.');
 });
 
-const isNative = (window as any).Capacitor?.isNativePlatform?.();
+const isNative = window.Capacitor?.isNativePlatform?.();
 
 if (isNative) {
   // Android 15+ (targetSdk 35+) enforces edge-to-edge and ignores

@@ -11,6 +11,7 @@
   import { panelFly, scrimFade } from './motion';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
+  import type { LogDoc } from './db';
 
   // The single surface over `log:` docs: day-grouped and paginated, with
   // per-row detail (project badge, source pill, Clear all) and
@@ -26,7 +27,7 @@
   // query — adequate at single-user scale and adds no new query surface.
   const PAGE_SIZE = 150;
   let limit = PAGE_SIZE;
-  let logs: any[] = [];
+  let logs: LogDoc[] = [];
   let loading = true;
   let hasMore = true;
   let bodyEl: HTMLDivElement;
@@ -79,10 +80,10 @@
     });
   }
 
-  interface DayGroup { key: string; label: string; entries: any[]; counts: Record<string, number> }
+  interface DayGroup { key: string; label: string; entries: LogDoc[]; counts: Record<string, number> }
 
   $: groups = (() => {
-    const map = new Map<string, any[]>();
+    const map = new Map<string, LogDoc[]>();
     for (const log of logs) {
       const key = dayKey(log.ts);
       (map.get(key) ?? map.set(key, []).get(key)!).push(log);
@@ -111,7 +112,7 @@
   // already-spent closeOnBack() handle leaves it stuck open.
   let detailOpenSession = 0;
 
-  async function openEntry(log: any) {
+  async function openEntry(log: LogDoc) {
     if (entityLabel(log) !== 'task') return; // only tasks have a card to open
     try {
       const task = await getTaskById(log.ref);

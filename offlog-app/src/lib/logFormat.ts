@@ -4,6 +4,25 @@
 
 import { fmtTime } from './utils';
 
+// A single field's before/after pair as updateTask() records it, and the
+// changelog fields these formatters read off a `log:` doc. Every field is
+// optional and most values are `unknown`: which keys a log entry carries
+// depends on the mutation, and a value can be any JSON a task field holds.
+export interface LogDiff { from?: unknown; to?: unknown }
+
+export interface LogEntry {
+  action?: string;
+  ref?: unknown;
+  field?: string;
+  from?: unknown;
+  to?: unknown;
+  diffs?: Record<string, LogDiff>;
+  task_title?: string;
+  project_name?: string;
+  space_name?: string;
+  field_name?: string;
+}
+
 const FIELD_LABEL: Record<string, string> = {
   title: 'Title', body: 'Notes', priority: 'Priority',
   due_date: 'Due date', reminder_at: 'Reminder', remindOnDue: 'Remind on due date',
@@ -18,25 +37,25 @@ const PRIO: Record<number, string> = { 1: 'Low', 2: 'Medium', 3: 'High' };
 export const ACTION_LABEL: Record<string, string> = { create: 'Created', update: 'Edited', move: 'Moved', delete: 'Deleted' };
 
 // Booleans always read as plain Yes/No (not the same as "no value").
-function fmtVal(field: string, val: any): string {
+function fmtVal(field: string, val: unknown): string {
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
   if (val == null || val === '') return '—';
   if (field === 'body') return 'updated';
-  if (field === 'priority') return PRIO[val] ?? String(val);
+  if (field === 'priority') return PRIO[val as number] ?? String(val);
   if (field === 'tags') return Array.isArray(val) ? (val.join(', ') || 'none') : String(val);
-  if (field === 'columns') return Array.isArray(val) ? val.map((c: any) => c.name).join(', ') : String(val);
+  if (field === 'columns') return Array.isArray(val) ? val.map((c: { name: string }) => c.name).join(', ') : String(val);
   if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
   if (field === 'custom_values') return 'updated';
   if (field === 'recurrence') return val === 'daily' ? 'Daily' : val === 'weekly' ? 'Weekly' : val === 'monthly' ? 'Monthly' : String(val);
-  if (field === 'due_date') return new Date(`${val}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  if (field === 'reminder_at') { const d = new Date(val); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
+  if (field === 'due_date') return new Date(`${val as string}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  if (field === 'reminder_at') { const d = new Date(val as string); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
   if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
   if (typeof val === 'object') return 'updated';
   const s = String(val);
   return s.length > 40 ? s.slice(0, 40) + '…' : s;
 }
 
-export function describeField(field: string, from: any, to: any): string {
+export function describeField(field: string, from: unknown, to: unknown): string {
   if (field === 'pinned') return to ? 'Pinned' : 'Unpinned';
   if (field === 'archived') return to ? 'Archived' : 'Taken out of archive';
   if (field === 'due_date') return from == null ? `Due date set to ${fmtVal(field, to)}` : to == null ? 'Due date removed' : `Due date moved to ${fmtVal(field, to)}`;
@@ -63,11 +82,11 @@ export function describeField(field: string, from: any, to: any): string {
 // display-layer filter is still needed so already-stored diffs of the shape
 // {from: undefined, to: {}} don't show a false "Custom fields updated" /
 // "Checklist updated" clause.
-function isEmpty(v: any): boolean {
+function isEmpty(v: unknown): boolean {
   return v == null || (typeof v === 'object' && Object.keys(v).length === 0);
 }
 
-export function hasRealChange(from: any, to: any): boolean {
+export function hasRealChange(from: unknown, to: unknown): boolean {
   if (typeof from === 'boolean' || typeof to === 'boolean') return !!from !== !!to;
   if (isEmpty(from) && isEmpty(to)) return false;
   return JSON.stringify(from) !== JSON.stringify(to);
@@ -75,10 +94,10 @@ export function hasRealChange(from: any, to: any): boolean {
 
 const MAX_CLAUSES = 3;
 
-function fmtDiffs(diffs: Record<string, any>): string {
+function fmtDiffs(diffs: Record<string, LogDiff>): string {
   const clauses = Object.entries(diffs)
-    .filter(([, d]: [string, any]) => hasRealChange(d.from, d.to))
-    .map(([field, d]: [string, any]) => describeField(field, d.from, d.to));
+    .filter(([, d]) => hasRealChange(d.from, d.to))
+    .map(([field, d]) => describeField(field, d.from, d.to));
   if (clauses.length === 0) return 'Details updated';
   if (clauses.length > MAX_CLAUSES) {
     return clauses.slice(0, MAX_CLAUSES).join(' · ') + ` · +${clauses.length - MAX_CLAUSES} more change${clauses.length - MAX_CLAUSES === 1 ? '' : 's'}`;
@@ -95,7 +114,7 @@ export function fmt(ts: string) {
 // Derived from the ref id's own prefix (space:/project:/task:), the same
 // convention db.ts relies on -- otherwise create/delete always read as
 // "task" regardless of what was actually created or deleted.
-export function entityLabel(log: any): string {
+export function entityLabel(log: LogEntry): string {
   if (typeof log.ref !== 'string') return 'task';
   if (log.ref.startsWith('project:')) return 'project';
   if (log.ref.startsWith('space:')) return 'space';
@@ -103,7 +122,7 @@ export function entityLabel(log: any): string {
   return 'task';
 }
 
-export function describeLog(log: any): string {
+export function describeLog(log: LogEntry): string {
   const who = log.task_title ? `"${log.task_title}"`
     : log.project_name ? `"${log.project_name}"`
     : log.space_name ? `"${log.space_name}"`

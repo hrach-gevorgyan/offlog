@@ -186,7 +186,7 @@
   function closeSidebar() { sidebarOpen = false; }
 
   // Undo toast
-  let undoToasts: { id: string; title: string; timer: any }[] = [];
+  let undoToasts: { id: string; title: string; timer: ReturnType<typeof setTimeout> }[] = [];
 
   async function showUndoToast() {
     const buf = await getRecentlyDeleted(1);
@@ -250,7 +250,7 @@
   // when a modal is actually open). @capacitor/app is a no-op import on
   // web, so this listener only ever fires on native.
   async function setupBackButton() {
-    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    if (!window.Capacitor?.isNativePlatform?.()) return;
     const { App: CapApp } = await import('@capacitor/app');
     CapApp.addListener('backButton', ({ canGoBack }) => {
       if (canGoBack) window.history.back();
@@ -306,14 +306,14 @@
   // running): the 'appUrlOpen' listener can fire at any later point,
   // there's no restore-ordering race to worry about there.
   async function checkLaunchUrl(): Promise<boolean> {
-    if (!(window as any).Capacitor?.isNativePlatform?.()) return false;
+    if (!window.Capacitor?.isNativePlatform?.()) return false;
     const { App: CapApp } = await import('@capacitor/app');
     const launch = await CapApp.getLaunchUrl();
     return handleWidgetUrl(launch?.url);
   }
 
   async function listenForWidgetLinks() {
-    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    if (!window.Capacitor?.isNativePlatform?.()) return;
     const { App: CapApp } = await import('@capacitor/app');
     CapApp.addListener('appUrlOpen', ({ url }) => handleWidgetUrl(url));
   }
@@ -357,8 +357,8 @@
     setupBackButton();
     try {
       await init();
-    } catch (e: any) {
-      initError = e?.message ?? 'The app failed to start.';
+    } catch (e) {
+      initError = (e as Error | undefined)?.message ?? 'The app failed to start.';
       await revealTauriWindow(); // crash-recovery screen still needs to be visible
       return;
     }

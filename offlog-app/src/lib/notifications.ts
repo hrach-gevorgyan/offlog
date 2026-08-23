@@ -86,7 +86,7 @@ export async function requestExactAlarmPermission(): Promise<void> {
   exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
 }
 
-const isNative = () => !!(window as any).Capacitor?.isNativePlatform?.();
+const isNative = () => !!window.Capacitor?.isNativePlatform?.();
 // Desktop (Tauri) is neither Capacitor-native nor a plain browser — it
 // embeds a real WebView2, but that WebView has no default handler for the
 // browser Notification permission-prompt flow: Notification.requestPermission()
@@ -471,7 +471,7 @@ export async function initNotificationListeners(): Promise<void> {
   await checkExactAlarmPermission();
   await ensureReminderChannel();
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-    const taskId = (action.notification.extra as any)?.taskId;
+    const taskId = (action.notification.extra as { taskId?: string } | undefined)?.taskId;
     if (!taskId) return;
     if (action.actionId === 'done') completeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not mark that task done. Please try again.'));
     else if (action.actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not snooze that reminder. Please try again.'));

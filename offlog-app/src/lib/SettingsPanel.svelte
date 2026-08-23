@@ -15,7 +15,7 @@
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
-    wipeAndReseed,
+    wipeAndReseed, type ImportedDoc,
   } from './db';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../config';
@@ -168,7 +168,7 @@
   }
 
   // ── Notifications ───────────────────────────────────────────────────────
-  const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
+  const isAndroid = window.Capacitor?.getPlatform?.() === 'android';
   // Master in-app toggle -- same pattern as the Sync tab's own
   // enabled/disabled switch gating its sub-settings.
   // Independent of the OS permission below: that one can only ever be
@@ -709,7 +709,7 @@
   // instead of importing the instant a file is picked. `pendingImportDocs`
   // holds the parsed array between "file chosen" and "user confirms."
   let importStatus = '';
-  let pendingImportDocs: any[] | null = null;
+  let pendingImportDocs: ImportedDoc[] | null = null;
   let importPreview: { toCreate: number; toSkip: number; byType: Record<string, number> } | null = null;
 
   function handleImport() {
@@ -725,8 +725,8 @@
         if (!Array.isArray(docs)) throw new Error('Invalid format');
         pendingImportDocs = docs;
         importPreview = analyzeImport(docs);
-      } catch (e: any) {
-        importStatus = 'Error: ' + (e.message ?? 'invalid file');
+      } catch (e) {
+        importStatus = 'Error: ' + ((e as Error).message ?? 'invalid file');
         setTimeout(() => { importStatus = ''; }, 4000);
       }
     };
@@ -769,7 +769,7 @@
         // attachments inlined as base64 rather than left as stubs -- see
         // autoBackup.ts's collectBackupJson() for why a stub makes the
         // whole restore fail, not just lose the file.
-        : (await db.allDocs({ include_docs: true, attachments: true, binary: false })).rows.map((r: any) => r.doc).filter((d: any) => !d._id.startsWith('_'));
+        : (await db.allDocs({ include_docs: true, attachments: true, binary: false })).rows.map(r => r.doc!).filter(d => !d._id.startsWith('_'));
       const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
       await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${localDateStr(new Date())}.json`);
     } catch {

@@ -71,12 +71,12 @@ export function applyTheme(): void {
 // The desktop window's native title bar otherwise follows the OS theme and
 // ignores this app's Light/Dark/System choice, which reads as visually broken
 // when the two disagree. Tauri's window API can force the native chrome's
-// theme independent of the OS setting. `!!(window as any).__TAURI_INTERNALS__`
+// theme independent of the OS setting. `!!window.__TAURI_INTERNALS__`
 // mirrors config.ts's isTauri() without importing it — theme.ts intentionally
 // has no app-config dependency. No-op on web and Android, which have no
 // native window frame to sync.
 function syncTauriWindowTheme(dark: boolean): void {
-  if (!(window as any).__TAURI_INTERNALS__) return;
+  if (!window.__TAURI_INTERNALS__) return;
   import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
     getCurrentWindow().setTheme(dark ? 'dark' : 'light').catch(() => {});
   }).catch(() => {});

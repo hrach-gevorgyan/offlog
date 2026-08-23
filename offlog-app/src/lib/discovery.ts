@@ -24,7 +24,7 @@ export interface DiscoveredHost {
 export const discoveredHosts = writable<DiscoveredHost[]>([]);
 export const isScanning = writable(false);
 
-const isNative = () => !!(window as any).Capacitor?.isNativePlatform?.();
+const isNative = () => !!window.Capacitor?.isNativePlatform?.();
 
 let watchId: string | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;

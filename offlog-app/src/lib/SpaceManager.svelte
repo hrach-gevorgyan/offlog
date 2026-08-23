@@ -98,7 +98,7 @@
     if (!(await confirmAction(`Delete space "${s.name}"? Its projects will move to Unsorted.`, { danger: true, confirmLabel: 'Delete' }))) return;
     try {
       await deleteSpace(s._id);
-    } catch (e: any) {
+    } catch (e) {
       showError('Failed to delete space. Please try again.');
     }
   }

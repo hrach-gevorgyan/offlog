@@ -16,17 +16,17 @@ const envPass = import.meta.env.DEV ? (import.meta.env.VITE_SYNC_PASS as string 
 // Android is the only Capacitor-native platform this project ships, so
 // "native platform" and "Android" are the same thing here in practice.
 export function isNativePlatform(): boolean {
-  return !!(window as any).Capacitor?.isNativePlatform?.();
+  return !!window.Capacitor?.isNativePlatform?.();
 }
 
-// Pairs with invokeTauri() below so every `window.__TAURI_INTERNALS__.invoke(...)`
-// call site shares one `as any` cast instead of repeating it.
+// The presence of Tauri's IPC global is the platform check; invokeTauri()
+// below is the single call site that reaches through it.
 export function isTauri(): boolean {
-  return !!(window as any).__TAURI_INTERNALS__;
+  return !!window.__TAURI_INTERNALS__;
 }
 
-export function invokeTauri<T = any>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  return (window as any).__TAURI_INTERNALS__.invoke(cmd, args);
+export function invokeTauri<T = void>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  return window.__TAURI_INTERNALS__!.invoke(cmd, args);
 }
 
 // Never hardcode a LAN IP as the fallback: it goes stale the moment the sync
@@ -199,7 +199,7 @@ export async function setSyncCredentials(user: string, pass: string): Promise<vo
 const DEVICE_NAME_KEY = 'offlog_device_name';
 
 function defaultDeviceName(): string {
-  const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android';
+  const isAndroid = window.Capacitor?.getPlatform?.() === 'android';
   return isAndroid ? 'Android phone' : 'PC';
 }
 

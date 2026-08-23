@@ -33,7 +33,7 @@ export function formatStorageEstimate(usage: number, quota: number): { info: str
 // sheet via @capacitor/share instead, so the user picks where it ends
 // up (Files, Drive, email, etc.) same as any other Android share flow.
 export async function downloadBlob(content: string, mime: string, filename: string) {
-  if ((window as any).Capacitor?.isNativePlatform?.()) {
+  if (window.Capacitor?.isNativePlatform?.()) {
     const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
     const { Share } = await import('@capacitor/share');
     const written = await Filesystem.writeFile({
