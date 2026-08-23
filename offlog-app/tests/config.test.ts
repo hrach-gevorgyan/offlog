@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../src/config';
+import { invokeTauri, getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -264,5 +264,20 @@ describe('Privacy screen setting', () => {
     setPrivacyScreenEnabled(true);
     clearAppLockPin();
     expect(isPrivacyScreenEnabled()).toBe(false);
+  });
+});
+
+// invokeTauri() reaches through Tauri's IPC global. Every caller is expected
+// to gate on isTauri() first; when one forgets, a rejected promise is
+// recoverable where a synchronous TypeError out of the call site is not.
+describe('invokeTauri() off Tauri', () => {
+  it('rejects instead of throwing when the IPC global is absent', async () => {
+    expect(window.__TAURI_INTERNALS__).toBeUndefined();
+    await expect(invokeTauri('get_sync_info')).rejects.toThrow(/not running under tauri/i);
+  });
+
+  it('does not throw synchronously', () => {
+    // a thrown TypeError would escape the caller's .catch entirely
+    expect(() => invokeTauri('get_sync_info').catch(() => {})).not.toThrow();
   });
 });

@@ -59,7 +59,9 @@ async function collectBackupJson(): Promise<string> {
   // `missing_stub` when a stub has no matching blob, taking every
   // space/project/task in the file down with it.
   const all = await db.allDocs({ include_docs: true, attachments: true, binary: false });
-  const docs = all.rows.map(r => r.doc!).filter(d => !d._id.startsWith('_'));
+  // A row can carry no doc (a deletion tombstone); reading _id off it
+  // would throw mid-backup.
+  const docs = all.rows.map(r => r.doc).filter(d => !!d && !d._id.startsWith('_'));
   return JSON.stringify(docs, null, 2);
 }
 

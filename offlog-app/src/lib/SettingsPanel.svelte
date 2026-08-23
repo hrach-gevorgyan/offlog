@@ -726,7 +726,7 @@
         pendingImportDocs = docs;
         importPreview = analyzeImport(docs);
       } catch (e) {
-        importStatus = 'Error: ' + ((e as Error).message ?? 'invalid file');
+        importStatus = 'Error: ' + (e instanceof Error ? e.message : 'invalid file');
         setTimeout(() => { importStatus = ''; }, 4000);
       }
     };
@@ -769,7 +769,7 @@
         // attachments inlined as base64 rather than left as stubs -- see
         // autoBackup.ts's collectBackupJson() for why a stub makes the
         // whole restore fail, not just lose the file.
-        : (await db.allDocs({ include_docs: true, attachments: true, binary: false })).rows.map(r => r.doc!).filter(d => !d._id.startsWith('_'));
+        : (await db.allDocs({ include_docs: true, attachments: true, binary: false })).rows.map(r => r.doc).filter(d => !!d && !d._id.startsWith('_'));
       const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
       await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${localDateStr(new Date())}.json`);
     } catch {

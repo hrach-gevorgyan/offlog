@@ -4,13 +4,12 @@ Scheduled maintenance routine, tailored to this repo. This is NOT a
 feature session: external behavior must remain identical. Read this whole
 file before touching code. Cadence: **every 3 minor versions.**
 
-**Current pointer** — last pass: v6.3.0 (2026-07-31, nineteenth through
-twenty-first runs — three cycles back-to-back as the close-out of active
-development, the day before real daily use began). Next pass due:
-**2026-11-01, or on the first bug hit in daily use, whichever comes
-first** — the "every 3 minor versions" cadence no longer applies now that
-minor versions have stopped: the project is in maintenance mode and
-there is no v6.4.0 planned (see ROADMAP.md).
+**Current pointer** — last pass: v6.4.0 (2026-08-24, twenty-second run,
+triggered by the "first bug hit in daily use" half of the previous
+pointer rather than its calendar date). Next pass due: **2026-12-01, or
+on the next bug hit in daily use, whichever comes first** — the "every 3
+minor versions" cadence still does not apply; the project remains in
+maintenance mode.
 
 Those three cycles were deliberately scoped differently rather than run
 as the same checklist three times: (1) the standard Phase 1 checklist

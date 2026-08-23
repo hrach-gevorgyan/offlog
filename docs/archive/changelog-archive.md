@@ -130,6 +130,25 @@ see the "Maintenance pass log" section at the bottom.
 
 ## Maintenance pass log
 
+Last pass: v6.4.0 (2026-08-24 — twenty-second run, the first since daily
+use began. Run against a codebase that had just been through a large
+hardening cycle, so most of Phase 1 came back empty and that is the
+finding: zero floating promises across 30 async writers, zero raw-UTC
+date-only logic, no Android permission or Tauri CSP drift since v6.3.0,
+every relative doc link resolving across 19 markdown files, `npm audit` 0,
+no unused Rust crates, dist steady at 1.2MB against the v5.8.2 baseline.
+The CI-consumed `fetch-nyxdb-win.ps1` checks `$LASTEXITCODE` after every
+native call; `reset-dev-env.ps1` has no exit handling but is hand-run and
+its code is unconsumed, so not a finding. Fixed three latent issues that a
+typing pass had surfaced earlier the same day, each with a mutation-
+verified test: a docless `allDocs` row (deletion tombstone) threw mid-
+backup; `invokeTauri()` asserted Tauri's IPC global rather than rejecting
+off-Tauri; and a dead `??` in the import error path masked non-Error
+rejections. Two blind-spot ledger notes carried forward: the installer/APK
+size half of the drift ledger is still empty — no build was available to
+capture it — and the Android Gradle build remains owner-only, so the
+incremental-vs-clean build class stays uncovered by this pass.)
+
 Full narrative history of every maintenance pass (process defined in
 [../MAINTENANCE.md](../MAINTENANCE.md)), moved here from that file's old
 in-place tracker so the instructions file stays instructions-only. Current

@@ -26,7 +26,12 @@ export function isTauri(): boolean {
 }
 
 export function invokeTauri<T = void>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  return window.__TAURI_INTERNALS__!.invoke(cmd, args);
+  // Every caller is expected to gate on isTauri(); rejecting off-Tauri
+  // keeps a missed gate a handled promise rejection rather than a
+  // TypeError thrown synchronously out of the call site.
+  const ipc = window.__TAURI_INTERNALS__;
+  if (!ipc) return Promise.reject(new Error('Not running under Tauri'));
+  return ipc.invoke(cmd, args);
 }
 
 // Never hardcode a LAN IP as the fallback: it goes stale the moment the sync

@@ -198,3 +198,63 @@ describe('SettingsPanel backup export', () => {
     );
   });
 });
+
+// allDocs rows are not guaranteed to carry a doc — a deletion tombstone
+// arrives as a row with none. Reading _id off it threw mid-backup, so one
+// tombstone could take the whole Back up action down.
+describe('SettingsPanel backup with a docless row', () => {
+  it('skips a row that carries no doc instead of failing the backup', async () => {
+    vi.mocked(dbDefault.allDocs).mockResolvedValueOnce({
+      rows: [
+        { id: 'task:1', key: 'task:1', value: { rev: '1-a' }, doc: { _id: 'task:1', type: 'task' } },
+        { id: 'task:gone', key: 'task:gone', value: { rev: '2-b', deleted: true } }, // no doc
+        { id: '_design/x', key: '_design/x', value: { rev: '1-c' }, doc: { _id: '_design/x' } },
+      ],
+    } as never);
+
+    const { container } = render(SettingsPanel, { initialCategory: 'data' });
+    const nav = [...container.querySelectorAll('.nav-item')]
+      .find(b => /Backup/i.test((b as HTMLElement).textContent!)) as HTMLButtonElement;
+    await fireEvent.click(nav);
+    const backup = [...container.querySelectorAll('button')]
+      .find(b => b.textContent!.trim() === 'Back up') as HTMLButtonElement;
+
+    await fireEvent.click(backup);
+
+    // the failure mode was a thrown TypeError surfacing as this toast
+    expect(showError).not.toHaveBeenCalled();
+  });
+});
+
+// handleImport() builds its own <input type=file> and reads the picked file.
+// The catch has to report a parse failure rather than let it escape — a
+// thrown rejection here would leave the panel silently stuck.
+describe('SettingsPanel restore file errors', () => {
+  it('reports an unparseable file instead of throwing', async () => {
+    const real = document.createElement.bind(document);
+    let picked: HTMLInputElement | null = null;
+    const spy = vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+      const el = real(tag) as HTMLElement;
+      if (tag === 'input') { picked = el as HTMLInputElement; (el as HTMLInputElement).click = () => {}; }
+      return el;
+    }) as never);
+
+    const { container } = render(SettingsPanel, { initialCategory: 'data' });
+    const nav = [...container.querySelectorAll('.nav-item')]
+      .find(b => /Backup/i.test((b as HTMLElement).textContent!)) as HTMLButtonElement;
+    await fireEvent.click(nav);
+    const choose = [...container.querySelectorAll('button')]
+      .find(b => /Choose backup file/i.test(b.textContent!)) as HTMLButtonElement;
+    await fireEvent.click(choose);
+    spy.mockRestore();
+
+    expect(picked).toBeTruthy();
+    const file = new File(['not json at all'], 'bad.json', { type: 'application/json' });
+    Object.defineProperty(picked!, 'files', { value: [file], configurable: true });
+
+    await (picked!.onchange as () => Promise<void>)();
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(container.textContent).toMatch(/Error:/);
+  });
+});

@@ -29,6 +29,11 @@ bump) gets a one-line "No visible changes" entry, not padding.
 - Opening Settings could fail silently on a device where the saved sync
   password could not be read back (a rare storage hiccup). Settings now
   opens normally with the fields blank instead.
+- Backing up could fail outright if the database still held a record of
+  something you had deleted. Backups now skip those and complete normally.
+- Restoring a backup now previews the right number of items. Custom field
+  definitions and tag colours were listed as "skipped" and then restored
+  anyway.
 
 Most of this release is under the hood: a large amount of new automated
 testing and internal tidying, so future changes are less likely to break
