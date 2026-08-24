@@ -27,18 +27,15 @@ backlog that was never finished.
 - **C5, landing page.** One plain GitHub Pages page. On hold, not blocking
   anything.
 
-## Next — remove the single-host dependency
+## Next — nothing planned
 
-- **Mesh sync.** Today one PC is the only host, so the workspace is
-  unreachable whenever that machine is off. The goal is peer-to-peer sync
-  with no single machine required. Declined once on real constraints that
-  still hold — Android cannot keep a background server alive reliably, and
-  two devices never on the same network need a relay — so the design has to
-  work within them: no relay Offlog operates, no accounts, and it must
-  degrade to today's single-host behaviour rather than replacing it. See
-  decisions.md's mesh entry.
+Mesh sync was the one planned direction and it is now closed: a design pass
+measured it against real Android behaviour and found phone-to-phone sync
+impossible on every available route. The reasoning and the evidence are in
+decisions.md's mesh entry; the spike and scenario matrix are kept under
+`offlog-desktop/scripts/mesh-spike/`.
 
-Beyond that, bugs found in daily use drive change. Features aren't planned
+Bugs found in daily use drive change. Features aren't planned
 in advance and aren't refused either: the bar is "does daily use actually
 demand this", usually answered by living with the app rather than
 imagining it.
