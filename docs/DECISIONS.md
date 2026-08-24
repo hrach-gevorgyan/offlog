@@ -205,6 +205,16 @@ audience/process overhead isn't worth it here. Distribution stays GitHub
 (source) + a website + Google Play. iOS is out of scope entirely unless a
 future community contribution takes it on.
 
+### iOS: community contribution only, PWA is the zero-cost path
+A native iOS app needs a Mac, Xcode, and Apple's $99/year developer
+account — the fee alone contradicts the zero-cost stance, so this is
+community-contribution only, never planned work. The realistic zero-cost
+route onto an iPhone is the existing web build as a PWA (Safari → Add to
+Home Screen), with real gaps: no widgets, no lock-screen notification
+actions, and LAN sync from a PWA is untested. If it ever matters, the
+first step is testing the current web build on a real iPhone, not
+building a native app.
+
 ### Repo is public; the credential/history gate is cleared
 Going public was gated on a hardcoded sync password/LAN IP in `config.ts`
 (present in git history too) and a git-history purge of leaked
@@ -264,6 +274,15 @@ more dangerous, not less: a hard delete that hasn't yet replicated to an
 offline device resurrects the doc as a new create when that device
 reconnects, unless the delete itself is a replicated tombstone — which
 soft-delete produces for free.
+
+### Sub-projects and rethinking positional "done": both parked
+Nested project hierarchy touches the data model, every project-picker, and
+sidebar/Dashboard nesting at once — the kind of architecture experiment
+that stops a project finishing. Revisiting the positional-"done" rule is
+the same shape. Both are parked rather than declined: revisit only if real
+daily use demands it, not because either is a good idea in the abstract.
+Full context in [archive/roadmap-archive.md](archive/roadmap-archive.md)
+(B28, B33).
 
 ### The auto-seeded "Draft" project is archivable like any other
 Nothing special-cases it — no hardcoded fallback, no assumption it stays
