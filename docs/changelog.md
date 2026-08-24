@@ -17,6 +17,65 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.6.0] — 2026-08-24
+
+Everything here came out of two investigations: a mesh-sync design pass that
+was closed without shipping, and a scale benchmark that turned out to be
+measuring nothing.
+
+### Changed
+- **Editing a task no longer costs the next screen a full rebuild.** Every
+  task write calls `invalidateTaskCache()`, which dropped the whole cache, so
+  the next read re-read every task. Against 20,000 tasks a read straight
+  after one edit cost 138.7ms versus 1.1ms warm. Invalidation now marks the
+  cache stale and the next read catches up from the change feed, falling back
+  to a full reload past 500 pending changes. **138.7ms → 5.3ms at 20,000
+  tasks; 39.6ms → 1.6ms at 5,000.** No call site changed and the
+  "invalidate on every task write path" invariant is untouched — the
+  guarantee is identical, only the cost moved.
+
+### Fixed
+- `clearLocalSeedBeforeFirstPair()` treated "zero tasks" as "untouched" and
+  deleted the four fixed seed documents on first pair. Setting up spaces and
+  projects before adding any task is a normal way to start, and those ids are
+  the spaces a new user renames first, so a rename plus no tasks lost real
+  work. Now also requires no user-created space or project, and every seed
+  doc still matching its original content — decided by content, not revision
+  number, since `wipeAndReseed()` leaves a pristine seed at generation 3+.
+- `scanConflicts()` ran an unbounded `allDocs` with `include_docs` on every
+  sync settle, loading six months of `log:` documents that cannot conflict.
+- "Cannot reach sync server — check you're on the same network" appeared
+  while the user *was* on the right network: the offline branch only fires
+  when `navigator.onLine` is false, which it is not when the host PC is
+  simply switched off.
+- `version.js` escaped only `.` before interpolating the version into a
+  `RegExp` (CodeQL `js/incomplete-sanitization`). It builds no dynamic regex
+  at all now.
+- The Android status-bar strip took its own colour rather than the page
+  background.
+
+### Removed
+- Mesh sync, closed after investigation. A spike against two real NyxDB
+  instances proved the protocol side works and that NyxDB needs no change;
+  Android closed it on four independent grounds, recorded in decisions.md so
+  it is not reopened on a hunch.
+
+### Internal
+- **`npm run bench` had never measured a database.** vitest does not run
+  `beforeAll` under `vitest bench`, so `perf.bench.ts`'s 3,000-task fixture
+  never existed — confirmed with a probe that saw 0 documents. Separately,
+  the task cache served every iteration, reporting 0.024ms for work costing
+  20ms cold. Both fixed; real numbers at 3,000 tasks are 20.2ms cold and
+  0.31ms warm for `getDashboardData`.
+- `scale.bench.ts` sweeps 1k/5k/20k tasks with three logs each, covering the
+  paths `perf.bench.ts` left out. Growth is linear (4.0–4.1× for 4× data)
+  across every path measured.
+- `db-metrics.js` reports what a real database actually contains — counts by
+  type, size percentiles, attachment bytes, revision depth — as aggregates
+  only.
+
+---
+
 ## [6.5.2] — 2026-08-24
 
 ### Changed
@@ -289,37 +348,9 @@ Maintenance pass (17th run), pulled forward right after v6.0.0.
 
 ---
 
-## [5.9.0] — 2026-07-29
-
-Sidebar and CardDetail visual redesign.
-
-### Added
-- Collapsible and resizable sidebar.
-
-### Changed
-- CardDetail's optional fields (Repeat/Reminder, Checklist, Custom Fields,
-  Related, Notes) consolidated under one manually-opened **Extras** panel
-  instead of scattered always-visible blocks.
-- Sidebar gains an icon-only footer row shared between collapsed and
-  expanded modes; sync status is shown by the icon's own colour rather than
-  a separate dot and badge, and clicking it opens Settings' Sync category
-  instead of triggering a sync.
-- Active-state highlighting unified and toned down across nav, space and
-  project rows.
-
-### Removed
-- The Recent quick-resume section and the per-space project-count badge.
-
-### Fixed
-- `CalendarPicker`'s popover was clipped inside CardDetail's new scrollable
-  modal; now `position: fixed` with measured coordinates.
-- Dashboard, Focus and Agenda never cleared `activeProjectId`, so the
-  sidebar kept highlighting the last-open project while viewing them.
-
 ---
 
----
-
+[6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0
 [6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
 [6.5.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.0...v6.5.1
 [6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0
@@ -329,4 +360,3 @@ Sidebar and CardDetail visual redesign.
 [6.1.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.1...v6.1.0
 [6.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.0...v6.0.1
 [6.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.9.0...v6.0.0
-[5.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.3...v5.9.0

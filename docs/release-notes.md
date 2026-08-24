@@ -31,6 +31,27 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.6.0
+
+### In short
+
+Editing a task is much faster on a large workspace — up to 26x — and the
+first-time setup no longer risks losing spaces and projects you created
+before adding any tasks. Also fixes a confusing "check your network" message
+that appeared when your network was fine and the other computer was simply
+switched off.
+
+### Changed
+- Editing a task no longer slows down the next screen. On a large workspace
+  this is up to 26x faster.
+
+### Fixed
+- Setting up spaces and projects before adding any tasks no longer risks
+  losing them when you first connect a second device.
+- "Cannot reach sync server" no longer blames your network when the other
+  computer is just switched off.
+- The status bar at the top of the screen matches the page behind it.
+
 ## v6.5.2
 
 ### In short

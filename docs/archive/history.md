@@ -25,6 +25,7 @@ decisions.md.
 
 | Release | Summary |
 |---|---|
+| v5.9.0 | Sidebar and CardDetail visual redesign: collapsible/resizable sidebar, CardDetail's optional fields consolidated under one manually-opened **Extras** panel, sync status shown by the sidebar footer icon's own colour instead of a separate dot and badge; Recent quick-resume and per-space project-count badge removed; CalendarPicker's popover no longer clipped inside the scrollable modal, and Dashboard/Focus/Agenda now clear `activeProjectId` |
 | v5.8.3 | Maintenance pass (16th run): the Tauri notification path never got the `.catch(() => {})` fix the web path already had, so `updateTask()` failures were swallowed there; `TaskHistoryPanel.svelte` dropped its drifted hand-copies of `logFormat.ts` helpers (a missing rename case, a false "Checklist updated"); 6 module-internal symbols un-exported |
 | v5.8.2 | Monthly Dependabot batch, all merged after green CI (`jsdom` 30, `svelte-check` 4.7.4, `@types/node` 26.1.2, `svelte` 5.56.8, `mdns-sd` 0.20.3, `actions/cache` 6) — no functional changes |
 | v5.8.1 | C8 — the stored sync password is encrypted at rest per-platform instead of plain `localStorage` (a real CodeQL finding): Android Keystore via `capacitor-native-biometric`, Windows DPAPI via a new `secure_storage.rs` and two Tauri commands, plain web left as a documented dev/test-surface limitation; silent one-time migration off the old keys |
