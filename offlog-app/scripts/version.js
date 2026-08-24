@@ -85,7 +85,13 @@ function check(expectedTag) {
   if (!changelog.includes(`## [${v.pkg}]`)) {
     errors.push(`docs/changelog.md has no "## [${v.pkg}]" entry`);
   }
-  if (!new RegExp(`^\\[${v.pkg.replace(/\./g, '\\.')}\\]:\\s*https?://`, 'm').test(changelog)) {
+  // Identity match by string, shape match by a fixed pattern -- never
+  // build a regex out of the version. Escaping only '.' leaves every
+  // other metacharacter live, and check() reports a malformed version
+  // rather than returning, so a bad value does reach this line.
+  const hasCompareLink = changelog.split('\n').some(
+    l => l.startsWith(`[${v.pkg}]:`) && /^\[[^\]]+\]:\s*https?:\/\//.test(l));
+  if (!hasCompareLink) {
     errors.push(`docs/changelog.md has no [${v.pkg}]: compare link`);
   }
   if (!read(RELEASE_NOTES).includes(`## v${v.pkg}`)) {
