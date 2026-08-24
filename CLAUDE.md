@@ -39,7 +39,7 @@ maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in
-docs/archive/changelog-archive.md). User-facing pitch is the root
+docs/archive/maintenance-log.md). User-facing pitch is the root
 [README.md](README.md).
 
 **Routing rule for where a new item goes** (owner clarification,
@@ -504,7 +504,7 @@ debug-keystore-signed `release` APK go out as a real release build.
   Last-pass/Next-pass-due state lives **only** in
   [docs/MAINTENANCE.md](docs/MAINTENANCE.md)'s one-line current-pointer
   (process/phases live there too; full pass-by-pass narrative history is
-  in docs/archive/changelog-archive.md, not restated here) — don't restate
+  in docs/archive/maintenance-log.md, not restated here) — don't restate
   specific version numbers here, they'll drift out of sync.
 - Check the pointer **when bumping the version during a release**
   (checklist step 5) — not on every session start, that's wasted tokens.
@@ -513,7 +513,7 @@ debug-keystore-signed `release` APK go out as a real release build.
   docs/MAINTENANCE.md)" — and don't start one without confirmation.
 - When a pass completes, update docs/MAINTENANCE.md's current-pointer line
   (Last pass = current version, Next pass due = next scheduled point), and
-  append the pass's narrative to docs/archive/changelog-archive.md.
+  append the pass's narrative to docs/archive/maintenance-log.md.
 - Maintenance passes never add features and never touch doc schema,
   PouchDB/NyxDB sync logic, storage format, soft-delete semantics, or
   the positional-"done" rule without explicit owner approval.
