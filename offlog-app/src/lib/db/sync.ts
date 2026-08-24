@@ -2,8 +2,9 @@
 /// <reference types="pouchdb" />
 /// <reference types="pouchdb-find" />
 import { getSyncUrl, getSyncCredentials, isSyncEnabled } from '../../config';
-import { db, invalidateTaskCache, now, DEFAULT_COLS } from './core';
-import type { ProjectDoc, Column, Source } from '../types';
+import { db, invalidateTaskCache, now } from './core';
+import { PRISTINE_DEFAULTS, type PristineDoc } from './entities';
+import type { Source } from '../types';
 
 // PouchDB.Core.Error minus the fields this file never reads, plus statusCode:
 // the HTTP adapter sets `status`, while a fetch-layer failure surfaces
@@ -40,11 +41,15 @@ export function describeSyncError(err?: SyncError | null): string {
   if (status === 401 || status === 403) return 'Authentication failed — check sync credentials';
   if (status === 404) return 'Sync database not found on server';
   if (status === 0 || err.name === 'TypeError' || /network|failed to fetch/i.test(err.message ?? '')) {
-    // The sync URL is a self-hosted LAN address, so "cannot reach it" almost
-    // always means "not on that network right now". A device that has never
-    // synced shows an empty/default-seeded app in this situation, easy to
-    // mistake for lost data unless the message says why in plain terms.
-    return 'Cannot reach sync server — check you\'re on the same network/WiFi it runs on';
+    // The sync URL is a self-hosted LAN address, so "cannot reach it" has two
+    // equally common causes: the wrong network, or the host simply being
+    // switched off. markError()'s offline branch only fires when
+    // navigator.onLine is false, which it is NOT when you are sitting on the
+    // right WiFi with the PC powered down — so this string must not assert
+    // the network is wrong. A device that has never synced shows an
+    // empty/default-seeded app here, easy to mistake for lost data unless
+    // the message says why in plain terms.
+    return 'Cannot reach sync server — it may be switched off, or you may not be on its network';
   }
   return err.message ?? err.reason ?? String(err);
 }
@@ -84,29 +89,6 @@ function markError(err?: SyncError) {
   syncState.lastErrorAt = now();
   notify();
 }
-
-// Content shape a still-untouched default doc from seedIfEmpty() has.
-// Compared field-by-field (ignoring _id/_rev/updated_at/source, which always
-// legitimately differ between two independently-seeded installs) to tell a
-// genuinely pristine copy apart from one the user edited.
-// One predicate map covers both a space doc and a project doc, so the union of
-// the fields either predicate reads is optional here.
-interface PristineDoc {
-  name?: string;
-  color?: string;
-  position?: number;
-  space_id?: string;
-  default_view?: ProjectDoc['default_view'];
-  columns?: Column[];
-}
-
-const PRISTINE_DEFAULTS: Record<string, (doc: PristineDoc) => boolean> = {
-  'space:unsorted': (d) => d.name === 'Unsorted' && d.color === '#6B7280' && d.position === 0,
-  'space:personal': (d) => d.name === 'Personal' && d.color === '#10B981' && d.position === 1,
-  'space:work':     (d) => d.name === 'Work' && d.color === '#3B82F6' && d.position === 2,
-  'project:draft':  (d) => d.name === 'Draft' && d.space_id === 'space:unsorted' && d.position === 0
-                         && d.default_view === 'kanban' && JSON.stringify(d.columns) === JSON.stringify(DEFAULT_COLS),
-};
 
 // clearLocalSeedBeforeFirstPair() only helps when THIS device's copy of a
 // fixed default id is still pristine; it can't fix the *other* side's copy.
@@ -162,14 +144,30 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
 
 // Exported for store.ts's init() — conflict state must be visible from a
 // cold start, not only after the next sync settles.
+// Every conflict-bearing doc, with log: excluded.
+//
+// PouchDB only attaches conflict info to the fetched doc's own _conflicts
+// field, never to row.value — so include_docs is required, and
+// row.doc._conflicts (not row.value.conflicts, which does not exist) is the
+// field to read. Reading row.value.conflicts silently yields a zero count.
+//
+// log: docs are `log:${ts}-${nanoid(8)}`, written once and never updated, so
+// they cannot conflict — but a plain allDocs loads all six months of them
+// (LOG_RETENTION_MONTHS) on every sync settle, since markSynced() calls this.
+// Two ranges around the log: block rather than an allowlist of known
+// prefixes, so a doc type added later is still scanned.
+async function conflictBearingRows() {
+  const [before, after] = await Promise.all([
+    db.allDocs({ include_docs: true, conflicts: true, startkey: '', endkey: 'log:', inclusive_end: false }),
+    db.allDocs({ include_docs: true, conflicts: true, startkey: 'log:￰', endkey: '￿' }),
+  ]);
+  return [...before.rows, ...after.rows];
+}
+
 export async function scanConflicts(): Promise<number> {
   await autoResolvePristineDefaultConflicts();
-  // PouchDB only attaches conflict info to the fetched doc's own _conflicts
-  // field, never to row.value — so include_docs is required, and
-  // row.doc._conflicts (not row.value.conflicts, which does not exist) is the
-  // field to read. Reading row.value.conflicts silently yields a zero count.
-  const r = await db.allDocs({ include_docs: true, conflicts: true });
-  const count = r.rows.filter(row => row.doc?._conflicts?.length).length;
+  const rows = await conflictBearingRows();
+  const count = rows.filter(row => row.doc?._conflicts?.length).length;
   syncState.conflictCount = count;
   notify();
   return count;

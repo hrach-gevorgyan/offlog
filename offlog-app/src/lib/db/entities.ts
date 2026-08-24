@@ -13,15 +13,32 @@ import { db, SOURCE, DEFAULT_COLS, initIndexes, getAllTasksRaw, invalidateTaskCa
 // seedIfEmpty() gives every fresh install space:unsorted/personal/work +
 // project:draft under FIXED ids, so two independently-seeded devices collide
 // on those 4 ids the moment they first pair. Called from discovery.ts's
-// pairWithHost() right before sync starts: if this device has never held real
-// content (zero tasks — the seed creates none), its pristine seed is safe to
-// discard so the upcoming pull creates the host's versions cleanly instead of
-// forking a divergent revision history. The zero-tasks check is what protects
-// a device already in real use — not "is this the first pair attempt".
+// pairWithHost() right before sync starts: a genuinely untouched seed is safe
+// to discard so the upcoming pull creates the host's versions cleanly instead
+// of forking a divergent revision history.
+//
+// "Untouched" means all three of: no tasks, no space or project the user
+// created themselves, and none of the four seed docs edited (rev generation
+// still 1). Checking tasks alone deletes real work: setting up spaces and
+// projects before adding any task is a normal way to start, and renaming a
+// seeded space is an edit to one of these exact ids.
 export async function clearLocalSeedBeforeFirstPair(): Promise<void> {
-  const tasks = await db.allDocs({ startkey: 'task:', endkey: 'task:￰' });
+  const tasks = await db.allDocs({ startkey: 'task:', endkey: 'task:￰', limit: 1 });
   if (tasks.rows.length > 0) return;
-  for (const id of ['space:unsorted', 'space:personal', 'space:work', 'project:draft']) {
+
+  const [spaces, projects] = await Promise.all([
+    db.allDocs<PristineDoc>({ startkey: 'space:', endkey: 'space:￰', include_docs: true }),
+    db.allDocs<PristineDoc>({ startkey: 'project:', endkey: 'project:￰', include_docs: true }),
+  ]);
+  const rows = [...spaces.rows, ...projects.rows];
+
+  // Anything outside the four seed ids is the user's own.
+  if (rows.some(r => !SEED_IDS.includes(r.id))) return;
+  // A seed doc whose content no longer matches seedIfEmpty()'s output has been
+  // edited — renamed, recoloured, reordered, columns changed.
+  if (rows.some(r => r.doc && !PRISTINE_DEFAULTS[r.id]?.(r.doc))) return;
+
+  for (const id of SEED_IDS) {
     try {
       const doc = await db.get(id);
       await db.remove(doc);
@@ -52,6 +69,36 @@ export async function wipeAndReseed(): Promise<void> {
 }
 
 const SEEDED_KEY = 'offlog_seeded';
+
+// Content shape a still-untouched default doc from seedIfEmpty() has.
+// Compared field-by-field (ignoring _id/_rev/updated_at/source, which always
+// legitimately differ between two independently-seeded installs) to tell a
+// genuinely pristine copy apart from one the user edited.
+//
+// Content, never revision number: wipeAndReseed() soft-deletes and re-puts
+// these same ids, so a genuinely pristine seed can sit at generation 3 or
+// higher after a data reset.
+//
+// One predicate map covers both a space doc and a project doc, so the union of
+// the fields either predicate reads is optional here.
+export interface PristineDoc {
+  name?: string;
+  color?: string;
+  position?: number;
+  space_id?: string;
+  default_view?: ProjectDoc['default_view'];
+  columns?: Column[];
+}
+
+export const SEED_IDS = ['space:unsorted', 'space:personal', 'space:work', 'project:draft'];
+
+export const PRISTINE_DEFAULTS: Record<string, (doc: PristineDoc) => boolean> = {
+  'space:unsorted': (d) => d.name === 'Unsorted' && d.color === '#6B7280' && d.position === 0,
+  'space:personal': (d) => d.name === 'Personal' && d.color === '#10B981' && d.position === 1,
+  'space:work':     (d) => d.name === 'Work' && d.color === '#3B82F6' && d.position === 2,
+  'project:draft':  (d) => d.name === 'Draft' && d.space_id === 'space:unsorted' && d.position === 0
+                         && d.default_view === 'kanban' && JSON.stringify(d.columns) === JSON.stringify(DEFAULT_COLS),
+};
 
 export async function seedIfEmpty() {
   // getSpaces() always runs -- never gate it behind SEEDED_KEY. If the DB is
