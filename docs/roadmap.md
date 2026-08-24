@@ -31,9 +31,8 @@ backlog that was never finished.
 
 Mesh sync was the one planned direction and it is now closed: a design pass
 measured it against real Android behaviour and found phone-to-phone sync
-impossible on every available route. The reasoning and the evidence are in
-decisions.md's mesh entry; the spike and scenario matrix are kept under
-`offlog-desktop/scripts/mesh-spike/`.
+impossible on every available route. The reasoning is in decisions.md's
+mesh entry.
 
 Bugs found in daily use drive change. Features aren't planned
 in advance and aren't refused either: the bar is "does daily use actually

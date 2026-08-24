@@ -89,8 +89,10 @@ configured sync target can point at real CouchDB too.
 ### Mesh sync: reopened, investigated, closed for good
 **Closed.** Declined originally, reopened as the primary direction, then
 closed again after a design pass that measured instead of argued. The
-evidence is kept in `offlog-desktop/scripts/mesh-spike/` — a spike that
-runs against two real NyxDB instances, plus a 47-row scenario matrix.
+evidence — a spike against two real NyxDB instances, plus a 47-row
+scenario matrix — is kept out of the repo, like the build narrative: what a
+reader needs is the decision and the reasoning below, not a closed
+investigation's scaffolding.
 
 **What the spike proved works.** Three-way convergence, a client paired
 with one host receiving another host's data, concurrent writers losing
@@ -126,8 +128,7 @@ needs no NyxDB change, and was verified by the spike. It was not built
 because its value still depends on some PC being switched on, which is the
 same dependency mesh was meant to remove — a smaller version of the problem
 rather than a fix for it. Revisit only if daily use makes "one specific PC
-is off" a recurring annoyance; the design and its scenarios are already
-written.
+is off" a recurring annoyance.
 
 **What the pass paid for.** Three real defects in single-host code, found
 while modelling mesh and fixed independently: a seed-clearing guard that

@@ -23,3 +23,8 @@ offlog-app/android/build/
 
 # Personal build narrative -- kept locally, not published
 /docs/archive/story.md
+
+# Mesh-sync investigation: the spike and its scenario matrix. Kept locally
+# as the evidence behind decisions.md's mesh entry, not published -- the
+# decision and its reasoning are in the docs, which is what a reader needs.
+/offlog-desktop/scripts/mesh-spike/
