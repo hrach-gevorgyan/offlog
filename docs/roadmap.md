@@ -45,11 +45,21 @@ imagining it.
   network calls attract review friction — Android's local-network
   permission prompts, or general policy scrutiny? Research before assuming
   a smooth C3 listing.
-- **Real-scale metrics and benchmarks.** It was never settled whether a
-  single person's task manager accumulates enough data for scale to matter.
-  There is now a real database in daily use to measure. Needs actual
-  numbers, a benchmark that runs against them, and tests at the sizes those
-  numbers suggest — not an assumption either way.
+- **Real-scale metrics and benchmarks.** Whether one person's task manager
+  accumulates enough data for scale to matter is still unanswered, and
+  cannot be answered yet — there is no database with real volume in it. The
+  measuring tool exists (`offlog-desktop/scripts/db-metrics/`) and reports
+  counts, size percentiles, attachment bytes and revision depth from any
+  host.
+
+  Existing coverage is already ahead of real use: `perfGuard.test.ts`
+  exercises 400 tasks across 8 projects and asserts round-trip counts rather
+  than timings, so it catches the regressions that matter at a size daily
+  use has not reached. Re-measure and revisit only when one of these is
+  true, not on a schedule:
+  - more than 400 active tasks, so perfGuard stops representing reality
+  - more than ~5,000 `log:` docs surviving the 6-month prune
+  - attachments past a few tens of MB, where sync time starts to show
 
 ## Later — direction, not promises
 
