@@ -27,12 +27,11 @@
   --bg: #f6f7f9;
   --surface: #ffffff;
   --sidebar-bg: #fbfbfc;
-  /* Fixed (not overridden in body.dark), unlike --sidebar-bg above --
-     Android's status-bar-fill strip (App.svelte) pairs this with an
-     unconditional Style.Dark (white icons) in main.ts, so it must stay
-     dark in both themes even though the sidebar itself is
-     theme-aware. */
-  --statusbar-fill: #101218;
+  /* Android's status-bar-fill strip (App.svelte). Matches --sidebar-bg in
+     both themes, so the strip reads as part of the app rather than a bar
+     above it. theme.ts flips the native icon style to match -- change one
+     and you must change the other, or icons vanish into the strip. */
+  --statusbar-fill: #fbfbfc;
   --col-bg: #eceef2;
 
   /* lines */
@@ -92,6 +91,7 @@ body.dark {
   --bg: #181a20;
   --surface: #242934;
   --sidebar-bg: #101218;
+  --statusbar-fill: #101218;
   --col-bg: #1e222c;
   --border: #2f3542;
   --border-strong: #3f4657;

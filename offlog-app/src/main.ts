@@ -27,10 +27,12 @@ if (isNative) {
   // StatusBar.setBackgroundColor() — it's a no-op there. Instead we
   // let the WebView draw behind the status bar (overlay: true) and
   // paint our own colored strip in the safe-area inset via CSS
-  // (see .status-bar-fill in App.svelte), then just set icon color.
-  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+  // (see .status-bar-fill in App.svelte).
+  //
+  // The icon style is NOT set here: it has to follow the theme, so
+  // theme.ts's applyTheme() owns it and re-applies on every change.
+  import('@capacitor/status-bar').then(({ StatusBar }) => {
     StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
-    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
   }).catch(() => {});
 }
 

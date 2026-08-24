@@ -732,10 +732,8 @@
   .status-bar-fill {
     position: fixed; top: 0; left: 0; right: 0;
     height: env(safe-area-inset-top, 0px);
-    /* --statusbar-fill, not --sidebar-bg — main.ts pins the Android
-       status bar's icon style to Style.Dark (white icons) unconditionally,
-       so this strip must stay dark in both themes, unlike --sidebar-bg
-       which follows the page theme. */
+    /* Its own token rather than --sidebar-bg: theme.ts pairs this colour
+       with the native icon style, so the two have to move together. */
     background: var(--statusbar-fill);
     z-index: 10000;
   }

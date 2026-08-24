@@ -66,6 +66,29 @@ export function applyTheme(): void {
   document.body.classList.toggle('dark', dark);
   document.body.classList.toggle('high-contrast', getHighContrast());
   syncTauriWindowTheme(dark);
+  syncAndroidStatusBar(dark);
+  syncBrowserThemeColor(dark);
+}
+
+// The strip behind Android's transparent status bar is CSS
+// (--statusbar-fill), but the clock and icons drawn on top of it are the
+// OS's, and only this API controls them. Style.Dark means "light content
+// for a dark background" and Style.Light the reverse -- so the mapping is
+// inverted from what the names suggest. Getting it wrong makes the icons
+// the same colour as the strip and they disappear entirely.
+function syncAndroidStatusBar(dark: boolean): void {
+  if (!window.Capacitor?.isNativePlatform?.()) return;
+  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+    StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => {});
+  }).catch(() => {});
+}
+
+// Browser/PWA chrome equivalent of the strip above: mobile browsers paint
+// their toolbar with this colour, so a fixed dark value looks wrong in
+// light mode. Kept in step with --statusbar-fill's two values.
+function syncBrowserThemeColor(dark: boolean): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#101218' : '#fbfbfc');
 }
 
 // The desktop window's native title bar otherwise follows the OS theme and

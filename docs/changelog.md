@@ -17,6 +17,37 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.5.2] — 2026-08-24
+
+### Changed
+- **The Android status bar strip follows the theme.** It was pinned dark in
+  both themes since v4.29.0, which split it off from `--sidebar-bg` when
+  the sidebar became theme-aware. It now matches `--sidebar-bg` again in
+  both themes, and `theme.ts` flips the native icon style with it —
+  Style.Light in light mode, Style.Dark in dark — so the icons never blend
+  into their own background. The browser `theme-color` follows the same
+  two values, set pre-paint in `theme-init.js` so mobile browser chrome
+  cannot flash the wrong colour.
+
+### Fixed
+- Settings' Software updates block spaced its version row at half the
+  rhythm of every other row. A `compact-row` negative margin, used in
+  exactly that one place, subtracted from the group gap — and that row is
+  the tallest in the group, so the tightest gap landed where it should
+  have been loosest. Rule removed with its only caller.
+- The update dialog split a wrapped sentence from the release notes into
+  one paragraph per source line. `renderNotes()` folded wrapped **bullets**
+  into a single `<li>` but emitted a `<p>` per line for prose, which no
+  entry had exercised until 6.5.1 wrote its summary as flowing text.
+  Covered by two mutation-verified tests.
+- CodeQL's Java/Kotlin analysis failed on every run with a warm Gradle
+  build cache: 152 compile tasks returned `FROM-CACHE`, so `javac` never
+  ran and the extractor saw no source. That job now compiles with
+  `--no-build-cache`; the dependency cache still applies, and release
+  builds keep task-output reuse.
+
+---
+
 ## [6.5.1] — 2026-08-24
 
 Tooling and documentation only. One user-visible string corrected; the app
@@ -287,27 +318,9 @@ Sidebar and CardDetail visual redesign.
 
 ---
 
-## [5.8.3] — 2026-07-28
-
-Maintenance pass (16th run).
-
-### Fixed
-- `fireTauriNotification()` and `catchUpTauri()`'s stale-reminder branch
-  both silently swallowed `updateTask()` failures via a bare
-  `.catch(() => {})` — the same bug class behind an earlier rev-conflict
-  race and a flaky test. The Tauri path never received the fix the web path
-  already had.
-- `TaskHistoryPanel.svelte` carried hand-copied duplicates of
-  `logFormat.ts`'s helpers, which had already drifted: a missing rename
-  case, and a missing no-op filter that let a false "Checklist updated"
-  appear. Now imports the shared logic.
-
-### Changed
-- Removed `export` from 6 module-internal symbols, each hand-verified
-  rather than trusted from tooling output.
-
 ---
 
+[6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
 [6.5.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.0...v6.5.1
 [6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0
 [6.3.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.1...v6.3.0
@@ -317,4 +330,3 @@ Maintenance pass (16th run).
 [6.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.0...v6.0.1
 [6.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.9.0...v6.0.0
 [5.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.3...v5.9.0
-[5.8.3]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.2...v5.8.3

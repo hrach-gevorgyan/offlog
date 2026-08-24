@@ -106,6 +106,31 @@ describe('UpdateModal release notes', () => {
     expect([...notes(container)!.querySelectorAll('li')].map(e => e.textContent)).toEqual(['A bullet']);
   });
 
+  // Shipped broken in 6.5.1: an "In short" written as flowing prose is
+  // hard-wrapped in release-notes.md, and every wrapped line became its
+  // own <p>, so the update dialog showed a sentence in fragments.
+  it('folds a wrapped prose paragraph into one paragraph', async () => {
+    const { container } = await show({
+      phase: 'available', version: '6.5.1',
+      body: 'No visible changes to the app itself.\nThe widget picker no longer\nclaims an agenda brief.\n\n### Fixed\n- One thing',
+    });
+
+    expect([...notes(container)!.querySelectorAll('p:not(.notes-heading)')].map(e => e.textContent))
+      .toEqual(['No visible changes to the app itself. The widget picker no longer claims an agenda brief.']);
+    expect([...notes(container)!.querySelectorAll('.notes-heading')].map(e => e.textContent)).toEqual(['Fixed']);
+    expect([...notes(container)!.querySelectorAll('li')].map(e => e.textContent)).toEqual(['One thing']);
+  });
+
+  it('keeps two blank-line-separated paragraphs apart', async () => {
+    const { container } = await show({
+      phase: 'available', version: '6.5.1',
+      body: 'First one\nwrapped.\n\nSecond one\nalso wrapped.',
+    });
+
+    expect([...notes(container)!.querySelectorAll('p')].map(e => e.textContent))
+      .toEqual(['First one wrapped.', 'Second one also wrapped.']);
+  });
+
   // The rendered result goes through {@html}, so every piece of note text
   // must be escaped rather than parsed as markup.
   it('escapes markup in headings, bullets and paragraphs', async () => {

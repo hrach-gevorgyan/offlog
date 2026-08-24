@@ -104,13 +104,19 @@ jobs:
       # dexing, packaging and signing, none of which produce a single
       # extraction event. Plugin modules still get extracted -- they
       # compile as project dependencies of :app.
+      #
+      # --no-build-cache is REQUIRED, not a tuning flag. gradle.properties
+      # enables the build cache for release builds, and with a warm cache
+      # every compile task returns FROM-CACHE -- javac never runs, CodeQL
+      # observes nothing, and the run dies with "didn't build any of it".
+      # The dependency cache still applies; only task output reuse is off.
       - name: Compile Java (for CodeQL's dependency classpath only)
         working-directory: offlog-app/android
         # gradlew's executable bit doesn't always survive a checkout on a
         # repo also worked on from Windows -- set it explicitly.
         run: |
           chmod +x ./gradlew
-          ./gradlew compileDebugJavaWithJavac
+          ./gradlew compileDebugJavaWithJavac --no-build-cache
 
       - uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v4.37.8
         with:

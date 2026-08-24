@@ -39,7 +39,7 @@
                       <span class="toggle-knob"></span>
                     </button>
                   </div>
-                  <div class="setting-row compact-row">
+                  <div class="setting-row">
                     <span class="setting-label">Version {appVersion || '—'}</span>
                     <button class="export-btn" on:click={onCheckForUpdate} disabled={updateChecking}>
                       {updateChecking ? 'Checking…' : 'Check for updates'}

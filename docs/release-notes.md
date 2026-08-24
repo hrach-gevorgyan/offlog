@@ -31,6 +31,22 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.5.2
+
+### In short
+
+The status bar at the top of the screen now follows your light or dark
+theme instead of always being dark. Also fixes the update dialog, which
+showed release notes broken into fragments mid-sentence instead of as
+readable paragraphs.
+
+### Changed
+- The status bar matches your theme — light in light mode, dark in dark.
+
+### Fixed
+- Release notes in the update dialog no longer split sentences across lines.
+- Even spacing in Settings' Software updates block.
+
 ## v6.5.1
 
 ### In short

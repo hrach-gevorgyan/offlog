@@ -21,33 +21,39 @@
   // Every piece of text is escaped because the result goes through
   // {@html}.
   //
-  // Bullets soft-wrap across several source lines, and Markdown treats a
-  // following non-blank line as a continuation of the same list item —
-  // so a non-bullet line while a list is open must be appended (with a
-  // joining space) to the last <li>, not emitted as its own paragraph.
+  // Both bullets and paragraphs soft-wrap across several source lines, and
+  // Markdown treats a following non-blank line as a continuation. So a run
+  // of consecutive non-blank lines is ONE <li> or ONE <p>, joined by
+  // spaces -- emitting a block per source line splits a wrapped sentence
+  // into fragments. Only a blank line, a heading or a new bullet ends the
+  // block that is open.
   function renderNotes(body: string): string {
     const lines = body.split('\n');
     let html = '';
     let inList = false;
     let lastLiText = '';
+    let lastPText = '';
     const flushLi = () => { if (lastLiText) { html += `<li>${lastLiText}</li>`; lastLiText = ''; } };
     const closeList = () => { if (inList) { flushLi(); html += '</ul>'; inList = false; } };
+    const flushP = () => { if (lastPText) { html += `<p>${lastPText}</p>`; lastPText = ''; } };
     for (const raw of lines) {
       const line = raw.trim();
-      if (!line) { closeList(); continue; }
+      if (!line) { closeList(); flushP(); continue; }
       const heading = line.match(/^###\s+(.*)/);
-      if (heading) { closeList(); html += `<p class="notes-heading">${escapeHtml(heading[1])}</p>`; continue; }
+      if (heading) { closeList(); flushP(); html += `<p class="notes-heading">${escapeHtml(heading[1])}</p>`; continue; }
       const bullet = line.match(/^[-*]\s+(.*)/);
       if (bullet) {
+        flushP();
         flushLi();
         if (!inList) { html += '<ul>'; inList = true; }
         lastLiText = escapeHtml(bullet[1]);
         continue;
       }
       if (inList) { lastLiText += ' ' + escapeHtml(line); continue; }
-      html += `<p>${escapeHtml(line)}</p>`;
+      lastPText += (lastPText ? ' ' : '') + escapeHtml(line);
     }
     closeList();
+    flushP();
     return html;
   }
 </script>

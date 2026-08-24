@@ -1328,8 +1328,9 @@
     background: var(--accent); flex-shrink: 0;
   }
   .setting-row, .detail-content :global(.setting-row) { display: flex; align-items: center; gap: .75rem; }
-  .detail-content :global(.setting-row.compact-row) { margin-top: -.3rem; }
   .setting-hint, .detail-content :global(.setting-hint) { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
+  /* Pulls a status line up against the row it reports on, instead of
+     sitting a full group-gap away as if it were a separate setting. */
   .detail-content :global(.setting-hint.compact-hint) { margin-top: -.3rem; }
   .detail-content :global(.setting-hint-error) { color: var(--danger); }
   .setting-hint-warn, .detail-content :global(.setting-hint-warn) {
