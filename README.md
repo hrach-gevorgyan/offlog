@@ -27,15 +27,12 @@
 A free, open-source, local-first task manager. No account, no telemetry,
 no subscription, ever. Runs in the browser, as a native Android app, and
 as a Windows desktop app — all three share the exact same codebase and
-sync with each other over your own network. (Current version: the
-badge above, always live — [docs/changelog.md](docs/changelog.md) for
-what changed.)
+sync with each other over your own network.
 
-**Jump to:** [Screenshots](#screenshots) ·
-[Why this exists](#why-this-exists) · [Features](#features) ·
-[Getting the apps](#getting-the-apps) ·
-[Getting Started](#getting-started) · [FAQ](#faq) ·
-[Documentation](#documentation) · [Contributing](#contributing)
+**Jump to:** [Screenshots](#screenshots) · [Why](#why-this-exists) ·
+[What it does](#what-it-does) · [Status](#status) · [Install](#install) ·
+[Build from source](#build-from-source) · [FAQ](#faq) ·
+[Docs](#documentation) · [Contributing](#contributing)
 
 ## Screenshots
 
@@ -83,121 +80,113 @@ Real captures from a real build — no mockups, no Lorem Ipsum.
 
 ## Why this exists
 
-One shared Svelte codebase, wrapped three ways (browser, Android,
-Windows). Each device keeps its own local database; turn sync on and
-your phone and PC talk to each other directly over your own Wi-Fi — no
-cloud service ever sits in the middle, no account to create, no
-feature held back behind a paywall. It works fully offline either way.
+Every task manager I tried wanted a subscription for things that should
+be free — a due date, a reminder, more than three projects. The ones that
+didn't were overloaded instead, buried under features built for a growth
+chart rather than for me. And all of them wanted my data on their
+servers.
 
-It started as a personal tool, and the same sync model works just as
-well for a small, trusted, co-located group — a family, a small team,
-one office sharing a board over the same network. It is **not** a
-remote/multi-tenant product: no per-user permissions, no accounts, and
-sync only ever happens on the same local network. See
-[docs/decisions.md](docs/decisions.md)'s opening manifesto for the
-exact scope and why it stops there.
+That last one has no workaround. A task list is a fairly complete map of
+a person's life, and I didn't want mine living on a company's
+infrastructure, one business-model change away from becoming their asset.
 
-Built in the open, on purpose — every decision, including the ones
-that got reversed, is written down: [docs/decisions.md](docs/decisions.md)
-(why, including the "why not just—" questions), [docs/roadmap.md](docs/roadmap.md)
-(what's planned), [docs/tech.md](docs/tech.md) (the real architecture),
-and a full [docs/changelog.md](docs/changelog.md) back to the first
-release.
+Offlog is the opposite of all three: the basics are free because
+everything is free, the feature list stays small on purpose, and your
+data never leaves the machines you own. Your phone and your PC talk to
+each other directly over your own Wi-Fi — no cloud in the middle, no
+account, nothing held back behind a paywall. It works fully offline
+either way.
 
-**Status: feature-complete, actively maintained, and in daily use.**
-Built over July 2026; since 2026-08-01 it's the author's own primary
-task manager. Bugs get fixed, dependencies get updated, security reports
-get answered — what it doesn't have is a feature roadmap. New features
-are judged against real daily use rather than a backlog, so open an
-issue before building one.
+It's a personal tool, given away as-is. The same model works for a small
+trusted group on one network — a family, a couple of people in one office
+— but it is **not** a multi-tenant product: no per-user permissions, no
+accounts, and sync only ever happens on your own local network.
 
-## Features
+---
 
-Full detail lives in [docs/changelog.md](docs/changelog.md) (recent
-releases) and [docs/archive/history.md](docs/archive/history.md)
-(everything older, one line each).
+## What it does
 
-**Core**
-- **Spaces and projects** — coloured spaces, each holding projects, each
-  with its own statuses
-- **Two views per project** — Kanban and a table-shaped List, with saved
-  filters and multi-column sort
-- **Agenda** — deadlines across every project, as a grouped list
-  (overdue / today / this week / later) or a month calendar
-- **Focus** — pick up to 3 tasks for the day. A deliberate commitment,
-  not an auto-computed list nobody trusts. Blocked tasks don't appear
-- **Rich task cards** — notes, priority, due date, reminder (independent
-  of the due date), checklist, custom fields, tags, file attachments,
-  and a per-card history of every change
-- **Dependencies** — mark a task "blocked by" another and it stays out
-  of Focus until the blocker is done. Circular chains are refused, not
-  silently created
-- **Recurring tasks** — one task resets in place instead of spawning
-  duplicates, and handles month-end and DST correctly
-- **Quick Add (Ctrl+N)** and **Global Search (Ctrl+K)** from anywhere —
-  search covers titles, notes, tags, checklists and attachment names,
-  and tells you where it matched
-- **Undo everywhere** — soft delete with undo, a Recycle view, and a
-  retention policy you control
+**Organising**
+- Spaces hold projects; each project has its own statuses
+- **Kanban** and **List** views per project, with saved filters and
+  multi-column sort
+- **Agenda** — deadlines across every project, as a grouped list or a
+  month calendar
+- **Focus** — pick up to 3 tasks for today. A deliberate commitment, not
+  an auto-generated list nobody trusts
 
-**Sync — the reason this exists**
+**Tasks that hold real detail**
+- Notes, priority, due date, a reminder independent of it, checklists,
+  tags, custom fields, and file attachments up to 10 MB
+- **Dependencies** — mark a task blocked by another and it stays out of
+  Focus until the blocker is done. Circular chains are refused
+- **Recurring tasks** reset in place instead of spawning duplicates, and
+  handle month-end and DST correctly
+- Every change to a task is recorded, so you can see its history
 
-One task list, current on every device you own, without handing it to a
-cloud provider. Most local-first apps stop at "sync is possible if you
-run your own server", which is a real barrier for anyone who doesn't
-want to. Offlog's Windows app *is* the server: it bundles
-[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a small,
-self-authored CouchDB-protocol server), configures itself on first
-launch, and your phone finds it automatically.
+**Finding things**
+- **Ctrl+K** searches titles, notes, tags, checklist text and attachment
+  filenames — and tells you where it matched
+- **Ctrl+N** adds a task from anywhere, parsing dates, `#tags`,
+  `!priority` and `@project` out of what you type
 
-The pieces — replication, mDNS discovery, a paired credential handshake
-— aren't novel individually. Packaging them so nobody has to see any of
-them is the point.
+**Not losing things**
+- Soft delete with undo everywhere, plus a recycle bin
+- Backup and restore including attachments, custom fields and tag
+  colours — a restore brings back the workspace, not just the text
+- Automatic local backups, last 7 kept
+- A database check-and-repair tool for orphaned tasks and invalid states
 
-- Live two-way replication whenever both devices are on the same network
-- Your phone finds the PC over mDNS and pairs with a **one-time 6-digit
-  code** — no typing IP addresses, no credentials sent before pairing
-- If the PC's address changes, the phone re-resolves it automatically
-  rather than making you re-pair
-- Works fully offline with zero setup if you never turn sync on; errors
-  are readable and conflicts are recoverable, never silent data loss
+**Sync — the actual point**
 
-**LAN-only by design** — see [docs/decisions.md](docs/decisions.md) for
-why remote sync and user accounts are out of scope.
+Most local-first apps stop at "sync works if you run your own server."
+That's a real barrier for anyone who doesn't want to. Offlog's Windows
+app **is** the server: it bundles
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) — a small
+CouchDB-protocol server written for this project — configures itself on
+first launch, and your phone finds it automatically over the network.
 
-**Windows** — the intended app for daily use
-- Lives in the system tray; closing tucks it away so reminders keep
-  firing and your phone keeps syncing
-- `Ctrl+Alt+O` from anywhere brings it to the front
-- Native notifications and native Save As dialogs
-- Auto-update with an in-app changelog and an explicit restart prompt
+Pairing is a **six-digit code** shown on the PC. No typed IP addresses,
+no credentials sent before pairing, and if your PC's address changes the
+phone re-finds it instead of making you pair again.
 
-**Android**
-- Native app via Capacitor, used daily on a real device
-- Home-screen widgets for Quick Add, Agenda, and projects
-- Notifications with Done / Snooze actions from the lock screen
-- Hardware back button closes whatever is open, as it should
+**Everywhere else**
+- Light, dark, high contrast, and a reduce-motion setting every animation
+  actually respects
+- Keyboard-operable throughout; WCAG AA contrast
+- **Android**: home-screen widgets, notification actions, hardware back
+  button
+- **Windows**: lives in the tray, `Ctrl+Alt+O` from anywhere, native
+  notifications and save dialogs, automatic updates
 
-**Data and integrity**
-- Backup and restore with a scope selector; JSON and CSV export.
-  Backups include attachments, custom fields and tag colours — a restore
-  brings back the workspace, not just the task text
-- Automatic local backups, last 7 kept, whether or not you think about it
-- Check Database / Repair Issues for orphaned tasks, invalid statuses
-  and unresolved conflicts
-- Storage warnings past 80%, with a real Optimize Storage action
+---
 
-**Appearance and accessibility**
-- Light / Dark / System, High Contrast, and a Reduce Motion toggle every
-  animation actually respects
-- Keyboard-operable throughout: focus trapping, visible focus rings,
-  Escape closes everything
-- WCAG AA contrast audited across the palette
+## Status
 
-No paid tier, and no feature ever held back behind one — see
-[docs/decisions.md](docs/decisions.md)'s manifesto for why.
+**In daily use since 1 August 2026, and actively maintained.**
 
-## Getting the apps
+The plan it was built to is complete — that was the goal, not a stopping
+point. Bugs found in real use get fixed, dependencies get updated,
+security reports get answered.
+
+Every release runs a zero-warning build, a clean type check and **569
+tests** through CI. The project has been through 22 structured
+maintenance audits, each working a written checklist of blind spots
+earned from real shipped bugs.
+
+**What's next:** today one PC has to be the host, so the workspace is
+unreachable whenever that machine is off. Removing that — peer-to-peer
+sync with no single required machine — is the current direction. See
+[docs/roadmap.md](docs/roadmap.md).
+
+New features aren't planned in advance, but they aren't refused either.
+The bar is "does daily use actually demand this", which usually has to be
+answered by living with the app rather than imagining it. Open an issue
+before building one.
+
+---
+
+## Install
 
 Download the latest Windows installer and Android APK from
 [GitHub Releases](https://github.com/hrach-gevorgyan/offlog/releases).
@@ -206,61 +195,35 @@ Windows will warn you on first install because the installer isn't
 code-signed. Paid certificates aren't a path this project will take;
 desktop updates are verified by cryptographic signature instead, so a
 tampered or corrupt download is rejected. Android shows its own
-side-loading warning until the Play Store listing is live. Just make
-sure you're downloading from this repo's own Releases page, not a
-mirror.
+side-loading warning until the Play Store listing is live. Download from
+this repo's own Releases page, not a mirror.
 
-**Windows** is the intended app for day-to-day use — bundles its own
-sync server, nothing else to install, and checks for updates
-automatically, with an in-app changelog and an explicit restart prompt
-(it never restarts itself behind your back). Update downloads are
-verified against a cryptographic signature before they're installed.
-**Android** works the same way via side-loaded APK today,
-Play Store (with its own auto-update) once published. The **web build**
-(`npm run dev`) is a dev/test surface, not the primary way to use the
-app.
+**Windows** is the intended app for daily use — it bundles its own sync
+server, needs nothing else installed, and updates itself with an in-app
+changelog and an explicit restart prompt. **Android** works the same way
+via the APK today, Play Store once published. The **web build** is a
+development surface, not the primary way to use the app.
 
-## Built like a real product, not a prototype
+---
 
-Every release: zero-warning production build, clean type check, full
-test suite (569 of them), manual light/dark verification — enforced by
-CI. 22 structured maintenance passes, each working
-through a written checklist of blind spots earned from real shipped
-bugs (see [docs/maintenance.md](docs/maintenance.md)). Went through a
-full security audit and git-history credential purge before going
-public (see [docs/decisions.md](docs/decisions.md)'s "Public release"
-section).
+## Build from source
 
-The last three of those passes ran on the final day, deliberately
-scoped to ask *what could destroy real data* and *what breaks after
-weeks without a restart* rather than *what's untidy* — which is how a
-backup system that couldn't restore any backup containing an attachment
-got found and fixed before it was ever needed.
+Everything runs from a terminal.
 
-## Getting Started
-
-Everything below is run from a terminal — there's no GUI installer setup
-for development. You're free to use a graphical Git/npm tool if you
-prefer one, but every step here has a plain command-line equivalent so
-nothing requires one.
-
-**What you need installed**, depending on what you're building:
-
-| Target | Requires |
+| Target | Needs |
 |---|---|
-| Web build | [Node.js](https://nodejs.org/) 20+ (includes npm) |
-| Android build | Above, plus [Android Studio](https://developer.android.com/studio) (JDK bundled with it) |
-| Windows desktop build | Above, plus [Rust](https://rustup.rs/) + [Tauri's prerequisites](https://tauri.app/start/prerequisites/) |
-
-**Web app** (works fully offline, no setup):
+| Web | [Node.js](https://nodejs.org/) 22+ |
+| Android | above, plus [Android Studio](https://developer.android.com/studio) |
+| Windows desktop | above, plus [Rust](https://rustup.rs/) and [Tauri's prerequisites](https://tauri.app/start/prerequisites/) |
 
 ```bash
 cd offlog-app
-npm install
+npm ci
 npm run dev              # http://localhost:5173
 ```
 
-To enable sync, create `offlog-app/.env.local`:
+That's the whole setup — the app works fully offline with no sync
+configured. To point it at a sync server, create `offlog-app/.env.local`:
 
 ```
 VITE_SYNC_URL=http://192.168.x.x:5984/offlog
@@ -268,35 +231,35 @@ VITE_SYNC_USER=youruser
 VITE_SYNC_PASS=yourpass
 ```
 
-Build for web (`npm run build`, output in `offlog-app/dist/`) or Android
-(`npx cap sync android` then build via Android Studio or Gradle).
+Build for web with `npm run build`, or for Android with
+`npx cap sync android` followed by a build in Android Studio.
 
-**Windows desktop app** — a sibling project at `offlog-desktop/` (Tauri),
-wraps the same web build and embeds a NyxDB sync host (fully
-self-contained — no separate server install needed, even for
-development):
+The Windows app is a sibling project that wraps the same web build and
+embeds its own sync host — nothing separate to install, even in
+development:
 
 ```bash
 cd offlog-desktop
 cargo tauri dev
 ```
 
-Full build/deploy steps, environment details, and the complete
-architecture (including exactly how the mDNS discovery and pairing
-handshake work) are in [docs/tech.md](docs/tech.md).
+Full architecture, including how discovery and pairing work, is in
+[docs/tech.md](docs/tech.md).
+
+---
 
 ## FAQ
 
 **Is any of my data sent anywhere?**
 No. There is no account, no telemetry, and no server this project runs.
 The only network traffic is sync between your own devices on your own
-network, and an update check on desktop you can turn off.
+network, and a desktop update check you can turn off.
 
 **Two phones and no PC — can they sync to each other?**
-No. Only the Windows app acts as the syncing computer phones connect to
-(see [docs/decisions.md](docs/decisions.md)'s mesh-sync entry for why).
-Use Backup and Restore to move data between two phones that will never
-share a PC.
+Not today. Only the Windows app acts as the host that phones connect to.
+Removing that limitation is exactly what's on
+[the roadmap](docs/roadmap.md). Until then, use Backup and Restore to
+move data between phones.
 
 **Can I sync when I'm away from home?**
 No, by design. Sync only happens on the same local network. Remote sync
@@ -308,67 +271,72 @@ The installer isn't code-signed. Paid certificates aren't a path this
 project will take. Updates are verified by signature instead.
 
 **I'm moving to a new computer — how do I bring everything?**
-Everything Offlog needs lives in one folder: `%APPDATA%\com.offlog.app\`.
-Copy it to the new PC before opening Offlog there for the first time, and
-every phone that was already paired reconnects on its own. (You don't
-need this for a reinstall on the same machine — data survives that.)
+Everything lives in one folder: `%APPDATA%\com.offlog.app\`. Copy it to
+the new PC before opening Offlog there, and every phone that was already
+paired reconnects on its own. You don't need this for a reinstall on the
+same machine.
 
 **Do I have to use sync at all?**
-No. The app is fully usable on one device with sync switched off, and
-that needs no setup whatsoever.
+No. The app is fully usable on one device with sync off, and that needs
+no setup whatsoever.
+
+---
+
+## Support
+
+- **Bug or question** — open an
+  [issue](https://github.com/hrach-gevorgyan/offlog/issues). Bug reports
+  from real use are the most useful thing you can send, and now the main
+  way this project changes.
+- **Security** — don't open a public issue. See
+  [SECURITY.md](SECURITY.md) for private reporting.
+- **Before a feature request** — check
+  [docs/decisions.md](docs/decisions.md). Several "why doesn't it do X"
+  questions are already answered there, including choices that were tried
+  and reversed.
+
+---
 
 ## Documentation
 
-Everything beyond this pitch lives in [docs/](docs/):
-
 | Document | What's in it |
 |---|---|
-| [docs/decisions.md](docs/decisions.md) | Manifesto, open questions worth outside input, and why non-obvious choices were made |
-| [docs/tech.md](docs/tech.md) | Architecture, data model, sync internals, theme tokens, release/signing pipeline |
-| [docs/roadmap.md](docs/roadmap.md) | Current status and still-open planned work |
-| [docs/changelog.md](docs/changelog.md) | Recent version history in full detail (maintainer-level) |
-| [docs/release-notes.md](docs/release-notes.md) | The same releases in plain language — what actually changed for you |
-| [docs/maintenance.md](docs/maintenance.md) | The maintenance-pass checklist, including the blind spots earned by real shipped bugs |
-| [docs/privacy.md](docs/privacy.md) | Privacy policy (short, because the app collects nothing) |
-| [docs/archive/history.md](docs/archive/history.md) | Older releases and the numbered roadmap items they came from |
-| [docs/archive/maintenance.md](docs/archive/maintenance.md) | What every maintenance pass found |
-| [docs/brand.md](docs/brand.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
-| [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
+| [docs/decisions.md](docs/decisions.md) | Manifesto, and why non-obvious choices were made |
+| [docs/tech.md](docs/tech.md) | Architecture, data model, sync internals, theme tokens |
+| [docs/roadmap.md](docs/roadmap.md) | Current status and planned work |
+| [docs/changelog.md](docs/changelog.md) | Version history, maintainer-level detail |
+| [docs/release-notes.md](docs/release-notes.md) | The same releases in plain language |
+| [docs/maintenance.md](docs/maintenance.md) | The audit checklist, including blind spots earned from real bugs |
+| [docs/privacy.md](docs/privacy.md) | Privacy policy — short, because the app collects nothing |
+| [docs/brand.md](docs/brand.md) | Voice, visual identity, and trademark/fork terms |
+| [docs/archive/history.md](docs/archive/history.md) | Older releases and the roadmap items behind them |
+| [docs/archive/maintenance.md](docs/archive/maintenance.md) | What every maintenance audit found |
+| [CLAUDE.md](CLAUDE.md) | Contributor guide for humans and AI assistants |
+
+---
 
 ## Contributing
 
-Built in about a month, solo, with Claude doing the hands-on-keyboard
-engineering while every idea, UI decision, and round of testing came
-from a single owner acting as product manager and QA — the codebase is
-documented (`CLAUDE.md` + `docs/`) specifically so an AI assistant (or a
-human) can pick it up the same way for a fork.
+This was built solo in about a month, with an AI doing most of the
+hands-on engineering while every idea, UI decision and round of testing
+came from one person acting as product manager and QA. The codebase is
+documented (`CLAUDE.md` plus `docs/`) specifically so an assistant — or a
+human — can pick it up the same way for a fork.
 
-**Before opening a feature PR:** the app is feature-complete on purpose
-— see [docs/roadmap.md](docs/roadmap.md). Feature ideas are welcome, but
-they're judged against "does daily use actually demand this," which is a
-higher bar than "this would be good." Open an issue first and you'll get
-a straight yes/no before spending real time on it.
+The most valuable contributions, in order:
 
-There's also a genuine wishlist — see
-[CONTRIBUTING.md](CONTRIBUTING.md) for setup and PR mechanics, but in
-short, the most valuable contributions are:
+- **Bug reports from real use.** The main way this project changes.
+- **Fixes, simplifications and code review.** If something could be
+  simpler, safer or better structured, that's genuinely wanted.
+- **An iOS build.** There's no bandwidth to open that front solo, so it's
+  entirely open to someone who wants it. See
+  [docs/decisions.md](docs/decisions.md) for why it isn't planned work.
 
-- Real code-signing (Windows) and Google Play publishing — the build/
-  release pipeline is already automated (see
-  [docs/tech.md](docs/tech.md)'s CI section), what's missing is the paid
-  credentials themselves and someone to own that ongoing cost/process
-- An iOS build — there's currently no bandwidth to open that front
-  solo, so this is entirely open for someone who wants to take it on
-- **Bug reports from real use** — the single most useful thing, and now
-  the main way the project changes at all
-- Fixes and code review — if something looks like it could be simpler,
-  safer, or better structured, that feedback is genuinely wanted, not
-  just tolerated
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and PR mechanics, and
+open an issue before writing a feature — you'll get a straight yes or no
+before spending real time on it.
 
-The codebase is deliberately structured to be forkable and AI-legible —
-[CLAUDE.md](CLAUDE.md) documents the invariants an assistant (or a
-human) needs to know before changing `db.ts`, the theming system, or
-Android platform code.
+---
 
 ## License
 
