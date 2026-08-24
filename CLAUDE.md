@@ -14,10 +14,10 @@ GOAL.md into this file 2026-07-20), [docs/TECH.md](docs/TECH.md)
 from the old SIGNING.md 2026-07-31), [docs/ROADMAP.md](docs/ROADMAP.md)
 (current status and still-open work only — shipped/declined/parked
 history lives in
-[docs/archive/HISTORY.md](docs/archive/HISTORY.md)),
+[docs/archive/history.md](docs/archive/history.md)),
 [docs/CHANGELOG.md](docs/CHANGELOG.md) (newest ~10 releases — older ones
 plus the full maintenance-pass log compressed into
-[docs/archive/HISTORY.md](docs/archive/HISTORY.md);
+[docs/archive/history.md](docs/archive/history.md);
 technical/maintainer record only — for what ships to actual users see
 [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) instead, added 2026-07-24
 after users found the GitHub Releases page unreadable: plain language,
@@ -39,7 +39,7 @@ maintenance-pass process
 lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in
-docs/archive/maintenance-archive.md). User-facing pitch is the root
+docs/archive/maintenance.md). User-facing pitch is the root
 [README.md](README.md).
 
 **Routing rule for where a new item goes** (owner clarification,
@@ -67,7 +67,7 @@ read-everything every time):
 - **TECH.md** — touching architecture, the data model, sync internals, or
   Android platform behavior.
 - **ROADMAP.md** — starting a roadmap item, or making sequencing/scheduling
-  decisions. Archive shipped items into `docs/archive/HISTORY.md`
+  decisions. Archive shipped items into `docs/archive/history.md`
   roughly weekly, or whenever the still-open section starts accumulating
   shipped items again — don't let it regrow into a wall of history.
 - **DECISIONS.md's decisions log** — before any "why not X instead," or
@@ -80,7 +80,7 @@ read-everything every time):
   before responding to anything about forking, reusing the name/icon/
   tagline, or brand ownership/licensing (§10, the trademark section).
 - **CHANGELOG.md** — only at release time (the version-bump step), not per
-  code change. Move the oldest row into `docs/archive/HISTORY.md`
+  code change. Move the oldest row into `docs/archive/history.md`
   once the table exceeds 10 rows.
 - **MAINTENANCE.md** — only when running an actual maintenance pass, or
   checking whether one is due at a version bump (its current-pointer line
@@ -110,14 +110,14 @@ work needed. Concretely:
   straightforward logic fix doesn't need a live round-trip to prove itself.
 - **Read narrowly.** Use `Grep`/an `offset`+`limit` `Read` instead of
   reading a whole file when only a section is relevant.
-- **Rotating a CHANGELOG.md row into docs/archive/HISTORY.md**:
+- **Rotating a CHANGELOG.md row into docs/archive/history.md**:
   don't re-read either file in full every release. `Grep` for the row
   you're moving (or the archive's table-header line) to confirm the
   anchor text, then use a targeted `Edit` on each file — never a full-file
   `Read`+`Write` round trip for what's a one-row move. Only touch the
   archive at all when CHANGELOG.md's row count actually exceeds 10; most
   releases don't need a rotation. Same pattern for
-  docs/ROADMAP.md ↔ docs/archive/HISTORY.md, done roughly weekly
+  docs/ROADMAP.md ↔ docs/archive/history.md, done roughly weekly
   rather than per-release.
 - **Keep responses terse.** State the result, not a running narration of
   intermediate steps. No restating what was just done in a summary if the
@@ -504,7 +504,7 @@ debug-keystore-signed `release` APK go out as a real release build.
   Last-pass/Next-pass-due state lives **only** in
   [docs/MAINTENANCE.md](docs/MAINTENANCE.md)'s one-line current-pointer
   (process/phases live there too; full pass-by-pass narrative history is
-  in docs/archive/maintenance-archive.md, not restated here) — don't restate
+  in docs/archive/maintenance.md, not restated here) — don't restate
   specific version numbers here, they'll drift out of sync.
 - Check the pointer **when bumping the version during a release**
   (checklist step 5) — not on every session start, that's wasted tokens.
@@ -513,7 +513,7 @@ debug-keystore-signed `release` APK go out as a real release build.
   docs/MAINTENANCE.md)" — and don't start one without confirmation.
 - When a pass completes, update docs/MAINTENANCE.md's current-pointer line
   (Last pass = current version, Next pass due = next scheduled point), and
-  append the pass's narrative to docs/archive/maintenance-archive.md.
+  append the pass's narrative to docs/archive/maintenance.md.
 - Maintenance passes never add features and never touch doc schema,
   PouchDB/NyxDB sync logic, storage format, soft-delete semantics, or
   the positional-"done" rule without explicit owner approval.

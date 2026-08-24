@@ -394,5 +394,5 @@ That's not a launch. That's a landing.
 *Written 2026-07-31, the last day of development.*
 *See [DECISIONS.md](DECISIONS.md) for why, [TECH.md](TECH.md) for how,
 [CHANGELOG.md](CHANGELOG.md) for when, and
-[archive/HISTORY.md](archive/HISTORY.md) for all
+[archive/history.md](archive/history.md) for all
 twenty-one maintenance passes in full.*

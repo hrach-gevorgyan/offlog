@@ -1,24 +1,28 @@
-# Offlog — Maintenance Archive
+# Offlog — Maintenance History
 
-Narrative history of every maintenance pass. The process itself lives in
-[../MAINTENANCE.md](../MAINTENANCE.md), which also carries the current
-pointer (last pass / next due) — that is the only tracker state; this file
-is history.
+What each maintenance pass found. The process, and the pointer to when the
+next one is due, live in [../MAINTENANCE.md](../MAINTENANCE.md).
 
-Newest last.
+Passes 1–5 were never written up. Passes 19–21 ran together as the
+close-out of active development and were recorded only as a group — see
+pass 22 and MAINTENANCE.md's scoping note.
 
 ---
-Last pass: v4.15.1 (2026-07-13 — sixth pass, delta-scoped since v4.12.0's
+
+## Pass 6 — v4.15.1 (2026-07-13)
+
+Delta-scoped since v4.12.0's
 A30. Found/fixed a missing `logChange()` on `createProjectFromTemplate()`
 (same bug class as the fourth pass's `archiveProject()` gap), 3 dark-mode
 contrast failures from hardcoded `#fff` instead of a token (`Sidebar`
 conflict-badge, `App.svelte` error-toast, `DeadlinesView`'s 4-variant
 badge — the last needed a new `--ink-fixed-dark` token), and an unguarded
-`new URL()` in the widget deep-link handler. Full report in this
-conversation's transcript — no dead code, no new duplication, `npm audit`
-unchanged from last pass).
+`new URL()` in the widget deep-link handler. No dead code, no new duplication — no dead code, no new duplication, `npm audit`
+unchanged from last pass.
 
-Last pass: v4.19.1 (2026-07-19 — seventh run, after v4.18.0/v4.19.0 shipped.
+## Pass 7 — v4.19.1 (2026-07-19)
+
+After v4.18.0/v4.19.0 shipped.
 First pass to cover `offlog-desktop/` (Track E's Tauri PC app) alongside
 `offlog-app/` — see MAINTENANCE.md's own Phase 0/1/4/5 additions from the
 same day. Found and fixed one real duplication: `isTauri()` detection and
@@ -31,9 +35,11 @@ unused Track E dependencies, `npm audit` unchanged, Rust `unsafe` blocks
 limited to the expected `TerminateJobObject` FFI calls, no credential
 values in any log line. `SettingsPanel.svelte`'s size (1141 lines) flagged
 again but a split deliberately skipped — same shared-CSS blocker as the
-v4.12.0 pass.)
+v4.12.0 pass.
 
-Last pass: v4.22.1 (2026-07-15 — eighth run, delta-scoped since v4.19.1,
+## Pass 8 — v4.22.1 (2026-07-15)
+
+Delta-scoped since v4.19.1,
 covering v4.20.0/v4.21.0/v4.22.0's changes). Found and fixed one real gap:
 `ChangelogView.svelte`'s "Clear all" button was missing the audited
 try/catch + `showError()` invariant. Also added a Tauri window
@@ -43,11 +49,13 @@ clean — no leftover unused `@keyframes`, all 7 exports/15 call sites
 correct. `npm audit` unchanged (4 dev-tooling-only advisories, none
 shipped). One correction to a preliminary finding: `pouchdb` npm package
 looked unused in `src/` but is actually imported by `tests/setup.ts` —
-left in place. Disabled CSP (`security.csp: null`) noted but deliberately
+left in place. Disabled CSP (`security.csp: null` noted but deliberately
 deferred to the same pre-public-release pass as C7, not fixed piecemeal
 here.
 
-Last pass: v4.25.0 (2026-07-16 — ninth run, covering the first real
+## Pass 9 — v4.25.0 (2026-07-16)
+
+Covering the first real
 desktop-dogfooding round: v4.23.0-v4.25.0's rapid iteration on
 `offlog-desktop`'s notification/backup/startup fixes). Found and fixed
 one real gap: `@tauri-apps/plugin-notification` (the npm package) had
@@ -58,9 +66,11 @@ permission-check compatibility). Everything else audited clean: no dead
 code from the several notifications.ts rewrites, all 6 new npm packages
 and 6 new Rust crates from this arc genuinely used, `cargo check` zero
 warnings, `npm audit --production` unchanged (same known uuid/pouchdb
-advisory), no stray debug/temp files.
+advisory, no stray debug/temp files.
 
-Last pass: v4.28.0 (2026-07-17 — tenth run, delta-scoped since v4.25.0,
+## Pass 10 — v4.28.0 (2026-07-17)
+
+Delta-scoped since v4.25.0,
 covering v4.26.0-v4.28.0's settings redesign, Android widget polish, and
 the modalStack.ts/seedIfEmpty fixes). Baselines all green (build/tsc/
 test/cargo build). Found and fixed two real [SAFE] gaps: `notifications.ts`
@@ -77,12 +87,14 @@ test-only `pouchdb` package, none shipped) all unchanged/clean.
 C7's git-history piece (owner-directed) — two real credentials
 (`offlog-app/src/config.ts`'s old hardcoded CouchDB password, and a
 second username+password pair that had leaked into a committed
-`.claude/settings.local.json`) purged from every one of the repo's 127
+`.claude/settings.local.json` purged from every one of the repo's 127
 commits/71 tags via BFG Repo-Cleaner, verified by exhaustively scanning
 every remaining git object afterward. See DECISIONS.md/ROADMAP.md C7 for
 the full record.
 
-Last pass: v5.0.0 (2026-07-20 — eleventh run, delta-scoped since v4.28.0,
+## Pass 11 — v5.0.0 (2026-07-20)
+
+Delta-scoped since v4.28.0,
 covering v4.29.0/v4.30.0's pre-release audit batches plus the unreleased
 Time Travel/NLP Quick Add/recurring-tasks/font-consolidation/App Lock work
 bundled into this 5.0.0 cut). Baselines all green (build/tsc/test/cargo
@@ -98,10 +110,12 @@ never logged or stored in plaintext, no new `eval`/`Function`/raw
 `innerHTML`, `{@html}` sites all either fixed internal constants or
 properly escaped, and the audited try/catch+showError() invariant holds
 across every new mutation call site (QuickAdd, Time Travel, recurring-task
-reset path in db.ts). No dead code, no new duplication, no npm dependency
+reset path in db.ts. No dead code, no new duplication, no npm dependency
 changes to reassess.
 
-Last pass: v5.4.0 (2026-07-20 — twelfth run, delta-scoped since v5.0.0,
+## Pass 12 — v5.4.0 (2026-07-20)
+
+Delta-scoped since v5.0.0,
 covering App Lock's biometric unlock (B54 second half), Privacy Screen +
 Clipboard (B55/B56), a real bug fix (biometric toggle reachable with no
 PIN set — now gated on `appLockEnabled` too), an Android splash-logo fix
@@ -124,7 +138,9 @@ audit` unchanged from prior passes (same dev-tooling/test-only
 advisories). `SettingsPanel.svelte` flagged again at 1881 lines (was 1141
 three passes ago) — same shared-CSS blocker, still deliberately deferred.
 
-Last pass: v5.4.6 (2026-07-20 — thirteenth run, delta-scoped since v5.4.0,
+## Pass 13 — v5.4.6 (2026-07-20)
+
+Delta-scoped since v5.4.0,
 covering v5.4.1-v5.4.5's rapid live-device bugfix batches). Baselines all
 green (build/tsc/test/cargo build). Found and fixed one real race:
 `notifications.ts`'s `fireWebNotification()` cleared `reminder_at` via an
@@ -139,12 +155,14 @@ one call site — 5/5 clean reruns of the previously-flaky test afterward.
 Also extracted `KanbanBoard.svelte`'s repeated touch-drag-state reset into
 one `resetTouchDragState()` helper, and added a release-checklist note in
 CLAUDE.md flagging that the Android `release` build type is currently
-signed with AGP's debug keystore (v5.4.4, local-dev convenience only) and
+signed with AGP's debug keystore (v5.4.4, local-dev convenience only and
 must not ship as a real Play Store build before C3's real signing key
 exists. No dead code, no dependency changes, security checklist and `npm
 audit` unchanged from prior passes.
 
-Last pass: v5.6.1 (2026-07-21 — fourteenth run, off-cadence at owner
+## Pass 14 — v5.6.1 (2026-07-21)
+
+Off-cadence at owner
 request; the schedule's next pass wasn't due until v5.7.0). Baseline
 wasn't green at the start: `TimeTravelView.svelte` had a Svelte a11y
 warning (`role`/`tabindex` both driven by the same ternary, which the
@@ -175,10 +193,12 @@ is informational only, the official plugin working as intended. No
 RISKY-tier findings; `offlog-desktop` baseline (`cargo build`) confirmed
 green but the crate itself wasn't touched this pass. All fixes verified
 live via browser preview (toggle-knob token, scrim opacity, Time Travel's
-clickable/non-clickable split, debounce timers) in addition to the
+clickable/non-clickable split, debounce timers in addition to the
 build/tsc/test gates.
 
-Last pass: v5.7.4 (2026-07-22 — fifteenth run, pulled forward from its
+## Pass 15 — v5.7.4 (2026-07-22)
+
+Pulled forward from its
 after-v5.9.0 due date at owner request as the "final cleanup" of the
 finite-plan restructuring; also removed a stray dangling sentence
 fragment left at the end of the fourteenth entry above). Delta-scoped
@@ -197,11 +217,13 @@ automation" subsection added under Testing & Dev Workflows. Docs-only
 fix, so no version bump per MAINTENANCE.md Phase 5's clean-pass rule.
 Baselines (build zero-warning / tsc / 173 tests / cargo build) all
 green, verified same-day on the current tree. Recommendation for next
-pass: nothing carried over; the `glib` accepted-risk (DECISIONS.md)
+pass: nothing carried over; the `glib` accepted-risk (DECISIONS.md
 re-check remains tied to the next Cargo dependency bump, not to
 maintenance cadence.
 
-Last pass: v5.8.3 (2026-07-28 — sixteenth run, pulled forward from its
+## Pass 16 — v5.8.3 (2026-07-28)
+
+Pulled forward from its
 after-v5.10.0 due date at owner request). Full Phase 1 sweep of both
 apps plus `npx knip` as an optional deeper sweep (`cargo machete` not
 installed, skipped per "no new tooling without approval"). Two real
@@ -244,10 +266,12 @@ query param — only ever used for an equality check against real,
 already-loaded project IDs, no `eval`/dynamic property lookup/DOM
 injection anywhere in the chain) — confirmed clean, not just assumed.
 No RISKY findings; no schema/sync/storage-format changes. Baselines
-(build zero-warning / tsc / 219 tests / cargo build) all green,
+(build zero-warning / tsc / 219 tests / cargo build all green,
 re-verified after every fix and once more at Phase 4.
 
-Last pass: v6.0.1 (2026-07-30 — seventeenth run, pulled forward at owner
+## Pass 17 — v6.0.1 (2026-07-30)
+
+Pulled forward at owner
 request right after v6.0.0's large feature batch — file attachments,
 recurrence-robustness fix, unified search, tag color picker, plus the
 milestone/"Done" framework's removal from ROADMAP.md — landed in one
@@ -295,7 +319,7 @@ redefining project-wide done-ness with no warning. Cycle 3, a long-run
 stability audit, found that the *tray-resident change shipped that same
 day* had silently disabled automatic backups and both retention prunes
 (they only ran at app start, which used to happen daily and now might
-never), that the live change feed had no error handler and never
+never, that the live change feed had no error handler and never
 restarted — going permanently deaf after a sleep/resume — that a sync
 burst fired one full reload per document, that `auto_compaction` was off
 so deleting an attachment freed no disk, that Agenda never noticed
@@ -305,7 +329,9 @@ round-trip tests, 279 total. Lesson recorded for any future pass: scope
 successive cycles differently, because the second and third found
 materially more than the first.
 
-Last pass: v6.2.1 (2026-07-31 — eighteenth run, pulled forward at owner
+## Pass 18 — v6.2.1 (2026-07-31)
+
+Pulled forward at owner
 request right after the animation-harmonization/installer-branding/
 splash-icon polish pass, ahead of the schedule's next-due v6.3.0).
 Baselines confirmed green first (offlog-app build/tsc/265 tests,
@@ -337,11 +363,13 @@ new `unsafe` Rust blocks (still only the two documented spots in
 `lib.rs`/`secure_storage.rs`), nothing logged that shouldn't be. Dist
 size: 1.2MB, unchanged despite the v6.1.0/v6.2.0 feature batch and this
 pass's own fixes. No RISKY findings; no schema/sync/storage-format
-changes. Baselines (build zero-warning / tsc / 265 tests / cargo build)
+changes. Baselines (build zero-warning / tsc / 265 tests / cargo build
 re-verified clean after every fix.
 after both fixes.
 
-Last pass: v6.5.0 (2026-08-24 — twenty-second run, the first since daily
+## Pass 22 — v6.5.0 (2026-08-24)
+
+The first since daily
 use began. Run against a codebase that had just been through a large
 hardening cycle, so most of Phase 1 came back empty and that is the
 finding: zero floating promises across 30 async writers, zero raw-UTC
@@ -368,5 +396,6 @@ desktop updater.)
 Full narrative history of every maintenance pass (process defined in
 [../MAINTENANCE.md](../MAINTENANCE.md)), moved here from that file's old
 in-place tracker so the instructions file stays instructions-only. Current
-pointer (last pass / next due) lives at the top of MAINTENANCE.md, not
+pointer (last pass / next due lives at the top of MAINTENANCE.md, not
 here — this is history, not state.
+
