@@ -34,7 +34,7 @@ what changed.)
 **Jump to:** [Screenshots](#screenshots) ·
 [Why this exists](#why-this-exists) · [Features](#features) ·
 [Getting the apps](#getting-the-apps) ·
-[Getting Started](#getting-started) ·
+[Getting Started](#getting-started) · [FAQ](#faq) ·
 [Documentation](#documentation) · [Contributing](#contributing)
 
 ## Screenshots
@@ -116,205 +116,109 @@ it mattered.
 
 ## Features
 
-Built over July 2026 — some features came from the original plan,
-plenty came from noticing something was missing while testing the app
-against real work. Full detail on all of it:
-[docs/CHANGELOG.md](docs/CHANGELOG.md) (recent releases) and
-[docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)
-(everything older, one line per release).
+Full detail lives in [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent
+releases) and [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)
+(everything older, one line each).
 
-**Core task management**
-- Spaces & Projects — organize work into colored spaces, each holding
-  multiple projects, each with its own set of statuses
-- Two views per project — Kanban and a table-shaped List — with saved
-  filters, column selection/reordering, and multi-column sort in List
-- Agenda — a deadline-focused view across every project, as a grouped
-  list (overdue / today / this week / later) or a month calendar you can
-  tap into
-- Focus view — a daily-commitment lock: pick up to 3 tasks for the day,
-  ranked pinned → overdue → due-soon → priority, instead of an
-  auto-computed list nobody trusts. Tasks still blocked by an unfinished
-  dependency don't appear at all
-- Checklists with a progress badge, tags with project-local
-  autocomplete and an optional per-tag color, custom fields (global, not
-  per-project)
-- Card detail — full task editor: notes with a length counter, priority,
-  due date, reminder time (independent of due date), status, checklist,
-  custom fields, related-task links, file attachments, and a per-card
-  changelog of every change made to it
-- Task dependencies — mark a task "blocked by" another and it stays out
-  of Focus until the blocker is done, with a lock badge on its card
-  meanwhile. Circular dependencies are refused rather than silently
-  creating a pair of tasks that can never start. Separate from the
-  looser "related" links, which imply no ordering
-- File attachments — photos, PDFs, spreadsheets, or any other file
-  (except HEIC/HEIF, not supported yet), up to 10MB each and 10 per
-  task. Images are downscaled and re-encoded on-device before saving,
-  so a phone photo doesn't balloon your database. Attachments sync like
-  everything else — no separate upload step
-- Recurring tasks (daily/weekly/monthly) — one task resets in place
-  instead of spawning a duplicate, correctly handles month-end dates
-  (a task due the 31st lands on the 28th/29th/30th of a shorter month,
-  not two months later) and DST transitions
-- One-tap due-date shortcuts on task creation; Duplicate task; project
-  templates (copy a status structure, optionally with its open tasks)
-- Dashboard — every project at a glance, pinned tasks, overdue tasks,
-  a weekly "N completed this past week" summary
-- Quick Add (Ctrl+N) and Global Search (Ctrl+K) from anywhere — search
-  covers task titles, notes, tags, checklist text, and attachment
-  filenames, and tells you *where* it matched when the title alone
-  doesn't show it — plus a command palette that matches actions, not
-  just tasks
-- Undo & Recycle — soft-delete everywhere with undo, a full Recycle view
-  with restore/delete-forever, and a configurable retention policy
+**Core**
+- **Spaces and projects** — coloured spaces, each holding projects, each
+  with its own statuses
+- **Two views per project** — Kanban and a table-shaped List, with saved
+  filters and multi-column sort
+- **Agenda** — deadlines across every project, as a grouped list
+  (overdue / today / this week / later) or a month calendar
+- **Focus** — pick up to 3 tasks for the day. A deliberate commitment,
+  not an auto-computed list nobody trusts. Blocked tasks don't appear
+- **Rich task cards** — notes, priority, due date, reminder (independent
+  of the due date), checklist, custom fields, tags, file attachments,
+  and a per-card history of every change
+- **Dependencies** — mark a task "blocked by" another and it stays out
+  of Focus until the blocker is done. Circular chains are refused, not
+  silently created
+- **Recurring tasks** — one task resets in place instead of spawning
+  duplicates, and handles month-end and DST correctly
+- **Quick Add (Ctrl+N)** and **Global Search (Ctrl+K)** from anywhere —
+  search covers titles, notes, tags, checklists and attachment names,
+  and tells you where it matched
+- **Undo everywhere** — soft delete with undo, a Recycle view, and a
+  retention policy you control
 
-**Sync — this is the core idea, not a bolt-on**
+**Sync — the reason this exists**
 
-Local phone-to-PC (and PC-to-PC) sync was the entire reason this project
-started: one task list, always current, on every device you own, without
-handing it to a cloud provider. Most self-hosted, local-first apps stop at
-"sync is possible if you set up your own server" — that's a real barrier
-for anyone who isn't comfortable running one. Offlog's Windows app *is*
-the server: it bundles [NyxDB](https://github.com/hrach-gevorgyan/nyxdb)
-(a small, self-authored CouchDB-protocol server), configures itself on
-first launch, and your phone finds it on the network automatically. The
-technical pieces (CouchDB-protocol replication, mDNS discovery, a
-paired-handshake credential exchange) aren't novel on their own —
-packaging all three together so a non-technical person never sees any
-of them is the actual point. (Real Apache CouchDB was the original
-embedded server through v5.7.10; swapped for NyxDB after that to cut
-installer size roughly 10x — full history in
-[docs/DECISIONS.md](docs/DECISIONS.md).)
+One task list, current on every device you own, without handing it to a
+cloud provider. Most local-first apps stop at "sync is possible if you
+run your own server", which is a real barrier for anyone who doesn't
+want to. Offlog's Windows app *is* the server: it bundles
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) (a small,
+self-authored CouchDB-protocol server), configures itself on first
+launch, and your phone finds it automatically.
 
-- Live bidirectional replication over the CouchDB protocol — a write on
-  one device shows up on the other in real time whenever both are
-  reachable on the same network
-- The Windows desktop app **bundles NyxDB itself** — nothing to
-  install separately, no server admin knowledge required. On first
-  launch it silently generates its own random port, admin password, and
-  database identity, and runs NyxDB as a managed background process
-  the whole time the app is open
-- Your phone discovers the PC automatically over mDNS (`_offlog._tcp`)
-  and pairs with a one-time 6-digit code shown on the PC — no manually
-  typing an IP address, no shared credentials sent over the air until
-  pairing actually happens, and the code locks out after repeated wrong
-  guesses
-- If your PC's address changes (DHCP renewal, router reboot), the phone
-  automatically re-resolves it on the next failed sync instead of
-  requiring a manual re-pair
-- The app works fully offline with zero setup if you never turn sync on;
-  offline detection, human-readable sync errors, and a conflict
-  resolution UI mean a lost connection is visible and recoverable, never
-  silent data loss
-- Free-form per-device names with a stable underlying device id, plus a
-  "Devices seen recently" list
+The pieces — replication, mDNS discovery, a paired credential handshake
+— aren't novel individually. Packaging them so nobody has to see any of
+them is the point.
 
-Everything above stays **LAN-only by design** — see
-[docs/DECISIONS.md](docs/DECISIONS.md) for why remote/away-from-home
-sync and per-user accounts were deliberately kept out of scope.
+- Live two-way replication whenever both devices are on the same network
+- Your phone finds the PC over mDNS and pairs with a **one-time 6-digit
+  code** — no typing IP addresses, no credentials sent before pairing
+- If the PC's address changes, the phone re-resolves it automatically
+  rather than making you re-pair
+- Works fully offline with zero setup if you never turn sync on; errors
+  are readable and conflicts are recoverable, never silent data loss
 
-**Two phones, no PC, want to share data?** Not supported — only the
-Windows desktop app can act as the syncing computer that phones connect
-to (see DECISIONS.md's mesh-sync entry for the reasoning). Export/Import
-(Settings → Backup & Storage) is the way to move data between two phones
-that will never share a PC.
+**LAN-only by design** — see [docs/DECISIONS.md](docs/DECISIONS.md) for
+why remote sync and user accounts are out of scope.
 
-**Moving your PC to a new computer?** Everything Offlog needs — your
-data and its connection settings — lives in one folder on your old PC
-(verified to survive a normal uninstall/reinstall, so this is only
-needed if you're switching to different hardware, not reinstalling on
-the same machine). Copy that whole folder to the new PC before opening
-Offlog there for the first time, and every phone that was already
-connected reconnects automatically — no need to reconnect them by hand.
-(For anyone curious about the exact folder: `%APPDATA%\com.offlog.app\`
-on Windows.)
+**Windows** — the intended app for daily use
+- Lives in the system tray; closing tucks it away so reminders keep
+  firing and your phone keeps syncing
+- `Ctrl+Alt+O` from anywhere brings it to the front
+- Native notifications and native Save As dialogs
+- Auto-update with an in-app changelog and an explicit restart prompt
 
-**Android app — tested and working on a real device**
-- Native app via Capacitor, actively used day to day, not just built and
-  shelved
-- Home-screen widgets for Quick Add, a read-only Agenda, and a Project
-  list, for getting a task in or checking what's due without opening the
-  app
-- Native notifications with "Done"/"Snooze 1h" actions right from the
-  lock screen
-- Hardware back button closes whatever modal/panel is open, the way it
-  should
-- Not yet on Google Play — planned; see "Getting the apps" below
+**Android**
+- Native app via Capacitor, used daily on a real device
+- Home-screen widgets for Quick Add, Agenda, and projects
+- Notifications with Done / Snooze actions from the lock screen
+- Hardware back button closes whatever is open, as it should
 
-**Windows desktop app — the intended "app for humans"**
-- Native app via Tauri, wrapping the same web build unmodified, with an
-  embedded NyxDB sync host (see Sync above)
-- **Lives in the system tray.** Closing the window tucks it away instead
-  of quitting, so reminders keep firing and your phone keeps syncing.
-  The tray menu has Show, Quick Add, Settings, a "Start on login"
-  toggle, and the only real Quit
-- **`Ctrl+Alt+O` from anywhere** — even when Offlog isn't the app you're
-  looking at — brings it straight to the front on Dashboard. If another
-  app already owns that shortcut, Offlog logs it and carries on rather
-  than refusing to start
-- Native Windows notifications with click-to-open and working scheduled
-  reminders (not just a browser notification fallback)
-- Native "Save As" dialogs for backup/export instead of a silent no-op
-  browser download inside a WebView
+**Data and integrity**
+- Backup and restore with a scope selector; JSON and CSV export.
+  Backups include attachments, custom fields and tag colours — a restore
+  brings back the workspace, not just the task text
+- Automatic local backups, last 7 kept, whether or not you think about it
+- Check Database / Repair Issues for orphaned tasks, invalid statuses
+  and unresolved conflicts
+- Storage warnings past 80%, with a real Optimize Storage action
 
-**Small footprint, on purpose.** Both the Android and Windows apps have
-gone through repeated cleanup passes specifically to stay small and
-light — dead code removed, unused dependencies dropped, and the
-Windows app's embedded sync host switched to a self-authored,
-purpose-built server (NyxDB) instead of a general-purpose database
-engine, cutting the installer roughly 10x. Bundle-size checks are part
-of the release routine. This isn't accidental — 21 structured
-maintenance passes ran during the build specifically to catch bloat and
-regressions before they shipped (see
-[docs/MAINTENANCE.md](docs/MAINTENANCE.md)).
+**Appearance and accessibility**
+- Light / Dark / System, High Contrast, and a Reduce Motion toggle every
+  animation actually respects
+- Keyboard-operable throughout: focus trapping, visible focus rings,
+  Escape closes everything
+- WCAG AA contrast audited across the palette
 
-**Data, backup, and integrity**
-- Full Back up (with a scope selector) / Restore flow, JSON and CSV
-  export. Backups include your attachments, custom-field definitions and
-  tag colours — a restore brings the workspace back, not just the task
-  text
-- Automatic local backups on a rolling schedule, kept to the last 7, so
-  there's a recent copy even if you never think about it
-- A Check Database / Repair Issues tool that finds and fixes orphaned
-  tasks/projects, invalid status references, and unresolved sync
-  conflicts
-- Storage-pressure warnings past 80% usage with cleanup pointers,
-  `db.compact()` wired to an actual "Optimize Storage" action
-
-**Appearance & accessibility**
-- Light / Dark / System theme, a High Contrast toggle, a Reduce Motion
-  toggle that's actually read by every animation in the app
-- Keyboard-operable throughout: focus trapping in every modal, visible
-  focus rings, a keyboard shortcuts panel, Escape closes everything
-- WCAG AA contrast audited and fixed across the palette
-
-No paid tier, no feature ever held back behind one — see
+No paid tier, and no feature ever held back behind one — see
 [docs/DECISIONS.md](docs/DECISIONS.md)'s manifesto for why.
 
 ## Getting the apps
 
 Download the latest Windows installer and Android APK from
 [GitHub Releases](https://github.com/hrach-gevorgyan/offlog/releases).
-Your OS will warn you before installing (unsigned app, not from Google
-Play) — that's expected, not a red flag on this app's code; getting real
-signing/publishing set up is a tracked goal (see
-[docs/ROADMAP.md](docs/ROADMAP.md)'s "Open" section — Android's Play
-Store listing is ready and waiting on Google's review; Windows signing
-applied to [SignPath Foundation](https://signpath.org)'s free
-open-source program and was asked to reapply once the project has more
-public traction, see [docs/TECH.md](docs/TECH.md)'s "Windows code
-signing" section). Just make sure you're downloading from this repo's
-own Releases page, not a mirror.
+
+Windows will warn you on first install because the installer isn't
+code-signed. Paid certificates aren't a path this project will take;
+desktop updates are verified by cryptographic signature instead, so a
+tampered or corrupt download is rejected. Android shows its own
+side-loading warning until the Play Store listing is live. Just make
+sure you're downloading from this repo's own Releases page, not a
+mirror.
 
 **Windows** is the intended app for day-to-day use — bundles its own
 sync server, nothing else to install, and checks for updates
 automatically, with an in-app changelog and an explicit restart prompt
 (it never restarts itself behind your back). Update downloads are
-verified against a cryptographic signature before they're installed, so
-a tampered or corrupt download is rejected — that's a different thing
-from the Windows code-signing certificate mentioned above, which is
-what would stop SmartScreen warning you in the first place and is still
-outstanding. **Android** works the same way via side-loaded APK today,
+verified against a cryptographic signature before they're installed.
+**Android** works the same way via side-loaded APK today,
 Play Store (with its own auto-update) once published. The **web build**
 (`npm run dev`) is a dev/test surface, not the primary way to use the
 app.
@@ -322,8 +226,8 @@ app.
 ## Built like a real product, not a prototype
 
 Every release: zero-warning production build, clean type check, full
-test suite (279 of them), manual light/dark verification — enforced by
-CI. 21 structured maintenance passes over the build, each working
+test suite (569 of them), manual light/dark verification — enforced by
+CI. 22 structured maintenance passes, each working
 through a written checklist of blind spots earned from real shipped
 bugs (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)). Went through a
 full security audit and git-history credential purge before going
@@ -384,6 +288,38 @@ cargo tauri dev
 Full build/deploy steps, environment details, and the complete
 architecture (including exactly how the mDNS discovery and pairing
 handshake work) are in [docs/TECH.md](docs/TECH.md).
+
+## FAQ
+
+**Is any of my data sent anywhere?**
+No. There is no account, no telemetry, and no server this project runs.
+The only network traffic is sync between your own devices on your own
+network, and an update check on desktop you can turn off.
+
+**Two phones and no PC — can they sync to each other?**
+No. Only the Windows app acts as the syncing computer phones connect to
+(see [docs/DECISIONS.md](docs/DECISIONS.md)'s mesh-sync entry for why).
+Use Backup and Restore to move data between two phones that will never
+share a PC.
+
+**Can I sync when I'm away from home?**
+No, by design. Sync only happens on the same local network. Remote sync
+would mean either a hosted service or exposing a server to the internet,
+and both are out of scope.
+
+**Why does Windows warn me when installing?**
+The installer isn't code-signed. Paid certificates aren't a path this
+project will take. Updates are verified by signature instead.
+
+**I'm moving to a new computer — how do I bring everything?**
+Everything Offlog needs lives in one folder: `%APPDATA%\com.offlog.app\`.
+Copy it to the new PC before opening Offlog there for the first time, and
+every phone that was already paired reconnects on its own. (You don't
+need this for a reinstall on the same machine — data survives that.)
+
+**Do I have to use sync at all?**
+No. The app is fully usable on one device with sync switched off, and
+that needs no setup whatsoever.
 
 ## Documentation
 
