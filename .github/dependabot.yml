@@ -44,11 +44,18 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # No ignores. TypeScript 7.x is allowed from @capacitor/cli 8.5.0
-    # onward, which fixed the config-loader bug that broke
-    # `npx cap sync android`. Any Capacitor or TypeScript bump must be
-    # verified by diffing the generated capacitor.config.json against
-    # capacitor.config.ts, not just by green gates -- see docs/decisions.md.
+    # TypeScript 7 is already in use, as @typescript/native -- that alias
+    # is what svelte-check --tsgo runs and it is NOT ignored here. The
+    # plain `typescript` entry is 6.x only to satisfy svelte-check's peer
+    # range (^5 || ^6); raising it to 7 breaks resolution and leaves
+    # svelte-check loading an API version it does not support. Lift this
+    # ignore when svelte-check widens that range, not before.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    # Any Capacitor or TypeScript bump must be verified by diffing the
+    # generated capacitor.config.json against capacitor.config.ts, not
+    # just by green gates -- see docs/decisions.md.
 
   - package-ecosystem: "github-actions"
     directory: "/"
