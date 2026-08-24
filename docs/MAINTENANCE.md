@@ -1,266 +1,253 @@
 # MAINTENANCE PASS — Offlog
 
-Scheduled maintenance routine, tailored to this repo. This is NOT a
-feature session: external behavior must remain identical. Read this whole
-file before touching code. Cadence: **every 3 minor versions.**
+A scheduled audit routine, tailored to this repo. **Not a feature
+session:** external behaviour must stay identical. Read this whole file
+before touching code.
 
-**Current pointer** — last pass: v6.5.0 (2026-08-24, twenty-second run,
-triggered by the "first bug hit in daily use" half of the previous
-pointer rather than its calendar date). Next pass due: **2026-12-01, or
-on the next bug hit in daily use, whichever comes first** — the "every 3
-minor versions" cadence still does not apply; the project remains in
-maintenance mode.
+**Current pointer** — last pass: **v6.5.0** (2026-08-24, 22nd run). Next
+pass due: **2026-12-01, or on the next bug hit in daily use, whichever
+comes first.** The old "every 3 minor versions" cadence no longer applies;
+the project is in maintenance mode.
 
-Those three cycles were deliberately scoped differently rather than run
-as the same checklist three times: (1) the standard Phase 1 checklist
-below, (2) an adversarial data-loss/data-integrity audit, (3) a
-real-world stability audit aimed at what degrades over weeks of
-continuous use rather than what's wrong on a fresh install. Cycles 2 and
-3 found materially more than cycle 1 did — including a backup system
-that could not restore any backup containing an attachment, and the fact
-that making the desktop app tray-resident had silently disabled
-automatic backups and both retention prunes (they only ran at app
-start). **If a future pass is ever run in anger, use that scoping, not
-three identical sweeps.**
-This is the only tracker state that
-lives in this file; the full narrative history of every past pass is in
+This pointer is the only tracker state in this file. Past passes are
+narrated in
 [archive/changelog-archive.md](archive/changelog-archive.md)'s
-"Maintenance pass log" section — this file is instructions only. Update
-just this one pointer line when a pass completes (Phase 5, step 3) and
-append the pass's narrative to that archive file instead of growing a
-tracker here again.
+"Maintenance pass log" — this file is instructions only.
+
+**Scope a real pass in differently-aimed cycles, not one checklist run
+three times.** The three cycles that closed active development were:
+(1) the standard Phase 1 checklist, (2) an adversarial
+data-loss/data-integrity audit, (3) a stability audit aimed at what
+degrades over weeks of continuous use rather than what breaks on a fresh
+install. Cycles 2 and 3 found materially more — including a backup system
+that could not restore any backup containing an attachment, and automatic
+backups silently stopping once the desktop app became tray-resident.
+
+---
 
 ## Phase 0 — Orientation (no changes)
-1. Read CLAUDE.md and docs/TECH.md — they are the project map. Do NOT
-   create a separate PROJECT_MAP.md; if the structure has drifted from
-   what TECH.md describes, updating TECH.md is itself a finding.
-2. Confirm the baseline is green BEFORE any change (all from `offlog-app/`):
-   - `npm run build` — must succeed with **zero Svelte warnings**
-   - `npm run check` — svelte-check + tsc, clean
-   - `npm test` — vitest suite passes
-   If any fail, report and stop — fix the baseline first.
-   (There is no lint config in this project — the zero-warning build IS
-   the lint gate.)
-3. **Also confirm the `offlog-desktop/` (Tauri PC app, Track E — see
-   ROADMAP.md E1) baseline is green**, from `offlog-desktop/`:
-   - `cargo build --manifest-path src-tauri/Cargo.toml` — must succeed
-     with **zero warnings**
-   This is a genuine second app now, not an offshoot of `offlog-app/` —
-   see docs/TECH.md's "Desktop (Tauri)" section for the architecture.
-   Since it wraps `offlog-app/dist` unmodified, `offlog-app`'s own
-   baseline gates above already cover its frontend; this Rust build is
-   the only check specific to `offlog-desktop/` itself.
+
+1. Read CLAUDE.md and docs/TECH.md — the project map. If the structure has
+   drifted from what TECH.md describes, updating TECH.md is itself a
+   finding. Do not create a separate map file.
+
+2. **Confirm the baseline is green before any change, judging every gate
+   by its exit code, not its printed summary.** From `offlog-app/`:
+
+   ```bash
+   npm run check  ; echo "check  $?"    # svelte-check + tsc
+   npm run build  ; echo "build  $?"    # must also be zero Svelte warnings
+   npx vitest run ; echo "vitest $?"
+   ```
+
+   All three must be `0`. **Vitest prints "N passed" and still exits 1** on
+   an unhandled rejection — an unguarded `await` in `onMount`, a jsdom API
+   that doesn't exist. Grepping the pass count hides it; CI does not. This
+   has already put main red once while every test reported passing.
+
+   There is no lint config; the zero-warning build is the lint gate.
+
+3. From `offlog-desktop/`, confirm the Rust side too:
+
+   ```bash
+   cargo build --manifest-path src-tauri/Cargo.toml   # zero warnings
+   ```
+
+   `offlog-desktop` wraps `offlog-app/dist` unmodified, so the gates above
+   already cover its frontend; this is the only check specific to it.
+
+If any gate fails, report and stop. Fix the baseline first.
+
+---
 
 ## Phase 1 — Analysis (no changes)
-Produce a findings report covering:
-- Dead code: unused files, functions, exports, components, CSS. In
-  `offlog-desktop/src-tauri/`: unused `pub fn`s/modules, and confirm
-  every `#[tauri::command]` registered in `invoke_handler!` is actually
-  called from the frontend (or intentionally dev-only, like
-  `reset_sync_data`/`is_debug_build` — see `lib.rs`'s own comments).
-- Duplicated logic: repeated patterns worth a shared utility (only if
-  used 2+ times).
-- Unused/redundant dependencies in package.json; `npm audit` summary.
-  In `offlog-desktop/src-tauri/Cargo.toml`: same check for unused
-  crates, plus `cargo tree` for anything pulling in a surprisingly
-  large dependency graph.
-- Oversized files/functions (>~300 lines / >~50 lines = candidate to
-  split, using judgment — db.ts and the big view components are large
-  partly by design; flag only where splitting genuinely helps).
-- Inconsistent naming/organization vs. CLAUDE.md conventions.
-- Performance suspects: redundant DB round-trips, missing `limit` on
-  `db.find()`, duplicate sync triggers, unthrottled listeners,
-  unnecessary `$:` recomputation, missed `invalidateTaskCache()` paths.
-- Error handling gaps: any task-mutating call site NOT wrapped in
-  try/catch + showError() (this is an audited invariant — regressions
-  are findings).
-- Hygiene: stale TODOs, debug console.log, secrets in code.
-- **Recurring blind spots** (each encodes a bug class this project has
-  actually shipped or nearly shipped — that's the bar for adding to
-  this list; don't grow it with generic-audit filler):
-  - **Floating promises.** Any call to an async `db.ts`/
-    `notifications.ts` function that is neither `await`ed, `return`ed,
-    nor explicitly `.then/.catch`-chained is a finding — and a bare
-    `.catch(() => {})` deserves a look too (is the swallow deliberate?).
-    Real incidents: `fireWebNotification()`'s fire-and-forget
-    `updateTask` caused both a rev-conflict race (v5.4.6) and a flaky
-    test that only failed under parallel suite load (v5.7.2 era).
-  - **Date/time locality.** All date-only logic must go through
-    `utils.ts`'s `localDateStr()`/friends — grep new code for raw
-    `toISOString().slice`, `getUTC*`, or string-built dates. Real
-    incident: v5.7.1 found **seven** places using UTC instead of the
-    local calendar day (Agenda, Focus lock, overdue badges, exports).
-    Month-end + DST boundaries are the test cases that expose these.
-  - **Packaging paths, not just build/tsc/test.** A dependency bump can
-    pass all three gates and still break the pipeline, because the
-    gates never exercise the packaging tools' own code paths. Real
-    incident: TypeScript 7 passed build/tsc/tests locally, then broke
-    `npx cap sync android` (Capacitor CLI's config loader) on the next
-    release tag. After any bump touching build tooling (TypeScript,
-    Vite, Capacitor, Tauri), also run `npx cap sync android` (allowed
-    per CLAUDE.md — it's the Gradle/APK build that's owner-only) and
-    let `desktop-ci`'s release-profile cargo build cover the Tauri
-    side.
-  - **Script exit paths.** Read every `.ps1`/`.sh` in the repo
-    end-to-end for exit-code correctness: does every failure path fail
-    loud, and does the success path actually exit 0? Real incident:
-    `fetch-couchdb-win.ps1` succeeded completely yet exited 1 in CI,
-    because robocopy's success codes (1-7) lingered in `$LASTEXITCODE`
-    and `pwsh -File` propagated it.
-  - **Config/permission drift.** Diff `tauri.conf.json`'s CSP and
-    `AndroidManifest.xml`'s `<uses-permission>` list against the last
-    pass — any widening (a new permission, a loosened CSP directive)
-    is a [REVIEW] finding even if some feature "needed" it, because
-    these widen silently and nobody re-reads them once added.
-  - **Docs link integrity.** Relative links in `docs/*.md` and
-    README.md rot silently as files move/merge (GOAL.md, QUESTIONS.md
-    both got merged away — anything still linking to them is wrong).
-    One-liner check:
-    `grep -rhoP '\]\((?!http)[^)#]+' docs *.md | sort -u` → verify
-    each path exists.
-  - **Size drift ledger.** Record `du -sh offlog-app/dist` and the
-    latest installer/APK sizes in the pass narrative every time.
-    Unexplained growth (>~10% with no feature to blame) is a finding —
-    bloat only ever arrives gradually, and without a written baseline
-    each pass has nothing to compare against. (Baseline at v5.7.10 post
-    NyxDB swap: dist 1.1MB, Windows installer ~5MB. Updated at v5.8.2,
-    16th pass: dist 1.2MB — ~9% growth, under the 10% threshold and
-    plausibly explained by C8's password-at-rest UI/App Lock work
-    shipped since v5.7.10. **Both halves are now populated**, captured
-    from v6.5.0's release artifacts: dist 1.2MB, Android APK 4.72MB,
-    Windows installer 4.96MB (against the v5.7.10 note of "~5MB", i.e.
-    flat). That is the baseline the next pass compares against.)
-  - **Optional deeper sweeps** (no repo dependency added — dev-run
-    tools only, results are *candidates* requiring judgment, both
-    false-positive-prone with Svelte/Tauri): `npx knip` (unused files/
-    exports/dependencies the manual grep misses) and `cargo machete`
-    (unused crates). Worth running when a pass suspects drift, not
-    mandatory every time.
-  - **What's already covered elsewhere — don't duplicate effort:**
-    fresh-machine/clean-checkout builds (the "works locally, breaks
-    from a clean clone" class — untracked files, lost exec bits,
-    gitignored resources) are exercised by CI on every push
-    (`ci.yml`/`desktop-ci.yml` build from clean checkouts); the
-    incremental-vs-clean Android build class (the `--` XML comment
-    incident) is only truly caught by the owner's own clean Studio
-    builds, since Gradle is owner-only.
-- **Security & robustness** (owner-requested addition, 2026-07-09 — every
-  check beside the purely visual/behavioral ones above):
-  - **Build-output secret leakage — check the actual `dist/` output, not
-    just source** (real incident, 2026-07-21): Vite loads `.env.local`
-    for every build mode, not just `npm run dev`, so a developer's own
-    `.env.local` (real CouchDB URL + credentials) got compiled directly
-    into `dist/`, and from there into a shipped Android APK — found only
-    because the owner live-tested it and it silently "pre-configured"
-    sync to an unreachable address. A source-only secret scan (grepping
-    `.svelte`/`.ts` files, git history) does NOT catch this class of
-    bug. Every pass: run `npm run build`, then grep `dist/` for anything
-    from `.env.local` (`grep -r "$(grep VITE_SYNC_PASS ../.env.local |
-    cut -d= -f2)" dist/` or similar) — must come back empty. Fixed via
-    gating `config.ts`'s `envUrl`/`envUser`/`envPass` reads on
-    `import.meta.env.DEV`; confirm that gate is still intact.
-  - XSS surface: grep every `{@html ...}` use and confirm the interpolated
-    value is a fixed internal constant (e.g. this codebase's own inline
-    SVG icon strings), never user-entered text (task title/notes/tags) or
-    anything derived from sync data written by another device.
-  - `npm audit`: don't just note the vulnerability *count* — check whether
-    any flagged advisory's affected code path is actually reachable from
-    the shipped bundle (dev/build-only tooling vs. a real runtime
-    dependency), and say which.
-  - Deep-link / widget-URL handling (`handleWidgetUrl()` in App.svelte,
-    `com.offlog.app://...` scheme): confirm untrusted input (a malformed
-    or hostile URL) can't reach `eval`, `Function`, or an unguarded
-    property/path lookup.
-  - `localStorage` contents: confirm nothing sensitive (sync password,
-    full task content) is written to a *readable-by-any-script-on-origin*
-    key beyond what's already an accepted, documented tradeoff (sync
-    URL/credentials — tracked separately as ROADMAP C7, don't re-litigate).
-  - **`offlog-desktop/src-tauri/`**: grep for every `unsafe` block (there
-    should only be the `TerminateJobObject` FFI declarations in `lib.rs`
-    and the `CryptProtectData`/`CryptUnprotectData` DPAPI calls in
-    `secure_storage.rs` (added by C8, v5.8.1) — new ones beyond these
-    two spots are a real finding, not routine) and confirm none of them
-    are reachable with attacker-controlled input. Confirm
-    `pairing.rs`'s generated code/credentials are never written to a log
-    line (`log::info!`/`log::warn!` on the pairing path should log
-    outcomes, not values). The pairing endpoint's `Access-Control-Allow-
-    Origin: *` (`pairing.rs`) is an accepted, documented tradeoff (see
-    its own comment) — note but don't re-litigate, same as C7 above.
-  - Any `eval(`, `new Function(`, or `innerHTML =` outside the `{@html}`
-    cases already covered above.
-  - Sync request construction: confirm the sync URL/credentials
-    are never interpolated into something executed or logged in full
-    (credentials appearing in a thrown-error message that reaches the UI
-    would be a real leak, not just untidy).
 
-Rank each finding:
-- [SAFE] — trivial, no behavior change possible
-- [REVIEW] — needs owner approval
-- [RISKY] — touches doc schema (`_id` prefixes, field names), PouchDB
-  sync/replication (CouchDB-protocol, currently NyxDB-backed on
-  desktop), soft-delete semantics, positional-"done" logic, or storage
-  format → propose only, never auto-fix
+Produce a findings report covering the following. Rank every finding
+`[SAFE]` / `[REVIEW]` / `[RISKY]` (see the end of this phase).
 
-STOP after the report. Wait for owner go-ahead before Phase 2.
+### Routine sweep
 
-## Phase 2 — Cleanup & Refactor (after approval)
-- Fix approved [SAFE] and [REVIEW] items only, one area at a time.
-- Commit style: `maint: <what> (<why>)`, 2-4 lines, per CLAUDE.md's
-  token-discipline rules.
-- Never change external behavior; if a refactor would, stop and ask.
+- **Dead code** — unused files, functions, exports, components, CSS. In
+  `src-tauri/`: unused `pub fn`s and modules, and confirm every
+  `#[tauri::command]` in `invoke_handler!` is actually called from the
+  frontend (or is intentionally dev-only, like `reset_sync_data`).
+- **Duplicated logic** — worth a shared utility only if used twice or more.
+- **Dependencies** — unused or redundant in `package.json` and
+  `Cargo.toml`; `npm audit`; `cargo tree` for anything pulling a
+  surprisingly large graph.
+- **Oversized files/functions** (>~300 / >~50 lines) — flag only where
+  splitting genuinely helps. Large view components are large by design.
+- **Naming and organisation** against CLAUDE.md's conventions.
+- **Performance suspects** — redundant DB round-trips, a `db.find()`
+  missing `limit`, duplicate sync triggers, unthrottled listeners,
+  needless `$:` recomputation, missed `invalidateTaskCache()` paths.
+- **Error-handling gaps** — any task-mutating call site not wrapped in
+  `try/catch` + `showError()`. This is an audited invariant; a regression
+  is a finding.
+- **Hygiene** — stale TODOs, debug `console.log`, secrets in code.
+
+### Recurring blind spots
+
+Each entry encodes a bug class this project has shipped or nearly
+shipped, or a named external standard. That is the bar for adding one —
+don't grow this list with generic-audit filler.
+
+- **Judge gates by exit code.** Covered in Phase 0, repeated here because
+  it is the most recent escape: a green-looking summary masked a non-zero
+  exit and CI went red.
+- **Floating promises.** Any call to an async `db.ts` / `notifications.ts`
+  function that is neither awaited, returned, nor `.then/.catch`-chained.
+  A bare `.catch(() => {})` deserves a look too — is the swallow
+  deliberate? Real incident: a fire-and-forget `updateTask` caused both a
+  revision-conflict race and a flaky test that only failed under parallel
+  load.
+- **Date/time locality.** All date-only logic must go through `utils.ts`'s
+  `localDateStr()` and friends. Grep new code for raw
+  `toISOString().slice`, `getUTC*`, or string-built dates. Real incident:
+  seven places used UTC instead of the local calendar day (Agenda, Focus
+  lock, overdue badges, exports). Month-end and DST are the cases that
+  expose it.
+- **Packaging paths, not just build/tsc/test.** A dependency bump can pass
+  every gate and still break the pipeline, because the gates never
+  exercise the packaging tools' own code. Real incident: TypeScript 7
+  passed everything locally, then broke `npx cap sync android` on the next
+  release tag. After any bump touching TypeScript, Vite, Capacitor or
+  Tauri, run `npx cap sync android` too, and let `desktop-ci`'s release
+  build cover the Tauri side.
+- **Script exit paths.** Read every `.ps1`/`.sh` end to end: does every
+  failure path fail loudly, and does the success path actually exit 0?
+  Real incident: a script succeeded completely yet exited 1, because
+  robocopy's success codes lingered in `$LASTEXITCODE`.
+- **Config and permission drift.** Diff `tauri.conf.json`'s CSP and
+  `AndroidManifest.xml`'s `<uses-permission>` list against the last pass.
+  Any widening is a `[REVIEW]` finding even if a feature "needed" it —
+  these grow silently and nobody re-reads them.
+- **Supply chain and workflow hardening.** Measured against
+  [OpenSSF Scorecard](https://github.com/ossf/scorecard/blob/main/docs/checks.md):
+  - **Pinned actions** — every `uses:` must reference a full commit SHA,
+    with the version as a trailing comment. Tags are mutable and can be
+    repointed at new code. Dependabot updates SHAs and the comment
+    together.
+  - **Token permissions** — every workflow declares least privilege.
+    Only `release.yml` should widen beyond `contents: read`, and it must
+    say why inline.
+  - **Dangerous workflows** — no `pull_request_target`, and nothing from
+    `github.event.*` interpolated into a `run:` block (script injection).
+  - **Binary artifacts** — nothing executable committed beyond Android's
+    `gradle-wrapper.jar`, which is standard and required.
+- **Docs link integrity.** Relative links rot silently as files move.
+  Resolve each link against its own file's directory, not the repo root —
+  and note that GitHub-relative forms like `../../security` are valid on
+  github.com while failing a filesystem check.
+- **Size drift ledger.** Record `du -sh offlog-app/dist` plus the
+  installer and APK sizes every pass. Unexplained growth beyond ~10% with
+  no feature to blame is a finding; bloat only ever arrives gradually.
+  **Baseline (v6.5.0): dist 1.2MB, APK 4.72MB, Windows installer 4.96MB.**
+- **Optional deeper sweeps** — `npx knip` (unused files/exports) and
+  `cargo machete` (unused crates). Both false-positive-prone on
+  Svelte/Tauri; results are candidates, not findings. Run when a pass
+  suspects drift, not every time.
+
+**Already covered elsewhere — don't duplicate.** Clean-checkout builds are
+exercised by CI on every push. The incremental-vs-clean Android build class
+is only caught by the owner's own Studio builds, since Gradle is
+owner-only.
+
+### Security and robustness
+
+- **Build-output secret leakage — check `dist/`, not just source.** Vite
+  loads `.env.local` for every build mode, so a developer's real
+  credentials once compiled into `dist/` and from there into a shipped
+  APK. A source-only scan does not catch this. Every pass: build, then
+  grep `dist/` for anything in `.env.local` — it must come back empty.
+  `config.ts` gates its env reads on `import.meta.env.DEV`; confirm that
+  gate is intact.
+- **XSS surface** — grep every `{@html}` and confirm the value is a fixed
+  internal constant, never user text or anything arriving over sync.
+- **`npm audit`** — don't just report the count. Say whether each
+  advisory's code path is reachable from the shipped bundle or is
+  build-only tooling.
+- **Deep links / widget URLs** — confirm a malformed or hostile
+  `com.offlog.app://` URL can't reach `eval`, `Function`, or an unguarded
+  property lookup.
+- **`localStorage` contents** — nothing sensitive beyond the documented,
+  accepted tradeoffs.
+- **`src-tauri/` unsafe blocks** — there should be exactly two: the
+  `TerminateJobObject` FFI in `lib.rs` and the DPAPI calls in
+  `secure_storage.rs`. Any third is a finding. Confirm none is reachable
+  with attacker-controlled input, and that `pairing.rs` logs outcomes,
+  never code or credential values.
+- **`eval(`, `new Function(`, `innerHTML =`** outside the `{@html}` cases.
+- **Sync request construction** — credentials must never be interpolated
+  into anything executed or logged in full. Credentials in a thrown error
+  that reaches the UI is a real leak.
+
+### Ranking
+
+- `[SAFE]` — trivial, no behaviour change possible.
+- `[REVIEW]` — needs owner approval.
+- `[RISKY]` — touches document schema (`_id` prefixes, field names),
+  replication, soft-delete semantics, the positional-"done" rule, or
+  storage format. **Propose only, never auto-fix.**
+
+**Stop after the report.** Wait for go-ahead before Phase 2.
+
+---
+
+## Phase 2 — Cleanup (after approval)
+
+- Fix approved `[SAFE]` and `[REVIEW]` items only, one area at a time.
+- Commit style: `maint: <what> (<why>)`, 2–4 lines.
+- Never change external behaviour. If a refactor would, stop and ask.
 - Prefer deleting over commenting out. Keep diffs minimal — no
   reformatting untouched code.
 
-## Phase 3 — Optimization (evidence-based only)
+## Phase 3 — Optimisation (evidence only)
+
 - Only where Phase 1 found concrete evidence, never speculatively.
-- Offlog priorities: minimize DB round-trips, batch writes, debounce
-  sync triggers, avoid redundant reactive recomputation, keep heavy
-  modules lazy-loaded (the dynamic-import pattern in Sidebar/CardDetail).
+- Priorities: fewer DB round-trips, batched writes, debounced sync
+  triggers, no redundant reactive recomputation, heavy modules kept
+  lazy-loaded.
 - No new dependencies or caching layers without approval.
 
 ## Phase 4 — Verification
-1. Re-run the three `offlog-app/` baseline gates (build zero-warning /
-   tsc / vitest), and `offlog-desktop/`'s `cargo build` if anything
-   under `offlog-desktop/` was touched this pass.
-2. Trace the core user flows in code and confirm logic unchanged:
-   create task → edit in CardDetail → move across statuses (Kanban) →
-   mark done (positional last-column rule) → delete/undo; plus sync
-   replication and reminder scheduling if touched. If `offlog-desktop/`
-   was touched, also trace: sidecar spawn → pairing code generation →
-   `/pair` request → credentials returned (code-level trace is enough —
-   this doesn't need a live device pairing test every maintenance pass,
-   that's what Track E's own development already verified live).
-3. Justify any modified test explicitly.
-4. Summarize every changed file in one line each.
 
-## Phase 5 — Documentation & Handoff
-1. Update docs/TECH.md if structure changed (including its "Desktop
-   (Tauri)" section, if `offlog-desktop/` changed); CLAUDE.md if a
-   convention changed. Shrink stale content, don't just add (standing
-   rule).
-2. If Phase 1/2 produced any fix at all, ship as a normal light release
-   (like v3.8.5/v3.9.5): bump version in package.json +
-   android/app/build.gradle, add a standard row to docs/CHANGELOG.md's
-   table (prefix the row's summary with "Maintenance pass"), commit + tag
-   per the release checklist. **If the pass found nothing to fix (a clean
-   report), skip the version bump entirely** — nothing changed, so there's
-   nothing to ship; just do steps 3 and 4 below.
-3. Update this file's **Current pointer** line near the top: Last pass =
-   the version just shipped (or, for a clean no-fix pass, the current
-   version at the time the pass ran), Next pass due = this minor + 3. Then
-   append the pass's full narrative (what was found/fixed) to
+1. Re-run all Phase 0 gates **by exit code**, plus `cargo build` if
+   anything under `offlog-desktop/` changed.
+2. Trace the core flows in code and confirm the logic is unchanged: create
+   task → edit in CardDetail → move across statuses → mark done
+   (positional last-column rule) → delete/undo. Add sync replication and
+   reminder scheduling if either was touched. If `offlog-desktop/` changed,
+   also trace sidecar spawn → pairing code → `/pair` → credentials
+   returned. A code-level trace is enough; this doesn't need a live device.
+3. Justify any modified test explicitly.
+4. Summarise every changed file in one line.
+
+## Phase 5 — Documentation and handoff
+
+1. Update docs/TECH.md if structure changed, CLAUDE.md if a convention
+   changed. Shrink stale content rather than only adding.
+2. **If the pass fixed anything**, ship it as a light release: bump the
+   version in `package.json`, `android/app/build.gradle` and
+   `tauri.conf.json`, add a `### Fixed` entry to docs/CHANGELOG.md
+   (Keep a Changelog format) and an entry to docs/RELEASE_NOTES.md
+   including its Play-safe **In short** block, then commit and tag per the
+   release checklist.
+   **If the pass found nothing to fix, skip the version bump entirely** —
+   nothing changed, so there is nothing to ship.
+3. Update the **Current pointer** at the top of this file, then append the
+   pass's narrative to
    [archive/changelog-archive.md](archive/changelog-archive.md)'s
-   "Maintenance pass log" section — don't grow a second tracker here.
-4. Final report: done / deferred / [RISKY] left untouched /
-   recommendations for next pass.
+   "Maintenance pass log". Don't grow a second tracker here.
+4. Final report: done / deferred / `[RISKY]` left untouched /
+   recommendations for the next pass.
+
+---
 
 ## Hard constraints (every phase)
-- No new features. No new dependencies without explicit approval.
-- No rewrites — incremental only.
-- Schema, sync logic, storage format, soft-delete, positional-"done":
-  propose only, never implement unilaterally. Same bar applies to
-  `offlog-desktop/`'s NyxDB config-generation and credential/pairing
-  logic (`sync_host.rs`, `pairing.rs`) — it's this app's own sync
-  internals, not routine Rust glue.
-- Uncertain whether something is safe? Ask, don't guess.
-- Long context? Summarize state and suggest a good /clear point.
+
+- Never change external behaviour.
+- Never touch document schema, replication logic, soft-delete semantics,
+  the positional-"done" rule, or storage format without explicit approval.
+- Never run a Gradle or APK build. That is owner-only, in Android Studio.
+- Never push, tag, or publish without explicit approval.

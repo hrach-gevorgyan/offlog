@@ -49,29 +49,29 @@ jobs:
       matrix:
         language: ['javascript-typescript', 'rust', 'actions']
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
 
-      - uses: github/codeql-action/init@v4.37.7
+      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
         with:
           languages: ${{ matrix.language }}
           build-mode: none
           config-file: ./.github/codeql/codeql-config.yml
 
-      - uses: github/codeql-action/analyze@v4.37.7
+      - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
         with:
           category: '/language:${{ matrix.language }}'
 
   analyze-java-kotlin:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
 
       # Everything the Java extractor needs must exist BEFORE codeql init:
       # init configures the extractor against the JDK present at that
       # moment, so installing Java afterwards leaves it analyzing with a
       # different toolchain than the build uses and it sees no source.
       # Only the Gradle compile belongs between init and analyze.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -85,18 +85,18 @@ jobs:
         working-directory: offlog-app
         run: npm run build
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      - uses: android-actions/setup-android@v4
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4
 
       - name: Sync Capacitor Android project
         working-directory: offlog-app
         run: npx cap sync android
 
-      - uses: github/codeql-action/init@v4.37.7
+      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
         with:
           languages: java-kotlin
           build-mode: manual
@@ -110,6 +110,6 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
-      - uses: github/codeql-action/analyze@v4.37.7
+      - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
         with:
           category: '/language:java-kotlin'
