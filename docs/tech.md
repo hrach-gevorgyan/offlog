@@ -325,6 +325,17 @@ warning is handled by the Play Store listing instead.
 The desktop **updater** has its own signing key (generated once, stored only
 as a GitHub Actions secret) — unrelated to code signing, and already in use.
 
+It reads `releases/latest/download/latest.json`, which resolves through two
+redirects: GitHub first works out *which* release is latest, then serves that
+tag's asset. Two consequences, both normal:
+
+- A **draft** release is invisible to it. `release.yml` creates drafts on
+  purpose, so the updater only offers a version once it is published.
+- For a few minutes after publishing, that first redirect can still resolve
+  to the previous tag, and the app correctly reports itself up to date. It is
+  propagation lag, not caching — the redirects carry `Cache-Control:
+  no-cache` and `checkForUpdate()` has no throttle of its own.
+
 ### Generating test data
 
 - **`scripts/seed-scenario.js`** — paste into the DevTools console. Covers
