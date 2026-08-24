@@ -154,8 +154,8 @@ phone re-finds it instead of making you pair again.
 - Light, dark, high contrast, and a reduce-motion setting every animation
   actually respects
 - Keyboard-operable throughout; WCAG AA contrast
-- **Android**: home-screen widgets, notification actions, hardware back
-  button
+- **Android**: a home-screen widget with Dashboard, Focus and Quick Add
+  shortcuts; notification actions; hardware back button
 - **Windows**: lives in the tray, `Ctrl+Alt+O` from anywhere, native
   notifications and save dialogs, automatic updates
 
@@ -170,9 +170,9 @@ point. Bugs found in real use get fixed, dependencies get updated,
 security reports get answered.
 
 Every release runs a zero-warning build, a clean type check and **569
-tests** through CI. The project has been through 22 structured
-maintenance audits, each working a written checklist of blind spots
-earned from real shipped bugs.
+tests** through CI. It has been through 22 structured maintenance
+audits against a written checklist of blind spots earned from real
+shipped bugs — [what each one found](docs/archive/maintenance.md).
 
 **What's next:** today one PC has to be the host, so the workspace is
 unreachable whenever that machine is off. Removing that — peer-to-peer

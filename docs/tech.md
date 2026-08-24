@@ -467,6 +467,12 @@ same UI.
   Needs `viewport-fit=cover`.
 - **Notification icons** must be white silhouettes with transparency, or
   Android substitutes a generic triangle.
+- **Home-screen widget** (`OffologWidgetProvider.java`,
+  `res/xml/offlog_widget_info.xml`): one widget with Dashboard, Focus and
+  Quick Add shortcuts. `updatePeriodMillis="0"` means `onUpdate()` only
+  runs when an instance is placed — a widget already on the home screen
+  keeps stale PendingIntents until it is removed and re-added, or the
+  device reboots.
 - `enterkeyhint` on inputs; breakpoints at 900/768/600/440px; `source` is
   `'mobile'`.
 
