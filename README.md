@@ -378,3 +378,7 @@ Android platform code.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+The code is MIT. The **name, icon and tagline are not** — a fork is
+welcome, under its own name. See [docs/brand.md](docs/brand.md)'s
+trademark section.
