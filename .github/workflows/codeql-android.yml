@@ -74,6 +74,18 @@ jobs:
           # created on a tag ref are not shareable, default-branch ones
           # are.
           cache: 'gradle'
+          # Key the cache on what actually decides the dependency graph.
+          # The default glob hashes every *.gradle* file, which includes
+          # app/build.gradle -- and that carries versionName/versionCode, so
+          # every release threw away the whole ~590MB cache for a number
+          # Gradle never resolves against. app/build.gradle only references
+          # versions via $vars from variables.gradle.
+          cache-dependency-path: |
+            offlog-app/android/variables.gradle
+            offlog-app/android/build.gradle
+            offlog-app/android/capacitor.settings.gradle
+            offlog-app/android/app/capacitor.build.gradle
+            offlog-app/android/gradle/wrapper/gradle-wrapper.properties
 
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4
 
