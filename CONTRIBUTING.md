@@ -3,7 +3,7 @@
 Offlog is a single-maintainer, self-hosted personal task manager — see
 [docs/decisions.md](docs/decisions.md)'s manifesto for the mission and
 the rest of that same file for why certain choices (no accounts, no
-hosted backend, no F-Droid/iOS, no monetization) are closed questions
+hosted backend, no iOS, no monetization) are closed questions
 rather than open ones. Read those before proposing anything that
 touches them.
 

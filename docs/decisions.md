@@ -5,20 +5,22 @@
 A task manager any non-technical person can pick up and use, with zero
 knowledge of backends, servers, or databases required. Install the PC app
 from a website, install the Android app from Google Play, use either one
-completely on its own. When someone has both, the PC acts as the host and
-they sync automatically over home Wi-Fi — private, not public, secure
-enough on its own. A small, trusted, co-located group (family, a small
-team, one office) can also share one local workspace by connecting their
-own devices to the same host — a shared board, not individual accounts or
-permissions.
+completely on its own. When someone has both, they sync automatically over
+home Wi-Fi — private, not public, secure enough on its own. A PC acting as
+the host is how that works today; removing the need for any one machine to
+be the host is the current direction (see roadmap.md). A small, trusted,
+co-located group (family, a small team, one office) can also share one local
+workspace by connecting their own devices to the same host — a shared board,
+not individual accounts or permissions.
 
 The core app stays free, always, with no feature ever paywalled — open
 source, self-hostable, forkable. Integrations and automation are
-deliberately not part of the free core. Phone-as-host, remote/away-from-
-home sync, and per-user accounts or permissions are explicitly not part of
-this goal. This section states *why* and *what*, not *when* — that's
-[roadmap.md](roadmap.md). For anything this implies but doesn't resolve,
-see "Open Questions" below.
+deliberately not part of the free core. Remote or away-from-home sync and
+per-user accounts or permissions are explicitly not part of this goal; sync
+stays on the local network, between devices their owner controls. This
+section states *why* and *what*, not *when* — that's
+[roadmap.md](roadmap.md). For anything this implies but doesn't resolve, see
+"Open Questions" below.
 
 ---
 
@@ -141,12 +143,15 @@ PouchDB's deterministic auto-resolution. Revisit only if the conflict
 ## Distribution & business model
 
 ### PWA support dropped entirely, not patched further
-The installable-web path kept causing stale-icon-after-update problems
-and wasn't earning its complexity, since real use is a plain browser tab
-plus the Android app. Removed outright; `main.ts` actively unregisters
-any leftover service worker from a previous PWA-enabled build. The PC
-standalone app is the Tauri app (see below), explicitly not a second PWA
-attempt.
+The installable-web path kept causing stale-icon-after-update problems and
+wasn't earning its complexity, since real use is a plain browser tab plus
+the Android app. Removed outright; `main.ts` actively unregisters any
+leftover service worker from a previous PWA-enabled build. The PC
+standalone app is the Tauri app, explicitly not a second PWA attempt.
+
+Consequence worth knowing: with no service worker, the web build cannot
+load while offline. Its data is local (IndexedDB) and works offline once
+loaded, but the page itself needs the network to start.
 
 ### No business model at all, not even an optional paid layer
 Offlog is a personal tool built for its owner's own use, not a product
@@ -195,29 +200,20 @@ the existing Svelte/Vite build as-is and produces a far smaller installer
 than Electron, which matters for "someone with no technical background
 just downloads and runs it."
 
-### F-Droid explicitly out of scope
-Offlog isn't positioned as "needs to be in every store"; F-Droid's
-audience/process overhead isn't worth it here. Distribution stays GitHub
-(source) + a website + Google Play. iOS is out of scope entirely unless a
-future community contribution takes it on.
+### Distribution: GitHub, a website, and Google Play
+Source from GitHub, builds from a website, Android from Google Play.
+Nothing else is worth the process overhead for a project this size.
 
 ### iOS: community contribution only, PWA is the zero-cost path
 A native iOS app needs a Mac, Xcode, and Apple's $99/year developer
 account — the fee alone contradicts the zero-cost stance, so this is
-community-contribution only, never planned work. The realistic zero-cost
-route onto an iPhone is the existing web build as a PWA (Safari → Add to
-Home Screen), with real gaps: no widgets, no lock-screen notification
-actions, and LAN sync from a PWA is untested. If it ever matters, the
+community-contribution only, never planned work. The nearest zero-cost route onto
+an iPhone is Safari's Add to Home Screen, which is a shortcut, not an
+installed app — and since PWA support was deliberately removed (see that
+entry), it will not load without a network connection. Add no widgets, no
+lock-screen notification actions, and untested LAN sync. If it ever matters, the
 first step is testing the current web build on a real iPhone, not
 building a native app.
-
-### Repo is public; the credential/history gate is cleared
-Going public was gated on a hardcoded sync password/LAN IP in `config.ts`
-(present in git history too) and a git-history purge of leaked
-credentials. Both are resolved: NyxDB's per-install random pairing
-replaced the baked-in credentials, and the history purge is documented
-below. Standing rule: grep the *built output*, not just source, when
-checking for secrets — Vite loads `.env.local` in every build mode.
 
 ---
 
@@ -314,14 +310,6 @@ flag, so a device with nothing enrolled can't end up "enabled" with no
 way to unlock. A cancelled/failed biometric attempt falls through
 silently to the PIN screen.
 
-### Accepted risk: `glib` 0.18.5 advisory in offlog-desktop, no fix available
-A moderate unsoundness advisory, patched in `glib` 0.20.0 — unreachable
-here since `glib` is transitively pinned by Tauri's own `gtk` dependency
-(`^0.18`), and no patched 0.18.x release exists. Blocked on Tauri bumping
-upstream, not fixable locally. The unsound path is only reached through
-this app's own local, non-adversarial code — no network-facing input
-touches it. Re-check whenever Tauri/Cargo deps next get bumped.
-
 ### TypeScript 7 is allowed, with `cap sync android` as a required gate
 TS 7 passes build/tsc/tests but broke `cap sync android` through a
 Capacitor CLI config-loader bug none of the local checks exercise; fixed
@@ -406,12 +394,15 @@ Turns a one-time fix into institutional memory that survives across
 sessions with no persistent AI memory of their own. Keep doing this
 without exception.
 
-### The roadmap is finite — a plan with an end
-Offlog isn't competing for organic attention in a market giants own, and
-sprint pace would end in burnout-abandonment, not a finished product.
-roadmap.md is a finite plan with a defined "Done" state, then maintenance
-mode. The mission is "a tool for its owner, given away as-is," and *being
-finished* is that mission succeeding.
+### The roadmap is finite, and a finished plan can be followed by another
+Offlog isn't competing for attention in a market giants own, and sprint
+pace would end in abandonment rather than a finished product. So roadmap.md
+is a finite plan with a defined end, then maintenance mode — and *being
+finished* is the mission succeeding, not stalling.
+
+That plan completed. A new direction (mesh sync) was then chosen from real
+daily use, which is the only thing that reopens planned work — not a
+backlog, not an idea. The rule is unchanged: finite, with an end.
 
 ### `reset-dev-env.ps1 -IncludeRelease` is a real data-loss risk, not routine
 It wipes the real installed app's own data, not just the dev build's.

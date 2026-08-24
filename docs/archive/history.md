@@ -259,4 +259,4 @@ rather than guessed at.
 
 - **B28, Rethink "last column = done"** - parked. The positional-done convention (`column_id === columns.at(-1)`) is a locked invariant (see decisions.md) with no multiple terminal states. Needs a real design conversation before any implementation. Parked with the feature-phase wind-down; revisit only if daily dogfooding proves the current rule actually hurts.
 - **B33, Sub-projects** - parked. Nested project hierarchy. Touches the data model, every project-picker UI, and Dashboard/sidebar nesting — exactly the kind of architecture experiment the stabilization pivot exists to stop. Revisit post-release only if real daily use demands it.
-- **C4, F-Droid listing** - declined. Considered and explicitly declined by the owner (2026-07-02): distribution stays to GitHub + a website + Google Play; no iOS. See decisions.md.
+- **C4, F-Droid listing** - declined. Distribution stays GitHub, a website, and Google Play. See decisions.md.

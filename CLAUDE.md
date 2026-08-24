@@ -90,7 +90,7 @@ read-everything every time):
 **Before proposing "why not just do X differently" — check
 docs/decisions.md first.** Several non-obvious choices (PouchDB-as-UMD-
 global, a self-hosted CouchDB-protocol backend over any hosted
-alternative, soft-delete-only, positional "done", no F-Droid/iOS, no
+alternative, soft-delete-only, positional "done", no iOS, no
 paywall ever) have already been debated and
 closed with reasons recorded there. Don't re-open them without new
 information.
@@ -403,7 +403,7 @@ actionable rules, kept short on purpose:
 - **No business model, ever — don't propose monetization** unless the
   owner raises it again.
 - **Distribution stays GitHub + a website + Google Play** — don't propose
-  F-Droid or iOS without the owner raising it first.
+  another channel without the owner raising it first.
 
 ## Release checklist
 
