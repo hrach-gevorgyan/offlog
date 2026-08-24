@@ -174,16 +174,22 @@ implication. Forking, modifying, and redistributing under MIT —
 including commercially — remains fully allowed; a fork just needs its own
 name.
 
-### SignPath (not a paid cert) for Windows code signing
-The Windows installer triggers a SmartScreen "unverified publisher"
-warning without a paid code-signing certificate (~$100-400/year). Offlog
-is a clean fit for SignPath Foundation's free open-source program (MIT,
-no proprietary deps, actively maintained, real releases, no telemetry),
-so applying there is preferred over paying. Android's equivalent warning
-is solved by the Play Store listing, not by code signing. The
-application is currently declined for lack of public-visibility signals
-(stars/forks/discussion), not on merit — parked until the project has
-enough organic traction to reapply.
+### Windows code signing: not pursued, paid or free
+The installer triggers a SmartScreen "unverified publisher" warning
+without a code-signing certificate (~$100-400/year). Paying is rejected
+outright — putting a yearly fee between a person and the right to hand
+out software they wrote runs against the reason this is open source at
+all. SignPath Foundation's free open-source program was applied to and
+declined for insufficient public-visibility signals, and reapplying is
+not planned: a free-for-open-source programme that asks for popularity
+first inverts its own purpose, since the projects that most need help
+being trusted are precisely the ones it turns away, and by the time a
+project qualifies the favour is worth far less — so the search is for a
+genuinely free way to distribute the desktop app instead. Until one
+exists, the accepted position is that Windows shows a first-install
+warning. Desktop updates are signature-verified regardless — a separate
+mechanism, already in place. Android's equivalent warning is solved by
+the Play Store listing, not by code signing.
 
 ### Tauri, not Electron, for the PC standalone app
 Decided by prototyping the riskiest parts — a Tauri shell wrapping the
@@ -402,7 +408,7 @@ A policy with nothing to disclose reads as suspiciously sparse if it just
 says "nothing is collected." [PRIVACY.md](PRIVACY.md) states that plainly
 and then explains *why* for each category a reviewer expects (accounts,
 analytics, sync, permissions) by pointing at the actual mechanism. Serves
-both the Play Store listing and the SignPath application.
+the Play Store listing.
 
 ### Task linking: related-only, forward-only, links survive delete
 **Scope** — related-only, no directional blocks/blocked-by semantics

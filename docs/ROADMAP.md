@@ -51,10 +51,6 @@ any change: does it make Offlog nicer to use, or just bigger?
   question worth checking before assuming a smooth listing: does the
   app's local-network sync trigger extra review friction? See
   DECISIONS.md.
-- **C3b, Windows code signing (SignPath).** Applied, declined for lack
-  of public-visibility signals — not a rejection on merit, reapply
-  welcome later. Free-program-only, permanently: if it's ever not free,
-  it stays undone. Not blocking anything.
 - **C5, landing page.** One plain GitHub Pages page. On hold, no energy
   for it right now. Not blocking anything.
 
