@@ -1,16 +1,12 @@
 # Offlog — Brand Book
 
-The single reference for anything public-facing (README, landing page,
-Play Store listing, social posts, and any future visual brand-kit
-generation) to build from, so tone and identity stay consistent
-instead of being reinvented per surface. This is C6 in
-[roadmap.md](roadmap.md) — assembled from identity elements that
-already existed (icon, colors, typography) but were never gathered
-into one place, then extended into a full reference deliberately
-detailed enough to brief a design pass from directly. Also covers
-trademark/usage terms (§10) — merged in from the old TRADEMARK.md
-2026-07-31, since "what the brand is" and "who can use it" are the
-same question asked from two directions.
+The single reference for anything public-facing — README, landing page,
+store listing, social posts — so tone and identity stay consistent
+instead of being reinvented per surface. Detailed enough to brief a
+design pass from directly.
+
+Section 10 covers trademark and usage terms: "what the brand is" and
+"who may use it" are the same question from two directions.
 
 ---
 
@@ -22,23 +18,16 @@ record — the app already keeps a literal changelog/history of every
 change made, so this isn't a stretch metaphor, it's a real feature).
 
 **Name-explainer line** (for a landing-page footer, About section, or
-FAQ — chosen 2026-07-22): *"Offlog: off the cloud, still logged."*
+FAQ): *"Offlog: off the cloud, still logged."*
 Playful register (echoes "still logged in") without leaning on hype
 words — matches the voice rules in §3.
 
 Pronunciation: "off-log," rhymes with "off log," not "AWF-logue."
 
-## 2. Mission (recap — full version in decisions.md)
+## 2. Mission
 
-A task manager any non-technical person can pick up and use, with zero
-knowledge of backends, servers, or databases required — install it,
-open it, it works. When someone has both a phone and a PC, the PC acts
-as the sync host and they connect automatically over home Wi-Fi:
-private, not public. The core app stays free always, no feature ever
-paywalled. See [decisions.md](decisions.md)'s opening manifesto for the
-full statement and its boundaries (no accounts, no remote sync, no
-per-user permissions) — this file doesn't restate it, only draws from
-it.
+Not restated here. See [decisions.md](decisions.md)'s opening manifesto
+for the mission and its boundaries — this file draws from it.
 
 ## 3. Brand personality
 
@@ -119,20 +108,17 @@ copy that implies enterprise/team-admin capability Offlog doesn't have
 
 ### Color
 
-One accent, used identically across web/Android/desktop (full token
-table in [tech.md](tech.md)'s "Theme System" section — this is the
-brand-relevant subset, restated here so a design pass doesn't need to
-cross-reference two files):
+**One accent, and only one:**
 
-| Token | Light | Dark | Role |
-|---|---|---|---|
-| Accent | `#5457E0` | `#818CF8` | buttons, links, active states, the *only* brand color |
-| Background | `#F6F7F9` | `#181A20` | page background |
-| Surface | `#FFFFFF` | `#242934` | cards, panels |
-| Text (primary) | `#1F2937` | `#F3F4F6` | body copy |
-| Text (muted) | `#4B5563` | `#A3A9B7` | secondary copy, captions |
-| Danger | `#DC2626` | `#F87171` | errors, destructive actions only |
-| Success | `#22C55E` | `#4ADE80` | done states, confirmation only |
+| | Light | Dark |
+|---|---|---|
+| Accent | `#5457E0` | `#818CF8` |
+
+Every other colour — background, surface, text, danger, success — lives
+in [tech.md](tech.md)'s Theme System table, which is the single source
+of truth. Don't copy those values here; the accent alone already has to
+stay in step with `app.css`, Android's `colors.xml` and
+`capacitor.config.ts`.
 
 **Rules for any new public material** (landing page, store banner,
 social card):
@@ -147,21 +133,15 @@ social card):
   gradients, public material shouldn't invent a different visual
   language than the actual app.
 
-**shields.io badges** (README, 2026-07-30): any badge whose color is
-freely chosen (license, tech-stack badges) uses the accent hex
-(`5457E0`) via `?color=5457E0` (or the literal hex in a static
-`img.shields.io/badge/...` URL) — same "one accent, no second marketing
-color" rule as everything else. Badges whose color is fixed by the
-service itself (GitHub's own CI status badge, a simple-icons logo's
-brand color like Svelte's orange) are left as-is; overriding a
-recognizable third-party logo's own color would look broken, not
-on-brand. **Prefer a real, dynamic GitHub/shields.io endpoint over a
-hardcoded number in prose** — a fact that changes (commit count,
-release version, download total) belongs in a live badge, not a string
-that will quietly go stale the next time nobody remembers to update it
-(this is why "Built up over 170+ commits" in the Features intro was
-replaced with stable phrasing plus a live commit-activity badge instead
-of just updating the number once more).
+**A number that changes belongs in a live badge, not in prose.** Commit
+counts, versions, download totals — anything written as a literal string
+goes stale the moment nobody remembers to update it. Use a real
+shields.io or GitHub endpoint instead.
+
+**Badge colour:** any badge whose colour is free (licence, tech-stack)
+uses the accent, `?color=5457E0`. Badges whose colour belongs to the
+service or a recognisable logo — GitHub's CI status, Svelte's orange —
+are left alone; overriding those looks broken, not on-brand.
 
 ### Typography
 
@@ -177,9 +157,8 @@ default font or a second "display" typeface for headlines.
 - **Body copy:** Hanken Grotesk, regular weight.
 - **No second typeface, ever**, including for code/mono contexts — the
   in-app `--mono` token also just points at Hanken Grotesk (a second,
-  monospace face was tried and reverted 2026-07-19 on owner feedback
-  that it read as inconsistent — same logic applies to any public
-  material).
+  monospace face was tried and reverted — it read as inconsistent, and
+  the same applies to any public material).
 
 ### Icon & mark
 
