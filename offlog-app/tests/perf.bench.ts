@@ -1,4 +1,4 @@
-import { bench, describe, beforeAll } from 'vitest';
+import { bench, describe } from 'vitest';
 import db, {
   createSpace, createProject, getDashboardData, getTasksForProject,
   searchAllTasks, invalidateTaskCache,
@@ -23,7 +23,12 @@ const PROJECT_COUNT = 8;
 
 let targetProjectId = '';
 
-beforeAll(async () => {
+// Seeded lazily and awaited inside every bench, NOT in beforeAll: vitest does
+// not run beforeAll in `vitest bench`, so this file previously measured an
+// EMPTY database and its numbers meant nothing. Verified with a probe -- the
+// bench body saw 0 documents. The seed cost lands in warmup, not the samples.
+let ready: Promise<void> | null = null;
+const seed = async () => {
   const space = await createSpace('Bench Space', '#6366f1');
   const projects = [];
   for (let i = 0; i < PROJECT_COUNT; i++) {
@@ -48,10 +53,15 @@ beforeAll(async () => {
   }
   await db.bulkDocs(docs as any[]);
   invalidateTaskCache();
-}, 60000);
+};
+const ensure = () => (ready ??= seed());
 
 describe(`read-path latency at ${TASK_COUNT}-task scale`, () => {
-  bench('getDashboardData()', async () => { await getDashboardData(); });
-  bench('getTasksForProject() — one of 8 projects', async () => { await getTasksForProject(targetProjectId); });
-  bench('searchAllTasks() — common term', async () => { await searchAllTasks('searchable-term'); });
+  // invalidateTaskCache() first, or these measure the in-memory task cache
+  // rather than the query: cached, getDashboardData reports ~0.02ms for work
+  // that costs tens of ms cold, and reports every database size as identical.
+  bench('getDashboardData()', async () => { await ensure(); invalidateTaskCache(); await getDashboardData(); });
+  bench('getTasksForProject() — one of 8 projects', async () => { await ensure(); invalidateTaskCache(); await getTasksForProject(targetProjectId); });
+  bench('searchAllTasks() — common term', async () => { await ensure(); invalidateTaskCache(); await searchAllTasks('searchable-term'); });
+  bench('getDashboardData() — warm cache', async () => { await ensure(); await getDashboardData(); });
 });
