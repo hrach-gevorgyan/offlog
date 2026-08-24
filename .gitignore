@@ -22,3 +22,6 @@ offlog-app/android/build/
 # Screenshots/exports for store listings, landing page, etc -- generated,
 # never part of the shipped app or its source.
 /brand kit/
+
+# Personal build narrative -- kept locally, not published
+/docs/archive/story.md

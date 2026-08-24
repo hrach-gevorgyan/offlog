@@ -30,11 +30,7 @@ TRADEMARK.md 2026-07-31: the MIT license covers code only, name/icon/
 tagline are reserved separately; read before approving a fork's naming
 or any brand-adjacent request), [docs/privacy.md](docs/privacy.md) (the app-store-required privacy
 policy, roadmap.md's C3 — update it only if a feature actually changes
-what data the app touches, per its own decisions.md entry), and
-[docs/story.md](docs/story.md) (the narrative account of the whole
-2026-07 build, written on the last day of development — background
-reading, never a source of truth; if it ever contradicts decisions.md
-or tech.md, they win and story.md is the stale one). The
+what data the app touches, per its own decisions.md entry). The
 maintenance-pass process
 lives in [docs/maintenance.md](docs/maintenance.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
@@ -477,7 +473,7 @@ debug-keystore-signed `release` APK go out as a real release build.
   reverted. None of that survives contact with a reader who wasn't there,
   and it actively misleads: a comment describing a decision's *history*
   gets read as describing its *current* rationale. That history already
-  lives in git and in `docs/story.md` — the two places built for it.
+  lives in git, which is where it belongs.
   - Bad: `// redesign/v6: was bare floating text (owner feedback,
     2026-07-28: "awful"). Moved into a pill to match the badges.`
   - Good: *(nothing — the code shows a pill; there is no rule here)*

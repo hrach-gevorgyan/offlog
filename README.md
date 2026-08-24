@@ -109,10 +109,7 @@ Built over July 2026; since 2026-08-01 it's the author's own primary
 task manager. Bugs get fixed, dependencies get updated, security reports
 get answered — what it doesn't have is a feature roadmap. New features
 are judged against real daily use rather than a backlog, so open an
-issue before building one. [docs/story.md](docs/story.md) is the honest
-account of how it got built — including the month the foundation was
-thrown out and rewritten, and the backup bug caught twelve hours before
-it mattered.
+issue before building one.
 
 ## Features
 
@@ -238,8 +235,7 @@ The last three of those passes ran on the final day, deliberately
 scoped to ask *what could destroy real data* and *what breaks after
 weeks without a restart* rather than *what's untidy* — which is how a
 backup system that couldn't restore any backup containing an attachment
-got found and fixed before it was ever needed. That story is in
-[docs/story.md](docs/story.md).
+got found and fixed before it was ever needed.
 
 ## Getting Started
 
@@ -327,7 +323,6 @@ Everything beyond this pitch lives in [docs/](docs/):
 
 | Document | What's in it |
 |---|---|
-| [docs/story.md](docs/story.md) | How it actually got built, written on the last day of development — the plan, the rewrite, the near-misses |
 | [docs/decisions.md](docs/decisions.md) | Manifesto, open questions worth outside input, and why non-obvious choices were made |
 | [docs/tech.md](docs/tech.md) | Architecture, data model, sync internals, theme tokens, release/signing pipeline |
 | [docs/roadmap.md](docs/roadmap.md) | Current status and still-open planned work |
@@ -335,8 +330,8 @@ Everything beyond this pitch lives in [docs/](docs/):
 | [docs/release-notes.md](docs/release-notes.md) | The same releases in plain language — what actually changed for you |
 | [docs/maintenance.md](docs/maintenance.md) | The maintenance-pass checklist, including the blind spots earned by real shipped bugs |
 | [docs/privacy.md](docs/privacy.md) | Privacy policy (short, because the app collects nothing) |
-| [docs/archive/history.md](docs/archive/history.md) | Older releases, one line each |
-| [docs/archive/history.md](docs/archive/history.md) | Shipped/declined/parked roadmap history |
+| [docs/archive/history.md](docs/archive/history.md) | Older releases and the numbered roadmap items they came from |
+| [docs/archive/maintenance.md](docs/archive/maintenance.md) | What every maintenance pass found |
 | [docs/brand.md](docs/brand.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
