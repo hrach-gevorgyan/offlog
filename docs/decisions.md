@@ -338,6 +338,34 @@ Each platform uses its own primitive instead:
 Existing installs migrate silently from the old plaintext keys, no
 re-pairing needed.
 
+### Versioning: MAJOR means a compatibility break, nothing else
+Offlog has no public API, so SemVer's "breaking change" has to be defined
+against the interfaces it does expose: the document schema, the storage
+format, the backup/export format, and replication compatibility. MAJOR is
+reserved for a change where an older install can no longer read, sync or
+restore without a migration. A feature is never MAJOR, however large.
+MINOR is a user-visible capability; PATCH is a fix or maintenance work.
+
+This reverses how versions were assigned through v6.5.0, which produced
+six majors in about a month for releases that were all additive -- v4.0.0
+was due-date shortcuts and tag autocomplete. A number chosen by how
+significant a release felt tells a user nothing about upgrade risk, which
+is the only thing a version number is for.
+
+The same drift left 11 versions documented but never tagged, two-segment
+tags (`v2.4`), a `v2.4.1-fixes` tag, and a `versionCode` that had wandered
+to 117 against 108 tags. So the rules are enforced by
+`offlog-app/scripts/version.js`, not by memory: `version:set` writes all
+three version sources at once, `version:check` fails if they disagree or
+if either doc lacks an entry, CI runs it on every push, and `release.yml`
+refuses to publish a tag that does not match.
+
+`versionCode` is derived, never typed: `MAJOR*10000 + MINOR*100 + PATCH`.
+Play rejects a decreasing code permanently, so the formula is fixed for
+good; it clears every hand-assigned code already published (highest 117)
+and caps MINOR/PATCH at 99. Retrofitted onto 6.5.0 as 60500 -- higher than
+the 117 its published APK carries, so upgrades are unaffected.
+
 ### Cleartext HTTP is allowed app-wide on Android, and LAN sync has no TLS
 Sync targets a self-hosted server on the local network, addressed by IP.
 A certificate for a rotating private address can only be self-signed,

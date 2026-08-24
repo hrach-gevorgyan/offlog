@@ -50,6 +50,11 @@ jobs:
       # This runs svelte-check over tsconfig.app.json,
       # which is the only thing that checks .svelte files at all, plus tsc
       # over the node config.
+      # Catches version drift on main, long before a tag exists: the three
+      # version sources must agree and both docs must carry an entry.
+      - name: Version consistency
+        run: npm run version:check
+
       - name: Type-check (svelte-check + tsc)
         run: npm run check
 

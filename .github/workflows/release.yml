@@ -53,6 +53,14 @@ jobs:
         working-directory: offlog-app
         run: npm ci
 
+      # Refuses to publish a release whose tag disagrees with the version
+      # in package.json / build.gradle / tauri.conf.json, or that has no
+      # changelog and release-notes entry. Runs before anything is built,
+      # so a wrong tag costs nothing and publishes nothing.
+      - name: Verify the tag matches the version
+        working-directory: offlog-app
+        run: node scripts/version.js check --tag "$GITHUB_REF_NAME"
+
       - name: Build web assets
         working-directory: offlog-app
         run: npm run build

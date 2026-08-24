@@ -290,7 +290,8 @@ round-trip counts are stable across machines and wall-clock times are not.
 
 ### CI (`.github/workflows/`)
 
-- **`ci.yml`** — on `offlog-app/**`: type-check, zero-warning build, tests.
+- **`ci.yml`** — on `offlog-app/**`: version consistency, type-check,
+  zero-warning build, tests.
 - **`desktop-ci.yml`** — on `src-tauri/**` and the NyxDB fetch script: a
   real release `cargo build`, which also warms the cache release runs
   restore. Deliberately not all of `offlog-desktop/**` — dev-only scripts

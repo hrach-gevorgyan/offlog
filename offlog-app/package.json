@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json --tsgo && node ./node_modules/@typescript/native/bin/tsc -p tsconfig.node.json",
     "test": "vitest run",
+    "version:check": "node scripts/version.js check",
+    "version:set": "node scripts/version.js set",
     "bench": "vitest bench"
   },
   "devDependencies": {

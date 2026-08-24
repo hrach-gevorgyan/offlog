@@ -245,17 +245,22 @@ inside and import it back.
 1. `npm run build`, `npm run check`, `npm test` — all clean, judged by exit
    code
 2. Verify visually in light **and** dark mode
-3. Bump the version in `package.json`, `android/app/build.gradle`
-   (`versionCode` +1, `versionName`) and
-   `offlog-desktop/src-tauri/tauri.conf.json` — all three, every release
+3. `npm run version:set X.Y.Z` — writes all three version sources and
+   derives `versionCode`. Never edit them by hand. **MAJOR only when an
+   older install can no longer read, sync or restore** (schema, storage,
+   backup format, or a required migration); MINOR for a user-visible
+   capability; PATCH for a fix. A feature is never MAJOR, however large —
+   see decisions.md.
 4. Add a `docs/changelog.md` entry (Keep a Changelog format) **and** a
    `docs/release-notes.md` entry in plain language with its **In short**
    block. Both, always — they're written for different readers. Nothing
    user-visible still gets a one-line entry; the extraction script needs one.
-5. Check maintenance.md's current pointer. If a pass is due, say so and wait
+5. `npm run version:check` — must exit 0. It also runs in CI, and
+   `release.yml` refuses to publish a tag that disagrees with it.
+6. Check maintenance.md's current pointer. If a pass is due, say so and wait
    for confirmation — don't start one.
-6. Commit (`feat:`/`fix:`, version in the subject) and tag `vX.Y.Z`
-7. After a real test round, reset to a fresh state —
+7. Commit (`feat:`/`fix:`, version in the subject) and tag `vX.Y.Z`
+8. After a real test round, reset to a fresh state —
    `offlog-desktop/scripts/reset-dev-env.ps1` plus the browser/Android steps
    in tech.md. Dev state accumulates silently otherwise.
 
