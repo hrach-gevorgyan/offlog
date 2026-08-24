@@ -6,7 +6,7 @@ reasoning behind any of it lives in [DECISIONS.md](DECISIONS.md), not
 here. Maintenance cadence lives in [MAINTENANCE.md](MAINTENANCE.md).
 
 Current version: [CHANGELOG.md](CHANGELOG.md). Shipped, declined and
-parked history: [archive/roadmap-archive.md](archive/roadmap-archive.md).
+parked history: [archive/HISTORY.md](archive/HISTORY.md).
 
 Organised as **Now / Next / Later**. Nothing here is dated, and nothing in
 Later is a promise.

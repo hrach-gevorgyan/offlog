@@ -12,7 +12,7 @@ body is generated from.
 
 The newest 10 releases are kept here in full. Older ones are compressed to
 one line each in
-[archive/changelog-archive.md](archive/changelog-archive.md). When this list
+[archive/HISTORY.md](archive/HISTORY.md). When this list
 exceeds 10 releases, move the oldest into the archive.
 
 ---

@@ -1,21 +1,27 @@
-# Offlog — Changelog Archive
+# Offlog - History Archive
 
-Older releases, compressed to one line each (full detail lives in git —
-each row references its tag, e.g. `git show v3.9.8`). Split out of
-[../CHANGELOG.md](../CHANGELOG.md) 2026-07 once that file's recent-version
-table grew large enough that loading it by default got expensive;
-CHANGELOG.md keeps the newest ~10 releases in full detail and points here
-for anything older. Nothing is lost — this is a compression of an
-already-complete git history, not the only remaining record. Moved into
-`docs/archive/` alongside `roadmap-archive.md` during the 2026-07-20 docs
-restructuring (see DECISIONS.md) — this folder is where anything long-form
-but no longer "current" goes, archived roughly weekly rather than left to
-balloon the live docs.
+Two records, one file:
 
-This file also holds the full maintenance-pass history (moved from
-MAINTENANCE.md's old in-file tracker, which is now docs/MAINTENANCE.md and
-carries only the process instructions plus a one-line current pointer) —
-see [maintenance-archive.md](maintenance-archive.md).
+1. **[Releases](#releases)** - every release older than the newest ten in
+   [../CHANGELOG.md](../CHANGELOG.md), one line each.
+2. **[Roadmap items](#roadmap-items)** - the numbered items the roadmap
+   once tracked, so an old cross-reference like "see B39" still resolves.
+
+Maintenance passes live in
+[maintenance-archive.md](maintenance-archive.md).
+
+This is an index. Per-release detail is in
+[../CHANGELOG.md](../CHANGELOG.md); why a choice was made is in
+[../DECISIONS.md](../DECISIONS.md).
+
+The roadmap was once organised into lettered tracks and, briefly, three
+milestones. Both frameworks were dropped; the letters survive only as the
+ID namespace below. Mesh sync (Track D) was declined outright - see
+DECISIONS.md.
+
+---
+
+## Releases
 
 | Version | Summary | Tag |
 |---|---|---|
@@ -127,3 +133,133 @@ see [maintenance-archive.md](maintenance-archive.md).
 | 5.7.0 | A9 test coverage (`computeDropPosition()`/`runMaintenanceSteps()` extracted to testable pure functions) + B35 Focus/Dashboard "Daily Brief" integration + B59 unpaired-sync UX (3-step `NamePrompt.svelte` flow: device name, sync explainer, quick preferences) | `v5.7.0` |
 
 ---
+
+## Roadmap items
+
+Outcome is the version it shipped in, or its final state.
+
+### Track A - Performance & stability
+
+| ID | Item | Outcome |
+|---|---|---|
+| A9 | UI component tests | 2026-07-21 |
+| A10 | Large-dataset performance validation | v4.7.0 |
+| A11 | Error-handling audit, pass 2 | v4.6.0 |
+| A12 | Notification reliability audit | v4.4.0 |
+| A13 | Accessibility re-audit for the newer components | v3.7.0 |
+| A14 | Android hardware back-button handling | v3.7.0 |
+| A15 | Widget/back-button regression coverage | v4.1.0 |
+| A16 | Offline-queue robustness for sync | v4.2.0 |
+| A17 | Storage-pressure handling | v4.3.0 |
+| A18 | PWA not force-updating after a new version ships | v3.8.0 |
+| A19 | First launch should always open Dashboard | v3.8.0 |
+| A20 | List view attribute alignment still breaks with mixed deadlines | v3.8.0 |
+| A21 | Visual check: tag overflow past 3 tags | v3.8.0 |
+| A22 | Accidental "mark done" click has no undo | v3.8.0 |
+| A23 | Sidebar scale test with 20+ projects | v3.9.0 |
+| A24 | Version-over-version performance metrics | v4.7.0 |
+| A25 | Quick Add widget opened the app but not Quick Add | v3.9.8 |
+| A26 | PWA staleness / dev workflow | v4.11.1 |
+| A27 | Project-view no longer force-resets to Kanban on every refresh | v3.9.8 |
+| A28 | Exact-alarm ("Alarms & reminders") permission has no in-app status/control | v3.9.8 |
+| A29 | "Cannot reach sync server" doesn't say why | v4.4.1 |
+| A30 | Full codebase audit, cleanup, and documentation-flow optimization | v4.12.0 |
+| A31 | Full cross-platform visual/UX review | 2026-07-22 |
+| A31 | Full cross-platform visual/UX review | v4.12.0 |
+| A32 | Sync reports "synced" when devices aren't actually syncing | v4.18.0 |
+| A33 | Android notifications fire silently, not fully functional | v4.18.0 |
+| A34 | Export JSON doesn't work on Android | v4.18.0 |
+| A35 | Desktop sync defaults to loopback, not a rememberable LAN IP | v4.18.0 |
+
+### Track B - Features
+
+| ID | Item | Outcome |
+|---|---|---|
+| B1 | Space management | v3.6.0 |
+| B2 | Filters on Kanban + saved filters | v4.11.0 |
+| B3 | Notification actions | v3.7.0 |
+| B4 | Import/export v2 | v4.7.0 |
+| B5 | Multi-device polish | v4.2.0 |
+| B6 | Tag management | v3.6.0 |
+| B7 | Calendar / week view for Agenda | v4.7.0 |
+| B8 | Project templates | v4.14.0 |
+| B9 | Command palette | v4.10.0 |
+| B10 | Android quick-capture widget | v3.7.0 |
+| B11 | High contrast mode | v4.6.0 |
+| B12 | Auto-reminder from due date | v4.4.0 |
+| B13 | Sync on/off toggle | v4.2.0 |
+| B14 | Explain the storage quota number | v4.3.0 |
+| B15 | Fold Maintenance into the Settings detail pane | v4.9.0 |
+| B16 | Custom fields | v4.6.0 |
+| B17 | Dashboard as a real home screen | v4.10.0 |
+| B18 | Subtasks / checklists within a task | v4.11.0 |
+| B19 | Bulk actions in List | v4.6.0 |
+| B20 | Agenda widget | v4.1.0 |
+| B21 | Dark mode follows OS setting | v4.6.0 |
+| B22 | Named clients/devices | v4.2.0 |
+| B23 | Sidebar: last modified cards | v3.9.0 |
+| B24 | Seed data: 3 spaces, not 4 | v4.15.0 |
+| B25 | Deadline quick-suggestions on new card | v4.0.0 |
+| B26 | Tag autocomplete beyond the current project | v4.0.0 |
+| B27 | Archived tasks are too hidden | v4.9.0 |
+| B28 | Rethink "last column = done" | parked |
+| B29 | Show tags on Kanban cards | v4.15.0 |
+| B30 | Notes length guardrail | v4.14.0 |
+| B31 | Third Android widget: project list | v4.1.0 |
+| B32 | Archive a whole project | v4.9.0 |
+| B33 | Sub-projects | parked |
+| B34 | Project pinning | v3.9.0 |
+| B35 | Focus view follow-ups | v5.7.0 |
+| B35 | Focus view | v4.5.0 |
+| B36 | List view power customization | v3.8.5 |
+| B37 | Android widget final polish | 2026-07-21 |
+| B37 | Android widgets | v4.8.0 |
+| B38 | Custom calendar/date picker instead of the native one | v4.6.5 |
+| B39 | Renaming a device (B22) leaves a stale "dead" entry | v4.23.0 |
+| B40 | Sidebar bottom icon rail isn't readable | v4.8.0 |
+| B41 | Focus view | v4.8.0 |
+| B42 | Agenda doesn't use full screen width | v4.8.0 |
+| B43 | Human-friendly sync settings + Developer options | v4.16.0 |
+| B44 | Storage & quota copy, plain-language rewrite | v4.16.0 |
+| B45 | Export/import UX redesign | v4.20.0 |
+| B46 | First-run: ask for a device/user name | v4.20.0 |
+| B47 | Week start day setting | v4.22.0 |
+| B48 | Android widget: flatter, 2-color light/dark, no border highlight | v4.23.0 |
+| B49 | Card Detail redesign | v4.21.0 |
+| B50 | Custom time picker (extend B38 to reminder times) | v4.23.0 |
+| B51 | Consistent animations everywhere | v4.22.0 |
+| B52 | QR pairing | 2026-07-13 |
+| B53 | Kanban card quick-actions menu | v4.21.0 |
+| B54 | App lock (PIN + biometric) | 2026-07-19 |
+| B55 | Privacy Screen | 2026-07-20 |
+| B56 | Clipboard | 2026-07-20 |
+| B57 | App Launcher | 2026-07-20 |
+| B58 | Haptics | 2026-07-20 |
+| B59 | Sidebar sync button hidden when unpaired + 3-step first-run flow | 2026-07-21 |
+| B60 | Duplicate-name/content nudges | v5.6.0 |
+
+### Track C - Public release & open source
+
+| ID | Item | Outcome |
+|---|---|---|
+| C1 | Open-source the repository | 2026-07-22 |
+| C2 | Zero-config first run, verified | v4.24.0 |
+| C4 | F-Droid listing | declined |
+| C6 | Brand & positioning pass | 2026-07-22 |
+| C7 | Fix hardcoded CouchDB credentials | 2026-07-17 |
+| C8 | New app icon, all platforms | v4.17.0 |
+| C9 | Typography: ≤3 font families, self-hosted | v4.17.0 |
+| C10 | Plain-language pass | 2026-07-21 |
+
+### Track E - PC standalone app
+
+| ID | Item | Outcome |
+|---|---|---|
+| E1 | PC app + embedded sync host | v4.19.0 |
+| E2 | Re-resolve the PC host after pairing, not just at pairing time | v4.22.1 |
+
+### Why the parked and declined ones stopped
+
+- **B28, Rethink "last column = done"** - parked. The positional-done convention (`column_id === columns.at(-1)`) is a locked invariant (see DECISIONS.md) with no multiple terminal states. Needs a real design conversation before any implementation. Parked with the feature-phase wind-down; revisit only if daily dogfooding proves the current rule actually hurts.
+- **B33, Sub-projects** - parked. Nested project hierarchy. Touches the data model, every project-picker UI, and Dashboard/sidebar nesting — exactly the kind of architecture experiment the stabilization pivot exists to stop. Revisit post-release only if real daily use demands it.
+- **C4, F-Droid listing** - declined. Considered and explicitly declined by the owner (2026-07-02): distribution stays to GitHub + a website + Google Play; no iOS. See DECISIONS.md.

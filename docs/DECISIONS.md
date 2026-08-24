@@ -281,7 +281,7 @@ sidebar/Dashboard nesting at once — the kind of architecture experiment
 that stops a project finishing. Revisiting the positional-"done" rule is
 the same shape. Both are parked rather than declined: revisit only if real
 daily use demands it, not because either is a good idea in the abstract.
-Full context in [archive/roadmap-archive.md](archive/roadmap-archive.md)
+Full context in [archive/HISTORY.md](archive/HISTORY.md)
 (B28, B33).
 
 ### The auto-seeded "Draft" project is archivable like any other

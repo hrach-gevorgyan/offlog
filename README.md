@@ -117,7 +117,7 @@ it mattered.
 ## Features
 
 Full detail lives in [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent
-releases) and [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md)
+releases) and [docs/archive/HISTORY.md](docs/archive/HISTORY.md)
 (everything older, one line each).
 
 **Core**
@@ -335,8 +335,8 @@ Everything beyond this pitch lives in [docs/](docs/):
 | [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) | The same releases in plain language — what actually changed for you |
 | [docs/MAINTENANCE.md](docs/MAINTENANCE.md) | The maintenance-pass checklist, including the blind spots earned by real shipped bugs |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | Privacy policy (short, because the app collects nothing) |
-| [docs/archive/changelog-archive.md](docs/archive/changelog-archive.md) | Older releases, one line each |
-| [docs/archive/roadmap-archive.md](docs/archive/roadmap-archive.md) | Shipped/declined/parked roadmap history |
+| [docs/archive/HISTORY.md](docs/archive/HISTORY.md) | Older releases, one line each |
+| [docs/archive/HISTORY.md](docs/archive/HISTORY.md) | Shipped/declined/parked roadmap history |
 | [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
