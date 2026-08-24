@@ -3,7 +3,7 @@ import { closeOnBack, discardTop } from '../src/lib/modalStack';
 
 // modalStack.ts is pure JS with no Svelte/DOM dependency beyond
 // window.history/popstate (see its own header comment) — a real target
-// for unit coverage per ROADMAP.md A15, without mounting any component.
+// for unit coverage per archive/history.md A15, without mounting any component.
 //
 // No beforeEach reset here: jsdom's history.back() doesn't resolve
 // synchronously (real browsers process history navigation asynchronously

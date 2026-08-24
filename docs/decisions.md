@@ -416,9 +416,10 @@ and then explains *why* for each category a reviewer expects (accounts,
 analytics, sync, permissions) by pointing at the actual mechanism. Serves
 the Play Store listing.
 
-### Task linking: related-only, forward-only, links survive delete
-**Scope** — related-only, no directional blocks/blocked-by semantics
-(simpler data shape, no dependency-tracking logic to maintain).
+### Task linking: non-directional, forward-only, links survive delete
+**Scope** — `related` is non-directional by design. Directional
+dependency is a separate field (`blocked_by`), added later once daily use
+demanded it; don't fold the two together.
 **Storage** — forward-only on whichever task the link was added from,
 reverse direction computed at read time by scanning for it, since PouchDB
 can't write two docs atomically and a mirrored write risks landing

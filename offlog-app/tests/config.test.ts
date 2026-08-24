@@ -6,7 +6,7 @@ import { invokeTauri, getSyncCredentials, setSyncCredentials, isAppLockEnabled, 
 // credentials, since the PC app now generates a random password per
 // install.
 //
-// C7 (ROADMAP.md, mandatory release-gate item): the old fallback was a
+// C7 (archive/history.md C7, mandatory release-gate item): the old fallback was a
 // real hardcoded password baked into source — a public-repo blocker on
 // its own. Not testing "falls back to the env/static default" here on
 // purpose: `VITE_SYNC_USER`/`VITE_SYNC_PASS` come from this dev
@@ -25,7 +25,7 @@ describe('getSyncCredentials()/setSyncCredentials()', () => {
     await expect(getSyncCredentials()).resolves.toEqual({ user: 'paired-user', pass: 'paired-pass' });
   });
 
-  // C8 (ROADMAP.md): plain-web/dev (no Tauri, no Capacitor native
+  // C8 (archive/history.md): plain-web/dev (no Tauri, no Capacitor native
   // platform in this test environment) is the one path that still uses
   // localStorage directly -- an existing install upgrading past C8 has
   // its real credentials sitting in the *old* plaintext keys and must
@@ -43,7 +43,7 @@ describe('getSyncCredentials()/setSyncCredentials()', () => {
   });
 });
 
-// App lock: a PIN gate on the UI, not data encryption (see DECISIONS.md).
+// App lock: a PIN gate on the UI, not data encryption (see docs/decisions.md).
 // The PIN itself is never stored in plaintext — only a salted hash —
 // so these tests go through setAppLockPin()/verifyAppLockPin() rather
 // than asserting a specific localStorage value.
@@ -134,7 +134,7 @@ describe('App lock (PIN)', () => {
 });
 
 // Recovery code: the real route back in if the PIN is forgotten (see
-// DECISIONS.md/config.ts's own comments for why this replaced a plain
+// docs/decisions.md/config.ts's own comments for why this replaced a plain
 // "Forgot PIN -> clear it" button — that was a bypass reachable with no
 // knowledge at all, not a lock). Only the salted hash is ever stored;
 // these tests go through setAppLockPin()'s returned plaintext code and
@@ -192,7 +192,7 @@ describe('App lock recovery code', () => {
   });
 });
 
-// Biometric: an opt-in flag only, alongside the PIN — see DECISIONS.md's
+// Biometric: an opt-in flag only, alongside the PIN — see docs/decisions.md's
 // "Biometric unlock sits alongside the PIN" entry. No new secret to store
 // here (the OS itself holds the enrolled biometric), just whether this
 // device opted in.

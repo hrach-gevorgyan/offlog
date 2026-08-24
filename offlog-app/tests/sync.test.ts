@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { describeSyncError, attachSyncHandlers, startSync, syncNow, cancelSync, syncState } from '../src/lib/db';
 import { setSyncEnabled, setSyncUrl, getSyncUrl } from '../src/config';
 
-// ROADMAP.md A16 — offline-queue robustness for sync. There's no CI-reachable
+// archive/history.md A16 — offline-queue robustness for sync. There's no CI-reachable
 // CouchDB in this project to genuinely drop mid-replication against, so this
 // covers the deterministic pieces that decide how a flaky/dropped connection
 // is classified and recovered from, without any real network I/O:

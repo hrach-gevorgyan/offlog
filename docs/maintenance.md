@@ -1,4 +1,4 @@
-# MAINTENANCE PASS — Offlog
+# Offlog — Maintenance Pass
 
 A scheduled audit routine, tailored to this repo. **Not a feature
 session:** external behaviour must stay identical. Read this whole file

@@ -1,7 +1,7 @@
 # Offlog — Maintenance History
 
 What each maintenance pass found. The process, and the pointer to when the
-next one is due, live in [../MAINTENANCE.md](../maintenance.md).
+next one is due, live in [../maintenance.md](../maintenance.md).
 
 Passes 1–5 were never written up. Passes 19–21 ran together as the
 close-out of active development and were recorded only as a group — see
@@ -89,7 +89,7 @@ C7's git-history piece (owner-directed) — two real credentials
 second username+password pair that had leaked into a committed
 `.claude/settings.local.json` purged from every one of the repo's 127
 commits/71 tags via BFG Repo-Cleaner, verified by exhaustively scanning
-every remaining git object afterward. See decisions.md/ROADMAP.md C7 for
+every remaining git object afterward. See decisions.md and history.md C7 for
 the full record.
 
 ## Pass 11 — v5.0.0 (2026-07-20)
@@ -394,7 +394,7 @@ APK plus an installer and its `.sig`, with `latest.json` generated for the
 desktop updater.)
 
 Full narrative history of every maintenance pass (process defined in
-[../MAINTENANCE.md](../maintenance.md)), moved here from that file's old
+[../maintenance.md](../maintenance.md)), moved here from that file's old
 in-place tracker so the instructions file stays instructions-only. Current
 pointer (last pass / next due lives at the top of maintenance.md, not
 here — this is history, not state.

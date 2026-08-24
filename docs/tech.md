@@ -275,6 +275,10 @@ two databases), `backupRestore.test.ts` (export → wipe → restore), and
 `localStorage` (Node's own global shadows jsdom's), `Element.animate`,
 `matchMedia`, and `scrollIntoView`.
 
+`npm run bench` (`tests/perf.bench.ts`) is a separate Vitest benchmark over
+the three hot read paths. It is not a CI gate — `perfGuard.test.ts` is, since
+round-trip counts are stable across machines and wall-clock times are not.
+
 ### CI (`.github/workflows/`)
 
 - **`ci.yml`** — on `offlog-app/**`: type-check, zero-warning build, tests.

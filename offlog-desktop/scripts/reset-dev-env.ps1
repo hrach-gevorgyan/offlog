@@ -4,7 +4,7 @@
 # any test round, not just when things look broken; dev NyxDB/Tauri
 # state otherwise silently piles up release over release (E2's
 # dev/prod identity-collision bug was found *because* of exactly this
-# kind of accumulated mess -- see docs/ROADMAP.md's E2 entry).
+# kind of accumulated mess -- see docs/archive/history.md's E2 entry).
 #
 # Scope: this script only ever touches DEV/TEST state -- this machine's
 # Tauri debug config/data and debug-build logs. It never touches a real,

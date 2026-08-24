@@ -4,7 +4,7 @@ import { catchUpWeb, applyQuietHours } from '../src/lib/notifications';
 import { setQuietHours } from '../src/config';
 import type { SpaceDoc } from '../src/lib/types';
 
-// ROADMAP.md A12 (notification reliability audit). Real finding: a web
+// archive/history.md A12 (notification reliability audit). Real finding: a web
 // reminder past the 1-hour catch-up window used to never fire AND never
 // get cleared — it just sat there forever as a nominally-"active"
 // reminder that could never actually notify anyone. Regression coverage

@@ -788,7 +788,7 @@ describe('checkIntegrity / repairDatabase', () => {
   });
 });
 
-// A9 (ROADMAP.md): the step sequencing/message-formatting behind
+// A9 (archive/history.md): the step sequencing/message-formatting behind
 // SettingsPanel.svelte's "Run Maintenance" flow, extracted to
 // runMaintenanceSteps() specifically so it's reachable without mounting
 // that whole component — see its own comment in db.ts.
@@ -1735,7 +1735,7 @@ describe('backup/restore round-trip (the emergency exit)', () => {
   });
 });
 
-describe('"Blocked by" task dependencies (ROADMAP.md)', () => {
+describe('"Blocked by" task dependencies (archive/history.md)', () => {
   beforeEach(seedSpace);
 
   it('linkBlockedBy stores the dependency directionally, never mirrored onto the blocker', async () => {

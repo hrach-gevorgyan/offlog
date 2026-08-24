@@ -1,515 +1,265 @@
-# Offlog — Contributor Guide (AI & Human)
+# Offlog — Contributor Guide
 
-This file is the entry point for anyone (AI assistant or human) making
-changes — it stays at the repo root deliberately, since AI tooling only
-auto-loads a CLAUDE.md found there. Everything else lives in
-[docs/](docs/): [docs/decisions.md](docs/decisions.md) (opens with the
-project's manifesto — why this project exists and what it's ultimately
-for, deliberately no version/timeline, see roadmap.md for that — then a
-short "Open Questions" section for genuinely unresolved things nobody
-has a confident answer to yet, merged in from the old IDEAS.md
-2026-07-31, then a log of why non-obvious choices were made; merged
-GOAL.md into this file 2026-07-20), [docs/tech.md](docs/tech.md)
-(architecture — also covers Windows code signing policy, merged in
-from the old SIGNING.md 2026-07-31), [docs/roadmap.md](docs/roadmap.md)
-(current status and still-open work only — shipped/declined/parked
-history lives in
-[docs/archive/history.md](docs/archive/history.md)),
-[docs/changelog.md](docs/changelog.md) (newest ~10 releases — older ones
-plus the full maintenance-pass log compressed into
-[docs/archive/history.md](docs/archive/history.md);
-technical/maintainer record only — for what ships to actual users see
-[docs/release-notes.md](docs/release-notes.md) instead, added 2026-07-24
-after users found the GitHub Releases page unreadable: plain language,
-`## New` / `## Fixed`, one entry per version, pulled verbatim into the
-release body by `.github/scripts/extract-release-notes.js`),
-[docs/brand.md](docs/brand.md) (tagline/pitch/voice/visual-identity
-reference for any public-facing copy — README, landing page, store
-listing — also covers trademark/usage terms, merged from the old
-TRADEMARK.md 2026-07-31: the MIT license covers code only, name/icon/
-tagline are reserved separately; read before approving a fork's naming
-or any brand-adjacent request), [docs/privacy.md](docs/privacy.md) (the app-store-required privacy
-policy, roadmap.md's C3 — update it only if a feature actually changes
-what data the app touches, per its own decisions.md entry). The
-maintenance-pass process
-lives in [docs/maintenance.md](docs/maintenance.md) (instructions only —
-its one-line current-pointer is checked at a version bump, not every
-session — see below; the full pass-by-pass history lives in
-docs/archive/maintenance.md). User-facing pitch is the root
-[README.md](README.md).
+A **single-user, local-first** task manager: no backend, no accounts, no
+telemetry. Everything works offline; the only network call is optional sync
+replication to a self-hosted NyxDB (or any CouchDB-protocol server).
 
-**Routing rule for where a new item goes** (owner clarification,
-2026-07-21): roadmap.md holds only work that's both *needed* and
-*doable* — actually going to happen. The moment something turns out to
-be not doable (technical wall, out of scope per the manifesto, or a
-deliberate no), it moves to decisions.md's log with the reasoning, not
-left sitting in ROADMAP. A genuine open question with no decision yet
-goes to decisions.md's "Open Questions" section, not ROADMAP — don't
-let ROADMAP accumulate "maybe" items dressed up as planned work.
+Svelte 5 + TypeScript + PouchDB, wrapped by Tauri (Windows) and Capacitor
+(Android). `offlog-desktop/` is a sibling project, not a subfolder — it wraps
+`offlog-app/dist` unmodified.
 
-**Mandatory, not optional: read the relevant document(s) above before
-making any change or moving forward on a request, and revise whichever of
-them your change affects afterward** — including shrinking or deleting
-content that's become stale, not just adding to it. A change that isn't
-reflected in the docs it affects isn't finished. This applies to every
-document in this list, every session, no exceptions.
+## Docs
 
-**When to read which doc** (so "the relevant document(s)" isn't a blanket
-read-everything every time):
-- **decisions.md's manifesto** — before any scope/direction question
-  ("should this be a feature," "should this need an account/server,"
-  multi-user/remote-sync proposals) — check it lines up with the stated
-  mission before proposing.
-- **tech.md** — touching architecture, the data model, sync internals, or
-  Android platform behavior.
-- **roadmap.md** — starting a roadmap item, or making sequencing/scheduling
-  decisions. Archive shipped items into `docs/archive/history.md`
-  roughly weekly, or whenever the still-open section starts accumulating
-  shipped items again — don't let it regrow into a wall of history.
-- **decisions.md's decisions log** — before any "why not X instead," or
-  touching storage/sync/business-model/distribution choices.
-- **decisions.md's Open Questions section** — only when the task is
-  itself one of the open questions, or a new one worth recording comes up.
-- **brand.md** — before writing or editing any public-facing copy
-  (README pitch, landing page, store listing, social post) — check tone/
-  tagline/color/typography line up before proposing new wording. Also
-  before responding to anything about forking, reusing the name/icon/
-  tagline, or brand ownership/licensing (§10, the trademark section).
-- **changelog.md** — only at release time (the version-bump step), not per
-  code change. Move the oldest row into `docs/archive/history.md`
-  once the table exceeds 10 rows.
-- **maintenance.md** — only when running an actual maintenance pass, or
-  checking whether one is due at a version bump (its current-pointer line
-  says last pass/next due — don't re-read the archive's full history for
-  this check).
+Read the one your change touches, and update it in the same session — a
+change not reflected in the doc it affects isn't finished.
 
-**Before proposing "why not just do X differently" — check
-docs/decisions.md first.** Several non-obvious choices (PouchDB-as-UMD-
-global, a self-hosted CouchDB-protocol backend over any hosted
-alternative, soft-delete-only, positional "done", no iOS, no
-paywall ever) have already been debated and
-closed with reasons recorded there. Don't re-open them without new
-information.
+| file | read before |
+|---|---|
+| [docs/tech.md](docs/tech.md) | architecture, data model, sync internals, Android platform behaviour |
+| [docs/decisions.md](docs/decisions.md) | any "why not X instead" or scope/direction question |
+| [docs/roadmap.md](docs/roadmap.md) | starting planned work or sequencing it |
+| [docs/brand.md](docs/brand.md) | any public-facing copy; also forks, name/icon reuse, trademark questions |
+| [docs/changelog.md](docs/changelog.md), [docs/release-notes.md](docs/release-notes.md) | release time only |
+| [docs/maintenance.md](docs/maintenance.md) | running a maintenance pass |
 
-## Token/effort discipline
+Roadmap holds only work that's both needed and doable. Something that turns
+out not to be doable moves to decisions.md with the reasoning; an unresolved
+question goes to decisions.md's Open Questions. Don't let roadmap accumulate
+maybes.
 
-Standing practice, not a one-off note — previous sessions burned tokens
-rebuilding, restarting preview servers, and narrating far more than the
-work needed. Concretely:
-
-- **Batch fixes, then verify once.** Don't rebuild + restart the preview
-  server + clear the service worker after every individual change. Make
-  all the edits for the current task, *then* run one build/verify pass.
-- **Don't reflexively spin up a live browser check for every tweak.**
-  Reserve `preview_start`/screenshots for changes whose correctness can't
-  be confirmed by reading the code (real layout/visual questions) — a
-  straightforward logic fix doesn't need a live round-trip to prove itself.
-- **Read narrowly.** Use `Grep`/an `offset`+`limit` `Read` instead of
-  reading a whole file when only a section is relevant.
-- **Rotating a changelog.md row into docs/archive/history.md**:
-  don't re-read either file in full every release. `Grep` for the row
-  you're moving (or the archive's table-header line) to confirm the
-  anchor text, then use a targeted `Edit` on each file — never a full-file
-  `Read`+`Write` round trip for what's a one-row move. Only touch the
-  archive at all when changelog.md's row count actually exceeds 10; most
-  releases don't need a rotation. Same pattern for
-  docs/roadmap.md ↔ docs/archive/history.md, done roughly weekly
-  rather than per-release.
-- **Keep responses terse.** State the result, not a running narration of
-  intermediate steps. No restating what was just done in a summary if the
-  tool output already showed it.
-- **Commit messages: 2-4 lines is usually enough.** Skip the multi-
-  paragraph rationale in the commit body when the "why" already lives in a
-  code comment or a docs/ file — link to it instead of repeating it.
-- **If a preview browser/server gets stuck, restart once and move on** —
-  don't retry the same stuck screenshot/eval call repeatedly.
-- **Use a subagent for open-ended codebase exploration** (the `Explore` or
-  `general-purpose` agent) instead of reading many files into the main
-  session directly — keeps the main context window free for the actual edit.
-- **Run `/compact` at the end of a shipped version**, not mid-task —
-  compacting mid-implementation risks losing in-progress reasoning.
-- **Use `/clear` between unrelated concerns** instead of letting one
-  session run long across topics that don't share context.
-
-## What this is
-
-A **single-user, local-first** task manager with deliberately **no backend,
-no accounts, no telemetry** — everything works fully offline and the only
-network call is optional sync replication (self-hosted NyxDB or another
-CouchDB-protocol server). Full tech stack table in
-[docs/tech.md](docs/tech.md).
+Several choices are already closed with recorded reasons — PouchDB as a UMD
+global, a self-hosted CouchDB-protocol backend, soft-delete-only, positional
+"done", no F-Droid or iOS, no paywall ever. Check decisions.md before
+reopening one.
 
 ## Commands
 
+From `offlog-app/` (Node 22+):
+
 ```bash
-cd offlog-app
-npm ci                  # first run; Node 22+ (CI pins 22, there is no engines field)
-npm run dev             # dev server at http://localhost:5173
-npm run build           # production build → dist/  (must be warning-free, see below)
-npm run check          # svelte-check + tsc (real type gate)
-npm test                # vitest — full suite (db, components, replication, backup, perf guard)
-npx vitest run tests/db.test.ts   # one file, while iterating
-npm run bench           # perf benchmarks — reporting only, no pass/fail
-npx cap sync android    # copy dist/ into the Android project (run after build)
+npm run dev      # localhost:5173
+npm run build    # → dist/, must be warning-free
+npm run check    # svelte-check + tsc
+npm test         # vitest
+npx cap sync android   # after build; run freely
 ```
 
-Android APK: `cd android && .\gradlew assembleDebug` (set
-`JAVA_HOME` to Android Studio's JBR first) — **owner-only, run by them in
-Android Studio; never invoke this as the assistant** (see Release checklist
-below).
+Dev environment is Windows — prefer POSIX-safe scripts, and ignore git's
+LF→CRLF warnings.
 
-**`offlog-desktop/`** is a sibling project (Tauri, Track E — roadmap.md
-E1), not a subfolder of `offlog-app/` — it wraps `offlog-app/dist`
-unmodified and embeds a NyxDB sync host. Its own build/architecture
-detail lives in `docs/tech.md`'s "Desktop (Tauri)" section; don't
-duplicate it here. `cargo build`/`cargo tauri build`/`cargo tauri dev`
-are fine for the assistant to run (unlike the Android APK build above)
-— there's no equivalent "owner-only" restriction for it.
+**Never run a Gradle or APK build, even when asked to verify Android
+changes.** The owner builds in Android Studio; CI builds releases. Run
+`cap sync`, confirm the code reads right, and say a Studio rebuild is needed.
 
-Dev environment is **Windows** —
-prefer POSIX-safe commands in scripts, and expect LF→CRLF warnings from git
-(harmless, don't "fix" them).
-
-## Layer rules (who may talk to whom)
+## Layer rules
 
 ```
 UI components (.svelte) → store.ts → db.ts → PouchDB
-                        ↘ db.ts directly for reads/mutations is OK,
-                          but ALWAYS reload via store helpers afterwards
-notifications.ts → db.ts   (one direction only; db.ts must never import notifications.ts)
+                        ↘ db.ts directly is OK, but reload via store after
+notifications.ts → db.ts   (one direction; db.ts must never import it)
 ```
 
-- `store.ts` is the only reactive state layer. Components never hold their own
-  copy of task lists beyond derived/local view state.
-- After any task mutation from a component, call `reloadTasks()` (or rely on the
-  live `subscribe()` change feed if the write goes through sync).
-- Every task-mutating call site must be wrapped in `try/catch` + `showError()`.
-  No silent failures — an established, audited invariant.
-- **Any component that calls `closeOnBack()` (see `modalStack.ts`) must be
-  mounted behind a `{#key}` that changes on every real open** — not just
-  gated by `{#if showX}`. A fast close-then-reopen of the same overlay can
-  toggle `showX` false→true again while Svelte's outro for the previous
-  show is still animating; Svelte then *reverses* that outro into a fresh
-  intro on the same component instance instead of destroying and
-  recreating it. `closeOnBack()` only runs once, at that instance's setup,
-  so the revived instance's `requestClose` is the original — already
-  spent — one, and no new history-stack entry exists for it either:
-  permanently stuck open, with a working-looking Escape/scrim/back that
-  silently does nothing (found 2026-07-17 in Changelog under rapid
-  clicking; see `modalStack.ts`'s own header comment for the full trace).
-  Bump a counter on every open and fold it into the key, e.g.
-  `{#key task._id + ':' + openSession}` — see `Sidebar.svelte`'s
-  `changelogSession`/`trashSession`/`settingsSession` or
-  `KanbanBoard.svelte`'s `detailOpenSession` for the pattern.
+- `store.ts` is the only reactive state layer. Components hold no task lists
+  beyond derived/local view state.
+- After a mutation from a component, call `reloadTasks()` — or rely on the
+  live `subscribe()` feed if the write goes through sync.
+- Every task-mutating call site is wrapped in `try/catch` + `showError()`.
+  No silent failures; this is an audited invariant.
+
+**Any component calling `closeOnBack()` (see `modalStack.ts`) must be mounted
+behind a `{#key}` that changes on every real open** — not just gated by
+`{#if showX}`. A fast close-then-reopen can flip `showX` back to true while
+the outro is still animating; Svelte reverses the outro into a fresh intro on
+the *same instance* instead of recreating it. `closeOnBack()` only runs at
+setup, so the revived instance holds an already-spent `requestClose` and has
+no history entry: permanently stuck open, with a working-looking Escape and
+scrim that silently do nothing. Bump a counter per open and fold it in —
+`{#key task._id + ':' + openSession}`, as in `Sidebar.svelte` and
+`KanbanBoard.svelte`.
 
 **Splitting a component's markup into children**: move the parent's CLASS
 rules to `:global()` under a parent-owned wrapper, but keep bare ELEMENT
 rules (`button`, `label`, `textarea`) scoped and copy them into each child.
 A `:global(button)` also matches nested components' internal buttons
-(CustomSelect, CalendarPicker) and silently restyles them — the scoped
-original never did. Verify by fingerprinting computed styles of every
-rendered element before and after: matching element counts prove nothing,
-that regression had identical DOM.
+(CustomSelect, CalendarPicker) and silently restyles them. Verify by
+fingerprinting computed styles of every rendered element before and after —
+matching element counts prove nothing; that regression had identical DOM.
 
 **A pure type change must emit byte-identical JavaScript.** Hash the build
-assets before and after (normalise the content-hash out of the filename); if
-a digest moves, something changed at runtime. No `as unknown as X`, no
-`@ts-expect-error`, no runtime guards added to satisfy the compiler.
+assets before and after, normalising the content-hash out of the filename.
+No `as unknown as X`, no `@ts-expect-error`, no runtime guards added to
+satisfy the compiler.
 
 ## Database invariants (db.ts)
 
-`db.ts` is a barrel over `src/lib/db/` — `core.ts` (instance, indexes,
-task cache, `logChange`, `subscribe`), `entities.ts` (spaces, projects,
-tasks, blocked-by, attachments, undo, trash), `sync.ts`, `tags.ts`,
-`stats.ts`, `maintenance.ts`. **Always import from `./db`, never from a
-`db/` module directly** — the barrel is the public surface. Dependencies
-run one way: `core` ← `entities` ← {`sync`, `tags`, `stats`,
-`maintenance`}; never add an import that points back up. Projects and
-tasks stay in one module on purpose: the positional-"done" rule below
-makes `updateTask` need a project's columns while `deleteProject`
-cascades into tasks, so separating them would be a cycle.
+`db.ts` is a barrel over `src/lib/db/` — `core.ts` (instance, indexes, task
+cache, `logChange`, `subscribe`), `entities.ts` (spaces, projects, tasks,
+blocked-by, attachments, undo, trash), `sync.ts`, `tags.ts`, `stats.ts`,
+`maintenance.ts`. **Always import from `./db`**, never a `db/` module
+directly. Dependencies run one way: `core` ← `entities` ← {`sync`, `tags`,
+`stats`, `maintenance`}. Projects and tasks share a module deliberately —
+`updateTask` needs a project's columns while `deleteProject` cascades into
+tasks, so splitting them would be a cycle.
 
-- **PouchDB is a UMD global** loaded via `index.html` (`public/pouchdb.js`),
-  core-only. Plugins (e.g. `pouchdb-find`) must be registered explicitly with
-  `PouchDB.plugin(...)` — importing them is not enough.
-- `db.find()` **silently defaults to 25 results** — always pass an explicit
-  `limit`. This has bitten us before.
+- **PouchDB is a UMD global** from `index.html` (`public/pouchdb.js`),
+  core-only. Plugins like `pouchdb-find` need an explicit
+  `PouchDB.plugin(...)`; importing is not enough.
+- `db.find()` **silently defaults to 25 results** — always pass `limit`.
 - **Soft delete only** for tasks (`deleted: true`); never `db.remove()` a task
-  except in `deleteProject`/`wipeAndReseed`. Hard deletes break sync semantics.
+  except in `deleteProject`/`wipeAndReseed`. Hard deletes break sync.
 - **`_taskCache` must be invalidated** (`invalidateTaskCache()`) inside every
-  function that writes a task doc, in addition to the central invalidation in
-  `subscribe()`. If you add a new write path, add the invalidation.
-- **"Done" is positional**: a task is considered complete when its `column_id`
-  equals the **last** column of its project (`columns.at(-1)`). There is no
-  `done` boolean. Agenda, dashboard overdue counts, and reminders all rely on
-  this — apply the same rule in any new query.
+  function that writes a task doc, on top of the central invalidation in
+  `subscribe()`. New write path → add the invalidation.
+- **"Done" is positional**: a task is complete when its `column_id` equals the
+  **last** column of its project (`columns.at(-1)`). There is no `done`
+  boolean. Agenda, overdue counts and reminders all rely on this.
 - **Ordering** uses fractional positions (`posBetween`) — insert between
-  neighbors without renumbering.
-- Every mutation writes a `log:` changelog doc via `logChange()`. New mutation
-  types should follow the same pattern (action ∈ create/update/move/delete).
-- Document `_id` prefixes are the type system: `space:` / `project:` / `task:` /
-  `log:`. Range scans depend on these prefixes — never change them.
-- **`column_id` is a string id, not the column object.** A test-data script
-  writing `p.columns[i % p.columns.length]` from a raw project doc assigns
-  the whole `{id, name}` object — tasks silently vanish from Kanban (they
-  don't match any column) while still being valid, queryable docs. Always
-  assign `column.id`, not `column`.
-- **Conflict info lives on `row.doc._conflicts`, never on `row.value.conflicts`.**
-  The latter has never existed in PouchDB's API — `db.allDocs({conflicts:true})`
-  only attaches `_conflicts` to the fetched doc (which requires
-  `include_docs: true` too). Covered by `tests/db.test.ts`'s manufactured-
-  conflict test. When resolving a conflict, every revision in `_conflicts`
-  needs an explicit `db.remove(id, rev)` — including the one whose content
-  you adopted, since adopting content by writing a new revision does not
-  remove its old leaf.
-
-## Generating test/dummy data
-
-Write directly against the PouchDB browser global, don't drive the UI one
-task at a time — full recipe in [docs/tech.md](docs/tech.md)'s "Testing &
-Dev Workflows" section.
-
-## Theming rules
-
-- **All colors are CSS custom properties** in `src/app.css` (`:root` light,
-  `body.dark` dark). The full token table is in `docs/tech.md` → "Theme System"
-  — this is the only copy; don't duplicate it into README.md.
-- **Never hardcode a hex/rgba color in a component** — the one exception
-  is pure-black shadows/scrims (`rgba(0,0,0,.x)`). `Sidebar.svelte`
-  follows the page theme via `--sidebar-bg` like everything else (used
-  to be pinned always-dark; changed 2026-07-17 on owner feedback) —
-  don't reintroduce a local dark override there.
-- Derived tints use `color-mix(in srgb, var(--token) X%, transparent)` —
-  never a separately hardcoded rgba of the token's current value.
-- Semantic tokens: `--accent` (indigo), `--danger`, `--success`,
-  `--overdue-bg/ink`, `--due-soon-bg/ink`. Add a token rather than a literal
-  if a new semantic color is needed, and add it to **both** light and dark
-  blocks plus the table in `docs/tech.md`.
-- Brand color changes must also propagate to: `index.html` `<meta theme-color>`,
-  `capacitor.config.ts` `iconColor`, and `android/.../values/colors.xml`.
-- Known theming gotcha in `Sidebar.svelte`'s settings panel — see
-  [docs/tech.md](docs/tech.md)'s Theme System section before touching it.
-
-## Accessibility rules (enforced — build must stay warning-free)
-
-- `npm run build` currently emits **zero Svelte compiler warnings**. Keep it
-  that way; fix warnings properly instead of adding `svelte-ignore`.
-- Anything clickable is a real `<button>` (with `aria-label` if icon-only),
-  or has `role="button" tabindex="0"` + Enter/Space keydown when a button
-  element genuinely can't be used (e.g. rows containing other buttons).
-- Never `outline: none` on `:focus` without a replacement — the global
-  `:focus-visible` rule in app.css provides keyboard focus rings; don't defeat it.
-- Every modal/panel closes on Escape. Hover-only controls need a visible
-  fallback on touch (see the Kanban column-action `@media (max-width: 768px)`
-  pattern).
-- Legitimate remaining `svelte-ignore` uses, in four categories: scrim/overlay
-  click-to-close (Escape is the keyboard path), intentional `a11y-autofocus`
-  on inline editors, HTML5 drag-and-drop handlers on Kanban columns/cards
-  (a `dragover` cannot take a keyboard equivalent), and `role="option"` rows
-  whose arrow/Enter handling lives on the owning input. Every directive in
-  the tree is load-bearing: removing all of them and building surfaces a
-  matching warning for each, which is how to re-check for stale ones.
+  neighbours without renumbering.
+- Every mutation writes a `log:` doc via `logChange()` (action ∈
+  create/update/move/delete).
+- Document `_id` prefixes are the type system: `space:` / `project:` /
+  `task:` / `log:`. Range scans depend on them — never change them.
+- **`column_id` is a string id, not the column object.** Assigning
+  `p.columns[i]` instead of `p.columns[i].id` makes tasks vanish from Kanban
+  while remaining valid, queryable docs.
+- **Conflict info lives on `row.doc._conflicts`, never
+  `row.value.conflicts`** — the latter has never existed in PouchDB.
+  `db.allDocs({conflicts:true})` also needs `include_docs: true`. When
+  resolving, every revision in `_conflicts` needs its own
+  `db.remove(id, rev)` — including the one whose content you adopted, since
+  writing a new revision doesn't remove its old leaf.
 
 ## Testing
 
-`tests/db.test.ts` (Vitest) covers `db.ts`'s pure/query logic against
-`pouchdb-adapter-memory` — see [docs/tech.md](docs/tech.md)'s "Testing &
-Dev Workflows" for how `tests/setup.ts` shims PouchDB/localStorage. When
-adding a new `db.ts` function with any non-trivial logic, add a test here
-before shipping — this suite already caught two real bugs (broken conflict
-detection, an incomplete conflict resolution) that had been silently
-shipping. Every component with real logic has a test file under `tests/`,
-using `@testing-library/svelte` against mocked `db`/`store`/`config`
-modules — mock the module, render, `fireEvent`, assert the write's exact
-arguments. Cover the failure path too: every mutating call site must
-surface `showError()`, and a happy-path-only test won't catch a swallowed
-one. Purely presentational children (`settings/*`, `carddetail/*`,
-`PinStar`) are covered through their parents; `App.svelte` is
-integration-level and has none.
+`tests/db.test.ts` covers `db.ts` against `pouchdb-adapter-memory`. Every
+component with real logic has a test file using `@testing-library/svelte`
+against mocked `db`/`store`/`config`: mock the module, render, `fireEvent`,
+assert the write's exact arguments. Purely presentational children
+(`settings/*`, `carddetail/*`, `PinStar`) are covered through their parents;
+`App.svelte` has none.
 
-**Test rules, in order of how often they save you:**
+In order of how often they save you:
 
 1. **Judge a run by its exit code, not its summary.** Vitest prints
-   "565 passed" and still exits 1 on an unhandled rejection (an unguarded
-   `await` in `onMount`, a missing jsdom API). Grepping pass counts hides it;
-   CI does not. `npx vitest run; echo $?`
-2. **A test that survives a mutation asserts nothing.** Break the source
-   (invert a condition, drop a guard, swallow an error), confirm THAT test
-   fails, revert. If it still passes, rewrite or delete it — never keep it
-   for the count.
-3. **Cover the failure path.** Every mutating call site must surface
-   `showError()`. A happy-path-only test won't catch a swallowed error.
+   "569 passed" and still exits 1 on an unhandled rejection. `npx vitest run;
+   echo $?`
+2. **A test that survives a mutation asserts nothing.** Break the source,
+   confirm THAT test fails, revert. If it still passes, rewrite or delete it.
+3. **Cover the failure path** — every mutating call site must surface
+   `showError()`.
 4. **Assert invariance, not absolute numbers.** `perfGuard.test.ts` counts
-   database round-trips, never wall-clock time (timings are machine-dependent
-   — that's why `perf.bench.ts` has no threshold and stays a `npm run bench`
-   reporting tool). A repeat read adds zero task scans; cost is identical at
-   4x the data. Growth is the regression; the cold count is an implementation
-   detail.
+   database round-trips, never wall-clock time. Growth is the regression.
 5. **Test the real thing where the risk is real.** `replication.test.ts` runs
-   PouchDB's actual replicator between two databases — `sync.test.ts`'s mocks
-   can only prove error classification, never that two devices agree.
-   `backupRestore.test.ts` takes a real database through export → wipe →
-   restore. Mocking either would test the mock.
+   PouchDB's actual replicator between two databases; `backupRestore.test.ts`
+   takes a real database through export → wipe → restore.
 
-Gotchas that cost real time: a deleted doc's tombstone outranks an incoming
-rev-1 for the same id, so replication tests need ids nothing has deleted;
-`vi.mock` factories are hoisted above every `const`, so a factory needing a
-store must create it inside and import it back.
+Gotchas: a deleted doc's tombstone outranks an incoming rev-1 for the same
+id, so replication tests need ids nothing has deleted; `vi.mock` factories
+are hoisted above every `const`, so a factory needing a store must create it
+inside and import it back.
 
-## Android gotchas (hard-won — read before touching)
+## Theming
+
+- **All colors are CSS custom properties** in `src/app.css` (`:root` light,
+  `body.dark` dark). Token table is in tech.md — the only copy.
+- **Never hardcode a hex/rgba in a component**; the one exception is
+  pure-black shadows and scrims. Derived tints use
+  `color-mix(in srgb, var(--token) X%, transparent)`.
+- A new semantic color gets a token in **both** blocks plus the tech.md table.
+- Brand color changes must also reach `index.html`'s `<meta theme-color>`,
+  `capacitor.config.ts`'s `iconColor`, and `android/.../values/colors.xml`.
+
+## Accessibility (build must stay warning-free)
+
+- `npm run build` emits zero Svelte compiler warnings. Fix warnings properly
+  rather than adding `svelte-ignore`.
+- Anything clickable is a real `<button>` (with `aria-label` if icon-only), or
+  `role="button" tabindex="0"` + Enter/Space when a button element genuinely
+  can't be used.
+- Never `outline: none` on `:focus` without a replacement — the global
+  `:focus-visible` rule in app.css handles keyboard rings.
+- Every modal closes on Escape. Hover-only controls need a visible touch
+  fallback.
+- Remaining `svelte-ignore` uses are load-bearing, in four categories:
+  scrim click-to-close, intentional `a11y-autofocus` on inline editors,
+  drag-and-drop handlers on Kanban columns, and `role="option"` rows whose
+  key handling lives on the owning input.
+
+## Android gotchas
 
 - **Status bar**: targetSdk 36 is edge-to-edge; `StatusBar.setBackgroundColor()`
-  is a hard no-op. The working approach is the `.status-bar-fill` strip in
-  App.svelte + `env(safe-area-inset-top)` padding. Details in docs/tech.md.
+  is a hard no-op. Use the `.status-bar-fill` strip in App.svelte plus
+  `env(safe-area-inset-top)` padding.
 - **Notification icons** must be white silhouettes with transparency, or
-  Android silently substitutes a generic triangle.
+  Android substitutes a generic triangle.
 - `position: fixed` full-screen elements bypass `.layout` and need their own
   `padding-top: env(safe-area-inset-top)`.
-- Android launcher icon changes: uninstall the app before reinstalling, and
-  Clean Project — the launcher caches icons aggressively.
+- Launcher icon changes need an uninstall plus Clean Project — the launcher
+  caches icons aggressively.
 - **Home-screen widget `PendingIntent`/flag changes need the widget removed
-  and re-added, not just the app reinstalled.** `offlog_widget_info.xml`
-  has `updatePeriodMillis="0"` (no periodic refresh), so
-  `OffologWidgetProvider.onUpdate()` — where the PendingIntents are built —
-  only runs when a widget instance is first placed, not automatically on
-  every APK install. A widget already sitting on the home screen keeps its
-  stale PendingIntents (e.g. still missing a flag fix) until removed and
-  re-added, or the device reboots. Bit real owner testing 2026-07-22 —
-  the `FLAG_ACTIVITY_SINGLE_TOP` fix appeared to not take effect until
-  this was understood.
+  and re-added**, not just the app reinstalled. `offlog_widget_info.xml` sets
+  `updatePeriodMillis="0"`, so `OffologWidgetProvider.onUpdate()` — where the
+  PendingIntents are built — only runs when an instance is first placed. A
+  widget already on the home screen keeps stale PendingIntents until re-added
+  or the device reboots.
 - **Prefer an official `@capacitor/*` plugin's own mechanism over a custom
-  native bridge event, when one exists.** Check before writing custom
-  Java — see [docs/decisions.md](docs/decisions.md)'s A25 entry for the
-  concrete bug this rule comes from.
+  native bridge event** when one exists (decisions.md, A25).
 
-## Project status & direction
+## Style
 
-Full reasoning behind all of this lives in
-[docs/decisions.md](docs/decisions.md) — the directives below are the
-actionable rules, kept short on purpose:
-
-- **No git remote yet, repo not public.** Don't add a remote, push, or
-  suggest making it public without an explicit owner request.
-- **Never let a public-facing change ship before the config.ts credential
-  fix** (tracked in docs/roadmap.md's Track C, item C7) — not urgent for
-  day-to-day work, but a hard gate on anything public-facing.
-- **Security is minimal by design, not yet audited.** Treat any feature
-  that would expand the network attack surface with the same caution
-  applied when mesh sync was declined.
-- **No business model, ever — don't propose monetization** unless the
-  owner raises it again.
-- **Distribution stays GitHub + a website + Google Play** — don't propose
-  another channel without the owner raising it first.
-
-## Release checklist
-
-Day-to-day work happens on the PC/web build. **Android sync
-(`npx cap sync android`) is a normal part of the workflow — run it freely**
-(owner clarification 2026-07-22, replacing the old owner-requested-only
-rule): it only copies `dist/` into the Android project, and it's the one
-check that exercises Capacitor CLI's own config-loading path (the
-TypeScript-7 breakage passed build/tsc/tests and was only caught there —
-see maintenance.md's packaging-paths blind spot). Bump the Android version
-numbers alongside the web ones so they stay in sync for whenever a Studio
-build actually happens.
-
-**Never run a Gradle/APK build (`gradlew assembleDebug` or similar) —
-ever, even when asked to verify Android changes.** That's the one Android
-restriction that remains: the owner always builds and runs via Android
-Studio directly (2026-07-05), and the release pipeline builds the
-distributable APK in CI. If Android-side changes need verification, run
-`cap sync` and confirm the code reads right, then say a Studio rebuild is
-needed to actually test it, rather than invoking Gradle.
-
-**The Android `release` build type's `signingConfig` currently points at
-AGP's public debug keystore** (set in v5.4.4 purely so Android Studio's Run
-button can install a `release`-type build locally) — this is not a real
-release signing key. Before any actual Play Store packaging/distribution,
-a real key must be generated and wired in first (tracked in
-docs/roadmap.md's Track C, item C3 — Play Store); don't let a
-debug-keystore-signed `release` APK go out as a real release build.
-
-1. `npm run build` — must succeed with **zero warnings**
-2. `npm run check` — svelte-check + tsc, clean
-3. `npm test` — clean
-4. Verify visually in the browser preview (light **and** dark mode)
-5. Bump version in `package.json`, `android/app/build.gradle`
-   (`versionCode` +1, `versionName`), **and**
-   `offlog-desktop/src-tauri/tauri.conf.json`'s `version` — even on
-   releases where Android/desktop aren't being synced/built, so all
-   three stay in sync for whenever a build actually is requested
-6. Add a new entry to `docs/changelog.md` — the single source of truth for
-   version history (do not duplicate it back into tech.md or README.md)
-6b. Add a new `## vX.Y.Z` entry to `docs/release-notes.md` — plain
-   language, `### New` / `### Fixed` only, no file/function names. This
-   is what real users see on the GitHub Releases page and (once C3
-   ships) Play Store's "What's new" — do not skip this even when step 6
-   feels like it already covers it, the two are written for different
-   readers. A release with nothing user-visible still gets a one-line
-   "No visible changes" entry, not a skipped one (the extraction script
-   needs *some* entry for the tag to find)
-7. Commit (`feat:`/`fix:` prefix, version in subject) and tag `vX.Y.Z`
-8. **Never push, sync to Android, build the APK, or commit palette/visual
-   changes without the owner's explicit confirmation/request**
-9. **After any real test round (not every commit), reset to a fresh
-   state** — `offlog-desktop/scripts/reset-dev-env.ps1` for the desktop
-   dev NyxDB/config, plus the browser/Android reset steps in
-   [docs/tech.md](docs/tech.md)'s "Resetting to a fresh state" section.
-   Dev state silently accumulates release over release otherwise — E2's
-   dev/prod identity-collision bug was found because of exactly that.
-
-## Style conventions
-
-- Match existing code: compact CSS (one-line related properties), Svelte 5
-  with `on:` event syntax, TypeScript everywhere, no CSS framework.
+- Match existing code: compact CSS, Svelte 5 `on:` event syntax, TypeScript
+  everywhere, no CSS framework.
+- Statuses are called **"Status"** in user-facing wording, never "Column" —
+  `column_id` is a frozen internal name. Dates in docs are absolute.
+- **Max 3 font families project-wide; currently 1**, Hanken Grotesk,
+  self-hosted from `public/fonts/` (never a CDN). `--mono` still
+  exists as a token for uppercase/letter-spaced labels but points at the same
+  face; don't add a second `@font-face`.
 - Comments state **the rule, not the story.** A comment earns its place by
-  telling a future editor something that stops them breaking the code:
-  a non-obvious constraint, a surprising API behaviour, or why a line that
-  looks wrong is deliberate. Keep it to the fewest words that carry the
-  rule.
-  **Do not write** dates, owner attributions or quotes ("owner feedback,
-  2026-07-28: …"), ticket ids (`B22`, `A33`, `C8`), version archaeology
-  ("was X in v5.4.1, now Y"), or an account of what was tried and
-  reverted. None of that survives contact with a reader who wasn't there,
-  and it actively misleads: a comment describing a decision's *history*
-  gets read as describing its *current* rationale. That history already
-  lives in git, which is where it belongs.
-  - Bad: `// redesign/v6: was bare floating text (owner feedback,
-    2026-07-28: "awful"). Moved into a pill to match the badges.`
+  telling a future editor something that stops them breaking the code: a
+  non-obvious constraint, a surprising API behaviour, or why a line that looks
+  wrong is deliberate.
+
+  Do not write dates, owner attributions or quotes, ticket ids, version
+  archaeology, or an account of what was tried and reverted. That history
+  already lives in git; a comment describing a decision's history gets read as
+  its current rationale.
+  - Bad: `// redesign/v6: was bare floating text (owner feedback: "awful")`
   - Good: *(nothing — the code shows a pill; there is no rule here)*
   - Good: `// column.id, never the column object — a task whose column_id`
     `// doesn't match any column vanishes from Kanban while staying a`
     `// valid, queryable doc.`
-- User-facing wording: statuses are called **"Status"**, never "Column"
-  (internal field names still say `column_id` — that's a frozen legacy name).
-- Dates in docs are absolute (e.g. "2026-07"), not relative.
-- **Max 3 font families project-wide.** Currently 1: Hanken Grotesk, for
-  everything — IBM Plex Mono was removed 2026-07-19 (owner feedback: a
-  second, monospace typeface on metadata labels like "Status"/"Priority"
-  next to Hanken Grotesk everywhere else read as inconsistent). `--mono`
-  in `app.css` still exists as its own CSS variable — used by ~20
-  components for a label's uppercase/letter-spacing/size treatment — but
-  now points at the same Hanken Grotesk face; don't reintroduce a second
-  `@font-face` there. Self-hosted from `offlog-app/public/fonts/` via
-  `@font-face` (not Google Fonts' CDN — see C9 in roadmap.md for why),
-  latin subset only. If a new font is ever needed, download and
-  self-host it the same way; don't reach for a CDN `@import`.
 
-## Maintenance routine (mandatory)
-- Cadence: a maintenance pass **every 3 minor versions**. The current
-  Last-pass/Next-pass-due state lives **only** in
-  [docs/maintenance.md](docs/maintenance.md)'s one-line current-pointer
-  (process/phases live there too; full pass-by-pass narrative history is
-  in docs/archive/maintenance.md, not restated here) — don't restate
-  specific version numbers here, they'll drift out of sync.
-- Check the pointer **when bumping the version during a release**
-  (checklist step 5) — not on every session start, that's wasted tokens.
-  If the release just shipped matches "Next pass due," tell the owner:
-  "A maintenance pass is due (last: vX, current: vY). Run it now? (see
-  docs/maintenance.md)" — and don't start one without confirmation.
-- When a pass completes, update docs/maintenance.md's current-pointer line
-  (Last pass = current version, Next pass due = next scheduled point), and
-  append the pass's narrative to docs/archive/maintenance.md.
-- Maintenance passes never add features and never touch doc schema,
-  PouchDB/NyxDB sync logic, storage format, soft-delete semantics, or
-  the positional-"done" rule without explicit owner approval.
+## Working style
+
+- **Batch edits, then verify once.** Don't rebuild and restart the preview
+  after every individual change.
+- **Reserve live browser checks for real visual questions** — a logic fix
+  doesn't need a round-trip to prove itself.
+- Read narrowly (`Grep`, or `Read` with offset/limit) and use a subagent for
+  open-ended exploration.
+- Keep responses terse; commit messages are 2–4 lines.
+
+## Release
+
+1. `npm run build`, `npm run check`, `npm test` — all clean, judged by exit
+   code
+2. Verify visually in light **and** dark mode
+3. Bump the version in `package.json`, `android/app/build.gradle`
+   (`versionCode` +1, `versionName`) and
+   `offlog-desktop/src-tauri/tauri.conf.json` — all three, every release
+4. Add a `docs/changelog.md` entry (Keep a Changelog format) **and** a
+   `docs/release-notes.md` entry in plain language with its **In short**
+   block. Both, always — they're written for different readers. Nothing
+   user-visible still gets a one-line entry; the extraction script needs one.
+5. Check maintenance.md's current pointer. If a pass is due, say so and wait
+   for confirmation — don't start one.
+6. Commit (`feat:`/`fix:`, version in the subject) and tag `vX.Y.Z`
+7. After a real test round, reset to a fresh state —
+   `offlog-desktop/scripts/reset-dev-env.ps1` plus the browser/Android steps
+   in tech.md. Dev state accumulates silently otherwise.
+
+**Never push, build the APK, or commit palette/visual changes without the
+owner's explicit request.** The Android `release` build type currently points
+at AGP's public debug keystore so Studio's Run button works locally — a real
+key must be wired in before any Play Store packaging (roadmap C3).

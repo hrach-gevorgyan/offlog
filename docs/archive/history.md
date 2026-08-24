@@ -3,7 +3,7 @@
 Two records, one file:
 
 1. **[Releases](#releases)** — every release older than the newest ten in
-   [../CHANGELOG.md](../changelog.md), one line each.
+   [../changelog.md](../changelog.md), one line each.
 2. **[Roadmap items](#roadmap-items)** — the numbered items the roadmap
    once tracked, so an old cross-reference like "see B39" still resolves.
 
@@ -11,8 +11,8 @@ Maintenance passes live in
 [maintenance.md](maintenance.md).
 
 This is an index. Per-release detail is in
-[../CHANGELOG.md](../changelog.md); why a choice was made is in
-[../DECISIONS.md](../decisions.md).
+[../changelog.md](../changelog.md); why a choice was made is in
+[../decisions.md](../decisions.md).
 
 The roadmap was once organised into lettered tracks and, briefly, three
 milestones. Both frameworks were dropped; the letters survive only as the
@@ -257,6 +257,15 @@ rather than guessed at.
 
 ### Why the parked and declined ones stopped
 
-- **B28, Rethink "last column = done"** - parked. The positional-done convention (`column_id === columns.at(-1)`) is a locked invariant (see decisions.md) with no multiple terminal states. Needs a real design conversation before any implementation. Parked with the feature-phase wind-down; revisit only if daily dogfooding proves the current rule actually hurts.
-- **B33, Sub-projects** - parked. Nested project hierarchy. Touches the data model, every project-picker UI, and Dashboard/sidebar nesting — exactly the kind of architecture experiment the stabilization pivot exists to stop. Revisit post-release only if real daily use demands it.
-- **C4, F-Droid listing** - declined. Distribution stays GitHub, a website, and Google Play. See decisions.md.
+- **B28, Rethink "last column = done"** — parked. The positional-done
+  convention (`column_id === columns.at(-1)`) is a locked invariant (see
+  decisions.md) with no multiple terminal states. Needs a real design
+  conversation before any implementation. Parked with the feature-phase
+  wind-down; revisit only if daily dogfooding proves the current rule
+  actually hurts.
+- **B33, Sub-projects** — parked. Nested project hierarchy. Touches the data
+  model, every project-picker UI, and Dashboard/sidebar nesting — exactly
+  the kind of architecture experiment the stabilization pivot exists to
+  stop. Revisit post-release only if real daily use demands it.
+- **C4, F-Droid listing** — declined. Distribution stays GitHub, a website,
+  and Google Play. See decisions.md.

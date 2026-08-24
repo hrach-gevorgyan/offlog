@@ -134,7 +134,7 @@ export function checkPermission(): void {
   permissionState.set(Notification.permission as PermissionState);
 }
 
-// ── Web scheduling (best-effort — see TECH.md for the "app must stay
+// ── Web scheduling (best-effort — see docs/tech.md for the "app must stay
 // running" caveat; there's no push backend behind this local-first app) ──
 //
 // DST/timezone: reminder_at is stored as an absolute ISO instant (UTC epoch

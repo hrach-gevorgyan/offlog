@@ -5,14 +5,14 @@ import db, {
 } from '../src/lib/db';
 
 // A10 (large-dataset performance validation) + A24 (version-over-version
-// benchmark harness), scoped together per ROADMAP.md — A24 formalizes the
+// benchmark harness), scoped together per archive/history.md — A24 formalizes the
 // measurement infrastructure A10 needs anyway. Run with `npm run bench`
 // (separate from `npm test` — benchmarks are slow and not pass/fail, so
 // they don't belong in the regular gate). Compare the printed numbers
 // release to release; there's no hardcoded threshold here since absolute
 // timings depend on the machine running them, not on Offlog's code.
 //
-// Scoped to the three read paths TECH.md's Performance section already
+// Scoped to the three read paths docs/tech.md's Performance section already
 // flags as scale-sensitive: getDashboardData() (every project's dashboard
 // cards), getTasksForProject() (Kanban/List's main query), and
 // searchAllTasks() (Global Search, re-run on every keystroke in the real

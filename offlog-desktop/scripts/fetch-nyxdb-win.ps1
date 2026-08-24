@@ -1,5 +1,5 @@
 # Builds the NyxDB Windows binary this app bundles as its embedded sync
-# host (ROADMAP.md's Track E / E1). NyxDB (github.com/hrach-gevorgyan/
+# host (archive/history.md, Track E / E1). NyxDB (github.com/hrach-gevorgyan/
 # nyxdb) doesn't publish prebuilt Windows release binaries the way
 # CouchDB's Neighbourhoodie installer does -- this script clones a
 # pinned tag and builds it from source with cargo instead. Pinned to one
