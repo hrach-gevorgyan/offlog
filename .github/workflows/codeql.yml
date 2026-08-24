@@ -1,23 +1,17 @@
 name: CodeQL
 
-# Advanced setup, replacing GitHub's auto-managed Default setup. The
-# Default setup's Java/Kotlin (Android) scan ran with build-mode "none"
-# (autodetect) and couldn't extract a real Gradle dependency classpath --
-# degraded analysis quality (more potential false positives/negatives),
-# not a broken build. Fixed here by actually building the Android project
-# (same npm build + cap sync + gradlew steps release.yml's real APK build
-# already uses) before CodeQL analyzes it, giving it a real classpath.
+# Advanced setup, replacing GitHub's auto-managed Default setup, whose
+# Java/Kotlin (Android) scan ran with build-mode "none" and couldn't
+# extract a real Gradle dependency classpath -- degraded analysis quality,
+# not a broken build.
 #
-# IMPORTANT: switching to this Advanced setup requires disabling the
-# repo's "Default setup" under Settings -> Code security -> Code
-# scanning -- GitHub does not allow both to run for the same languages.
+# This workflow covers the three languages that need no build. Java/Kotlin
+# lives in codeql-android.yml, which does need one and is scoped to
+# Android-affecting paths so it doesn't run on every push.
 #
-# .github/codeql/codeql-config.yml excludes node_modules/ -- the real
-# Gradle build above compiles Capacitor plugins' bundled Java source
-# (node_modules/@capacitor/*, node_modules/capacitor-*) into the APK,
-# which surfaced real CodeQL findings inside that third-party code the
-# first time this ran. Not fixable here (not our code, npm would
-# overwrite any patch), hence the exclusion.
+# IMPORTANT: Advanced setup requires the repo's "Default setup" to stay
+# disabled under Settings -> Code security -> Code scanning. GitHub does
+# not allow both to run for the same languages.
 
 on:
   push:
@@ -60,56 +54,3 @@ jobs:
       - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
         with:
           category: '/language:${{ matrix.language }}'
-
-  analyze-java-kotlin:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-
-      # Everything the Java extractor needs must exist BEFORE codeql init:
-      # init configures the extractor against the JDK present at that
-      # moment, so installing Java afterwards leaves it analyzing with a
-      # different toolchain than the build uses and it sees no source.
-      # Only the Gradle compile belongs between init and analyze.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: offlog-app/package-lock.json
-
-      - name: Install web dependencies
-        working-directory: offlog-app
-        run: npm ci
-
-      - name: Build web assets
-        working-directory: offlog-app
-        run: npm run build
-
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4
-
-      - name: Sync Capacitor Android project
-        working-directory: offlog-app
-        run: npx cap sync android
-
-      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
-        with:
-          languages: java-kotlin
-          build-mode: manual
-          config-file: ./.github/codeql/codeql-config.yml
-
-      - name: Build debug APK (for CodeQL's dependency classpath only, not published)
-        working-directory: offlog-app/android
-        # gradlew's executable bit doesn't always survive a checkout on a
-        # repo also worked on from Windows -- set it explicitly.
-        run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
-
-      - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
-        with:
-          category: '/language:java-kotlin'

@@ -1,0 +1,105 @@
+name: CodeQL (Android)
+
+# Split out of codeql.yml because this is the only expensive analysis: it
+# needs a real Gradle build to give CodeQL a dependency classpath, while
+# the other three languages run build-mode "none". Keeping it separate
+# lets it be scoped to the files that can actually change its result --
+# Java/Kotlin lives in offlog-app/android/ and in the Capacitor plugins
+# npm installs, so a Rust, CSS or test change cannot affect this analysis
+# and must not spend a full Android build on it.
+#
+# .github/codeql/codeql-config.yml excludes node_modules/. The Gradle
+# build still compiles Capacitor plugins' bundled Java into the APK, and
+# findings inside that third-party code get dismissed by hand in the Code
+# Scanning UI -- paths-ignore cannot suppress them under build-mode
+# manual. See docs/decisions.md.
+
+on:
+  push:
+    branches: [main]
+    paths: ['offlog-app/android/**', 'offlog-app/capacitor.config.ts', 'offlog-app/package-lock.json', '.github/workflows/codeql-android.yml', '.github/codeql/codeql-config.yml']
+  pull_request:
+    branches: [main]
+    paths: ['offlog-app/android/**', 'offlog-app/capacitor.config.ts', 'offlog-app/package-lock.json', '.github/workflows/codeql-android.yml', '.github/codeql/codeql-config.yml']
+  schedule:
+    # Weekly full run regardless of paths, so a scoped-out change can
+    # never leave this language unanalysed indefinitely.
+    - cron: '0 6 * * 1'
+
+# A newer push supersedes an in-flight run for the same ref. Without this a
+# burst of pushes leaves several Android builds racing, and CodeQL's
+# parallel SARIF uploads for one ref collide.
+concurrency:
+  group: codeql-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze-java-kotlin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      # Everything the Java extractor needs must exist BEFORE codeql init:
+      # init configures the extractor against the JDK present at that
+      # moment, so installing Java afterwards leaves it analyzing with a
+      # different toolchain than the build uses and it sees no source.
+      # Only the Gradle compile belongs between init and analyze.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: offlog-app/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: offlog-app
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: offlog-app
+        run: npm run build
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          # Caches ~/.gradle/caches and the wrapper distribution. Without
+          # it every run re-downloads Gradle itself plus the whole
+          # AndroidX/AGP/Capacitor dependency graph. This job is the only
+          # thing that builds Android on main, so the cache it writes is
+          # also the one release.yml's tag build can restore -- caches
+          # created on a tag ref are not shareable, default-branch ones
+          # are.
+          cache: 'gradle'
+
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4
+
+      - name: Sync Capacitor Android project
+        working-directory: offlog-app
+        run: npx cap sync android
+
+      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # Compile only. CodeQL needs to observe javac invocations to build a
+      # classpath; assembleDebug additionally does resource processing,
+      # dexing, packaging and signing, none of which produce a single
+      # extraction event. Plugin modules still get extracted -- they
+      # compile as project dependencies of :app.
+      - name: Compile Java (for CodeQL's dependency classpath only)
+        working-directory: offlog-app/android
+        # gradlew's executable bit doesn't always survive a checkout on a
+        # repo also worked on from Windows -- set it explicitly.
+        run: |
+          chmod +x ./gradlew
+          ./gradlew compileDebugJavaWithJavac
+
+      - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7
+        with:
+          category: '/language:java-kotlin'

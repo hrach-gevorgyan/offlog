@@ -295,9 +295,15 @@ round-trip counts are stable across machines and wall-clock times are not.
   real release `cargo build`, which also warms the cache release runs
   restore. Deliberately not all of `offlog-desktop/**` — dev-only scripts
   and `mdns-browse/` must not spend a release build.
-- **`codeql.yml`** — JS/TS, Rust, Actions, and Java/Kotlin. The Java job
-  must install the JDK *before* CodeQL init, or the extractor sees no
-  source. `node_modules` is excluded via `codeql-config.yml`.
+- **`codeql.yml`** — JS/TS, Rust and Actions, all build-mode `none`.
+- **`codeql-android.yml`** — Java/Kotlin, the only analysis needing a real
+  build. Scoped to `android/**`, `capacitor.config.ts` and
+  `package-lock.json`, since nothing else can change its result. Compiles
+  with `compileDebugJavaWithJavac` rather than `assembleDebug` — CodeQL
+  needs javac traces, not dexing or packaging — and caches Gradle, which
+  is also the cache `release.yml`'s tag build restores. The JDK must be
+  installed *before* CodeQL init or the extractor sees no source.
+  `node_modules` is excluded via `codeql-config.yml`.
 - **`release.yml`** — on a `vX.Y.Z` tag: builds the signed Android APK and
   the Windows installer, attaches both to a draft Release.
 
