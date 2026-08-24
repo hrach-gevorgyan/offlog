@@ -1,6 +1,6 @@
 # Offlog — Release Notes
 
-**This is not [CHANGELOG.md](CHANGELOG.md).** That file is the maintainer
+**This is not [changelog.md](changelog.md).** That file is the maintainer
 record — implementation detail, file names, root causes. This file is what
 users read.
 
@@ -17,7 +17,7 @@ current tag into the GitHub Release body. Google Play rejects anything over
 **In short** must stay under it. Check with:
 
 ```bash
-node -e "const s=require('fs').readFileSync('docs/RELEASE_NOTES.md','utf8');
+node -e "const s=require('fs').readFileSync('docs/release-notes.md','utf8');
 for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
   console.log(m[1], m[2].length, m[2].length>500?'OVER':'ok')"
 ```

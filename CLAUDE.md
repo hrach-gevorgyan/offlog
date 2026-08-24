@@ -3,52 +3,52 @@
 This file is the entry point for anyone (AI assistant or human) making
 changes — it stays at the repo root deliberately, since AI tooling only
 auto-loads a CLAUDE.md found there. Everything else lives in
-[docs/](docs/): [docs/DECISIONS.md](docs/DECISIONS.md) (opens with the
+[docs/](docs/): [docs/decisions.md](docs/decisions.md) (opens with the
 project's manifesto — why this project exists and what it's ultimately
-for, deliberately no version/timeline, see ROADMAP.md for that — then a
+for, deliberately no version/timeline, see roadmap.md for that — then a
 short "Open Questions" section for genuinely unresolved things nobody
 has a confident answer to yet, merged in from the old IDEAS.md
 2026-07-31, then a log of why non-obvious choices were made; merged
-GOAL.md into this file 2026-07-20), [docs/TECH.md](docs/TECH.md)
+GOAL.md into this file 2026-07-20), [docs/tech.md](docs/tech.md)
 (architecture — also covers Windows code signing policy, merged in
-from the old SIGNING.md 2026-07-31), [docs/ROADMAP.md](docs/ROADMAP.md)
+from the old SIGNING.md 2026-07-31), [docs/roadmap.md](docs/roadmap.md)
 (current status and still-open work only — shipped/declined/parked
 history lives in
 [docs/archive/history.md](docs/archive/history.md)),
-[docs/CHANGELOG.md](docs/CHANGELOG.md) (newest ~10 releases — older ones
+[docs/changelog.md](docs/changelog.md) (newest ~10 releases — older ones
 plus the full maintenance-pass log compressed into
 [docs/archive/history.md](docs/archive/history.md);
 technical/maintainer record only — for what ships to actual users see
-[docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) instead, added 2026-07-24
+[docs/release-notes.md](docs/release-notes.md) instead, added 2026-07-24
 after users found the GitHub Releases page unreadable: plain language,
 `## New` / `## Fixed`, one entry per version, pulled verbatim into the
 release body by `.github/scripts/extract-release-notes.js`),
-[docs/BRAND.md](docs/BRAND.md) (tagline/pitch/voice/visual-identity
+[docs/brand.md](docs/brand.md) (tagline/pitch/voice/visual-identity
 reference for any public-facing copy — README, landing page, store
 listing — also covers trademark/usage terms, merged from the old
 TRADEMARK.md 2026-07-31: the MIT license covers code only, name/icon/
 tagline are reserved separately; read before approving a fork's naming
-or any brand-adjacent request), [docs/PRIVACY.md](docs/PRIVACY.md) (the app-store-required privacy
-policy, ROADMAP.md's C3 — update it only if a feature actually changes
-what data the app touches, per its own DECISIONS.md entry), and
-[docs/STORY.md](docs/STORY.md) (the narrative account of the whole
+or any brand-adjacent request), [docs/privacy.md](docs/privacy.md) (the app-store-required privacy
+policy, roadmap.md's C3 — update it only if a feature actually changes
+what data the app touches, per its own decisions.md entry), and
+[docs/story.md](docs/story.md) (the narrative account of the whole
 2026-07 build, written on the last day of development — background
-reading, never a source of truth; if it ever contradicts DECISIONS.md
-or TECH.md, they win and STORY.md is the stale one). The
+reading, never a source of truth; if it ever contradicts decisions.md
+or tech.md, they win and story.md is the stale one). The
 maintenance-pass process
-lives in [docs/MAINTENANCE.md](docs/MAINTENANCE.md) (instructions only —
+lives in [docs/maintenance.md](docs/maintenance.md) (instructions only —
 its one-line current-pointer is checked at a version bump, not every
 session — see below; the full pass-by-pass history lives in
 docs/archive/maintenance.md). User-facing pitch is the root
 [README.md](README.md).
 
 **Routing rule for where a new item goes** (owner clarification,
-2026-07-21): ROADMAP.md holds only work that's both *needed* and
+2026-07-21): roadmap.md holds only work that's both *needed* and
 *doable* — actually going to happen. The moment something turns out to
 be not doable (technical wall, out of scope per the manifesto, or a
-deliberate no), it moves to DECISIONS.md's log with the reasoning, not
+deliberate no), it moves to decisions.md's log with the reasoning, not
 left sitting in ROADMAP. A genuine open question with no decision yet
-goes to DECISIONS.md's "Open Questions" section, not ROADMAP — don't
+goes to decisions.md's "Open Questions" section, not ROADMAP — don't
 let ROADMAP accumulate "maybe" items dressed up as planned work.
 
 **Mandatory, not optional: read the relevant document(s) above before
@@ -60,35 +60,35 @@ document in this list, every session, no exceptions.
 
 **When to read which doc** (so "the relevant document(s)" isn't a blanket
 read-everything every time):
-- **DECISIONS.md's manifesto** — before any scope/direction question
+- **decisions.md's manifesto** — before any scope/direction question
   ("should this be a feature," "should this need an account/server,"
   multi-user/remote-sync proposals) — check it lines up with the stated
   mission before proposing.
-- **TECH.md** — touching architecture, the data model, sync internals, or
+- **tech.md** — touching architecture, the data model, sync internals, or
   Android platform behavior.
-- **ROADMAP.md** — starting a roadmap item, or making sequencing/scheduling
+- **roadmap.md** — starting a roadmap item, or making sequencing/scheduling
   decisions. Archive shipped items into `docs/archive/history.md`
   roughly weekly, or whenever the still-open section starts accumulating
   shipped items again — don't let it regrow into a wall of history.
-- **DECISIONS.md's decisions log** — before any "why not X instead," or
+- **decisions.md's decisions log** — before any "why not X instead," or
   touching storage/sync/business-model/distribution choices.
-- **DECISIONS.md's Open Questions section** — only when the task is
+- **decisions.md's Open Questions section** — only when the task is
   itself one of the open questions, or a new one worth recording comes up.
-- **BRAND.md** — before writing or editing any public-facing copy
+- **brand.md** — before writing or editing any public-facing copy
   (README pitch, landing page, store listing, social post) — check tone/
   tagline/color/typography line up before proposing new wording. Also
   before responding to anything about forking, reusing the name/icon/
   tagline, or brand ownership/licensing (§10, the trademark section).
-- **CHANGELOG.md** — only at release time (the version-bump step), not per
+- **changelog.md** — only at release time (the version-bump step), not per
   code change. Move the oldest row into `docs/archive/history.md`
   once the table exceeds 10 rows.
-- **MAINTENANCE.md** — only when running an actual maintenance pass, or
+- **maintenance.md** — only when running an actual maintenance pass, or
   checking whether one is due at a version bump (its current-pointer line
   says last pass/next due — don't re-read the archive's full history for
   this check).
 
 **Before proposing "why not just do X differently" — check
-docs/DECISIONS.md first.** Several non-obvious choices (PouchDB-as-UMD-
+docs/decisions.md first.** Several non-obvious choices (PouchDB-as-UMD-
 global, a self-hosted CouchDB-protocol backend over any hosted
 alternative, soft-delete-only, positional "done", no F-Droid/iOS, no
 paywall ever) have already been debated and
@@ -110,14 +110,14 @@ work needed. Concretely:
   straightforward logic fix doesn't need a live round-trip to prove itself.
 - **Read narrowly.** Use `Grep`/an `offset`+`limit` `Read` instead of
   reading a whole file when only a section is relevant.
-- **Rotating a CHANGELOG.md row into docs/archive/history.md**:
+- **Rotating a changelog.md row into docs/archive/history.md**:
   don't re-read either file in full every release. `Grep` for the row
   you're moving (or the archive's table-header line) to confirm the
   anchor text, then use a targeted `Edit` on each file — never a full-file
   `Read`+`Write` round trip for what's a one-row move. Only touch the
-  archive at all when CHANGELOG.md's row count actually exceeds 10; most
+  archive at all when changelog.md's row count actually exceeds 10; most
   releases don't need a rotation. Same pattern for
-  docs/ROADMAP.md ↔ docs/archive/history.md, done roughly weekly
+  docs/roadmap.md ↔ docs/archive/history.md, done roughly weekly
   rather than per-release.
 - **Keep responses terse.** State the result, not a running narration of
   intermediate steps. No restating what was just done in a summary if the
@@ -141,7 +141,7 @@ A **single-user, local-first** task manager with deliberately **no backend,
 no accounts, no telemetry** — everything works fully offline and the only
 network call is optional sync replication (self-hosted NyxDB or another
 CouchDB-protocol server). Full tech stack table in
-[docs/TECH.md](docs/TECH.md).
+[docs/tech.md](docs/tech.md).
 
 ## Commands
 
@@ -162,10 +162,10 @@ Android APK: `cd android && .\gradlew assembleDebug` (set
 Android Studio; never invoke this as the assistant** (see Release checklist
 below).
 
-**`offlog-desktop/`** is a sibling project (Tauri, Track E — ROADMAP.md
+**`offlog-desktop/`** is a sibling project (Tauri, Track E — roadmap.md
 E1), not a subfolder of `offlog-app/` — it wraps `offlog-app/dist`
 unmodified and embeds a NyxDB sync host. Its own build/architecture
-detail lives in `docs/TECH.md`'s "Desktop (Tauri)" section; don't
+detail lives in `docs/tech.md`'s "Desktop (Tauri)" section; don't
 duplicate it here. `cargo build`/`cargo tauri build`/`cargo tauri dev`
 are fine for the assistant to run (unlike the Android APK build above)
 — there's no equivalent "owner-only" restriction for it.
@@ -270,13 +270,13 @@ cascades into tasks, so separating them would be a cycle.
 ## Generating test/dummy data
 
 Write directly against the PouchDB browser global, don't drive the UI one
-task at a time — full recipe in [docs/TECH.md](docs/TECH.md)'s "Testing &
+task at a time — full recipe in [docs/tech.md](docs/tech.md)'s "Testing &
 Dev Workflows" section.
 
 ## Theming rules
 
 - **All colors are CSS custom properties** in `src/app.css` (`:root` light,
-  `body.dark` dark). The full token table is in `docs/TECH.md` → "Theme System"
+  `body.dark` dark). The full token table is in `docs/tech.md` → "Theme System"
   — this is the only copy; don't duplicate it into README.md.
 - **Never hardcode a hex/rgba color in a component** — the one exception
   is pure-black shadows/scrims (`rgba(0,0,0,.x)`). `Sidebar.svelte`
@@ -288,11 +288,11 @@ Dev Workflows" section.
 - Semantic tokens: `--accent` (indigo), `--danger`, `--success`,
   `--overdue-bg/ink`, `--due-soon-bg/ink`. Add a token rather than a literal
   if a new semantic color is needed, and add it to **both** light and dark
-  blocks plus the table in `docs/TECH.md`.
+  blocks plus the table in `docs/tech.md`.
 - Brand color changes must also propagate to: `index.html` `<meta theme-color>`,
   `capacitor.config.ts` `iconColor`, and `android/.../values/colors.xml`.
 - Known theming gotcha in `Sidebar.svelte`'s settings panel — see
-  [docs/TECH.md](docs/TECH.md)'s Theme System section before touching it.
+  [docs/tech.md](docs/tech.md)'s Theme System section before touching it.
 
 ## Accessibility rules (enforced — build must stay warning-free)
 
@@ -317,7 +317,7 @@ Dev Workflows" section.
 ## Testing
 
 `tests/db.test.ts` (Vitest) covers `db.ts`'s pure/query logic against
-`pouchdb-adapter-memory` — see [docs/TECH.md](docs/TECH.md)'s "Testing &
+`pouchdb-adapter-memory` — see [docs/tech.md](docs/tech.md)'s "Testing &
 Dev Workflows" for how `tests/setup.ts` shims PouchDB/localStorage. When
 adding a new `db.ts` function with any non-trivial logic, add a test here
 before shipping — this suite already caught two real bugs (broken conflict
@@ -364,7 +364,7 @@ store must create it inside and import it back.
 
 - **Status bar**: targetSdk 36 is edge-to-edge; `StatusBar.setBackgroundColor()`
   is a hard no-op. The working approach is the `.status-bar-fill` strip in
-  App.svelte + `env(safe-area-inset-top)` padding. Details in docs/TECH.md.
+  App.svelte + `env(safe-area-inset-top)` padding. Details in docs/tech.md.
 - **Notification icons** must be white silhouettes with transparency, or
   Android silently substitutes a generic triangle.
 - `position: fixed` full-screen elements bypass `.layout` and need their own
@@ -383,19 +383,19 @@ store must create it inside and import it back.
   this was understood.
 - **Prefer an official `@capacitor/*` plugin's own mechanism over a custom
   native bridge event, when one exists.** Check before writing custom
-  Java — see [docs/DECISIONS.md](docs/DECISIONS.md)'s A25 entry for the
+  Java — see [docs/decisions.md](docs/decisions.md)'s A25 entry for the
   concrete bug this rule comes from.
 
 ## Project status & direction
 
 Full reasoning behind all of this lives in
-[docs/DECISIONS.md](docs/DECISIONS.md) — the directives below are the
+[docs/decisions.md](docs/decisions.md) — the directives below are the
 actionable rules, kept short on purpose:
 
 - **No git remote yet, repo not public.** Don't add a remote, push, or
   suggest making it public without an explicit owner request.
 - **Never let a public-facing change ship before the config.ts credential
-  fix** (tracked in docs/ROADMAP.md's Track C, item C7) — not urgent for
+  fix** (tracked in docs/roadmap.md's Track C, item C7) — not urgent for
   day-to-day work, but a hard gate on anything public-facing.
 - **Security is minimal by design, not yet audited.** Treat any feature
   that would expand the network attack surface with the same caution
@@ -413,7 +413,7 @@ Day-to-day work happens on the PC/web build. **Android sync
 rule): it only copies `dist/` into the Android project, and it's the one
 check that exercises Capacitor CLI's own config-loading path (the
 TypeScript-7 breakage passed build/tsc/tests and was only caught there —
-see MAINTENANCE.md's packaging-paths blind spot). Bump the Android version
+see maintenance.md's packaging-paths blind spot). Bump the Android version
 numbers alongside the web ones so they stay in sync for whenever a Studio
 build actually happens.
 
@@ -430,7 +430,7 @@ AGP's public debug keystore** (set in v5.4.4 purely so Android Studio's Run
 button can install a `release`-type build locally) — this is not a real
 release signing key. Before any actual Play Store packaging/distribution,
 a real key must be generated and wired in first (tracked in
-docs/ROADMAP.md's Track C, item C3 — Play Store); don't let a
+docs/roadmap.md's Track C, item C3 — Play Store); don't let a
 debug-keystore-signed `release` APK go out as a real release build.
 
 1. `npm run build` — must succeed with **zero warnings**
@@ -442,9 +442,9 @@ debug-keystore-signed `release` APK go out as a real release build.
    `offlog-desktop/src-tauri/tauri.conf.json`'s `version` — even on
    releases where Android/desktop aren't being synced/built, so all
    three stay in sync for whenever a build actually is requested
-6. Add a new entry to `docs/CHANGELOG.md` — the single source of truth for
-   version history (do not duplicate it back into TECH.md or README.md)
-6b. Add a new `## vX.Y.Z` entry to `docs/RELEASE_NOTES.md` — plain
+6. Add a new entry to `docs/changelog.md` — the single source of truth for
+   version history (do not duplicate it back into tech.md or README.md)
+6b. Add a new `## vX.Y.Z` entry to `docs/release-notes.md` — plain
    language, `### New` / `### Fixed` only, no file/function names. This
    is what real users see on the GitHub Releases page and (once C3
    ships) Play Store's "What's new" — do not skip this even when step 6
@@ -458,7 +458,7 @@ debug-keystore-signed `release` APK go out as a real release build.
 9. **After any real test round (not every commit), reset to a fresh
    state** — `offlog-desktop/scripts/reset-dev-env.ps1` for the desktop
    dev NyxDB/config, plus the browser/Android reset steps in
-   [docs/TECH.md](docs/TECH.md)'s "Resetting to a fresh state" section.
+   [docs/tech.md](docs/tech.md)'s "Resetting to a fresh state" section.
    Dev state silently accumulates release over release otherwise — E2's
    dev/prod identity-collision bug was found because of exactly that.
 
@@ -477,7 +477,7 @@ debug-keystore-signed `release` APK go out as a real release build.
   reverted. None of that survives contact with a reader who wasn't there,
   and it actively misleads: a comment describing a decision's *history*
   gets read as describing its *current* rationale. That history already
-  lives in git and in `docs/STORY.md` — the two places built for it.
+  lives in git and in `docs/story.md` — the two places built for it.
   - Bad: `// redesign/v6: was bare floating text (owner feedback,
     2026-07-28: "awful"). Moved into a pill to match the badges.`
   - Good: *(nothing — the code shows a pill; there is no rule here)*
@@ -495,14 +495,14 @@ debug-keystore-signed `release` APK go out as a real release build.
   components for a label's uppercase/letter-spacing/size treatment — but
   now points at the same Hanken Grotesk face; don't reintroduce a second
   `@font-face` there. Self-hosted from `offlog-app/public/fonts/` via
-  `@font-face` (not Google Fonts' CDN — see C9 in ROADMAP.md for why),
+  `@font-face` (not Google Fonts' CDN — see C9 in roadmap.md for why),
   latin subset only. If a new font is ever needed, download and
   self-host it the same way; don't reach for a CDN `@import`.
 
 ## Maintenance routine (mandatory)
 - Cadence: a maintenance pass **every 3 minor versions**. The current
   Last-pass/Next-pass-due state lives **only** in
-  [docs/MAINTENANCE.md](docs/MAINTENANCE.md)'s one-line current-pointer
+  [docs/maintenance.md](docs/maintenance.md)'s one-line current-pointer
   (process/phases live there too; full pass-by-pass narrative history is
   in docs/archive/maintenance.md, not restated here) — don't restate
   specific version numbers here, they'll drift out of sync.
@@ -510,8 +510,8 @@ debug-keystore-signed `release` APK go out as a real release build.
   (checklist step 5) — not on every session start, that's wasted tokens.
   If the release just shipped matches "Next pass due," tell the owner:
   "A maintenance pass is due (last: vX, current: vY). Run it now? (see
-  docs/MAINTENANCE.md)" — and don't start one without confirmation.
-- When a pass completes, update docs/MAINTENANCE.md's current-pointer line
+  docs/maintenance.md)" — and don't start one without confirmation.
+- When a pass completes, update docs/maintenance.md's current-pointer line
   (Last pass = current version, Next pass due = next scheduled point), and
   append the pass's narrative to docs/archive/maintenance.md.
 - Maintenance passes never add features and never touch doc schema,

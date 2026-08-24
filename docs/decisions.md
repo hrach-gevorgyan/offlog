@@ -17,7 +17,7 @@ source, self-hostable, forkable. Integrations and automation are
 deliberately not part of the free core. Phone-as-host, remote/away-from-
 home sync, and per-user accounts or permissions are explicitly not part of
 this goal. This section states *why* and *what*, not *when* — that's
-[ROADMAP.md](ROADMAP.md). For anything this implies but doesn't resolve,
+[roadmap.md](roadmap.md). For anything this implies but doesn't resolve,
 see "Open Questions" below.
 
 ---
@@ -37,7 +37,7 @@ detail for anything summarized here lives in git history.
 ## Open Questions
 
 Genuinely unresolved, shareable as-is with another AI or a human for
-outside input. Not a task list (see [ROADMAP.md](ROADMAP.md)) and not
+outside input. Not a task list (see [roadmap.md](roadmap.md)) and not
 the decisions log below.
 
 - **Two PC hosts on one LAN.** The model is one fixed host, phones as
@@ -60,7 +60,7 @@ the decisions log below.
   goal" line, so it is an idea to think about, not a plan.
 
 If an answer emerges, fold it into the relevant section below or
-update ROADMAP.md directly, and remove the question here.
+update roadmap.md directly, and remove the question here.
 
 ---
 
@@ -167,7 +167,7 @@ layer, never a gate on the app's own functionality.
 
 ### Brand (name/icon/tagline) reserved separately from the MIT code license
 MIT covers the source code only, not the name, icon, or tagline. The
-reservation (see [BRAND.md](BRAND.md)) exists so a fork can't present
+reservation (see [brand.md](brand.md)) exists so a fork can't present
 itself as official Offlog or as an endorsement by its owner, and so the
 option to someday sell/license/hand off the brand isn't given away by
 implication. Forking, modifying, and redistributing under MIT —
@@ -413,7 +413,7 @@ without exception.
 ### The roadmap is finite — a plan with an end
 Offlog isn't competing for organic attention in a market giants own, and
 sprint pace would end in burnout-abandonment, not a finished product.
-ROADMAP.md is a finite plan with a defined "Done" state, then maintenance
+roadmap.md is a finite plan with a defined "Done" state, then maintenance
 mode. The mission is "a tool for its owner, given away as-is," and *being
 finished* is that mission succeeding.
 
@@ -424,7 +424,7 @@ a default cleanup step, even right after testing.
 
 ### Privacy policy states the mechanism, not a bare denial
 A policy with nothing to disclose reads as suspiciously sparse if it just
-says "nothing is collected." [PRIVACY.md](PRIVACY.md) states that plainly
+says "nothing is collected." [privacy.md](privacy.md) states that plainly
 and then explains *why* for each category a reviewer expects (accounts,
 analytics, sync, permissions) by pointing at the actual mechanism. Serves
 the Play Store listing.

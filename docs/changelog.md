@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **This is the maintainer record** — implementation detail, file names and
 root causes. For what ships to users in plain language, see
-[RELEASE_NOTES.md](RELEASE_NOTES.md); that file is what the GitHub Release
+[release-notes.md](release-notes.md); that file is what the GitHub Release
 body is generated from.
 
 The newest 10 releases are kept here in full. Older ones are compressed to

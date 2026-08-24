@@ -27,8 +27,8 @@ backups silently stopping once the desktop app became tray-resident.
 
 ## Phase 0 — Orientation (no changes)
 
-1. Read CLAUDE.md and docs/TECH.md — the project map. If the structure has
-   drifted from what TECH.md describes, updating TECH.md is itself a
+1. Read CLAUDE.md and docs/tech.md — the project map. If the structure has
+   drifted from what tech.md describes, updating tech.md is itself a
    finding. Do not create a separate map file.
 
 2. **Confirm the baseline is green before any change, judging every gate
@@ -225,12 +225,12 @@ owner-only.
 
 ## Phase 5 — Documentation and handoff
 
-1. Update docs/TECH.md if structure changed, CLAUDE.md if a convention
+1. Update docs/tech.md if structure changed, CLAUDE.md if a convention
    changed. Shrink stale content rather than only adding.
 2. **If the pass fixed anything**, ship it as a light release: bump the
    version in `package.json`, `android/app/build.gradle` and
-   `tauri.conf.json`, add a `### Fixed` entry to docs/CHANGELOG.md
-   (Keep a Changelog format) and an entry to docs/RELEASE_NOTES.md
+   `tauri.conf.json`, add a `### Fixed` entry to docs/changelog.md
+   (Keep a Changelog format) and an entry to docs/release-notes.md
    including its Play-safe **In short** block, then commit and tag per the
    release checklist.
    **If the pass found nothing to fix, skip the version bump entirely** —

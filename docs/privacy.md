@@ -83,7 +83,7 @@ If this policy ever needs to change (for example, if a genuinely new
 feature changes what's described above), this page will be updated and
 the "Last updated" date at the top will change. Given Offlog's design
 (no accounts, no telemetry, ever — see
-[docs/DECISIONS.md](DECISIONS.md)'s manifesto), no change is currently
+[docs/decisions.md](decisions.md)'s manifesto), no change is currently
 planned that would make this policy meaningfully different.
 
 ## Contact

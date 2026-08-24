@@ -4,7 +4,7 @@ The single reference for anything public-facing (README, landing page,
 Play Store listing, social posts, and any future visual brand-kit
 generation) to build from, so tone and identity stay consistent
 instead of being reinvented per surface. This is C6 in
-[ROADMAP.md](ROADMAP.md) — assembled from identity elements that
+[roadmap.md](roadmap.md) — assembled from identity elements that
 already existed (icon, colors, typography) but were never gathered
 into one place, then extended into a full reference deliberately
 detailed enough to brief a design pass from directly. Also covers
@@ -28,14 +28,14 @@ words — matches the voice rules in §3.
 
 Pronunciation: "off-log," rhymes with "off log," not "AWF-logue."
 
-## 2. Mission (recap — full version in DECISIONS.md)
+## 2. Mission (recap — full version in decisions.md)
 
 A task manager any non-technical person can pick up and use, with zero
 knowledge of backends, servers, or databases required — install it,
 open it, it works. When someone has both a phone and a PC, the PC acts
 as the sync host and they connect automatically over home Wi-Fi:
 private, not public. The core app stays free always, no feature ever
-paywalled. See [DECISIONS.md](DECISIONS.md)'s opening manifesto for the
+paywalled. See [decisions.md](decisions.md)'s opening manifesto for the
 full statement and its boundaries (no accounts, no remote sync, no
 per-user permissions) — this file doesn't restate it, only draws from
 it.
@@ -67,11 +67,11 @@ enterprise-grade, all-in-one, powerful, seamless, game-changing.
 
 ## 4. Voice & tone rules
 
-Per DECISIONS.md's manifesto: **"not competing, just likable."**
+Per decisions.md's manifesto: **"not competing, just likable."**
 
 - **Lead with what Offlog *is*, not what it isn't compared to.** Avoid
   naming Trello/Notion/ClickUp/Jira in public-facing copy (fine in
-  DECISIONS.md's own internal reasoning-log, never in pitch copy) — a
+  decisions.md's own internal reasoning-log, never in pitch copy) — a
   feature-count comparison invites a feature-count reply, and that's
   not the point.
 - **State facts plainly, no hype words.** Banned words/phrases in
@@ -88,7 +88,7 @@ Per DECISIONS.md's manifesto: **"not competing, just likable."**
 - **Short sentences over long ones.** If a sentence needs a semicolon
   to hold two ideas, it's probably two sentences.
 - Every public string goes through the same plain-language bar as
-  in-app copy — see DECISIONS.md's C10 entries for the standard.
+  in-app copy — see decisions.md's C10 entries for the standard.
 
 ### Voice in practice — before/after
 
@@ -111,7 +111,7 @@ network.
 away-from-home teams needing central admin control, anyone needing
 per-user permissions or audit trails across an organization, anyone
 needing a mobile-only (no PC) multi-device sync story (see
-DECISIONS.md's mesh-sync entry for why that's declined). Don't write
+decisions.md's mesh-sync entry for why that's declined). Don't write
 copy that implies enterprise/team-admin capability Offlog doesn't have
 — that's a support-ticket generator, not a growth lever.
 
@@ -120,7 +120,7 @@ copy that implies enterprise/team-admin capability Offlog doesn't have
 ### Color
 
 One accent, used identically across web/Android/desktop (full token
-table in [TECH.md](TECH.md)'s "Theme System" section — this is the
+table in [tech.md](tech.md)'s "Theme System" section — this is the
 brand-relevant subset, restated here so a design pass doesn't need to
 cross-reference two files):
 
@@ -260,7 +260,7 @@ justify itself.
 
 The MIT license in this repo covers the **source code only**. It
 doesn't grant any right to use the "Offlog" name, wordmark, tagline, or
-icon (see DECISIONS.md's brand-reservation entry for why: keeping code
+icon (see decisions.md's brand-reservation entry for why: keeping code
 and brand on separate licenses means giving away the code for free
 doesn't also give away the option to protect or license the brand
 later). In practice:

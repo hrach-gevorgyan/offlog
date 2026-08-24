@@ -5,9 +5,9 @@ reference: what it's built with, how it's laid out, and the few ideas that
 aren't obvious from the code.
 
 > Conventions and invariants: [CLAUDE.md](../CLAUDE.md) ·
-> Planned work: [ROADMAP.md](ROADMAP.md) ·
-> Why choices were made: [DECISIONS.md](DECISIONS.md) ·
-> Version history: [CHANGELOG.md](CHANGELOG.md) ·
+> Planned work: [roadmap.md](roadmap.md) ·
+> Why choices were made: [decisions.md](decisions.md) ·
+> Version history: [changelog.md](changelog.md) ·
 > Pitch: [README.md](../README.md)
 
 **Contents:** [Stack](#stack) · [Architecture](#architecture) ·
@@ -547,4 +547,4 @@ cargo tauri build
 
 ## Version History
 
-See [CHANGELOG.md](CHANGELOG.md). Don't duplicate it here or in README.md.
+See [changelog.md](changelog.md). Don't duplicate it here or in README.md.

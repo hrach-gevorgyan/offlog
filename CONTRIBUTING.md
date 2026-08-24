@@ -1,7 +1,7 @@
 # Contributing to Offlog
 
 Offlog is a single-maintainer, self-hosted personal task manager — see
-[docs/DECISIONS.md](docs/DECISIONS.md)'s manifesto for the mission and
+[docs/decisions.md](docs/decisions.md)'s manifesto for the mission and
 the rest of that same file for why certain choices (no accounts, no
 hosted backend, no F-Droid/iOS, no monetization) are closed questions
 rather than open ones. Read those before proposing anything that
@@ -18,7 +18,7 @@ practical mechanics of sending a change.
 Offlog is **actively maintained but feature-complete**. It is not
 abandoned, and it is not archived — bugs get fixed, dependencies
 get updated, security reports get answered. What it doesn't have is a
-feature roadmap; see [docs/ROADMAP.md](docs/ROADMAP.md).
+feature roadmap; see [docs/roadmap.md](docs/roadmap.md).
 
 What that means for you:
 
@@ -71,7 +71,7 @@ bump can pass all three and still break the packaging path — TypeScript
 7 did exactly that, passing every gate and then breaking
 `npx cap sync android` on the next release tag, because the gates never
 exercise Capacitor CLI's own config loader. This is a documented blind
-spot; see [docs/MAINTENANCE.md](docs/MAINTENANCE.md).
+spot; see [docs/maintenance.md](docs/maintenance.md).
 
 If you touch anything under `offlog-desktop/`, also:
 
@@ -130,7 +130,7 @@ them are documented invariants rather than taste:
 
 Use the issue templates. If you're not sure whether something is a bug
 or an intentional design choice, check
-[docs/DECISIONS.md](docs/DECISIONS.md) first — several "why not X"
+[docs/decisions.md](docs/decisions.md) first — several "why not X"
 questions are already answered there, including ones that were tried
 and reversed.
 
@@ -149,4 +149,4 @@ documentation exists specifically to make it work.
 
 Note that the MIT license covers the **code only** — the Offlog name,
 icon, wordmark and tagline are reserved separately. See
-[docs/BRAND.md](docs/BRAND.md) §10 before naming your fork.
+[docs/brand.md](docs/brand.md) §10 before naming your fork.

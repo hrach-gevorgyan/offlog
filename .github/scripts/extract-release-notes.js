@@ -1,4 +1,4 @@
-// Pulls the current tag's entry out of docs/RELEASE_NOTES.md and writes
+// Pulls the current tag's entry out of docs/release-notes.md and writes
 // it to $GITHUB_OUTPUT as `body`, for release.yml's tauri-action step to
 // pass as `releaseBody` -- this is what ends up in latest.json's `notes`
 // field (read by the desktop app's update.body, offlog-app/src/lib/
@@ -15,7 +15,7 @@
 const fs = require('fs');
 
 const version = (process.env.GITHUB_REF_NAME || '').replace(/^v/, '');
-const md = fs.readFileSync('docs/RELEASE_NOTES.md', 'utf8');
+const md = fs.readFileSync('docs/release-notes.md', 'utf8');
 const heading = `## v${version}`;
 // Split on each "## v" heading rather than a regex with a `$`
 // end-of-string lookahead -- `$` under the `m` flag (needed for `^` to

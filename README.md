@@ -28,7 +28,7 @@ A free, open-source, local-first task manager. No account, no telemetry,
 no subscription, ever. Runs in the browser, as a native Android app, and
 as a Windows desktop app — all three share the exact same codebase and
 sync with each other over your own network. (Current version: the
-badge above, always live — [docs/CHANGELOG.md](docs/CHANGELOG.md) for
+badge above, always live — [docs/changelog.md](docs/changelog.md) for
 what changed.)
 
 **Jump to:** [Screenshots](#screenshots) ·
@@ -94,14 +94,14 @@ well for a small, trusted, co-located group — a family, a small team,
 one office sharing a board over the same network. It is **not** a
 remote/multi-tenant product: no per-user permissions, no accounts, and
 sync only ever happens on the same local network. See
-[docs/DECISIONS.md](docs/DECISIONS.md)'s opening manifesto for the
+[docs/decisions.md](docs/decisions.md)'s opening manifesto for the
 exact scope and why it stops there.
 
 Built in the open, on purpose — every decision, including the ones
-that got reversed, is written down: [docs/DECISIONS.md](docs/DECISIONS.md)
-(why, including the "why not just—" questions), [docs/ROADMAP.md](docs/ROADMAP.md)
-(what's planned), [docs/TECH.md](docs/TECH.md) (the real architecture),
-and a full [docs/CHANGELOG.md](docs/CHANGELOG.md) back to the first
+that got reversed, is written down: [docs/decisions.md](docs/decisions.md)
+(why, including the "why not just—" questions), [docs/roadmap.md](docs/roadmap.md)
+(what's planned), [docs/tech.md](docs/tech.md) (the real architecture),
+and a full [docs/changelog.md](docs/changelog.md) back to the first
 release.
 
 **Status: feature-complete, actively maintained, and in daily use.**
@@ -109,14 +109,14 @@ Built over July 2026; since 2026-08-01 it's the author's own primary
 task manager. Bugs get fixed, dependencies get updated, security reports
 get answered — what it doesn't have is a feature roadmap. New features
 are judged against real daily use rather than a backlog, so open an
-issue before building one. [docs/STORY.md](docs/STORY.md) is the honest
+issue before building one. [docs/story.md](docs/story.md) is the honest
 account of how it got built — including the month the foundation was
 thrown out and rewritten, and the backup bug caught twelve hours before
 it mattered.
 
 ## Features
 
-Full detail lives in [docs/CHANGELOG.md](docs/CHANGELOG.md) (recent
+Full detail lives in [docs/changelog.md](docs/changelog.md) (recent
 releases) and [docs/archive/history.md](docs/archive/history.md)
 (everything older, one line each).
 
@@ -165,7 +165,7 @@ them is the point.
 - Works fully offline with zero setup if you never turn sync on; errors
   are readable and conflicts are recoverable, never silent data loss
 
-**LAN-only by design** — see [docs/DECISIONS.md](docs/DECISIONS.md) for
+**LAN-only by design** — see [docs/decisions.md](docs/decisions.md) for
 why remote sync and user accounts are out of scope.
 
 **Windows** — the intended app for daily use
@@ -198,7 +198,7 @@ why remote sync and user accounts are out of scope.
 - WCAG AA contrast audited across the palette
 
 No paid tier, and no feature ever held back behind one — see
-[docs/DECISIONS.md](docs/DECISIONS.md)'s manifesto for why.
+[docs/decisions.md](docs/decisions.md)'s manifesto for why.
 
 ## Getting the apps
 
@@ -229,9 +229,9 @@ Every release: zero-warning production build, clean type check, full
 test suite (569 of them), manual light/dark verification — enforced by
 CI. 22 structured maintenance passes, each working
 through a written checklist of blind spots earned from real shipped
-bugs (see [docs/MAINTENANCE.md](docs/MAINTENANCE.md)). Went through a
+bugs (see [docs/maintenance.md](docs/maintenance.md)). Went through a
 full security audit and git-history credential purge before going
-public (see [docs/DECISIONS.md](docs/DECISIONS.md)'s "Public release"
+public (see [docs/decisions.md](docs/decisions.md)'s "Public release"
 section).
 
 The last three of those passes ran on the final day, deliberately
@@ -239,7 +239,7 @@ scoped to ask *what could destroy real data* and *what breaks after
 weeks without a restart* rather than *what's untidy* — which is how a
 backup system that couldn't restore any backup containing an attachment
 got found and fixed before it was ever needed. That story is in
-[docs/STORY.md](docs/STORY.md).
+[docs/story.md](docs/story.md).
 
 ## Getting Started
 
@@ -287,7 +287,7 @@ cargo tauri dev
 
 Full build/deploy steps, environment details, and the complete
 architecture (including exactly how the mDNS discovery and pairing
-handshake work) are in [docs/TECH.md](docs/TECH.md).
+handshake work) are in [docs/tech.md](docs/tech.md).
 
 ## FAQ
 
@@ -298,7 +298,7 @@ network, and an update check on desktop you can turn off.
 
 **Two phones and no PC — can they sync to each other?**
 No. Only the Windows app acts as the syncing computer phones connect to
-(see [docs/DECISIONS.md](docs/DECISIONS.md)'s mesh-sync entry for why).
+(see [docs/decisions.md](docs/decisions.md)'s mesh-sync entry for why).
 Use Backup and Restore to move data between two phones that will never
 share a PC.
 
@@ -327,17 +327,17 @@ Everything beyond this pitch lives in [docs/](docs/):
 
 | Document | What's in it |
 |---|---|
-| [docs/STORY.md](docs/STORY.md) | How it actually got built, written on the last day of development — the plan, the rewrite, the near-misses |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Manifesto, open questions worth outside input, and why non-obvious choices were made |
-| [docs/TECH.md](docs/TECH.md) | Architecture, data model, sync internals, theme tokens, release/signing pipeline |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Current status and still-open planned work |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Recent version history in full detail (maintainer-level) |
-| [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) | The same releases in plain language — what actually changed for you |
-| [docs/MAINTENANCE.md](docs/MAINTENANCE.md) | The maintenance-pass checklist, including the blind spots earned by real shipped bugs |
-| [docs/PRIVACY.md](docs/PRIVACY.md) | Privacy policy (short, because the app collects nothing) |
+| [docs/story.md](docs/story.md) | How it actually got built, written on the last day of development — the plan, the rewrite, the near-misses |
+| [docs/decisions.md](docs/decisions.md) | Manifesto, open questions worth outside input, and why non-obvious choices were made |
+| [docs/tech.md](docs/tech.md) | Architecture, data model, sync internals, theme tokens, release/signing pipeline |
+| [docs/roadmap.md](docs/roadmap.md) | Current status and still-open planned work |
+| [docs/changelog.md](docs/changelog.md) | Recent version history in full detail (maintainer-level) |
+| [docs/release-notes.md](docs/release-notes.md) | The same releases in plain language — what actually changed for you |
+| [docs/maintenance.md](docs/maintenance.md) | The maintenance-pass checklist, including the blind spots earned by real shipped bugs |
+| [docs/privacy.md](docs/privacy.md) | Privacy policy (short, because the app collects nothing) |
 | [docs/archive/history.md](docs/archive/history.md) | Older releases, one line each |
 | [docs/archive/history.md](docs/archive/history.md) | Shipped/declined/parked roadmap history |
-| [docs/BRAND.md](docs/BRAND.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
+| [docs/brand.md](docs/brand.md) | Tagline/pitch/voice/visual-identity reference, plus trademark/fork usage terms |
 | [CLAUDE.md](CLAUDE.md) | Contributor guide/rules for humans and AI assistants |
 
 ## Contributing
@@ -349,7 +349,7 @@ documented (`CLAUDE.md` + `docs/`) specifically so an AI assistant (or a
 human) can pick it up the same way for a fork.
 
 **Before opening a feature PR:** the app is feature-complete on purpose
-— see [docs/ROADMAP.md](docs/ROADMAP.md). Feature ideas are welcome, but
+— see [docs/roadmap.md](docs/roadmap.md). Feature ideas are welcome, but
 they're judged against "does daily use actually demand this," which is a
 higher bar than "this would be good." Open an issue first and you'll get
 a straight yes/no before spending real time on it.
@@ -360,7 +360,7 @@ short, the most valuable contributions are:
 
 - Real code-signing (Windows) and Google Play publishing — the build/
   release pipeline is already automated (see
-  [docs/TECH.md](docs/TECH.md)'s CI section), what's missing is the paid
+  [docs/tech.md](docs/tech.md)'s CI section), what's missing is the paid
   credentials themselves and someone to own that ongoing cost/process
 - An iOS build — there's currently no bandwidth to open that front
   solo, so this is entirely open for someone who wants to take it on

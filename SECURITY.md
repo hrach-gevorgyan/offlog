@@ -1,12 +1,12 @@
 # Security Policy
 
 Offlog is a single-maintainer, local-first personal project (see
-[docs/DECISIONS.md](docs/DECISIONS.md) for the full context) — there's
+[docs/decisions.md](docs/decisions.md) for the full context) — there's
 no dedicated security team, but real vulnerabilities are taken
 seriously and fixed promptly. The project is actively maintained:
 security review is one of the few things that still gets regular
 attention now that the feature roadmap is complete (see
-[docs/ROADMAP.md](docs/ROADMAP.md)).
+[docs/roadmap.md](docs/roadmap.md)).
 
 ## Supported versions
 
@@ -58,7 +58,7 @@ testing surface, not a distribution target, and is documented as such.
 **Already known, deliberate tradeoffs — not vulnerabilities to report:**
 
 - Sync traffic is plain HTTP on the local network by design. No TLS on
-  LAN sync — see [docs/DECISIONS.md](docs/DECISIONS.md).
+  LAN sync — see [docs/decisions.md](docs/decisions.md).
 - The pairing endpoint's CORS policy is intentionally permissive (also
   documented there).
 - App Lock's PIN gates the **UI, not the data** — it is not encryption,
@@ -67,7 +67,7 @@ testing surface, not a distribution target, and is documented as such.
 - Security posture overall is deliberately minimal for a single-user,
   LAN-only, no-account app, and has **not** had a third-party audit.
 
-Please check DECISIONS.md before reporting any of the above.
+Please check decisions.md before reporting any of the above.
 
 ## What is protected
 
@@ -106,7 +106,7 @@ Historical note: an earlier `uuid` advisory (via `pouchdb-find`) and a
 the shipped bundle) were both resolved and are no longer open.
 
 All of this is re-checked at every maintenance pass — see
-[docs/MAINTENANCE.md](docs/MAINTENANCE.md), whose checklist includes a
+[docs/maintenance.md](docs/maintenance.md), whose checklist includes a
 **build-output** secret scan specifically: a source-only scan once
 missed real credentials that had been compiled into a shipped APK.
 

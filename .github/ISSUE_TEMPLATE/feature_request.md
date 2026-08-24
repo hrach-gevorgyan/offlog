@@ -11,7 +11,7 @@ labels: enhancement
 
 Before filing: Offlog is deliberately scoped — no accounts, no hosted
 sync backend, no automation/integration engine, no paid tier ever. Check
-[docs/DECISIONS.md](../../docs/DECISIONS.md) (manifesto + closed decisions)
+[docs/decisions.md](../../docs/decisions.md) (manifesto + closed decisions)
 first; some "why doesn't it do X" questions are already closed there
 rather than gaps.
 

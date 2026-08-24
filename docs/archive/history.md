@@ -3,7 +3,7 @@
 Two records, one file:
 
 1. **[Releases](#releases)** — every release older than the newest ten in
-   [../CHANGELOG.md](../CHANGELOG.md), one line each.
+   [../CHANGELOG.md](../changelog.md), one line each.
 2. **[Roadmap items](#roadmap-items)** — the numbered items the roadmap
    once tracked, so an old cross-reference like "see B39" still resolves.
 
@@ -11,13 +11,13 @@ Maintenance passes live in
 [maintenance.md](maintenance.md).
 
 This is an index. Per-release detail is in
-[../CHANGELOG.md](../CHANGELOG.md); why a choice was made is in
-[../DECISIONS.md](../DECISIONS.md).
+[../CHANGELOG.md](../changelog.md); why a choice was made is in
+[../DECISIONS.md](../decisions.md).
 
 The roadmap was once organised into lettered tracks and, briefly, three
 milestones. Both frameworks were dropped; the letters survive only as the
 ID namespace below. Mesh sync (Track D) was declined outright — see
-DECISIONS.md.
+decisions.md.
 
 ---
 
@@ -27,6 +27,7 @@ DECISIONS.md.
 |---|---|
 | v5.8.1 | C8 — the stored sync password is encrypted at rest per-platform instead of plain `localStorage` (a real CodeQL finding): Android Keystore via `capacitor-native-biometric`, Windows DPAPI via a new `secure_storage.rs` and two Tauri commands, plain web left as a documented dev/test-surface limitation; silent one-time migration off the old keys |
 | v5.8.0 | `offlog-desktop` fully adopts NyxDB and drops real Apache CouchDB entirely — ~10x smaller installer, ~8x smaller install; two real NyxDB server bugs found live and fixed same-day; verified afterwards with a full scenario matrix (two-host detection, conflict create+resolve, offline/reconnect, uninstall/reinstall identity, multi-device merge). CouchDB-era naming cleaned out (`VITE_COUCH_*` → `VITE_SYNC_*`, `fetch-couchdb-win.ps1` → `fetch-nyxdb-win.ps1`); CodeQL least-privilege `permissions:` added to CI |
+| v5.7.10 | TimePicker.svelte settled back to its B50 themed dropdown after trying and rejecting three replacements (scroll wheel, `timepicker-ui` npm lib, native `<input type="time">`) the same day — no functional change |
 | v5.7.9 | Live-testing fallout from v5.7.6/5.7.7: reminder backlogs now stagger 15s apart instead of firing as a simultaneous burst; Kanban touch-drag and mouse-drag no longer share state (a stuck touch sequence could wedge drag entirely); desktop console-flash on launch fixed via redirecting the CouchDB sidecar's std handles; CustomFieldManager's field-type dropdown opens upward instead of off-screen; installer gained real branding + skipped the UAC prompt |
 | v5.7.8 | Test release only -- version bump with no functional change, to exercise the new updater UX (v5.7.7) end-to-end from a real installed app |
 | v5.7.7 | Desktop updater UX overhaul — real download progress, explicit restart prompt (no auto-restart), silent ~6h background check with a dismissible banner, `latest.json`'s release notes now pull from the real CHANGELOG row instead of being empty |
@@ -35,23 +36,36 @@ DECISIONS.md.
 | v5.7.4 | Second dependency maintenance batch (6 Dependabot PRs): Capacitor CLI/core/app/local-notifications patch bumps, `serde_json` patch bump, `rand` 0.9.5→0.10.2 needed a real code fix (`random_range` moved to a new `RngExt` trait, broke `sync_host.rs`'s pairing-credential generator); surfaced that `ci.yml` doesn't watch Cargo/Rust changes at all |
 | v5.7.3 | Dependency maintenance batch: `uuid` forced to 11.1.1 via npm `overrides` (GHSA-w5hq-g745-h8pq); TypeScript 7.0.2 merged then reverted same day (broke `npx cap sync android`, invisible to build/tsc/test); `mdns-sd` 0.13.11→0.20.2, `tauri-winrt-notification` 0.7.3→0.8.1; `glib` 0.18.5 advisory recorded as accepted risk (no compatible fix upstream); `dependabot.yml` extended to watch offlog-desktop's Cargo deps |
 | v5.7.2 | List view crash on zero-task project, undo-toast chaining bug, Time Travel mobile layout, Agenda "Tomorrow · Tomorrow" chip, faster edge-auto-scroll, view-restore moved to sessionStorage, landscape sidebar drawer fix, AndroidManifest.xml invalid-comment fix |
-| v5.7.10 | TimePicker.svelte settled back to its B50 themed dropdown after trying and rejecting three replacements (scroll wheel, `timepicker-ui` npm lib, native `<input type="time">`) the same day — no functional change |
 | v5.7.1 | CRITICAL: real dev credentials (`.env.local`) baked into a shipped production build via Vite's always-loaded env, leaking a real password in the public v5.7.0 APK — fixed via `import.meta.env.DEV` gating; plus a batch of onboarding/UTC-date/widget/drag fixes from the same live-testing session |
-| v5.4.4 | Fixed Android Studio's "Activity class ... does not exist" running `release` — unsigned build type, pointed at AGP's debug keystore for local-dev runnability |
-| v5.4.5 | Widget clicks getting stuck on the first-opened view (`closeAll()` made fully synchronous instead of relying on async `popstate`); widget preview size tightened to fill its frame |
+| v5.7.0 | A9 test coverage (`computeDropPosition()`/`runMaintenanceSteps()` extracted to testable pure functions) + B35 Focus/Dashboard "Daily Brief" integration + B59 unpaired-sync UX (3-step `NamePrompt.svelte` flow: device name, sync explainer, quick preferences) |
+| v5.6.2 | Archived-project tasks leaking into every cross-project view — 6 query functions (`getDashboardData`, `searchAllTasks`, `getOpenTasksForFocusPicker`, `getAllActiveTasksWithReminders`, `getAllTasksDue`, `getRecentlyModifiedTasks`) now all require the task's own project to still be active |
+| v5.6.1 | Maintenance pass (fourteenth run) — dead exports removed, `pouchdb`/`@capacitor/cli` dependency placement fixed, new `--toggle-knob` theme token, debounced duplicate/similarity checks; security/robustness checklist fully clean |
+| v5.6.0 | Duplicate-name/content nudges (projects/spaces/tasks/checklist items/notes) — non-blocking hints only; also fixed a real Escape-vs-blur race that could silently create an empty project/space |
+| v5.5.1 | S2 live-verified (180-doc dataset, mobile-then-PC merge) — real gap found and fixed: `scanConflicts()` now auto-resolves conflicts on the 4 fixed default-seed ids whenever one side is still the untouched pristine default |
+| v5.5.0 | Sync-architecture hardening pass 1 — multiple-host LAN detection (`discovery.rs::browse_for_others()`, warns in Settings → Sync) and a stale-paired-host silent-failure fix (`staleHostAlert`, actionable "re-pair?" badge) |
 | v5.4.6 | Maintenance pass (13th run): fixed a real `updateTask()` race via a per-task write queue in db.ts; extracted `resetTouchDragState()`; documented the debug-keystore-signed release build-type gate |
-| v4.22.1 | Maintenance pass (eighth run): missing try/catch on ChangelogView's "Clear all"; Tauri window minWidth/minHeight floor added; everything else audited clean |
-| v4.22.2 | Sync stability (E2): phone re-resolves the PC's stable CouchDB uuid instead of a fixed IP:port; dev/prod Tauri identity collision fixed; Android debug/release storage collision fixed via applicationIdSuffix |
-| v4.22.0 | Week-start-day setting (B47, Sunday/Monday toggle for Agenda/DeadlinesView); full open/close animation pass (B51, new motion.ts); Tauri drag-drop fix (dragDropEnabled: false) |
-| v4.23.0 | B39 stable per-device id for history/device-list continuity across renames; B50 themed TimePicker replacing native time input; B48 Android widget light/dark split |
-| v4.24.0 | C2 zero-config first-run empty states (Dashboard/Kanban); C10 plain-language pass on Restore/crash-recovery/pairing copy |
-| v4.26.0 | Settings redesign into consistent `.setting-group` cards + Advanced tab; Reduce Motion toggle; fixed mobile info-loss (project name hidden below ~700px in Dashboard/Deadlines/Focus) |
-| v4.27.0 | Android widget preview/color polish; modal-stack `closeOnBack()` idempotency fix (Quick Add "stops working after repeated use") |
-| v4.28.0 | Widget size reverted to correct 2×2 footprint; widget icon contrast fix; pairing success feedback on both phone/PC; seed-emptiness re-verification instead of trusting a cached flag |
-| v4.29.0 | Tauri CSP enabled; sidebar follows page theme; modal-stack root-cause fix (revived-instance stale requestClose, coalesced popstate); Ctrl+K command palette bugs (unexported nav functions, racing pushState) |
-| v4.30.0 | Pre-public-release audit phase 1 (web), batches 1-10: 25+ real bugs across sync/CRUD/views/card-detail/settings/notifications/backup, all with build/tsc/test green per batch |
-| v5.0.0 | App Lock (PIN + one-time recovery code), NLP Quick Add, recurring tasks, Time Travel journal (replaces Changelog), single-font consolidation (IBM Plex Mono removed) |
+| v5.4.5 | Widget clicks getting stuck on the first-opened view (`closeAll()` made fully synchronous instead of relying on async `popstate`); widget preview size tightened to fill its frame |
+| v5.4.4 | Fixed Android Studio's "Activity class ... does not exist" running `release` — unsigned build type, pointed at AGP's debug keystore for local-dev runnability |
+| v5.4.3 | 5 more real bugs from a second live-device pass — widget picker preview text wrapping (new dedicated preview layout), widget taps overlapping instead of replacing (`modalStack.ts`'s `closeAll()`), drag-and-drop ghost card surviving `touchcancel`, Privacy Screen blocking all screenshots not just the recents preview (now a separate off-by-default toggle) |
+| v5.4.2 | 7 real bugs from a full live-device pass — overlay-close reliability fallback, Settings Save unnecessary reload, Quick Add FAB over Settings, Focus done-state not shown, PIN input polish, splash logo, widget light-mode contrast |
+| v5.4.1 | Maintenance pass (twelfth run) — fixed `hapticToggle()` firing before the task mutation was confirmed in 4 places (List/Focus/Deadlines/Kanban) |
+| v5.4.0 | App Launcher (B57) — biometric "nothing enrolled" now jumps straight to Android's enrollment settings screen instead of just telling the user to go find it |
+| v5.3.0 | Haptics (B58) — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, new shared `src/lib/haptics.ts` |
+| v5.2.2 | Android cleanup, 6 items from a heavy audit: dead google-services classpath, unadapted scaffold tests, orphaned activity_main.xml, unused Gradle vars, unused widget color/string resources |
+| v5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets |
+| v5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) |
 | v5.1.0 | Biometric unlock (B54 second half) — opt-in fingerprint/face, sits alongside the PIN, never replaces it |
+| v5.0.0 | App Lock (PIN + one-time recovery code), NLP Quick Add, recurring tasks, Time Travel journal (replaces Changelog), single-font consolidation (IBM Plex Mono removed) |
+| v4.30.0 | Pre-public-release audit phase 1 (web), batches 1-10: 25+ real bugs across sync/CRUD/views/card-detail/settings/notifications/backup, all with build/tsc/test green per batch |
+| v4.29.0 | Tauri CSP enabled; sidebar follows page theme; modal-stack root-cause fix (revived-instance stale requestClose, coalesced popstate); Ctrl+K command palette bugs (unexported nav functions, racing pushState) |
+| v4.28.0 | Widget size reverted to correct 2×2 footprint; widget icon contrast fix; pairing success feedback on both phone/PC; seed-emptiness re-verification instead of trusting a cached flag |
+| v4.27.0 | Android widget preview/color polish; modal-stack `closeOnBack()` idempotency fix (Quick Add "stops working after repeated use") |
+| v4.26.0 | Settings redesign into consistent `.setting-group` cards + Advanced tab; Reduce Motion toggle; fixed mobile info-loss (project name hidden below ~700px in Dashboard/Deadlines/Focus) |
+| v4.24.0 | C2 zero-config first-run empty states (Dashboard/Kanban); C10 plain-language pass on Restore/crash-recovery/pairing copy |
+| v4.23.0 | B39 stable per-device id for history/device-list continuity across renames; B50 themed TimePicker replacing native time input; B48 Android widget light/dark split |
+| v4.22.2 | Sync stability (E2): phone re-resolves the PC's stable CouchDB uuid instead of a fixed IP:port; dev/prod Tauri identity collision fixed; Android debug/release storage collision fixed via applicationIdSuffix |
+| v4.22.1 | Maintenance pass (eighth run): missing try/catch on ChangelogView's "Clear all"; Tauri window minWidth/minHeight floor added; everything else audited clean |
+| v4.22.0 | Week-start-day setting (B47, Sunday/Monday toggle for Agenda/DeadlinesView); full open/close animation pass (B51, new motion.ts); Tauri drag-drop fix (dragDropEnabled: false) |
 | v4.21.0 | Card Detail redesign (B49): Due/Reminder collapsed into one "Schedule" row, Checklist/Custom fields/Notes as consistent card-rows, footer actions into one "⋯" menu; Kanban per-card quick-actions menu (B53) |
 | v4.20.0 | Export/import redesign into Back up (scope selector) + Restore groups (B45); first-run device-name prompt via NamePrompt.svelte, skip and save equal-weight (B46) |
 | v4.19.1 | Maintenance pass (seventh run, first to cover offlog-desktop/): consolidated duplicated isTauri()/invoke() detection into config.ts; everything else checked out clean |
@@ -83,7 +97,7 @@ DECISIONS.md.
 | v4.1.0 | The "3 widgets" release (A15, B20, B31): first modalStack test coverage, Agenda widget, Project list widget, shared native/JS bridge for both |
 | v4.0.0 | Card-creation input-assistance (B25, B26): one-tap due-date shortcuts, tag autocomplete ranking project-local tags first |
 | v3.9.8 | Three owner-reported fixes: Quick Add widget cold-start bug (A25), project view force-resetting to Kanban on refresh (A27), exact-alarm permission status/control in Settings (A28) |
-| v3.9.7 | First MAINTENANCE.md pass: dropped 2 unused dependencies, extracted a shared `PinStar.svelte` from 3 duplicated inline SVGs |
+| v3.9.7 | First maintenance.md pass: dropped 2 unused dependencies, extracted a shared `PinStar.svelte` from 3 duplicated inline SVGs |
 | v3.9.6 | New brand icon regenerated across every platform surface (PWA, Android adaptive/legacy, notification icon, splash screens) from one SVG source |
 | v3.9.5 | UX fixes: card detail no longer opens in title-edit mode, project view always lands on Kanban, List toolbar rebuilt as one guaranteed single row at every width |
 | v3.9.0 | Sidebar rework at 20+ projects scale (A23), new Recent-tasks section (B23), project pinning (B34) |
@@ -116,27 +130,13 @@ DECISIONS.md.
 | v2.4.1 | Extracted shared `utils.ts`, removed dead code, global `.scrim` class, error toast on failed DB writes |
 | v2.4 | Dashboard set as home screen, responsive layouts, last-view persistence, first Android APK |
 
-<!-- New rows appended below by rotation from CHANGELOG.md; not chronological with the table above yet — fine, git tag is the source of truth -->
-| v5.2.2 | Android cleanup, 6 items from a heavy audit: dead google-services classpath, unadapted scaffold tests, orphaned activity_main.xml, unused Gradle vars, unused widget color/string resources |
-| v5.4.0 | App Launcher (B57) — biometric "nothing enrolled" now jumps straight to Android's enrollment settings screen instead of just telling the user to go find it |
-| v5.4.1 | Maintenance pass (twelfth run) — fixed `hapticToggle()` firing before the task mutation was confirmed in 4 places (List/Focus/Deadlines/Kanban) |
-| v5.2.1 | Biometric toggle gated on PIN actually being set; regenerated splash screen from source-logo.svg (legacy pre-API-31 fallback had stale pre-rebrand mark); removed orphaned old icon-pipeline assets |
-| v5.2.0 | Privacy Screen (B55, hides recent-apps preview when App Lock's PIN is set) + Clipboard copy button (B56, App Lock recovery code) |
-| v5.3.0 | Haptics (B58) — tactile feedback on checkbox/pin/checklist toggles and Kanban drag-and-drop, new shared `src/lib/haptics.ts` |
-| v5.4.2 | 7 real bugs from a full live-device pass — overlay-close reliability fallback, Settings Save unnecessary reload, Quick Add FAB over Settings, Focus done-state not shown, PIN input polish, splash logo, widget light-mode contrast |
-| v5.4.3 | 5 more real bugs from a second live-device pass — widget picker preview text wrapping (new dedicated preview layout), widget taps overlapping instead of replacing (`modalStack.ts`'s `closeAll()`), drag-and-drop ghost card surviving `touchcancel`, Privacy Screen blocking all screenshots not just the recents preview (now a separate off-by-default toggle) |
-| v5.5.0 | Sync-architecture hardening pass 1 — multiple-host LAN detection (`discovery.rs::browse_for_others()`, warns in Settings → Sync) and a stale-paired-host silent-failure fix (`staleHostAlert`, actionable "re-pair?" badge) |
-| v5.5.1 | S2 live-verified (180-doc dataset, mobile-then-PC merge) — real gap found and fixed: `scanConflicts()` now auto-resolves conflicts on the 4 fixed default-seed ids whenever one side is still the untouched pristine default |
-| v5.6.0 | Duplicate-name/content nudges (projects/spaces/tasks/checklist items/notes) — non-blocking hints only; also fixed a real Escape-vs-blur race that could silently create an empty project/space |
-| v5.6.1 | Maintenance pass (fourteenth run) — dead exports removed, `pouchdb`/`@capacitor/cli` dependency placement fixed, new `--toggle-knob` theme token, debounced duplicate/similarity checks; security/robustness checklist fully clean |
-| v5.6.2 | Archived-project tasks leaking into every cross-project view — 6 query functions (`getDashboardData`, `searchAllTasks`, `getOpenTasksForFocusPicker`, `getAllActiveTasksWithReminders`, `getAllTasksDue`, `getRecentlyModifiedTasks`) now all require the task's own project to still be active |
-| v5.7.0 | A9 test coverage (`computeDropPosition()`/`runMaintenanceSteps()` extracted to testable pure functions) + B35 Focus/Dashboard "Daily Brief" integration + B59 unpaired-sync UX (3-step `NamePrompt.svelte` flow: device name, sync explainer, quick preferences) |
-
 ---
 
 ## Roadmap items
 
-Outcome is the version it shipped in, or its final state.
+Outcome is the release it shipped in, or its final state. A few early
+items were recorded by date rather than version; those are kept as dates
+rather than guessed at.
 
 ### Track A — Performance & stability
 
@@ -164,8 +164,7 @@ Outcome is the version it shipped in, or its final state.
 | A28 | Exact-alarm ("Alarms & reminders") permission has no in-app status/control | v3.9.8 |
 | A29 | "Cannot reach sync server" doesn't say why | v4.4.1 |
 | A30 | Full codebase audit, cleanup, and documentation-flow optimization | v4.12.0 |
-| A31 | Full cross-platform visual/UX review | 2026-07-22 |
-| A31 | Full cross-platform visual/UX review | v4.12.0 |
+| A31 | Full cross-platform visual/UX review | v4.12.0, 2026-07-22 |
 | A32 | Sync reports "synced" when devices aren't actually syncing | v4.18.0 |
 | A33 | Android notifications fire silently, not fully functional | v4.18.0 |
 | A34 | Export JSON doesn't work on Android | v4.18.0 |
@@ -209,11 +208,9 @@ Outcome is the version it shipped in, or its final state.
 | B32 | Archive a whole project | v4.9.0 |
 | B33 | Sub-projects | parked |
 | B34 | Project pinning | v3.9.0 |
-| B35 | Focus view follow-ups | v5.7.0 |
-| B35 | Focus view | v4.5.0 |
+| B35 | Focus view, and its follow-ups | v4.5.0, v5.7.0 |
 | B36 | List view power customization | v3.8.5 |
-| B37 | Android widget final polish | 2026-07-21 |
-| B37 | Android widgets | v4.8.0 |
+| B37 | Android widgets, and their final polish | v4.8.0, 2026-07-21 |
 | B38 | Custom calendar/date picker instead of the native one | v4.6.5 |
 | B39 | Renaming a device (B22) leaves a stale "dead" entry | v4.23.0 |
 | B40 | Sidebar bottom icon rail isn't readable | v4.8.0 |
@@ -260,6 +257,6 @@ Outcome is the version it shipped in, or its final state.
 
 ### Why the parked and declined ones stopped
 
-- **B28, Rethink "last column = done"** - parked. The positional-done convention (`column_id === columns.at(-1)`) is a locked invariant (see DECISIONS.md) with no multiple terminal states. Needs a real design conversation before any implementation. Parked with the feature-phase wind-down; revisit only if daily dogfooding proves the current rule actually hurts.
+- **B28, Rethink "last column = done"** - parked. The positional-done convention (`column_id === columns.at(-1)`) is a locked invariant (see decisions.md) with no multiple terminal states. Needs a real design conversation before any implementation. Parked with the feature-phase wind-down; revisit only if daily dogfooding proves the current rule actually hurts.
 - **B33, Sub-projects** - parked. Nested project hierarchy. Touches the data model, every project-picker UI, and Dashboard/sidebar nesting — exactly the kind of architecture experiment the stabilization pivot exists to stop. Revisit post-release only if real daily use demands it.
-- **C4, F-Droid listing** - declined. Considered and explicitly declined by the owner (2026-07-02): distribution stays to GitHub + a website + Google Play; no iOS. See DECISIONS.md.
+- **C4, F-Droid listing** - declined. Considered and explicitly declined by the owner (2026-07-02): distribution stays to GitHub + a website + Google Play; no iOS. See decisions.md.

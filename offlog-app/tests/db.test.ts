@@ -1386,7 +1386,7 @@ describe('clearLocalSeedBeforeFirstPair()', () => {
   });
 });
 
-// S2 (docs/IDEAS.md's sync-topology questions, 2026-07-20): confirmed live
+// S2 (docs/decisions.md's sync-topology questions, 2026-07-20): confirmed live
 // against a real 180-doc dataset — clearLocalSeedBeforeFirstPair() only
 // protects the side that's still pristine; a phone with real accumulated
 // history (which skips that guard) pairing against a PC whose own

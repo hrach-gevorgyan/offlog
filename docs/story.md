@@ -52,7 +52,7 @@ Travel — the ability to look at what a task used to be.
 Somewhere in here the app stopped being the plan and started being itself.
 The plan said "table view." What shipped was List and Table **merged into
 one view**, because building both revealed they were the same thing wearing
-different clothes (`DECISIONS.md`, 2026-07-03). The plan said priority 1–3.
+different clothes (`decisions.md`, 2026-07-03). The plan said priority 1–3.
 That survived. The plan said `Unsorted` would be a capture inbox. It became
 a real space you can archive like any other, because pretending one space
 is magic is a rule you have to remember, and the whole point was to not have
@@ -87,7 +87,7 @@ The cleanup was not small. Git history had to be rewritten with BFG Repo-
 Cleaner to purge the credentials from every past commit. Then a full audit
 before the repo could go public.
 
-That incident is why `MAINTENANCE.md` now contains a permanent instruction
+That incident is why `maintenance.md` now contains a permanent instruction
 to grep the **built output**, not just the source, for anything from
 `.env.local` — on every single maintenance pass, forever. A source-only
 secret scan does not catch this class of bug. Nobody would have found it by
@@ -159,7 +159,7 @@ a good abstraction boundary earns you.
 July 22. Eighty-two commits in a single day — the busiest of the entire
 month.
 
-And the entry written in `DECISIONS.md` that same day says this:
+And the entry written in `decisions.md` that same day says this:
 
 > After a month of full-intensity building, the owner called the pace
 > unsustainable: Offlog isn't competing for organic attention in a market
@@ -373,7 +373,7 @@ stayed human the whole way through.
 
 It doesn't end. It arrives.
 
-From 2026-08-01, Offlog is its author's primary task manager. `ROADMAP.md`'s
+From 2026-08-01, Offlog is its author's primary task manager. `roadmap.md`'s
 "Next up" section is empty for the first time since July 1. What remains is
 bugs found in real use, dependency batches, security reviews, and a slow
 walk toward a Play Store listing that's waiting on Google, not on anyone
@@ -392,7 +392,7 @@ That's not a launch. That's a landing.
 ---
 
 *Written 2026-07-31, the last day of development.*
-*See [DECISIONS.md](DECISIONS.md) for why, [TECH.md](TECH.md) for how,
-[CHANGELOG.md](CHANGELOG.md) for when, and
+*See [decisions.md](decisions.md) for why, [tech.md](tech.md) for how,
+[changelog.md](changelog.md) for when, and
 [archive/history.md](archive/history.md) for all
 twenty-one maintenance passes in full.*

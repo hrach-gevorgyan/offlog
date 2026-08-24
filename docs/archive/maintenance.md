@@ -1,11 +1,11 @@
 # Offlog — Maintenance History
 
 What each maintenance pass found. The process, and the pointer to when the
-next one is due, live in [../MAINTENANCE.md](../MAINTENANCE.md).
+next one is due, live in [../MAINTENANCE.md](../maintenance.md).
 
 Passes 1–5 were never written up. Passes 19–21 ran together as the
 close-out of active development and were recorded only as a group — see
-pass 22 and MAINTENANCE.md's scoping note.
+pass 22 and maintenance.md's scoping note.
 
 ---
 
@@ -24,7 +24,7 @@ unchanged from last pass.
 
 After v4.18.0/v4.19.0 shipped.
 First pass to cover `offlog-desktop/` (Track E's Tauri PC app) alongside
-`offlog-app/` — see MAINTENANCE.md's own Phase 0/1/4/5 additions from the
+`offlog-app/` — see maintenance.md's own Phase 0/1/4/5 additions from the
 same day. Found and fixed one real duplication: `isTauri()` detection and
 the raw `window.__TAURI_INTERNALS__.invoke(...)` call pattern were each
 independently re-declared/inlined across `config.ts` and
@@ -76,7 +76,7 @@ the modalStack.ts/seedIfEmpty fixes). Baselines all green (build/tsc/
 test/cargo build). Found and fixed two real [SAFE] gaps: `notifications.ts`
 re-declared its own inline Tauri-detection check instead of importing
 `isTauri()` from `config.ts` (same duplication pattern the seventh pass
-already consolidated elsewhere); `docs/TECH.md` was stale since v4.12.0
+already consolidated elsewhere); `docs/tech.md` was stale since v4.12.0
 (version header, and its source file map was missing ~20 files added
 since, including `SettingsPanel.svelte` itself after the v4.26.0
 redesign pulled it out of `Sidebar.svelte`) — both fixed. Security
@@ -89,7 +89,7 @@ C7's git-history piece (owner-directed) — two real credentials
 second username+password pair that had leaked into a committed
 `.claude/settings.local.json` purged from every one of the repo's 127
 commits/71 tags via BFG Repo-Cleaner, verified by exhaustively scanning
-every remaining git object afterward. See DECISIONS.md/ROADMAP.md C7 for
+every remaining git object afterward. See decisions.md/ROADMAP.md C7 for
 the full record.
 
 ## Pass 11 — v5.0.0 (2026-07-20)
@@ -211,13 +211,13 @@ space/category icons resolve from fixed tables), `db.find()` limits,
 Rust `unsafe` inventory (only the known `TerminateJobObject` FFI),
 pairing-path logging, localStorage contents, `npm audit` (0), the
 `dist/` build-output secret check, and dead-export scan of every
-delta file: all clean. One [SAFE] doc finding fixed: TECH.md had no
+delta file: all clean. One [SAFE] doc finding fixed: tech.md had no
 mention of the week-old CI/release pipeline — a new "CI & release
 automation" subsection added under Testing & Dev Workflows. Docs-only
-fix, so no version bump per MAINTENANCE.md Phase 5's clean-pass rule.
+fix, so no version bump per maintenance.md Phase 5's clean-pass rule.
 Baselines (build zero-warning / tsc / 173 tests / cargo build) all
 green, verified same-day on the current tree. Recommendation for next
-pass: nothing carried over; the `glib` accepted-risk (DECISIONS.md
+pass: nothing carried over; the `glib` accepted-risk (decisions.md
 re-check remains tied to the next Cargo dependency bump, not to
 maintenance cadence.
 
@@ -274,7 +274,7 @@ re-verified after every fix and once more at Phase 4.
 Pulled forward at owner
 request right after v6.0.0's large feature batch — file attachments,
 recurrence-robustness fix, unified search, tag color picker, plus the
-milestone/"Done" framework's removal from ROADMAP.md — landed in one
+milestone/"Done" framework's removal from roadmap.md — landed in one
 session and warranted a check before pushing). Baselines confirmed
 green first (offlog-app build/tsc/253 tests, offlog-desktop cargo
 build, `cap sync android`), including the desktop Rust build which
@@ -302,7 +302,7 @@ Last passes: v6.3.0 (2026-07-31 — nineteenth, twentieth and twenty-first
 runs, three cycles back-to-back closing out active development on the eve
 of real daily use). Deliberately scoped differently instead of running
 one checklist three times, and the difference mattered: cycle 1 (the
-standard MAINTENANCE.md Phase 1 sweep) found a global-shortcut collision
+standard maintenance.md Phase 1 sweep) found a global-shortcut collision
 that would panic the app on startup, silently-swallowed notification-
 action failures, and three copy-pasted Kanban indicator loaders — all
 fixed, plus `npm audit` taken 2 → 0 and clippy to zero. Cycle 2, an
@@ -343,10 +343,10 @@ failed silently instead of surfacing a toast. Also fixed: an identical
 2-line `escapeHtml()` implementation duplicated verbatim in
 `GlobalSearch.svelte` and `UpdateModal.svelte` (both feed `{@html}`),
 deduped into a shared `utils.ts` export; 14 stale `GOAL.md`/
-`docs/IDEAS.md` references surviving in source comments across 9 files
+`docs/decisions.md` references surviving in source comments across 9 files
 (`config.ts`, `AppLock.svelte`, `db.ts`, `discovery.ts`, `haptics.ts`,
 `nlpParse.ts`, and 3 Rust files in `offlog-desktop/src-tauri/src/`) —
-both docs were merged into `DECISIONS.md` months ago (GOAL.md
+both docs were merged into `decisions.md` months ago (GOAL.md
 2026-07-20, IDEAS.md 2026-07-31) but the source comments citing them by
 name were never swept. `AddAttachmentInput` (db.ts) was checked and
 confirmed a legitimate export (the public `addAttachment()` API's own
@@ -394,8 +394,8 @@ APK plus an installer and its `.sig`, with `latest.json` generated for the
 desktop updater.)
 
 Full narrative history of every maintenance pass (process defined in
-[../MAINTENANCE.md](../MAINTENANCE.md)), moved here from that file's old
+[../MAINTENANCE.md](../maintenance.md)), moved here from that file's old
 in-place tracker so the instructions file stays instructions-only. Current
-pointer (last pass / next due lives at the top of MAINTENANCE.md, not
+pointer (last pass / next due lives at the top of maintenance.md, not
 here — this is history, not state.
 

@@ -1,7 +1,7 @@
 # NyxDB full-sync regression scripts
 
 Preserved from the 2026-07-27 NyxDB adoption's Phase 0 root-cause check
-(see `docs/DECISIONS.md`'s NyxDB entries). Each script does a real
+(see `docs/decisions.md`'s NyxDB entries). Each script does a real
 `db.sync()` full pull from a genuinely empty PouchDB (memory adapter)
 against a locally running NyxDB instance, to catch a regression of the
 "problem getting docs" failure investigated that day.
