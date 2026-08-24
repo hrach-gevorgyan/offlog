@@ -174,10 +174,11 @@ tests** through CI. It has been through 22 structured maintenance
 audits against a written checklist of blind spots earned from real
 shipped bugs — [what each one found](docs/archive/maintenance.md).
 
-**What's next:** today one PC has to be the host, so the workspace is
-unreachable whenever that machine is off. Removing that — peer-to-peer
-sync with no single required machine — is the current direction. See
-[docs/roadmap.md](docs/roadmap.md).
+**What's next:** nothing planned. Peer-to-peer sync between phones was
+investigated and closed — Android blocks every route to it, and the
+reasoning is written down in [docs/decisions.md](docs/decisions.md) so it
+does not get reopened on a hunch. Sync still runs through a self-hosted
+host on your own network.
 
 New features aren't planned in advance, but they aren't refused either.
 The bar is "does daily use actually demand this", which usually has to be

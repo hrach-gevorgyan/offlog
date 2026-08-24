@@ -86,22 +86,58 @@ not literally CouchDB: `offlog-desktop` embeds
 [NyxDB](https://github.com/hrach-gevorgyan/nyxdb), and a manually
 configured sync target can point at real CouchDB too.
 
-### Mesh sync: declined once, now reopened as the next direction
-**Reversed.** Originally declined outright: each Android device would need
-a background CouchDB-compatible server reachable while backgrounded, which
-even Syncthing-Android only manages with a permanent foreground
-notification plus a manual battery-optimisation exemption, and Android 15
-caps that class of service at 6h/24h. Two devices never on the same network
-still cannot sync without a relay.
+### Mesh sync: reopened, investigated, closed for good
+**Closed.** Declined originally, reopened as the primary direction, then
+closed again after a design pass that measured instead of argued. The
+evidence is kept in `offlog-desktop/scripts/mesh-spike/` — a spike that
+runs against two real NyxDB instances, plus a 47-row scenario matrix.
 
-Those constraints have not gone away. What changed is the weighting: a
-single PC acting as the only host is a single point of failure, and the
-whole workspace is unreachable whenever that machine is off. Removing that
-dependency is now the primary direction — see roadmap.md.
+**What the spike proved works.** Three-way convergence, a client paired
+with one host receiving another host's data, concurrent writers losing
+nothing, and a cross-peer conflict surviving with both peers agreeing on
+the winner. All client-driven, over HTTP, against real servers. So the
+protocol, PouchDB and NyxDB are *not* the obstacle, and NyxDB needs no
+change — it has no `_replicate` and cannot initiate replication, and does
+not need to.
 
-The original objections become the design constraints: no relay Offlog
-operates, no accounts, and whatever ships must degrade to today's
-single-host behaviour rather than replacing it.
+**What killed it is Android, specifically:**
+- **A phone cannot host in the background.** Already known: Android 15 caps
+  that service class at 6h/24h and it needs a permanent notification plus a
+  manual battery-optimisation exemption.
+- **A phone cannot host in the foreground either, usefully.** `onPause`
+  fires on screen-off, so "serves while the app is open" really means
+  "while the screen is on" — minutes a day, and only if the other person
+  happens to be looking at their phone at the same moment.
+- **Android sends SIGKILL, not SIGTERM.** There is no clean-shutdown hook,
+  so an embedded database on a phone cannot guarantee its own integrity
+  across a normal app kill.
+- **Background sync is impossible, not merely expensive.** The app's data
+  lives in the WebView origin's IndexedDB (`core.ts`'s
+  `new PouchDB('offlog')`). A WorkManager job runs in a different context
+  and cannot read it. So no background job can carry data, however cheap it
+  would have been.
+
+Together those mean phone-to-phone sync with no PC present cannot work.
+Not "not yet" — the platform forbids each available route.
+
+**What remains possible and was deliberately not built.** Two desktops each
+holding everything, with phones using whichever is reachable. That is real,
+needs no NyxDB change, and was verified by the spike. It was not built
+because its value still depends on some PC being switched on, which is the
+same dependency mesh was meant to remove — a smaller version of the problem
+rather than a fix for it. Revisit only if daily use makes "one specific PC
+is off" a recurring annoyance; the design and its scenarios are already
+written.
+
+**What the pass paid for.** Three real defects in single-host code, found
+while modelling mesh and fixed independently: a seed-clearing guard that
+treated "zero tasks" as "untouched" and deleted renamed spaces, a conflict
+scan that walked six months of `log:` docs on every sync settle, and an
+error message blaming the network while the user was on it.
+
+Do not reopen on the strength of a new Android API without first checking
+all four blockers above — they are independent, and closing one changes
+nothing.
 
 ### Remote access over the user's own VPN: not pursued
 Pointing the sync URL at a Tailscale or WireGuard address instead of a LAN
