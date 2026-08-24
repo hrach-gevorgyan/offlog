@@ -36,31 +36,13 @@ detail for anything summarized here lives in git history.
 
 ## Open Questions
 
-Genuinely unresolved, shareable as-is with another AI or a human for
-outside input. Not a task list (see [roadmap.md](roadmap.md)) and not
-the decisions log below.
+None open.
 
-- **Two PC hosts on one LAN.** The model is one fixed host, phones as
-  clients. Detection-only warning ships; there is no "join as client"
-  mode, on the same tradeoff mesh sync's decline weighed. Revisit only
-  on real demand.
-- **Play Store policy risk for local-network sync.** Do the app's local
-  network calls trigger review friction (Android's local-network
-  permission prompts, or general policy scrutiny)? Worth researching
-  before assuming a smooth listing.
-- **Is large-dataset validation a realistic risk?** Unclear whether a
-  single-person task manager ever accumulates enough data for it to
-  matter. Real-world data on how large one user's dataset gets over
-  years would settle this either way.
-- **Remote access via the user's own personal mesh VPN (Tailscale/
-  WireGuard), experimental.** Not an Offlog-run relay or account — just
-  pointing the existing sync URL at a Tailscale IP instead of a LAN IP,
-  so a phone can reach the home host from outside the LAN. Brushes the
-  manifesto's "remote/away-from-home sync... explicitly not part of this
-  goal" line, so it is an idea to think about, not a plan.
-
-If an answer emerges, fold it into the relevant section below or
-update roadmap.md directly, and remove the question here.
+Genuinely unresolved questions live here — shareable as-is for outside
+input, and distinct from both the decisions log below and roadmap.md's
+planned work. When one is answered, fold the answer into the relevant
+section below, or move it to roadmap.md if it became work, and remove it
+from here.
 
 ---
 
@@ -102,16 +84,30 @@ not literally CouchDB: `offlog-desktop` embeds
 [NyxDB](https://github.com/hrach-gevorgyan/nyxdb), and a manually
 configured sync target can point at real CouchDB too.
 
-### Mesh sync: considered, declined outright
-Device-to-device sync with no central host is declined, not deferred.
-Each Android device would need a background CouchDB-compatible server
-reachable while backgrounded — which even Syncthing-Android only manages
-with a permanent foreground notification plus a manual
-battery-optimization exemption, and Android 15 caps that class of service
-at 6h/24h regardless. Two devices never on the same network still can't
-sync without a relay, breaking the "no server Offlog operates" pitch. The
-payoff also scales with a userbase this project isn't building.
-Self-hosted CouchDB-protocol sync is the one, permanent transport.
+### Mesh sync: declined once, now reopened as the next direction
+**Reversed.** Originally declined outright: each Android device would need
+a background CouchDB-compatible server reachable while backgrounded, which
+even Syncthing-Android only manages with a permanent foreground
+notification plus a manual battery-optimisation exemption, and Android 15
+caps that class of service at 6h/24h. Two devices never on the same network
+still cannot sync without a relay.
+
+Those constraints have not gone away. What changed is the weighting: a
+single PC acting as the only host is a single point of failure, and the
+whole workspace is unreachable whenever that machine is off. Removing that
+dependency is now the primary direction — see roadmap.md.
+
+The original objections become the design constraints: no relay Offlog
+operates, no accounts, and whatever ships must degrade to today's
+single-host behaviour rather than replacing it.
+
+### Remote access over the user's own VPN: not pursued
+Pointing the sync URL at a Tailscale or WireGuard address instead of a LAN
+address would let a phone reach the home host from outside. It needs no
+Offlog-operated relay and no account, so it does not breach the "no server
+we run" line — but it is still away-from-home sync, which the manifesto
+excludes, and it asks every user to run a VPN. Closed unless a real need
+appears in daily use.
 
 ### NyxDB as the embedded sync host, not real CouchDB
 [NyxDB](https://github.com/hrach-gevorgyan/nyxdb) is a from-scratch Rust

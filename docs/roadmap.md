@@ -11,9 +11,10 @@ parked history: [archive/history.md](archive/history.md).
 Organised as **Now / Next / Later**. Nothing here is dated, and nothing in
 Later is a promise.
 
-Offlog has been finished and in daily use since 2026-08-01 — see
-decisions.md's "The roadmap is finite" for why that is the goal being met
-rather than the project stalling.
+Offlog has been in daily use since 2026-08-01, and the finite plan it was
+built to is complete — see decisions.md's "The roadmap is finite". What is
+in Next below is a deliberate new direction chosen from real use, not a
+backlog that was never finished.
 
 ---
 
@@ -26,12 +27,33 @@ rather than the project stalling.
 - **C5, landing page.** One plain GitHub Pages page. On hold, not blocking
   anything.
 
-## Next — empty
+## Next — remove the single-host dependency
 
-Bugs found in daily use are the main driver of change now. Features aren't
-planned in advance and aren't refused either: the bar is "does daily use
-actually demand this", which usually has to be answered by living with the
-app rather than imagining it. Anything clearing that bar lands here.
+- **Mesh sync.** Today one PC is the only host, so the workspace is
+  unreachable whenever that machine is off. The goal is peer-to-peer sync
+  with no single machine required. Declined once on real constraints that
+  still hold — Android cannot keep a background server alive reliably, and
+  two devices never on the same network need a relay — so the design has to
+  work within them: no relay Offlog operates, no accounts, and it must
+  degrade to today's single-host behaviour rather than replacing it. See
+  decisions.md's mesh entry.
+
+Beyond that, bugs found in daily use drive change. Features aren't planned
+in advance and aren't refused either: the bar is "does daily use actually
+demand this", usually answered by living with the app rather than
+imagining it.
+
+## Also open
+
+- **Play Store policy check for local-network sync.** Do the app's local
+  network calls attract review friction — Android's local-network
+  permission prompts, or general policy scrutiny? Research before assuming
+  a smooth C3 listing.
+- **Real-scale metrics and benchmarks.** It was never settled whether a
+  single person's task manager accumulates enough data for scale to matter.
+  There is now a real database in daily use to measure. Needs actual
+  numbers, a benchmark that runs against them, and tests at the sizes those
+  numbers suggest — not an assumption either way.
 
 ## Later — direction, not promises
 
