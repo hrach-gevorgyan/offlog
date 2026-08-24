@@ -89,7 +89,7 @@ For clarity on where the bar actually is:
 
 ## Known, accepted dependency advisories
 
-**Current status (2026-07-31): `npm audit` reports 0 vulnerabilities.**
+**Current status (2026-08-24): `npm audit` reports 0 vulnerabilities.**
 
 One Rust advisory remains, accepted:
 
@@ -107,9 +107,8 @@ the shipped bundle) were both resolved and are no longer open.
 
 All of this is re-checked at every maintenance pass — see
 [docs/MAINTENANCE.md](docs/MAINTENANCE.md), whose checklist includes a
-**build-output** secret scan specifically, because a source-only scan
-once missed real credentials that had been compiled into a shipped APK
-(see [docs/STORY.md](docs/STORY.md) for that incident).
+**build-output** secret scan specifically: a source-only scan once
+missed real credentials that had been compiled into a shipped APK.
 
 ## Response
 
