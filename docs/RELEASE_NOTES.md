@@ -1,23 +1,43 @@
 # Offlog — Release Notes
 
-**This is not [CHANGELOG.md](CHANGELOG.md).** That file is the technical/
-maintainer record — full implementation detail, file names, root causes.
-This file is what actual users read: the GitHub Releases page, and (once
-C3 ships) the Play Store "What's new" box. Plain language, short, and
-split into what's actually new/changed for you vs. what got fixed —
-`.github/scripts/extract-release-notes.js` pulls the entry matching the
-current tag straight from here into the release body, so write a new
-`## vX.Y.Z` entry here as part of every release (see the checklist in the
-root CLAUDE.md).
+**This is not [CHANGELOG.md](CHANGELOG.md).** That file is the maintainer
+record — implementation detail, file names, root causes. This file is what
+users read.
 
-**Writing rule:** no file names, no function names, no "root cause." One
-line per item, plain language, only things a user would actually notice.
-A release with no user-visible change (a test bump, a dependency-only
-bump) gets a one-line "No visible changes" entry, not padding.
+Each entry has two parts, because they have two destinations:
+
+| part | goes to | limit |
+|---|---|---|
+| **In short** | Google Play's "What's new" box | **500 characters, hard** |
+| **New / Fixed** | The GitHub Release body | none |
+
+`.github/scripts/extract-release-notes.js` pulls the entry matching the
+current tag into the GitHub Release body. Google Play rejects anything over
+500 characters per language — whitespace and newlines included — so
+**In short** must stay under it. Check with:
+
+```bash
+node -e "const s=require('fs').readFileSync('docs/RELEASE_NOTES.md','utf8');
+for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
+  console.log(m[1], m[2].length, m[2].length>500?'OVER':'ok')"
+```
+
+**Writing rules**
+- No file names, no function names, no root causes.
+- Say what the user gets, not how it works.
+- One line per item.
+- A release with nothing user-visible gets a one-line "No visible changes"
+  entry, not padding — the extraction script needs *some* entry per tag.
 
 ---
 
 ## v6.5.0
+
+### In short
+Kanban cards now have a "Move to" menu, so you can change a card's status
+without dragging — useful on a phone or with a keyboard. Also fixes backups
+that could fail when your database still held deleted records, and a
+restore preview that undercounted what it was about to bring back.
 
 ### New
 - On a Kanban board, a card's "..." menu now has a **Move to** section
@@ -40,8 +60,14 @@ testing and internal tidying, so future changes are less likely to break
 something you rely on. Nothing you use day to day should look or behave
 differently.
 
-
 ## v6.3.0
+
+### In short
+The Windows app now lives in your system tray, and Ctrl+Alt+O brings it
+back from anywhere. Tasks can block other tasks. Important: backups made
+before this version cannot be restored if they contain an attachment —
+please make a fresh backup now. Reminders missed while closed now reach you
+for up to a day, and changing a status column warns you first.
 
 ### New
 - The Windows app now lives in your system tray. Closing the window tucks
@@ -87,9 +113,16 @@ differently.
 
 ## v6.2.1
 
+### In short
 No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v6.2.0
+
+### In short
+Recurring tasks can now repeat every N days, weeks or months, and daily
+repeats can skip weekends. You can filter by several custom fields at once
+and sort by them in List view. Search now finds tasks by an attached file's
+name too.
 
 ### New
 - Recurring tasks can repeat every N days/weeks/months now, not just
@@ -111,6 +144,12 @@ No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v6.1.0
 
+### In short
+Agenda has a real Month view — see the whole month, tap any day to see
+what's due and add a task straight onto it. Replaces the old Week view. You
+can also skip a single occurrence of a recurring task without marking it
+done.
+
 ### New
 - Agenda has a real Month view now — see the whole month at a glance,
   tap any day to see what's due and add a new task straight onto that
@@ -126,9 +165,16 @@ No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v6.0.1
 
+### In short
 No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v6.0.0
+
+### In short
+You can now attach files to tasks — photos, PDFs, spreadsheets — up to 10MB
+each and 10 per task, with photos shrunk automatically. Search looks inside
+checklists too, and you can pick your own colour for any tag. Fixes
+recurring tasks skipping past shorter months.
 
 ### New
 - You can now attach files to any task — photos, PDFs, spreadsheets, and
@@ -150,6 +196,12 @@ No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v5.9.0
 
+### In short
+The sidebar can be collapsed to a slim icon rail and resized by dragging.
+The task editor is cleaner — less-used fields now live under one "Extras"
+section. The sync icon shows its status by colour, and tapping it opens
+Sync settings.
+
 ### New
 - The sidebar can now be collapsed to a slim icon-only rail, and resized
   by dragging its edge.
@@ -169,6 +221,10 @@ No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v5.8.3
 
+### In short
+Fixes task history occasionally showing a "Checklist updated" note for an
+edit that didn't change anything.
+
 ### Fixed
 - Task history could occasionally show a confusing "Checklist updated"
   or "Custom fields updated" note for an edit that didn't actually
@@ -176,9 +232,16 @@ No visible changes — a routine maintenance pass (internal cleanup only).
 
 ## v5.8.2
 
+### In short
 No visible changes — routine dependency updates only.
 
 ## v5.8.1
+
+### In short
+Your sync password is now stored encrypted on your device instead of in
+plain text. This happens automatically — you won't need to reconnect
+anything. Also fixes update notifications showing raw text, and a few small
+visual issues around sync.
 
 ### New
 - Your sync password is now stored encrypted on your device (Windows
@@ -196,6 +259,11 @@ No visible changes — routine dependency updates only.
 
 ## v5.8.0
 
+### In short
+The Windows app's built-in sync engine was replaced with a much smaller,
+faster one. The installer and installed app are roughly 10x smaller and
+sync starts up noticeably faster. Nothing about how sync works has changed.
+
 ### New
 - The Windows app's built-in sync engine has been replaced with a much
   smaller, faster one. The installer and installed app are now roughly
@@ -205,9 +273,15 @@ No visible changes — routine dependency updates only.
 
 ## v5.7.10
 
+### In short
 No visible changes — internal cleanup only.
 
 ## v5.7.9
+
+### In short
+Fixes overnight reminders arriving all at once, mobile drag-and-drop
+occasionally sticking, a brief flash when opening the desktop app, and an
+off-screen menu in Settings.
 
 ### Fixed
 - A backlog of overnight reminders could all arrive at once instead of
@@ -220,9 +294,15 @@ No visible changes — internal cleanup only.
 
 ## v5.7.8
 
+### In short
 No visible changes — test release only.
 
 ## v5.7.7
+
+### In short
+You can see the app's version in Settings, and updates now show a download
+progress bar and let you choose when to restart — no more restarting
+without asking.
 
 ### New
 - See the app's current version in Settings.
@@ -232,6 +312,11 @@ No visible changes — test release only.
 
 ## v5.7.6
 
+### In short
+Quiet hours: reminders due overnight now wait until morning instead of
+interrupting you. Also fixes reminder times showing in the wrong
+12-hour/24-hour format.
+
 ### New
 - Quiet hours: reminders due overnight now wait until morning instead of
   interrupting you.
@@ -240,6 +325,11 @@ No visible changes — test release only.
 - Reminder times could show in the wrong 12-hour/24-hour format.
 
 ## v5.7.5
+
+### In short
+Automatic local backups, so your data has a safety copy even if something
+goes wrong on your device. Changing or removing your App Lock PIN now asks
+for your current PIN first.
 
 ### New
 - Automatic local backups, so your data has a safety copy even if
