@@ -31,6 +31,18 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.5.1
+
+### In short
+
+No visible changes to the app itself. The Android widget picker no longer
+claims the widget shows an agenda brief — it has always been three buttons:
+Focus, Quick Add and Dashboard. Everything else in this release is
+behind-the-scenes work on documentation, release tooling and build checks.
+
+### Fixed
+- The widget picker described a feature the widget does not have.
+
 ## v6.5.0
 
 ### In short

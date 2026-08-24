@@ -17,6 +17,38 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.5.1] — 2026-08-24
+
+Tooling and documentation only. One user-visible string corrected; the app
+itself is unchanged.
+
+### Fixed
+- The Android widget picker described the widget as offering "your agenda
+  brief", which it has never rendered — it is three buttons and no data.
+- `styles.xml` documented the splash mark at 92% of canvas;
+  `generate-splash.cjs` has used 78% since the value was corrected.
+- The cleartext-HTTP / no-TLS-on-LAN tradeoff was recorded only in a
+  `QUESTIONS.md` that no longer exists, leaving an accepted security
+  decision with no rationale anywhere. Now a decisions.md entry.
+- 37 references across docs, tests, scripts and workflow config still
+  pointed at pre-rename uppercase filenames or at roadmap IDs that had
+  moved to the archive.
+
+### Changed
+- **Versioning is enforced, not remembered.** MAJOR now means only that an
+  older install can no longer read, sync or restore; features are never
+  MAJOR. `scripts/version.js` writes all three version sources at once and
+  derives `versionCode` (`MAJOR*10000 + MINOR*100 + PATCH`); `version:check`
+  runs in CI, and `release.yml` refuses a tag that disagrees with it.
+- CodeQL's Java/Kotlin analysis moved to its own workflow, scoped to
+  Android-affecting paths, compiling rather than assembling, with Gradle
+  cached and the Capacitor plugin modules built in parallel — 4m47s to
+  3m38s. `release.yml` restores the same cache.
+- Dependabot no longer proposes TypeScript 7 over `svelte-check`'s peer
+  range; TypeScript 7 is already in use as `@typescript/native`.
+- Documentation rewritten end to end — 29% smaller, with CLAUDE.md down 56%
+  to invariants and gotchas only.
+
 ## [6.5.0] — 2026-08-24
 
 A hardening release: no new surface, a far stronger base under it.
@@ -276,16 +308,7 @@ Maintenance pass (16th run).
 
 ---
 
-## [5.8.2] — 2026-07-28
-
-### Changed
-- Monthly Dependabot batch, all merged after green CI: `jsdom`
-  29.1.1 → 30.0.0, `svelte-check` 4.7.3 → 4.7.4, `@types/node`
-  26.1.1 → 26.1.2, `svelte` 5.56.7 → 5.56.8, `mdns-sd` 0.20.2 → 0.20.3,
-  `actions/cache` 4 → 6. No functional changes.
-
----
-
+[6.5.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.0...v6.5.1
 [6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0
 [6.3.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.1...v6.3.0
 [6.2.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.0...v6.2.1
@@ -295,4 +318,3 @@ Maintenance pass (16th run).
 [6.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.9.0...v6.0.0
 [5.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.3...v5.9.0
 [5.8.3]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.2...v5.8.3
-[5.8.2]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.1...v5.8.2
