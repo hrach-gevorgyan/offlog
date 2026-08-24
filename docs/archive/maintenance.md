@@ -393,6 +393,47 @@ v6.5.0 release also confirmed the signing pipeline end to end — a signed
 APK plus an installer and its `.sig`, with `latest.json` generated for the
 desktop updater.)
 
+## Pass 23 — no version bump (2026-08-24)
+
+Off-cadence, run the same day as pass 22 and scoped to what had changed
+since it: a full documentation rewrite, ~30 rewritten source comments
+across the Android resources, and five CI changes. Baseline green on all
+four gates by exit code (569 tests, zero-warning build, clean tsc, clean
+cargo build).
+
+Two findings, both fixed. `release.yml`'s Android job built the APK
+against a cold Gradle every time, while the desktop job in the same file
+already restored a cargo cache warmed on main and its comment spelled out
+the rule -- a tag run can only reuse default-branch caches. Nothing had
+written a Gradle cache on main until this session's new
+`codeql-android.yml` started doing so, so the restore became possible and
+was added. The second was wording: this file claimed `src-tauri/` should
+hold "exactly two" unsafe blocks when it holds two *kinds* across five
+sites, which would have read as a finding to the next pass.
+
+The rest came back clean, including the checks worth naming. All three
+`{@html}` sinks that take untrusted input hold up -- `GlobalSearch`
+escapes before wrapping in `<mark>` rather than after, `UpdateModal`
+escapes every branch of the release-note renderer, and `getSpaceIconSvg`
+only ever emits from a fixed constant table. Every one of the 12 pinned
+actions was resolved against its claimed tag upstream rather than just
+checked for SHA shape; all 12 matched. The Android diff since v6.5.0 was
+audited for value changes and contains exactly four beyond comments: the
+widget picker string, `org.gradle.parallel`, `org.gradle.caching` and the
+wrapper's `-all` to `-bin` switch. `npx cap sync android` still exits 0
+and the generated `capacitor.config.json` keeps its nested
+`LocalNotifications` pair.
+
+No version bump: nothing this pass touched reaches the shipped app, so a
+release would have published byte-identical artifacts.
+
+Two things this pass could not verify, both owner-only: the widget
+description string and the Android resource comments need a Studio
+rebuild, and `gradle.properties`' new parallel/build-cache settings meet a
+real `assembleRelease` for the first time on the next tag. The size ledger
+stays at the v6.5.0 baseline -- dist held at 1.2MB, but APK and installer
+figures need builds this pass cannot run.
+
 Full narrative history of every maintenance pass (process defined in
 [../maintenance.md](../maintenance.md)), moved here from that file's old
 in-place tracker so the instructions file stays instructions-only. Current

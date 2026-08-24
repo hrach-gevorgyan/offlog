@@ -61,6 +61,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+          # Restores the Gradle cache codeql-android.yml writes on main --
+          # same reasoning as the cargo restore in the desktop job below:
+          # a tag run can only reuse default-branch caches. On an exact key
+          # hit the post-job save is skipped, so this costs nothing to a
+          # tag ref; a miss just builds cold as before.
+          cache: 'gradle'
 
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4
 

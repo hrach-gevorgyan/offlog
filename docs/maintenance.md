@@ -4,10 +4,11 @@ A scheduled audit routine, tailored to this repo. **Not a feature
 session:** external behaviour must stay identical. Read this whole file
 before touching code.
 
-**Current pointer** — last pass: **v6.5.0** (2026-08-24, 22nd run). Next
-pass due: **2026-12-01, or on the next bug hit in daily use, whichever
-comes first.** The old "every 3 minor versions" cadence no longer applies;
-the project is in maintenance mode.
+**Current pointer** — last pass: **23rd run** (2026-08-24, no version
+bump; pass 22 was v6.5.0 the same day). Next pass due: **2026-12-01, or on
+the next bug hit in daily use, whichever comes first.** The old "every 3
+minor versions" cadence no longer applies; the project is in maintenance
+mode.
 
 This pointer is the only tracker state in this file. Past passes are
 narrated in
@@ -179,9 +180,10 @@ owner-only.
   property lookup.
 - **`localStorage` contents** — nothing sensitive beyond the documented,
   accepted tradeoffs.
-- **`src-tauri/` unsafe blocks** — there should be exactly two: the
-  `TerminateJobObject` FFI in `lib.rs` and the DPAPI calls in
-  `secure_storage.rs`. Any third is a finding. Confirm none is reachable
+- **`src-tauri/` unsafe blocks** — there should be exactly two *kinds*:
+  the `TerminateJobObject` FFI in `lib.rs` (its `unsafe extern` block
+  plus the two call sites) and the DPAPI calls in `secure_storage.rs`.
+  Count kinds, not occurrences. Any third kind is a finding. Confirm none is reachable
   with attacker-controlled input, and that `pairing.rs` logs outcomes,
   never code or credential values.
 - **`eval(`, `new Function(`, `innerHTML =`** outside the `{@html}` cases.
