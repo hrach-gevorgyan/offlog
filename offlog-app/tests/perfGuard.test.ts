@@ -4,6 +4,7 @@ import db, {
   searchAllTasks, getLogsForTask, getAllTasksDue,
 } from '../src/lib/db';
 import type { ProjectDoc, SpaceDoc, TaskDoc } from '../src/lib/types';
+import { getAllTasksRaw } from '../src/lib/db/core';
 
 // perf.bench.ts measures latency and deliberately hardcodes no threshold:
 // absolute timings depend on the machine, so a wall-clock assertion would be
@@ -93,15 +94,79 @@ describe('read paths — the task cache', () => {
     expect(taskScans()).toBe(0);
   });
 
-  it('rescans after the cache is invalidated', async () => {
+  // Invalidation marks the cache stale rather than dropping it, and the next
+  // read catches up from the change feed. Every task write invalidates, so
+  // re-reading the whole table meant one edit cost the next read a full
+  // rebuild -- 139ms against 20,000 tasks versus 1ms warm.
+  //
+  // Correctness first, then cost: a cache that is fast and wrong is worse
+  // than the full rescan it replaced.
+  it('reflects a write after invalidation without rescanning the table', async () => {
     await seed(TASKS);
     await getAllTasksDue();
 
+    const doc = await db.get<TaskDoc>('task:g0');
+    await db.put({ ...doc, title: 'edited after cache was warm', due_date: '2026-01-02' });
     invalidateTaskCache();
+
     allDocsSpy.mockClear();
-    await getAllTasksDue();
+    const tasks = await getAllTasksRaw();
+
+    expect(tasks.find(t => t._id === 'task:g0')?.title).toBe('edited after cache was warm');
+    expect(tasks).toHaveLength(TASKS);
+    expect(taskScans()).toBe(0);
+  });
+
+  it('drops a deleted task from the cache on catch-up', async () => {
+    await seed(TASKS);
+    await getAllTasksRaw();
+
+    const doc = await db.get<TaskDoc>('task:g1');
+    await db.remove(doc);
+    invalidateTaskCache();
+
+    const tasks = await getAllTasksRaw();
+    expect(tasks.find(t => t._id === 'task:g1')).toBeUndefined();
+    expect(tasks).toHaveLength(TASKS - 1);
+  });
+
+  it('stays correct across many separate writes', async () => {
+    await seed(TASKS);
+    await getAllTasksRaw();
+
+    for (let i = 0; i < 12; i++) {
+      const doc = await db.get<TaskDoc>(`task:g${i}`);
+      await db.put({ ...doc, title: `rewritten ${i}` });
+      invalidateTaskCache();
+      await getAllTasksRaw();
+    }
+
+    const tasks = await getAllTasksRaw();
+    expect(tasks).toHaveLength(TASKS);
+    for (let i = 0; i < 12; i++) {
+      expect(tasks.find(t => t._id === `task:g${i}`)?.title).toBe(`rewritten ${i}`);
+    }
+  });
+
+  // Past the catch-up limit, re-reading the table is cheaper than replaying
+  // changes one at a time -- a first sync or a wipeAndReseed lands here.
+  it('falls back to a full reload when too much changed at once', async () => {
+    // More documents than CATCHUP_LIMIT: the change feed returns one entry
+    // per DOCUMENT, not per revision, so rewriting 400 twice would still be
+    // 400 changes and would stay under the limit.
+    await wipe();
+    await seed(600);
+    await getAllTasksRaw();
+
+    const docs = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:\uFFF0', include_docs: true });
+    await db.bulkDocs(docs.rows.map(r => ({ ...r.doc!, title: 'bulk rewrite' })) as never);
+    invalidateTaskCache();
+
+    allDocsSpy.mockClear();
+    const tasks = await getAllTasksRaw();
 
     expect(taskScans()).toBe(1);
+    expect(tasks.every(t => t.title === 'bulk rewrite')).toBe(true);
   });
 });
 
