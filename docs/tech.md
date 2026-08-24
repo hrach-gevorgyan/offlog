@@ -37,6 +37,15 @@ aren't obvious from the code.
 | Styling | CSS custom properties | No CSS framework |
 | Fonts | Hanken Grotesk only | `--mono` points at the same face |
 
+**Two TypeScripts, on purpose.** `@typescript/native` is an alias for
+TypeScript 7 (the native compiler) and does the real checking, via
+`svelte-check --tsgo`. Plain `typescript` is 6.x because svelte-check's
+peer range is `^5 || ^6` and it loads the classic TS API. Both packages
+ship a `tsc` binary, so `npm run check` calls TypeScript 7 by explicit
+path rather than through `node_modules/.bin/tsc` — which shim npm writes
+there depends on hoist order, and the gate must not change compiler
+silently.
+
 ---
 
 ## Architecture
