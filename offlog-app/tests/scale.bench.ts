@@ -31,6 +31,18 @@ import db, {
 // Memory adapter, not IndexedDB, so absolute timings are not device-real.
 // Growth shape is what transfers.
 //
+// KNOWN LIMITATION -- read before believing a number here. Every size block
+// shares one module-level database and wipes it by soft-delete, because the
+// functions under test import `db` directly and cannot be pointed at a fresh
+// instance. Paths that go through `db.find` and a persisted index are
+// distorted by that: getLogsForTask measured 0.2/97.4/395.2ms across the
+// three blocks here, and 1.35/3.90/1.55ms flat when each size was given its
+// own database. The `allDocs`-based paths agree between the two setups.
+//
+// So: trust the allDocs paths, and verify anything index-backed in an
+// isolated database before acting on it. A number from this file is a
+// starting point, not a finding.
+//
 //   npm run bench                    all sizes
 //   SCALE_MAX=50000 npm run bench    push it until something breaks
 
