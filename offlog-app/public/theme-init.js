@@ -7,6 +7,6 @@
   // applyTheme() keeps it in step from then on. Must match
   // --statusbar-fill's two values in app.css.
   var meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#101218' : '#fbfbfc');
+  if (meta) meta.setAttribute('content', dark ? '#181a20' : '#f6f7f9');
   if (localStorage.getItem('high_contrast')) document.body.classList.add('high-contrast');
 })();

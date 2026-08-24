@@ -27,11 +27,14 @@
   --bg: #f6f7f9;
   --surface: #ffffff;
   --sidebar-bg: #fbfbfc;
-  /* Android's status-bar-fill strip (App.svelte). Matches --sidebar-bg in
-     both themes, so the strip reads as part of the app rather than a bar
-     above it. theme.ts flips the native icon style to match -- change one
-     and you must change the other, or icons vanish into the strip. */
-  --statusbar-fill: #fbfbfc;
+  /* Android's status-bar-fill strip (App.svelte). Holds --bg's value in
+     each theme so the strip disappears into the page instead of reading as
+     a bar above it. Cannot be `var(--bg)`: a custom property substitutes at
+     computed-value time where it is DECLARED, so :root would bake in the
+     light value and body.dark's override would never reach it.
+     theme.ts flips the native icon style and the browser theme-color to
+     match -- move one of the three and you must move all three. */
+  --statusbar-fill: #f6f7f9;
   --col-bg: #eceef2;
 
   /* lines */
@@ -91,7 +94,7 @@ body.dark {
   --bg: #181a20;
   --surface: #242934;
   --sidebar-bg: #101218;
-  --statusbar-fill: #101218;
+  --statusbar-fill: #181a20;
   --col-bg: #1e222c;
   --border: #2f3542;
   --border-strong: #3f4657;

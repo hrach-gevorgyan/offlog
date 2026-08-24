@@ -88,7 +88,7 @@ function syncAndroidStatusBar(dark: boolean): void {
 // light mode. Kept in step with --statusbar-fill's two values.
 function syncBrowserThemeColor(dark: boolean): void {
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', dark ? '#101218' : '#fbfbfc');
+  if (meta) meta.setAttribute('content', dark ? '#181a20' : '#f6f7f9');
 }
 
 // The desktop window's native title bar otherwise follows the OS theme and

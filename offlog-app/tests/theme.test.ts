@@ -65,11 +65,11 @@ describe('theme — native status bar', () => {
 
     setMode('dark');
     applyTheme();
-    expect(meta.getAttribute('content')).toBe('#101218');
+    expect(meta.getAttribute('content')).toBe('#181a20');
 
     setMode('light');
     applyTheme();
-    expect(meta.getAttribute('content')).toBe('#fbfbfc');
+    expect(meta.getAttribute('content')).toBe('#f6f7f9');
 
     meta.remove();
   });

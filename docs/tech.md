@@ -414,7 +414,7 @@ native theming. Derived tints use
 | `--bg` | `#F6F7F9` | `#181A20` | page background |
 | `--surface` | `#FFFFFF` | `#242934` | cards, panels |
 | `--sidebar-bg` | `#FBFBFC` | `#101218` | sidebar (follows theme) |
-| `--statusbar-fill` | `#fbfbfc` | `#101218` | Android status-bar strip. Matches `--sidebar-bg`; `theme.ts` flips the native icon style and the browser `theme-color` to match |
+| `--statusbar-fill` | `#f6f7f9` | `#181a20` | Android status-bar strip. Holds `--bg`'s value per theme; `theme.ts` flips the native icon style and the browser `theme-color` to match |
 | `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
 | `--border` | `#E2E4EA` | `#2F3542` | hairlines |
 | `--border-strong` | `#C7CBD6` | `#3F4657` | stronger dividers, scrollbar |
