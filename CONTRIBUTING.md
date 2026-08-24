@@ -15,8 +15,8 @@ practical mechanics of sending a change.
 
 ## Project status — read this first
 
-Offlog is **actively maintained but feature-complete** as of v6.3.0. It
-is not abandoned, and it is not archived — bugs get fixed, dependencies
+Offlog is **actively maintained but feature-complete**. It is not
+abandoned, and it is not archived — bugs get fixed, dependencies
 get updated, security reports get answered. What it doesn't have is a
 feature roadmap; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -35,11 +35,11 @@ What that means for you:
 
 ## Setup
 
-Node.js 20+ required.
+Node.js 22+ required (CI pins 22; there is no `engines` field).
 
 ```bash
 cd offlog-app
-npm install
+npm ci
 npm run dev             # http://localhost:5173
 ```
 
@@ -92,11 +92,16 @@ cargo clippy --manifest-path src-tauri/Cargo.toml  # zero warnings
   `src/app.css` (two narrow exceptions are documented in CLAUDE.md).
 - Any new `db.ts` write path invalidates `_taskCache` and writes a
   `log:` changelog doc, matching every existing mutation.
-- **Any new `db.ts` function with non-trivial logic gets a test** in
-  `tests/db.test.ts` before it ships. That suite has caught several real
-  bugs that had been silently shipping — a broken conflict check, an
-  incomplete conflict resolution, and a backup format that couldn't be
-  restored.
+- **New logic ships with a test.** `db.ts` logic goes in
+  `tests/db.test.ts`; a component gets its own file alongside the
+  existing ones. These suites have caught real bugs that were silently
+  shipping — a broken conflict check, an incomplete conflict resolution,
+  and a backup format that couldn't be restored.
+- **Prove the test works by breaking the code.** Invert a condition or
+  drop a guard, confirm *that* test fails, then revert. A test that still
+  passes against broken code asserts nothing — rewrite or delete it.
+  Judge a run by its exit code, not its summary: vitest prints "passed"
+  and still exits 1 on an unhandled rejection.
 - Every task-mutating call site is wrapped in `try/catch` +
   `showError()`. No silent failures — this is an audited invariant, and
   a regression on it is treated as a bug.
