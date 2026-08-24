@@ -1,4 +1,4 @@
-# Offlog — Maintenance Pass Log
+# Offlog — Maintenance Archive
 
 Narrative history of every maintenance pass. The process itself lives in
 [../MAINTENANCE.md](../MAINTENANCE.md), which also carries the current

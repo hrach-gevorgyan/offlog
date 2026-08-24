@@ -11,7 +11,7 @@ the project is in maintenance mode.
 
 This pointer is the only tracker state in this file. Past passes are
 narrated in
-[archive/maintenance-log.md](archive/maintenance-log.md) — this file is
+[archive/maintenance-archive.md](archive/maintenance-archive.md) — this file is
 instructions only.
 
 **Scope a real pass in differently-aimed cycles, not one checklist run
@@ -237,7 +237,7 @@ owner-only.
    nothing changed, so there is nothing to ship.
 3. Update the **Current pointer** at the top of this file, then append the
    pass's narrative to
-   [archive/maintenance-log.md](archive/maintenance-log.md). Don't grow a
+   [archive/maintenance-archive.md](archive/maintenance-archive.md). Don't grow a
    second tracker here.
 4. Final report: done / deferred / `[RISKY]` left untouched /
    recommendations for the next pass.

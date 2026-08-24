@@ -15,7 +15,7 @@ balloon the live docs.
 This file also holds the full maintenance-pass history (moved from
 MAINTENANCE.md's old in-file tracker, which is now docs/MAINTENANCE.md and
 carries only the process instructions plus a one-line current pointer) —
-see [maintenance-log.md](maintenance-log.md).
+see [maintenance-archive.md](maintenance-archive.md).
 
 | Version | Summary | Tag |
 |---|---|---|
