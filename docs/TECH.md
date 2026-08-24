@@ -1,714 +1,550 @@
 # Offlog — Technical Documentation
 
-Local-first task management for browser, Android, and PC (Tauri) — see
-[CHANGELOG.md](CHANGELOG.md) for the current version.
+Local-first task manager for browser, Android, and Windows. This file is a
+reference: what it's built with, how it's laid out, and the few ideas that
+aren't obvious from the code.
 
-> Contributor conventions, invariants, and the release checklist live in
-> [CLAUDE.md](../CLAUDE.md). Planned work (including the public-release path
-> and security posture) lives in [ROADMAP.md](ROADMAP.md);
-> why non-obvious choices were made in [DECISIONS.md](DECISIONS.md);
-> version history in [CHANGELOG.md](CHANGELOG.md). This file documents how
-> the system currently works — mission/pitch lives in the root [README.md](../README.md),
-> not duplicated here.
+> Conventions and invariants: [CLAUDE.md](../CLAUDE.md) ·
+> Planned work: [ROADMAP.md](ROADMAP.md) ·
+> Why choices were made: [DECISIONS.md](DECISIONS.md) ·
+> Version history: [CHANGELOG.md](CHANGELOG.md) ·
+> Pitch: [README.md](../README.md)
 
-**Contents:** [Technology Stack](#technology-stack) ·
-[Architecture](#architecture) · [Source File Map](#source-file-map) ·
-[Data Model](#data-model) ·
+**Contents:** [Stack](#stack) · [Architecture](#architecture) ·
+[Source File Map](#source-file-map) · [Data Model](#data-model) ·
 [Performance & Reliability](#performance--reliability) ·
-[Shared Utilities](#shared-utilities--utilsts) ·
 [Testing & Dev Workflows](#testing--dev-workflows) ·
-[How Sync Works](#how-sync-works) ·
-[Theme System](#theme-system--brand-colors) ·
-[View Persistence](#view-persistence) · [Notifications](#notifications) ·
-[Mobile (Android)](#mobile-android) ·
-[Desktop (Tauri)](#desktop-tauri--offlog-desktop) ·
-[Version History](#version-history)
+[How Sync Works](#how-sync-works) · [Theme System](#theme-system) ·
+[Notifications](#notifications) · [Mobile (Android)](#mobile-android) ·
+[Desktop (Tauri)](#desktop-tauri)
 
 ---
 
-## Technology Stack
+## Stack
 
 | Layer | Technology | Notes |
 |---|---|---|
-| UI Framework | **Svelte 5** + TypeScript | Reactive without virtual DOM, minimal bundle size |
-| Build Tool | **Vite 8** | Instant HMR, fast production builds |
-| Local Database | **PouchDB 9** | IndexedDB in browser, speaks CouchDB replication protocol |
-| Sync Server | **CouchDB-protocol-compatible** (real CouchDB, or **NyxDB**) | Self-hosted, optional. App works fully offline without it |
-| Mobile Wrapper | **Capacitor 7** | Wraps Vite build into a WebView-based Android APK |
-| Desktop Wrapper | **Tauri 2** (`offlog-desktop/`) | Wraps the same Vite build into a Windows app; embeds a NyxDB sync host — see "Desktop (Tauri)" below |
-| Notifications | **@capacitor/local-notifications** (native) / Web Notification API | Task reminders — see below |
-| Biometric unlock | **capacitor-native-biometric** | Android-only, opt-in fast path alongside the PIN lock — see AppLock.svelte below |
-| Privacy screen | **@capacitor/privacy-screen** | Opt-in (off by default — blocks screenshots too), dims the app-switcher preview via `config.ts`'s `syncPrivacyScreen()` |
-| Clipboard | **@capacitor/clipboard** | Copy button on the App Lock recovery code |
-| Haptics | **@capacitor/haptics** | Checkbox/pin/checklist toggles + Kanban drag, via `src/lib/haptics.ts` |
-| App Launcher | **@capacitor/app-launcher** | Deep-links to Android's biometric enrollment settings when App Lock finds nothing enrolled |
-| Styling | **CSS Custom Properties** | Light/dark theme without any CSS framework |
-| Fonts | Hanken Grotesk (only) | Single family; `--mono` (labels/timestamps' uppercase treatment) points at the same face |
+| UI | **Svelte 5** + TypeScript | No virtual DOM, small bundle |
+| Build | **Vite 8** | |
+| Local database | **PouchDB 9** | IndexedDB in the browser; speaks the CouchDB replication protocol |
+| Sync server | Any **CouchDB-protocol** server (CouchDB, or **NyxDB**) | Self-hosted, optional. The app is fully usable without one |
+| Android | **Capacitor 7** | Wraps the same `dist/` in a WebView |
+| Windows | **Tauri 2** (`offlog-desktop/`) | Wraps the same `dist/`, embeds a NyxDB sync host |
+| Notifications | `@capacitor/local-notifications` / Web Notification API | |
+| Biometrics | `capacitor-native-biometric` | Android only, opt-in alongside the PIN |
+| Privacy screen | `@capacitor/privacy-screen` | Opt-in; also blocks screenshots |
+| Clipboard / Haptics / Launcher | `@capacitor/clipboard`, `-haptics`, `-app-launcher` | |
+| Styling | CSS custom properties | No CSS framework |
+| Fonts | Hanken Grotesk only | `--mono` points at the same face |
 
 ---
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph UI["UI Layer — App.svelte"]
-        direction LR
-        Sidebar["Sidebar<br/>spaces / project nav"]
-        Dashboard["DashboardView<br/>home overview"]
-        Focus["FocusView<br/>daily commitment lock"]
-        Kanban["KanbanBoard<br/>drag-and-drop columns"]
-        List["ListView<br/>sortable + filterable"]
-        Agenda["AgendaView<br/>list + month grid"]
-        Card["CardDetail<br/>task editor modal"]
-        Quick["QuickAdd<br/>Ctrl+N fast-add"]
-        Search["GlobalSearch<br/>Ctrl+K cross-project"]
-        Settings["SettingsPanel<br/>7-tab settings"]
-        Time["TimeTravelView<br/>log: journal by day"]
-    end
-    Store["Store Layer — store.ts<br/>Svelte writable stores: spaces, projects, tasks,<br/>activeSpaceId, activeProjectId<br/>persisted to localStorage, reload on DB change"]
-    DB["Database Layer — db.ts<br/>PouchDB (IndexedDB in browser)<br/>· all CRUD for spaces/projects/tasks<br/>· changelog writer (every mutation → log: doc)<br/>· undo buffer: last 10 deleted tasks in-memory<br/>· CouchDB-protocol live sync (optional)"]
-    Sync["CouchDB-protocol sync server (self-hosted, optional)<br/>real CouchDB, or NyxDB (offlog-desktop's embedded one)<br/>single database 'offlog' — all devices sync through one node"]
+Four layers, one direction. The UI never touches the database directly for
+state; it reads stores and calls `db.ts`.
 
-    UI --> Store --> DB -->|replication protocol| Sync
+```mermaid
+flowchart LR
+    UI["UI<br/>App.svelte + views"] --> Store["store.ts<br/>Svelte stores"]
+    Store --> DB["db.ts<br/>PouchDB"]
+    DB -.->|replication| Sync["Sync server<br/>optional"]
 ```
+
+- **UI** — `App.svelte` routes between Dashboard, Focus, Agenda, Kanban,
+  List, plus modals (CardDetail, QuickAdd, GlobalSearch, Settings).
+- **store.ts** — the only reactive state layer. Holds spaces, projects,
+  tasks and the active selection; reloads on any database change.
+- **db.ts** — all reads and writes, the changelog, the undo buffer, and
+  sync control.
+- **Sync server** — optional. All devices replicate through one database
+  named `offlog`.
 
 ---
 
 ## Source File Map
 
-All paths below are relative to `offlog-app/` (the app source root):
+Paths are relative to `offlog-app/`. Every source file is listed.
 
 ```
 src/
-  App.svelte              Root: view routing, keyboard shortcuts, undo toast stack
-  app.css                 Global CSS, all custom property tokens (light + dark)
-  config.ts               Sync server URL + credentials (from .env.local)
-  main.ts                 Svelte mount entry point
+  App.svelte                    Root: view routing, shortcuts, undo toasts, lock gate
+  app.css                       All CSS custom property tokens (light + dark)
+  config.ts                     Settings in localStorage + secure sync credentials
+  main.ts                       Mount entry; global error handlers; status-bar setup
+  vite-env.d.ts                 Types for the host-injected globals (Capacitor, Tauri, PouchDB)
 
   lib/
-    db.ts                 Barrel — re-exports db/*; import everything from here
+    db.ts                       Barrel — import everything from here, never from db/*
     db/
-      core.ts             PouchDB instance, indexes, task cache, logChange, subscribe
-      entities.ts         CRUD: spaces, projects, tasks, blocked-by, attachments, undo, trash
-      sync.ts             Live replication + conflict resolution
-      tags.ts             Tag colors and tag rename/delete
-      stats.ts            Dashboard + storage-breakdown aggregate reads
-      maintenance.ts      Retention pruning, integrity check/repair, import/export
-    store.ts              Svelte stores — the only reactive state layer
-    types.ts              TypeScript interfaces: SpaceDoc, ProjectDoc, TaskDoc, Column
-    constants.ts          Priority colors, priority labels, default column definitions
-    utils.ts              Shared pure functions: dueLabel, dueState, dueInk, filterTasks
-    theme.ts              Light/Dark/System mode, high contrast, reduce motion
-    motion.ts             Shared Svelte transition params/functions (panels, popovers, toasts)
-    modalStack.ts         Back-button/Escape close ordering for every overlay (closeOnBack())
-    discovery.ts          mDNS host discovery + pairing handshake (Android side)
-    confirm.ts            confirmAction() — promise-based wrapper around ConfirmDialog
-    commands.ts           Command palette (Ctrl+K) action list
-    spaceIcons.ts          The 25-icon space-icon picker set + resolver
-    focusTrap.ts           use:trapFocus action shared by every modal/panel
-    logFormat.ts           Plain-English log: doc formatting (describeLog/fmt/entityLabel),
-                            used by TimeTravelView.svelte
-    nlpParse.ts             parseQuickAdd() — local regex-based NLP for QuickAdd.svelte
-                            (dates/times/#tags/!priority/@project out of free-typed text,
-                            no network call — see DECISIONS.md for why not an LLM call)
-    PinStar.svelte        The shared task-pin star icon (used by CardDetail/Kanban/List)
+      core.ts                   PouchDB instance, indexes, task cache, logChange, subscribe
+      entities.ts               CRUD: spaces, projects, tasks, blocked-by, attachments, undo, trash
+      sync.ts                   Live replication, sync state, conflict scan/resolve
+      tags.ts                   Tag colour overrides, tag rename/delete
+      stats.ts                  Dashboard and storage-breakdown aggregate reads
+      maintenance.ts            Retention pruning, integrity check/repair, import/export
+    store.ts                    Svelte stores — the only reactive state layer
+    types.ts                    SpaceDoc, ProjectDoc, TaskDoc, Column, CustomFieldDef
+    constants.ts                Priority colours/labels, default columns
+    utils.ts                    Date formatting and task filtering (see table below)
+    theme.ts                    Light/dark/system, high contrast, reduce motion
+    motion.ts                   Shared transition params (panels, popovers, toasts)
+    modalStack.ts               Back-button/Escape close ordering — closeOnBack()
+    focusTrap.ts                use:trapFocus action, shared by every modal
+    confirm.ts                  confirmAction() — promise wrapper around ConfirmDialog
+    commands.ts                 Command palette action list (Ctrl+K)
+    discovery.ts                mDNS host discovery + pairing handshake (device side)
+    notifications.ts            Reminder scheduling, both platforms
+    autoBackup.ts               Silent daily local backup, 7 kept
+    attachments.ts              Attachment size cap and extension→mime map
+    focusLock.ts                The day's Focus commitment — per-day UI state, never synced
+    tagColors.ts                Tag colour: stored override, else deterministic hash
+    updateChecker.ts            Desktop update check (Tauri updater plugin)
+    spaceIcons.ts               The 25-icon space-icon set and resolver
+    logFormat.ts                Turns log: docs into plain English for TimeTravelView
+    nlpParse.ts                 parseQuickAdd() — local regex parsing, no network
+    haptics.ts                  Single gate for every haptic call (Android only)
 
-    Sidebar.svelte              Left nav: spaces, projects, sync indicator, dark toggle
-    DashboardView.svelte        Home screen: project cards grid + pinned/overdue panels
-    FocusView.svelte            Daily commitment lock (pick up to 3 tasks) + corkboard picker
-    KanbanBoard.svelte          Drag-and-drop kanban (mouse + touch)
-    ListView.svelte             List/Table view with search, filter, sort, archive
-    FilterBar.svelte            Shared Kanban/List search+filter row
-    AgendaView.svelte           Agenda: flat list (Overdue/Today/This Week/Later) + month-grid view
-    CardDetail.svelte           Task editor modal shell - all card state, save(), history.
-                                 Owns the card's CLASS rules: those targeting Extras
-                                 markup are `.extras-panel :global(...)`, since that
-                                 markup lives in children and scoping would drop them.
-                                 Bare ELEMENT rules (button/label/textarea) must NOT be
-                                 globalised - a `:global(button)` also matches nested
-                                 components' internals (CustomSelect, CalendarPicker),
-                                 restyling them. Each child carries those few rules in
-                                 its own scoped <style> instead.
-    carddetail/
-      RepeatReminderBlock.svelte  Repeat & reminder Extras block
-      ChecklistBlock.svelte       Checklist Extras block
-      CustomFieldsBlock.svelte    Custom fields Extras block
-      RelatedBlock.svelte         Related-tasks Extras block
-      BlockedByBlock.svelte       Blocked-by Extras block
-      AttachmentsBlock.svelte     Attachments Extras block
-      NotesBlock.svelte           Notes (markdown) Extras block
-      helpers.ts                  Pure helpers (date/summary/image-encoding)
-    TaskHistoryPanel.svelte     Lazy-loaded change history for one task
-    QuickAdd.svelte             Ctrl+N fast-add modal (Space / Project selector); live-parses
-                                 the title via nlpParse.ts for dates/times/#tags/!priority/
-                                 @project, shown as chips, stripped from the saved title; a "?"
-                                 button opens an inline syntax cheat-sheet (a local popover
-                                 like CustomSelect's dropdown, not a closeOnBack()-tracked modal)
+    Sidebar.svelte              Spaces, projects, sync indicator, bottom icon row
+    DashboardView.svelte        Home: project cards, pinned/overdue panels, daily brief
+    FocusView.svelte            Pick up to 3 tasks for the day; corkboard picker
+    KanbanBoard.svelte          Drag-and-drop columns (mouse + touch)
+    ListView.svelte             List/table with search, filter, sort, archive
+    AgendaView.svelte           Flat list (Overdue/Today/This week/Later) + month grid
+    FilterBar.svelte            Search + filter row shared by Kanban and List
+    TimeTravelView.svelte       log: docs grouped by day, with pagination
+    TaskHistoryPanel.svelte     Lazy-loaded history for one task
+    QuickAdd.svelte             Ctrl+N fast add; live-parses the title via nlpParse
     GlobalSearch.svelte         Ctrl+K debounced search across all tasks
-    TimeTravelView.svelte       Log: docs grouped by local calendar day, most recent first,
-                                 with further-back pagination, per-row detail (project name,
-                                 device/source pill, Clear all) and click-to-open on a task
-                                 entry. Opened from Sidebar's bottom icon row — a history
-                                 *utility*, not a primary Dashboard/Focus/Agenda-style view.
-    SettingsPanel.svelte        Settings shell — category nav, shared state, save/close.
-                                 Owns ALL settings CSS: rules for category markup are
-                                 `.detail-content :global(...)`, since that markup now
-                                 lives in children and Svelte scoping would drop them.
+    TrashView.svelte            Restore or purge soft-deleted tasks
+
+    CardDetail.svelte           Task editor shell: all card state, save(), history
+    carddetail/
+      RepeatReminderBlock.svelte  Repeat and reminder
+      ChecklistBlock.svelte       Checklist
+      CustomFieldsBlock.svelte    Custom field values
+      RelatedBlock.svelte         Related tasks
+      BlockedByBlock.svelte       Blocking dependencies
+      AttachmentsBlock.svelte     File attachments
+      NotesBlock.svelte           Markdown notes
+      helpers.ts                  Pure helpers: dates, summary text, image encoding
+
+    SettingsPanel.svelte        Settings shell: category nav, shared state, save/close
     settings/
-      AppearanceSettings.svelte   View & Accessibility tab
-      NotificationSettings.svelte Notifications tab
-      SyncSettings.svelte         Sync tab
-      OrganizeSettings.svelte     Organize tab
-      DataSettings.svelte         Backup & Storage tab
-      SecuritySettings.svelte     App Lock tab
-      AdvancedSettings.svelte     Advanced tab
-      helpers.ts                  Pure helpers (download, storage math, maint steps)
-    TrashView.svelte            Recycle bin for soft-deleted tasks
-    SpaceManager.svelte         Manage spaces (Settings → Organize)
-    TagManager.svelte           Manage tags (Settings → Organize)
-    CustomFieldManager.svelte   Manage global custom fields (Settings → Organize)
-    ArchivedProjectsManager.svelte  Manage archived projects (Settings → Organize)
+      AppearanceSettings.svelte   View & Accessibility
+      NotificationSettings.svelte Notifications
+      SyncSettings.svelte         Sync and pairing
+      OrganizeSettings.svelte     Organize
+      DataSettings.svelte         Backup & Storage
+      SecuritySettings.svelte     App Lock
+      AdvancedSettings.svelte     Advanced (sync URL, maintenance, reset)
+      helpers.ts                  Pure helpers: download, storage math, maint steps
+
+    SpaceManager.svelte         Manage spaces
+    TagManager.svelte           Manage tags and their colours
+    CustomFieldManager.svelte   Manage global custom field definitions
+    ArchivedProjectsManager.svelte  Archive and restore projects
+
     CustomSelect.svelte         Themed dropdown, replaces every native <select>
-    CalendarPicker.svelte       Themed date picker, replaces native <input type="date">
-    TimePicker.svelte           Themed time picker, replaces native <input type="time">
-    ConfirmDialog.svelte        Themed confirm() replacement, driven by confirm.ts
-    NamePrompt.svelte           First-run "name this device" prompt
-    AppLock.svelte              PIN lock screen — mounted at App.svelte's root, gated by
-                                 config.ts's isAppLockEnabled(). Doesn't use modalStack.ts's
-                                 closeOnBack() (Escape must not dismiss a lock screen);
-                                 App.svelte makes the rest of the app `inert` while locked.
-                                 Recovery and biometric rationale: see DECISIONS.md
+    CalendarPicker.svelte       Themed date picker
+    TimePicker.svelte           Themed time picker
+    ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
+    NamePrompt.svelte           First-run "name this device"
+    UpdateModal.svelte          Desktop update available/downloading/failed
+    AppLock.svelte              PIN lock screen; Escape must not dismiss it
+    ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
+    PinStar.svelte              The shared pin star icon
 ```
+
+**Two CSS rules worth knowing**, both learned from real regressions:
+
+- `CardDetail.svelte` and `SettingsPanel.svelte` own their children's
+  **class** rules as `:global()` under a parent wrapper, because the markup
+  now lives in child components and scoping would drop it.
+- Bare **element** rules (`button`, `label`, `textarea`) must stay scoped
+  and be copied into each child. A `:global(button)` also matches nested
+  components' internal buttons (CustomSelect, CalendarPicker) and restyles
+  them.
 
 ---
 
 ## Data Model
 
-All documents live in one PouchDB database named `offlog`. The `_id` prefix acts as the document type:
+One PouchDB database, `offlog`. The `_id` prefix is the document type.
 
-| ID prefix | Type | Key fields |
+| Prefix | Type | Key fields |
 |---|---|---|
-| `space:` | SpaceDoc | `name`, `color`, `position` |
-| `project:` | ProjectDoc | `space_id`, `name`, `columns[]`, `default_view` |
-| `task:` | TaskDoc | `project_id`, `column_id` (status), `title`, `body`, `priority`, `due_date`, `tags`, `pinned`, `deleted`, `archived`, `recurrence`, `related`, `attachments` |
-| `log:` | LogEntry | `ref` (task id), `action`, `diffs`, `timestamp` |
+| `space:` | SpaceDoc | `name`, `color`, `icon`, `position` |
+| `project:` | ProjectDoc | `space_id`, `name`, `columns[]`, `default_view`, `archived` |
+| `task:` | TaskDoc | `project_id`, `column_id`, `title`, `body`, `priority`, `due_date`, `tags`, `deleted`, `archived` |
+| `log:` | LogDoc | `ref`, `action`, `diffs`, `ts` |
+| `meta:` | Custom field definitions | `fields[]` |
+| `tag:` | Tag colour override | `tag`, `color` |
 
-### Key conventions
+### Rules
 
-- **Soft delete**: tasks get `deleted: true`, never hard-removed (avoids sync conflicts)
-- **Archive**: tasks get `archived: true`, filtered from normal views, restorable
-- **Duplicate**: `duplicateTask(id)` in `db.ts` clones a task into the same status column with `" (copy)"` appended to the title, a fresh `_id`, reset `pinned`/`archived`, and new timestamps
-- **Priority**: `1` Low · `2` Medium · `3` High — shown as left border color (see palette below)
-- **Pinned**: always sorts to top of any view
-- **Source**: `'pc'` or `'mobile'` — set on write, used in changelog
-- **"Status" vs "Column"**: internally, a project's stages are stored as `Column[]` on `columns` and each task references one via `column_id` — this is a legacy internal name. Every user-facing label calls it "Status" (e.g. "+ Status", "Rename status"); only variable/field names still say "column"
-- **Recurrence**: `recurrence?: 'daily' | 'weekly' | 'monthly' | null` on TaskDoc — no custom interval by design (v1 scope). One task object per series, matching Todoist/Google Tasks/Microsoft To Do/Apple Reminders — **not** a new card per completion, which produces two tasks with the same name. `db.ts`'s `updateTask()` detects a move into the project's last column (the positional "done" check); if the task is recurring, `computeRecurrenceReset()`'s fields win over the caller's `changes` and the *same* task is written back into the first column with due_date advanced from the *original* due_date (not from today, so a late completion doesn't drift the schedule) and checklist items reset to unchecked, all in one write. The log entry still records the real transition ("moved to Done, due date advanced to X") even though the task itself never rests there. `ListView.svelte`'s mark-done undo snapshots due_date/reminder_at/checklist too, not just column_id, since undoing a recurring completion has to revert all of them.
-- **Attachments** (`attachments?: TaskAttachment[]`): file bytes
-  live in PouchDB's own native `_attachments` map on the task doc — one
-  database, no separate attachments db (see DECISIONS.md for why).
-  `TaskAttachment` (`types.ts`) is small, loggable metadata only —
-  `key` (`att:<nanoid>`, not the filename, since two attachments could
-  share one), `filename`, `content_type`, `size`, `added_at`. `db.ts`'s
-  `addAttachment()`/`deleteAttachment()` reuse `updateTask()`'s per-doc
-  write-queue (`queueTaskWrite()`). No format allowlist beyond HEIC/HEIF
-  (see DECISIONS.md); 10MB/file cap and 10-attachments/task cap
-  (`ATTACHMENT_MAX_PER_TASK`, checked inside the write queue so two
-  concurrent attaches can't both slip past the count race); extension→
-  mime map in `attachments.ts` (shared by `db.ts` and `CardDetail.svelte`,
-  falls back to `application/octet-stream`). Images are downscaled to
-  ~1600px longest side and re-encoded to JPEG client-side
-  (`carddetail/helpers.ts`'s `downscaleImage()`) before reaching
-  `addAttachment()` — the one format where client-side compression
-  actually helps.
-- **Task linking** (`related?: string[]`): non-directional
-  "related to" only (see DECISIONS.md for the scope call). Stored
-  forward-only on whichever task the link was added from;
-  `getRelatedTasks()` computes the reverse direction at read time by
-  scanning for any other task whose own `related` names this one —
-  PouchDB can't write two docs atomically, so mirroring the write isn't
-  safe. `linkRelatedTask()`/`unlinkRelatedTask()` are immediate-write,
-  unlike Tags/Checklist which batch into `CardDetail`'s Save. A
-  soft-deleted linked task still resolves, shown as "(deleted)"; only a
-  hard purge drops it. `getTaskIdsWithRelatedLinks()` gives Kanban
-  cards/List rows a link-icon badge via one cached full-task-list scan,
-  refreshed on any db change.
+- **Done is positional.** A task is complete when its `column_id` is the
+  project's **last** column. There is no `done` boolean, so a task can never
+  disagree with the column it sits in.
+- **Soft delete.** Tasks get `deleted: true` and are never removed. A real
+  removal would replicate as an absence and lose the history.
+- **Archive.** `archived: true` hides a task from normal views; restorable.
+- **Ordering** uses fractional positions, so inserting between two tasks
+  never renumbers the rest.
+- **Priority** is `1` low, `2` medium, `3` high — shown as a left border.
+- **Pinned** always sorts to the top.
+- **"Status" vs "Column".** Users see "Status". The stored field is
+  `column_id` — a frozen legacy name.
+- **Source** records which device made a write, for the changelog.
+
+### Fields with behaviour attached
+
+- **Recurrence** (`daily`/`weekly`/`monthly`, optional interval,
+  weekdays-only): one task per series, not a new card per completion.
+  Moving it to the last column writes it back to the first with the due
+  date advanced from the *original* date, so finishing late doesn't shift
+  the schedule. Undo has to restore due date, reminder and checklist too,
+  not just the column.
+- **Attachments**: bytes live in PouchDB's own `_attachments` on the task,
+  so they replicate with it. `TaskAttachment` holds only metadata (`key`,
+  filename, type, size, date) — `key` is not the filename, since two files
+  can share one. 10 MB per file, 10 per task. Images are downscaled to
+  ~1600px and re-encoded to JPEG before saving.
+- **Related** (`related[]`): non-directional "see also". Stored only on the
+  task the link was added from; the reverse direction is computed at read
+  time, because PouchDB cannot write two documents atomically.
+- **Blocked by** (`blocked_by[]`): a real directional dependency. Whether a
+  blocker is done is computed with the positional rule, so it cannot drift.
 
 ---
 
 ## Performance & Reliability
 
-### Real database indexing
+**Indexing.** `getTasksForProject()` is the hottest read and uses a Mango
+index on `['type', 'project_id']` (~9x faster than a full scan at 5,000
+tasks). Note `db.find()` silently defaults to 25 results — always pass an
+explicit `limit`.
 
-`pouchdb-find` is registered as an ES module plugin (`PouchDB.plugin(PouchDBFind)`) against the UMD global before first use. `getTasksForProject()` — the hottest read, called on every project switch/reload — queries through a real Mango index on `['type', 'project_id']` via `db.find()` (~9x faster than a full scan at 5,000 tasks) instead of scanning every task and filtering in JS.
+**Task cache.** Cross-cutting reads (search, dashboard, agenda, tag
+autocomplete) each need *every* task, which no index can narrow.
+`getAllTasksRaw()` caches that full scan in memory. Invalidation happens
+centrally in `subscribe()` and again inside every task-writing function, so
+a read can't beat the change listener.
 
-**`db.find()` silently defaults to a 25-result limit** when none is specified — always pass an explicit `limit` (see CLAUDE.md's db.ts invariants).
+**Crash recovery.** `App.svelte` wraps startup in try/catch and shows a
+retry screen rather than hanging. `main.ts` listens for `unhandledrejection`
+and `error` as a last resort. Every task-mutating call site is wrapped in
+try/catch with `showError()` — an audited invariant.
 
-### In-memory task cache
+**Integrity check.** `checkIntegrity()` reports orphaned projects and tasks,
+tasks pointing at a status that no longer exists, projects with no statuses,
+and unresolved sync conflicts. `repairDatabase()` fixes all but the
+no-statuses case, which is left for manual review. Both are exposed in
+Settings; repair needs an explicit confirm.
 
-Cross-cutting reads — global search, the Dashboard, the Agenda, tag autocomplete — all need *every* task in the database, not just one project's, so an index can't reduce that to less than a full scan. `getAllTasksRaw()` in `db.ts` caches that full scan in memory and every one of those functions reads from it instead of re-querying and re-parsing IndexedDB on every call.
+**Automatic backup** (`autoBackup.ts`). Runs at most every ~20h, writing the
+same JSON as a manual export to app-private storage (desktop
+`appDataDir()/auto-backups/`, Android `Directory.Data`; no-op on web). Keeps
+the newest 7. Plain unencrypted JSON, on-device, never uploaded. Failures
+are logged and retried next run — the timestamp only advances on success.
 
-Invalidation is centralized in `subscribe()` — the same function every live sync change and local reload already flows through — plus directly inside every task-writing function (`createTask`, `updateTask`, `duplicateTask`, `unarchiveTask`, `undoDelete`, `deleteProject`, `wipeAndReseed`, `importJSON`) as a safety net against any read-after-write race where a cached read could otherwise run before the async live-changes listener has invalidated it.
-
-### Render hygiene
-
-- `store.ts`'s `activeProjectId` subscription reuses the `reloadTasks()` helper and skips its redundant first firing on module load (`init()`'s own `reload()` covers that).
-- `Sidebar.svelte` imports `db` statically everywhere, including in `exportJSON()` — a dynamic `import('../lib/db')` there only triggers Vite's `INEFFECTIVE_DYNAMIC_IMPORT` warning for no benefit.
-- Store subscriptions must be cleaned up on unmount even in permanent singletons like the sidebar, so a future refactor that remounts them doesn't leak.
-
-### Crash recovery & error handling
-
-- `App.svelte`'s `onMount` wraps `init()` in a try/catch. If startup fails (corrupted IndexedDB, storage quota exceeded, etc.) the app shows a dedicated recovery screen with the error message and a Retry button instead of hanging on "Loading…".
-- `main.ts` registers `window.addEventListener('unhandledrejection'/'error', ...)` as a last-resort net — any error that would otherwise fail silently surfaces the red error toast instead of leaving the UI in an unexplained broken state.
-- Every task-mutating call site is wrapped in try/catch + `showError()` (the pattern `CardDetail.svelte` uses) — Kanban quick-add, card drag-drop, column rename/add/remove/reorder, archive-column and touch drag; ListView and AgendaView "mark done"; Sidebar's create/delete project and export.
-
-### Database integrity checker + repair utility
-
-`db.ts`'s `checkIntegrity()` scans every document and reports:
-- orphaned projects (pointing to a missing space)
-- orphaned tasks (pointing to a missing project)
-- tasks referencing a status/column id that no longer exists on their project
-- projects with zero statuses (flagged for manual review only — inventing default statuses for a project the user configured a specific way would be too destructive to do silently)
-- unresolved sync conflicts (documents with `_conflicts`)
-
-`repairDatabase()` applies safe, well-understood fixes for everything except the zero-statuses case: orphaned tasks/projects get reassigned to the Unsorted space (or archived if even that's missing), invalid status references reset to the project's first status, and conflicts are resolved by removing the losing revisions.
-
-Both are exposed as **Check Database** / **Repair Issues** buttons in the Maintenance section of Settings (`SettingsPanel.svelte`) — report only by default, repair requires an explicit confirm.
-
-### Automatic local backup (`autoBackup.ts`)
-
-- **When**: checked once per app start, runs at most every ~20h (`isBackupDue()`).
-- **What**: same full-database JSON shape as the manual "Back up → Everything" export.
-- **Where**: Desktop `appDataDir()/auto-backups/`; Android `Directory.Data`
-  (private app storage); web is a no-op (no reliable silent local-file API).
-- **Retention**: newest 7 kept (`filesToDelete()`), older deleted each successful run.
-- **Safety model**: plain unencrypted JSON, on-device only — never synced or
-  uploaded. A local-corruption safety net, not a substitute for the manual export.
-- **Failure handling**: caught and logged, never surfaced to the user;
-  `localStorage`'s `offlog_auto_backup_last_run` only updates on success, so a
-  failed run retries next launch.
-- **Toggle**: `offlog_auto_backup_enabled` in `localStorage`, on by default.
-
----
-
-## Shared Utilities  (`utils.ts`)
-
-All date-formatting and filter logic is centralized here — no duplication across views:
+### Shared utilities (`utils.ts`)
 
 | Export | Used by |
 |---|---|
-| `dueLabel(due, fallback)` | ListView |
-| `dueLabelLong(due)` | DashboardView, AgendaView |
-| `dueRelative(due)` | AgendaView |
-| `dueState(due)` | ListView |
-| `dueInk(due)` | ListView |
-| `filterTasks(tasks, search, col, prio, tag)` | ListView |
+| `dueLabel` / `dueLabelLong` / `dueRelative` | List, Dashboard, Agenda |
+| `dueState` / `dueInk` | ListView |
+| `filterTasks` | ListView, Kanban |
+| `localDateStr` and friends | everywhere a calendar day matters |
+
+All date-only logic goes through `localDateStr()`. Never use
+`toISOString().slice(0, 10)` for a calendar day — it shifts to UTC.
 
 ---
 
 ## Testing & Dev Workflows
 
-### CI & release automation (GitHub Actions)
+Full test conventions live in [CLAUDE.md](../CLAUDE.md). In short: `db.ts`
+logic runs against `pouchdb-adapter-memory`, components run under
+`@testing-library/svelte` with `db`/`store` mocked, and three suites test
+the real thing — `replication.test.ts` (PouchDB's actual replicator between
+two databases), `backupRestore.test.ts` (export → wipe → restore), and
+`perfGuard.test.ts` (counts database round-trips, never wall-clock time).
 
-Three workflows in `.github/workflows/`:
+`tests/setup.ts` shims what jsdom lacks: the `PouchDB` global, an in-memory
+`localStorage` (Node's own global shadows jsdom's), `Element.animate`,
+`matchMedia`, and `scrollIntoView`.
 
-- **`ci.yml`** — on every push/PR touching `offlog-app/**`: type-check,
-  zero-warning build, vitest suite (the same three gates as the release
-  checklist).
-- **`desktop-ci.yml`** — on pushes/PRs touching `offlog-desktop/**`
-  only: a real `cargo build --release` for the Tauri side, which doubles
-  as the cache warmer — GitHub Actions caches created on a tag are
-  invisible to other tags, so only this main-branch job can create the
-  cargo/vendored-NyxDB caches that release runs restore.
-- **`release.yml`** — on any `vX.Y.Z` tag push: builds the Android APK
-  (real-key-signed via repo secrets, debug-keystore fallback when
-  they're absent) and the Windows Tauri installer, then attaches both
-  to a **draft** GitHub Release — publishing stays a manual owner
-  step. Dependabot watches npm (`offlog-app/`), Cargo
-  (`offlog-desktop/src-tauri/`), and the workflows' own action
-  versions, weekly (`.github/dependabot.yml`).
+### CI (`.github/workflows/`)
 
-### Windows code signing
+- **`ci.yml`** — on `offlog-app/**`: type-check, zero-warning build, tests.
+- **`desktop-ci.yml`** — on `offlog-desktop/**`: a real release `cargo
+  build`, which also warms the cache release runs restore.
+- **`codeql.yml`** — JS/TS, Rust, Actions, and Java/Kotlin. The Java job
+  must install the JDK *before* CodeQL init, or the extractor sees no
+  source. `node_modules` is excluded via `codeql-config.yml`.
+- **`release.yml`** — on a `vX.Y.Z` tag: builds the signed Android APK and
+  the Windows installer, attaches both to a draft Release.
 
-Public signing policy — what a SignPath Foundation application covers,
-and what changes once a signing key is actually wired in (the
-application is currently declined for insufficient public-visibility
-signals, see DECISIONS.md).
+All workflows cancel superseded in-flight runs for the same ref.
 
-- **What gets signed**: only the Windows desktop installer
-  (`offlog-desktop`, Tauri + NSIS packaging). Android's own "unknown
-  publisher" warning is solved separately by the Play Store listing,
-  not by code signing. The web build is a dev/test surface and
-  is never distributed as a signed binary.
-- **How a signed build would be produced**: builds run only in this
-  repo's own `release.yml`, triggered only by a `vX.Y.Z` tag push
-  (owner-only push access) — never a local/manual build. The workflow
-  builds from source on a clean, ephemeral GitHub-hosted runner, and
-  the result is attached to a **draft** Release the owner reviews and
-  publishes by hand (see "CI & release automation" above). SignPath's
-  signing step, once wired in, would run as an additional job in this
-  same workflow, signing only the artifact this workflow itself just
-  built — never anything locally-built or externally-supplied.
-- **Key custody**: Offlog would never hold its own Windows signing
-  private key — the entire point of a hosted signing service over a
-  self-managed certificate. Mirrors the trust model already in place
-  for the desktop auto-updater's own signing key (generated once by
-  the owner, stored only as a GitHub Actions secret, never committed).
-- **Project eligibility**: MIT-licensed (no dual licensing), no
-  proprietary dependencies, actively maintained with real published
-  releases, collects no telemetry or user data by design — see the
-  root README.md and DECISIONS.md's manifesto.
-- **Credit**: once approved, Windows builds would be signed using a
-  free code-signing certificate from [SignPath.io](https://signpath.io),
-  issued through the [SignPath Foundation](https://signpath.org)'s
-  program for open-source projects.
+### Windows distribution
 
-### Generating test/dummy data
+The Windows installer is **not code-signed**. Paid certificates were ruled
+out as incompatible with how this project is distributed; a free path may be
+adopted later if one exists that doesn't require payment. Until then Windows
+shows an "unknown publisher" prompt on first install. Android's equivalent
+warning is handled by the Play Store listing instead.
 
-**For a full realistic scenario** (fresh project setup, or one command to
-populate everything at once): `offlog-app/scripts/seed-scenario.js` is a
-ready-made, paste-into-DevTools-console script covering every major feature
-at once (spaces, projects, tasks across every status/tag/priority/deadline,
-archived/pinned/recurring tasks, Trash, custom fields, checklists, notes,
-real changelog/history). It calls the app's own `db.ts` functions rather
-than writing raw PouchDB docs, so it can't drift out of sync with `db.ts`'s
-own invariants. Usage and the `WIPE_EXISTING` reset option are documented
-in the file's own header comment. It deliberately includes messy edge
-cases (a duplicate task title, near-duplicate notes) to exercise
-hint/disambiguation features — not meant to look polished.
+The desktop **updater** has its own signing key (generated once, stored only
+as a GitHub Actions secret) — unrelated to code signing, and already in use.
 
-**For marketing/store screenshots specifically** (mobile and desktop):
-`offlog-app/scripts/seed-demo.js` is a separate, hand-authored,
-deterministic dataset — a single coherent persona (a software developer
-with a family, building a new house) across 4 spaces/13 projects, covering
-the same feature surface as seed-scenario.js (checklists, custom fields
-with values, related-task links, all three recurrence cadences, reminders,
-pinned/archived/trashed tasks) but with polished, believable content
-instead of randomized pools, so re-running it produces essentially the
-same workspace every time — screenshots stay reproducible across sessions.
-Same run mechanics (paste into DevTools console against a Vite dev
-server); for screenshots you almost always want its `WIPE_EXISTING: true`
-so the workspace is exactly this data and nothing else.
+### Generating test data
 
-**For anything smaller/more targeted**, write directly against the PouchDB
-instance in the browser (`new PouchDB('offlog')` — it's a global, reachable
-from `preview_eval` or the browser console) rather than driving the UI one
-task at a time. Tag generated docs (e.g. `tags: ['dummy']`) so they're
-identifiable and easy to bulk-remove later. Spread across every existing
-project **and** across each project's actual statuses (fetch real column ids
-first — CLAUDE.md's `column_id` invariant applies here too: assign
-`column.id`, never the whole column object). Reload the page after writing
-so the app's in-memory task cache (`getAllTasksRaw()`, invalidated on
-sync/local writes but not on direct-to-PouchDB console writes) and
-store.ts's stores pick up the new docs instead of showing stale data
-until the next real mutation.
+- **`scripts/seed-scenario.js`** — paste into the DevTools console. Covers
+  every feature with randomized content, including deliberately messy cases
+  (duplicate titles, near-duplicate notes). Calls `db.ts`'s own functions,
+  so it can't drift from its invariants.
+- **`scripts/seed-demo.js`** — a hand-authored, deterministic dataset (one
+  persona, 4 spaces, 13 projects) for reproducible screenshots. Use its
+  `WIPE_EXISTING: true`.
+- **Anything smaller** — write straight to `new PouchDB('offlog')` in the
+  console. Assign `column.id`, never the column object, or the task renders
+  nowhere. Reload afterwards so the task cache picks it up.
 
-### Debugging sync discovery (`offlog-desktop/mdns-browse/`)
+### Resetting to a fresh state
 
-A ~20-line standalone script that browses for `_offlog._tcp` on the LAN
-and prints whatever it finds — name, port, addresses, and the full TXT
-record. Run `npm install && node browse.js` inside that folder. Not part
-of any build; it answers the one question behind the most likely sync
-failure in daily use — **is the PC actually advertising, and can the
-phone see it?** — separating a discovery problem (nothing found → mDNS/
-firewall/network isolation) from a pairing or replication problem (found,
-but the handshake or sync fails). Reach for it before reading any code.
+Do this after any real test round; dev state accumulates silently.
 
-### Resetting to a fresh state (do this after every test round)
+- **Desktop**: `scripts/reset-dev-env.ps1`. `-IncludeRelease` also wipes the
+  *installed* app's data — only when confirmed disposable.
+- **Web**: `new PouchDB('offlog').destroy().then(() => localStorage.clear())`,
+  then reload. Clearing PouchDB alone leaves `SEEDED_KEY` set and produces a
+  zero-spaces state that no real install ever has.
+- **Android**: `adb shell pm clear com.offlog.app.debug`, or reinstall.
+- **Automatic backups** live outside PouchDB and survive a `destroy()`.
 
-Dev/test state accumulates silently release over release if it's never
-torn down. Reset before any "does this look right for a brand-new user"
-check, not just when something looks broken:
+### Debugging sync discovery
 
-- **Desktop (`offlog-desktop`)**: `powershell -ExecutionPolicy Bypass -File
-  offlog-desktop/scripts/reset-dev-env.ps1` — wipes the debug build's
-  NyxDB data and its `sync-host.dev.json` identity. **`-IncludeRelease`
-  wipes the real installed app's own server-side data and identity too —
-  only pass it when explicitly confirmed disposable, never as a default
-  cleanup step** (see DECISIONS.md).
-  Never touches `vendor/nyxdb-win/` itself (the pristine built binary).
-- **Web/browser**: in DevTools console, `new PouchDB('offlog').destroy()
-  .then(() => localStorage.clear())`, then reload — this is also the
-  right way to reproduce a genuine first-run (localStorage's `SEEDED_KEY`
-  gates the real auto-seed of 3 starter spaces; clearing PouchDB alone
-  without localStorage produces an artificial zero-spaces state that
-  doesn't happen on a real fresh install).
-- **Android**: `adb shell pm clear com.offlog.app.debug` for a debug
-  build, or uninstall/reinstall via Android Studio for a true fresh
-  install (same "owner runs Android Studio" rule as any other Android
-  verification step).
-- **Automatic backups**: these live outside the main PouchDB
-  database (`autoBackup.ts`) — a plain `PouchDB.destroy()` doesn't clear
-  them. Native: `Filesystem`'s `Directory.Data/auto-backups/`. Tauri:
-  `appDataDir()/auto-backups/`. Neither runs on plain web, so nothing to
-  clear there.
-
-### `tests/setup.ts`'s Node/localStorage workaround
-
-`tests/db.test.ts` (Vitest, `vitest.config.ts`) covers `db.ts`'s pure/query
-logic against `pouchdb-adapter-memory`. `tests/setup.ts` stubs the global
-`PouchDB` (normally the UMD script) and works around a Node/jsdom conflict:
-Node 20+'s own experimental `localStorage` global shadows jsdom's, so rather
-than fighting over which one wins, `setup.ts` installs a tiny in-memory
-polyfill instead. The `db` instance is a module-level singleton reused
-across the whole test file, same as in the real app — tests get isolation
-from a `beforeEach` that wipes every doc, not from a fresh instance.
+`offlog-desktop/mdns-browse/` is a ~20-line script that browses for
+`_offlog._tcp` and prints what it finds. `npm install && node browse.js`. It
+answers the first question behind most sync failures: is the PC advertising,
+and can the phone see it? That separates a discovery problem from a pairing
+or replication one.
 
 ---
 
 ## How Sync Works
 
-1. `startSync()` in `db.ts` starts a **live bidirectional PouchDB sync** with the configured server
-2. Any local write replicates to the server immediately
-3. Any remote change fires a PouchDB `.changes()` event → `store.ts` reloads all data
-4. The app works fully offline; sync resumes automatically on reconnect
-5. Sync URL is set in the sidebar settings panel and stored in `localStorage`; on the Tauri desktop app it's resolved automatically instead — see "Desktop (Tauri)" below for why that default differs from plain desktop web
+**The idea.** Every device keeps a complete copy of the database and works
+offline. There is no server that owns the data — the optional sync server is
+just another copy that all devices can reach. When two copies meet, they
+exchange whatever the other is missing. Turn sync off and nothing breaks;
+you simply stop exchanging.
 
-### Sync reliability
+**Why PouchDB.** It implements the CouchDB replication protocol, which
+solves the hard part: each document carries a revision history, so two
+copies can work out what changed without a central coordinator. The server
+can be real CouchDB or NyxDB (the small Rust server the desktop app embeds)
+— the app only needs something that speaks the protocol.
 
-`syncState` in `db.ts` tracks more than just idle/syncing/error:
+**What actually happens.**
 
-- **`lastSynced` persists across restarts** — written to `localStorage` (`offlog_last_synced`) on every successful sync, hydrated on module load. Keep it persisted; in-memory only makes the sidebar show "Not synced yet" after every app restart.
-- **Real offline detection** — `window.addEventListener('online'/'offline', ...)` sets a dedicated `'offline'` status, distinct from `'error'`. When a sync error occurs while `navigator.onLine` is false, it's reported as offline rather than a misleading server/auth error (which is what it would otherwise look like). Coming back online immediately triggers `syncNow()`.
-- **Human-readable errors** — `describeSyncError()` maps raw PouchDB/fetch errors (401/403, 404, network failures) to short, actionable text instead of a raw `Error: ...` object dump.
-- **Retry count** — `syncState.retryCount` increments on each consecutive sync error (PouchDB's own `retry: true` already retries automatically; this just surfaces how many attempts have failed so far in the sidebar, e.g. "Cannot reach sync server (retry 3)").
-- **Conflict reporting** — `scanConflicts()` runs after every successful sync via `db.allDocs({ conflicts: true })`, counting documents with unresolved conflicting revisions. Surfaced as a small warning badge in the sidebar when count > 0. This is *reporting only* — no resolution UI, by design (kept out of scope; PouchDB's default deterministic "last write wins" conflict resolution still applies underneath).
+1. `startSync()` opens a live bidirectional replication with the configured
+   server.
+2. A local write replicates out immediately.
+3. A remote change fires a `.changes()` event; `store.ts` reloads.
+4. Offline, writes queue locally; replication resumes on reconnect.
+
+**Conflicts.** If two devices edit the same task while apart, both revisions
+survive and PouchDB picks a deterministic winner. The loser stays as a live
+branch until something resolves it — resolving means removing every losing
+revision explicitly, including one whose content you adopted. Conflicts are
+counted after each sync and shown as a badge; resolution is available in
+Settings.
+
+**Sync state** (`syncState`) tracks more than idle/error:
+
+- `lastSynced` persists to `localStorage`, or the sidebar reads "Not synced
+  yet" after every restart.
+- Offline is its own status, not an error — a failure while
+  `navigator.onLine` is false would otherwise look like a server problem.
+  Coming back online triggers a sync.
+- `describeSyncError()` turns raw 401/403/404/network errors into short,
+  actionable text.
+- `retryCount` surfaces how many consecutive attempts have failed.
 
 ---
 
-## Theme System — Brand Colors
+## Theme System
 
-All colors are CSS custom properties in `app.css` — no hardcoded colors anywhere else in the app, including Android native theming:
-
-- `:root` — light theme
-- `body.dark` — dark theme overrides
-- `color: var(--text)` is set on `body` so it cascades everywhere
-- `Sidebar.svelte`'s `.sidebar` follows the page theme via `--sidebar-bg` like every other surface — don't pin it dark regardless of theme
-- Derived tints (hover states, translucent highlights, badge backgrounds) use `color-mix(in srgb, var(--accent) X%, transparent)` instead of separately hardcoded rgba() values tied to whatever the accent used to be
+All colours are CSS custom properties in `app.css` — `:root` for light,
+`body.dark` for dark. Nothing else hardcodes a colour, including Android's
+native theming. Derived tints use
+`color-mix(in srgb, var(--accent) X%, transparent)`.
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
 | `--bg` | `#F6F7F9` | `#181A20` | page background |
 | `--surface` | `#FFFFFF` | `#242934` | cards, panels |
-| `--sidebar-bg` | `#FBFBFC` | `#101218` | sidebar (theme-aware) |
-| `--statusbar-fill` | `#101218` | `#101218` | Android status-bar strip fill only — fixed dark in both themes, paired with `main.ts`'s unconditional light-icon status bar style; do not point this at `--sidebar-bg` |
+| `--sidebar-bg` | `#FBFBFC` | `#101218` | sidebar (follows theme) |
+| `--statusbar-fill` | `#101218` | `#101218` | Android status-bar strip only — fixed dark |
 | `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
 | `--border` | `#E2E4EA` | `#2F3542` | hairlines |
-| `--border-strong` | `#C7CBD6` | `#3F4657` | scrollbar thumb, stronger dividers |
+| `--border-strong` | `#C7CBD6` | `#3F4657` | stronger dividers, scrollbar |
 | `--hover` | `#ECEEF2` | `#2A2F3A` | row/button hover |
 | `--text` | `#1F2937` | `#F3F4F6` | primary ink |
 | `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
 | `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
-| `--accent` | `#5457E0` | `#818CF8` | indigo — buttons, active states, links |
-| `--on-accent` | `#FFFFFF` | `#181A20` | text/icon color for anything on an `--accent`/`--overdue-ink`/`--due-soon-ink`/`--faint` background — these all swap lightness per theme the same way `--accent` does |
-| `--ink-fixed-dark` | `#181A20` | `#181A20` | text color for anything on a `--success` background — fixed (not overridden in dark mode) since `--success` is bright in both themes, unlike the tokens `--on-accent` covers |
+| `--accent` | `#5457E0` | `#818CF8` | indigo — buttons, active states |
+| `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
+| `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
 | `--danger` | `#DC2626` | `#F87171` | destructive actions |
-| `--success` | `#22C55E` | `#4ADE80` | done states, sync-ok indicator, "this week" agenda group |
-| `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — toggle-switch knob fill (ListView/SettingsPanel); track already carries the theme swap via `--border-strong`/`--accent` |
+| `--success` | `#22C55E` | `#4ADE80` | done, sync ok |
+| `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — track carries the theme swap |
 
-The same accent (`#5457E0`) drives Android's `colorPrimary`/`colorAccent` (`android/app/src/main/res/values/colors.xml`) and the notification icon color (`capacitor.config.ts`'s `iconColor`) — update both alongside `app.css`'s `--accent` if it ever changes. (`index.html`'s `<meta name="theme-color">` is intentionally the dark background `#181A20`, not the accent — it colors the mobile browser's own chrome, not an in-app surface, so it doesn't need to track theme switches.)
+Changing `--accent` also means updating Android's `colors.xml` and
+`capacitor.config.ts`'s `iconColor`. `index.html`'s `<meta theme-color>` is
+intentionally the dark background, not the accent — it colours the browser's
+chrome, not an app surface.
 
-Dark mode is applied before the app renders (early `<script>` in `index.html`) to prevent flash of light mode.
+Dark mode is applied before first paint by `public/theme-init.js`, so there
+is no flash of light.
 
-**Note**: `SettingsPanel.svelte`'s `.settings-panel` is a DOM **sibling**
-of the sidebar, not a descendant — both read page-level theme tokens the
-same way, but keep this in mind before assuming inherited styles.
+**Note:** `SettingsPanel`'s panel is a DOM *sibling* of the sidebar, not a
+descendant. Both read page-level tokens; neither inherits from the other.
 
 ---
 
 ## View Persistence
 
-The last active view is saved to `localStorage` key `offlog_view` as `{ view: 'dashboard' | 'agenda' | 'project', projectId }`. On load, `App.svelte` restores it. Active space/project IDs are also saved separately so the sidebar highlights the right item.
+The last view is saved to `offlog_view` in `localStorage` as
+`{ view, projectId }` and restored on load. Active space and project ids are
+saved separately so the sidebar highlights correctly.
 
 ---
 
 ## Notifications
 
-`src/lib/notifications.ts` is a single module handling both platforms, kept deliberately decoupled from `db.ts` in one direction only (`notifications.ts` imports `db.ts` for the reschedule query; `db.ts` never imports `notifications.ts`, avoiding any circular-import risk).
+`notifications.ts` handles both platforms. It imports `db.ts`; `db.ts` never
+imports it, so there is no cycle.
 
-### Reminder field
+**Reminder field.** `reminder_at` is an absolute ISO timestamp, independent
+of `due_date`, converted to and from local time explicitly.
 
-`TaskDoc.reminder_at: string | null` — an absolute ISO timestamp, independent of `due_date`. Set via a `datetime-local` input in `CardDetail.svelte`; converted to/from local time explicitly (not `toISOString().slice(0,16)`, which would silently shift the displayed time to UTC) via a small `isoToLocalInput()` helper in `carddetail/helpers.ts`.
+**Scheduling model: cancel all, reschedule from scratch.** `rescheduleAll()`
+runs from `store.ts`'s `reload()`, which already fires after every local
+mutation and every incoming sync change. It fetches all active tasks with a
+future reminder, cancels everything scheduled, and re-schedules. Completing,
+deleting or archiving a task simply drops it from the query, so its
+notification disappears with no special-casing. At personal scale this is
+cheaper than tracking every call site.
 
-### Scheduling model: cancel-all-then-reschedule-from-scratch
+**Android** hands scheduling to the OS (`AlarmManager`), so reminders fire
+with the app fully closed. Task ids are hashed to a 32-bit integer because
+the plugin requires numeric ids. Tapping a notification opens that task.
+Needs `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and
+`RECEIVE_BOOT_COMPLETED`.
 
-Rather than tracking every individual create/update/delete/complete call site, `rescheduleAll()` is called once from `store.ts`'s `reload()` — which already runs after every local mutation and every incoming sync change. Each call:
-
-1. Fetches all active (non-deleted, non-archived, not-in-last-column) tasks with a future `reminder_at` via `getAllActiveTasksWithReminders()` in `db.ts`
-2. Cancels everything currently scheduled
-3. Re-schedules from that fresh list
-
-This is simple and self-healing — a task that's completed, deleted, archived, or has its reminder cleared just stops appearing in the query, so its notification is naturally cancelled on the next reload without any special-casing at the UI layer. At personal-task-manager scale (dozens to low hundreds of tasks) this is cheap enough to not need finer-grained diffing.
-
-### Native (Android) — genuinely fires while fully closed
-
-Uses `@capacitor/local-notifications`, which hands scheduling off to the OS (`AlarmManager`), so reminders fire even if the app process isn't running. Task ids (strings) are hashed to a deterministic 32-bit integer (`numericId()`) since the plugin requires numeric notification ids. Clicking a notification fires `localNotificationActionPerformed`, which sets `pendingOpenTaskId` — `App.svelte` watches this store and opens `CardDetail` for that task via `getTaskById()` + a lookup in the already-loaded `projects` store.
-
-Requires `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, and `RECEIVE_BOOT_COMPLETED` in `AndroidManifest.xml`.
-
-### Web — best-effort, not a substitute for a push server
-
-There is no push backend behind this app, so genuinely-closed-browser notifications aren't possible on web without one (a deliberate scope decision — this app is local-first with an optional self-hosted sync server, not a hosted service that could run a push relay). What's implemented instead:
-
-- **`setTimeout`-based scheduling** while the tab is open (covers the common case of leaving the app open in the background)
-- **Catch-up on load** — `catchUpWeb()` fires notifications immediately for any reminder that became due within the last hour while the app was closed, so a missed reminder is delayed rather than lost
-- Clicking a web notification focuses the window and sets the same `pendingOpenTaskId` store used by the native path
-
-Notification permission is requested lazily — either from the inline hint shown in `CardDetail` when a reminder is set but permission isn't granted yet, or from the **Notifications** section in Settings (`SettingsPanel.svelte`), never proactively on app load.
+**Web** is best-effort: there is no push backend by design, so notifications
+use `setTimeout` while the tab is open, plus a catch-up on load that fires
+anything that came due in the last hour. Permission is requested lazily,
+never on load.
 
 ---
 
 ## Mobile (Android)
 
-Capacitor wraps the Vite `dist/` output into a WebView Android app. The web code runs identically — same PouchDB, same sync, same UI.
+Capacitor wraps the same `dist/` in a WebView — same PouchDB, same sync,
+same UI.
 
-Mobile-specific adaptations:
-- **Touch drag on Kanban**: HTML5 drag events don't fire on touch — uses `touchstart/touchmove/touchend` + `document.elementFromPoint`
-- **`enterkeyhint`** on inputs: shows GO/Done on soft keyboard
-- **Responsive CSS**: breakpoints at 900px, 768px, 600px, 440px
-- **Source field**: `'mobile'` instead of `'pc'` for changelog tracking
-- **Status bar**: targetSdk 36 enforces edge-to-edge display,
-  so `StatusBar.setBackgroundColor()` is a hard no-op above API 35 no
-  matter what color is passed. The fix embraces edge-to-edge instead of
-  fighting it: `main.ts` calls `StatusBar.setOverlaysWebView({overlay:
-  true})` (content draws behind the transparent bar) and
-  `StatusBar.setStyle({style: Style.Dark})` for light icons (not gated
-  by the edge-to-edge check, still works). A colored strip
-  (`.status-bar-fill` in `App.svelte`, `height: env(safe-area-inset-top)`,
-  `background: var(--sidebar-bg)`) sits behind the transparent bar so
-  the system icons stay visible against something other than the page
-  content. Needs `viewport-fit=cover` in `index.html`'s viewport meta
-  tag for the safe-area inset to resolve on notched devices
+- **Touch drag on Kanban**: HTML5 drag events don't fire on touch, so Kanban
+  uses `touchstart`/`touchmove`/`touchend` with `document.elementFromPoint`.
+- **Status bar**: targetSdk 36 forces edge-to-edge, and
+  `StatusBar.setBackgroundColor()` is a hard no-op above API 35. The app
+  embraces it instead: content draws behind a transparent bar, and a
+  `.status-bar-fill` strip of `env(safe-area-inset-top)` sits behind it.
+  Needs `viewport-fit=cover`.
+- **Notification icons** must be white silhouettes with transparency, or
+  Android substitutes a generic triangle.
+- `enterkeyhint` on inputs; breakpoints at 900/768/600/440px; `source` is
+  `'mobile'`.
 
-Build steps:
 ```bash
-npm run build
-npx cap sync android
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-cd android && .\gradlew assembleDebug
-# → android/app/build/outputs/apk/debug/app-debug.apk
+npm run build && npx cap sync android
+# then build in Android Studio (owner-only)
 ```
 
 ---
 
-## Desktop (Tauri) — `offlog-desktop/`
+## Desktop (Tauri)
 
-A sibling project to `offlog-app/`, not a
-subfolder of it — `offlog-desktop/src-tauri/tauri.conf.json`'s
-`frontendDist` points at `offlog-app/dist`, so it wraps the exact same
-build Android and the browser use, unmodified. Same PouchDB-as-UMD-global
-loading, same sync code, same UI — the only new code is Rust, and it
-never touches the frontend's own logic.
+`offlog-desktop/` is a sibling project, not a subfolder. Its
+`frontendDist` points at `offlog-app/dist`, so it wraps the exact same build
+the browser and Android use. The only new code is Rust.
 
-**Embedded sync host** (`src-tauri/src/sync_host.rs`): on first launch,
-generates a random port + admin password, persists them
-(`app_data_dir()/sync-host.json`), and spawns
-[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) as a child process,
-configured entirely via env vars (`NYXDB_ADDR`, `NYXDB_DATA`,
-`NYXDB_USER`, `NYXDB_PASSWORD`, `NYXDB_CORS_ORIGINS`) — no config file
-to write. A non-technical user never sees the word NyxDB either. The
-binary comes from `scripts/fetch-nyxdb-win.ps1` (clones a pinned tag,
-builds with `cargo build --release`, gitignored `vendor/nyxdb-win/`,
-not committed). A Windows Job Object
-(`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, `win32job` crate) keeps the
-process tied to the app's own lifetime on every exit path (normal close,
-crash, force-kill).
+**Embedded sync host** (`sync_host.rs`). On first launch it generates a
+random port and admin password, saves them to
+`app_data_dir()/sync-host.json`, and spawns
+[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) as a child process
+configured entirely by environment variables — no config file. A Windows Job
+Object (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) ties that process to the app's
+lifetime on every exit path, including a crash. The binary is built by
+`scripts/fetch-nyxdb-win.ps1` from a pinned tag and is not committed.
 
-**Discovery + pairing** (`src-tauri/src/discovery.rs`,
-`src-tauri/src/pairing.rs`, `offlog-app/src/lib/discovery.ts`): the PC
-advertises `_offlog._tcp` over mDNS (uuid + a pairing port in the TXT
-record, deliberately zero credentials over the air) so a phone finds it
-with no typed IP. Pairing itself is a separate one-endpoint HTTP server
-(`tiny_http`) — the PC shows a 6-digit, single-use, 5-minute-expiry code;
-the phone posts it to get real credentials back once. `config.ts`'s
-`getSyncCredentials()`/`setSyncCredentials()` (localStorage-backed, same
-pattern as the sync URL) hold the paired credentials — there are no fixed
-user/password constants, since nothing could match a per-install random
-password.
+**Discovery and pairing** (`discovery.rs`, `pairing.rs`, `discovery.ts`).
+The PC advertises `_offlog._tcp` over mDNS carrying a uuid and pairing port
+— deliberately no credentials over the air. Pairing is a separate
+single-endpoint HTTP server: the PC shows a 6-digit code, single-use, valid
+5 minutes; the phone posts it once and gets real credentials back. There are
+no fixed username/password constants, because nothing could match a
+per-install random password.
 
-**Sync-URL resolution is genuinely three-way**, not two, and is easy to
-get wrong: Android has no way to guess an
-address, defaults to `''`. Plain desktop web assumes a manually-installed
-CouchDB-protocol-compatible server on the standard CouchDB port, defaults
-to `127.0.0.1:5984`. The Tauri
-app is neither — its embedded sidecar binds a random port, never 5984 —
-so it needs `config.ts`'s `initTauriSyncDefaults()`, called at app boot
-before `startSync()`, to resolve the real address via the async
-`get_sync_info` Tauri command. Falling through to the desktop-web
-default instead silently points the Tauri app at whatever else happens
-to be listening on 5984.
+**Sync URL resolution is three-way**, which is easy to get wrong:
 
-Build steps:
-```bash
-cd offlog-app && npm run build            # produces the dist/ offlog-desktop wraps
-cd ../offlog-desktop
-powershell -ExecutionPolicy Bypass -File scripts/fetch-nyxdb-win.ps1   # once, or after bumping its pinned version
-cargo tauri build   # → src-tauri/target/release/bundle/nsis/*.exe
-```
+| Platform | Default | Why |
+|---|---|---|
+| Android | `''` | No way to guess an address |
+| Desktop web | `127.0.0.1:5984` | Assumes a manually installed server on CouchDB's port |
+| Tauri | resolved at boot | Its sidecar binds a *random* port, never 5984 |
 
-**Installer branding** (`tauri.conf.json`'s `bundle.windows.nsis`):
-`installerIcon`/`uninstallerIcon` point at the app `icon.ico`.
-`sidebarImage` is a
-brand-matched 24-bit BMP (dark `#181A20` background, indigo `#5457E0`
-mark) for the Welcome/Finish pages, generated from
-`offlog-app/resources/source-logo.svg` by
-`offlog-app/resources/generate-installer-art.cjs` (same manual, not-in-
-the-build-pipeline convention as `generate-icons.cjs`/`generate-splash.cjs`;
-re-run it and re-commit `installer-sidebar.bmp` whenever the logo or
-brand color changes). sharp has no BMP encoder, so that script hand-writes
-a minimal BITMAPFILEHEADER/BITMAPINFOHEADER — NSIS requires classic
-uncompressed 24-bit BMP specifically, nothing else. **No `headerImage`**:
-NSIS renders one at native size in the header control's corner and fills
-the rest of that bar with the page's plain white background, and there is
-no supported MUI2 define to recolor that remainder
-(`MUI_BGCOLOR`/`MUI_TEXTCOLOR` are Classic-UI-only, unread by Modern
-UI 2's Directory/Components/Install pages) — so a dark header image
-clashes rather than reading as a themed banner. A fully dark installer
-wizard would need custom compiled dialog resources replacing NSIS's own
-UI templates; out of scope.
+`initTauriSyncDefaults()` runs before `startSync()` and asks the Rust side
+for the real address. Skipping it points the desktop app at whatever else is
+listening on 5984.
 
-**Tray-resident + global quick-capture shortcut** (`lib.rs`):
-closing the main window (titlebar X) hides it instead of quitting
-(`on_window_event`'s `CloseRequested` → `api.prevent_close()` +
-`w.hide()`) — the only real quit path is the tray menu's "Quit" item
-(or an OS-level kill), which reuses the same `terminate_nyxdb()` cleanup
-the graceful-`ExitRequested` path already had. Tray menu: Show Offlog /
-Quick Add / Settings / a checkable "Start on login" (`tauri-plugin-
-autostart`, reflects the real registry state at menu-build time, not an
-in-memory flag) / Quit — the first three all emit a plain Tauri event
-(`quick-capture`/`open-settings`) the frontend already listens for in
-`App.svelte`'s `listenForTrayEvents()`, same split notifications already
-use for `notification-action`. Left-click on the tray icon toggles show/
-hide (not always-show, so the icon can also tuck the window away).
-Global shortcut (`Ctrl+Alt+O`, `tauri-plugin-global-shortcut`) lands on
-Dashboard, not Quick Add — Quick Add already has its own in-app shortcut
-(Ctrl+N), so this one's only job is "get back into Offlog fast" from
-anywhere, window focused or not. **`bring_to_front()`** (shared by every
-show/focus call site above) exists because a bare `set_focus()` alone is
-silently ignored by Windows' foreground-lock timeout when called from a
-background thread that isn't the current foreground app — which a
-global-shortcut callback never is (it works while the window is hidden,
-but does nothing while it is open-but-unfocused behind other windows).
-Toggling `always_on_top` true→false is
-the standard workaround; Windows treats that as a legitimate reason to
-actually raise the window instead of just requesting focus.
+**Tray-resident** (`lib.rs`). Closing the window hides it; the only quit
+path is the tray menu, which reuses the same NyxDB cleanup as a graceful
+exit. Tray menu: Show / Quick Add / Settings / "Start on login" (reads the
+real registry state) / Quit. A global `Ctrl+Alt+O` lands on Dashboard —
+Quick Add already has Ctrl+N, so this one's job is just getting back in
+fast. `bring_to_front()` toggles `always_on_top` true→false because a bare
+`set_focus()` is ignored by Windows' foreground-lock timeout when called
+from a background thread.
 
-**Content Security Policy** (`tauri.conf.json`'s `app.security.csp`):
-`script-src 'self'` (pre-paint dark-mode init lives in same-origin
-`public/theme-init.js`, no `'unsafe-inline'` needed); `style-src 'self'
-'unsafe-inline'` (dynamic `style="background:{color}"` attributes for
-per-space/per-priority colors need this); `connect-src 'self'
-http://*:*` (sync/pairing targets are LAN addresses/ports discovered at
-runtime — **the `:*` is required**, a bare `http://*` only means
-default-port-80, and every real sync target uses a non-default port);
-`img-src 'self'`, `font-src 'self'` (self-hosted only, no CDN);
+**Content Security Policy** (`tauri.conf.json`). `script-src 'self'` (the
+pre-paint theme script is same-origin); `style-src` allows `'unsafe-inline'`
+for per-space colour attributes; `connect-src 'self' http://*:*` — the `:*`
+is **required**, since a bare `http://*` means port 80 only and every real
+sync target uses a random port. Everything else is locked down:
 `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`,
-`form-action 'self'`. Net effect: blocks remote script execution, frame
-embedding, and form/`<base>` hijacking, while allowing the app's genuine
-dynamic behavior (LAN sync, per-item colors).
+`form-action 'self'`.
+
+**Installer** (NSIS). `sidebarImage` is a brand-matched 24-bit BMP generated
+by `resources/generate-installer-art.cjs` — NSIS requires classic
+uncompressed 24-bit BMP specifically. There is deliberately **no
+`headerImage`**: NSIS fills the rest of that bar with plain white and MUI2
+offers no supported way to recolour it, so a dark header clashes instead of
+reading as a banner.
+
+```bash
+cd offlog-app && npm run build
+cd ../offlog-desktop
+powershell -ExecutionPolicy Bypass -File scripts/fetch-nyxdb-win.ps1   # once
+cargo tauri build
+```
 
 ---
 
 ## Version History
 
-See [CHANGELOG.md](CHANGELOG.md) — the single source of truth for version
-history. Don't duplicate it here or in the root README.md.
+See [CHANGELOG.md](CHANGELOG.md). Don't duplicate it here or in README.md.
