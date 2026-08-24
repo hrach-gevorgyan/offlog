@@ -4,31 +4,22 @@
     <color name="colorPrimaryDark">#181a20</color>
     <color name="colorAccent">#5457e0</color>
 
-    <!-- B37/B48 — widget palette, matched to app.css's tokens. This file
-         holds the LIGHT set (used whenever the OS isn't in dark mode); the
-         dark set lives in values-night/colors.xml. Originally hardcoded to
-         the dark palette unconditionally (widgets render outside the
-         app's own in-app theme setting, so they should follow the
-         *system* light/dark setting instead — owner feedback, 2026-07-13).
-         Keep both files in sync with app.css's :root / body.dark blocks if
-         the palette ever changes; see docs/TECH.md's Theme System table
-         for the source of truth.
+    <!-- Widget palette, matched to app.css's tokens. This file is the
+         LIGHT set; the dark set is values-night/colors.xml. A widget
+         renders outside the app's in-app theme setting, so it follows the
+         system light/dark setting instead — both files must stay in sync
+         with app.css's :root / body.dark blocks (docs/tech.md's Theme
+         System table is the source of truth).
          colorWidgetBg/colorWidgetSurface deliberately deviate from
-         app.css's exact surface/bg light token values (#FFFFFF/#F6F7F9) —
-         owner feedback 2026-07-17 that the widget's pure white read as
-         too stark against a real home-screen wallpaper. Warmed to a
-         slight cream tint; dark mode (values-night) is unaffected and
-         intentionally still the exact app.css values. -->
+         app.css's light surface/bg (#FFFFFF/#F6F7F9): pure white reads as
+         too stark against a real home-screen wallpaper. Dark mode uses the
+         exact app.css values. -->
     <color name="colorWidgetBg">#FBF8F2</color>      <!-- warm cream, not app.css's exact surface token -->
-    <!-- v5.4.1 bug (owner-reported live testing, 2026-07-20): "light mode
-         still has contrast issues, dark is good". Root cause wasn't icon
-         color (already fixed, B48/v4.28.0) — it was this token being
-         only ~10/255 per channel off colorWidgetBg, so the two round
-         action buttons barely stood out from the card itself in light
-         mode. Dark mode's equivalent gap (colorWidgetBg #101218 vs this
-         token #242934) is 2-3x bigger in relative terms, which is why
-         only light mode read as flat. Deepened to a real, visible step
-         while staying in the same warm-cream family. -->
+    <!-- Keep a real, visible step away from colorWidgetBg. Within ~10/255
+         per channel the two round action buttons stop reading as separate
+         from the card in light mode; dark mode's equivalent gap is 2-3x
+         bigger in relative terms, so it looks fine while light mode reads
+         as flat. -->
     <color name="colorWidgetSurface">#E6DCC8</color>
     <color name="colorWidgetAccent">#5457E0</color>  <!-- app.css accent token, light -->
     <color name="colorWidgetText">#1F2937</color>    <!-- app.css text token, light -->

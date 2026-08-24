@@ -1,26 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- v5.4.2 bug (owner-reported live testing, 2026-07-21, with a screenshot
-     showing "FOCUS" wrapped one letter per line): android:previewLayout
-     was pointed at the real @layout/widget_offlog, whose root is
-     match_parent — for the WIDGET PICKER specifically, that gets
-     measured against minWidth/minHeight (110x110dp, correct for the real
-     2x2 on-device footprint, see offlog_widget_info.xml's own comment on
-     why that must never change again), squishing the wrap_content card
-     down to a near-square canvas the Focus pill's text can't fit in
-     horizontally. This is a copy of widget_offlog.xml with ONLY the root
-     changed to a fixed size instead of match_parent — previewLayout is a
-     fully separate resource from initialLayout, so this has zero effect
-     on the real widget's on-device size; it only gives the picker's
-     thumbnail render enough room to lay out the same content without
-     constraint-driven wrapping. Keep the two files' inner content in
-     sync by hand if the widget's design ever changes.
-     v5.4.5 follow-up (owner feedback, 2026-07-21): the card itself is
-     wrap_content, so a bigger frame just adds empty space AROUND it —
-     the picker scales the whole frame down to thumbnail size, so more
-     dead space makes the card look SMALLER once scaled, not bigger.
-     Tightened from 200x170dp to 185x155dp (close to the card's natural
-     ~173x149dp content size) so it fills nearly the whole frame instead
-     of floating in the middle of it. -->
+<!-- Widget-picker preview only. A copy of widget_offlog.xml with ONLY the
+     root changed from match_parent to a fixed size: the picker measures a
+     match_parent root against minWidth/minHeight (110x110dp), squishing the
+     card into a canvas too narrow for the Focus pill's text.
+     Keep the inner content in sync with widget_offlog.xml by hand.
+     Size this close to the card's natural ~173x149dp content. The card is
+     wrap_content, so a bigger frame only adds dead space around it, and the
+     picker scales the whole frame to a thumbnail — extra space makes the
+     card render smaller, not bigger. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_preview_root"
     android:layout_width="185dp"

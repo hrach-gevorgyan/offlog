@@ -1,7 +1,7 @@
 {
   "name": "offlog-mdns-browse",
   "private": true,
-  "description": "Standalone mDNS browser used to independently verify offlog-desktop's _offlog._tcp advertisement (see ROADMAP.md's Track E entry) -- deliberately not reusing any of the advertiser's own code.",
+  "description": "Standalone mDNS browser used to independently verify offlog-desktop's _offlog._tcp advertisement (see docs/archive/history.md's Track E entry) -- deliberately not reusing any of the advertiser's own code.",
   "scripts": {
     "browse": "node browse.js"
   },

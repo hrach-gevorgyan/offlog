@@ -1,18 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Real bug found 2026-07-13: this file used to hardcode one specific
-     developer's own LAN IP as the only address allowed to use cleartext
-     (HTTP) traffic. Android blocks all other HTTP traffic at the OS level
-     regardless of what URL is configured in Settings — so every time the
-     sync host's LAN IP changes (DHCP lease renewal, router restart,
-     switching networks), sync silently breaks on Android specifically
-     (PC/web are unaffected — browsers don't enforce this), with no error
-     surfaced anywhere in the app, since the request never leaves the
-     device. Base-config cleartext is used instead — broad, but this
-     matches the app's own already-documented, deliberate tradeoff (see
-     docs/DECISIONS.md and docs/QUESTIONS.md's Q1: no TLS on LAN CouchDB
-     sync is an accepted local-first tradeoff, not a gap being introduced
-     here) rather than trying to enumerate every LAN IP a user might ever
-     configure. -->
+<!-- Base-config cleartext, never an IP allowlist. Android enforces this
+     at the OS level, so a host that isn't listed fails before the request
+     leaves the device, with no error surfaced in the app — and the sync
+     host's LAN IP changes on any DHCP renewal or network switch. No TLS on
+     LAN sync is an accepted tradeoff; see docs/decisions.md. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

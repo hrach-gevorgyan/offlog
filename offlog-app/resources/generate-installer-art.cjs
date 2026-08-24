@@ -1,21 +1,18 @@
-// Roadmap "polish visuals" pass (2026-07-31) — generates the Windows NSIS
-// installer's welcome/finish sidebar image from the same
+// Generates the Windows NSIS installer's welcome/finish sidebar image
+// from the same
 // resources/source-logo.svg every other platform icon comes from, instead
 // of shipping Tauri/NSIS's generic default installer chrome. Not part of
 // the build pipeline; run manually (`node resources/generate-installer-art.cjs`
 // from offlog-app/) whenever the logo or brand color changes, same
 // convention as generate-icons.cjs/generate-splash.cjs.
 //
-// No header banner: tried a dark 150x57 MUI_HEADERIMAGE_BITMAP first
-// (owner live-tested 2026-07-31), but NSIS renders it at its native size
-// in the header control's top-left corner and fills the rest of that
-// bar with the page's plain white background — there's no supported
-// MUI2 define to recolor that remainder (MUI_BGCOLOR/MUI_TEXTCOLOR are a
-// Classic-UI-only leftover, not read by Modern UI 2's Directory/
-// Components/Install pages at all), so a dark header image reads as a
-// clashing dark square against white rather than a themed banner.
-// Dropped rather than half-fixed; the sidebar (Welcome/Finish pages,
-// no such split-background problem) carries the brand instead.
+// Don't add a MUI_HEADERIMAGE_BITMAP. NSIS renders it at native size in
+// the header control's top-left corner and fills the rest of that bar
+// with the page's plain white background, so a dark banner reads as a
+// clashing dark square. There is no MUI2 define that recolors the
+// remainder -- MUI_BGCOLOR/MUI_TEXTCOLOR are Classic-UI-only and Modern
+// UI 2's Directory/Components/Install pages ignore them. The sidebar
+// (Welcome/Finish pages) carries the brand instead.
 //
 // NSIS's `Header image`/`Wizard image` slots require classic uncompressed
 // 24-bit BMP (no alpha channel) — sharp has no BMP encoder, so this writes
@@ -28,7 +25,7 @@ const fs = require('fs');
 const path = require('path');
 
 const BG = { r: 0x18, g: 0x1a, b: 0x20, alpha: 1 };      // colorPrimaryDark / tauri.conf.json window backgroundColor
-const ACCENT = { r: 0x54, g: 0x57, b: 0xe0, alpha: 1 };  // app.css --accent (light) / BRAND.md's only brand color
+const ACCENT = { r: 0x54, g: 0x57, b: 0xe0, alpha: 1 };  // app.css --accent (light) / brand.md's only brand color
 const SRC = path.join(__dirname, 'source-logo.svg');
 const OUT_DIR = path.join(__dirname, '..', '..', 'offlog-desktop', 'src-tauri');
 

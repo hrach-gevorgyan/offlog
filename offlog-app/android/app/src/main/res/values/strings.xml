@@ -2,9 +2,9 @@
 <resources>
     <string name="app_name">Offlog</string>
     <string name="title_activity_main">Offlog</string>
-    <!-- B37 redesign (2026-07-09): one combined widget replaces the
-         previous 3 separate ones. -->
-    <string name="widget_offlog_description">Your agenda brief, plus one-tap Focus, Quick Add, and Dashboard</string>
+    <!-- Shown in the widget picker. Describe only the three buttons that
+         exist; the widget renders no data. -->
+    <string name="widget_offlog_description">One-tap Focus, Quick Add and Dashboard</string>
     <string name="widget_action_focus">Focus</string>
     <string name="widget_action_quickadd">Quick Add</string>
     <string name="widget_action_dashboard">Dashboard</string>

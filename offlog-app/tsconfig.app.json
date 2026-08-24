@@ -19,8 +19,8 @@
 
     /* Linting — these were present in tsconfig.node.json (which covers a
        single file, vite.config.ts) but absent here, where all ~19k lines
-       of app source live. Added 2026-07-31. Each was measured before
-       being turned on; the four below cost almost nothing to satisfy.
+       of app source live. Each was measured before being turned on; the
+       four below cost almost nothing to satisfy.
        noUnusedLocals in particular doubles as the dead-code detector this
        project used to do by hand each maintenance pass.
        Deliberately NOT enabled: noUncheckedIndexedAccess (41 sites),

@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- B37 redesign, v7 (2026-07-09) — the real fix for "always stretched":
-     v6 still painted @drawable/widget_background across the FULL widget
-     frame (match_parent), so however much grid space the launcher granted
-     (which Android/the launcher controls, not this XML — minWidth/
-     minHeight are only a *minimum*) became a giant visible card. Now the
-     outer root is fully transparent and match_parent; only an INNER
-     wrap_content card carries the background, padding, and content. The
-     visible card is always exactly its own content's size and centered
-     in whatever transparent frame the launcher gives the widget — the
-     "floating compact card on transparent bounds" pattern most modern
-     Android widgets (this app's own reference included) actually use. -->
+<!-- The outer root must stay transparent and match_parent, with the
+     background/padding/content on an INNER wrap_content card. The
+     launcher, not this XML, decides how much grid space the widget gets
+     (minWidth/minHeight are only a minimum), so painting
+     @drawable/widget_background on the root makes the card stretch to fill
+     whatever it was granted. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -60,10 +55,10 @@
             <!-- textColor/fillColor on this button and btn_dashboard's icon
                  use colorWidgetText, not a hardcoded white — both sit on
                  colorWidgetSurface, which is light in light mode, so a
-                 fixed white glyph was nearly invisible there (owner-
-                 reported, 2026-07-17). btn_focus's pill text above stays
-                 hardcoded white on purpose — it sits on colorWidgetAccent,
-                 which is dark/saturated in both themes. -->
+                 fixed white glyph is nearly invisible there. btn_focus's
+                 pill text above stays hardcoded white on purpose — it sits
+                 on colorWidgetAccent, which is dark/saturated in both
+                 themes. -->
             <FrameLayout
                 android:id="@+id/btn_quickadd"
                 android:layout_width="52dp"

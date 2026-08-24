@@ -92,8 +92,7 @@ async function main() {
 
   // Desktop (offlog-desktop/Tauri) icon source — Windows has no adaptive-
   // icon masking like Android's, so a hard-square source renders with
-  // sharp corners in the taskbar/Start menu (owner-reported, first real-
-  // install dogfooding session, 2026-07-15). Baking a ~22%-radius rounded
+  // sharp corners in the taskbar/Start menu. Baking a ~22%-radius rounded
   // rect directly into the source (Fluent/Windows-11-style squircle,
   // roughly matching the corner ratio Windows' own built-in app icons
   // use) is the only reliable fix since there's no OS-level mask to rely

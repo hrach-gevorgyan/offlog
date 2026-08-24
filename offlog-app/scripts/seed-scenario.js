@@ -127,7 +127,7 @@
   // genuinely-fresh database's own seedIfEmpty() already creates one
   // "Draft" (project:draft, fixed id, in the first space) before this
   // script ever runs, so only top up to 2 total rather than blindly
-  // adding 2 more on top of that one — confirmed live (2026-07-20): an
+  // adding 2 more on top of that one: an
   // unchecked +2 produced 3 "Draft" projects, not the intended 2.
   const existingDraftCount = projects.filter(p => p.name.trim().toLowerCase() === 'draft').length;
   if (spaces.length >= 2 && existingDraftCount < 2) {

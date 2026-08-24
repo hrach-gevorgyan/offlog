@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
-// Real Play Store signing key (generated 2026-07-22, kept outside the repo
-// entirely -- see docs/ROADMAP.md's C3). Loaded from a gitignored
+// Real Play Store signing key, kept outside the repo entirely (see
+// docs/roadmap.md's C3). Loaded from a gitignored
 // keystore.properties file when present (see keystore.properties.example
 // for the format) -- CI writes this file from repo secrets before the
 // build; a real local release build would do the same by hand. Falls back
@@ -43,30 +43,23 @@ android {
         }
     }
     buildTypes {
-        // signingConfig points at AGP's built-in debug keystore (owner
-        // request, 2026-07-21: "only main version" — release had no
-        // signingConfig at all, so Android Studio's Run button couldn't
-        // install it ("Activity class ... does not exist" was really an
-        // unsigned/uninstallable build, not a real missing-activity
-        // problem). This is the standard local-dev pattern for running
-        // the release build type directly without a production signing
-        // key. 2026-07-22: now uses the real playstore signing config
-        // instead whenever keystore.properties is present (CI writes it
-        // from repo secrets; a real local release build would do the
-        // same by hand) -- applicationId here has no suffix either way,
-        // unlike debug's .debug suffix (see below), so this installs as
-        // com.offlog.app.
+        // The release type must always have SOME signingConfig: with
+        // none, Android Studio's Run button produces an unsigned,
+        // uninstallable build and reports it as "Activity class ... does
+        // not exist", which reads like a manifest problem and isn't one.
+        // Real playstore key when keystore.properties is present (CI
+        // writes it from repo secrets), AGP's debug keystore otherwise.
+        // No applicationId suffix either way, unlike debug below, so this
+        // installs as com.offlog.app.
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig hasRealKeystore ? signingConfigs.playstore : signingConfigs.debug
         }
-        // Owner-reported, 2026-07-20: a debug build previously shared the
-        // same applicationId (com.offlog.app) as a real install, so every
-        // Android Studio test run overwrote/shared storage with whatever
-        // "real" data was already on the device — installing side by
-        // side now instead, same fix shape as `is_debug_build`-gating on
-        // the desktop side (see offlog-desktop's lib.rs).
+        // The .debug applicationId suffix is load-bearing: without it a
+        // Studio test run shares storage with the real install on the
+        // same device and overwrites live data. Desktop gates the same
+        // way via `is_debug_build` (offlog-desktop's lib.rs).
         debug {
             applicationIdSuffix ".debug"
         }

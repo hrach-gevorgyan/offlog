@@ -1,6 +1,6 @@
 version: 2
 
-# Grouped and monthly on purpose (2026-07-31). Two reasons:
+# Grouped and monthly on purpose. Two reasons:
 #
 # 1. docs/roadmap.md's bugfix/audit track already states the real policy --
 #    "Dependabot: batched roughly monthly into whichever patch is next" --
@@ -8,7 +8,7 @@ version: 2
 #    intent instead of quietly contradicting it.
 #
 # 2. The project is in maintenance mode with one part-time maintainer.
-#    Six separate PRs in one batch (2026-07-31) is exactly the
+#    Six separate PRs in one batch is exactly the
 #    notification fatigue that stops a solo maintainer from reviewing
 #    *any* of them carefully -- and an ignored dependency PR is worse
 #    than a batched one. One PR per ecosystem per month is a review you
@@ -44,11 +44,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # No ignores. The long-standing TypeScript 7.x block was lifted
-    # 2026-07-31 once @capacitor/cli 8.5.0 fixed the config-loader bug
-    # that broke `npx cap sync android` -- retested against all four
-    # gates including a diff of the generated capacitor.config.json,
-    # see docs/decisions.md.
+    # No ignores. TypeScript 7.x is allowed from @capacitor/cli 8.5.0
+    # onward, which fixed the config-loader bug that broke
+    # `npx cap sync android`. Any Capacitor or TypeScript bump must be
+    # verified by diffing the generated capacitor.config.json against
+    # capacitor.config.ts, not just by green gates -- see docs/decisions.md.
 
   - package-ecosystem: "github-actions"
     directory: "/"

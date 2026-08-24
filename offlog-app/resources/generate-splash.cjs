@@ -3,14 +3,12 @@
 // (`node resources/generate-splash.cjs` from offlog-app/) whenever the
 // logo or brand color changes, same convention as generate-icons.cjs.
 //
-// Found stale during the 2026-07-20 Android audit: generate-icons.cjs
-// regenerates the launcher/notification icons but never touched these —
-// they were still the pre-rebrand mark. On API 31+ (targetSdk 36, nearly
-// every real device) these are barely used — windowSplashScreenBackground/
-// windowSplashScreenAnimatedIcon in styles.xml take over instead, and
-// those already read the current brand mark via ic_launcher_foreground —
-// but they're still the legacy pre-API-31 fallback (android:background),
-// so leaving them stale was a real, if narrow, bug. Matches
+// Run this whenever the mark changes: generate-icons.cjs regenerates the
+// launcher/notification icons but never touches these, so they go stale
+// silently. On API 31+ (targetSdk 36, nearly every real device)
+// styles.xml's windowSplashScreenBackground/windowSplashScreenAnimatedIcon
+// take over, but these remain the pre-API-31 fallback
+// (android:background). Matches
 // colorPrimaryDark (#181a20, styles.xml's windowSplashScreenBackground)
 // so the legacy fallback looks identical to the modern splash instead of
 // just less-wrong.
@@ -38,26 +36,22 @@ async function splashAt(width, height) {
     .png().toBuffer();
 }
 
-// v5.4.1 bug (owner-reported live testing, 2026-07-20): "logo is shrunk"
-// on the REAL splash screen — API 31+ (targetSdk 36, nearly every real
-// device) doesn't use drawable*/splash.png at all, it uses styles.xml's
-// windowSplashScreenAnimatedIcon, which pointed at @mipmap/ic_launcher_
-// foreground. That asset is correctly sized FOR THE LAUNCHER (mark at
-// 66% of canvas, generate-icons.cjs — the safe-zone convention adaptive
-// icons need so the OS's own circular/squircle mask never clips the
-// mark). But AndroidX's SplashScreen API applies its own additional
-// inset on top of whatever icon it's given, assuming the same
+// The splash icon is a dedicated asset, not the launcher foreground. API
+// 31+ (targetSdk 36, nearly every real device) ignores
+// drawable*/splash.png and uses styles.xml's
+// windowSplashScreenAnimatedIcon. Pointing that at @mipmap/ic_launcher_
+// foreground renders the logo shrunk: that asset is sized FOR THE
+// LAUNCHER (mark at 66% of canvas, generate-icons.cjs — the safe-zone
+// convention adaptive icons need so the OS mask never clips the mark),
+// and AndroidX's SplashScreen API applies its own additional inset on
+// top of whatever icon it's given, assuming the same
 // safe-zone convention — stacking two rounds of padding shrinks an
 // already-padded foreground-only image well below where it reads as a
 // normal logo. Fix: a dedicated splash-only icon, transparent background
 // (the system composites it over windowSplashScreenBackground itself).
-// First attempt filled the mark to 92% of canvas expecting the API's own
-// inset to bring it back down — overshot the other way (owner-reported
-// live testing, 2026-07-31: edges truncated by the API's circular mask,
-// oversized). 78% sits between the 66% launcher ratio (too small on its
-// own here) and 92% (too large) — split the difference instead of
-// re-guessing blind; re-verify on a real device before assuming this is
-// the final number.
+// 78% is bounded on both sides: 66% (the launcher ratio) renders too
+// small here, and 92% is truncated by the API's circular mask. Re-verify
+// on a real device before changing it.
 async function splashIcon(size) {
   const markSize = Math.round(size * 0.78);
   const mark = await whiteSilhouette(markSize);

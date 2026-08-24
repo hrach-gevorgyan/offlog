@@ -7,7 +7,8 @@
 # build traces and indexes everything it compiles regardless, including
 # third-party plugin modules the app depends on. Those findings must be
 # dismissed by hand in the Code Scanning UI instead -- see
-# docs/DECISIONS.md's C8b entry for the full reasoning. Kept here anyway
+# docs/decisions.md's entry on bundled Capacitor plugin
+# findings for the full reasoning. Kept here anyway
 # since it's still real and effective for the interpreted-language jobs.
 **/node_modules/**
 **/target/**

@@ -1,21 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- minWidth/minHeight reverted to the original 110x110dp / 2x2 cells
-     (owner-reported, 2026-07-17): the previous attempt to fix the widget
-     picker's clipped preview by growing these to 200x160dp/4x2 also grew
-     the REAL on-device widget footprint to 3x3 — the real 2x2 placement
-     was already correct and must never be changed to chase the preview
-     again. maxResizeWidth/maxResizeHeight stay dropped — both are inert
-     when resizeMode="none" (no resize handles are ever shown), so
-     removing them was a real cleanup, unrelated to the size history
-     above.
-     previewLayout points at a DEDICATED @layout/widget_offlog_preview
-     (v5.4.2 fix, owner screenshot showed "FOCUS" wrapped one letter per
-     line) instead of reusing @layout/widget_offlog — the real layout's
-     root is match_parent, which the picker measures against minWidth/
-     minHeight above, squishing the card into a near-square canvas the
-     Focus pill's text can't fit in. The preview layout has its own fixed
-     200x170dp root instead, with zero effect on the real on-device size
-     since previewLayout and initialLayout are fully separate resources. -->
+<!-- minWidth/minHeight set the REAL on-device footprint (110x110dp = 2x2
+     cells), not the picker preview. Never grow them to fix how the preview
+     looks — that grows the placed widget to 3x3.
+     Fix the preview through previewLayout instead: it points at a
+     dedicated @layout/widget_offlog_preview with its own fixed 200x170dp
+     root. Reusing @layout/widget_offlog there fails because its root is
+     match_parent, which the picker measures against minWidth/minHeight and
+     squishes into a canvas too narrow for the Focus pill's text.
+     previewLayout and initialLayout are separate resources, so the
+     preview's size never affects the placed widget.
+     maxResizeWidth/maxResizeHeight are absent deliberately: both are inert
+     when resizeMode="none". -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="110dp"

@@ -338,6 +338,20 @@ Each platform uses its own primitive instead:
 Existing installs migrate silently from the old plaintext keys, no
 re-pairing needed.
 
+### Cleartext HTTP is allowed app-wide on Android, and LAN sync has no TLS
+Sync targets a self-hosted server on the local network, addressed by IP.
+A certificate for a rotating private address can only be self-signed,
+which means shipping a trust-store exception — more attack surface than
+the plaintext it replaces, for a link that never leaves the user's own
+LAN. Accepted tradeoff, consistent with the no-accounts/no-cloud model;
+revisit only if sync ever crosses a network the user doesn't control.
+
+`network_security_config.xml` therefore sets base-config cleartext rather
+than allowlisting addresses. An allowlist is not a smaller permission
+here, it is a broken one: Android enforces this at the OS level, so any
+host not on the list fails with no error reaching the app, and the sync
+host's LAN IP changes on any DHCP renewal or network switch.
+
 ### CodeQL findings inside bundled Capacitor plugin source: dismiss manually
 `paths-ignore`/`.codeqlignore` only filter which files get *extracted*
 for interpreted languages. Under `build-mode: manual`, Gradle/javac

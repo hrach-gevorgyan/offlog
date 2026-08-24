@@ -20,8 +20,8 @@ name: Release
 #                                 password (see keystore.properties.example)
 #
 # Desktop auto-updater signing (E3): tauri.conf.json's plugins.updater
-# has a real pubkey now (owner ran `cargo tauri signer generate`,
-# 2026-07-23) and a real endpoint (GitHub Releases' "latest" download
+# has a real pubkey (generated with `cargo tauri signer generate`) and a
+# real endpoint (GitHub Releases' "latest" download
 # URL). tauri-action signs the installer + writes latest.json whenever
 # these two env vars are set on the Windows job -- if unset, the build
 # still succeeds, it just produces an unsigned update artifact nobody
@@ -166,17 +166,17 @@ jobs:
       # Giving it tagName/releaseDraft lets it create (or reuse) the
       # draft release directly and upload the installer/.sig/latest.json
       # to it in one step, instead of routing through our own
-      # upload-artifact + a separate softprops job (confirmed live,
-      # 2026-07-23: without tagName it logs "No releaseId or tagName
-      # provided, skipping all uploads" and latest.json is never made).
+      # upload-artifact + a separate softprops job. tagName is required:
+      # without it tauri-action logs "No releaseId or tagName provided,
+      # skipping all uploads" and latest.json is never made.
       - name: Build Tauri Windows installer
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f  # v1
         env:
           # Required explicitly -- the job's `permissions: contents:
           # write` grants the ambient token privileges, but tauri-action
           # still needs the actual token value passed to it to call the
-          # GitHub API and create/update the release (confirmed live,
-          # 2026-07-23: omitting this fails with "GITHUB_TOKEN is required").
+          # GitHub API and create/update the release. Omitting it fails
+          # with "GITHUB_TOKEN is required".
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

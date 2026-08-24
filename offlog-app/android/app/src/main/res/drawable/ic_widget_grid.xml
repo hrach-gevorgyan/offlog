@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- B37 — matches the Dashboard nav icon's 2x2-square shape in
-     Sidebar.svelte (viewBox 18x18), filled rectangles only, no arcs.
-     fillColor was hardcoded #FFFFFF (owner-reported, 2026-07-17): sits on
-     the btn_dashboard circle, which uses colorWidgetSurface — a near-white
-     icon on that circle's own light cream in light mode was barely
-     visible. colorWidgetText already has correct light/dark values (see
-     values/colors.xml + values-night/colors.xml), same fix shape as the
-     quick-add "+" glyph in widget_offlog.xml. -->
+<!-- Matches the Dashboard nav icon in Sidebar.svelte (viewBox 18x18),
+     filled rectangles only, no arcs. fillColor must stay a theme-aware
+     token: this sits on the btn_dashboard circle, which is
+     colorWidgetSurface, so a hardcoded white is invisible in light
+     mode. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="16dp" android:height="16dp"
     android:viewportWidth="18" android:viewportHeight="18">

@@ -6,11 +6,9 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Local Claude Code tool permission cache -- not app config, and its
-# recorded permission entries can capture real command strings (a real
-# credential leaked into this exact file once, see docs/DECISIONS.md's
-# "Public release" section, C7 2026-07-17). *.local above doesn't catch
-# it since the file ends in .json, not .local.
+# Local Claude Code tool permission cache -- not app config. Its recorded
+# permission entries capture real command strings, which have included a
+# live credential. *.local above doesn't catch it: the file ends in .json.
 .claude/settings.local.json
 offlog-app/node_modules/
 offlog-app/dist/

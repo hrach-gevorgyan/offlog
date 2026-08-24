@@ -2,10 +2,9 @@ name: Desktop CI
 
 # Two jobs in one (runs only when the Tauri/Rust side actually changes,
 # which is rare):
-#  1. A real compile check for the Tauri/Rust side -- until 2026-07-22
-#     Rust had zero CI at all, which let a Dependabot bump (rand 0.10's
-#     Rng->RngExt trait split) reach a mergeable state with a broken
-#     build, caught only by a manual local cargo build.
+#  1. A real compile check for the Tauri/Rust side. Without it a
+#     Dependabot bump can reach a mergeable state with a broken build --
+#     rand 0.10's Rng->RngExt trait split did exactly that.
 #  2. Cache warming for release.yml -- GitHub Actions caches created on
 #     a tag ref are NOT shareable with other tags; only default-branch
 #     caches are. So the release workflow's Windows job can only reuse

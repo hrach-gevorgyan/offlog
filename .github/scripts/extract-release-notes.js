@@ -4,10 +4,10 @@
 // field (read by the desktop app's update.body, offlog-app/src/lib/
 // updateChecker.ts) AND the public GitHub Releases page text.
 //
-// Deliberately reads RELEASE_NOTES.md, not CHANGELOG.md: the latter is
+// Deliberately reads release-notes.md, not changelog.md: the latter is
 // the technical/maintainer record (file names, root causes, full
 // implementation detail) -- real users complained the release notes
-// read like raw developer notes with no structure (2026-07-24). This
+// read like raw developer notes with no structure. This
 // file is hand-written per release in plain language with real Markdown
 // structure (## New / ## Fixed), so passing it through verbatim (no
 // stripping) gives GitHub Releases real headers and bullet lists instead

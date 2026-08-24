@@ -16,7 +16,7 @@
     if (e.key === 'Escape') { e.preventDefault(); close(); }
   }
 
-  // Minimal renderer for the restricted Markdown subset RELEASE_NOTES.md
+  // Minimal renderer for the restricted Markdown subset release-notes.md
   // is allowed to use: `### Heading` and `- bullet` lines, nothing else.
   // Every piece of text is escaped because the result goes through
   // {@html}.

@@ -46,8 +46,8 @@ jobs:
       # `npm run check`, NOT `tsc --noEmit -p .`. The root tsconfig.json is
       # `"files": []` plus project references, and plain `tsc -p .` does not
       # traverse references -- so the old command type-checked exactly zero
-      # source files and passed unconditionally. It hid 12 real errors
-      # (found 2026-07-31). This runs svelte-check over tsconfig.app.json,
+      # source files and passed unconditionally, hiding 12 real errors.
+      # This runs svelte-check over tsconfig.app.json,
       # which is the only thing that checks .svelte files at all, plus tsc
       # over the node config.
       - name: Type-check (svelte-check + tsc)

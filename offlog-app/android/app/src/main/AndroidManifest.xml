@@ -16,26 +16,21 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-            <!-- Explicit, not left to the system default — owner-reported
-                 2026-07-22: focusing the "+ New project" input (an inline
-                 field inside the fixed-position off-canvas sidebar drawer,
-                 not a scrollable page) left the sidebar squeezed/unusable
-                 once the keyboard opened. adjustResize shrinks the WebView's
-                 own layout viewport by the keyboard's height instead of
-                 just panning the fixed content underneath it, which is what
-                 a position:fixed; top:0; bottom:0 drawer needs to keep
-                 sizing correctly. -->
+            <!-- adjustResize is required, not the system default: it
+                 shrinks the WebView's layout viewport by the keyboard's
+                 height instead of panning fixed content under it. The
+                 sidebar drawer is position:fixed; top:0; bottom:0, so
+                 panning leaves it squeezed and unusable whenever an inline
+                 field inside it takes focus. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Resolves the single combined widget's VIEW intents back to
-                 this same activity (B37 redesign, 2026-07-09) — quickadd
-                 (B10), agenda (B20, now also the widget's "brief" tap
-                 target), focus, dashboard, and project?id=<id> (still used
-                 by in-app deep links even though the dedicated project-list
-                 widget was removed). One filter, multiple <data> hosts;
+            <!-- Resolves the widget's VIEW intents back to this same
+                 activity: quickadd, agenda, focus, dashboard, and
+                 project?id=<id> (in-app deep links only — no widget opens
+                 it). One filter, multiple <data> hosts;
                  "project" deliberately has no android:path/pathPattern
                  constraint so its ?id= query string isn't part of the
                  manifest match, just read in JS via new URL(url). -->
