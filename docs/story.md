@@ -1,398 +1,392 @@
-# Offlog — How It Got Built
+# How I Built Offlog
 
-**2026-07-01 → 2026-07-31. Thirty-one days. 481 commits. 107 releases.**
+**554 commits. 108 releases. One person, and a machine that never once knew
+when to stop.**
 
-This is the honest account, written on the last day of development, before
-the first day of use. It exists because everything else in `docs/` records
-*what* was decided and *why* — and none of it records what it actually felt
-like, or how close it came to going wrong.
+Every other file in `docs/` says what I decided and why. None of them says
+what it cost me, what I got wrong, or what it is actually like to build
+something this way. This one does.
 
----
-
-## Act I — A document, and a wrong assumption
-
-It started as a markdown file called `task-board-plan.md`, version 3. Not
-version 1 — the plan had already been revised twice before a single line of
-code existed. That turns out to be the first thing this project got right.
-
-The plan was specific. Four "fronts" — Unsorted, Personal, Family, Work.
-Projects inside fronts. Editable columns inside projects. Kanban, list, and
-table views over the same data. PouchDB in the browser, **CouchDB on the
-PC**, sync over home Wi-Fi only. No accounts, no fees, no AI, no telemetry.
-A locked-decisions section so the spec couldn't drift mid-build.
-
-It even had a risk table. Nine rows. Disk failure, cleartext on Wi-Fi, DHCP
-address changes, CORS misconfiguration, Android IndexedDB flakiness,
-unbounded changelog growth, orphaned tasks, clock skew.
-
-Every one of those risks was real. Not one of them was the thing that nearly
-broke the project.
-
-The plan's opening instruction was to install CouchDB and get it reachable
-from the phone's browser before writing any app code. *"Narrow and deep: a
-working kanban board on the PC that syncs to its own CouchDB is the whole
-hard part. Everything after is addition, not invention."*
-
-That sentence was correct about the difficulty and wrong about the
-destination. CouchDB would be ripped out entirely twenty-six days later.
+The numbers come from my git history. Where I can't back a claim up, I say
+so.
 
 ---
 
-## Act II — Velocity
+## Why I started
 
-The first three days produced 42 commits. Kanban, then list, then table,
-then the data model hardening underneath all three. The plan's §9 build
-order held: each step usable on its own, each one verified before the next.
+This didn't begin as a technical idea. It began as irritation.
 
-Then the pace didn't stop. Spaces. Projects. Drag and drop. Fractional
-positioning so reordering one card doesn't renumber the board. Soft-delete
-with undo. A changelog doc for every mutation, which later became Time
-Travel — the ability to look at what a task used to be.
+Every task manager I tried wanted a subscription for things that should be
+free — a due date, a reminder, more than three projects. The ones that
+didn't were overloaded, buried under features I never asked for. And all of
+them wanted my data on their servers.
 
-Somewhere in here the app stopped being the plan and started being itself.
-The plan said "table view." What shipped was List and Table **merged into
-one view**, because building both revealed they were the same thing wearing
-different clothes (`decisions.md`, 2026-07-03). The plan said priority 1–3.
-That survived. The plan said `Unsorted` would be a capture inbox. It became
-a real space you can archive like any other, because pretending one space
-is magic is a rule you have to remember, and the whole point was to not have
-to remember things.
+That last part is the one you can't work around. I can ignore bloat. I can
+pay a subscription if I have to. What I can't do is opt out of my task list
+— which is a fairly complete map of my life, my work and my family — living
+on some company's infrastructure, one business-model change away from
+becoming their asset.
 
-By July 13 the version number was in the 3.x range. By July 18, 4.x. The
-Android app was real, sideloaded, syncing over the LAN. The thing worked.
+So I decided to build the thing I actually wanted: the basics free because
+everything is free, a small feature list on purpose, and data that never
+leaves the machines I own.
 
-**And then it nearly ended.**
+Those three complaints became three rules, and every hard call I made later
+traces back to one of them.
 
 ---
 
-## Act III — The password in the APK
+## Starting in the middle
 
-On July 21, live-testing a real installed Android build, something looked
-wrong: sync was pre-configured. To a server address the owner recognized.
-With credentials already filled in.
+The first commit in this repo is `feat: stable release v2.4`.
 
-Vite loads `.env.local` for **every** build mode — not just `npm run dev`.
-The developer's own local sync URL, username, and password had been
-compiled directly into the production bundle, into `dist/`, into the
-shipped APK. A real password, in a real artifact, in a repo that was days
-away from being made public.
+There's no v1 here. No commits before that line. I'd already built this,
+thrown it away and rebuilt it more than once before I thought the history
+was worth keeping — which is its own kind of honest start. Most things that
+get finished don't look like a clean beginning. They look like the third
+attempt, finally committed.
 
-The fix itself was small — gate the reads on `import.meta.env.DEV` so
-Vite's minifier dead-code-eliminates the literal values out of any non-dev
-build. Two lines. The comment explaining it in `config.ts` is fifteen lines
-long, and it is still there, because the *fix* was two lines and the
-*lesson* was not.
+What made this attempt different was that I wrote the plan before the code,
+and put a locked-decisions section in it — things that were not up for
+renegotiation halfway through when I got bored or clever. Local-first. No
+accounts. No telemetry. No paid tier, ever.
 
-The cleanup was not small. Git history had to be rewritten with BFG Repo-
-Cleaner to purge the credentials from every past commit. Then a full audit
-before the repo could go public.
-
-That incident is why `maintenance.md` now contains a permanent instruction
-to grep the **built output**, not just the source, for anything from
-`.env.local` — on every single maintenance pass, forever. A source-only
-secret scan does not catch this class of bug. Nobody would have found it by
-reading the code.
-
-It got caught because someone installed the real thing on a real phone and
-looked at it.
-
-That is the whole lesson of this project, arriving early.
+That document is the reason this project has an end. Everything after it is
+execution.
 
 ---
 
-## Act IV — Deleting the foundation
+## Velocity, and what it hides
 
-The plan's very first build step was CouchDB. Apache CouchDB — the actual
-Erlang server, installed as a Windows service, running from
-`C:\Program Files\Apache CouchDB\`. Twenty-six days of work sat on top of
-it. It was in the tech-stack table, the architecture diagram, the risk
-table, the prerequisites, and the name of half the codebase's variables.
+Thirty-four days had commits. Twenty-one didn't.
 
-There was one problem: a **52.7 MB installer**, and **164 MB** installed,
-for a personal task manager whose entire pitch was "install it and it just
-works." The plan had cheerfully assumed a non-technical person would
-install a database server. Reading that back in week four, it was obviously
-absurd.
+The busy days were very busy:
 
-So the owner wrote their own database.
+| date | commits | what I was doing |
+|---|---|---|
+| 07-22 | **82** | going public — CI, Dependabot, signing key |
+| 07-29 | **64** | the redesign |
+| 07-28 | **61** | the redesign starting |
+| 08-24 | **43** | cleaning up after myself |
 
-[NyxDB](https://github.com/hrach-gevorgyan/nyxdb) — a from-scratch Rust
-reimplementation of CouchDB's replication protocol. Not a wrapper. A
-reimplementation, by the same person, on the side, of the thing the entire
-project depended on.
+That looks like productivity. Then I read the breakdown:
 
-**It failed the first time.** July 27, round one: the protocol layer was
-clean — zero changes needed in the app, the full test suite passed
-including byte-for-byte conflict parity — but real-device pairing surfaced
-a storage-directory collision with the old CouchDB path, a missing
-working-directory call, a loopback-only bind address, an incomplete CORS
-allowlist, and one sync failure that could not be root-caused before the
-session ran out. **Reverted to CouchDB on `main`.** A full day of work,
-undone.
+| prefix | count |
+|---|---|
+| **fix** | **111** |
+| docs | 107 |
+| feat | 94 |
+| redesign | 72 |
 
-Round two, the same day. The unresolved failure was reproduced in isolation
-against a real NyxDB instance outside the app — and came back clean. It had
-been a stale process from rapid rebuild cycles, not a protocol bug. Every
-fix from attempt one carried forward. NyxDB's release-build logging
-enabled, because debug-only logging was exactly what had made the first
-diagnosis so slow.
+**I spent more commits fixing than building.** Documentation nearly matched
+features. And the three files I edited most in the whole project are
+`package.json`, `roadmap.md` and `build.gradle` — version bookkeeping
+across 108 releases, not code.
 
-Two genuine bugs were found in NyxDB itself and fixed upstream that day.
-One of them — `_bulk_get` misreporting a live revision as deleted — hit on
-**every real first-time device pairing**, because both devices
-independently create the same fixed default-seed IDs before they ever sync.
-The kind of bug you only find by actually pairing two real devices.
+The source file I touched most is `SettingsPanel.svelte`, 81 commits, ahead
+of `db.ts` at 68. The settings screen cost me more than the database did.
 
-Result: **installer 52.7 MB → 4.98 MB. Installed 164 MB → 20.4 MB.**
-Roughly 10x and 8x. The Apache CouchDB service on the machine became a
-leftover, still dutifully running, holding a database last written July 24
-and never again.
-
-The plan's foundation had been replaced with something the author built
-themselves, and the app above it didn't need to change at all. That is what
-a good abstraction boundary earns you.
+I didn't plan for any of that. It's just what building turns out to be.
 
 ---
 
-## Act V — The decision to stop
+## The night the pixels wouldn't sit still
 
-July 22. Eighty-two commits in a single day — the busiest of the entire
-month.
+On 28 July at 23:04 I started a redesign. It ran past three in the morning
+and picked up again the next day: **72 commits**, almost all of them
+touching nothing but markup and CSS.
 
-And the entry written in `decisions.md` that same day says this:
+Fifteen minutes of it, straight from the log:
 
-> After a month of full-intensity building, the owner called the pace
-> unsustainable: Offlog isn't competing for organic attention in a market
-> giants own, and continuing at sprint pace would end in burnout-
-> abandonment, not a finished product.
+```
+00:06  Focus view — corkboard checkbox overlay, progress bar
+00:13  Focus view — bigger CTA pair, tiled board, drop progress metric
+00:18  Focus view — calmer tilt, suggested notes actually on top
+00:20  Focus view — some cards stay flat
+00:22  Focus view — lean back into the corkboard's tilt/size variety
+00:23  Focus view — soften tilt range (-4/+4.5 → -2/+2.2)
+```
 
-The roadmap was restructured from an open-ended list into **a finite plan
-with a defined end**. Not because the project failed. Because:
+I reduced the tilt, undid it, then reduced it differently — in seventeen
+minutes. Somewhere in there I also committed `thinner priority edge (3px →
+2px)`. One pixel.
 
-> the mission was always "a tool for its owner, given away as-is," and
-> *being finished* is that mission succeeding.
+And this, three separate times:
 
-This is the hinge of the whole story, and it's the least dramatic-looking
-line in this document.
+```
+Sidebar — collapsed rail's icon boxes and dead space actually fixed
+Sidebar — collapsed rail icons actually centered
+Card Detail — reminder picker and checkbox actually share one row
+```
 
-Every abandoned side project dies at exactly this point — the moment where
-the excitement of building runs out and the discipline of finishing hasn't
-started. The usual outcome is a repo that stops receiving commits with no
-announcement, because there was never a definition of done to reach.
+That word **"actually"** is me, at one in the morning, telling the machine
+that the last commit claimed to have done the job and hadn't.
 
-Offlog wrote one down. And then held to it — on the last day, three
-perfectly good feature ideas (snooze, import converters, voice input) were
-**deliberately cut off the roadmap** rather than built, so the list could
-reach zero.
+Then the ones where I gave up entirely:
 
----
+```
+Card Detail — revert to main, back to the drawing board
+Revert "Card Detail — try option A (badge-first, edit-on-click)"
+revert priority dot, keep left edge
+```
 
-## Act VI — The unglamorous majority
+**89 commits — one in six — touched only `.svelte` and `.css`.** A sixth of
+this project was me trying to make it look right.
 
-Here is the part nobody puts in a launch post: **21 maintenance passes.**
+Here's what that night taught me, and it's the thing I'd most want another
+person to know before they start:
 
-Not features. Passes. Each one a structured audit against a written
-checklist — dead code, duplicated logic, dependency audit, oversized
-functions, naming drift, performance suspects, error-handling gaps,
-security review, and a list of "recurring blind spots" that grew every time
-the project shipped a bug bad enough to deserve a permanent rule.
+**UI taste in an AI is zero.**
 
-That blind-spot list is the project's real memory:
+It will generate a new layout every ninety seconds. It will implement
+anything you describe about spacing, colour, hierarchy, motion, and it will
+do it fast and without complaint. What it cannot do is look at the result
+and tell whether it's any good. Every one of those 72 commits happened
+because I looked at a screen and said *no, not that*. The machine gave me
+variations. It never once told me which one to keep, and it never noticed
+when it had made something worse.
 
-- **Floating promises** — because a fire-and-forget `updateTask` caused a
-  revision-conflict race and a flaky test that only failed under parallel
-  load.
-- **Date/time locality** — because one pass found **seven** places using
-  UTC instead of the local calendar day. Agenda, Focus lock, overdue
-  badges, exports. All wrong at midnight, all invisible in daylight.
-- **Packaging paths, not just build/tsc/test** — because TypeScript 7
-  passed every gate locally and then broke `npx cap sync android` on the
-  next release tag.
-- **Script exit paths** — because a PowerShell script succeeded completely
-  and still exited 1 in CI, since robocopy's success codes lingered in
-  `$LASTEXITCODE`.
-- **Build-output secret leakage** — Act III, permanently.
-
-Alongside that: a UI redesign of the sidebar and card detail. A font
-removed for being one font too many. An animation harmonization pass that
-found the same hover transition written as `.1s`, `.12s`, `.15s`, and
-`.08s` across forty-odd places, and made them one value. A month view built
-to replace a week view, then the week view deleted entirely — script,
-markup, CSS, and every stale doc reference.
-
-And the reworks. CardDetail's Repeat section was rebuilt **from scratch
-five times** in one evening, each round responding to a screenshot and a
-two-word verdict — *"UI horrible"*, *"still horrible"*, *"toggler is not
-good"* — until it fit on one line at 375px with zero horizontal overflow.
-The Month calendar's dots moved four times. The "Today" button was
-repositioned three times, and the final fix was `top: calc(50% + 4px)`
-because the container's padding was asymmetric.
-
-None of this shows up in a feature list. All of it is the difference
-between a demo and a thing you'll actually open tomorrow morning.
+The loop only closes when a person looks at the thing.
 
 ---
 
-## Act VII — The last day
+## The password I shipped
 
-July 31. Both remaining features shipped: the desktop app became
-tray-resident with a global `Ctrl+Alt+O`, and tasks learned to block other
-tasks.
+21 July. I put out a release. Then I installed the actual APK on my actual
+phone, the way a real user would.
 
-Then, instead of declaring victory, three maintenance cycles were run —
-deliberately scoped **differently** rather than running one checklist three
-times:
+My password was in it. In plaintext.
 
-1. The standard audit. Found tidiness: a duplicated `escapeHtml`, three
-   copy-pasted loaders, stale doc references.
-2. **An adversarial data-loss audit.** *What could destroy his real data?*
-3. **A long-run stability audit.** *What breaks after three weeks of never
-   restarting?*
+Vite loads `.env.local` for **every** build mode, not just `dev`. My own
+sync credentials — URL, username, password — had been compiled into the
+bundle, into the Android APK, into the Windows installer, and then attached
+to a public GitHub Release.
 
-Cycle 1 found housekeeping. Cycles 2 and 3 found this:
+```
+fix: CRITICAL -- .env.local's real credentials were baked into
+                 production builds
+```
 
-> **Every backup containing an attachment was unrestorable.**
+The fix was **thirteen lines in one file**: gate the reads behind
+`import.meta.env.DEV` so the minifier strips them. Thirteen lines between
+fine and *my sync password is on the internet*.
 
-Exports wrote attachment *stubs* — metadata with no bytes. PouchDB rejects
-an **entire** `bulkDocs` batch when it meets a stub it can't resolve. So one
-attached photo, anywhere in the database, silently turned every backup file
-into a brick that failed with nothing but *"Import failed. Please try
-again."* Not degraded. Dead. Every space, project and task in the file,
-unrecoverable through the app's own restore path.
+The bug isn't the lesson. How I found it is. Not by review. Not by any
+automated check. Not by the AI — it wrote that code and had no idea. I found
+it because I installed the build on a phone and looked.
 
-The safety net had a hole in it the exact shape of the thing it was built to
-catch. It had been that way for days. It was found roughly twelve hours
-before the app became someone's real task manager.
+I deleted the release, rotated the password, and wrote a permanent rule:
+**scan the actual `dist/` output every audit, never just the source.** A
+source scan can't catch this. The secret isn't in the source — it arrives
+during the build.
 
-And cycle 3 found that the tray feature shipped *that same morning* had
-silently disabled automatic backups — they only ever ran at app startup,
-which used to happen daily and, with close-to-tray, might now never happen
-again. The app would have kept showing a reassuring "last backup" timestamp
-for weeks.
+There was an earlier one too: a real password sitting as a fallback default
+in `config.ts`, recoverable from every past commit. That took rewriting the
+entire history with BFG across all 554 commits and 108 tags.
 
-Both fixed. Five round-trip tests written so neither can come back.
+Two credential leaks in one month, on the app whose whole premise is that
+your data stays yours. I'm not proud of it, but hiding it would make this
+document worthless.
 
-Also fixed that day: a global-shortcut collision that would panic the app
-on startup; a second launch forking a second database server onto the same
-port and data directory; reminders missed by more than an hour being
-**deleted without ever firing**; dragging a status column silently
-redefining "done" for an entire project with no warning; the live change
-feed going permanently deaf after a laptop sleep with no error handler and
-no restart.
+---
 
-`npm audit`: 2 → 0. Clippy: clean. Build warnings: zero, as they have been
-enforced all month. 279 tests.
+## Deleting my own foundation
+
+My plan said CouchDB. CouchDB worked. It was also **52.7 MB of installer**
+and **164 MB installed** for a personal task manager, and that started to
+feel absurd.
+
+I evaluated a replacement and rejected it:
+
+```
+docs: NyxDB sync-backend trial -- evaluated, not adopted for now
+```
+
+Then, the same day, I did it anyway:
+
+```
+feat: adopt NyxDB as offlog-desktop's embedded sync host, remove CouchDB
+```
+
+*"Real replacement, not another experiment."* 21 files, 444 lines added,
+488 removed. It deletes more than it adds — that's what replacing a
+foundation looks like.
+
+**Installer 52.7 MB → 4.98 MB. Installed 164 MB → 20.4 MB.** About ten
+times smaller.
+
+It didn't go smoothly. Two commits, hours apart, with the *same subject*:
+
+```
+fix: bump to NyxDB v0.1.4, fixing the real bulk_get/deleted bug
+fix: bump to NyxDB v0.1.5, fixing the real bulk_get/deleted bug
+```
+
+v0.1.4 didn't fix it. The real cause took a second hunt: a fresh database
+gave its very first document `seq=0`, making it permanently invisible to
+`_changes?since=0` — which is exactly where every first sync begins. The
+most basic case there is, silently broken.
+
+That's the price of writing your own dependency. You own the bugs too.
+
+---
+
+## What trusting the machine cost me
+
+I built this with an AI writing most of the lines. I want to be straight
+about that, because the failure modes are specific and they repeat.
+
+**Trusting AI in auto mode doesn't make sense.** Give it room and it drifts
+off what I asked for and starts improvising — solving a nearby problem,
+adding structure I didn't want, rewriting things that already worked. On
+automatic it optimises for producing output, not for staying on target.
+
+**It is confidently wrong.** Not sometimes — regularly, and in exactly the
+same tone it uses when it's right. There's no tell. That's worse than being
+unreliable, because at least unreliable warns you.
+
+**It hallucinates**, and it will defend the hallucination fluently.
+
+**Its UI taste is zero.** See above.
+
+Real examples, all from one recent session:
+
+- My CI was failing. It diagnosed a GitHub setting, explained itself
+  convincingly, and was **wrong**. The real cause was my test suite
+  printing `540 passed` while exiting non-zero, because an unhandled
+  rejection escaped a component. It only found that after I told it twice
+  the problem was still there — and only by cloning the repo and
+  reproducing from scratch.
+- It told me I had no UI test coverage. I did. It had read a stale line in
+  my own notes and repeated it instead of checking.
+- Its own instruction — "convert these CSS rules to global scope" — was
+  right for class selectors and **wrong for element selectors**, and it
+  introduced a real visual regression into nested components. We only
+  caught it by comparing computed styles before and after, because the DOM
+  looked identical.
+- Twice in one session its edit scripts silently deleted structure from my
+  documents. Both times we found it by counting what should have survived.
+
+None of that is fatal on its own. All of it cost me time, and every single
+one was caught because I pushed back, not because the machine noticed.
+
+So: **the AI gave me throughput. I had to supply direction, judgement and
+doubt.** It never decided to delete the foundation. It never decided the
+roadmap should end. It never installed the app on a phone and spotted my
+password sitting in it. It doesn't know when something is finished, and it
+doesn't know when it's wrong.
+
+Used carefully, it let one person work at a scale that used to need a team.
+Used on trust, it will take you somewhere you didn't want to go, and you
+get the bill later.
+
+---
+
+## Choosing to stop
+
+Most side projects don't fail. They just never end. The backlog outlives
+the interest and one day the commits stop without anyone deciding anything.
+
+So I wrote a rule against it: **the roadmap is finite.** A plan with a
+defined end, then maintenance. Being finished is the goal succeeding, not
+the project dying.
+
+On 1 August I stopped building it and started using it. Then **fifteen
+straight days with no commits** — the only real gap in this project's life,
+and the entire point. It was finished enough to disappear into ordinary
+use.
+
+What I did after the silence says more than the features do:
+
+| my largest commits ever | |
+|---|---|
+| 1st | tests for the remaining 18 UI components |
+| 2nd | splitting a 2,056-line settings component |
+| 3rd | splitting a 1,432-line card editor |
+| 4th | rewriting the technical documentation |
+
+**Eight of my ten biggest commits came after I called it finished, and only
+one is a feature.** The single largest commit in this project's history is
+a test file.
+
+That's what finished looks like: 569 tests, roughly one line of test for
+every two of source, and the freedom to spend a day making the code easier
+to read because nothing is on fire.
 
 ---
 
 ## What it cost
 
-| | |
-|---|---|
-| Calendar days | 31 |
-| Days with commits | 29 |
-| Commits | 481 |
-| Tagged releases | 107 (v2.4 → v6.3.0) |
-| Busiest day | 82 commits (July 22) |
-| App source | 19,159 lines (TS + Svelte + CSS) |
-| Tests | 3,653 lines, 279 passing |
-| Rust (desktop + sync host) | 1,061 lines |
-| Documentation | 3,020 lines |
-| Total churn | +90,513 / −34,256 across 324 files |
-| Maintenance passes | 21 |
-| Foundations replaced | 1 (CouchDB → NyxDB, self-authored) |
-| Installer size | 52.7 MB → 4.98 MB |
+**Two credential leaks.** One of them shipped.
 
-**A third of all work was deletion.** 34,256 lines removed against 90,513
-added. Week view, PWA support, IBM Plex Mono, mesh sync, automatic 3-way
-conflict merge, an entire database server, and three features cut on the
-final day. The project got good by subtraction at least as much as by
-addition.
+**A backup system that couldn't restore any backup containing an
+attachment.** Every export wrote placeholder stubs with no bytes, and
+PouchDB rejects an entire batch if one stub can't be resolved — so a single
+attached photo turned every backup file into a brick that said only
+*"Import failed."* It shipped. An audit caught it two days later, not a
+user needing a restore. That's the closest I came to actually losing
+someone's data, and the someone would have been me.
 
----
+**A feature that quietly switched off the safety net.** Making the desktop
+app live in the tray meant it never restarted — and automatic backups only
+ran at startup. One hour and fifty-seven minutes between shipping that and
+catching it, and only because I went looking for exactly that kind of
+problem.
 
-## What it's worth
+**The same mistake twice, four days apart** — an XML comment containing
+`--`, which is invalid, breaking the Android build. Fixed on the 17th. Did
+it again on the 21st.
 
-Todoist charges for reminders and sync. TickTick charges yearly. Things 3
-costs about $80 across Apple devices and has no Windows build at all. Every
-one of them puts sync — the actual thing you wanted — behind the paywall,
-because sync is the part that costs *them* money to run.
+**Thirty-two days blocked** on a TypeScript upgrade that passed every local
+check and then broke my release pipeline, because none of my checks
+exercised the packaging tool's own code.
 
-Offlog does Kanban, List, Agenda with a month calendar, Focus, attachments,
-recurring tasks with real month-end and DST handling, custom fields, tags
-with colors, reminders with quiet hours, App Lock with biometrics, full
-change history, conflict resolution, soft-delete with undo, task
-dependencies, and phone-to-PC sync over your own Wi-Fi with a database
-server bundled inside the desktop app so you never once have to think about
-running one.
-
-No account. No subscription. No telemetry. Nobody can deprecate it,
-price-hike it, or get acquired and shut it down.
-
-Being honest: those products have polish, scale, mobile parity,
-integrations, support teams, and millions of users. This is not "one person
-beat Todoist in a month." This is **one person built the 10% of Todoist
-they actually use, on terms nobody can revoke** — and then spent the last
-day trying to break it on purpose before trusting it with anything real.
+Every one of those became a written rule. That's the only reason this list
+is worth publishing instead of quietly deleting.
 
 ---
 
-## The actual lesson
+## What I ended up with
 
-AI made this fast. 481 commits in 31 days is not a month of one person
-typing, and pretending otherwise would be dishonest.
+19,097 lines of source. 9,033 lines of tests. The whole web build is
+**1.2 MB**, and it's been flat at 1.2 MB across an entire major version of
+new features, because I check the size every audit.
 
-But speed was never the thing that made it *safe*.
+No accounts. No telemetry. No server I operate. No paid tier. It syncs
+between my phone and my PC over home Wi-Fi with a six-digit code and no
+typed IP address. Turn sync off and it still works completely.
 
-What made it safe was: a spec locked before any code. A rule that every bug
-bad enough to cost a day gets a permanent written invariant, in the same
-commit as its fix. Twenty-one structured audits instead of vibes. Live
-testing on real devices, which is how the credential leak, the shrunken
-splash icon, the stuck modal, and the NyxDB pairing bugs were all found —
-none of them by reading code. A decision log that records the reversals,
-not just the wins. And on the last day, three audits scoped to ask *what
-would hurt* rather than *what is untidy* — which is the only reason the
-backup system got fixed before it was needed instead of after.
+It answers all three things that annoyed me in the first place. That was
+the whole ambition.
 
-The owner's own summary, which is the truest line in this document:
+The lessons I'd actually pass on, ordered by what they cost me:
 
-> without my control checking and ideas it will be never success
-
-That's right, and it's worth being precise about why. The AI wrote most of
-the lines. It did not decide to rewrite the database, or to make the
-roadmap finite, or to cut three features on the last day, or to install the
-build on a real phone and notice the password sitting in it. It did not
-know when to stop.
-
-Direction, judgment, and knowing when finished is better than more — those
-stayed human the whole way through.
+1. **Install the real build on a real device.** Both credential leaks, the
+   broken splash icon, the stuck modal and the pairing bugs were found that
+   way and no other way.
+2. **Write the rule in the same commit as the fix.** A bug that costs me a
+   day should cost the next person nothing.
+3. **Judge a check by its exit code, not its output.** A test suite can
+   print "passed" and still fail.
+4. **A test that survives you deliberately breaking the code isn't a test.**
+5. **Decide in writing when it's finished, before you're tired of it.**
 
 ---
 
 ## Where it ends
 
-It doesn't end. It arrives.
+It doesn't, quite.
 
-From 2026-08-01, Offlog is its author's primary task manager. `roadmap.md`'s
-"Next up" section is empty for the first time since July 1. What remains is
-bugs found in real use, dependency batches, security reviews, and a slow
-walk toward a Play Store listing that's waiting on Google, not on anyone
-here.
+The plan finished, I used the app, and real use handed me a real want: one
+PC being the only host means my whole workspace vanishes whenever that
+machine is off. So there's a new direction — mesh sync — and I picked it
+the only legitimate way, by living with the thing long enough to know what
+was missing.
 
-The plan on July 1 said the goal was *a working kanban board on the PC that
-syncs to its own CouchDB.*
+The rule holds. Finite plan, defined end, then maintenance. This is a
+second one, not an admission that the first never closed.
 
-Thirty-one days later there's a tray-resident Windows app and an Android
-app sharing one task list over the home network, with no CouchDB anywhere
-in it, and the most important thing that happened on the final day was
-discovering the backups didn't work — and fixing them before it mattered.
+I wanted a task manager that didn't charge me for a due date, didn't drown
+me in features I'd never use, and didn't want my data.
 
-That's not a launch. That's a landing.
-
----
-
-*Written 2026-07-31, the last day of development.*
-*See [decisions.md](decisions.md) for why, [tech.md](tech.md) for how,
-[changelog.md](changelog.md) for when, and
-[archive/history.md](archive/history.md) for all
-twenty-one maintenance passes in full.*
+Now it exists, it's free, and the source is right here.
