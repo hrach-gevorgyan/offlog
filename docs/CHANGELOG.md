@@ -1,33 +1,298 @@
-# Offlog — Changelog
+# Changelog
 
-The single source of truth for version history — this used to be duplicated
-across `TECH.md` (technical detail) and the root `README.md` (short
-highlights), which had drifted in coverage (TECH.md's table was more
-complete). Consolidated here 2026-07 as part of the documentation cleanup;
-both `README.md` and `docs/TECH.md` now link here instead of keeping their
-own copy. New entries go at the top, one row per released version.
+All notable changes to Offlog are recorded here.
 
-This table keeps the newest **10** releases in full detail. Older releases
-are compressed to one line each in
-[archive/changelog-archive.md](archive/changelog-archive.md) (git still has
-every full diff; that folder also holds the full maintenance-pass log,
-moved out of MAINTENANCE.md 2026-07-20) — split out 2026-07 once this
-file's default-loaded size grew large enough to matter. When adding a new
-entry, move the oldest row here into the archive (compressed to one line)
-once this table exceeds 10 rows, so it stays roughly the same length
-release over release. Archive weekly, or whenever it's due, not on a fixed
-per-release schedule.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-| Version | Changes |
-|---|---|
-| **6.5.0** | **A hardening release: no new surface, a far stronger base under it.** One user-visible addition — Kanban cards gain **"Move to" statuses in the card menu**, the keyboard and touch path to a column change that previously existed only as drag-and-drop (reuses onCardListDrop's write path, so a menu move and a drag move are the same operation). Everything else is structural. **Tests 279 to 540**: every component with real logic now has one — Sidebar, SpaceManager, TrashView, ArchivedProjects, FocusView, Dashboard, TimeTravel, TaskHistory, GlobalSearch, FilterBar, TagManager, CustomFieldManager, CalendarPicker, CustomSelect, TimePicker, ConfirmDialog, NamePrompt, UpdateModal, plus KanbanBoard, SettingsPanel, ListView and AgendaView. Each was **mutation-verified** (break the source, confirm that test fails, revert); tests that survived their mutation were rewritten or deleted rather than kept for the count. **Three files split behind unchanged public surfaces**: `db.ts` (2,191 lines) into a barrel over `db/{core,entities,sync,tags,stats,maintenance}.ts` with all 107 exported names preserved, `SettingsPanel.svelte` (2,056 to 1,530) into `settings/*`, and `CardDetail.svelte` (1,432 to 1,137) into `carddetail/*`. Both component splits were verified by fingerprinting the computed styles of every rendered element before and after — which caught a real regression the DOM structure hid: a `:global(button)` rule reached into nested `CustomSelect`/`CalendarPicker` internals and restyled them, where the scoped original never had. The rule that came out of it — globalise class selectors, never bare element selectors — is now in CLAUDE.md. **The db layer is typed**: 63 `any` down to 2 justified ones, removing casts the typings never needed (`conflicts`/`rev` are in `GetOptions`, `_attachments` is on `GetMeta`), so the `row.doc._conflicts` invariant is compiler-enforced rather than comment-enforced; the emitted JavaScript was verified byte-identical across all 53 build assets. Fixes: SettingsPanel's `onMount` credential read had no try/catch unlike `saveSettings`' guarded read of the same call, so a secure-storage failure escaped as an unhandled rejection — which also made CI red while printing "540 passed", since vitest exits non-zero on an unhandled error; CodeQL's `java-kotlin` job configured its extractor before the JDK was installed and so never uploaded a fresh analysis, leaving stale alerts open; two `svelte-ignore` directives suppressed warnings that no longer applied. CI workflows now cancel superseded in-flight runs per ref. `AgendaView` renamed from `DeadlinesView` to match the name used everywhere else. **Maintenance pass** (twenty-second run) closed the release: baseline green on both apps, and the recurring blind-spot sweep came back clean — zero floating promises, zero raw-UTC date logic, no Android permission or Tauri CSP drift since v6.3.0, all relative doc links resolving, `npm audit` 0, dist steady at 1.2MB. Three latent issues the typing pass had surfaced were fixed with tests: `allDocs` rows can carry no doc (a deletion tombstone), and reading `_id` off one threw mid-backup — one tombstone could take the whole Back up action down; `invokeTauri()` asserted Tauri's IPC global existed, throwing synchronously on web/Android if any caller ever missed its `isTauri()` gate, and now rejects instead; and an import-error path used `(e as Error).message ?? 'invalid file'`, where the `??` never fires on a real Error and a non-Error rejection would throw before reaching it. Also aligned `analyzeImport()` with `importJSON()` — the preview shown before a restore counted `meta`/`tag_color` docs as skipped and then imported them anyway. Real replication tests (PouchDB's actual replicator between two databases), a backup export→wipe→restore cycle, and a deterministic perf gate (database round-trips, never wall-clock) were added alongside. 569 tests, zero build warnings, `check` clean, `cap sync android` clean |
-| **6.3.0** | **The last feature release, and the hardening pass behind it.** Two roadmap items shipped, closing the finite plan: the desktop app is now **tray-resident** with a global quick-capture shortcut (close-to-tray instead of quit, tray menu with Show/Quick Add/Settings/Start-on-login/Quit, `Ctrl+Alt+O` from anywhere landing on Dashboard — `tauri-plugin-global-shortcut`/`-autostart`/`-single-instance`, `tray-icon` feature), and **"Blocked by" task dependencies** — a real directional dependency (`TaskDoc.blocked_by`) distinct from v6.7.0's deliberately non-directional `related`, with cycle detection (direct and transitive), a done/not-done pill in CardDetail's Extras, a lock badge on Kanban cards, and Focus's picker excluding still-blocked tasks outright. Then three maintenance cycles before real daily use began, which found more than the features did. **The one that mattered: every backup containing an attachment was unrestorable.** Exports wrote attachment *stubs* with no bytes; PouchDB rejects an entire `bulkDocs` batch on a `missing_stub`, so a single attached photo silently turned each backup file into a brick that reported only "Import failed. Please try again." Backups now inline attachment bytes (`attachments: true, binary: false`), restores drop unresolvable stubs rather than failing wholesale, a rejected batch falls back to per-document writes, `meta:custom_fields`/`tag_color` docs are no longer filtered out of restores (which had been orphaning restored `custom_values` against deleted field definitions), and malformed docs are normalized instead of imported as `columns.at(-1)` landmines — 5 new round-trip tests. Long-run fixes forced by the tray-resident lifecycle itself: automatic backups and both retention prunes only ran at app *start*, so a weeks-long session silently stopped backing up while still reporting a real timestamp (now hourly); the live change feed had no `error` handler and never restarted, going permanently deaf after a sleep/resume; a sync burst fired one full reload *per document* (now debounced + last-writer-wins); `auto_compaction` was off, so deleting a 10MB attachment freed zero disk; Agenda never noticed midnight pass. Also: a global-shortcut collision panicked the app on startup; a second launch forked a second NyxDB onto the same port and data directory; reminders missed by >1h were deleted without ever firing (now 24h); removing or dragging a status column silently redefined done-ness project-wide with no warning; "Clear all" history had no confirmation. `npm audit` 2 → 0; clippy clean. 279 tests |
-| **6.2.1** | **Maintenance pass (18th run)**, pulled forward ahead of its normal cadence at owner request (next due wasn't until v6.3.0), right after the animation-harmonization/installer-branding/splash-icon polish pass landed. One real, verified finding, fixed: `App.svelte`'s `handleUndo()` was the one call site missing this codebase's audited try/catch + `showError()` invariant — an undo failure (rare, but real) failed silently instead of surfacing a toast. Also deduped an identical `escapeHtml()` implementation carried separately in `GlobalSearch.svelte` and `UpdateModal.svelte` (now a shared `utils.ts` export), and fixed 14 stale `GOAL.md`/`docs/IDEAS.md` source-comment references across 9 files left over from July's doc consolidation (both merged into `DECISIONS.md` months ago). `npm audit`: 2 advisories, both dev-only build tooling, not reachable from the shipped bundle. No dead code, no oversized-function split candidates, no schema/sync/storage-format changes. Dist size: 1.2MB, unchanged |
-| **6.2.0** | **Custom recurrence intervals, filterable/sortable custom fields, attachment-name search — plus a UI polish pass on all three.** Recurrence gains `recurrenceInterval` (every N days/weeks/months) and `recurrenceWeekdaysOnly` (skip Sat/Sun), both purely additive to `TaskDoc`. `FilterBar` gets a real custom-field filter — not one field, a *list* of `{fieldId,value}` filters ANDed together, each row excluding fields already used elsewhere, wired through List, Kanban, and saved filters. `ListView`'s columns become sortable for custom fields too (text/date/select via `localeCompare`, number numerically). Unified search (v6.10.0) now also matches attachment filenames. CardDetail's Repeat & reminder section was rewritten from scratch after several rounds of live feedback: one select ("Not repeating" default, Day/Week/Month otherwise, no separate enable checkbox), interval/weekdays-only/skip all sharing one explicit control height, tuned to fit on one line even at a real 375px mobile width — found and fixed two real CSS bugs along the way (a generic `label{flex-direction:column}` rule silently beating a higher-specificity class; a compact select trigger shrinking its own dropdown panel and truncating "Not repeating"). Month view: row heights are now fixed and uniform instead of each week sizing to its own busiest day (scoped to skip the day-of-week header row, which a first pass accidentally also forced to full height), dots moved to each cell's top-right corner with a consistently-sized day-number box (today's circle badge vs. every other day's plain text no longer throw dots off by a few px), the grid's side gutter is a percentage now instead of a fixed max-width, and the Today button is anchored with a real `top` instead of CSS's ambiguous "static position" fallback. Toolbar buttons (command palette vs. the adjacent view toggle) now share an explicit height everywhere, confirmed pixel-equal by direct measurement. 8 new tests. No schema-breaking changes |
-| **6.1.0** | **Agenda month view, replacing Week.** A real calendar grid (`DeadlinesView.svelte`) — priority-colored dots on every cell, short title chips on wider viewports, tap a day to see its tasks and add a new one with that due date prefilled (`QuickAdd.svelte` gained an `initialDueDate` prop, wired through a new `addTask` event up to `App.svelte`'s `openQuickAdd()`). Removed Week view entirely (script/markup/CSS) — its only real value, seeing the current week laid out by day, is already covered by List's "This week" section plus Month's per-day drill-in; the shared nav classes it left behind on Month were renamed from `.week-*` to `.cal-*`. Fixed a real layout bug found while building it: the grid stretched to fill leftover flex space, leaving a blank gap before the day panel — same class of bug the old week grid's own code comment had already flagged; fixed by scrolling grid+panel together as one unit. The "Today" button went through two rounds of live feedback — first a left-pinned always-visible-but-dimmed button, then settled on the right edge, only rendered once you've actually navigated away from the current month. Also this release: `db.ts` gained `skipRecurrence()` — a recurring task can now jump to its next occurrence ("Skip this one" in CardDetail's Repeat & reminder panel) without logging a completion or moving column, for the day you're not doing this one but don't want the series stuck overdue; reuses the same date/reminder/checklist-advance logic a real completion already used, minus the column change. No schema-breaking changes |
-| **6.0.1** | **Maintenance pass (17th run)**, pulled forward right after v6.0.0's feature batch (file attachments, recurrence fix, unified search, tag colors) landed in one session — no schema/sync/storage-format changes. Two real, verified findings, both fixed: `db.ts`'s `getRecentlyModifiedTasks()` was dead code, orphaned since the 5.9.0 redesign removed the Sidebar "Recent" section it fed; `GlobalSearch.svelte` re-declared its own `'title'\|'tags'\|'body'\|'checklist'` union instead of importing the already-exported `TaskSearchMatch` type from `db.ts` — deduped. `store.ts`'s `tasks` writable has an unnecessarily-wide `export` (only its derived `projectTasks` is used elsewhere) — reported, left alone at owner's call, trivial/zero-value. `npx knip` also flagged 4 deps and 4 Svelte files as unused; all hand-verified as real, dynamically-imported code (false positives, consistent with this project's established experience with the tool on Svelte/Tauri). `npm audit`: 0 vulnerabilities. Build-output secret-leakage gate re-checked against a real `.env.local` — clean. Dist size: 1.2MB, unchanged from the v5.8.2 baseline despite the whole v6.x feature batch landing since |
-| **6.0.0** | **File attachments, recurrence hardening, unified search, tag colors.** File attachments (v6.8.0): images/PDFs/spreadsheets/any file (except HEIC/HEIF) attach to a task, 10MB/file and 10/task caps, images downscaled to ~1600px and re-encoded to JPEG client-side before saving; bytes live in PouchDB's native `_attachments` on the task doc itself (single database, no separate sync channel — see DECISIONS.md for why a second db was considered and rejected), so attachments ride the existing sync with zero new code. Recurrence robustness pass (v6.9.0): fixed a real bug where monthly recurrence overflowed past shorter months (Jan 31 due date rolled to Mar 3 instead of Feb 28/29) — `advanceDate()` now clamps to the target month's real last day; DST reminder-shifting and long-offline-gap completion behavior were audited and confirmed already correct. Unified search (v6.10.0): Global Search now also matches checklist item text, not just title/tags/notes, and shows *why* a result matched when the title itself doesn't contain the query. Tag color picker (v6.11.0): tags already got a deterministic hash color automatically — added a manual override (swatch picker in Settings → Organize → Manage Tags), with an "Auto" reset back to the hash color. Also this release: the mobile sidebar could be collapsed to the desktop-only icon rail by mistake (now gated to desktop). No schema-breaking changes — `TaskDoc` gains `attachments`, existing docs are unaffected |
-| **5.9.0** | **Sidebar + CardDetail visual redesign** — collapsible + resizable sidebar (new), CardDetail's optional fields (Repeat/Reminder, Checklist, Custom Fields, Related, Notes) consolidated under one manually-opened "Extras" panel instead of scattered always-visible blocks. Sidebar: icon-only footer row (Time Travel/Recycle/Settings/Sync) shared between collapsed and expanded modes; sync status shown via the icon's own muted color (green/red/indigo/amber for synced/error/syncing/conflict) instead of a separate dot+badge, clicking it now opens Settings' Sync category rather than triggering a sync directly; active-state highlighting unified and toned down across nav/space/project rows (plain bold text or a light bordered card, no more loud accent-tinted pills); removed the Recent quick-resume section and the per-space project-count badge (owner calls, after live review). Two real bugs found and fixed along the way: `CalendarPicker`'s popover got clipped inside CardDetail's new scrollable modal (now `position: fixed` with measured coordinates, same pattern as ListView's column menu); Dashboard/Focus/Agenda never cleared `activeProjectId`, so the sidebar kept highlighting the last-open project even while viewing one of those three pages. Minor bump (not patch) given the scope — no schema/sync/storage-format changes |
-| **5.8.3** | **Maintenance pass (16th run)** — no schema/sync/storage-format changes, per MAINTENANCE.md's hard constraints. Real fix: `notifications.ts`'s `fireTauriNotification()` and `catchUpTauri()`'s stale-reminder branch both silently swallowed `updateTask()` failures via a bare `.catch(() => {})`, unlike `fireWebNotification()`'s already-fixed equivalent (the same bug class behind the v5.4.6 rev-conflict race and a v5.7.2-era flaky test) — the Tauri path just never got the same fix when it was added later. Also found and fixed: `TaskHistoryPanel.svelte` had its own hand-copied `FIELD_LABEL`/`fmtVal`/`describeField`/`hasRealChange`, duplicating `logFormat.ts` despite that file's own header comment saying it was extracted specifically to prevent this — it had already drifted (missing the `'name'` rename case, missing the `isEmpty()` no-op filter from `logFormat.ts`'s 2026-07-18 fix, so a no-op checklist/custom-field diff could still show a false "Checklist updated" here after Time Travel had already stopped showing it); now imports the shared logic instead. Housekeeping: removed `export` from 6 module-internal-only symbols flagged by `knip` and individually hand-verified (not trusting the tool's say-so) — `DEFAULT_SYNC_URL`, `reresolveHost`, `FIELD_LABEL`, `MaintStepKey`, `UpdatePhase`, `UpdateState`; updated MAINTENANCE.md's stale unsafe-Rust-block checklist (missed C8's `secure_storage.rs` DPAPI calls) and its dist-size drift ledger (1.1MB → 1.2MB, ~9% growth, under threshold, explained by C8/App Lock work). `SettingsPanel.svelte`'s size (2063 lines) and a handful of unverified `knip` export flags were surfaced but deliberately left alone — real risk/effort mismatch for a routine pass, not a defect |
-| **5.8.2** | **Monthly Dependabot batch** — 6 low-risk patch/minor bumps, all merged after green CI: `jsdom` 29.1.1→30.0.0, `svelte-check` 4.7.3→4.7.4, `@types/node` 26.1.1→26.1.2, `svelte` 5.56.7→5.56.8 (offlog-app); `mdns-sd` 0.20.2→0.20.3 (offlog-desktop); `actions/cache` 4→6 (github_actions). No functional changes. First release under ROADMAP.md's new bugfix/audit track (2026-07-28), which folds routine dependency batches into a patch version rather than merging them ad hoc |
-Older releases (v5.7.8 and earlier): [archive/changelog-archive.md](archive/changelog-archive.md).
+**This is the maintainer record** — implementation detail, file names and
+root causes. For what ships to users in plain language, see
+[RELEASE_NOTES.md](RELEASE_NOTES.md); that file is what the GitHub Release
+body is generated from.
+
+The newest 10 releases are kept here in full. Older ones are compressed to
+one line each in
+[archive/changelog-archive.md](archive/changelog-archive.md). When this list
+exceeds 10 releases, move the oldest into the archive.
+
+---
+
+## [6.5.0] — 2026-08-24
+
+A hardening release: no new surface, a far stronger base under it.
+
+### Added
+- Kanban card menu now offers **Move to** statuses — the keyboard and touch
+  path to a column change that previously existed only as drag-and-drop.
+  Reuses `onCardListDrop`'s write path, so a menu move and a drag move are
+  the same operation.
+- `replication.test.ts` — PouchDB's real replicator between two databases:
+  convergence, soft-delete propagation, attachment bytes, conflict creation
+  and both resolutions, first-pair seed collision.
+- `backupRestore.test.ts` — a real database through export → wipe → restore.
+- `perfGuard.test.ts` — gates read-path cost by counting database
+  round-trips, never wall-clock time.
+
+### Changed
+- **Tests 279 → 569.** Every component with real logic now has one. Each
+  was mutation-verified; tests that survived their mutation were rewritten
+  or deleted rather than kept for the count.
+- **`db.ts` split** (2,191 lines) into a barrel over
+  `db/{core,entities,sync,tags,stats,maintenance}.ts`, with all 107
+  exported names preserved so no call site changed.
+- **`SettingsPanel.svelte`** 2,056 → 1,530 lines into `settings/*`, and
+  **`CardDetail.svelte`** 1,432 → 1,137 into `carddetail/*`. Both verified
+  by fingerprinting the computed styles of every rendered element before
+  and after.
+- **Fully typed.** 63 `any` in the db layer down to 2 justified ones, and
+  42 → 0 elsewhere, removing casts the typings never needed. The
+  `row.doc._conflicts` invariant is now compiler-enforced rather than
+  comment-enforced. Emitted JavaScript verified byte-identical across all
+  53 build assets.
+- `AgendaView` renamed from `DeadlinesView` to match the name used
+  everywhere else.
+- CI workflows now cancel superseded in-flight runs for the same ref.
+
+### Fixed
+- `SettingsPanel`'s `onMount` credential read had no `try/catch`, unlike
+  `saveSettings`' guarded read of the same call — a secure-storage failure
+  escaped as an unhandled rejection. This also made CI red while the suite
+  printed "540 passed", since vitest exits non-zero on an unhandled error.
+- A `:global(button)` rule reached into nested `CustomSelect` and
+  `CalendarPicker` internals and restyled them, where the scoped original
+  never had. Caught only by computed-style comparison — the DOM structure
+  and element counts were identical.
+- `analyzeImport()` counted `meta` and `tag_color` documents as skipped
+  while `importJSON()` imported them, so the preview shown before a restore
+  under-reported it.
+- An `allDocs` row can carry no document (a deletion tombstone); reading
+  `_id` off one threw mid-backup, so a single tombstone could take the
+  whole Back up action down.
+- `invokeTauri()` asserted Tauri's IPC global rather than rejecting
+  off-Tauri, throwing synchronously past any caller's `.catch`.
+- CodeQL's `java-kotlin` job configured its extractor before the JDK was
+  installed and so never uploaded a fresh analysis, leaving stale alerts
+  open.
+- Two `svelte-ignore` directives suppressed warnings that no longer
+  applied.
+
+---
+
+## [6.3.0] — 2026-07-31
+
+The last feature release, and the hardening pass behind it.
+
+### Added
+- **Tray-resident desktop app.** Closing the window hides it instead of
+  quitting; tray menu with Show / Quick Add / Settings / Start on login /
+  Quit, and `Ctrl+Alt+O` from anywhere landing on Dashboard.
+- **"Blocked by" task dependencies** (`TaskDoc.blocked_by`) — a real
+  directional dependency, distinct from the non-directional `related`.
+  Direct and transitive cycle detection, a done/not-done pill in
+  CardDetail, a lock badge on Kanban cards, and Focus excluding still-
+  blocked tasks outright.
+
+### Fixed
+- **Every backup containing an attachment was unrestorable.** Exports wrote
+  attachment *stubs* with no bytes, and PouchDB rejects an entire
+  `bulkDocs` batch on a `missing_stub` — so one attached photo silently
+  turned each backup file into a brick reporting only "Import failed."
+  Backups now inline attachment bytes; restores drop unresolvable stubs
+  rather than failing wholesale, fall back to per-document writes when a
+  batch is rejected, no longer filter out `meta`/`tag_color` documents, and
+  normalize malformed documents instead of importing them.
+- Automatic backups and both retention prunes only ran at app *start*, so a
+  weeks-long tray-resident session silently stopped backing up while still
+  reporting a recent timestamp. Now hourly.
+- The live change feed had no `error` handler and never restarted, going
+  permanently deaf after a sleep/resume.
+- A sync burst fired one full reload *per document*; now debounced with
+  last-writer-wins.
+- `auto_compaction` was off, so deleting a 10 MB attachment freed no disk.
+- Agenda never noticed midnight passing.
+- A global-shortcut collision panicked the app on startup.
+- A second launch forked a second NyxDB onto the same port and data
+  directory.
+- Reminders missed by more than an hour were deleted without ever firing;
+  the window is now 24 hours.
+- Removing or dragging a status column silently redefined done-ness
+  project-wide with no warning.
+- "Clear all" history had no confirmation.
+
+### Security
+- `npm audit` 2 advisories → 0. Clippy clean.
+
+---
+
+## [6.2.1] — 2026-07-31
+
+Maintenance pass (18th run), pulled forward at owner request.
+
+### Fixed
+- `App.svelte`'s `handleUndo()` was the one call site missing this
+  codebase's audited `try/catch` + `showError()` invariant — an undo
+  failure surfaced nothing.
+
+### Changed
+- Deduped an identical `escapeHtml()` carried separately in
+  `GlobalSearch.svelte` and `UpdateModal.svelte` into `utils.ts`.
+- Fixed 14 stale `GOAL.md` / `IDEAS.md` references across 9 files, left
+  over from an earlier documentation consolidation.
+
+---
+
+## [6.2.0] — 2026-07-31
+
+### Added
+- Custom recurrence intervals — every N days/weeks/months — plus a
+  weekdays-only option. Both purely additive to `TaskDoc`.
+- Custom-field filtering in `FilterBar`: a list of `{fieldId, value}`
+  filters ANDed together, wired through List, Kanban and saved filters.
+- Sortable custom-field columns in `ListView` (text/date/select via
+  `localeCompare`, numbers numerically).
+- Search now also matches attachment filenames.
+
+### Changed
+- CardDetail's Repeat & reminder section rewritten to a single select with
+  no separate enable checkbox, tuned to fit one line at a real 375px width.
+- Agenda month view: uniform fixed row heights instead of each week sizing
+  to its busiest day, dots moved to each cell's top-right, a percentage
+  side gutter, and the Today button anchored with a real `top`.
+
+### Fixed
+- A generic `label { flex-direction: column }` rule silently beat a
+  higher-specificity class.
+- A compact select trigger shrank its own dropdown panel, truncating "Not
+  repeating".
+
+---
+
+## [6.1.0] — 2026-07-31
+
+### Added
+- **Agenda month view** — a real calendar grid with priority-coloured dots,
+  title chips on wider viewports, and tap-a-day to see its tasks and add
+  one with that due date prefilled.
+- `skipRecurrence()` — jump a recurring task to its next occurrence
+  ("Skip this one") without logging a completion or moving its column.
+
+### Removed
+- Week view. Its only real value — seeing the current week by day — is
+  already covered by List's "This week" grouping plus Month's drill-in.
+
+### Fixed
+- The month grid stretched to fill leftover flex space, leaving a blank gap
+  before the day panel.
+
+---
+
+## [6.0.1] — 2026-07-30
+
+Maintenance pass (17th run), pulled forward right after v6.0.0.
+
+### Removed
+- `getRecentlyModifiedTasks()` — dead code, orphaned since the 5.9.0
+  redesign removed the Sidebar "Recent" section it fed.
+
+### Changed
+- `GlobalSearch.svelte` re-declared its own match-type union instead of
+  importing the already-exported `TaskSearchMatch` from `db.ts`. Deduped.
+
+### Security
+- `npm audit` 0 vulnerabilities. Build-output secret-leakage gate
+  re-checked against a real `.env.local` — clean.
+
+---
+
+## [6.0.0] — 2026-07-30
+
+### Added
+- **File attachments.** Images, PDFs, spreadsheets or any file except
+  HEIC/HEIF, capped at 10 MB per file and 10 per task. Images are
+  downscaled to ~1600px and re-encoded to JPEG client-side before saving.
+  Bytes live in PouchDB's native `_attachments` on the task document, so
+  attachments ride the existing sync with no new code.
+- **Tag colour override** — a swatch picker in Settings → Organize, with an
+  "Auto" reset back to the deterministic hash colour.
+- Global Search now also matches checklist item text, and shows *why* a
+  result matched when the title alone doesn't contain the query.
+
+### Fixed
+- Monthly recurrence overflowed past shorter months — a task due Jan 31
+  rolled to Mar 3 instead of Feb 28/29. `advanceDate()` now clamps to the
+  target month's real last day. DST shifting and long-offline-gap
+  completion were audited and confirmed already correct.
+- The mobile sidebar could be collapsed into the desktop-only icon rail.
+
+---
+
+## [5.9.0] — 2026-07-29
+
+Sidebar and CardDetail visual redesign.
+
+### Added
+- Collapsible and resizable sidebar.
+
+### Changed
+- CardDetail's optional fields (Repeat/Reminder, Checklist, Custom Fields,
+  Related, Notes) consolidated under one manually-opened **Extras** panel
+  instead of scattered always-visible blocks.
+- Sidebar gains an icon-only footer row shared between collapsed and
+  expanded modes; sync status is shown by the icon's own colour rather than
+  a separate dot and badge, and clicking it opens Settings' Sync category
+  instead of triggering a sync.
+- Active-state highlighting unified and toned down across nav, space and
+  project rows.
+
+### Removed
+- The Recent quick-resume section and the per-space project-count badge.
+
+### Fixed
+- `CalendarPicker`'s popover was clipped inside CardDetail's new scrollable
+  modal; now `position: fixed` with measured coordinates.
+- Dashboard, Focus and Agenda never cleared `activeProjectId`, so the
+  sidebar kept highlighting the last-open project while viewing them.
+
+---
+
+## [5.8.3] — 2026-07-28
+
+Maintenance pass (16th run).
+
+### Fixed
+- `fireTauriNotification()` and `catchUpTauri()`'s stale-reminder branch
+  both silently swallowed `updateTask()` failures via a bare
+  `.catch(() => {})` — the same bug class behind an earlier rev-conflict
+  race and a flaky test. The Tauri path never received the fix the web path
+  already had.
+- `TaskHistoryPanel.svelte` carried hand-copied duplicates of
+  `logFormat.ts`'s helpers, which had already drifted: a missing rename
+  case, and a missing no-op filter that let a false "Checklist updated"
+  appear. Now imports the shared logic.
+
+### Changed
+- Removed `export` from 6 module-internal symbols, each hand-verified
+  rather than trusted from tooling output.
+
+---
+
+## [5.8.2] — 2026-07-28
+
+### Changed
+- Monthly Dependabot batch, all merged after green CI: `jsdom`
+  29.1.1 → 30.0.0, `svelte-check` 4.7.3 → 4.7.4, `@types/node`
+  26.1.1 → 26.1.2, `svelte` 5.56.7 → 5.56.8, `mdns-sd` 0.20.2 → 0.20.3,
+  `actions/cache` 4 → 6. No functional changes.
+
+---
+
+[6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0
+[6.3.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.1...v6.3.0
+[6.2.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.0...v6.2.1
+[6.2.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.1.0...v6.2.0
+[6.1.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.1...v6.1.0
+[6.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.0...v6.0.1
+[6.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.9.0...v6.0.0
+[5.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.3...v5.9.0
+[5.8.3]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.2...v5.8.3
+[5.8.2]: https://github.com/hrach-gevorgyan/offlog/compare/v5.8.1...v5.8.2
