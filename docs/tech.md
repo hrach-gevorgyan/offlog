@@ -282,8 +282,10 @@ round-trip counts are stable across machines and wall-clock times are not.
 ### CI (`.github/workflows/`)
 
 - **`ci.yml`** — on `offlog-app/**`: type-check, zero-warning build, tests.
-- **`desktop-ci.yml`** — on `offlog-desktop/**`: a real release `cargo
-  build`, which also warms the cache release runs restore.
+- **`desktop-ci.yml`** — on `src-tauri/**` and the NyxDB fetch script: a
+  real release `cargo build`, which also warms the cache release runs
+  restore. Deliberately not all of `offlog-desktop/**` — dev-only scripts
+  and `mdns-browse/` must not spend a release build.
 - **`codeql.yml`** — JS/TS, Rust, Actions, and Java/Kotlin. The Java job
   must install the JDK *before* CodeQL init, or the extractor sees no
   source. `node_modules` is excluded via `codeql-config.yml`.

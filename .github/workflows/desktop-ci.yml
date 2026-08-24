@@ -1,6 +1,6 @@
 name: Desktop CI
 
-# Two jobs in one (runs only when offlog-desktop/ actually changes,
+# Two jobs in one (runs only when the Tauri/Rust side actually changes,
 # which is rare):
 #  1. A real compile check for the Tauri/Rust side -- until 2026-07-22
 #     Rust had zero CI at all, which let a Dependabot bump (rand 0.10's
@@ -13,13 +13,20 @@ name: Desktop CI
 #     is that something. Same reason release.yml deliberately has no
 #     Gradle cache: nothing builds Android on main to warm one, and a
 #     cache written by tag vX is invisible to tag vY.
+
+# Only what this workflow actually compiles or runs. fetch-nyxdb-win.ps1
+# belongs here because the build invokes it; the other scripts,
+# mdns-browse/ and vendor/ are dev-only and never reach the build, so a
+# change there must not spend a full release cargo build. The list is
+# repeated rather than shared via a YAML anchor -- GitHub Actions does
+# not resolve anchors.
 on:
   push:
     branches: [main]
-    paths: ['offlog-desktop/**', '.github/workflows/desktop-ci.yml']
+    paths: ['offlog-desktop/src-tauri/**', 'offlog-desktop/scripts/fetch-nyxdb-win.ps1', '.github/workflows/desktop-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['offlog-desktop/**', '.github/workflows/desktop-ci.yml']
+    paths: ['offlog-desktop/src-tauri/**', 'offlog-desktop/scripts/fetch-nyxdb-win.ps1', '.github/workflows/desktop-ci.yml']
 
 # Least-privilege default -- this workflow only checks out code and runs
 # a cargo build, it never needs to write anything back to the repo.
