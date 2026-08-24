@@ -114,6 +114,13 @@ don't grow this list with generic-audit filler.
   release tag. After any bump touching TypeScript, Vite, Capacitor or
   Tauri, run `npx cap sync android` too, and let `desktop-ci`'s release
   build cover the Tauri side.
+- **Replication over HTTP, not just in memory.** `replication.test.ts`
+  runs the real replicator, but only between two in-memory databases — no
+  HTTP, no credentials, no batch sizes, no live/retry session.
+  `offlog-desktop/scripts/phase0-repro/` covers those against a real
+  NyxDB instance and is the only thing that does. Run all three scripts
+  after any NyxDB or PouchDB version change; a green CI run is not
+  evidence here. Nothing imports them, so nothing will remind you.
 - **Script exit paths.** Read every `.ps1`/`.sh` end to end: does every
   failure path fail loudly, and does the success path actually exit 0?
   Real incident: a script succeeded completely yet exited 1, because
