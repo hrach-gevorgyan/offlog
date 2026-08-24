@@ -14,6 +14,16 @@ import { setSyncEnabled, setSyncUrl, getSyncUrl } from '../src/config';
 //      startSync() that's fully testable without touching the network, since
 //      it returns before ever calling db.sync().
 describe('describeSyncError', () => {
+  // markError()'s offline branch only fires when navigator.onLine is false,
+  // which it is NOT when you are on the right WiFi and the host PC is simply
+  // powered off. The message must therefore not assert the network is wrong.
+  it('does not blame the network for an unreachable host', () => {
+    const msg = describeSyncError({ status: 0, message: 'Failed to fetch' });
+    expect(msg).not.toMatch(/check you'?re on the same network/i);
+    expect(msg).toMatch(/switched off/i);
+    expect(msg).toMatch(/network/i); // still names the other possible cause
+  });
+
   it('classifies 401/403 as an auth failure', () => {
     expect(describeSyncError({ status: 401 })).toMatch(/credentials/i);
     expect(describeSyncError({ status: 403 })).toMatch(/credentials/i);

@@ -10,7 +10,7 @@ import db, {
   importJSON,
   pruneOldLogs, pruneOldDeletedTasks,
   invalidateTaskCache,
-  seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair, scanConflicts,
+  seedIfEmpty, getSpaces, initIndexes, clearLocalSeedBeforeFirstPair, scanConflicts, wipeAndReseed,
   createSpace, updateSpace, reorderSpaces, deleteSpace,
   getTagCounts, renameTag, deleteTagEverywhere, getTagColorOverrides, setTagColor,
   findSpacesByName, findProjectsByName, findTasksByTitleInProject, findSimilarNotes,
@@ -1360,6 +1360,40 @@ describe('attachments (v6.8.0)', () => {
 // reproduced live pairing a fresh phone to a fresh PC (4 real conflicts,
 // one per fixed id). clearLocalSeedBeforeFirstPair() is the fix, called
 // from discovery.ts's pairWithHost() right before sync starts.
+// markSynced() calls scanConflicts() on every sync settle, so anything it
+// loads is paid for on every sync. log: docs are `log:${ts}-${nanoid(8)}`,
+// written once and never updated, so they cannot conflict -- but six months
+// of them (LOG_RETENTION_MONTHS) would be fetched with include_docs on each
+// pass. Assert on the ranges requested, not the count returned: a correct
+// count is achievable while still walking the whole table.
+describe('scanConflicts() scope', () => {
+  it('never asks for the log range, and still finds a real conflict', async () => {
+    await seedIfEmpty();
+    const project = await createProject('space:unsorted', 'P');
+    const task = await createTask(project._id!, 'space:unsorted', project.columns[0].id, 'T');
+
+    // A real conflict on a task, made the way replication makes one.
+    const current = await db.get<{ title: string }>(task._id!);
+    await db.put({ ...current, title: 'branch', _rev: current._rev }, { force: true } as never);
+
+    for (let i = 0; i < 20; i++) {
+      await db.put({ _id: `log:2026-01-01T00:00:0${i}.000Z-aaaaaaa${i}`, type: 'log', ts: '2026-01-01T00:00:00.000Z', ref: task._id!, action: 'update' });
+    }
+
+    const spy = vi.spyOn(db, 'allDocs');
+    await scanConflicts();
+    const ranges = spy.mock.calls.map(c => (c[0] ?? {}) as { startkey?: string; endkey?: string });
+    spy.mockRestore();
+
+    // An unbounded allDocs (no startkey/endkey) walks everything, logs
+    // included -- that is the regression this guards, so it must count.
+    const touchesLogs = ranges.some(r =>
+      (r.startkey ?? '') <= 'log:2026' && (r.endkey ?? '￿') >= 'log:2026');
+    expect(touchesLogs).toBe(false);
+    expect(ranges.length).toBeGreaterThan(0);
+  });
+});
+
 describe('clearLocalSeedBeforeFirstPair()', () => {
   it('removes the pristine seed when the device has zero tasks', async () => {
     await seedIfEmpty();
@@ -1379,6 +1413,46 @@ describe('clearLocalSeedBeforeFirstPair()', () => {
 
     expect((await getSpaces()).length).toBeGreaterThan(0);
     await expect(db.get('project:draft')).resolves.toBeTruthy();
+  });
+
+  // Zero tasks is not the same as untouched. Setting up spaces and projects
+  // before adding any task is a normal way to start, and these four ids ARE
+  // the spaces a new user renames first -- so a tasks-only guard deletes real
+  // work.
+  it('leaves the seed alone when a seeded space was renamed and there are no tasks', async () => {
+    await seedIfEmpty();
+    const unsorted = await db.get<{ name: string }>('space:unsorted');
+    await db.put({ ...unsorted, name: 'Home' });
+
+    await clearLocalSeedBeforeFirstPair();
+
+    await expect(db.get('space:unsorted')).resolves.toBeTruthy();
+    await expect(db.get('project:draft')).resolves.toBeTruthy();
+  });
+
+  it('leaves the seed alone when the user made their own project and there are no tasks', async () => {
+    await seedIfEmpty();
+    const [space] = await getSpaces();
+    await createProject(space._id!, 'My own project');
+
+    await clearLocalSeedBeforeFirstPair();
+
+    await expect(db.get('project:draft')).resolves.toBeTruthy();
+  });
+
+  // Pristine is decided by CONTENT, never revision number: wipeAndReseed()
+  // soft-deletes and re-puts these same ids, so a genuinely untouched seed
+  // sits at generation 3+ afterwards. Guarding on the revision would refuse
+  // to clear it and reintroduce the 4-way conflict this function prevents.
+  it('still clears a pristine seed whose revisions are past generation 1', async () => {
+    await seedIfEmpty();
+    await wipeAndReseed();
+    const gen = Number((await db.get('space:unsorted'))._rev.split('-')[0]);
+    expect(gen).toBeGreaterThan(1);
+
+    await clearLocalSeedBeforeFirstPair();
+
+    await expect(db.get('space:unsorted')).rejects.toThrow();
   });
 
   it('is a no-op when nothing has ever been seeded', async () => {
