@@ -1,10 +1,15 @@
 # Offlog — Privacy Policy
 
-*Last updated: 2026-07-28*
+*Last updated: 2026-08-24*
 
 This page exists to satisfy app-store requirements (Google Play, and
 Windows/desktop distribution channels that ask for one) with something
 honest, not because Offlog collects anything that needs disclosing.
+
+**Who this policy is from.** Offlog is developed and published by
+**Hrach Gevorgyan**, an individual developer, as a free and open-source
+personal project. There is no company, no legal entity, and no third
+party involved in its development or distribution.
 
 ## The short version
 
@@ -64,6 +69,14 @@ anyone, of any age, because it does not collect personal information
 from anyone — there is no data-collection mechanism that would
 distinguish an adult user from a child.
 
+## Google Play Data safety
+
+Google Play shows a separate **Data safety** section on the store listing,
+filled in through the Play Console. Its answers must match this policy: no
+data collected, no data shared, no data types declared. If this policy ever
+changes, that form has to be updated in the same pass — the two are checked
+against each other.
+
 ## Changes to this policy
 
 If this policy ever needs to change (for example, if a genuinely new
@@ -75,6 +88,6 @@ planned that would make this policy meaningfully different.
 
 ## Contact
 
-Questions about this policy or the app can be raised via
-[GitHub Issues](https://github.com/hrach-gevorgyan/offlog/issues) on
-this project's repository.
+Questions about this policy can be raised publicly via
+[GitHub Issues](https://github.com/hrach-gevorgyan/offlog/issues), or
+privately by email to **hrach.gevorgyan@yandex.com**.
