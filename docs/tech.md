@@ -301,7 +301,11 @@ round-trip counts are stable across machines and wall-clock times are not.
   `package-lock.json`, since nothing else can change its result. Compiles
   with `compileDebugJavaWithJavac` rather than `assembleDebug` — CodeQL
   needs javac traces, not dexing or packaging — and caches Gradle, which
-  is also the cache `release.yml`'s tag build restores. The JDK must be
+  is also the cache `release.yml`'s tag build restores.
+  `gradle.properties` enables `org.gradle.parallel` and
+  `org.gradle.caching` for the same reason: the Capacitor plugin modules
+  are independent, and compiling them serially and from scratch was most
+  of this job's Gradle time. The JDK must be
   installed *before* CodeQL init or the extractor sees no source.
   `node_modules` is excluded via `codeql-config.yml`.
 - **`release.yml`** — on a `vX.Y.Z` tag: builds the signed Android APK and
