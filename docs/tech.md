@@ -345,15 +345,27 @@ tag's asset. Two consequences, both normal:
 - **`scripts/seed-demo.js`** — a hand-authored, deterministic dataset (one
   persona, 4 spaces, 13 projects) for reproducible screenshots. Use its
   `WIPE_EXISTING: true`.
-- **`scripts/seed-full.js`** — the big one: every writable feature at volume,
-  for testing a workspace that is actually full. `SCALE` picks `demo` (~150
-  tasks), `big` (~900, the default, ~40s) or `stress` (~5000). Fixed-seed
-  PRNG, so two runs at one `SCALE` are comparable and a difference is a real
-  regression. Covers what the other two don't: recurrence intervals and
-  weekdays-only, blocked-by in both resolved and unresolved states,
-  attachments on both the image and non-image branches, projects from a
-  template with and without tasks, bulk column archive, column add/rename/
-  remove/reorder, tag rename, and custom fields of all four types.
+- **`scripts/seed-full.js`** — the big one: every writable feature at
+  volume, to **exact** counts (10 spaces, 30 projects, 500 tasks, and a
+  fixed number of checklists, custom values, reminders, links and so on).
+  The `TARGET` block at the top is the contract; the summary reports what
+  actually landed and warns on any mismatch, so a shortfall is visible
+  rather than assumed. `WIPE_EXISTING` defaults to **true** — the counts
+  are only meaningful on an empty database.
+  Covers what the other two don't: recurrence intervals and weekdays-only,
+  blocked-by in both resolved and unresolved states, attachments on both
+  the image and non-image branches, projects from a template with and
+  without tasks, every column shape with every column populated, column
+  add/rename/remove/reorder, tag rename, and all four custom field types.
+  It also re-dates the changelog: every write stamps a log at "now", so a
+  post-pass thins them and spreads them back over 120 days.
+  **Run it from the DevTools console, not by serving it from `public/`** —
+  writing into `public/` (or running `npm run build`/`vitest`) while the
+  dev server is up triggers a full page reload that kills the run partway.
+  Expect a few minutes at 500 tasks: creation slows as the database grows,
+  since every write invalidates the task cache and the mounted UI
+  re-renders on each change.
+
 - **Anything smaller** — write straight to `new PouchDB('offlog')` in the
   console. Assign `column.id`, never the column object, or the task renders
   nowhere. Reload afterwards so the task cache picks it up.
