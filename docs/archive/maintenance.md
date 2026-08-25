@@ -9,6 +9,57 @@ pass 22 and maintenance.md's scoping note.
 
 ---
 
+## 24th run — 2026-08-26 (after v6.7.0)
+
+Triggered by the pointer's "or on the next bug hit in daily use" clause:
+v6.7.0's own work turned up four real bugs during the session that produced
+it, which is exactly the condition the clause names.
+
+Baseline green on all four gates. The routine sweep and every recurring
+blind spot came back clean — no floating promises, no date-locality
+violations, no debug logs or secrets, `npm audit` zero in both trees, every
+action SHA-pinned, no `pull_request_target` or event interpolation, exactly
+the two documented `unsafe` kinds in `src-tauri`, all nine Tauri commands
+reachable, no Android permission or Tauri CSP drift, all doc links
+resolving, and no `.env.local` value present in `dist/`. Both `{@html}`
+paths that render untrusted text were re-verified: `highlight()` escapes
+before wrapping, and `getSpaceIconSvg()` can only ever return a constant.
+
+The two findings were both self-inflicted by the release being audited,
+which is the useful thing about running a pass straight after one.
+
+**`checkIntegrity()` had quietly narrowed its conflict coverage.** Rewriting
+it to scan by id prefix — the fix that stopped it loading the whole
+changelog on every run — turned the conflict pass into an allowlist of
+entity prefixes. `scanConflicts()`, which drives the sync badge and the
+Resolve-conflicts screen, scans everything except `log:`. So a conflict on
+`meta:custom_fields` was counted in the badge and fixable on that screen,
+while maintenance reported nothing. Both now read the same exported range,
+and the entity lists are derived from those same rows, so a future edit
+cannot reintroduce the divergence. A test pins it.
+
+**The new release verify job inherited `contents: write`.** Added in the
+same session to stop `release.yml` publishing without running the tests, it
+picked up the workflow-level permission that exists so `draft-release` can
+upload assets. It only checks out and runs the gate. Scoped to
+`contents: read`.
+
+Size ledger: `dist` 1.3 MB against the v6.5.0 baseline of 1.2 MB, about +8%
+and under the threshold — attributable to v6.7.0's motion and maintenance
+code. APK and installer were not measurable in this pass (Gradle is
+owner-only, and only the raw unpackaged exe existed locally), so those two
+baseline figures still stand from v6.5.0 and want refreshing from an owner
+build.
+
+Core flows were traced live rather than only read: create, edit, move,
+mark done by the positional last-column rule, soft delete, undo — all
+behaved unchanged, with `checkIntegrity()` reporting 558 records checked.
+
+Nothing `[RISKY]` was found; nothing touched schema, replication,
+soft-delete semantics, the positional-done rule, or storage format.
+
+---
+
 ## Pass 6 — v4.15.1 (2026-07-13)
 
 Delta-scoped since v4.12.0's

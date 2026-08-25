@@ -4,11 +4,11 @@ A scheduled audit routine, tailored to this repo. **Not a feature
 session:** external behaviour must stay identical. Read this whole file
 before touching code.
 
-**Current pointer** — last pass: **23rd run** (2026-08-24, no version
-bump; pass 22 was v6.5.0 the same day). Next pass due: **2026-12-01, or on
-the next bug hit in daily use, whichever comes first.** The old "every 3
-minor versions" cadence no longer applies; the project is in maintenance
-mode.
+**Current pointer** — last pass: **24th run** (2026-08-26, right after
+v6.7.0; two `[SAFE]` fixes, both regressions introduced by that release's
+own work). Next pass due: **2026-12-01, or on the next bug hit in daily
+use, whichever comes first.** The old "every 3 minor versions" cadence no
+longer applies; the project is in maintenance mode.
 
 This pointer is the only tracker state in this file. Past passes are
 narrated in
