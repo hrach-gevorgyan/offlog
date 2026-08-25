@@ -74,3 +74,33 @@ export async function downloadBlob(content: string, mime: string, filename: stri
   a.download = filename;
   a.click();
 }
+
+// Issue types are internal names; this is what a person reads. Singular and
+// plural are both spelled out rather than pluralised by appending "s" --
+// several of these do not pluralise that way.
+const ISSUE_LABELS: Record<string, [string, string]> = {
+  orphaned_project:      ['project in a missing space', 'projects in a missing space'],
+  orphaned_task:         ['task in a missing project', 'tasks in a missing project'],
+  invalid_column:        ['task on a status that no longer exists', 'tasks on a status that no longer exists'],
+  no_columns:            ['project with no statuses', 'projects with no statuses'],
+  conflict:              ['unresolved sync conflict', 'unresolved sync conflicts'],
+  orphaned_custom_value: ['task holding values from a deleted custom field', 'tasks holding values from a deleted custom field'],
+  dangling_link:         ['task linked to a task that no longer exists', 'tasks linked to tasks that no longer exist'],
+  unarchived_in_archived:['active task inside an archived project', 'active tasks inside an archived project'],
+  attachment_mismatch:   ['task whose attachment list does not match its files', 'tasks whose attachment lists do not match their files'],
+};
+
+// Everything except no_columns has a safe automatic fix -- inventing statuses
+// for a project the user configured is too destructive to do silently.
+const MANUAL_ONLY = new Set(['no_columns']);
+
+export function summarizeIssues(issues: { type: string }[]): { text: string; manual: boolean }[] {
+  const counts = new Map<string, number>();
+  for (const i of issues) counts.set(i.type, (counts.get(i.type) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, n]) => {
+      const label = ISSUE_LABELS[type] ?? [type, type];
+      return { text: `${n} ${n === 1 ? label[0] : label[1]}`, manual: MANUAL_ONLY.has(type) };
+    });
+}

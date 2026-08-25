@@ -7,7 +7,7 @@
   import DataSettings from './settings/DataSettings.svelte';
   import SecuritySettings from './settings/SecuritySettings.svelte';
   import AdvancedSettings from './settings/AdvancedSettings.svelte';
-  import { downloadBlob, freshMaintSteps, formatStorageEstimate, type MaintStep } from './settings/helpers';
+  import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from './settings/helpers';
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from './autoBackup';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
@@ -863,22 +863,34 @@
   // Cancellation is cooperative: runMaintenanceSteps polls this between
   // steps, so whichever step is already in flight still finishes.
   let maintCancelled = false;
+  // What the check step found, kept so the modal can show it after the run
+  // rather than only inside the confirm dialog the user already dismissed.
+  let maintFoundIssues: IntegrityIssue[] = [];
 
   async function runMaintenance() {
     maintRunning = true;
     maintCancelled = false;
     maintSteps = freshMaintSteps();
     maintRemainingIssues = [];
+    maintFoundIssues = [];
     try {
       const { remainingIssues } = await runMaintenanceSteps(
         (step) => setMaintStep(step.key, { status: step.status, note: step.note }),
         {
           // Repair rewrites documents and drops conflicting revisions with
-          // no undo, so it asks first rather than doing it on the way past.
-          confirmRepair: (issues) => confirmAction(
-            `Found ${issues.length} problem${issues.length === 1 ? '' : 's'}. Repair what can be fixed safely? This rewrites the affected items and cannot be undone.`,
-            { confirmLabel: 'Repair', cancelLabel: 'Skip' },
-          ),
+          // no undo, so it asks first rather than doing it on the way past --
+          // and names what it found, since "12 problems" tells nobody what
+          // is about to change.
+          confirmRepair: (issues) => {
+            maintFoundIssues = issues;
+            const lines = summarizeIssues(issues)
+              .map(g => `• ${g.text}${g.manual ? ' (needs your review — not fixed automatically)' : ''}`)
+              .join('\n');
+            return confirmAction(
+              `Found ${issues.length} problem${issues.length === 1 ? '' : 's'}:\n\n${lines}\n\nRepair the ones that can be fixed safely? This rewrites those items and cannot be undone.`,
+              { confirmLabel: 'Repair', cancelLabel: 'Skip' },
+            );
+          },
           isCancelled: () => maintCancelled,
         },
       );
@@ -1155,6 +1167,15 @@
           {/each}
         </div>
 
+        {#if maintFoundIssues.length > 0}
+          <div class="integrity-list">
+            {#each summarizeIssues(maintFoundIssues) as group}
+              <div class="integrity-row">{group.text}{group.manual ? ' — needs your review' : ''}</div>
+            {/each}
+          </div>
+          <p class="setting-hint">What the check found.</p>
+        {/if}
+
         {#if maintRemainingIssues.length > 0}
           <div class="integrity-list">
             {#each maintRemainingIssues.slice(0, 8) as issue}
@@ -1166,8 +1187,9 @@
       </div>
       <div class="mini-modal-actions">
         {#if maintRunning}
-          <button class="export-btn" on:click={() => maintCancelled = true} disabled={maintCancelled}>
-            {maintCancelled ? 'Stopping…' : 'Cancel'}
+          <button class="export-btn" on:click={() => maintCancelled = true} disabled={maintCancelled}
+                  title={maintCancelled ? 'The step already running has to finish first' : 'Stop after the current step'}>
+            {maintCancelled ? 'Stopping after this step…' : 'Cancel'}
           </button>
         {/if}
         <button class="btn-primary" on:click={runMaintenance} disabled={maintRunning}>

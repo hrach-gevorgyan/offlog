@@ -67,7 +67,8 @@
     padding: 1.35rem 1.5rem;
   }
 
-  .confirm-msg { margin: 0 0 1.2rem; font-size: .92rem; color: var(--text); line-height: 1.5; }
+  /* pre-line so a caller can lay out a list; runs of spaces still collapse. */
+  .confirm-msg { margin: 0 0 1.2rem; font-size: .92rem; color: var(--text); line-height: 1.5; white-space: pre-line; }
 
   .confirm-actions { display: flex; justify-content: flex-end; gap: .6rem; }
   .cancel-btn, .ok-btn {

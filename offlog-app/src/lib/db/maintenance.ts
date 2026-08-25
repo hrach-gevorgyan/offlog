@@ -480,7 +480,6 @@ export async function runMaintenanceSteps(
 
   if (cancelled()) return stop('repair', 'history', 'trash', 'compact');
 
-  let repaired = 0;
   if (issues.length === 0) {
     onStep({ key: 'repair', status: 'skipped', note: 'Nothing to repair' });
   } else if (opts.confirmRepair && !(await opts.confirmRepair(issues))) {
@@ -489,7 +488,6 @@ export async function runMaintenanceSteps(
   } else {
     onStep({ key: 'repair', status: 'running', note: '' });
     const { fixed, skipped } = await repairDatabase(issues);
-    repaired = fixed;
     onStep({ key: 'repair', status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
     if (skipped > 0) {
       const after = await checkIntegrity();
@@ -527,10 +525,19 @@ export async function runMaintenanceSteps(
   // that pass as done so it is paid once, never again.
   if (cancelled()) return stop('compact');
 
-  const freedSomething = repaired > 0 || prunedLogs > 0 || prunedTasks > 0;
+  // Once, ever -- not "whenever this run deleted something". auto_compaction
+  // discards a superseded revision body as the new one lands, so rewriting a
+  // doc during repair, or tombstoning one during a prune, leaves nothing
+  // behind for a later compaction to collect. Re-running it after those steps
+  // walked the whole changes feed for zero bytes and blocked the UI for
+  // minutes doing it.
+  //
+  // The one database that genuinely needs the pass is one that predates
+  // auto_compaction and carries real accumulated revisions. That is a
+  // migration, so it is paid once and recorded.
   const everCompacted = localStorage.getItem(COMPACTED_KEY) === '1';
-  if (!freedSomething && everCompacted) {
-    onStep({ key: 'compact', status: 'skipped', note: 'Nothing new to reclaim' });
+  if (everCompacted) {
+    onStep({ key: 'compact', status: 'skipped', note: 'Nothing to reclaim — space is freed as you work' });
   } else {
     onStep({ key: 'compact', status: 'running', note: '' });
     const before = await storageUsage();

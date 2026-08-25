@@ -278,10 +278,12 @@ feed from seq 0 and fires one `compactDocument()` per row concurrently, so
 on a churned database it queues thousands of IndexedDB transactions and
 starves the main thread for minutes. It is also usually pointless — the
 database is opened with `auto_compaction`, so revision bodies are discarded
-as each write lands. A run that repaired nothing and pruned nothing has
-nothing new to free and skips it; databases predating `auto_compaction`
-still get one full pass, marked done in `offlog_compacted` so it is paid
-once.
+as each write lands. So it runs exactly once and never again -- not
+"whenever this run deleted something": a repair only rewrites docs and a
+prune only tombstones them, and in both cases the old bodies are already
+gone, so that rule would pay the full walk for zero bytes. Databases
+predating `auto_compaction` get the one real pass, marked done in
+`offlog_compacted`.
 
 **Automatic backup** (`autoBackup.ts`). Runs at most every ~20h, writing the
 same JSON as a manual export to app-private storage (desktop

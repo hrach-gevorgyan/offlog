@@ -935,10 +935,11 @@ describe('runMaintenanceSteps', () => {
     expect((await db.get<any>(task._id)).attachments).toEqual([]);
   });
 
-  it('compacts once, then skips it on a later clean run', async () => {
-    // Compaction walks the entire changes feed and can block for minutes.
-    // auto_compaction means a run that deleted nothing has nothing to
-    // reclaim, so the second run must not pay that cost again.
+  it('compacts once, then never again', async () => {
+    // Compaction walks the entire changes feed and blocks the UI for minutes.
+    // auto_compaction discards superseded revisions as writes land, so there
+    // is never anything for a second pass to collect -- it is a one-time
+    // migration for databases that predate the flag.
     localStorage.removeItem('offlog_compacted');
     await seedSpace();
     await createProject('space:unsorted', 'Clean Project');
@@ -951,10 +952,13 @@ describe('runMaintenanceSteps', () => {
     const second: Record<string, { status: string; note: string }> = {};
     await runMaintenanceSteps((s) => { if (s.status !== 'running') second[s.key] = { status: s.status, note: s.note }; });
     expect(second.compact.status).toBe('skipped');
-    expect(second.compact.note).toMatch(/Nothing new to reclaim/);
+    expect(second.compact.note).toMatch(/Nothing to reclaim/);
   });
 
-  it('compacts again when the run actually freed something', async () => {
+  it('still skips compaction on a run that repaired something', async () => {
+    // The tempting rule is "compact when this run deleted something", but a
+    // repair only rewrites docs and auto_compaction already dropped the old
+    // bodies -- so that rule pays the full walk for zero bytes.
     localStorage.setItem('offlog_compacted', '1');
     await seedSpace();
     const fallback = await createProject('space:unsorted', 'Fallback');
@@ -967,7 +971,7 @@ describe('runMaintenanceSteps', () => {
     const steps: Record<string, string> = {};
     await runMaintenanceSteps((s) => { if (s.status !== 'running') steps[s.key] = s.status; });
     expect(steps.repair).toBe('done');
-    expect(steps.compact).toBe('done');
+    expect(steps.compact).toBe('skipped');
     expect((await db.get<any>('task:orphan-compact')).project_id).toBe(fallback._id);
   });
 
