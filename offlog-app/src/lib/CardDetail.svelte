@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { slide } from 'svelte/transition';
+  import { fade, fly, scale, slide } from 'svelte/transition';
+  import { scrimIn, scrimOut, centredIn, centredOut, popIn, popOut, revealIn, revealOut } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension } from './attachments';
@@ -21,6 +22,15 @@
   import AttachmentsBlock from './carddetail/AttachmentsBlock.svelte';
   import NotesBlock from './carddetail/NotesBlock.svelte';
   import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, downscaleImage } from './carddetail/helpers';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -516,8 +526,9 @@
 <svelte:window on:keydown={onWindowKeydown} on:click={onWindowClick} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="overlay" on:click|self={() => requestClose()}>
-  <div class="panel" use:trapFocus>
+{#if __introReady}
+<div class="overlay" on:click|self={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}>
+  <div class="panel" use:trapFocus in:scale={centredIn} out:scale={centredOut}>
     <div class="panel-header">
       <textarea class="title-input" bind:value={title} placeholder="Task title" rows="1" on:input={(e) => { const t = e.currentTarget; t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }}></textarea>
       <button class="pin-btn" class:pinned on:click={() => pinned = !pinned} title={pinned ? 'Unpin' : 'Pin task'}>
@@ -605,7 +616,7 @@
         <svg class="section-chevron" class:open={showExtras} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showExtras}
-        <div class="extras-panel" transition:slide={{ duration: 160 }}>
+        <div class="extras-panel" in:slide={revealIn} out:slide={revealOut}>
 
           <RepeatReminderBlock
             {task} bind:showRepeatReminder {recurrenceOptions} bind:recurrenceStr
@@ -661,7 +672,7 @@
           <svg viewBox="0 0 14 14" width="16" height="16" fill="currentColor"><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="11" cy="7" r="1.3"/></svg>
         </button>
         {#if showActionsMenu}
-          <div class="actions-menu" bind:this={menuPanelEl}>
+          <div class="actions-menu" bind:this={menuPanelEl} in:fly={popIn} out:fly={popOut}>
             <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; loadHistory(); }}>
               <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3l2 1.5"/></svg>
               {showHistory ? 'Hide history' : 'Show history'}
@@ -691,6 +702,7 @@
     </div>
   </div>
 </div>
+{/if}
 
 <style>
   /* Same centered-card layout as SettingsPanel.svelte's
@@ -735,7 +747,7 @@
     background: none; border: none; cursor: pointer;
     width: 26px; height: 26px; border-radius: var(--radius-sm);
     color: var(--faint); padding: 0; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    flex-shrink: 0; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .pin-btn:hover { background: var(--hover); color: var(--accent); }
   .pin-btn.pinned { color: var(--accent); }
@@ -744,7 +756,7 @@
     background: var(--hover); border: none; cursor: pointer;
     width: 26px; height: 26px; border-radius: var(--radius-sm);
     font-size: .85rem; color: var(--muted); padding: 0;
-    flex-shrink: 0;
+    flex-shrink: 0; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
@@ -786,7 +798,7 @@
     background: var(--col-bg); color: var(--muted); border: none;
     border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
     text-transform: none; font-family: 'Hanken Grotesk', sans-serif;
-    padding: 5px 12px; cursor: pointer;
+    padding: 5px 12px; cursor: pointer; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
     white-space: nowrap; flex-shrink: 0;
   }
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
@@ -848,6 +860,7 @@
     border: 1px solid var(--border-strong); border-radius: 999px;
     font-size: .7rem; font-weight: 600; padding: 0 8px; cursor: pointer;
     white-space: nowrap;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .extras-panel :global(.repeat-pill:hover) { border-color: var(--accent); color: var(--text); }
   .extras-panel :global(.repeat-pill.active) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -870,7 +883,7 @@
     font-size: .74rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
     padding: .3rem .55rem; border-radius: var(--radius-sm);
-    background: var(--col-bg); cursor: pointer;
+    background: var(--col-bg); cursor: pointer; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .extras-panel :global(.remind-on-due-row:has(input:checked)) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, var(--col-bg)); }
   .extras-panel :global(.remind-on-due-row:has(input:disabled)) { opacity: .55; cursor: default; }
@@ -929,6 +942,7 @@
   .tag-remove {
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
     background: none; border: none; padding: 0;
+    transition: color var(--dur-hover) var(--ease-hover);
   }
   .tag-remove:hover { color: var(--danger); }
   .tag-input {
@@ -943,7 +957,7 @@
   .tag-suggestion, .extras-panel :global(.tag-suggestion) {
     background: var(--col-bg); color: var(--accent); border-radius: 5px;
     font-size: .78rem; font-weight: 500; padding: 2px 9px; cursor: pointer;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border); transition: background var(--dur-hover) var(--ease-hover);
   }
   .tag-suggestion:hover, .extras-panel :global(.tag-suggestion:hover) { background: var(--hover); }
   .tag-suggestion-other { color: var(--muted); }
@@ -958,6 +972,7 @@
     display: flex; align-items: center; gap: 8px;
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
     cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
+    transition: background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
   .section-toggle .field-label { flex: 1; }
@@ -965,7 +980,7 @@
     font-family: 'Hanken Grotesk', sans-serif; font-size: .78rem;
     text-transform: none; letter-spacing: normal; color: var(--muted);
   }
-  .section-chevron, .extras-panel :global(.section-chevron) { color: var(--faint); flex-shrink: 0; }
+  .section-chevron, .extras-panel :global(.section-chevron) { color: var(--faint); flex-shrink: 0; transition: transform var(--dur-small) var(--ease-standard), color var(--dur-hover) var(--ease-hover); }
   .section-chevron.open, .extras-panel :global(.section-chevron.open) { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
   .extras-panel :global(.notes-wrap) { display: block; }
@@ -1035,13 +1050,16 @@
     border: 1.5px solid var(--border-strong); background: var(--surface);
     display: flex; align-items: center; justify-content: center;
     font-size: .68rem; color: var(--on-accent); cursor: pointer; padding: 0;
+    transition: background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
-  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); }
-  .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); }
+  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
+  @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
+  .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); transition: color var(--dur-hover) var(--ease-hover); }
   .extras-panel :global(.checklist-text.done) { color: var(--faint); text-decoration: line-through; }
   .extras-panel :global(.checklist-remove) {
     flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;
     color: var(--muted); background: none; border: none; padding: 0 2px;
+    transition: color var(--dur-hover) var(--ease-hover);
   }
   .extras-panel :global(.checklist-remove:hover) { color: var(--danger); }
   .extras-panel :global(.checklist-input) {
@@ -1076,7 +1094,7 @@
   }
   .extras-panel :global(.attach-file-btn) {
     align-self: flex-start; font-size: .82rem; color: var(--accent); cursor: pointer;
-    padding: .3rem .2rem; border-radius: 6px;
+    padding: .3rem .2rem; border-radius: 6px; transition: background var(--dur-hover) var(--ease-hover);
     background: none; border: none; font-family: inherit;
   }
   .extras-panel :global(.attach-file-btn:hover) { background: var(--hover); }
@@ -1106,6 +1124,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; padding: 0;
     background: none; border: 1px solid transparent; color: var(--muted);
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .menu-trigger:hover { background: var(--hover); color: var(--text); }
   .actions-menu {

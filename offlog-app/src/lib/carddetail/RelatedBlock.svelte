@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import type { TaskDoc } from '../types';
 
   export let showRelatedBlock: boolean;
@@ -23,7 +24,7 @@
               <svg class="section-chevron" class:open={showRelatedBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showRelatedBlock}
-              <div class="extra-block-body related-field" transition:slide={{ duration: 160 }}>
+              <div class="extra-block-body related-field" in:slide={revealIn} out:slide={revealOut}>
                 {#each relatedTasks as rt (rt._id)}
                   <div class="related-row" class:related-deleted={rt.deleted}>
                     {#if rt.deleted}

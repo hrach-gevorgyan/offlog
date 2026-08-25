@@ -309,6 +309,7 @@ no setup whatsoever.
 | [docs/release-notes.md](docs/release-notes.md) | The same releases in plain language |
 | [docs/maintenance.md](docs/maintenance.md) | The audit checklist, including blind spots earned from real bugs |
 | [docs/privacy.md](docs/privacy.md) | Privacy policy — short, because the app collects nothing |
+| [docs/motion.md](docs/motion.md) | How animation works here — which motion an element gets, and why |
 | [docs/brand.md](docs/brand.md) | Voice, visual identity, and trademark/fork terms |
 | [docs/archive/history.md](docs/archive/history.md) | Older releases and the roadmap items behind them |
 | [docs/archive/maintenance.md](docs/archive/maintenance.md) | What every maintenance audit found |

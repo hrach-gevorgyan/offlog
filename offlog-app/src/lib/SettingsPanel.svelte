@@ -27,8 +27,17 @@
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from './theme';
-  import { fade } from 'svelte/transition';
-  import { scrimFade } from './motion';
+  import { fade, scale } from 'svelte/transition';
+  import { scrimIn, scrimOut, dialogIn, dialogOut, centredIn, centredOut, viewIn } from './motion';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -892,8 +901,9 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="settings-overlay" on:click|self={() => requestClose()}>
-  <div class="settings-panel" bind:this={panelEl} use:trapFocus>
+{#if __introReady}
+<div class="settings-overlay" on:click|self={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}>
+  <div class="settings-panel" bind:this={panelEl} use:trapFocus in:scale={centredIn} out:scale={centredOut}>
     <div class="settings-body" class:detail-open={activeCategory !== null}>
       <nav class="settings-nav">
         <h3 class="nav-title">Settings</h3>
@@ -919,7 +929,7 @@
 
           <div class="detail-content">
             {#key activeCategory}
-            <div class="detail-fade">
+            <div class="detail-fade" in:fade={viewIn}>
             {#if activeCategory === 'appearance'}
               <AppearanceSettings
                 {themeMode} {selectThemeMode} {weekStartsMonday} {setWeekStart}
@@ -990,8 +1000,8 @@
 
 {#if showConnectModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="mini-modal-scrim" on:click|self={() => showConnectModal = false} transition:fade={scrimFade}>
-    <div class="mini-modal">
+  <div class="mini-modal-scrim" on:click|self={() => showConnectModal = false} in:fade={scrimIn} out:fade={scrimOut}>
+    <div class="mini-modal" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Connect a device</span>
         <button class="mini-modal-close" on:click={() => showConnectModal = false} aria-label="Close">✕</button>
@@ -1048,8 +1058,8 @@
 
 {#if showConflictsModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="mini-modal-scrim" on:click|self={() => showConflictsModal = false} transition:fade={scrimFade}>
-    <div class="mini-modal">
+  <div class="mini-modal-scrim" on:click|self={() => showConflictsModal = false} in:fade={scrimIn} out:fade={scrimOut}>
+    <div class="mini-modal" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Resolve conflicts</span>
         <button class="mini-modal-close" on:click={() => showConflictsModal = false} aria-label="Close">✕</button>
@@ -1083,8 +1093,8 @@
 
 {#if showMaintenanceModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="mini-modal-scrim" on:click|self={() => showMaintenanceModal = false} transition:fade={scrimFade}>
-    <div class="mini-modal">
+  <div class="mini-modal-scrim" on:click|self={() => showMaintenanceModal = false} in:fade={scrimIn} out:fade={scrimOut}>
+    <div class="mini-modal" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Maintenance</span>
         <button class="mini-modal-close" on:click={() => showMaintenanceModal = false} aria-label="Close">✕</button>
@@ -1134,8 +1144,8 @@
 
 {#if importPreview}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="mini-modal-scrim" on:click|self={cancelImport} transition:fade={scrimFade}>
-    <div class="mini-modal">
+  <div class="mini-modal-scrim" on:click|self={cancelImport} in:fade={scrimIn} out:fade={scrimOut}>
+    <div class="mini-modal" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Restore from backup</span>
         <button class="mini-modal-close" on:click={cancelImport} aria-label="Close">✕</button>
@@ -1163,8 +1173,8 @@
        the explicit checkbox + button below. The code is shown exactly
        once; there's no "view it again later" since only its hash is
        ever stored (config.ts). -->
-  <div class="mini-modal-scrim" transition:fade={scrimFade}>
-    <div class="mini-modal recovery-modal">
+  <div class="mini-modal-scrim" in:fade={scrimIn} out:fade={scrimOut}>
+    <div class="mini-modal recovery-modal" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Save your recovery code</span>
       </div>
@@ -1209,6 +1219,7 @@
     <svelte:component this={ArchivedProjectsManagerComp} on:close={onArchivedProjectsManagerClosed} />
   {/key}
 {/if}
+{/if}
 
 <style>
   .settings-overlay {
@@ -1252,6 +1263,7 @@
     background: none; border: none; cursor: pointer; text-align: left;
     padding: .55rem .55rem; border-radius: var(--radius-sm);
     color: var(--muted); font-size: .84rem; font-weight: 500;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .nav-item svg { flex-shrink: 0; opacity: .8; }
   .nav-item span { flex: 1; }
@@ -1386,7 +1398,7 @@
   }
   .detail-content :global(.theme-seg-btn) {
     padding: .35rem .75rem; border: none; background: var(--surface); color: var(--muted);
-    font-size: .8rem; font-weight: 500; cursor: pointer;
+    font-size: .8rem; font-weight: 500; cursor: pointer; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .detail-content :global(.theme-seg-btn + .theme-seg-btn) { border-left: 1px solid var(--border-strong); }
   .detail-content :global(.theme-seg-btn:hover) { background: var(--hover); }
@@ -1394,14 +1406,14 @@
 
   .detail-content :global(.toggle-btn) {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
-    background: var(--border-strong); position: relative;
+    background: var(--border-strong); position: relative; transition: background var(--dur-hover) var(--ease-hover);
     flex-shrink: 0; padding: 0;
   }
   .detail-content :global(.toggle-btn.on) { background: var(--accent); }
   .detail-content :global(.toggle-knob) {
     position: absolute; top: 3px; left: 3px;
     width: 18px; height: 18px; border-radius: 50%;
-    background: var(--toggle-knob); transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    background: var(--toggle-knob); transition: left var(--dur-small) var(--ease-standard); box-shadow: 0 1px 3px rgba(0,0,0,.2);
   }
   .detail-content :global(.toggle-btn.on .toggle-knob) { left: 21px; }
 
@@ -1418,6 +1430,7 @@
     display: flex; align-items: center; gap: .75rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .75rem .9rem; cursor: pointer; text-align: left; width: 100%;
+    transition: background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .detail-content :global(.link-row:hover) { background: var(--hover); border-color: var(--border-strong); }
   .detail-content :global(.link-row-title) { flex: 1; font-size: .88rem; font-weight: 600; color: var(--text); }
@@ -1438,7 +1451,7 @@
 
   /* Maintenance step list */
   .progress-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s var(--ease); }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width var(--dur-small) var(--ease-standard); }
 
   .maint-steps { display: flex; flex-direction: column; gap: .5rem; }
   .maint-step { display: flex; align-items: center; gap: .6rem; padding: .4rem .1rem; border-radius: var(--radius-sm); }
@@ -1487,7 +1500,7 @@
   /* Multi-step flows (device pairing, conflicts, maintenance run, import
      preview) open here instead of living permanently in a tab — .mini-modal
      is `position: fixed` itself (not flex-centered by its scrim parent) so
-     its own `translate(-50%,-50%)` positions it correctly, same
+     dialogPop's `translate(-50%,-50%)` positions it correctly, same
      convention as ConfirmDialog/NamePrompt's sibling scrim+panel pattern. */
   .mini-modal-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; }
   .mini-modal {

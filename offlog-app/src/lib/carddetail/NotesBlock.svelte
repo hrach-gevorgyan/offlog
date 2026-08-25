@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
 
   export let showNotesBlock: boolean;
   export let body: string;
@@ -13,7 +14,7 @@
               <svg class="section-chevron" class:open={showNotesBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showNotesBlock}
-              <div class="extra-block-body notes-wrap" transition:slide={{ duration: 160 }}>
+              <div class="extra-block-body notes-wrap" in:slide={revealIn} out:slide={revealOut}>
                 <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
                 {#if body.length > NOTES_SOFT_LIMIT}
                   <div class="notes-counter">{body.length} characters</div>

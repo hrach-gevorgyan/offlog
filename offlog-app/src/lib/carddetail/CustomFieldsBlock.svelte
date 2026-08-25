@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import type { CustomFieldDef } from '../types';
   import CalendarPicker from '../CalendarPicker.svelte';
   import CustomSelect from '../CustomSelect.svelte';
@@ -18,7 +19,7 @@
                 <svg class="section-chevron" class:open={showCustomFieldsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
               </button>
               {#if showCustomFieldsBlock}
-                <div class="extra-block-body custom-fields" transition:slide={{ duration: 160 }}>
+                <div class="extra-block-body custom-fields" in:slide={revealIn} out:slide={revealOut}>
                   {#each visibleFields as field (field.id)}
                     <label class="custom-field-label">
                       {field.name}

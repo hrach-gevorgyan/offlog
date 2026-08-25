@@ -40,7 +40,10 @@
   /* lines */
   --border: #e2e4ea;
   --border-strong: #c7cbd6;
-  --hover: #eceef2;
+  /* Hover/pressed are alphas, not colours -- see the `body` block below for
+     why. High contrast overrides these with a stronger step. */
+  --state-hover: 8%;
+  --state-press: 12%;
 
   /* ink */
   --text: #1f2937;
@@ -77,7 +80,43 @@
   --mono: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --radius: 12px;
   --radius-sm: 8px;
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Motion tokens, Material 3's easing set and duration scale.
+     https://m3.material.io/styles/motion/easing-and-duration
+
+     The rule for picking one: entering uses DECELERATE (arrives and settles),
+     leaving uses ACCELERATE (gets out of the way), and anything moving within
+     the screen uses STANDARD. Exits are shorter than entrances -- an arrival
+     is worth watching, a dismissal is not.
+
+     Durations scale with how far the thing travels: a hover tint is 100ms, a
+     dialog 200ms, a full-height side panel 300ms. Reduce Motion
+     (Settings -> View & Accessibility) zeroes all of them via motion.ts. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Hover is the motion you see most -- every row, card and button, hundreds
+     of times a session. At 100ms on the standard curve it read as a step
+     rather than a transition, which made the rest of the system look broken
+     by comparison. It travels no distance, so it gets a gentle decelerate
+     instead of the front-loaded standard curve, and long enough to be seen. */
+  --dur-hover: 160ms;
+  --ease-hover: cubic-bezier(0, 0, 0.2, 1);
+  --dur-small: 150ms;   /* popovers, menus, inline reveals */
+  --dur-medium: 200ms;  /* dialogs, toasts */
+  --dur-large: 300ms;   /* edge-docked panels crossing the screen */
+
+  /* CSS mirrors of motion.ts's 0.75x exit rule. A single CSS transition
+     cannot express a different duration per direction, so an asymmetric
+     surface splits into a base rule (the leaving state) and a state rule
+     (the entering one) -- see .sidebar / .sidebar.mobile-open. */
+  --dur-small-out: 113ms;
+  --dur-medium-out: 150ms;
+  --dur-large-out: 225ms;
+
+  /* Kept: --ease/--dur are referenced by existing rules. --ease now maps to
+     the standard curve so the two systems agree. */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
   --dur: .26s;
 
   font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -89,6 +128,31 @@
   text-rendering: optimizeLegibility;
 }
 
+/* Reduce Motion has two sources and needs both. The media query covers the OS
+   setting with no JavaScript at all; body.reduce-motion covers the in-app
+   override (Settings -> View & Accessibility), which the OS query cannot see.
+   Every animated rule in this project reads a --dur-* token, so zeroing the
+   tokens reaches all 212 of them without touching a single rule.
+
+   motion.ts's own d() handles the Svelte-transition half separately -- before
+   this block, turning Reduce Motion on stopped the panels and dialogs but left
+   every hover, chevron and sidebar collapse animating.
+
+   Deliberately NOT zeroed: the spinner's `animation: spin .7s`. A frozen
+   loading indicator reads as a hang, not as calm. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-hover: 0ms; --dur-small: 0ms; --dur-medium: 0ms; --dur-large: 0ms;
+    --dur-small-out: 0ms; --dur-medium-out: 0ms; --dur-large-out: 0ms;
+    --dur: 0s;
+  }
+}
+body.reduce-motion {
+  --dur-hover: 0ms; --dur-small: 0ms; --dur-medium: 0ms; --dur-large: 0ms;
+  --dur-small-out: 0ms; --dur-medium-out: 0ms; --dur-large-out: 0ms;
+  --dur: 0s;
+}
+
 /* Dark mode — charcoal + brighter indigo, not pure black */
 body.dark {
   --bg: #181a20;
@@ -98,7 +162,8 @@ body.dark {
   --col-bg: #1e222c;
   --border: #2f3542;
   --border-strong: #3f4657;
-  --hover: #2a2f3a;
+  /* No --state-* override: the alphas are identical in dark, and the tint
+     inverts for free because --text flips. Same precedent as --toggle-knob. */
   --text: #f3f4f6;
   --muted: #a3a9b7;
   --faint: #8b93a5;
@@ -118,7 +183,8 @@ body.dark {
 body.high-contrast {
   --border: #b0b4bd;
   --border-strong: #8a8f9c;
-  --hover: #d7dae0;
+  --state-hover: 16%;
+  --state-press: 22%;
   --text: #0b0f19;
   --muted: #1f2937;
   --faint: #4b5563;
@@ -126,10 +192,42 @@ body.high-contrast {
 body.dark.high-contrast {
   --border: #565f74;
   --border-strong: #7a8399;
-  --hover: #363c4a;
+  --state-hover: 16%;
+  --state-press: 22%;
   --text: #ffffff;
   --muted: #d7dae0;
   --faint: #9aa1b0;
+}
+
+/* ── State layers ───────────────────────────────────────────────────────────
+   A hover or pressed tint is the element's OWN ink at low alpha, composited
+   over whatever ground the element happens to sit on.
+
+   It used to be an absolute colour, and that could not work: --hover was
+   #eceef2 and --col-bg is #eceef2, so hovering anything on a Kanban column
+   in light mode changed literally nothing. KanbanBoard.svelte carried a
+   comment about it and worked around it locally rather than fixing the token.
+   A derived tint cannot be zero on any ground.
+
+   Declared on `body`, never on :root. A custom property is substituted using
+   the values computed where it is DECLARED, and theme.ts toggles .dark /
+   .high-contrast on document.body -- declaring these on :root would bake in
+   the light palette and no theme override could reach them. Same trap the
+   --statusbar-fill comment describes.
+
+   RULE for new components: if the element's rest background is transparent,
+   hover is var(--hover) and pressed is var(--press). If it must carry an
+   opaque rest fill, use the --hover-on-* token naming the ground it sits on.
+   Never nest a neutral layer inside a neutral layer -- 8% over 8% composites
+   to ~15% and reads as pressed. */
+body {
+  --hover: color-mix(in srgb, var(--text) var(--state-hover), transparent);
+  --press: color-mix(in srgb, var(--text) var(--state-press), transparent);
+
+  /* Opaque forms, for controls that must keep a solid rest fill. `background`
+     is a single layer, so those cannot take a translucent tint on top. */
+  --hover-on-surface: color-mix(in srgb, var(--text) var(--state-hover), var(--surface));
+  --hover-on-col:     color-mix(in srgb, var(--text) var(--state-hover), var(--col-bg));
 }
 
 html, body { margin: 0; padding: 0; height: 100%; color: var(--text); background: var(--bg); }

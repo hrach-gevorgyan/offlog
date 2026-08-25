@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { fade, fly, scale } from 'svelte/transition';
+  import { popIn, popOut, easeDecelerate, easeAccelerate } from './motion';
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
   import type { ProjectDoc, TaskDoc } from './types';
@@ -530,6 +532,8 @@
       on:dragover={(e) => onColDragOver(e, col.id)}
       on:drop={(e) => onColDrop(e, col.id)}
       on:dragend={() => { dragCol = null; dragOverCol = null; }}
+      in:scale={{ duration: 150, start: 0.92, easing: easeDecelerate }}
+      out:fade={{ duration: 110, easing: easeAccelerate }}
       animate:flip={{ duration: 200, easing: cubicOut }}
     >
       <!-- Column header — this is the drag handle for reordering columns -->
@@ -606,6 +610,8 @@
             on:touchstart|nonpassive={(e) => onTouchStart(e, task, e.currentTarget)}
             on:click={() => { if (!touchGhost) openDetail(task); }}
             on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(task); } }}
+            in:scale={{ duration: 150, start: 0.92, easing: easeDecelerate }}
+            out:fade={{ duration: 110, easing: easeAccelerate }}
             animate:flip={{ duration: 200, easing: cubicOut }}
             style="--prio-color:{PRIORITY_COLOR[task.priority]}"
           >
@@ -624,7 +630,7 @@
                 </button>
                 {#if openCardMenu === task._id}
                   <!-- svelte-ignore a11y-no-static-element-interactions -->
-                  <div class="card-menu" bind:this={cardMenuPanelEl} on:click|stopPropagation on:keydown|stopPropagation>
+                  <div class="card-menu" bind:this={cardMenuPanelEl} on:click|stopPropagation on:keydown|stopPropagation in:fly={popIn} out:fly={popOut}>
                     <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; togglePin(task); }}>
                       <PinStar size={12} filled={task.pinned} stroked />
                       {task.pinned ? 'Unpin' : 'Pin'}
@@ -694,7 +700,7 @@
 
         {#if quickAddCol === col.id}
           <!-- svelte-ignore a11y-autofocus -->
-          <div class="quick-add-form">
+          <div class="quick-add-form" transition:scale={{ duration: 140, start: 0.95, easing: cubicOut }}>
             <input
               autofocus
               class="quick-input"
@@ -718,7 +724,7 @@
   <!-- Add column -->
   <div class="add-col-area">
     {#if addingCol}
-      <div class="add-col-form">
+      <div class="add-col-form" transition:scale={{ duration: 140, start: 0.95, easing: cubicOut }}>
         <!-- svelte-ignore a11y-autofocus -->
         <input
           autofocus
@@ -800,6 +806,7 @@
     display: flex;
     flex-direction: column;
     border: 1.5px solid transparent;
+    transition: border-color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .column.col-drag-over { border-color: var(--accent); }
 
@@ -822,9 +829,12 @@
   }
   .col-name-input:focus { outline: none; }
   /* min-width so 1- vs. 2-digit counts don't shift the column name's
-     position. Background must be --surface, not --hover: --hover equals
-     --col-bg exactly in light mode, leaving the pill with no visible
-     fill there. */
+     position. Opaque --surface rather than the translucent --hover layer:
+     this pill has a rest fill of its own, and a state layer is for a
+     transparent rest state. (It used to say --hover was unusable here
+     because it equalled --col-bg exactly; --hover is a derived tint now,
+     so that reason is gone -- but an opaque pill still wants an opaque
+     fill.) */
   .col-count {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 20px; height: 20px;
@@ -841,6 +851,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; line-height: 1;
     border-radius: 5px; opacity: 0;
+    transition: opacity var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .col-rename:hover { color: var(--accent); background: var(--hover); }
   .col-header:hover .col-rename { opacity: 1; }
@@ -855,6 +866,7 @@
     gap: .55rem;
     min-height: 60px;
     border-radius: 0 0 var(--radius) var(--radius);
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .card-list.cards-drag-over { background: color-mix(in srgb, var(--accent) 9%, var(--col-bg)); }
 
@@ -867,6 +879,9 @@
     cursor: pointer;
     border-left: 2px solid var(--prio-color, var(--border));
     box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    transition: box-shadow var(--dur) var(--ease),
+                transform var(--dur) var(--ease),
+                opacity var(--dur) var(--ease);
   }
   .card:hover {
     box-shadow: 0 4px 14px rgba(0,0,0,.10);
@@ -885,7 +900,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; padding: 0;
     background: none; border: none; border-radius: 5px; color: var(--faint);
-    opacity: 0;
+    opacity: 0; transition: opacity var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
     cursor: pointer;
   }
   .card:hover .card-menu-trigger, .card-menu-trigger:focus-visible { opacity: 1; }
@@ -951,6 +966,7 @@
     color: var(--faint); font-size: .82rem; font-weight: 500;
     text-align: center; padding: .5rem;
     border-radius: var(--radius-sm); width: 100%;
+    transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .add-card-btn:hover { color: var(--text); background: var(--hover); border-color: var(--accent); }
 
@@ -974,6 +990,7 @@
     background: none; border: 1.5px dashed var(--border-strong);
     border-radius: var(--radius); color: var(--faint); cursor: pointer;
     padding: .7rem 1.2rem; font-size: .85rem; font-weight: 600; white-space: nowrap;
+    transition: border-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .add-col-btn:hover { border-color: var(--accent); color: var(--accent); }
 </style>

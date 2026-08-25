@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { popIn, popOut } from './motion';
 
   // Native <select> renders as the bare OS picker on Android (a plain list
   // in a system sheet, no app styling at all) — jarring next to every other
@@ -95,7 +97,7 @@
   </button>
 
   {#if open}
-    <div class="cs-panel" class:placement-up={placement === 'up'} bind:this={panelEl} role="listbox" tabindex="-1" on:keydown={onPanelKey}>
+    <div class="cs-panel" class:placement-up={placement === 'up'} bind:this={panelEl} role="listbox" tabindex="-1" on:keydown={onPanelKey} in:fly={popIn} out:fly={popOut}>
       {#each grouped as [group, opts] (group)}
         {#if group}<div class="cs-group-label">{group}</div>{/if}
         {#each opts as o (o.value)}
@@ -123,7 +125,7 @@
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: .45rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit;
-    cursor: pointer; text-align: left;
+    cursor: pointer; text-align: left; transition: border-color var(--dur-hover) var(--ease-hover);
   }
   .cs-trigger:hover { border-color: var(--border-strong); }
   .cs-trigger.cs-disabled { opacity: .5; cursor: default; }

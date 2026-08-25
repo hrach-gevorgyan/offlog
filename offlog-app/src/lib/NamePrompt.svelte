@@ -1,11 +1,20 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { fade } from 'svelte/transition';
+  import { scrimIn, scrimOut, dialogIn, dialogOut } from './motion';
   import { getDeviceName, setDeviceName, isNativePlatform, getSyncUrl, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h } from '../config';
   import { getThemeMode, setThemeMode, type ThemeMode } from './theme';
   import { permissionState, requestPermission } from './notifications';
   import { trapFocus } from './focusTrap';
-  import { scrimFade } from './motion';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   // 'setupSync' fires only from step 2's "Set up sync" button — App.svelte
   // uses it to open Settings straight into the Sync tab. 'close' fires
@@ -79,9 +88,10 @@
 <svelte:window on:keydown={onWindowKeydown} />
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="prompt-scrim" on:click|self={decline} transition:fade={scrimFade}></div>
+{#if __introReady}
+<div class="prompt-scrim" on:click|self={decline} in:fade={scrimIn} out:fade={scrimOut}></div>
 {#if step === 1}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
     <p class="prompt-title">What should we call this device?</p>
     <p class="prompt-hint">Shows up on this device's own edits when synced with others — changelog entries, task history. You can change this later in Settings, or skip for now.</p>
     <!-- svelte-ignore a11y-autofocus -->
@@ -92,7 +102,7 @@
     </div>
   </div>
 {:else if step === 2}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
     <p class="prompt-title">Sync across your devices?</p>
     <p class="prompt-hint">
       Offlog can keep this device in sync with your other phones or a PC running the Offlog desktop app — everything stays local, there's no account or cloud involved. If you'd rather use this device on its own, that's the default and nothing else needs to change.
@@ -104,7 +114,7 @@
     </div>
   </div>
 {:else}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
     <p class="prompt-title">A couple of quick preferences</p>
     <p class="prompt-hint">All of this lives in Settings too, whenever you want to change it.</p>
 
@@ -148,6 +158,7 @@
     </div>
   </div>
 {/if}
+{/if}
 
 <style>
   .prompt-scrim {
@@ -176,6 +187,7 @@
   .skip-btn, .save-btn {
     padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
     border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
+    transition: background var(--dur-hover) var(--ease-hover), opacity var(--dur-hover) var(--ease-hover);
   }
   .skip-btn:hover { background: var(--hover); }
   .save-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }

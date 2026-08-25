@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { slide } from 'svelte/transition';
+  import { toastIn, toastOut, revealIn, revealOut } from './motion';
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
-  import { toastFly } from './motion';
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from './types';
   import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById } from './db';
   import { reloadTasks, showError, projects } from './store';
@@ -594,7 +594,7 @@
           tabindex="0"
           on:click={() => selectionMode ? toggleRowSelect(task._id!) : openDetail(task)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectionMode ? toggleRowSelect(task._id!) : openDetail(task); } }}
-          transition:slide={{ duration: 160 }}
+          in:slide={revealIn} out:slide={revealOut}
           animate:flip={{ duration: 200, easing: cubicOut }}
         >
           {#if selectionMode}
@@ -699,7 +699,7 @@
 </div>
 
 {#if undoMarkDone}
-  <div class="undo-toast" transition:toastFly>
+  <div class="undo-toast" in:toastIn out:toastOut>
     <span>Marked "{undoMarkDone.title}" done</span>
     <button class="undo-btn" on:click={undoLastMarkDone}>Undo</button>
   </div>
@@ -774,6 +774,7 @@
     background: none; border: none; border-radius: 6px;
     color: var(--muted); font-size: 11.5px; font-weight: 500;
     padding: 7px 9px; cursor: pointer; white-space: nowrap;
+    transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
   .action-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -797,14 +798,14 @@
 
   .toggle-mini {
     width: 30px; height: 17px; border-radius: 9px; border: none; cursor: pointer;
-    background: var(--border-strong); position: relative;
+    background: var(--border-strong); position: relative; transition: background var(--dur-hover) var(--ease-hover);
     flex-shrink: 0; padding: 0;
   }
   .toggle-mini.on { background: var(--accent); }
   .toggle-mini-knob {
     position: absolute; top: 2px; left: 2px;
     width: 13px; height: 13px; border-radius: 50%;
-    background: var(--toggle-knob); transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    background: var(--toggle-knob); transition: left var(--dur-small) var(--ease-standard); box-shadow: 0 1px 2px rgba(0,0,0,.2);
   }
   .toggle-mini.on .toggle-mini-knob { left: 15px; }
 
@@ -856,7 +857,7 @@
     font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--faint); text-align: left;
     background: none; border: none; cursor: grab; padding: 11px 0;
-    display: flex; align-items: center; gap: 5px;
+    display: flex; align-items: center; gap: 5px; transition: color var(--dur-hover) var(--ease-hover);
   }
   .th-btn:hover { color: var(--text); }
   .th-btn:active { cursor: grabbing; }
@@ -872,7 +873,7 @@
     position: relative;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
-    cursor: pointer;
+    cursor: pointer; transition: background var(--dur-hover) var(--ease-hover);
   }
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
@@ -901,7 +902,7 @@
     width: 16px; height: 16px; padding: 0; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     border-radius: 5px; border: 1.6px solid var(--border-strong);
-    background: var(--surface);
+    background: var(--surface); transition: border-color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .row-check:hover { border-color: var(--accent); }
   .row-check.checked { background: var(--accent); border-color: var(--accent); }
@@ -925,6 +926,7 @@
     border: 1px solid var(--border-strong); border-radius: 6px;
     background: var(--surface); color: var(--text);
     font-size: 12.5px; font-weight: 500; padding: 5px 10px; cursor: pointer;
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .bulk-btn:hover { background: var(--hover); }
   .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -936,6 +938,7 @@
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
     border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
+    transition: border-color var(--dur-hover) var(--ease-hover);
     display: flex; align-items: center; justify-content: center;
   }
   .circle:hover { border-color: var(--accent); }
@@ -980,7 +983,7 @@
   .unarchive-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     color: var(--muted); font-size: 11px; padding: 3px 8px; cursor: pointer;
-    white-space: nowrap; flex-shrink: 0;
+    white-space: nowrap; flex-shrink: 0; transition: color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .unarchive-btn:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -997,6 +1000,7 @@
   .undo-btn {
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    transition: opacity var(--dur-hover) var(--ease-hover);
   }
   .undo-btn:hover { opacity: .85; }
 

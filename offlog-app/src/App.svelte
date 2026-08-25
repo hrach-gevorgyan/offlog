@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { fade } from 'svelte/transition';
-  import { scrimFade, toastFly } from './lib/motion';
+  import { fade, scale } from 'svelte/transition';
+  import { scrimIn, scrimOut, centredIn, centredOut, toastIn, toastOut, viewIn, viewOut } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
@@ -506,12 +506,12 @@
     <!-- Mobile scrim -->
     {#if sidebarOpen}
       <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-      <div class="mobile-scrim" on:click={closeSidebar} transition:fade={scrimFade}></div>
+      <div class="mobile-scrim" on:click={closeSidebar} in:fade={scrimIn} out:fade={scrimOut}></div>
     {/if}
 
     <main class="main">
       {#if showDashboard}
-        <div class="view-fade">
+        <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
           <DashboardView
             on:menu={() => sidebarOpen = true}
             on:openProject={(e) => {
@@ -524,15 +524,15 @@
           />
         </div>
       {:else if showFocus}
-        <div class="view-fade">
+        <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
           <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
         </div>
       {:else if showAgenda}
-        <div class="view-fade">
+        <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
           <AgendaView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
         </div>
       {:else if $activeProject}
-      <div class="view-fade">
+      <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
             <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -615,7 +615,7 @@
       </div>
 
       {:else}
-        <div class="view-fade">
+        <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
         <div class="empty-state">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
             <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -646,7 +646,7 @@
 {#if isTauri()}
   <UpdateModal />
   {#if $updateState.phase === 'available' && $updateState.version !== dismissedUpdateVersion && !$showUpdateModal}
-    <div class="update-banner" transition:fade={scrimFade}>
+    <div class="update-banner" in:fade={scrimIn} out:fade={scrimOut}>
       <span>Offlog {$updateState.version} is available</span>
       <div class="update-banner-actions">
         <button class="update-banner-dismiss" on:click={() => dismissedUpdateVersion = $updateState.version ?? null}>Dismiss</button>
@@ -693,8 +693,8 @@
 
 {#if showShortcuts}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="scrim" on:click|self={closeShortcuts} transition:fade={scrimFade}>
-    <div class="shortcuts-panel">
+  <div class="scrim" on:click|self={closeShortcuts} in:fade={scrimIn} out:fade={scrimOut}>
+    <div class="shortcuts-panel" in:scale={centredIn} out:scale={centredOut}>
       <div class="shortcuts-head">
         <h3>Keyboard shortcuts</h3>
         <button class="shortcuts-close" on:click={closeShortcuts} aria-label="Close">✕</button>
@@ -711,13 +711,13 @@
 {/if}
 
 {#if $errorToast}
-  <div class="error-toast" transition:toastFly>{$errorToast}</div>
+  <div class="error-toast" in:toastIn out:toastOut>{$errorToast}</div>
 {/if}
 
 {#if undoToasts.length}
   <div class="toast-stack">
     {#each undoToasts as t (t.id)}
-      <div class="toast" transition:toastFly>
+      <div class="toast" in:toastIn out:toastOut>
         <span class="toast-msg">Deleted "{t.title.length > 30 ? t.title.slice(0,30)+'…' : t.title}"</span>
         <button class="toast-undo" on:click={() => handleUndo(t.id)}>Undo</button>
         <button class="toast-close" on:click={() => { clearTimeout(t.timer); undoToasts = undoToasts.filter(u => u.id !== t.id); }}>✕</button>
@@ -745,12 +745,23 @@
     box-sizing: border-box;
     overflow: hidden;
   }
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); min-width: 0; }
+  /* Grid, not flex, and every view lands in the SAME cell. During a view
+     switch both are briefly mounted; as flex children they split the height
+     and the incoming view snapped to full size when the outgoing one
+     unmounted (sveltejs/svelte#6642). Stacked in one cell they simply
+     overlap, which is what a crossfade needs. */
+  .main {
+    flex: 1; min-width: 0; overflow: hidden; background: var(--bg);
+    display: grid; grid-template-rows: 1fr; grid-template-columns: 1fr;
+  }
   /* Wraps each top-level view (Dashboard/Kanban/List/Agenda/Focus/empty-
      state) so the page-fade transition has a single element to animate --
      must mirror .main's own flex layout so the wrapped view still fills
      the available height instead of shrinking to its content. */
-  .view-fade { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .view-fade {
+    grid-row: 1; grid-column: 1;
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  }
 
   /* Mobile scrim */
   .mobile-scrim {
@@ -770,6 +781,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--text); padding: 4px; border-radius: 6px;
     flex-shrink: 0; align-items: center; justify-content: center;
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .hamburger:hover { background: var(--hover); }
 
@@ -804,6 +816,7 @@
     background: none; border: none;
     border-radius: 6px; padding: 0 8px; cursor: pointer;
     color: var(--muted);
+    transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
     flex-shrink: 0;
   }
   .search-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
@@ -818,6 +831,7 @@
     border: none; cursor: pointer; font-family: inherit; font-size: 13px;
     font-weight: 600; padding: 0 13px; border-radius: 7px;
     background: transparent; color: var(--muted);
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
   }
   .view-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
   .view-btn:not(.active):hover { color: var(--text); }
@@ -872,6 +886,7 @@
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     box-shadow: 0 4px 16px rgba(0,0,0,.25);
     display: flex; align-items: center; justify-content: center;
+    transition: transform var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover), opacity var(--dur-hover) var(--ease-hover);
   }
   .fab:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,.3); }
   .fab:active { transform: scale(.96); }
@@ -930,6 +945,7 @@
   .toast-undo {
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    transition: opacity var(--dur-hover) var(--ease-hover);
   }
   .toast-undo:hover { opacity: .85; }
   .toast-close {

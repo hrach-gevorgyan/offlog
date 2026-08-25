@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { quickAddPop, scrimFade } from './motion';
+  import { scrimIn, scrimOut, quickAddIn, quickAddOut, revealIn, revealOut } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask, findTasksByTitleInProject } from './db';
   import { closeOnBack } from './modalStack';
@@ -9,6 +9,15 @@
   import CustomSelect from './CustomSelect.svelte';
   import { parseQuickAdd } from './nlpParse';
   import { fmtTime } from './utils';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   // Seeds the due date when opened from Month view's "Add card" on a
   // tapped day. A typed date phrase (parsed.due_date) still wins.
@@ -114,9 +123,10 @@
 <svelte:window on:click={onWindowClickForHelp} on:keydown={onWindowKeyForHelp} />
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click={() => requestClose()} transition:fade={scrimFade}></div>
+{#if __introReady}
+<div class="scrim" on:click={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}></div>
 
-<div class="panel" use:trapFocus transition:quickAddPop>
+<div class="panel" use:trapFocus in:quickAddIn out:quickAddOut>
   <div class="panel-head">
     <div class="panel-title">Quick add task</div>
     <button
@@ -131,7 +141,7 @@
   </div>
 
   {#if showHelp}
-    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl}>
+    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl} in:fade={revealIn} out:fade={revealOut}>
       <div class="help-title">Type it in plain text — Quick Add picks these out automatically:</div>
       <dl class="help-list">
         <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>
@@ -187,6 +197,7 @@
     </div>
   </div>
 </div>
+{/if}
 
 <style>
   /* .scrim is defined globally in app.css */
@@ -206,6 +217,7 @@
     width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong);
     background: none; color: var(--faint); font-size: 11px; font-weight: 700;
     line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .help-btn:hover, .help-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
@@ -227,6 +239,7 @@
     width: 100%; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
     padding: .55rem .7rem; font-size: 15px; font-family: inherit;
     background: var(--bg); color: var(--text); outline: none;
+    transition: border-color var(--dur-hover) var(--ease-hover);
     box-sizing: border-box;
   }
   .title-input:focus { border-color: var(--accent); background: var(--surface); }
@@ -265,6 +278,7 @@
     padding: .42rem .85rem; border-radius: var(--radius-sm);
     border: none; cursor: pointer;
     background: var(--accent); color: var(--on-accent); font-size: .85rem; font-weight: 600;
+    transition: opacity var(--dur-hover) var(--ease-hover);
   }
   .add-btn:disabled { opacity: .45; cursor: default; }
   .add-btn:not(:disabled):hover { opacity: .88; }

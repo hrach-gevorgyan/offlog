@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import { fly, fade } from 'svelte/transition';
-  import { panelFly, scrimFade } from './motion';
+  import { fade, fly } from 'svelte/transition';
+  import { panelIn, panelOut, panelScrimIn, panelScrimOut } from './motion';
   import { getProjects, getArchivedProjects, archiveProject, unarchiveProject, deleteProject, subscribe } from './db';
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
@@ -9,6 +9,15 @@
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
   import type { ProjectDoc } from './types';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -71,9 +80,10 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => requestClose()} transition:fade={scrimFade}></div>
+{#if __introReady}
+<div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(420)} out:fade={panelScrimOut(420)}></div>
 
-<div class="panel" use:trapFocus transition:fly={panelFly}>
+<div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Archived Projects</span>
     <button class="close-btn" on:click={() => requestClose()}>✕</button>
@@ -102,6 +112,7 @@
     {/if}
   </div>
 </div>
+{/if}
 
 <style>
   /* .scrim is defined globally in app.css */
@@ -128,6 +139,7 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -142,7 +154,7 @@
   .archive-btn {
     flex-shrink: 0; background: var(--accent); border: none; cursor: pointer;
     color: var(--on-accent); font-size: 13px; font-weight: 600; padding: .48rem .8rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-sm); transition: opacity var(--dur-hover) var(--ease-hover);
   }
   .archive-btn:hover:not(:disabled) { opacity: .88; }
   .archive-btn:disabled { opacity: .45; cursor: default; }
@@ -163,6 +175,7 @@
   .delete-btn {
     flex-shrink: 0; background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 </style>

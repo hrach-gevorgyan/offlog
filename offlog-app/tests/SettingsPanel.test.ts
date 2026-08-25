@@ -86,6 +86,10 @@ vi.mock('../src/lib/theme', () => ({
   getThemeMode: () => 'system', setThemeMode: vi.fn(),
   getHighContrast: () => false, setHighContrast: vi.fn(),
   getReduceMotion: () => false, setReduceMotion: vi.fn(),
+  // motion.ts reads this to decide whether to zero every duration, and the
+  // panel now animates on mount -- so it is called as soon as this component
+  // renders, not only when a transition happens to run.
+  prefersReducedMotion: () => false,
 }));
 
 import dbDefault from '../src/lib/db';

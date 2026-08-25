@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
 
   export let showChecklistBlock: boolean;
   export let checklist: { text: string; done: boolean }[];
@@ -19,7 +20,7 @@
               <svg class="section-chevron" class:open={showChecklistBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showChecklistBlock}
-              <div class="extra-block-body checklist-field" transition:slide={{ duration: 160 }}>
+              <div class="extra-block-body checklist-field" in:slide={revealIn} out:slide={revealOut}>
                 {#each checklist as item, i}
                   <div class="checklist-row">
                     <button type="button" class="checklist-check" class:done={item.done} on:click={() => toggleChecklistItem(i)} aria-label={item.done ? 'Mark not done' : 'Mark done'}>

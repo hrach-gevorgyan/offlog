@@ -707,7 +707,7 @@
     /* Width transition animates collapse/expand. Suppressed during an
        actual drag (.resizing) so live resizing stays 1:1 with the cursor
        instead of lagging behind it. */
-    transition: width .2s cubic-bezier(.4, 0, .2, 1);
+    transition: width var(--dur-medium) var(--ease-standard);
   }
   .sidebar.resizing { transition: none; }
   .sidebar.collapsed { padding-left: .4rem; padding-right: .4rem; }
@@ -724,8 +724,20 @@
       width: 280px;
       padding-top: calc(1.1rem + env(safe-area-inset-top, 0px));
       transform: translateX(-100%);
-      transition: transform .38s cubic-bezier(0.4, 0, 0.2, 1),
-                  visibility .38s;
+      /* The base rule is the CLOSED state, so it carries the LEAVING curve
+         and duration; .mobile-open below carries the entering pair. A single
+         CSS transition cannot differ by direction, and closing on the
+         decelerate curve made the drawer drift out instead of clearing.
+
+         box-shadow is in both lists on purpose: without it a 40px black
+         shadow appeared at full strength while the panel was still entirely
+         off screen. visibility is in both too -- it steps discretely, so it
+         flips at t=0+ going in and t=1 coming out, which is what keeps a
+         closed drawer out of the tab order. Neither is decorative; don't
+         tidy them out. */
+      transition: transform var(--dur-large-out) var(--ease-accelerate),
+                  visibility var(--dur-large-out),
+                  box-shadow var(--dur-large-out) var(--ease-accelerate);
       will-change: transform;
       box-shadow: none;
       visibility: hidden;
@@ -734,6 +746,9 @@
       transform: translateX(0);
       box-shadow: 8px 0 40px rgba(0,0,0,.45);
       visibility: visible;
+      transition: transform var(--dur-large) var(--ease-decelerate),
+                  visibility var(--dur-large),
+                  box-shadow var(--dur-large) var(--ease-decelerate);
     }
   }
   /* Keep this padding symmetric: a lopsided bottom value shifts the box's
@@ -755,6 +770,7 @@
     width: 26px; height: 26px; flex-shrink: 0;
     background: none; border: 1px solid transparent; cursor: pointer;
     color: var(--faint); border-radius: var(--radius-sm);
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .collapse-toggle:hover { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
   /* Collapsed mode gives this the same box treatment and 32px size as
@@ -797,6 +813,7 @@
   .tree-section-collapsed {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem;
     padding-top: .5rem; flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    transition: opacity var(--dur-small) var(--ease-standard), transform var(--dur-small) var(--ease-standard);
   }
   /* Clicking a space icon holds the rail in this lifted/faded state (see
      expandToSpace()'s `expanding` flag) for one width-transition's worth
@@ -811,7 +828,7 @@
        translucent fill a light/neutral space color (the default gray)
        nearly vanishes against the sidebar background. */
     border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
-    opacity: .8;
+    opacity: .8; transition: opacity var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
   }
   .space-icon-only :global(svg) { width: 15px; height: 15px; }
   .space-icon-only:hover, .space-icon-only.active { opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
@@ -830,6 +847,7 @@
   .resize-handle::before {
     content: ''; width: 3px; height: 28px; border-radius: 3px;
     background: var(--border-strong); opacity: .6;
+    transition: opacity var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .resize-handle:hover, .resize-handle:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
   .resize-handle:hover::before, .resize-handle:active::before { opacity: 1; background: var(--muted); }
@@ -856,6 +874,7 @@
     padding: .42rem .55rem; border-radius: var(--radius-sm);
     background: none; color: var(--muted);
     font-weight: 600; font-size: .85rem; letter-spacing: -.01em;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
   }
   .nav-btn svg { flex-shrink: 0; opacity: .85; }
   /* Subtle hover shadow, not just a flat background swap -- same
@@ -886,6 +905,7 @@
     background: none; border: none; cursor: pointer;
     padding: .4rem .5rem; border-radius: var(--radius-sm);
     color: var(--muted); text-align: left; width: 100%;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
   }
   .space-header:hover { background: var(--hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   /* Active space is marked by color plus weight, with no fill, border or
@@ -894,7 +914,7 @@
      weight as a second cue. */
   .space-header.active { color: var(--text); }
   .space-header.active .space-name { font-weight: 700; }
-  .space-chevron { flex-shrink: 0; color: var(--faint); }
+  .space-chevron { flex-shrink: 0; color: var(--faint); transition: transform var(--dur-small) var(--ease-standard), color var(--dur-hover) var(--ease-hover); }
   .space-chevron.open { transform: rotate(90deg); }
   .space-icon {
     width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -915,7 +935,7 @@
   .proj-pin-btn {
     background: none; border: none; cursor: pointer; padding: .15rem .35rem;
     color: var(--faint); display: flex; align-items: center; border-radius: 4px;
-    opacity: 0;
+    opacity: 0; transition: opacity var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
     flex-shrink: 0;
   }
   .project-row:hover .proj-pin-btn { opacity: .8; }
@@ -926,6 +946,7 @@
     display: flex; align-items: center;
     border-radius: var(--radius-sm);
     padding-right: .3rem;
+    transition: background var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
   }
   .project-row:hover { background: var(--hover); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   /* A var(--surface) card needs an explicit border: --surface and
@@ -940,7 +961,7 @@
   .project-btn {
     flex: 1; background: none; border: none; cursor: pointer;
     padding: .38rem .55rem; color: var(--muted); font-size: .85rem;
-    text-align: left;
+    text-align: left; transition: color var(--dur-hover) var(--ease-hover);
   }
   .project-row.active .project-btn { color: var(--text); font-weight: 600; }
   .project-row:hover .project-btn { color: var(--text); }
@@ -949,7 +970,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .35rem;
     border-radius: 4px;
-    opacity: 0;
+    opacity: 0; transition: opacity var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
     line-height: 1;
   }
   .project-row:hover .proj-delete-btn { opacity: 1; }
@@ -967,6 +988,7 @@
   .template-toggle {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: .76rem; text-align: left; padding: 0 .1rem;
+    transition: color var(--dur-hover) var(--ease-hover);
   }
   .template-toggle:hover { color: var(--accent); }
   .template-checkbox {
@@ -990,7 +1012,7 @@
   .add-project-btn {
     background: none; border: none; cursor: pointer;
     color: var(--accent); font-size: .82rem; font-weight: 500; text-align: left;
-    padding: .4rem .55rem;
+    padding: .4rem .55rem; transition: color var(--dur-hover) var(--ease-hover);
   }
   .add-project-btn:hover { color: var(--text); }
 
@@ -1033,6 +1055,7 @@
     background: var(--hover); border: 1px solid transparent;
     border-radius: 8px; cursor: pointer;
     color: var(--muted);
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .icon-btn svg { flex-shrink: 0; opacity: .85; }
   .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-strong); }

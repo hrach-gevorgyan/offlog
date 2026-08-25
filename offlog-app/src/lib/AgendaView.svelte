@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from './motion';
   import { getAllTasksDue, updateTask, subscribe, getTaskById } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
@@ -232,7 +233,7 @@
         {/each}
       </div>
       {#if selectedDay}
-        <div class="month-day-panel" transition:slide={{ duration: 160 }}>
+        <div class="month-day-panel" in:slide={revealIn} out:slide={revealOut}>
           <div class="month-day-panel-head">
             <span>{new Date(selectedDay + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
             <button class="month-day-close" on:click={() => selectedDay = null} aria-label="Close">×</button>
@@ -406,6 +407,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .hamburger:hover { background: var(--hover); }
 
@@ -421,7 +423,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 32px; height: 32px;
     background: none; border: 1px solid var(--border-strong); border-radius: 8px;
-    color: var(--muted); cursor: pointer;
+    color: var(--muted); cursor: pointer; transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .palette-btn:hover { color: var(--text); background: var(--hover); }
   .mode-toggle {
@@ -436,7 +438,7 @@
     display: flex; align-items: center; justify-content: center;
     height: 30px; box-sizing: border-box; padding: 0 14px;
     border: none; background: var(--surface); color: var(--muted);
-    font-size: .8rem; font-weight: 600; cursor: pointer;
+    font-size: .8rem; font-weight: 600; cursor: pointer; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .mode-btn + .mode-btn { border-left: 1px solid var(--border-strong); }
   .mode-btn:hover { background: var(--hover); }
@@ -447,6 +449,7 @@
   .cal-nav-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer;
     color: var(--muted); font-size: 1rem; line-height: 1; padding: 3px 10px;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .cal-nav-btn:hover { background: var(--hover); color: var(--text); }
   .cal-label { font-size: .85rem; font-weight: 700; color: var(--text); }
@@ -474,7 +477,7 @@
     position: absolute; top: calc(50% + 4px); right: 9%; transform: translateY(-50%);
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     color: var(--accent); font-size: .78rem; font-weight: 600;
-    padding: 4px 12px; cursor: pointer;
+    padding: 4px 12px; cursor: pointer; transition: background var(--dur-hover) var(--ease-hover);
   }
   .month-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
@@ -514,6 +517,7 @@
     height: 100%; overflow: hidden; padding: 5px 6px; text-align: left;
     background: var(--surface); border: none; cursor: pointer;
     border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .month-cell:hover { background: var(--hover); }
   .month-cell:nth-child(7n) { border-right: none; }
@@ -574,7 +578,7 @@
     width: 100%; margin-top: 6px; padding: 9px 10px;
     border: 1px dashed var(--border-strong); border-radius: 10px;
     background: none; color: var(--muted); font-size: .82rem; font-weight: 500;
-    cursor: pointer;
+    cursor: pointer; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .month-add-card-btn:hover { background: var(--hover); color: var(--accent); border-color: var(--accent); }
 
@@ -638,6 +642,7 @@
     border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
+    transition: background var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 
@@ -647,7 +652,7 @@
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
     border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    display: block;
+    transition: border-color var(--dur-hover) var(--ease-hover); display: block;
   }
   .circle:hover { border-color: var(--accent); }
 

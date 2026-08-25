@@ -1,9 +1,9 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
+  import { scrimIn, scrimOut, dialogIn, dialogOut } from './motion';
   import { confirmRequest } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
-  import { scrimFade } from './motion';
 
   // Mounted once, permanently, at the App.svelte root — unlike other
   // overlays it never mounts/unmounts per dialog, it just toggles
@@ -40,8 +40,8 @@
 
 {#if $confirmRequest}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="confirm-scrim" on:click|self={() => respond(false)} transition:fade={scrimFade}></div>
-  <div class="confirm-panel" role="alertdialog" aria-modal="true" use:trapFocus>
+  <div class="confirm-scrim" on:click|self={() => respond(false)} in:fade={scrimIn} out:fade={scrimOut}></div>
+  <div class="confirm-panel" role="alertdialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
     <p class="confirm-msg">{$confirmRequest.message}</p>
     <div class="confirm-actions">
       <button class="cancel-btn" on:click={() => respond(false)}>{$confirmRequest.cancelLabel}</button>
@@ -73,6 +73,7 @@
   .cancel-btn, .ok-btn {
     padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
     border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
+    transition: background var(--dur-hover) var(--ease-hover), opacity var(--dur-hover) var(--ease-hover);
   }
   .cancel-btn:hover { background: var(--hover); }
   .ok-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }

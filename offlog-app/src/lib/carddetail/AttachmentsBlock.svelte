@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import type { TaskAttachment } from '../types';
   import { ATTACHMENT_MAX_PER_TASK } from '../db';
   import { formatAttachmentSize } from '../attachments';
@@ -24,7 +25,7 @@
               <svg class="section-chevron" class:open={showAttachmentsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showAttachmentsBlock}
-              <div class="extra-block-body attachments-field" transition:slide={{ duration: 160 }}>
+              <div class="extra-block-body attachments-field" in:slide={revealIn} out:slide={revealOut}>
                 {#each attachments as a (a.key)}
                   <div class="attachment-row">
                     <button type="button" class="attachment-open" on:click={() => openAttachment(a.key, a.filename)} title="Download {a.filename}">

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { fly, fade } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
+  import { panelIn, panelOut, panelScrimIn, panelScrimOut } from './motion';
   import { getRecentLogs, getTaskById, clearLogs, subscribe } from './db';
   import { projects, showError } from './store';
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from './logFormat';
@@ -8,10 +9,18 @@
   import { closeOnBack } from './modalStack';
   import { confirmAction } from './confirm';
   import { trapFocus } from './focusTrap';
-  import { panelFly, scrimFade } from './motion';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
   import type { LogDoc } from './db';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   // The single surface over `log:` docs: day-grouped and paginated, with
   // per-row detail (project badge, source pill, Clear all) and
@@ -145,9 +154,9 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => requestClose()} transition:fade={scrimFade}></div>
+<div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(560)} out:fade={panelScrimOut(560)}></div>
 
-<div class="panel" use:trapFocus transition:fly={panelFly}>
+{#if __introReady}<div class="panel" use:trapFocus in:fly={panelIn(560)} out:fly={panelOut(560)}>
   <div class="panel-head">
     <span class="panel-title">Time Travel</span>
     {#if logs.length > 0}
@@ -221,7 +230,7 @@
       {/if}
     {/if}
   </div>
-</div>
+</div>{/if}
 
 {#if detailTask && detailProject}
   {#key detailTask._id + ':' + detailOpenSession}
@@ -254,13 +263,14 @@
   .clear-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--muted);
-    padding: 4px 10px;
+    padding: 4px 10px; transition: color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .clear-btn:hover { color: var(--danger); border-color: var(--danger); }
 
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
+    transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .close-btn:hover { color: var(--text); background: var(--hover); }
 
@@ -335,6 +345,7 @@
     padding: .5rem 1.2rem; border-radius: var(--radius-sm);
     border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
     font-size: .82rem; font-weight: 500; cursor: pointer;
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .load-more-btn:hover:not(:disabled) { background: var(--hover); }
   .load-more-btn:disabled { opacity: .6; cursor: default; }

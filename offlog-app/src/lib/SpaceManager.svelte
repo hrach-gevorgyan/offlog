@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { fly, fade } from 'svelte/transition';
-  import { panelFly, scrimFade } from './motion';
+  import { fade, fly } from 'svelte/transition';
+  import { panelIn, panelOut, panelScrimIn, panelScrimOut, popIn, popOut } from './motion';
   import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe, findSpacesByName } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
@@ -9,6 +9,15 @@
   import { trapFocus } from './focusTrap';
   import type { SpaceDoc } from './types';
   import { SPACE_ICONS, DEFAULT_SPACE_ICON_KEY, getSpaceIconSvg } from './spaceIcons';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -129,9 +138,10 @@
 <svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click|self={() => requestClose()} transition:fade={scrimFade}></div>
+{#if __introReady}
+<div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(420)} out:fade={panelScrimOut(420)}></div>
 
-<div class="panel" use:trapFocus transition:fly={panelFly}>
+<div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Manage Spaces</span>
     <button class="close-btn" on:click={() => requestClose()}>✕</button>
@@ -150,7 +160,7 @@
             {@html getSpaceIconSvg(s)}
           </button>
           {#if iconPickerFor === s._id}
-            <div class="icon-picker">
+            <div class="icon-picker" in:fly={popIn} out:fly={popOut}>
               {#each SPACE_ICONS as opt (opt.key)}
                 <button type="button" class="icon-opt" class:selected={(s.icon ?? DEFAULT_SPACE_ICON_KEY) === opt.key} title={opt.key} on:click={() => setIcon(s, opt.key)}>
                   {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg>`}
@@ -195,7 +205,7 @@
             {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SPACE_ICONS.find(i => i.key === newIcon)!.svg}</svg>`}
           </button>
           {#if iconPickerFor === 'new'}
-            <div class="icon-picker">
+            <div class="icon-picker" in:fly={popIn} out:fly={popOut}>
               {#each SPACE_ICONS as opt (opt.key)}
                 <button type="button" class="icon-opt" class:selected={newIcon === opt.key} title={opt.key} on:click={() => { newIcon = opt.key; iconPickerFor = null; }}>
                   {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg>`}
@@ -221,6 +231,7 @@
     {/if}
   </div>
 </div>
+{/if}
 
 <style>
   /* .scrim is defined globally in app.css */
@@ -242,6 +253,7 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -260,7 +272,7 @@
   .icon-btn {
     width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
     background: none; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
-    color: var(--faint);
+    color: var(--faint); transition: border-color var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .icon-btn:hover { border-color: var(--accent); color: var(--text); }
   .icon-btn :global(svg) { width: 13px; height: 13px; }
@@ -274,7 +286,7 @@
   .icon-opt {
     width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
     background: none; border: none; border-radius: 6px; cursor: pointer;
-    color: var(--muted);
+    color: var(--muted); transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .icon-opt:hover { background: var(--hover); color: var(--text); }
   .icon-opt.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
@@ -283,6 +295,7 @@
   .name-btn {
     flex: 1; text-align: left; background: none; border: none; cursor: pointer;
     font-size: 14px; color: var(--text); padding: .3rem .4rem; border-radius: 6px;
+    transition: background var(--dur-hover) var(--ease-hover);
   }
   .name-btn:hover { background: var(--hover); }
 
@@ -296,6 +309,7 @@
   .reorder-btns button {
     background: none; border: none; cursor: pointer; color: var(--faint);
     padding: .25rem .4rem; border-radius: 6px; font-size: 13px;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .reorder-btns button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
   .reorder-btns button:disabled { opacity: .3; cursor: default; }
@@ -303,7 +317,7 @@
   .delete-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    flex-shrink: 0;
+    flex-shrink: 0; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 

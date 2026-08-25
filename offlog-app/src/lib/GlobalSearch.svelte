@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { scrimFade } from './motion';
+  import { scrimIn, scrimOut, searchIn, searchOut } from './motion';
   import { searchAllTasks, type TaskSearchMatch } from './db';
   import { projects } from './store';
   import type { TaskDoc, ProjectDoc } from './types';
@@ -10,6 +10,15 @@
   import { closeOnBack, discardTop } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { localDateStr, escapeHtml } from './utils';
+  // Svelte does not run intro transitions on a component's own root elements
+  // when the component itself is being created -- and every panel here is
+  // created by a parent's {#if}. The result was that no modal in this app
+  // animated at all, however carefully its preset was tuned. Gating the
+  // markup on a flag set in onMount() makes the elements the product of an
+  // UPDATE inside this component, which is what Svelte animates.
+  // See docs/motion.md.
+  let __introReady = false;
+  onMount(() => { __introReady = true; });
 
   export let commands: Command[] = [];
 
@@ -111,9 +120,10 @@
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
-<div class="scrim" on:click={() => requestClose()} transition:fade={scrimFade}></div>
+{#if __introReady}
+<div class="scrim" on:click={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}></div>
 
-<div class="search-panel" use:trapFocus>
+<div class="search-panel" use:trapFocus in:searchIn out:searchOut>
   <div class="search-bar">
     <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
       <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
@@ -203,6 +213,7 @@
     <span>Esc close</span>
   </div>
 </div>
+{/if}
 
 <style>
   /* .scrim is defined globally in app.css */
@@ -228,7 +239,7 @@
   .clear-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 13px; padding: 2px 5px;
-    border-radius: 4px;
+    border-radius: 4px; transition: color var(--dur-hover) var(--ease-hover);
   }
   .clear-btn:hover { color: var(--text); }
 
@@ -247,7 +258,7 @@
   .result-row {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 16px; cursor: pointer;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border); transition: background var(--dur-hover) var(--ease-hover);
   }
   .result-row:last-child { border-bottom: none; }
   .result-row.selected { background: var(--hover); }

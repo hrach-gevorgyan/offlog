@@ -17,6 +17,11 @@ const NOW = new Date('2026-03-16T05:30:00Z');
 
 const trigger = (c: HTMLElement) => c.querySelector('.cal-trigger') as HTMLButtonElement;
 const popover = (c: HTMLElement) => c.querySelector('.cal-popover') as HTMLDivElement | null;
+// The popover's outro leaves the element mounted under jsdom's stubbed
+// Element.animate, so "closed" is read off the trigger's aria-expanded rather
+// than the popover's presence -- same reasoning as CustomSelect.test.ts.
+const isOpen = (c: HTMLElement) =>
+  (c.querySelector('.cal-trigger') as HTMLButtonElement).getAttribute('aria-expanded') === 'true';
 const monthLabel = (c: HTMLElement) => c.querySelector('.cal-month-label')!.textContent;
 const dayEls = (c: HTMLElement) => [...c.querySelectorAll('.cal-day')] as HTMLButtonElement[];
 const day = (c: HTMLElement, n: string) => {
@@ -74,7 +79,7 @@ describe('CalendarPicker date emission', () => {
     await open(container);
     await fireEvent.click(footerBtn(container, 'Clear'));
     expect(emitted(change)).toEqual(['']);
-    expect(popover(container)).toBeNull();
+    expect(isOpen(container)).toBe(false);
   });
 
   it('offers no Clear button when there is nothing to clear', async () => {
@@ -87,7 +92,7 @@ describe('CalendarPicker date emission', () => {
     const { container } = renderPicker({ value: '2026-03-15' });
     await open(container);
     await fireEvent.click(day(container, '2'));
-    expect(popover(container)).toBeNull();
+    expect(isOpen(container)).toBe(false);
   });
 });
 
@@ -105,7 +110,7 @@ describe('CalendarPicker with time', () => {
     const { container } = renderPicker({ value: '2026-03-15T14:30', withTime: true });
     await open(container);
     await fireEvent.click(day(container, '20'));
-    expect(popover(container)).not.toBeNull();
+    expect(isOpen(container)).toBe(true);
   });
 
   it('keeps the selected date when only the time changes', async () => {
@@ -181,20 +186,20 @@ describe('CalendarPicker open/close', () => {
     const { container } = renderPicker({ value: '2026-03-15' });
     await open(container);
     await fireEvent.keyDown(window, { key: 'Escape' });
-    expect(popover(container)).toBeNull();
+    expect(isOpen(container)).toBe(false);
   });
 
   it('closes on a click outside the field', async () => {
     const { container } = renderPicker({ value: '2026-03-15' });
     await open(container);
     await fireEvent.click(document.body);
-    await waitFor(() => { if (popover(container)) throw new Error('outside click left it open'); });
+    await waitFor(() => { if (isOpen(container)) throw new Error('outside click left it open'); });
   });
 
   it('does not open when disabled', async () => {
     const { container } = renderPicker({ value: '2026-03-15', disabled: true });
     await fireEvent.click(trigger(container));
-    expect(popover(container)).toBeNull();
+    expect(isOpen(container)).toBe(false);
   });
 
   it('shows the placeholder until a date is set', () => {

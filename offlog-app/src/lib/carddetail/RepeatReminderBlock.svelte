@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import type { TaskDoc } from '../types';
   import { requestPermission, permissionState } from '../notifications';
   import CalendarPicker from '../CalendarPicker.svelte';
@@ -25,7 +26,7 @@
               <svg class="section-chevron" class:open={showRepeatReminder} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
             </button>
             {#if showRepeatReminder}
-              <div class="extra-block-body" transition:slide={{ duration: 160 }}>
+              <div class="extra-block-body" in:slide={revealIn} out:slide={revealOut}>
                 <div class="repeat-block">
                   <div class="repeat-row">
                     <div class="repeat-select-wrap" class:compact={!!recurrenceStr}>

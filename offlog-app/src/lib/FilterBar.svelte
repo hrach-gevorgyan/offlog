@@ -10,6 +10,8 @@
   // to (string | number)[][], which silently degrades the filterPrio
   // assignment and the PRIO_COLOR index below to `any`.
   const PRIO_CHIPS: [number, string][] = [[0, 'All'], [1, 'Low'], [2, 'Med'], [3, 'High']];
+  import { fly } from 'svelte/transition';
+  import { popIn, popOut } from './motion';
   import CustomSelect from './CustomSelect.svelte';
 
   export let project: ProjectDoc;
@@ -125,7 +127,7 @@
     {#if activeFilters > 0}<span class="filter-count">{activeFilters}</span>{/if}
   </button>
   {#if showFilterMenu}
-    <div class="col-menu filter-menu" style="top:{menuPos.top}px; left:{menuPos.left}px;">
+    <div class="col-menu filter-menu" style="top:{menuPos.top}px; left:{menuPos.left}px;" in:fly={popIn} out:fly={popOut}>
       <div class="menu-label">Status</div>
       <CustomSelect options={statusOptions} bind:value={filterCol} />
 
@@ -196,6 +198,7 @@
     background: none; border: none; border-radius: 6px;
     color: var(--muted); font-size: 11.5px; font-weight: 500;
     padding: 7px 9px; cursor: pointer; white-space: nowrap;
+    transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .action-btn.compact { padding: 5px 8px; }
   .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
@@ -227,7 +230,7 @@
     border: 1px solid var(--border-strong); border-radius: 7px;
     background: var(--bg); color: var(--muted);
     font-size: 12px; font-weight: 500; padding: 5px 9px;
-    cursor: pointer;
+    cursor: pointer; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .prio-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
   .chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -253,6 +256,7 @@
     width: 100%;
     background: none; border: 1px solid var(--border-strong); border-radius: 7px;
     color: var(--muted); font-size: 11.5px; padding: 5px 10px; cursor: pointer;
+    transition: color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .clear-all:hover { color: var(--danger); border-color: var(--danger); }
 

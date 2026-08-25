@@ -429,7 +429,12 @@ native theming. Derived tints use
 | `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
 | `--border` | `#E2E4EA` | `#2F3542` | hairlines |
 | `--border-strong` | `#C7CBD6` | `#3F4657` | stronger dividers, scrollbar |
-| `--hover` | `#ECEEF2` | `#2A2F3A` | row/button hover |
+| `--state-hover` | `8%` | `8%` | hover tint alpha; `16%` in both high-contrast blocks |
+| `--state-press` | `12%` | `12%` | pressed tint alpha; `22%` in high contrast |
+| `--hover` | derived | derived | `color-mix(--text, --state-hover, transparent)` — a tint of the element's own ink, not an absolute colour. It was `#ECEEF2`, byte-identical to `--col-bg`, so hover on a Kanban column was invisible in light mode |
+| `--press` | derived | derived | same, at `--state-press` |
+| `--hover-on-surface` | derived | derived | opaque form, for a control with a solid `--surface` rest fill |
+| `--hover-on-col` | derived | derived | opaque form, for a solid `--col-bg` rest fill |
 | `--text` | `#1F2937` | `#F3F4F6` | primary ink |
 | `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
 | `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
