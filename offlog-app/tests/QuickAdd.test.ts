@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, cleanup } from '@testing-library/svelte';
+import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 import type { ProjectDoc } from '../src/lib/types';
 
 // db/store/modalStack are mocked; nlpParse stays REAL on purpose — these
@@ -93,7 +93,7 @@ describe('QuickAdd create pipeline (A32)', () => {
     expect(title).toBe('Buy milk');
     expect(reloadTasks).toHaveBeenCalledTimes(1);
     expect(q.created).toHaveBeenCalledTimes(1);
-    expect(q.close).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(q.close).toHaveBeenCalledTimes(1));
   });
 
   it('parses priority/tags out of the typed title (real nlpParse)', async () => {

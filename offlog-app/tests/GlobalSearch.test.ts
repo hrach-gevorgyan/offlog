@@ -168,7 +168,7 @@ describe('GlobalSearch keyboard navigation', () => {
 
     await fireEvent.keyDown(input(container), { key: 'Escape' });
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it('selection follows the mouse, so Enter runs the hovered row', async () => {
@@ -191,7 +191,7 @@ describe('GlobalSearch close behaviour per row type', () => {
     // Both are needed: discardTop() does the history bookkeeping, the
     // 'close' event unmounts the palette over the overlay it just opened.
     expect(discardTop).toHaveBeenCalledTimes(1);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(runOverlay).toHaveBeenCalledTimes(1);
   });
 

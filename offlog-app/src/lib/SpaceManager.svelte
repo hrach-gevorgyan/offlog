@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { panelIn, panelOut, panelScrimIn, panelScrimOut, popIn, popOut } from './motion';
+  import { panelIn, panelOut, panelScrimIn, panelScrimOut, popIn, popOut, exitMs } from './motion';
   import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe, findSpacesByName } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
@@ -20,7 +20,20 @@
   onMount(() => { __introReady = true; });
 
   const dispatch = createEventDispatcher<{ close: void }>();
-  const requestClose = closeOnBack(() => dispatch('close'));
+    // Closing hides the markup first and only tells the parent once the outro
+  // has played -- the parent's {#if} destroys this component the instant it
+  // hears, which would cut the exit off before its first frame.
+  //
+  // modalStack is deliberately untouched: closeOnBack() still runs
+  // history.back() immediately and unwinds its own entry, so back-button
+  // behaviour is identical. Only the parent notification waits.
+  //
+  // The duration is read HERE, at close time, so Reduce Motion is honoured
+  // even if it was switched on after this modal opened.
+  const requestClose = closeOnBack(() => {
+    __introReady = false;
+    setTimeout(() => dispatch('close'), exitMs.panel(420));
+  });
 
   let items: SpaceDoc[] = [];
   let editingId: string | null = null;
@@ -176,7 +189,7 @@
             class="name-input"
             autofocus
             bind:value={editingName}
-            on:keydown={(e) => { if (e.key === 'Enter') saveEdit(s); if (e.key === 'Escape') editingId = null; }}
+            on:keydown={(e) => { if (e.key === 'Enter') saveEdit(s); if (e.key === 'Escape') { e.stopPropagation(); editingId = null; } }}
             on:blur={() => saveEdit(s)}
           />
         {:else}
@@ -221,7 +234,7 @@
           placeholder="Space name…"
           bind:value={newName}
           on:input={() => checkSpaceNameDuplicate(newName)}
-          on:keydown={(e) => { if (e.key === 'Enter') addSpace(); if (e.key === 'Escape') { cancellingAddSpace = true; adding = false; duplicateSpaceHint = ''; } }}
+          on:keydown={(e) => { if (e.key === 'Enter') addSpace(); if (e.key === 'Escape') { e.stopPropagation(); cancellingAddSpace = true; adding = false; duplicateSpaceHint = ''; } }}
           on:blur={addSpace}
         />
       </div>

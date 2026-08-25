@@ -121,6 +121,22 @@ export function panelScrimOut(w: number) {
   return { get duration() { return d(OUT(panelDur(w))); }, easing: easeStandard };
 }
 
+// ── Exit timing, for components that must outlive their own close ────────────
+// A modal is destroyed the moment its parent's {#if} goes false, which kills
+// the outro before it can play. The fix is for the component to delay only
+// the dispatch that tells the parent -- modalStack is left alone: history.back()
+// and the stack unwind still happen immediately, so back-button semantics are
+// unchanged.
+//
+// Read at close time, never cached: these are getters so Reduce Motion (which
+// makes them 0) is honoured even if it was toggled after the modal opened.
+export const exitMs = {
+  get small() { return d(OUT(DUR.small)); },
+  get medium() { return d(OUT(DUR.medium)); },
+  get large() { return d(OUT(DUR.large)); },
+  panel(w: number) { return d(OUT(panelDur(w))); },
+};
+
 // ── Popovers, menus, dropdowns ───────────────────────────────────────────────
 // Appear next to the control that opened them: short travel, short duration.
 export const popIn = { y: 4, get duration() { return d(DUR.small); }, easing: easeDecelerate };

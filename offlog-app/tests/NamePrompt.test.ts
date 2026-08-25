@@ -79,7 +79,7 @@ describe('NamePrompt step 1', () => {
     await fireEvent.click(btn(container, 'Skip'));
 
     expect(setDeviceName).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
   it('Next saves the typed name and moves on', async () => {
@@ -105,7 +105,7 @@ describe('NamePrompt step 1', () => {
     await fireEvent.keyDown(window, { key: 'Escape' });
 
     expect(setDeviceName).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
   it('scrim click leaves the flow without writing', async () => {
@@ -113,7 +113,7 @@ describe('NamePrompt step 1', () => {
     await fireEvent.click(container.querySelector('.prompt-scrim')!);
 
     expect(setDeviceName).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 });
 
@@ -200,6 +200,6 @@ describe('NamePrompt preferences step', () => {
     await toPrefs(container);
 
     await fireEvent.click(btn(container, 'Done'));
-    expect(close).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 });

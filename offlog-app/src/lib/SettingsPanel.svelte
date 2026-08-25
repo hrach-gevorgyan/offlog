@@ -28,7 +28,7 @@
   import { trapFocus } from './focusTrap';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from './theme';
   import { fade, scale } from 'svelte/transition';
-  import { scrimIn, scrimOut, dialogIn, dialogOut, centredIn, centredOut, viewIn } from './motion';
+  import { scrimIn, scrimOut, dialogIn, dialogOut, centredIn, centredOut, viewIn, exitMs } from './motion';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -40,7 +40,20 @@
   onMount(() => { __introReady = true; });
 
   const dispatch = createEventDispatcher<{ close: void }>();
-  const requestClose = closeOnBack(() => dispatch('close'));
+    // Closing hides the markup first and only tells the parent once the outro
+  // has played -- the parent's {#if} destroys this component the instant it
+  // hears, which would cut the exit off before its first frame.
+  //
+  // modalStack is deliberately untouched: closeOnBack() still runs
+  // history.back() immediately and unwinds its own entry, so back-button
+  // behaviour is identical. Only the parent notification waits.
+  //
+  // The duration is read HERE, at close time, so Reduce Motion is honoured
+  // even if it was switched on after this modal opened.
+  const requestClose = closeOnBack(() => {
+    __introReady = false;
+    setTimeout(() => dispatch('close'), exitMs.medium);
+  });
 
   // Every tab follows one visual language: a plain-language intro line
   // (optional), rows of .setting-row (a label + a toggle/value/button),

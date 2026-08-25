@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fade, fly, scale, slide } from 'svelte/transition';
-  import { scrimIn, scrimOut, centredIn, centredOut, popIn, popOut, revealIn, revealOut } from './motion';
+  import { scrimIn, scrimOut, centredIn, centredOut, popIn, popOut, revealIn, revealOut, exitMs } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension } from './attachments';
@@ -36,7 +36,20 @@
   export let project: ProjectDoc;
 
   const dispatch = createEventDispatcher<{ close: void; openRelated: string }>();
-  const requestClose = closeOnBack(() => dispatch('close'));
+    // Closing hides the markup first and only tells the parent once the outro
+  // has played -- the parent's {#if} destroys this component the instant it
+  // hears, which would cut the exit off before its first frame.
+  //
+  // modalStack is deliberately untouched: closeOnBack() still runs
+  // history.back() immediately and unwinds its own entry, so back-button
+  // behaviour is identical. Only the parent notification waits.
+  //
+  // The duration is read HERE, at close time, so Reduce Motion is honoured
+  // even if it was switched on after this modal opened.
+  const requestClose = closeOnBack(() => {
+    __introReady = false;
+    setTimeout(() => dispatch('close'), exitMs.medium);
+  });
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') requestClose();

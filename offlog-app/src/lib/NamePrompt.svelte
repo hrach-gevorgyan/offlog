@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { scrimIn, scrimOut, dialogIn, dialogOut } from './motion';
+  import { scrimIn, scrimOut, dialogIn, dialogOut, exitMs } from './motion';
   import { getDeviceName, setDeviceName, isNativePlatform, getSyncUrl, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h } from '../config';
   import { getThemeMode, setThemeMode, type ThemeMode } from './theme';
   import { permissionState, requestPermission } from './notifications';
@@ -54,8 +54,14 @@
   }
 
   // Step 1's "Skip" leaves the whole flow, not just that step.
+  //
+  // Hide the markup first and tell the parent only once the outro has played:
+  // the parent's {#if} destroys this component the instant it hears, which
+  // would cut the exit off before its first frame. Duration read here, at
+  // close time, so Reduce Motion is honoured.
   function dismiss() {
-    dispatch('close');
+    __introReady = false;
+    setTimeout(() => dispatch('close'), exitMs.medium);
   }
 
   function next() {

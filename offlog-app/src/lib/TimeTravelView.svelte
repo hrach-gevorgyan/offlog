@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { panelIn, panelOut, panelScrimIn, panelScrimOut } from './motion';
+  import { panelIn, panelOut, panelScrimIn, panelScrimOut, exitMs } from './motion';
   import { getRecentLogs, getTaskById, clearLogs, subscribe } from './db';
   import { projects, showError } from './store';
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from './logFormat';
@@ -26,7 +26,20 @@
   // per-row detail (project badge, source pill, Clear all) and
   // click-to-open on task entries.
   const dispatch = createEventDispatcher();
-  const requestClose = closeOnBack(() => dispatch('close'));
+    // Closing hides the markup first and only tells the parent once the outro
+  // has played -- the parent's {#if} destroys this component the instant it
+  // hears, which would cut the exit off before its first frame.
+  //
+  // modalStack is deliberately untouched: closeOnBack() still runs
+  // history.back() immediately and unwinds its own entry, so back-button
+  // behaviour is identical. Only the parent notification waits.
+  //
+  // The duration is read HERE, at close time, so Reduce Motion is honoured
+  // even if it was switched on after this modal opened.
+  const requestClose = closeOnBack(() => {
+    __introReady = false;
+    setTimeout(() => dispatch('close'), exitMs.panel(560));
+  });
 
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') requestClose();

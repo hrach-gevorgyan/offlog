@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { scrimIn, scrimOut, quickAddIn, quickAddOut, revealIn, revealOut } from './motion';
+  import { scrimIn, scrimOut, quickAddIn, quickAddOut, revealIn, revealOut, exitMs } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask, findTasksByTitleInProject } from './db';
   import { closeOnBack } from './modalStack';
@@ -24,7 +24,20 @@
   export let initialDueDate: string | null = null;
 
   const dispatch = createEventDispatcher<{ close: void; created: void }>();
-  const requestClose = closeOnBack(() => dispatch('close'));
+    // Closing hides the markup first and only tells the parent once the outro
+  // has played -- the parent's {#if} destroys this component the instant it
+  // hears, which would cut the exit off before its first frame.
+  //
+  // modalStack is deliberately untouched: closeOnBack() still runs
+  // history.back() immediately and unwinds its own entry, so back-button
+  // behaviour is identical. Only the parent notification waits.
+  //
+  // The duration is read HERE, at close time, so Reduce Motion is honoured
+  // even if it was switched on after this modal opened.
+  const requestClose = closeOnBack(() => {
+    __introReady = false;
+    setTimeout(() => dispatch('close'), exitMs.large);
+  });
 
   let title = '';
   let projectId = '';
