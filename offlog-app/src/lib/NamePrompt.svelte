@@ -5,7 +5,7 @@
   import { getThemeMode, setThemeMode, type ThemeMode } from './theme';
   import { permissionState, requestPermission } from './notifications';
   import { trapFocus } from './focusTrap';
-  import { dialogPop, scrimFade } from './motion';
+  import { scrimFade } from './motion';
 
   // 'setupSync' fires only from step 2's "Set up sync" button — App.svelte
   // uses it to open Settings straight into the Sync tab. 'close' fires
@@ -81,7 +81,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="prompt-scrim" on:click|self={decline} transition:fade={scrimFade}></div>
 {#if step === 1}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus transition:dialogPop>
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
     <p class="prompt-title">What should we call this device?</p>
     <p class="prompt-hint">Shows up on this device's own edits when synced with others — changelog entries, task history. You can change this later in Settings, or skip for now.</p>
     <!-- svelte-ignore a11y-autofocus -->
@@ -92,7 +92,7 @@
     </div>
   </div>
 {:else if step === 2}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus transition:dialogPop>
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
     <p class="prompt-title">Sync across your devices?</p>
     <p class="prompt-hint">
       Offlog can keep this device in sync with your other phones or a PC running the Offlog desktop app — everything stays local, there's no account or cloud involved. If you'd rather use this device on its own, that's the default and nothing else needs to change.
@@ -104,7 +104,7 @@
     </div>
   </div>
 {:else}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus transition:dialogPop>
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus>
     <p class="prompt-title">A couple of quick preferences</p>
     <p class="prompt-hint">All of this lives in Settings too, whenever you want to change it.</p>
 
@@ -176,7 +176,6 @@
   .skip-btn, .save-btn {
     padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
     border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
-    transition: background .12s, opacity .12s;
   }
   .skip-btn:hover { background: var(--hover); }
   .save-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }

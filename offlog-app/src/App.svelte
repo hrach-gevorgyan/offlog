@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { fade, scale } from 'svelte/transition';
-  import { scrimFade, toastFly, dialogScale, pageFade } from './lib/motion';
+  import { fade } from 'svelte/transition';
+  import { scrimFade, toastFly } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
   import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
@@ -511,7 +511,7 @@
 
     <main class="main">
       {#if showDashboard}
-        <div class="view-fade" transition:fade={pageFade}>
+        <div class="view-fade">
           <DashboardView
             on:menu={() => sidebarOpen = true}
             on:openProject={(e) => {
@@ -524,15 +524,15 @@
           />
         </div>
       {:else if showFocus}
-        <div class="view-fade" transition:fade={pageFade}>
+        <div class="view-fade">
           <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
         </div>
       {:else if showAgenda}
-        <div class="view-fade" transition:fade={pageFade}>
+        <div class="view-fade">
           <AgendaView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
         </div>
       {:else if $activeProject}
-      <div class="view-fade" transition:fade={pageFade}>
+      <div class="view-fade">
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
             <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -615,7 +615,7 @@
       </div>
 
       {:else}
-        <div class="view-fade" transition:fade={pageFade}>
+        <div class="view-fade">
         <div class="empty-state">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
             <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -694,7 +694,7 @@
 {#if showShortcuts}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="scrim" on:click|self={closeShortcuts} transition:fade={scrimFade}>
-    <div class="shortcuts-panel" transition:scale={dialogScale}>
+    <div class="shortcuts-panel">
       <div class="shortcuts-head">
         <h3>Keyboard shortcuts</h3>
         <button class="shortcuts-close" on:click={closeShortcuts} aria-label="Close">✕</button>
@@ -770,7 +770,6 @@
     background: none; border: none; cursor: pointer;
     color: var(--text); padding: 4px; border-radius: 6px;
     flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
   }
   .hamburger:hover { background: var(--hover); }
 
@@ -805,7 +804,6 @@
     background: none; border: none;
     border-radius: 6px; padding: 0 8px; cursor: pointer;
     color: var(--muted);
-    transition: color .12s, background .12s;
     flex-shrink: 0;
   }
   .search-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
@@ -820,7 +818,6 @@
     border: none; cursor: pointer; font-family: inherit; font-size: 13px;
     font-weight: 600; padding: 0 13px; border-radius: 7px;
     background: transparent; color: var(--muted);
-    transition: background .12s, color .12s, box-shadow .12s;
   }
   .view-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
   .view-btn:not(.active):hover { color: var(--text); }
@@ -875,7 +872,6 @@
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     box-shadow: 0 4px 16px rgba(0,0,0,.25);
     display: flex; align-items: center; justify-content: center;
-    transition: transform .12s, box-shadow .12s, opacity .12s;
   }
   .fab:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(0,0,0,.3); }
   .fab:active { transform: scale(.96); }
@@ -934,7 +930,6 @@
   .toast-undo {
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
-    transition: opacity .12s;
   }
   .toast-undo:hover { opacity: .85; }
   .toast-close {

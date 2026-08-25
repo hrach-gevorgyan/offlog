@@ -128,7 +128,6 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -143,7 +142,7 @@
   .archive-btn {
     flex-shrink: 0; background: var(--accent); border: none; cursor: pointer;
     color: var(--on-accent); font-size: 13px; font-weight: 600; padding: .48rem .8rem;
-    border-radius: var(--radius-sm); transition: opacity .12s;
+    border-radius: var(--radius-sm);
   }
   .archive-btn:hover:not(:disabled) { opacity: .88; }
   .archive-btn:disabled { opacity: .45; cursor: default; }
@@ -164,7 +163,6 @@
   .delete-btn {
     flex-shrink: 0; background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 </style>

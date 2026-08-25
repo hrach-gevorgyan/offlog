@@ -254,14 +254,13 @@
   .clear-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--muted);
-    padding: 4px 10px; transition: color .12s, border-color .12s;
+    padding: 4px 10px;
   }
   .clear-btn:hover { color: var(--danger); border-color: var(--danger); }
 
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
-    transition: color .12s, background .12s;
   }
   .close-btn:hover { color: var(--text); background: var(--hover); }
 
@@ -336,7 +335,6 @@
     padding: .5rem 1.2rem; border-radius: var(--radius-sm);
     border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
     font-size: .82rem; font-weight: 500; cursor: pointer;
-    transition: background .12s;
   }
   .load-more-btn:hover:not(:disabled) { background: var(--hover); }
   .load-more-btn:disabled { opacity: .6; cursor: default; }

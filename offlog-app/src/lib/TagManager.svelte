@@ -156,7 +156,6 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -171,7 +170,6 @@
   .name-btn {
     flex: 1; text-align: left; background: none; border: none; cursor: pointer;
     font-family: var(--mono); font-size: 13px; color: var(--text); padding: .3rem .4rem; border-radius: 6px;
-    transition: background .12s;
   }
   .name-btn:hover { background: var(--hover); }
 
@@ -188,14 +186,13 @@
   .delete-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    flex-shrink: 0; transition: background .12s, color .12s;
+    flex-shrink: 0;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 
   .color-dot {
     width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
     border: 1.5px solid var(--border-strong); cursor: pointer; padding: 0;
-    transition: transform .12s;
   }
   .color-dot:hover { transform: scale(1.15); }
 
@@ -206,7 +203,6 @@
   .swatch {
     width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
     border: 1.5px solid transparent; cursor: pointer; padding: 0;
-    transition: transform .12s, border-color .12s;
   }
   .swatch:hover { transform: scale(1.15); }
   .swatch-active { border-color: var(--text); }
@@ -214,7 +210,6 @@
     margin-left: 4px; background: none; border: 1px solid var(--border-strong);
     color: var(--faint); font-family: var(--mono); font-size: 10.5px;
     padding: 2px 8px; border-radius: 6px; cursor: pointer;
-    transition: background .12s, color .12s;
   }
   .swatch-auto:hover { background: var(--hover); color: var(--text); }
 </style>

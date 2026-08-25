@@ -363,7 +363,6 @@
     background: none; border: none; cursor: pointer;
     color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
   }
   .hamburger:hover { background: var(--hover); }
 
@@ -373,7 +372,7 @@
   .reset-btn {
     background: none; border: 1.5px solid var(--border-strong); color: var(--muted);
     font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 9px; cursor: pointer;
-    flex-shrink: 0; transition: background .12s, color .12s, border-color .12s;
+    flex-shrink: 0;
     /* header is align-items:flex-start — this button sits centered
        against the row instead. */
     align-self: center;
@@ -384,7 +383,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; flex-shrink: 0;
     background: none; border: 1px solid var(--border-strong); border-radius: 8px;
-    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+    color: var(--muted); cursor: pointer;
     align-self: center;
   }
   .palette-btn:hover { color: var(--text); background: var(--hover); }
@@ -420,7 +419,6 @@
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.05);
     transform: rotate(var(--tilt)) translateY(var(--jitter, 0px));
-    transition: transform .12s, box-shadow .12s, border-color .12s, background .12s;
   }
   .note:hover { transform: rotate(0deg) translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
   .note.selected {
@@ -458,7 +456,6 @@
     border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
     margin-bottom: 8px; cursor: pointer;
-    transition: background .12s, box-shadow .12s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 
@@ -478,7 +475,6 @@
     background: none; padding: 0;
     display: flex; align-items: center; justify-content: center;
     border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s;
   }
   .circle:hover { border-color: var(--accent); }
   .circle.done { border-color: var(--accent); }
@@ -497,7 +493,6 @@
     background: var(--surface);
     border: 1.6px solid var(--border-strong); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    transition: border-color .12s, background .12s;
   }
   .check.checked { background: var(--accent); border-color: var(--accent); }
 
@@ -538,7 +533,7 @@
     width: auto; min-width: 240px;
     background: var(--accent); color: var(--on-accent); border: 1.5px solid var(--accent);
     font-size: 15px; font-weight: 700; padding: 13px 32px; border-radius: 12px;
-    cursor: pointer; transition: opacity .12s;
+    cursor: pointer;
   }
   .commit-btn:disabled { opacity: .4; cursor: not-allowed; }
   .commit-btn:not(:disabled):hover { opacity: .9; }

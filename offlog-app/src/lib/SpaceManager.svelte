@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fly, fade } from 'svelte/transition';
-  import { panelFly, scrimFade, popScale } from './motion';
+  import { panelFly, scrimFade } from './motion';
   import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe, findSpacesByName } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
@@ -150,7 +150,7 @@
             {@html getSpaceIconSvg(s)}
           </button>
           {#if iconPickerFor === s._id}
-            <div class="icon-picker" transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
+            <div class="icon-picker">
               {#each SPACE_ICONS as opt (opt.key)}
                 <button type="button" class="icon-opt" class:selected={(s.icon ?? DEFAULT_SPACE_ICON_KEY) === opt.key} title={opt.key} on:click={() => setIcon(s, opt.key)}>
                   {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg>`}
@@ -195,7 +195,7 @@
             {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SPACE_ICONS.find(i => i.key === newIcon)!.svg}</svg>`}
           </button>
           {#if iconPickerFor === 'new'}
-            <div class="icon-picker" transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
+            <div class="icon-picker">
               {#each SPACE_ICONS as opt (opt.key)}
                 <button type="button" class="icon-opt" class:selected={newIcon === opt.key} title={opt.key} on:click={() => { newIcon = opt.key; iconPickerFor = null; }}>
                   {@html `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opt.svg}</svg>`}
@@ -242,7 +242,6 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -261,7 +260,7 @@
   .icon-btn {
     width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
     background: none; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
-    color: var(--faint); transition: border-color .12s, color .12s;
+    color: var(--faint);
   }
   .icon-btn:hover { border-color: var(--accent); color: var(--text); }
   .icon-btn :global(svg) { width: 13px; height: 13px; }
@@ -275,7 +274,7 @@
   .icon-opt {
     width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
     background: none; border: none; border-radius: 6px; cursor: pointer;
-    color: var(--muted); transition: background .12s, color .12s;
+    color: var(--muted);
   }
   .icon-opt:hover { background: var(--hover); color: var(--text); }
   .icon-opt.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
@@ -284,7 +283,6 @@
   .name-btn {
     flex: 1; text-align: left; background: none; border: none; cursor: pointer;
     font-size: 14px; color: var(--text); padding: .3rem .4rem; border-radius: 6px;
-    transition: background .12s;
   }
   .name-btn:hover { background: var(--hover); }
 
@@ -298,7 +296,6 @@
   .reorder-btns button {
     background: none; border: none; cursor: pointer; color: var(--faint);
     padding: .25rem .4rem; border-radius: 6px; font-size: 13px;
-    transition: background .12s, color .12s;
   }
   .reorder-btns button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
   .reorder-btns button:disabled { opacity: .3; cursor: default; }
@@ -306,7 +303,7 @@
   .delete-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    flex-shrink: 0; transition: background .12s, color .12s;
+    flex-shrink: 0;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 

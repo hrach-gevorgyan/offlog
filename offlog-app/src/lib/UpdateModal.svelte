@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { trapFocus } from './focusTrap';
-  import { dialogPop, scrimFade } from './motion';
+  import { scrimFade } from './motion';
   import { updateState, showUpdateModal, downloadUpdate, installUpdate } from './updateChecker';
   import { escapeHtml } from './utils';
 
@@ -63,7 +63,7 @@
 {#if $showUpdateModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="update-scrim" on:click|self={close} transition:fade={scrimFade}></div>
-  <div class="update-panel" role="dialog" aria-modal="true" use:trapFocus transition:dialogPop>
+  <div class="update-panel" role="dialog" aria-modal="true" use:trapFocus>
     {#if $updateState.phase === 'available'}
       <p class="update-title">Offlog {$updateState.version} is available</p>
       {#if $updateState.body}
@@ -132,7 +132,6 @@
   .later-btn, .primary-btn {
     padding: .5rem 1rem; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
     border: 1px solid var(--border-strong); background: var(--bg); color: var(--text);
-    transition: background .12s, opacity .12s;
   }
   .later-btn:hover { background: var(--hover); }
   .primary-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }

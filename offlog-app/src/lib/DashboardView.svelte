@@ -294,7 +294,6 @@
     background: none; border: none; cursor: pointer;
     color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
   }
   .hamburger:hover { background: var(--hover); }
 
@@ -302,7 +301,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; margin-left: auto; flex-shrink: 0;
     background: none; border: 1px solid var(--border-strong); border-radius: 8px;
-    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+    color: var(--muted); cursor: pointer;
     /* header is align-items:flex-start, but this button sits centered
        against the row rather than pinned to the top like the (multi-line)
        title block. */
@@ -321,7 +320,6 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
     padding: 14px 20px; margin-bottom: 20px; cursor: pointer;
     display: flex; flex-direction: column; gap: 8px;
-    transition: border-color .12s, box-shadow .12s;
   }
   .brief:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.09); }
   .brief-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -361,7 +359,6 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); opacity: .7;
     font-size: 11px; padding: 8px 12px 0; text-align: left;
-    transition: opacity .12s, color .12s;
   }
   .view-all:hover { opacity: 1; color: var(--muted); }
 
@@ -390,7 +387,6 @@
   .proj-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
     padding: 18px 20px; cursor: pointer;
-    transition: border-color .12s, box-shadow .12s, transform .12s;
     display: flex; flex-direction: column; gap: 8px;
   }
   .proj-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.09); transform: translateY(-1px); }
@@ -433,7 +429,7 @@
   .task-row {
     display: flex; align-items: stretch; gap: 9px;
     padding: 9px 12px; background: var(--surface);
-    cursor: pointer; transition: background .12s;
+    cursor: pointer;
   }
   .task-row:hover { background: var(--hover); }
   /* align-self:stretch, not a fixed height — titles wrap rather than

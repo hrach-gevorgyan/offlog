@@ -172,7 +172,6 @@
     padding: .38rem .5rem; border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm); background: var(--surface); color: var(--faint);
     font-size: .84rem; font-family: 'Hanken Grotesk', sans-serif; cursor: pointer;
-    transition: border-color .12s;
   }
   .cal-trigger svg { flex-shrink: 0; opacity: .8; }
   .cal-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
@@ -191,7 +190,6 @@
   .cal-nav {
     background: none; border: none; cursor: pointer; color: var(--muted);
     font-size: 1rem; line-height: 1; padding: 3px 8px; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .cal-nav:hover { background: var(--hover); color: var(--text); }
   .cal-month-label { font-size: .82rem; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
@@ -209,7 +207,7 @@
   .cal-day {
     aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
     background: none; border: none; border-radius: 6px; cursor: pointer;
-    font-size: .78rem; color: var(--text); transition: background .12s, color .12s;
+    font-size: .78rem; color: var(--text);
   }
   .cal-day:hover { background: var(--hover); }
   .cal-day.today { color: var(--accent); font-weight: 700; }
@@ -222,7 +220,6 @@
   .cal-footer-btn {
     flex: 1; padding: .3rem 0; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .76rem; font-weight: 500; cursor: pointer;
-    transition: background .12s;
   }
   .cal-footer-btn:hover { background: var(--hover); }
   .cal-footer-btn-clear { color: var(--danger); }

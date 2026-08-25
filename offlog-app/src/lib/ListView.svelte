@@ -774,7 +774,6 @@
     background: none; border: none; border-radius: 6px;
     color: var(--muted); font-size: 11.5px; font-weight: 500;
     padding: 7px 9px; cursor: pointer; white-space: nowrap;
-    transition: color .12s, background .12s;
   }
   .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
   .action-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -798,7 +797,7 @@
 
   .toggle-mini {
     width: 30px; height: 17px; border-radius: 9px; border: none; cursor: pointer;
-    background: var(--border-strong); position: relative; transition: background .2s;
+    background: var(--border-strong); position: relative;
     flex-shrink: 0; padding: 0;
   }
   .toggle-mini.on { background: var(--accent); }
@@ -857,7 +856,7 @@
     font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--faint); text-align: left;
     background: none; border: none; cursor: grab; padding: 11px 0;
-    display: flex; align-items: center; gap: 5px; transition: color .12s;
+    display: flex; align-items: center; gap: 5px;
   }
   .th-btn:hover { color: var(--text); }
   .th-btn:active { cursor: grabbing; }
@@ -873,7 +872,7 @@
     position: relative;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
-    cursor: pointer; transition: background .12s;
+    cursor: pointer;
   }
   .grid-row:last-child { border-bottom: none; }
   .grid-row:hover { background: var(--hover); }
@@ -902,7 +901,7 @@
     width: 16px; height: 16px; padding: 0; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     border-radius: 5px; border: 1.6px solid var(--border-strong);
-    background: var(--surface); transition: border-color .12s, background .12s;
+    background: var(--surface);
   }
   .row-check:hover { border-color: var(--accent); }
   .row-check.checked { background: var(--accent); border-color: var(--accent); }
@@ -926,7 +925,6 @@
     border: 1px solid var(--border-strong); border-radius: 6px;
     background: var(--surface); color: var(--text);
     font-size: 12.5px; font-weight: 500; padding: 5px 10px; cursor: pointer;
-    transition: background .12s;
   }
   .bulk-btn:hover { background: var(--hover); }
   .bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -938,7 +936,6 @@
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
     border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s;
     display: flex; align-items: center; justify-content: center;
   }
   .circle:hover { border-color: var(--accent); }
@@ -983,7 +980,7 @@
   .unarchive-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     color: var(--muted); font-size: 11px; padding: 3px 8px; cursor: pointer;
-    white-space: nowrap; flex-shrink: 0; transition: color .12s, border-color .12s;
+    white-space: nowrap; flex-shrink: 0;
   }
   .unarchive-btn:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -1000,7 +997,6 @@
   .undo-btn {
     background: var(--accent); color: var(--on-accent); border: none; cursor: pointer;
     padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
-    transition: opacity .12s;
   }
   .undo-btn:hover { opacity: .85; }
 

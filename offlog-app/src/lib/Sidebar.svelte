@@ -755,7 +755,6 @@
     width: 26px; height: 26px; flex-shrink: 0;
     background: none; border: 1px solid transparent; cursor: pointer;
     color: var(--faint); border-radius: var(--radius-sm);
-    transition: background .12s, color .12s, border-color .12s;
   }
   .collapse-toggle:hover { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
   /* Collapsed mode gives this the same box treatment and 32px size as
@@ -798,7 +797,6 @@
   .tree-section-collapsed {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem;
     padding-top: .5rem; flex: 1 1 auto; min-height: 0; overflow-y: auto;
-    transition: opacity .2s ease, transform .2s ease;
   }
   /* Clicking a space icon holds the rail in this lifted/faded state (see
      expandToSpace()'s `expanding` flag) for one width-transition's worth
@@ -813,7 +811,7 @@
        translucent fill a light/neutral space color (the default gray)
        nearly vanishes against the sidebar background. */
     border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
-    opacity: .8; transition: opacity .12s, box-shadow .12s;
+    opacity: .8;
   }
   .space-icon-only :global(svg) { width: 15px; height: 15px; }
   .space-icon-only:hover, .space-icon-only.active { opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
@@ -832,7 +830,6 @@
   .resize-handle::before {
     content: ''; width: 3px; height: 28px; border-radius: 3px;
     background: var(--border-strong); opacity: .6;
-    transition: opacity .12s, background .12s;
   }
   .resize-handle:hover, .resize-handle:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
   .resize-handle:hover::before, .resize-handle:active::before { opacity: 1; background: var(--muted); }
@@ -859,7 +856,6 @@
     padding: .42rem .55rem; border-radius: var(--radius-sm);
     background: none; color: var(--muted);
     font-weight: 600; font-size: .85rem; letter-spacing: -.01em;
-    transition: background .12s, color .12s, box-shadow .12s;
   }
   .nav-btn svg { flex-shrink: 0; opacity: .85; }
   /* Subtle hover shadow, not just a flat background swap -- same
@@ -890,7 +886,6 @@
     background: none; border: none; cursor: pointer;
     padding: .4rem .5rem; border-radius: var(--radius-sm);
     color: var(--muted); text-align: left; width: 100%;
-    transition: background .12s, color .12s, box-shadow .12s;
   }
   .space-header:hover { background: var(--hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   /* Active space is marked by color plus weight, with no fill, border or
@@ -899,7 +894,7 @@
      weight as a second cue. */
   .space-header.active { color: var(--text); }
   .space-header.active .space-name { font-weight: 700; }
-  .space-chevron { flex-shrink: 0; color: var(--faint); transition: transform .12s ease, color .12s; }
+  .space-chevron { flex-shrink: 0; color: var(--faint); }
   .space-chevron.open { transform: rotate(90deg); }
   .space-icon {
     width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -920,7 +915,7 @@
   .proj-pin-btn {
     background: none; border: none; cursor: pointer; padding: .15rem .35rem;
     color: var(--faint); display: flex; align-items: center; border-radius: 4px;
-    opacity: 0; transition: opacity .12s, color .12s, background .12s;
+    opacity: 0;
     flex-shrink: 0;
   }
   .project-row:hover .proj-pin-btn { opacity: .8; }
@@ -931,7 +926,6 @@
     display: flex; align-items: center;
     border-radius: var(--radius-sm);
     padding-right: .3rem;
-    transition: background .12s, box-shadow .12s;
   }
   .project-row:hover { background: var(--hover); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
   /* A var(--surface) card needs an explicit border: --surface and
@@ -946,7 +940,7 @@
   .project-btn {
     flex: 1; background: none; border: none; cursor: pointer;
     padding: .38rem .55rem; color: var(--muted); font-size: .85rem;
-    text-align: left; transition: color .12s;
+    text-align: left;
   }
   .project-row.active .project-btn { color: var(--text); font-weight: 600; }
   .project-row:hover .project-btn { color: var(--text); }
@@ -955,7 +949,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .35rem;
     border-radius: 4px;
-    opacity: 0; transition: opacity .12s, color .12s, background .12s;
+    opacity: 0;
     line-height: 1;
   }
   .project-row:hover .proj-delete-btn { opacity: 1; }
@@ -973,7 +967,6 @@
   .template-toggle {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: .76rem; text-align: left; padding: 0 .1rem;
-    transition: color .12s;
   }
   .template-toggle:hover { color: var(--accent); }
   .template-checkbox {
@@ -997,7 +990,7 @@
   .add-project-btn {
     background: none; border: none; cursor: pointer;
     color: var(--accent); font-size: .82rem; font-weight: 500; text-align: left;
-    padding: .4rem .55rem; transition: color .12s;
+    padding: .4rem .55rem;
   }
   .add-project-btn:hover { color: var(--text); }
 
@@ -1040,7 +1033,6 @@
     background: var(--hover); border: 1px solid transparent;
     border-radius: 8px; cursor: pointer;
     color: var(--muted);
-    transition: background .12s, color .12s, border-color .12s;
   }
   .icon-btn svg { flex-shrink: 0; opacity: .85; }
   .icon-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border-strong); }

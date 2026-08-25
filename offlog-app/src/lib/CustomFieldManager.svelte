@@ -163,7 +163,6 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -180,7 +179,7 @@
 
   .row-edit-trigger {
     background: none; border: none; padding: 2px 4px; margin: -2px -4px; border-radius: 6px;
-    text-align: left; cursor: pointer; transition: background .12s;
+    text-align: left; cursor: pointer;
   }
   .row-edit-trigger:hover { background: var(--hover); }
 
@@ -196,7 +195,7 @@
   .delete-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
-    flex-shrink: 0; transition: background .12s, color .12s;
+    flex-shrink: 0;
   }
   .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 

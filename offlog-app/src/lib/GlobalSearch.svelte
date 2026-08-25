@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { searchPop, scrimFade } from './motion';
+  import { scrimFade } from './motion';
   import { searchAllTasks, type TaskSearchMatch } from './db';
   import { projects } from './store';
   import type { TaskDoc, ProjectDoc } from './types';
@@ -113,7 +113,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 <div class="scrim" on:click={() => requestClose()} transition:fade={scrimFade}></div>
 
-<div class="search-panel" use:trapFocus transition:searchPop>
+<div class="search-panel" use:trapFocus>
   <div class="search-bar">
     <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
       <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
@@ -228,7 +228,7 @@
   .clear-btn {
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 13px; padding: 2px 5px;
-    border-radius: 4px; transition: color .12s;
+    border-radius: 4px;
   }
   .clear-btn:hover { color: var(--text); }
 
@@ -247,7 +247,7 @@
   .result-row {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 16px; cursor: pointer;
-    border-bottom: 1px solid var(--border); transition: background .12s;
+    border-bottom: 1px solid var(--border);
   }
   .result-row:last-child { border-bottom: none; }
   .result-row.selected { background: var(--hover); }

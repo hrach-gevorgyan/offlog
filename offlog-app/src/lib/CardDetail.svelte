@@ -1,7 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { fly, slide } from 'svelte/transition';
-  import { popScale } from './motion';
+  import { slide } from 'svelte/transition';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension } from './attachments';
@@ -662,7 +661,7 @@
           <svg viewBox="0 0 14 14" width="16" height="16" fill="currentColor"><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="11" cy="7" r="1.3"/></svg>
         </button>
         {#if showActionsMenu}
-          <div class="actions-menu" bind:this={menuPanelEl} transition:fly={{ y: 4, duration: popScale.duration, easing: popScale.easing }}>
+          <div class="actions-menu" bind:this={menuPanelEl}>
             <button type="button" class="menu-item" on:click={() => { showActionsMenu = false; loadHistory(); }}>
               <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3l2 1.5"/></svg>
               {showHistory ? 'Hide history' : 'Show history'}
@@ -736,7 +735,7 @@
     background: none; border: none; cursor: pointer;
     width: 26px; height: 26px; border-radius: var(--radius-sm);
     color: var(--faint); padding: 0; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: background .12s, color .12s;
+    flex-shrink: 0;
   }
   .pin-btn:hover { background: var(--hover); color: var(--accent); }
   .pin-btn.pinned { color: var(--accent); }
@@ -745,7 +744,7 @@
     background: var(--hover); border: none; cursor: pointer;
     width: 26px; height: 26px; border-radius: var(--radius-sm);
     font-size: .85rem; color: var(--muted); padding: 0;
-    flex-shrink: 0; transition: background .12s, color .12s;
+    flex-shrink: 0;
   }
   .close-btn:hover { background: var(--border-strong); color: var(--text); }
   .fields-row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
@@ -787,7 +786,7 @@
     background: var(--col-bg); color: var(--muted); border: none;
     border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: normal;
     text-transform: none; font-family: 'Hanken Grotesk', sans-serif;
-    padding: 5px 12px; cursor: pointer; transition: background .12s, color .12s;
+    padding: 5px 12px; cursor: pointer;
     white-space: nowrap; flex-shrink: 0;
   }
   .due-shortcut:hover { background: var(--hover); color: var(--text); }
@@ -849,7 +848,6 @@
     border: 1px solid var(--border-strong); border-radius: 999px;
     font-size: .7rem; font-weight: 600; padding: 0 8px; cursor: pointer;
     white-space: nowrap;
-    transition: background .12s, color .12s, border-color .12s;
   }
   .extras-panel :global(.repeat-pill:hover) { border-color: var(--accent); color: var(--text); }
   .extras-panel :global(.repeat-pill.active) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -872,7 +870,7 @@
     font-size: .74rem; color: var(--muted); font-weight: 500;
     text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
     padding: .3rem .55rem; border-radius: var(--radius-sm);
-    background: var(--col-bg); cursor: pointer; transition: background .12s, color .12s;
+    background: var(--col-bg); cursor: pointer;
   }
   .extras-panel :global(.remind-on-due-row:has(input:checked)) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, var(--col-bg)); }
   .extras-panel :global(.remind-on-due-row:has(input:disabled)) { opacity: .55; cursor: default; }
@@ -931,7 +929,6 @@
   .tag-remove {
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
     background: none; border: none; padding: 0;
-    transition: color .12s;
   }
   .tag-remove:hover { color: var(--danger); }
   .tag-input {
@@ -946,7 +943,7 @@
   .tag-suggestion, .extras-panel :global(.tag-suggestion) {
     background: var(--col-bg); color: var(--accent); border-radius: 5px;
     font-size: .78rem; font-weight: 500; padding: 2px 9px; cursor: pointer;
-    border: 1px solid var(--border); transition: background .12s;
+    border: 1px solid var(--border);
   }
   .tag-suggestion:hover, .extras-panel :global(.tag-suggestion:hover) { background: var(--hover); }
   .tag-suggestion-other { color: var(--muted); }
@@ -961,7 +958,6 @@
     display: flex; align-items: center; gap: 8px;
     background: var(--col-bg); border: 1px solid var(--border); border-radius: 8px;
     cursor: pointer; padding: .55rem .65rem; width: 100%; text-align: left;
-    transition: background .12s, border-color .12s;
   }
   .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
   .section-toggle .field-label { flex: 1; }
@@ -969,7 +965,7 @@
     font-family: 'Hanken Grotesk', sans-serif; font-size: .78rem;
     text-transform: none; letter-spacing: normal; color: var(--muted);
   }
-  .section-chevron, .extras-panel :global(.section-chevron) { color: var(--faint); flex-shrink: 0; transition: transform .12s ease, color .12s; }
+  .section-chevron, .extras-panel :global(.section-chevron) { color: var(--faint); flex-shrink: 0; }
   .section-chevron.open, .extras-panel :global(.section-chevron.open) { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
   .extras-panel :global(.notes-wrap) { display: block; }
@@ -1039,16 +1035,13 @@
     border: 1.5px solid var(--border-strong); background: var(--surface);
     display: flex; align-items: center; justify-content: center;
     font-size: .68rem; color: var(--on-accent); cursor: pointer; padding: 0;
-    transition: background .12s, border-color .12s;
   }
-  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
-  @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
-  .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); transition: color .12s; }
+  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); }
+  .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); }
   .extras-panel :global(.checklist-text.done) { color: var(--faint); text-decoration: line-through; }
   .extras-panel :global(.checklist-remove) {
     flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;
     color: var(--muted); background: none; border: none; padding: 0 2px;
-    transition: color .12s;
   }
   .extras-panel :global(.checklist-remove:hover) { color: var(--danger); }
   .extras-panel :global(.checklist-input) {
@@ -1083,7 +1076,7 @@
   }
   .extras-panel :global(.attach-file-btn) {
     align-self: flex-start; font-size: .82rem; color: var(--accent); cursor: pointer;
-    padding: .3rem .2rem; border-radius: 6px; transition: background .12s;
+    padding: .3rem .2rem; border-radius: 6px;
     background: none; border: none; font-family: inherit;
   }
   .extras-panel :global(.attach-file-btn:hover) { background: var(--hover); }
@@ -1113,7 +1106,6 @@
     display: flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; padding: 0;
     background: none; border: 1px solid transparent; color: var(--muted);
-    transition: background .12s, color .12s;
   }
   .menu-trigger:hover { background: var(--hover); color: var(--text); }
   .actions-menu {

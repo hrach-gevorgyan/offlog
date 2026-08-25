@@ -406,7 +406,6 @@
     background: none; border: none; cursor: pointer;
     color: var(--text); padding: 4px; border-radius: 6px; margin-top: 1px;
     flex-shrink: 0; align-items: center; justify-content: center;
-    transition: background .12s;
   }
   .hamburger:hover { background: var(--hover); }
 
@@ -422,7 +421,7 @@
     display: flex; align-items: center; justify-content: center;
     width: 32px; height: 32px;
     background: none; border: 1px solid var(--border-strong); border-radius: 8px;
-    color: var(--muted); cursor: pointer; transition: color .12s, background .12s;
+    color: var(--muted); cursor: pointer;
   }
   .palette-btn:hover { color: var(--text); background: var(--hover); }
   .mode-toggle {
@@ -437,7 +436,7 @@
     display: flex; align-items: center; justify-content: center;
     height: 30px; box-sizing: border-box; padding: 0 14px;
     border: none; background: var(--surface); color: var(--muted);
-    font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .12s, color .12s;
+    font-size: .8rem; font-weight: 600; cursor: pointer;
   }
   .mode-btn + .mode-btn { border-left: 1px solid var(--border-strong); }
   .mode-btn:hover { background: var(--hover); }
@@ -448,7 +447,6 @@
   .cal-nav-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer;
     color: var(--muted); font-size: 1rem; line-height: 1; padding: 3px 10px;
-    transition: background .12s, color .12s;
   }
   .cal-nav-btn:hover { background: var(--hover); color: var(--text); }
   .cal-label { font-size: .85rem; font-weight: 700; color: var(--text); }
@@ -476,7 +474,7 @@
     position: absolute; top: calc(50% + 4px); right: 9%; transform: translateY(-50%);
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     color: var(--accent); font-size: .78rem; font-weight: 600;
-    padding: 4px 12px; cursor: pointer; transition: background .12s;
+    padding: 4px 12px; cursor: pointer;
   }
   .month-today-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
@@ -516,7 +514,6 @@
     height: 100%; overflow: hidden; padding: 5px 6px; text-align: left;
     background: var(--surface); border: none; cursor: pointer;
     border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    transition: background .12s;
   }
   .month-cell:hover { background: var(--hover); }
   .month-cell:nth-child(7n) { border-right: none; }
@@ -577,7 +574,7 @@
     width: 100%; margin-top: 6px; padding: 9px 10px;
     border: 1px dashed var(--border-strong); border-radius: 10px;
     background: none; color: var(--muted); font-size: .82rem; font-weight: 500;
-    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+    cursor: pointer;
   }
   .month-add-card-btn:hover { background: var(--hover); color: var(--accent); border-color: var(--accent); }
 
@@ -641,7 +638,6 @@
     border: 1px solid var(--border); border-left: 2px solid var(--prio-color, var(--border));
     background: var(--surface);
     margin-bottom: 5px; cursor: pointer;
-    transition: background .12s, box-shadow .12s;
   }
   .task-row:hover { background: var(--hover); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 
@@ -651,7 +647,7 @@
     width: 18px; height: 18px; border-radius: 5px;
     background: none; padding: 0;
     border: 1.5px solid var(--border-strong); flex-shrink: 0; cursor: pointer;
-    transition: border-color .12s; display: block;
+    display: block;
   }
   .circle:hover { border-color: var(--accent); }
 

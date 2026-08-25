@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { quickAddPop, scrimFade, popScale } from './motion';
+  import { quickAddPop, scrimFade } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask, findTasksByTitleInProject } from './db';
   import { closeOnBack } from './modalStack';
@@ -131,7 +131,7 @@
   </div>
 
   {#if showHelp}
-    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl} transition:fade={{ duration: popScale.duration, easing: popScale.easing }}>
+    <div id="quickadd-help-panel" class="help-panel" role="note" bind:this={helpPanelEl}>
       <div class="help-title">Type it in plain text — Quick Add picks these out automatically:</div>
       <dl class="help-list">
         <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>
@@ -206,7 +206,6 @@
     width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong);
     background: none; color: var(--faint); font-size: 11px; font-weight: 700;
     line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: color .12s, border-color .12s, background .12s;
   }
   .help-btn:hover, .help-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
@@ -228,7 +227,6 @@
     width: 100%; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
     padding: .55rem .7rem; font-size: 15px; font-family: inherit;
     background: var(--bg); color: var(--text); outline: none;
-    transition: border-color .12s;
     box-sizing: border-box;
   }
   .title-input:focus { border-color: var(--accent); background: var(--surface); }
@@ -267,7 +265,6 @@
     padding: .42rem .85rem; border-radius: var(--radius-sm);
     border: none; cursor: pointer;
     background: var(--accent); color: var(--on-accent); font-size: .85rem; font-weight: 600;
-    transition: opacity .12s;
   }
   .add-btn:disabled { opacity: .45; cursor: default; }
   .add-btn:not(:disabled):hover { opacity: .88; }

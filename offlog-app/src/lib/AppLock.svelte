@@ -207,7 +207,6 @@
     font-size: 1.3rem; padding: .6rem .7rem;
     border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); outline: none;
-    transition: border-color .12s;
     /* text-align:center centers the typed dots but leaves the caret
        jumping around mid-field as you type, which reads as broken.
        Hiding the caret is the standard fix for centered PIN/OTP inputs;
@@ -222,7 +221,7 @@
   .lock-submit {
     width: 100%; margin-top: 14px; padding: .6rem; border: none; border-radius: var(--radius-sm);
     background: var(--accent); color: var(--on-accent); font-size: .9rem; font-weight: 600;
-    cursor: pointer; transition: opacity .12s;
+    cursor: pointer;
   }
   .lock-submit:disabled { opacity: .45; cursor: default; }
   .lock-submit:not(:disabled):hover { opacity: .88; }
@@ -238,7 +237,7 @@
   .lock-cancel {
     flex: 1; padding: .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     background: var(--surface); color: var(--text); font-size: .9rem; font-weight: 600;
-    cursor: pointer; transition: background .12s;
+    cursor: pointer;
   }
   .lock-cancel:hover { background: var(--hover); }
 </style>

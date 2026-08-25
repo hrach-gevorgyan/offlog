@@ -28,7 +28,7 @@
   import { trapFocus } from './focusTrap';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from './theme';
   import { fade } from 'svelte/transition';
-  import { dialogPop, scrimFade } from './motion';
+  import { scrimFade } from './motion';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   const requestClose = closeOnBack(() => dispatch('close'));
@@ -919,7 +919,7 @@
 
           <div class="detail-content">
             {#key activeCategory}
-            <div class="detail-fade" in:fade={{ duration: 140 }}>
+            <div class="detail-fade">
             {#if activeCategory === 'appearance'}
               <AppearanceSettings
                 {themeMode} {selectThemeMode} {weekStartsMonday} {setWeekStart}
@@ -991,7 +991,7 @@
 {#if showConnectModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showConnectModal = false} transition:fade={scrimFade}>
-    <div class="mini-modal" transition:dialogPop>
+    <div class="mini-modal">
       <div class="mini-modal-head">
         <span class="mini-modal-title">Connect a device</span>
         <button class="mini-modal-close" on:click={() => showConnectModal = false} aria-label="Close">✕</button>
@@ -1049,7 +1049,7 @@
 {#if showConflictsModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showConflictsModal = false} transition:fade={scrimFade}>
-    <div class="mini-modal" transition:dialogPop>
+    <div class="mini-modal">
       <div class="mini-modal-head">
         <span class="mini-modal-title">Resolve conflicts</span>
         <button class="mini-modal-close" on:click={() => showConflictsModal = false} aria-label="Close">✕</button>
@@ -1084,7 +1084,7 @@
 {#if showMaintenanceModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showMaintenanceModal = false} transition:fade={scrimFade}>
-    <div class="mini-modal" transition:dialogPop>
+    <div class="mini-modal">
       <div class="mini-modal-head">
         <span class="mini-modal-title">Maintenance</span>
         <button class="mini-modal-close" on:click={() => showMaintenanceModal = false} aria-label="Close">✕</button>
@@ -1135,7 +1135,7 @@
 {#if importPreview}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={cancelImport} transition:fade={scrimFade}>
-    <div class="mini-modal" transition:dialogPop>
+    <div class="mini-modal">
       <div class="mini-modal-head">
         <span class="mini-modal-title">Restore from backup</span>
         <button class="mini-modal-close" on:click={cancelImport} aria-label="Close">✕</button>
@@ -1164,7 +1164,7 @@
        once; there's no "view it again later" since only its hash is
        ever stored (config.ts). -->
   <div class="mini-modal-scrim" transition:fade={scrimFade}>
-    <div class="mini-modal recovery-modal" transition:dialogPop>
+    <div class="mini-modal recovery-modal">
       <div class="mini-modal-head">
         <span class="mini-modal-title">Save your recovery code</span>
       </div>
@@ -1252,7 +1252,6 @@
     background: none; border: none; cursor: pointer; text-align: left;
     padding: .55rem .55rem; border-radius: var(--radius-sm);
     color: var(--muted); font-size: .84rem; font-weight: 500;
-    transition: background .12s, color .12s;
   }
   .nav-item svg { flex-shrink: 0; opacity: .8; }
   .nav-item span { flex: 1; }
@@ -1387,7 +1386,7 @@
   }
   .detail-content :global(.theme-seg-btn) {
     padding: .35rem .75rem; border: none; background: var(--surface); color: var(--muted);
-    font-size: .8rem; font-weight: 500; cursor: pointer; transition: background .12s, color .12s;
+    font-size: .8rem; font-weight: 500; cursor: pointer;
   }
   .detail-content :global(.theme-seg-btn + .theme-seg-btn) { border-left: 1px solid var(--border-strong); }
   .detail-content :global(.theme-seg-btn:hover) { background: var(--hover); }
@@ -1395,7 +1394,7 @@
 
   .detail-content :global(.toggle-btn) {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
-    background: var(--border-strong); position: relative; transition: background .2s;
+    background: var(--border-strong); position: relative;
     flex-shrink: 0; padding: 0;
   }
   .detail-content :global(.toggle-btn.on) { background: var(--accent); }
@@ -1419,7 +1418,6 @@
     display: flex; align-items: center; gap: .75rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .75rem .9rem; cursor: pointer; text-align: left; width: 100%;
-    transition: background .12s, border-color .12s;
   }
   .detail-content :global(.link-row:hover) { background: var(--hover); border-color: var(--border-strong); }
   .detail-content :global(.link-row-title) { flex: 1; font-size: .88rem; font-weight: 600; color: var(--text); }
@@ -1489,7 +1487,7 @@
   /* Multi-step flows (device pairing, conflicts, maintenance run, import
      preview) open here instead of living permanently in a tab — .mini-modal
      is `position: fixed` itself (not flex-centered by its scrim parent) so
-     dialogPop's `translate(-50%,-50%)` positions it correctly, same
+     its own `translate(-50%,-50%)` positions it correctly, same
      convention as ConfirmDialog/NamePrompt's sibling scrim+panel pattern. */
   .mini-modal-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; }
   .mini-modal {

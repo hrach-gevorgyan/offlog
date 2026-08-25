@@ -155,7 +155,7 @@
   .clear-btn {
     background: none; border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); border-radius: 6px;
     cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--danger);
-    padding: 4px 10px; transition: background .12s; flex-shrink: 0;
+    padding: 4px 10px; flex-shrink: 0;
   }
   .clear-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .clear-btn:disabled { opacity: .5; cursor: default; }
@@ -163,7 +163,7 @@
   .restore-all-btn {
     background: none; border: 1px solid var(--border-strong); border-radius: 6px;
     cursor: pointer; font-size: 11.5px; font-weight: 500; color: var(--muted);
-    padding: 4px 10px; transition: background .12s, color .12s, border-color .12s; flex-shrink: 0;
+    padding: 4px 10px; flex-shrink: 0;
   }
   .restore-all-btn:hover { background: var(--hover); color: var(--text); border-color: var(--accent); }
   .restore-all-btn:disabled { opacity: .5; cursor: default; }
@@ -171,7 +171,6 @@
   .close-btn {
     background: none; border: none; cursor: pointer; font-size: 14px;
     color: var(--faint); padding: 4px 6px; border-radius: 6px;
-    transition: background .12s, color .12s;
   }
   .close-btn:hover { background: var(--hover); color: var(--text); }
 
@@ -211,7 +210,7 @@
     background: none; border: none; cursor: pointer;
     color: var(--faint); padding: .3rem; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    transition: background .12s, color .12s; flex-shrink: 0;
+    flex-shrink: 0;
   }
   .restore-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .forever-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
