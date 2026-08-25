@@ -44,6 +44,10 @@ jobs:
   # against different content -- and release.yml would happily publish it.
   # It builds nothing itself; the build jobs below need it first.
   verify:
+    # Narrower than the workflow default: this job only reads the repo and
+    # runs the gate. Nothing here creates a release or uploads an asset.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     defaults:
       run:
