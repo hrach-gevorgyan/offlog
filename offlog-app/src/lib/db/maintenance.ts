@@ -5,7 +5,7 @@ import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS } fr
 import { getProjects, getCustomFieldDefs, createProject } from './entities';
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
-import { scanConflicts } from './sync';
+import { scanConflicts, conflictBearingRows } from './sync';
 
 // ── Log retention ────────────────────────────────────────────────────────────
 // log: docs are append-only and never pruned by any other code path, so the
@@ -259,20 +259,19 @@ export interface IntegrityIssue {
 export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; checked: number }> {
   const issues: IntegrityIssue[] = [];
 
-  // Three prefix scans, not one allDocs over everything. A whole-database
-  // scan also pulls in every log: doc -- thousands after a few months --
-  // loads their bodies, and counts them as "items checked" even though no
-  // check below ever looks at one.
-  const [spaceRows, projectRows, taskRows, tagRows] = await Promise.all([
-    db.allDocs<SpaceDoc>({ startkey: 'space:', endkey: 'space:\uFFF0', include_docs: true, conflicts: true }),
-    db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:\uFFF0', include_docs: true, conflicts: true }),
-    db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:\uFFF0', include_docs: true, conflicts: true }),
-    db.allDocs({ startkey: 'tag:', endkey: 'tag:\uFFF0', include_docs: true, conflicts: true }),
-  ]);
+  // Every doc except the changelog, in two range scans. Not one allDocs over
+  // the whole database: that pulls in every log: doc -- thousands after a few
+  // months -- loads their bodies, and counts them as "items checked" though no
+  // check below looks at one. Not a per-prefix allowlist either; the same rows
+  // feed the conflict pass at the bottom, and an allowlist there quietly
+  // stopped reporting conflicts on docs the Resolve-conflicts screen can fix.
+  const rows = await conflictBearingRows();
+  const docs = rows.map(r => r.doc as (SpaceDoc | ProjectDoc | TaskDoc) | undefined)
+    .filter((d): d is SpaceDoc | ProjectDoc | TaskDoc => !!d && !d._id!.startsWith('_'));
 
-  const spaces = spaceRows.rows.map(r => r.doc!).filter(Boolean);
-  const projects = projectRows.rows.map(r => r.doc!).filter(Boolean);
-  const tasks = taskRows.rows.map(r => r.doc!).filter(Boolean);
+  const spaces = docs.filter(d => d.type === 'space') as SpaceDoc[];
+  const projects = docs.filter(d => d.type === 'project') as ProjectDoc[];
+  const tasks = docs.filter(d => d.type === 'task') as TaskDoc[];
   const spaceIds = new Set(spaces.map(s => s._id));
   const projectIds = new Set(projects.map(p => p._id));
   const taskIds = new Set(tasks.map(t => t._id));
@@ -338,7 +337,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
   // log: docs are deliberately not scanned for conflicts: their ids embed a
   // random suffix, so two devices can never mint the same one and a
   // conflicting revision is not reachable.
-  for (const row of [...spaceRows.rows, ...projectRows.rows, ...taskRows.rows, ...tagRows.rows]) {
+  for (const row of rows) {
     // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
     // never on row.value.
     const doc = row.doc as { _conflicts?: string[] } | undefined;

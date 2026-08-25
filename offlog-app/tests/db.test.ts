@@ -774,6 +774,23 @@ describe('checkIntegrity / repairDatabase', () => {
     expect(fixedDoc.project_id).toBe(fallback._id);
   });
 
+  it('reports conflicts on non-task docs too, matching what the sync badge counts', async () => {
+    // The conflict pass used to list entity prefixes only, so a conflict on
+    // the custom-fields doc showed in the sync badge and the Resolve screen
+    // but never in maintenance.
+    await seedSpace();
+    await addCustomFieldDef('Owner', 'text');
+
+    const base = await db.get<any>('meta:custom_fields');
+    await db.bulkDocs(
+      [{ ...base, _rev: '9-conflictingrevisionhashforthecustomfieldsdoc', fields: [{ id: 'field:other', name: 'Rival', type: 'text' }] }],
+      { new_edits: false },
+    );
+
+    const conflicts = (await checkIntegrity()).issues.filter(i => i.type === 'conflict');
+    expect(conflicts.map(c => c.docId)).toContain('meta:custom_fields');
+  });
+
   it('never auto-resolves a genuine conflict, and points at the screen that can', async () => {
     // Keeping whichever revision PouchDB calls the winner is arbitrary, not
     // "most recent" -- auto-repairing this threw away one device's edit.

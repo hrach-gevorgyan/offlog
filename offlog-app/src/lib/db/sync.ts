@@ -156,7 +156,12 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
 // (LOG_RETENTION_MONTHS) on every sync settle, since markSynced() calls this.
 // Two ranges around the log: block rather than an allowlist of known
 // prefixes, so a doc type added later is still scanned.
-async function conflictBearingRows() {
+// Exported so checkIntegrity() reports conflicts over exactly the range the
+// Resolve-conflicts screen can act on. Two allowlists drifted apart once
+// already: maintenance listed the entity prefixes and silently stopped
+// reporting a conflict on meta:custom_fields that the sync badge still
+// counted.
+export async function conflictBearingRows() {
   const [before, after] = await Promise.all([
     db.allDocs({ include_docs: true, conflicts: true, startkey: '', endkey: 'log:', inclusive_end: false }),
     db.allDocs({ include_docs: true, conflicts: true, startkey: 'log:￰', endkey: '￿' }),
