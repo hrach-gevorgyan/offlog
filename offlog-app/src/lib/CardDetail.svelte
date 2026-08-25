@@ -948,18 +948,23 @@
   }
   .tags-input-row:focus-within { border-color: var(--accent); }
   .tag-chip {
-    display: inline-flex; align-items: center; gap: 4px;
+    display: inline-flex; align-items: center; gap: 2px;
     background: var(--col-bg); color: var(--accent); border-radius: 5px;
-    font-size: .74rem; font-weight: 500; padding: 2px 7px;
+    font-size: .74rem; font-weight: 500; padding: 0 2px 0 7px;
   }
+  /* 24x24 hit box, not a 24px glyph: the × stays its old size and the chip
+     keeps its height. Below 24 this fails WCAG 2.2's minimum target size
+     (2.5.8), and at the old 8x14 it was the hardest control here to tap. */
   .tag-remove {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 4px;
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
     background: none; border: none; padding: 0;
     transition: color var(--dur-hover) var(--ease-hover);
   }
   .tag-remove:hover { color: var(--danger); }
   .tag-input {
-    border: none; background: none; outline: none;
+    border: none; background: none; outline: none; min-height: 24px;
     font-size: .88rem; color: var(--text); min-width: 80px; flex: 1;
   }
   .tag-input::placeholder { color: var(--faint); }

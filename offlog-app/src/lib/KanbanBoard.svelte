@@ -842,12 +842,13 @@
     color: var(--muted); background: var(--surface);
     border-radius: 20px; padding: 0 .4rem;
   }
-  /* All three action buttons share one fixed 20x20 flex box — mixing
+  /* All three action buttons share one fixed 24x24 flex box — mixing
      padding-only, font-size-driven and flex-box sizing here leaves them
-     visibly misaligned. */
+     visibly misaligned. 24 is the WCAG 2.2 minimum target size (2.5.8);
+     the glyph stays small, only the hit box is 24. */
   .col-rename, .col-archive, .col-remove {
     display: flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px;
+    width: 24px; height: 24px;
     background: none; border: none; cursor: pointer;
     color: var(--faint); font-size: 1rem; line-height: 1;
     border-radius: 5px; opacity: 0;
@@ -895,10 +896,10 @@
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
   .card-title { font-size: .92rem; font-weight: 600; line-height: 1.4; color: var(--text); flex: 1; }
-  .card-menu-wrap { position: relative; flex-shrink: 0; margin: -3px -3px 0 0; }
+  .card-menu-wrap { position: relative; flex-shrink: 0; margin: -5px -5px 0 0; }
   .card-menu-trigger {
     display: flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; padding: 0;
+    width: 24px; height: 24px; padding: 0;
     background: none; border: none; border-radius: 5px; color: var(--faint);
     opacity: 0; transition: opacity var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
     cursor: pointer;
