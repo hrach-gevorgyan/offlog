@@ -14,7 +14,7 @@
   import { getSpaceIconSvg } from './spaceIcons';
   import { prefersReducedMotion } from './theme';
 
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let showAgenda = false;
@@ -47,13 +47,13 @@
   // label, the logo and the tree teleported instantly.
   //
   // Instead the content fades out, swaps while it is invisible, and fades
-  // back in, all inside one width transition. SWAP_AT must stay the 0%->45%
-  // leg of the `sidebar-swap` keyframes below; the two are one animation
-  // split across JS and CSS, and drifting them apart makes the swap visible.
-  const SWAP_AT = 90;
+  // back in, all inside one width transition. SWAP_AT must match
+  // --dur-small-out, the content fade below: that instant is the only one
+  // where the swap cannot be seen, and drifting the two apart exposes it.
+  const SWAP_AT = 113;
   let swapping = false;
   // Drives the width only, so the box starts moving on the click rather
-  // than 90ms later; `collapsed` still gates the content.
+  // than once the fade-out finishes; `collapsed` still gates the content.
   let pendingCollapsed = collapsed;
   let swapTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -61,7 +61,7 @@
     swapTimers.forEach(clearTimeout);
     swapTimers = [];
     // Off pendingCollapsed, never `collapsed` -- a second click inside the
-    // 90ms window clears the timer that would have updated `collapsed`, so
+    // fade-out window clears the timer that would have updated `collapsed`, so
     // reading it there computes the same `next` twice and the toggle sticks.
     const next = !pendingCollapsed;
     localStorage.setItem(COLLAPSED_KEY, String(next));
@@ -71,8 +71,16 @@
     if (prefersReducedMotion()) { collapsed = next; return; }
 
     swapping = true;
-    swapTimers.push(setTimeout(() => { collapsed = next; }, SWAP_AT));
-    swapTimers.push(setTimeout(() => { swapping = false; }, 200));
+    swapTimers.push(setTimeout(async () => {
+      collapsed = next;
+      // await tick() first: Svelte flushes the DOM asynchronously, so
+      // without it the frame callbacks below can run before the swapped-in
+      // element exists. Then two frames, so that element paints at least
+      // once at opacity 0 -- with nothing to transition from it would just
+      // appear, which is the snap this whole dance exists to avoid.
+      await tick();
+      requestAnimationFrame(() => requestAnimationFrame(() => { swapping = false; }));
+    }, SWAP_AT));
   }
 
   // Collapse-to-rail only makes sense for the desktop persistent sidebar --
@@ -856,21 +864,20 @@
      of time before swapping to the full tree, so the two states stay
      visually connected instead of teleporting. */
   .sidebar.expanding .tree-section-collapsed { opacity: 0; transform: translateY(-14px); }
-  /* Content crossfade for collapse/expand -- see toggleCollapsed(). The
-     invisible window (45%-55%) is when `collapsed` actually flips, so the
-     rail-vs-tree swap is never seen. Total matches the width transition. */
+  /* Content crossfade for collapse/expand -- see toggleCollapsed().
+     A transition, NOT a keyframe animation: the rail and the tree are
+     different elements, so the incoming one mounts halfway through the
+     swap. A keyframe restarts from its own 0% frame on that fresh node --
+     it flashed fully opaque, faded back out, then snapped in. Under
+     .swapping it mounts at opacity 0 instead and fades up when the class
+     comes off. */
+  .sidebar-top, .primary-nav {
+    transition: opacity var(--dur-small-out) var(--ease-standard);
+  }
   .sidebar.swapping .sidebar-top,
   .sidebar.swapping .primary-nav,
   .sidebar.swapping .tree-section,
-  .sidebar.swapping .tree-section-collapsed {
-    animation: sidebar-swap var(--dur-medium) var(--ease-standard);
-  }
-  @keyframes sidebar-swap {
-    0%   { opacity: 1; }
-    45%  { opacity: 0; }
-    55%  { opacity: 0; }
-    100% { opacity: 1; }
-  }
+  .sidebar.swapping .tree-section-collapsed { opacity: 0; }
   .space-icon-only {
     width: 32px; height: 32px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
