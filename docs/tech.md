@@ -248,7 +248,8 @@ try/catch with `showError()` — an audited invariant.
 **Integrity check.** `checkIntegrity()` reports nine issue types: orphaned
 projects and tasks, tasks pointing at a status that no longer exists,
 projects with no statuses, unresolved sync conflicts, values left behind by
-a deleted custom field, `related`/`blocked_by` ids pointing at tasks that
+a deleted custom field (`removeCustomFieldDef()` sweeps them itself now, so
+this catches only ones synced in from a device running an older build), `related`/`blocked_by` ids pointing at tasks that
 were hard-pruned, active tasks inside an archived project, and
 `attachments[]` metadata that disagrees with PouchDB's own `_attachments`.
 

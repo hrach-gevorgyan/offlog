@@ -395,8 +395,30 @@ export async function removeCustomFieldDef(fieldId: string): Promise<CustomField
   try { doc = await db.get<CustomFieldsDoc>(CUSTOM_FIELDS_DOC_ID); } catch { return []; }
   const removed = (doc.fields ?? []).find(f => f.id === fieldId);
   const fields = (doc.fields ?? []).filter(f => f.id !== fieldId);
+  // Definition first: if the value sweep below fails, the field is gone and
+  // the leftovers are a known, detectable state (checkIntegrity's
+  // orphaned_custom_value). Sweeping first and then failing would throw the
+  // values away while the field still existed -- silent data loss.
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
-  if (removed) await logChange(fieldId, 'delete', undefined, undefined, undefined, { field_name: removed.name });
+
+  // custom_values is keyed by field id, so deleting a definition used to
+  // strand every value under it: nothing renders them, nothing cleans them,
+  // and they ride along in every sync payload forever. Deleted tasks are
+  // swept too -- restoring one later should not resurrect values for a field
+  // that no longer exists.
+  const affected = (await getAllTasksRaw()).filter(t => t.custom_values && fieldId in t.custom_values);
+  if (affected.length) {
+    await db.bulkDocs(affected.map(t => {
+      const next = { ...t.custom_values };
+      delete next[fieldId];
+      return { ...t, custom_values: next, updated_at: now(), source: SOURCE };
+    }));
+    invalidateTaskCache();
+  }
+
+  // One entry for the deletion, not one per task -- same as renameTag's bulk
+  // rewrite, which is the established shape for a sweep like this.
+  if (removed) await logChange(fieldId, 'delete', undefined, undefined, undefined, { field_name: removed.name, tasks_cleared: affected.length });
   return fields;
 }
 

@@ -1792,6 +1792,32 @@ describe('updateCustomFieldDef()', () => {
     expect(await updateCustomFieldDef('field:nonexistent', { name: 'X' })).toEqual([]);
   });
 
+  it('removeCustomFieldDef clears the values it would otherwise strand', async () => {
+    // custom_values is keyed by field id, so deleting the definition used to
+    // leave every value behind: invisible, uncleaned, and synced forever.
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Fields');
+    const keep = (await addCustomFieldDef('Keep', 'text')).find(f => f.name === 'Keep')!;
+    const doomed = (await addCustomFieldDef('Doomed', 'text')).find(f => f.name === 'Doomed')!;
+
+    const live = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Live', {
+      custom_values: { [keep.id]: 'stays', [doomed.id]: 'goes' },
+    });
+    const trashed = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Trashed', {
+      custom_values: { [doomed.id]: 'goes too' },
+    });
+    await deleteTask(trashed._id!);
+
+    await removeCustomFieldDef(doomed.id);
+
+    // The surviving field's value is untouched; the deleted one is gone.
+    expect((await db.get<any>(live._id)).custom_values).toEqual({ [keep.id]: 'stays' });
+    // Trashed tasks too -- restoring one must not resurrect a dead field.
+    expect((await db.get<any>(trashed._id)).custom_values).toEqual({});
+    // And nothing is left for the integrity check to find.
+    expect((await checkIntegrity()).issues.filter(i => i.type === 'orphaned_custom_value')).toHaveLength(0);
+  });
+
   it('removeCustomFieldDef still removes by id after a rename', async () => {
     const fields = await addCustomFieldDef('Temp', 'text');
     const id = fields[0].id;
