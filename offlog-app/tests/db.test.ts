@@ -1855,7 +1855,7 @@ describe('updateCustomFieldDef()', () => {
   });
 });
 
-describe('task linking (v6.7.0, related-only, non-directional)', () => {
+describe('task linking (v6.3.0, related-only, non-directional)', () => {
   beforeEach(seedSpace);
 
   it('linkRelatedTask stores the link forward-only, but getRelatedTasks resolves it from either side', async () => {

@@ -31,6 +31,32 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.7.0
+
+### In short
+
+Animations across the app were rewritten — panels, dialogs and page changes now open and close smoothly instead of snapping. Maintenance is far quicker, tells you what it found before repairing anything, and can be cancelled. It also no longer picks a winner when the same task was edited on two devices — that choice is yours.
+
+### New
+- Maintenance now shows what it found before repairing, in plain language, and asks first.
+- Maintenance can be cancelled while it runs.
+- It checks for four more kinds of problem, including leftovers from a deleted custom field.
+- It tells you how much space it actually freed.
+
+### Fixed
+- Panels, dialogs and page changes now animate. Previously they simply appeared and disappeared.
+- Closing a panel animates too, instead of vanishing instantly.
+- Hovering a card on a board in light mode now shows a visible highlight.
+- Collapsing the sidebar no longer makes its contents jump or flicker.
+- Small buttons — the tag remove ×, the status and card menus — are easier to tap.
+- Views no longer overlap for a moment when you switch between them.
+- Maintenance no longer throws away one version when the same task was edited on two devices. It now points you to Resolve conflicts so you choose.
+- Deleting a custom field now clears the values it leaves behind.
+- Repairing a task that lost its project now actually works instead of reporting success each time.
+- "Freeing up unused space" no longer takes minutes on every run.
+
+---
+
 ## v6.6.0
 
 ### In short
