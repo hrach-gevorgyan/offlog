@@ -345,6 +345,15 @@ tag's asset. Two consequences, both normal:
 - **`scripts/seed-demo.js`** — a hand-authored, deterministic dataset (one
   persona, 4 spaces, 13 projects) for reproducible screenshots. Use its
   `WIPE_EXISTING: true`.
+- **`scripts/seed-full.js`** — the big one: every writable feature at volume,
+  for testing a workspace that is actually full. `SCALE` picks `demo` (~150
+  tasks), `big` (~900, the default, ~40s) or `stress` (~5000). Fixed-seed
+  PRNG, so two runs at one `SCALE` are comparable and a difference is a real
+  regression. Covers what the other two don't: recurrence intervals and
+  weekdays-only, blocked-by in both resolved and unresolved states,
+  attachments on both the image and non-image branches, projects from a
+  template with and without tasks, bulk column archive, column add/rename/
+  remove/reorder, tag rename, and custom fields of all four types.
 - **Anything smaller** — write straight to `new PouchDB('offlog')` in the
   console. Assign `column.id`, never the column object, or the task renders
   nowhere. Reload afterwards so the task cache picks it up.
