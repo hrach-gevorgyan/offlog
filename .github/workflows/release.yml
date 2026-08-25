@@ -38,7 +38,44 @@ permissions:
   contents: write  # needed to create the draft release + upload assets
 
 jobs:
+  # Nothing here is built or published until the tagged commit passes the
+  # same gate CI runs on main. ci.yml only fires on pushes to main, so
+  # without this a tag could be cut from a commit CI never ran -- or ran
+  # against different content -- and release.yml would happily publish it.
+  # It builds nothing itself; the build jobs below need it first.
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: offlog-app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: offlog-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The three version sources must agree and both docs must carry an
+      # entry. The build jobs re-check this against the tag itself; this is
+      # the cheaper self-consistency half, run before anything else.
+      - name: Version consistency
+        run: npm run version:check
+
+      - name: Type-check (svelte-check + tsc)
+        run: npm run check
+
+      # Judged by exit code, not the summary line: vitest prints "N passed"
+      # and still exits non-zero on an unhandled rejection.
+      - name: Tests
+        run: npx vitest run
+
   build-android:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -130,6 +167,7 @@ jobs:
           path: offlog-app/android/app/build/outputs/apk/release/app-release.apk
 
   build-desktop-windows:
+    needs: verify
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
