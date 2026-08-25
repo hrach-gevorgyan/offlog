@@ -413,6 +413,40 @@ Two rules go with it:
 
 `Sidebar.svelte`'s `toggleCollapsed()` is the reference implementation.
 
+## A parent's `{#if}` destroys the outro
+
+An overlay that dispatches `close` and lets its parent unmount it has no
+outro, however carefully the preset is written. The parent's `{#if}` goes
+false in the same tick, the node is gone, and there is nothing left to
+animate out. This is the mirror of the intro problem above, and it hid
+behind the same symptom: motion that "looks instant" for no visible reason.
+
+The overlay has to outlive its own close. It clears its intro flag —
+starting the outro — and delays only the dispatch that tells the parent:
+
+```js
+const requestClose = closeOnBack(() => {
+  __introReady = false;
+  setTimeout(() => dispatch('close'), exitMs.panel(480));
+});
+```
+
+- **`modalStack` is deliberately left alone.** `history.back()` and the
+  stack unwind still run immediately, so the back button, Escape and
+  scrim clicks keep their existing semantics. Only the parent is told
+  late.
+- **The delay must come from `exitMs`, never a literal.** `exitMs.small`
+  / `.medium` / `.large` / `.panel(width)` mirror the matching `*Out`
+  preset, and they are getters, so Reduce Motion (which makes them `0`)
+  is read at close time. A hardcoded `225` silently desynchronises the
+  moment a duration changes, and ignores Reduce Motion entirely.
+- **The width passed to `exitMs.panel()` must be the panel's real width** —
+  the same one its `panelOut()`/`panelScrimOut()` use. Panel duration
+  scales with travel, so a wrong width cuts the outro off mid-flight or
+  leaves the panel sitting on an empty screen.
+- `closeOnBack()` already guards against firing twice, so this schedules
+  at most one timer per open.
+
 ## Checklist for a new animated element
 
 1. Does it need motion at all? (§ *Should this animate*)
@@ -421,10 +455,12 @@ Two rules go with it:
 3. Entering decelerates, leaving accelerates, exit ≈ 0.75x.
 4. Separate `in:`/`out:` — or a split base/state rule in CSS, with every
    property in both lists.
-5. `duration` is a getter, or the transition is a function. Nothing spread. No
-   literal `setTimeout` waiting on it.
+5. `duration` is a getter, or the transition is a function. Nothing spread.
+   Any `setTimeout` waiting on a transition reads `exitMs`, never a literal.
 6. If two elements are briefly mounted together, they share a grid cell.
-7. If you added an `out:`, fix the DOM-presence assertions in the same commit.
-8. New token → both `:root` and `body.dark` **plus** the table in `docs/tech.md`.
-9. `npm run build` warning-free, `npm run check`, `npm test` — judged by exit
+7. If a parent unmounts it, it delays its own `close` dispatch by `exitMs`
+   (§ *A parent's `{#if}` destroys the outro*).
+8. If you added an `out:`, fix the DOM-presence assertions in the same commit.
+9. New token → both `:root` and `body.dark` **plus** the table in `docs/tech.md`.
+10. `npm run build` warning-free, `npm run check`, `npm test` — judged by exit
    code. Then look at it, in both themes.

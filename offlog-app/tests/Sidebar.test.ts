@@ -248,6 +248,18 @@ describe('Sidebar navigation and preferences', () => {
     expect(localStorage.getItem('offlog_sidebar_collapsed')).toBe('false');
   });
 
+  it('returns to expanded when the collapse toggle is double-clicked', async () => {
+    // The content swap is deferred, so a second click can land before the
+    // first one's state update has run. Reading the pre-swap value there
+    // computes the same target twice and the toggle sticks collapsed.
+    const { getByLabelText } = await renderTree([]);
+
+    await fireEvent.click(getByLabelText('Collapse sidebar'));
+    await fireEvent.click(getByLabelText('Collapse sidebar'));
+
+    expect(localStorage.getItem('offlog_sidebar_collapsed')).toBe('false');
+  });
+
   it('persists which spaces are expanded', async () => {
     const { getByText } = await renderTree([mkProject()]);
 

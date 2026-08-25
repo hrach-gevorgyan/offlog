@@ -60,7 +60,10 @@
   function toggleCollapsed() {
     swapTimers.forEach(clearTimeout);
     swapTimers = [];
-    const next = !collapsed;
+    // Off pendingCollapsed, never `collapsed` -- a second click inside the
+    // 90ms window clears the timer that would have updated `collapsed`, so
+    // reading it there computes the same `next` twice and the toggle sticks.
+    const next = !pendingCollapsed;
     localStorage.setItem(COLLAPSED_KEY, String(next));
 
     // Reduce Motion has no fade to hide the swap behind, so don't stall it.

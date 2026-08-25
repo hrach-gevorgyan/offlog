@@ -1513,7 +1513,8 @@
   /* Multi-step flows (device pairing, conflicts, maintenance run, import
      preview) open here instead of living permanently in a tab — .mini-modal
      is `position: fixed` itself (not flex-centered by its scrim parent) so
-     dialogPop's `translate(-50%,-50%)` positions it correctly, same
+     dialogIn/dialogOut's baked-in `translate(-50%,-50%)` positions it
+     correctly, same
      convention as ConfirmDialog/NamePrompt's sibling scrim+panel pattern. */
   .mini-modal-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 300; }
   .mini-modal {
