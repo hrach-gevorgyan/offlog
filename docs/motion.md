@@ -270,18 +270,25 @@ the element for a few frames:
 
 ```js
 const el = document.querySelector('.panel');
-getComputedStyle(el).transform      // must change frame to frame
-document.getAnimations().length     // must be > 0 while it opens
+getComputedStyle(el).transform            // must change frame to frame
+el.getAnimations()[0].effect.getTiming()  // .duration must match the preset
 ```
 
 A static `transform` with zero animations means the transition is not running.
 
-**Exits are a separate problem.** When the parent sets its flag false the
-component is destroyed immediately, so an internal `{#if}` cannot hold the
-element long enough to play an outro. Making exits animate requires the
-component to delay its own `close` dispatch, which touches `modalStack` and
-the `{#key}` session counters -- see CLAUDE.md's warning about `closeOnBack()`.
-Intros are safe on their own; exits are not yet implemented.
+**Do not read `getComputedStyle(el).animationDuration`.** Svelte drives these
+through the Web Animations API (`element.animate()`), not a CSS `animation:`
+property, so that field reads `0s` on a transition that is running perfectly --
+the entry in `getAnimations()` is an `Animation`, not a `CSSAnimation`. Sample
+the transform, or read the timing off the animation object as above. Reading
+the CSS property instead once cost a long detour chasing a duration of zero
+that was never real.
+
+**Exits are a separate problem**, with its own fix -- when the parent sets its
+flag false the component is destroyed immediately, so an internal `{#if}`
+cannot hold the element long enough to play an outro. The component has to
+delay its own `close` dispatch instead: see
+*A parent's `{#if}` destroys the outro* below.
 
 ## Reduce Motion
 
