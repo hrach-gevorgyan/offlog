@@ -774,6 +774,28 @@ describe('checkIntegrity / repairDatabase', () => {
     expect(fixedDoc.project_id).toBe(fallback._id);
   });
 
+  it('repairs an orphaned task for good, even with no project in Unsorted', async () => {
+    // Archiving it and leaving project_id dangling looked like a fix but
+    // was not: checkIntegrity does not skip archived tasks, so it came back
+    // as an orphan on every later run while repair kept claiming success.
+    await seedSpace();
+    for (const p of await getProjects('space:unsorted')) await deleteProject(p._id!);
+    expect(await getProjects('space:unsorted')).toHaveLength(0);
+
+    await db.put({
+      _id: 'task:perma-orphan', type: 'task', project_id: 'project:gone', space_id: 'space:unsorted',
+      column_id: 'col:x', title: 'Orphan', body: '', priority: 1, due_date: null, reminder_at: null,
+      tags: [], position: 0, deleted: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'pc',
+    });
+
+    await repairDatabase();
+    expect((await checkIntegrity()).issues.filter(i => i.type === 'orphaned_task')).toHaveLength(0);
+
+    const fixed = await db.get<any>('task:perma-orphan');
+    expect(fixed.project_id).not.toBe('project:gone');
+    await db.get(fixed.project_id); // resolves, so the task is reachable again
+  });
+
   it('flags a project with zero statuses for manual review, and does not auto-repair it', async () => {
     await seedSpace();
     await db.put({

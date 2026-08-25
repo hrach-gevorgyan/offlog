@@ -2,7 +2,7 @@
 // Settings maintenance run, and backup import/export.
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column } from '../types';
 import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS } from './core';
-import { getProjects, getCustomFieldDefs } from './entities';
+import { getProjects, getCustomFieldDefs, createProject } from './entities';
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
 import { scanConflicts } from './sync';
@@ -367,12 +367,15 @@ export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed:
     try {
       if (issue.type === 'orphaned_task') {
         const doc = await db.get<TaskDoc>(issue.docId);
-        const fallback = await getProjects('space:unsorted');
-        if (fallback.length) {
-          await db.put({ ...doc, project_id: fallback[0]._id, column_id: fallback[0].columns[0]?.id ?? doc.column_id, updated_at: now(), source: SOURCE });
-        } else {
-          await db.put({ ...doc, archived: true, updated_at: now(), source: SOURCE });
-        }
+        // Always land it in a real project. Archiving it while leaving the
+        // dangling project_id looked like a fix and was not: checkIntegrity
+        // does not skip archived tasks, so the same task came back as an
+        // orphan on every later run, and repair reported "Fixed 1" each time
+        // without ever fixing it. Unsorted cannot be deleted, so creating a
+        // home there is always available.
+        let fallback = (await getProjects('space:unsorted'))[0];
+        if (!fallback) fallback = await createProject('space:unsorted', 'Recovered');
+        await db.put({ ...doc, project_id: fallback._id, column_id: fallback.columns[0]?.id ?? doc.column_id, updated_at: now(), source: SOURCE });
         fixed++;
       } else if (issue.type === 'invalid_column') {
         const doc = await db.get<TaskDoc>(issue.docId);
