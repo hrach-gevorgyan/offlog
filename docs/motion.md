@@ -383,6 +383,36 @@ Two related facts, both worth knowing before you assume green means correct:
   wired to the wrong element — all of it renders and passes. Motion changes are
   verified by eye, in **light and dark**, per the release checklist.
 
+## Swapping markup that can't be tweened
+
+Some state changes replace one piece of markup with a different piece —
+the sidebar's icon rail versus its full project tree. There is nothing to
+interpolate between them, so the swap is always instantaneous.
+
+Doing that swap in the same frame the container starts resizing is what
+reads as "aggressive": the box slides for 200ms while every label inside
+it teleports. The fix is to **hide the swap rather than animate it** —
+fade the content out, change it while it is invisible, fade it back in,
+all inside the container's own transition:
+
+```css
+.sidebar.swapping .primary-nav { animation: sidebar-swap var(--dur-medium) var(--ease-standard); }
+@keyframes sidebar-swap { 0% {opacity:1} 45% {opacity:0} 55% {opacity:0} 100% {opacity:1} }
+```
+
+with the state flip scheduled at the start of that invisible window.
+
+Two rules go with it:
+
+- **The container's own geometry must not wait.** Drive the width (or
+  height) from a value that flips on the click, and only the *content*
+  from the delayed one. If both lag, the whole interaction feels slow —
+  the opposite of the problem you set out to fix.
+- **Skip the stall under Reduce Motion.** With no fade to hide the swap
+  behind, a delay is just latency. Flip everything at once instead.
+
+`Sidebar.svelte`'s `toggleCollapsed()` is the reference implementation.
+
 ## Checklist for a new animated element
 
 1. Does it need motion at all? (§ *Should this animate*)

@@ -237,12 +237,14 @@ describe('Sidebar navigation and preferences', () => {
   });
 
   it('persists the collapsed state per device', async () => {
-    const { getByLabelText } = await renderTree([]);
+    const { getByLabelText, findByLabelText } = await renderTree([]);
 
     await fireEvent.click(getByLabelText('Collapse sidebar'));
 
+    // Written on the click; the rail itself only swaps in once the content
+    // crossfade has hidden it, so the toggle's label lags the preference.
     expect(localStorage.getItem('offlog_sidebar_collapsed')).toBe('true');
-    await fireEvent.click(getByLabelText('Expand sidebar'));
+    await fireEvent.click(await findByLabelText('Expand sidebar'));
     expect(localStorage.getItem('offlog_sidebar_collapsed')).toBe('false');
   });
 

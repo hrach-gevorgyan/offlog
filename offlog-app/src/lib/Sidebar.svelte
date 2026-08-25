@@ -12,6 +12,7 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import CustomSelect from './CustomSelect.svelte';
   import { getSpaceIconSvg } from './spaceIcons';
+  import { prefersReducedMotion } from './theme';
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
@@ -40,9 +41,35 @@
   let sidebarWidth = loadWidth();
   let collapsed = localStorage.getItem(COLLAPSED_KEY) === 'true';
 
+  // The rail and the full tree are different markup, so the swap cannot be
+  // tweened -- but flipping it in the same frame the width starts moving is
+  // what made collapsing feel violent: the box slid for 200ms while every
+  // label, the logo and the tree teleported instantly.
+  //
+  // Instead the content fades out, swaps while it is invisible, and fades
+  // back in, all inside one width transition. SWAP_AT must stay the 0%->45%
+  // leg of the `sidebar-swap` keyframes below; the two are one animation
+  // split across JS and CSS, and drifting them apart makes the swap visible.
+  const SWAP_AT = 90;
+  let swapping = false;
+  // Drives the width only, so the box starts moving on the click rather
+  // than 90ms later; `collapsed` still gates the content.
+  let pendingCollapsed = collapsed;
+  let swapTimers: ReturnType<typeof setTimeout>[] = [];
+
   function toggleCollapsed() {
-    collapsed = !collapsed;
-    localStorage.setItem(COLLAPSED_KEY, String(collapsed));
+    swapTimers.forEach(clearTimeout);
+    swapTimers = [];
+    const next = !collapsed;
+    localStorage.setItem(COLLAPSED_KEY, String(next));
+
+    // Reduce Motion has no fade to hide the swap behind, so don't stall it.
+    pendingCollapsed = next;
+    if (prefersReducedMotion()) { collapsed = next; return; }
+
+    swapping = true;
+    swapTimers.push(setTimeout(() => { collapsed = next; }, SWAP_AT));
+    swapTimers.push(setTimeout(() => { swapping = false; }, 200));
   }
 
   // Collapse-to-rail only makes sense for the desktop persistent sidebar --
@@ -59,8 +86,12 @@
     checkMobile();
     window.addEventListener('resize', checkMobile);
   });
-  onDestroy(() => window.removeEventListener('resize', checkMobile));
+  onDestroy(() => {
+    window.removeEventListener('resize', checkMobile);
+    swapTimers.forEach(clearTimeout);
+  });
   $: effectiveCollapsed = collapsed && !isMobile;
+  $: effectiveWidthCollapsed = pendingCollapsed && !isMobile;
 
   // Collapsed rail's icons are meant for quick glancing/switching, not full
   // project browsing — clicking a space icon there expands back to the
@@ -78,6 +109,7 @@
     expanding = true;
     window.setTimeout(() => {
       collapsed = false;
+      pendingCollapsed = false;
       localStorage.setItem(COLLAPSED_KEY, 'false');
       if (!expandedSpaces.has(spaceId)) toggleSpaceExpand(spaceId);
       const firstProject = projectsForSpace(spaceId, $projects)[0];
@@ -406,7 +438,8 @@
   class:collapsed={effectiveCollapsed}
   class:resizing
   class:expanding
-  style="--sidebar-w: {(!effectiveCollapsed || expanding) ? sidebarWidth : COLLAPSED_WIDTH}px"
+  class:swapping
+  style="--sidebar-w: {(!effectiveWidthCollapsed || expanding) ? sidebarWidth : COLLAPSED_WIDTH}px"
 >
   <div class="sidebar-top">
     {#if !effectiveCollapsed}<div class="logo">Offlog</div>{/if}
@@ -820,6 +853,21 @@
      of time before swapping to the full tree, so the two states stay
      visually connected instead of teleporting. */
   .sidebar.expanding .tree-section-collapsed { opacity: 0; transform: translateY(-14px); }
+  /* Content crossfade for collapse/expand -- see toggleCollapsed(). The
+     invisible window (45%-55%) is when `collapsed` actually flips, so the
+     rail-vs-tree swap is never seen. Total matches the width transition. */
+  .sidebar.swapping .sidebar-top,
+  .sidebar.swapping .primary-nav,
+  .sidebar.swapping .tree-section,
+  .sidebar.swapping .tree-section-collapsed {
+    animation: sidebar-swap var(--dur-medium) var(--ease-standard);
+  }
+  @keyframes sidebar-swap {
+    0%   { opacity: 1; }
+    45%  { opacity: 0; }
+    55%  { opacity: 0; }
+    100% { opacity: 1; }
+  }
   .space-icon-only {
     width: 32px; height: 32px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
