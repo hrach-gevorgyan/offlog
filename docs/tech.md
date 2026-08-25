@@ -245,11 +245,43 @@ retry screen rather than hanging. `main.ts` listens for `unhandledrejection`
 and `error` as a last resort. Every task-mutating call site is wrapped in
 try/catch with `showError()` — an audited invariant.
 
-**Integrity check.** `checkIntegrity()` reports orphaned projects and tasks,
-tasks pointing at a status that no longer exists, projects with no statuses,
-and unresolved sync conflicts. `repairDatabase()` fixes all but the
-no-statuses case, which is left for manual review. Both are exposed in
-Settings; repair needs an explicit confirm.
+**Integrity check.** `checkIntegrity()` reports nine issue types: orphaned
+projects and tasks, tasks pointing at a status that no longer exists,
+projects with no statuses, unresolved sync conflicts, values left behind by
+a deleted custom field, `related`/`blocked_by` ids pointing at tasks that
+were hard-pruned, active tasks inside an archived project, and
+`attachments[]` metadata that disagrees with PouchDB's own `_attachments`.
+
+`repairDatabase()` fixes all but the no-statuses case, which is left for
+manual review. It accepts the issue list a caller already computed —
+`runMaintenanceSteps()` passes its own, so a run scans once rather than
+two or three times. Repair rewrites documents and drops conflicting
+revisions with no undo, so it asks first: `MaintOptions.confirmRepair` is a
+callback (db/ must never import UI) that SettingsPanel fulfils with
+`confirmAction()`. Declining leaves the data untouched and reports the
+issues as needing review.
+
+It scans by id prefix (`space:`/`project:`/`task:`/`tag:`) rather than the
+whole database, so the changelog is not loaded — and `checked` counts only
+records a check actually inspected. `log:` docs are excluded from the
+conflict pass on purpose: their ids embed a random suffix, so two devices
+can never mint the same one.
+
+**Maintenance run.** `runMaintenanceSteps()` sequences check → repair →
+prune history → prune trash → compact, reporting each through `onStep`.
+`MaintOptions.isCancelled` is polled between steps; a step already in
+flight always finishes, since neither a `bulkDocs` nor a compaction can be
+interrupted safely.
+
+Compaction is the expensive step: PouchDB's `_compact` walks the changes
+feed from seq 0 and fires one `compactDocument()` per row concurrently, so
+on a churned database it queues thousands of IndexedDB transactions and
+starves the main thread for minutes. It is also usually pointless — the
+database is opened with `auto_compaction`, so revision bodies are discarded
+as each write lands. A run that repaired nothing and pruned nothing has
+nothing new to free and skips it; databases predating `auto_compaction`
+still get one full pass, marked done in `offlog_compacted` so it is paid
+once.
 
 **Automatic backup** (`autoBackup.ts`). Runs at most every ~20h, writing the
 same JSON as a manual export to app-private storage (desktop

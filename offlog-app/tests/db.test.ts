@@ -815,6 +815,126 @@ describe('runMaintenanceSteps', () => {
     ]);
   });
 
+  it('asks before repairing, and leaves the data alone when declined', async () => {
+    // Repair rewrites docs and drops conflicting revisions with no undo.
+    await seedSpace();
+    await createProject('space:unsorted', 'Fallback');
+    await db.put({
+      _id: 'task:unconfirmed', type: 'task', project_id: 'project:gone', space_id: 'space:unsorted',
+      column_id: 'col:x', title: 'Orphan', body: '', priority: 1, due_date: null, reminder_at: null,
+      tags: [], position: 0, deleted: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'pc',
+    });
+
+    const steps: Record<string, { status: string; note: string }> = {};
+    const { remainingIssues } = await runMaintenanceSteps(
+      (st) => { if (st.status !== 'running') steps[st.key] = { status: st.status, note: st.note }; },
+      { confirmRepair: async () => false },
+    );
+
+    expect(steps.repair.status).toBe('skipped');
+    expect(steps.repair.note).toMatch(/not confirmed/i);
+    expect(remainingIssues.length).toBeGreaterThan(0);
+    // Untouched: still pointing at the missing project.
+    expect((await db.get<any>('task:unconfirmed')).project_id).toBe('project:gone');
+  });
+
+  it('stops between steps when cancelled, marking the rest cancelled', async () => {
+    await seedSpace();
+    await createProject('space:unsorted', 'Clean');
+
+    const steps: Record<string, { status: string; note: string }> = {};
+    const res = await runMaintenanceSteps(
+      (st) => { if (st.status !== 'running') steps[st.key] = { status: st.status, note: st.note }; },
+      { isCancelled: () => true },
+    );
+
+    expect(res.cancelled).toBe(true);
+    // The check step already ran before the first cancel poll; everything
+    // after it is reported cancelled rather than silently missing.
+    expect(steps.check.status).toBe('done');
+    for (const k of ['repair', 'history', 'trash', 'compact']) {
+      expect(steps[k].note).toBe('Cancelled');
+    }
+  });
+
+  it('counts only real records as checked, not log entries', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Counted');
+    await createTask(project._id, 'space:unsorted', project.columns[0].id, 'One task');
+
+    // Each write above also emits a log: doc. Those must not inflate the
+    // number the maintenance modal shows.
+    const logs = await db.allDocs({ startkey: 'log:', endkey: 'log:\uFFF0' });
+    expect(logs.rows.length).toBeGreaterThan(0);
+
+    const { checked } = await checkIntegrity();
+    const spaces = await db.allDocs({ startkey: 'space:', endkey: 'space:\uFFF0' });
+    const projects = await db.allDocs({ startkey: 'project:', endkey: 'project:\uFFF0' });
+    const tasks = await db.allDocs({ startkey: 'task:', endkey: 'task:\uFFF0' });
+    expect(checked).toBe(spaces.rows.length + projects.rows.length + tasks.rows.length);
+  });
+
+  it('finds and clears values left behind by a deleted custom field', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Fields');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Has values', {
+      custom_values: { 'field:gone': 'stranded', 'field:also-gone': 7 },
+    });
+
+    const { issues } = await checkIntegrity();
+    expect(issues.filter(i => i.type === 'orphaned_custom_value')).toHaveLength(1);
+
+    await repairDatabase();
+    expect((await db.get<any>(task._id)).custom_values).toEqual({});
+  });
+
+  it('finds and clears links to tasks that no longer exist', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Links');
+    const keeper = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Keeper');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Linker');
+    await db.put({ ...(await db.get<any>(task._id)), related: [keeper._id, 'task:vanished'], blocked_by: ['task:also-vanished'] });
+
+    const { issues } = await checkIntegrity();
+    expect(issues.filter(i => i.type === 'dangling_link')).toHaveLength(1);
+
+    await repairDatabase();
+    const fixed = await db.get<any>(task._id);
+    expect(fixed.related).toEqual([keeper._id]);
+    expect(fixed.blocked_by).toEqual([]);
+  });
+
+  it('finds and archives an active task inside an archived project', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Archived');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Still active');
+    // Archive the project directly so the cascade does not run -- the same
+    // shape an import or a sync merge can produce.
+    await db.put({ ...(await db.get<any>(project._id)), archived: true });
+
+    const { issues } = await checkIntegrity();
+    expect(issues.filter(i => i.type === 'unarchived_in_archived')).toHaveLength(1);
+
+    await repairDatabase();
+    expect((await db.get<any>(task._id)).archived).toBe(true);
+  });
+
+  it('finds and drops an attachment row whose file is gone', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Files');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Has a phantom');
+    await db.put({
+      ...(await db.get<any>(task._id)),
+      attachments: [{ key: 'att:missing', filename: 'gone.png', size: 10, content_type: 'image/png', added_at: new Date().toISOString() }],
+    });
+
+    const { issues } = await checkIntegrity();
+    expect(issues.filter(i => i.type === 'attachment_mismatch')).toHaveLength(1);
+
+    await repairDatabase();
+    expect((await db.get<any>(task._id)).attachments).toEqual([]);
+  });
+
   it('compacts once, then skips it on a later clean run', async () => {
     // Compaction walks the entire changes feed and can block for minutes.
     // auto_compaction means a run that deleted nothing has nothing to

@@ -17,6 +17,7 @@
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
     wipeAndReseed, type ImportedDoc,
   } from './db';
+  import { confirmAction } from './confirm';
   import { projects as projectsStore } from './store';
   import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../config';
   import { fmtLastSynced, localDateStr } from './utils';
@@ -859,12 +860,28 @@
   // UI wiring: forward each emitted step into the reactive step list, and
   // handle the one thing that's genuinely this component's job (marking
   // whichever step was running when something threw).
+  // Cancellation is cooperative: runMaintenanceSteps polls this between
+  // steps, so whichever step is already in flight still finishes.
+  let maintCancelled = false;
+
   async function runMaintenance() {
     maintRunning = true;
+    maintCancelled = false;
     maintSteps = freshMaintSteps();
     maintRemainingIssues = [];
     try {
-      const { remainingIssues } = await runMaintenanceSteps((step) => setMaintStep(step.key, { status: step.status, note: step.note }));
+      const { remainingIssues } = await runMaintenanceSteps(
+        (step) => setMaintStep(step.key, { status: step.status, note: step.note }),
+        {
+          // Repair rewrites documents and drops conflicting revisions with
+          // no undo, so it asks first rather than doing it on the way past.
+          confirmRepair: (issues) => confirmAction(
+            `Found ${issues.length} problem${issues.length === 1 ? '' : 's'}. Repair what can be fixed safely? This rewrites the affected items and cannot be undone.`,
+            { confirmLabel: 'Repair', cancelLabel: 'Skip' },
+          ),
+          isCancelled: () => maintCancelled,
+        },
+      );
       maintRemainingIssues = remainingIssues;
       await loadBreakdown();
     } catch {
@@ -873,6 +890,7 @@
       showError('Maintenance failed partway through. Please try again.');
     } finally {
       maintRunning = false;
+      maintCancelled = false;
     }
   }
 
@@ -1147,6 +1165,11 @@
         {/if}
       </div>
       <div class="mini-modal-actions">
+        {#if maintRunning}
+          <button class="export-btn" on:click={() => maintCancelled = true} disabled={maintCancelled}>
+            {maintCancelled ? 'Stopping…' : 'Cancel'}
+          </button>
+        {/if}
         <button class="btn-primary" on:click={runMaintenance} disabled={maintRunning}>
           {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run Again' : 'Run Maintenance'}
         </button>

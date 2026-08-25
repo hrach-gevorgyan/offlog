@@ -2,8 +2,7 @@
 // Settings maintenance run, and backup import/export.
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column } from '../types';
 import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS } from './core';
-import type { LogDoc } from './core';
-import { getProjects } from './entities';
+import { getProjects, getCustomFieldDefs } from './entities';
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
 import { scanConflicts } from './sync';
@@ -23,9 +22,15 @@ export async function pruneOldLogs(): Promise<number> {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - LOG_RETENTION_MONTHS);
   const cutoffIso = cutoff.toISOString();
-  const r = await db.allDocs<LogDoc>({ startkey: 'log:', endkey: 'log:￰', include_docs: true });
-  const stale = r.rows.map(row => row.doc!).filter(d => d.ts && d.ts < cutoffIso);
-  if (stale.length) await db.bulkDocs(stale.map(d => ({ ...d, _deleted: true })));
+  // A log's id is `log:<ISO ts>-<random>`, so ids sort by time and the cutoff
+  // can be the endkey -- the scan stops at the newest stale entry instead of
+  // reading every log in the database. Deleting needs only _id and _rev, and
+  // allDocs returns the rev without include_docs, so no bodies are loaded.
+  const r = await db.allDocs({ startkey: 'log:', endkey: `log:${cutoffIso}` });
+  const stale = r.rows.filter(row => !row.value.deleted);
+  if (stale.length) {
+    await db.bulkDocs(stale.map(row => ({ _id: row.id, _rev: row.value.rev, _deleted: true })));
+  }
   return stale.length;
 }
 
@@ -245,21 +250,34 @@ export async function exportTasksCSV(): Promise<string> {
 // ── Integrity check + repair ──────────────────────────────────────────────────
 
 export interface IntegrityIssue {
-  type: 'orphaned_project' | 'orphaned_task' | 'invalid_column' | 'no_columns' | 'conflict';
+  type: 'orphaned_project' | 'orphaned_task' | 'invalid_column' | 'no_columns' | 'conflict'
+      | 'orphaned_custom_value' | 'dangling_link' | 'unarchived_in_archived' | 'attachment_mismatch';
   docId: string;
   description: string;
 }
 
 export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; checked: number }> {
   const issues: IntegrityIssue[] = [];
-  const r = await db.allDocs<SpaceDoc | ProjectDoc | TaskDoc>({ include_docs: true, conflicts: true });
-  const docs = r.rows.map(row => row.doc!).filter(d => !d._id.startsWith('_'));
 
-  const spaces = docs.filter(d => d.type === 'space') as SpaceDoc[];
-  const projects = docs.filter(d => d.type === 'project') as ProjectDoc[];
-  const tasks = docs.filter(d => d.type === 'task') as TaskDoc[];
+  // Three prefix scans, not one allDocs over everything. A whole-database
+  // scan also pulls in every log: doc -- thousands after a few months --
+  // loads their bodies, and counts them as "items checked" even though no
+  // check below ever looks at one.
+  const [spaceRows, projectRows, taskRows, tagRows] = await Promise.all([
+    db.allDocs<SpaceDoc>({ startkey: 'space:', endkey: 'space:\uFFF0', include_docs: true, conflicts: true }),
+    db.allDocs<ProjectDoc>({ startkey: 'project:', endkey: 'project:\uFFF0', include_docs: true, conflicts: true }),
+    db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:\uFFF0', include_docs: true, conflicts: true }),
+    db.allDocs({ startkey: 'tag:', endkey: 'tag:\uFFF0', include_docs: true, conflicts: true }),
+  ]);
+
+  const spaces = spaceRows.rows.map(r => r.doc!).filter(Boolean);
+  const projects = projectRows.rows.map(r => r.doc!).filter(Boolean);
+  const tasks = taskRows.rows.map(r => r.doc!).filter(Boolean);
   const spaceIds = new Set(spaces.map(s => s._id));
   const projectIds = new Set(projects.map(p => p._id));
+  const taskIds = new Set(tasks.map(t => t._id));
+  const fieldIds = new Set((await getCustomFieldDefs()).map(f => f.id));
+  const archivedProjectIds = new Set(projects.filter(p => p.archived).map(p => p._id));
 
   for (const p of projects) {
     if (!spaceIds.has(p.space_id)) {
@@ -270,34 +288,79 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
     }
   }
 
+  const projectById = new Map(projects.map(p => [p._id!, p]));
   for (const t of tasks) {
     if (t.deleted) continue;
     if (!projectIds.has(t.project_id)) {
       issues.push({ type: 'orphaned_task', docId: t._id!, description: `Task "${t.title}" points to a missing project` });
       continue;
     }
-    const proj = projects.find(p => p._id === t.project_id);
+    const proj = projectById.get(t.project_id);
     if (proj && proj.columns.length && !proj.columns.some(c => c.id === t.column_id)) {
       issues.push({ type: 'invalid_column', docId: t._id!, description: `Task "${t.title}" points to a missing status in "${proj.name}"` });
     }
-  }
 
-  for (const row of r.rows) {
-    // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
-    // never on row.value.
-    if (row.doc?._conflicts?.length) {
-      issues.push({ type: 'conflict', docId: row.id, description: `${row.doc._conflicts.length} unresolved conflicting revision(s)` });
+    // A custom field can be deleted while tasks still carry values keyed to
+    // its id. Nothing renders them and nothing else cleans them up, so they
+    // sit in the doc -- and in every sync payload -- forever.
+    const staleFields = Object.keys(t.custom_values ?? {}).filter(id => !fieldIds.has(id));
+    if (staleFields.length) {
+      issues.push({ type: 'orphaned_custom_value', docId: t._id!, description: `Task "${t.title}" has ${staleFields.length} value(s) for deleted custom field(s)` });
+    }
+
+    // pruneOldDeletedTasks() hard-deletes trashed tasks after 3 months, so
+    // anything that named one keeps an id pointing at nothing. Reads already
+    // ignore unresolvable ids, so this is cleanup, not a visible break.
+    const dangling = [...(t.related ?? []), ...(t.blocked_by ?? [])].filter(id => !taskIds.has(id));
+    if (dangling.length) {
+      issues.push({ type: 'dangling_link', docId: t._id!, description: `Task "${t.title}" links to ${dangling.length} task(s) that no longer exist` });
+    }
+
+    // archiveProject() cascades archived onto its tasks, but an import or a
+    // sync merge can land a task into an archived project without it.
+    if (!t.archived && archivedProjectIds.has(t.project_id)) {
+      issues.push({ type: 'unarchived_in_archived', docId: t._id!, description: `Task "${t.title}" is active inside an archived project` });
+    }
+
+    // attachments[] is loggable metadata; the bytes live in PouchDB's own
+    // _attachments. Either side can outlive the other -- a phantom row shows
+    // an attachment that cannot open, an orphaned blob counts against the
+    // 10MB cap while nothing references it.
+    const blobKeys = new Set(Object.keys((t as { _attachments?: Record<string, unknown> })._attachments ?? {}));
+    const metaKeys = (t.attachments ?? []).map(a => a.key);
+    const phantom = metaKeys.filter(k => !blobKeys.has(k));
+    const orphanBlobs = [...blobKeys].filter(k => !metaKeys.includes(k));
+    if (phantom.length || orphanBlobs.length) {
+      issues.push({ type: 'attachment_mismatch', docId: t._id!, description: `Task "${t.title}" has ${phantom.length} attachment(s) with no file and ${orphanBlobs.length} file(s) with no attachment` });
     }
   }
 
-  return { issues, checked: docs.length };
+  // log: docs are deliberately not scanned for conflicts: their ids embed a
+  // random suffix, so two devices can never mint the same one and a
+  // conflicting revision is not reachable.
+  for (const row of [...spaceRows.rows, ...projectRows.rows, ...taskRows.rows, ...tagRows.rows]) {
+    // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
+    // never on row.value.
+    const doc = row.doc as { _conflicts?: string[] } | undefined;
+    if (doc?._conflicts?.length) {
+      issues.push({ type: 'conflict', docId: row.id, description: `${doc._conflicts.length} unresolved conflicting revision(s)` });
+    }
+  }
+
+  // Only records a check actually inspected -- counting logs here made the
+  // number look impressive and mean nothing.
+  return { issues, checked: spaces.length + projects.length + tasks.length };
 }
 
 // Applies safe, well-understood fixes only. "no_columns" is deliberately
 // left for manual review — inventing default statuses for a project the
 // user configured a specific way is too destructive to do silently.
-export async function repairDatabase(): Promise<{ fixed: number; skipped: number }> {
-  const { issues } = await checkIntegrity();
+// `known` lets a caller that has just run checkIntegrity() hand its result
+// straight in. Without it a maintenance run scanned the whole database twice
+// -- once for the check step, once inside here -- and a third time when
+// anything was left unfixed.
+export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed: number; skipped: number }> {
+  const issues = known ?? (await checkIntegrity()).issues;
   let fixed = 0, skipped = 0;
 
   for (const issue of issues) {
@@ -319,6 +382,41 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
       } else if (issue.type === 'orphaned_project') {
         const doc = await db.get<ProjectDoc>(issue.docId);
         await db.put({ ...doc, space_id: 'space:unsorted', updated_at: now(), source: SOURCE });
+        fixed++;
+      } else if (issue.type === 'orphaned_custom_value') {
+        const doc = await db.get<TaskDoc>(issue.docId);
+        const live = new Set((await getCustomFieldDefs()).map(f => f.id));
+        const custom_values = Object.fromEntries(
+          Object.entries(doc.custom_values ?? {}).filter(([id]) => live.has(id)),
+        );
+        await db.put({ ...doc, custom_values, updated_at: now(), source: SOURCE });
+        fixed++;
+      } else if (issue.type === 'dangling_link') {
+        const doc = await db.get<TaskDoc>(issue.docId);
+        const exists = async (id: string) => {
+          try { await db.get(id); return true; } catch { return false; }
+        };
+        const keep = async (ids: string[]) => {
+          const flags = await Promise.all(ids.map(exists));
+          return ids.filter((_, i) => flags[i]);
+        };
+        const related = doc.related ? await keep(doc.related) : undefined;
+        const blocked_by = doc.blocked_by ? await keep(doc.blocked_by) : undefined;
+        await db.put({ ...doc, related, blocked_by, updated_at: now(), source: SOURCE });
+        fixed++;
+      } else if (issue.type === 'unarchived_in_archived') {
+        const doc = await db.get<TaskDoc>(issue.docId);
+        await db.put({ ...doc, archived: true, updated_at: now(), source: SOURCE });
+        fixed++;
+      } else if (issue.type === 'attachment_mismatch') {
+        const doc = await db.get<TaskDoc & { _attachments?: Record<string, unknown> }>(issue.docId);
+        const blobKeys = new Set(Object.keys(doc._attachments ?? {}));
+        // Drop metadata rows whose bytes are gone. The reverse -- bytes with
+        // no metadata row -- is left alone: removing them needs a separate
+        // revision per attachment, and dead bytes are a space cost, not a
+        // broken card.
+        const attachments = (doc.attachments ?? []).filter(a => blobKeys.has(a.key));
+        await db.put({ ...doc, attachments, updated_at: now(), source: SOURCE });
         fixed++;
       } else if (issue.type === 'conflict') {
         const doc = await db.get(issue.docId, { conflicts: true });
@@ -355,19 +453,42 @@ export interface MaintStepResult { key: MaintStepKey; status: MaintStatus; note:
 // caller's UI can show a per-step spinner) and one final done/skipped/error
 // result once it settles -- callers that only care about the end state can
 // filter for `status !== 'running'`.
-export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => void): Promise<{ remainingIssues: IntegrityIssue[] }> {
+export interface MaintOptions {
+  // Asked before repair, which rewrites documents and drops conflicting
+  // revisions with no undo. Lives here as a callback rather than a direct
+  // confirmAction() call because db/ must never import UI.
+  confirmRepair?: (issues: IntegrityIssue[]) => Promise<boolean>;
+  // Polled between steps. A step already in flight always finishes -- there
+  // is no safe way to interrupt a bulkDocs or a compaction partway.
+  isCancelled?: () => boolean;
+}
+
+export async function runMaintenanceSteps(
+  onStep: (result: MaintStepResult) => void,
+  opts: MaintOptions = {},
+): Promise<{ remainingIssues: IntegrityIssue[]; cancelled: boolean }> {
   let remainingIssues: IntegrityIssue[] = [];
+  const cancelled = () => opts.isCancelled?.() === true;
+  const stop = (...rest: MaintStepKey[]) => {
+    for (const k of rest) onStep({ key: k, status: 'skipped', note: 'Cancelled' });
+    return { remainingIssues, cancelled: true };
+  };
 
   onStep({ key: 'check', status: 'running', note: '' });
   const { issues, checked } = await checkIntegrity();
   onStep({ key: 'check', status: 'done', note: issues.length === 0 ? `No problems found (${checked} items checked)` : `${issues.length} issue${issues.length === 1 ? '' : 's'} found` });
 
+  if (cancelled()) return stop('repair', 'history', 'trash', 'compact');
+
   let repaired = 0;
   if (issues.length === 0) {
     onStep({ key: 'repair', status: 'skipped', note: 'Nothing to repair' });
+  } else if (opts.confirmRepair && !(await opts.confirmRepair(issues))) {
+    remainingIssues = issues;
+    onStep({ key: 'repair', status: 'skipped', note: 'Skipped — not confirmed' });
   } else {
     onStep({ key: 'repair', status: 'running', note: '' });
-    const { fixed, skipped } = await repairDatabase();
+    const { fixed, skipped } = await repairDatabase(issues);
     repaired = fixed;
     onStep({ key: 'repair', status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
     if (skipped > 0) {
@@ -376,9 +497,13 @@ export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => v
     }
   }
 
+  if (cancelled()) return stop('history', 'trash', 'compact');
+
   onStep({ key: 'history', status: 'running', note: '' });
   const prunedLogs = await pruneOldLogs();
   onStep({ key: 'history', status: 'done', note: prunedLogs > 0 ? `Removed ${prunedLogs} entr${prunedLogs === 1 ? 'y' : 'ies'} older than 6 months` : 'Nothing old enough to remove' });
+
+  if (cancelled()) return stop('trash', 'compact');
 
   onStep({ key: 'trash', status: 'running', note: '' });
   const prunedTasks = await pruneOldDeletedTasks();
@@ -400,17 +525,40 @@ export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => v
   // The exception is a database that predates auto_compaction: it carries
   // real accumulated revisions and needs one full pass. COMPACTED_KEY marks
   // that pass as done so it is paid once, never again.
+  if (cancelled()) return stop('compact');
+
   const freedSomething = repaired > 0 || prunedLogs > 0 || prunedTasks > 0;
   const everCompacted = localStorage.getItem(COMPACTED_KEY) === '1';
   if (!freedSomething && everCompacted) {
     onStep({ key: 'compact', status: 'skipped', note: 'Nothing new to reclaim' });
   } else {
     onStep({ key: 'compact', status: 'running', note: '' });
+    const before = await storageUsage();
     await db.compact();
     localStorage.setItem(COMPACTED_KEY, '1');
-    onStep({ key: 'compact', status: 'done', note: 'Reclaimed disk space' });
+    const after = await storageUsage();
+    const freed = before !== null && after !== null ? before - after : null;
+    onStep({ key: 'compact', status: 'done', note: describeFreed(freed) });
   }
 
-  return { remainingIssues };
+  return { remainingIssues, cancelled: false };
+}
+
+// navigator.storage is absent or permission-gated on some platforms, so a
+// missing reading is normal and must not read as "freed nothing".
+async function storageUsage(): Promise<number | null> {
+  try {
+    const est = await navigator.storage?.estimate?.();
+    return typeof est?.usage === 'number' ? est.usage : null;
+  } catch { return null; }
+}
+
+function describeFreed(bytes: number | null): string {
+  if (bytes === null) return 'Reclaimed disk space';
+  // The estimate is coarse and can drift upward between the two readings;
+  // reporting a negative number as a gain would be worse than saying nothing.
+  if (bytes < 64 * 1024) return 'Nothing left to reclaim';
+  const mb = bytes / 1048576;
+  return `Freed ${mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`}`;
 }
 
