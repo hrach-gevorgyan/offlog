@@ -342,6 +342,12 @@ export async function repairDatabase(): Promise<{ fixed: number; skipped: number
 // this to its reactive step-list UI via the onStep callback, so the
 // sequencing/error-handling stays testable without mounting the component.
 type MaintStepKey = 'check' | 'repair' | 'history' | 'trash' | 'compact';
+// Set once a full compaction has completed, so the expensive whole-history
+// pass is never repeated on a database that cannot accumulate revisions.
+// localStorage, not a doc: this is about one device's local storage, and
+// syncing it would make one device's compaction silence another's.
+const COMPACTED_KEY = 'offlog_compacted';
+
 export type MaintStatus = 'running' | 'done' | 'skipped' | 'error';
 export interface MaintStepResult { key: MaintStepKey; status: MaintStatus; note: string }
 
@@ -356,11 +362,13 @@ export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => v
   const { issues, checked } = await checkIntegrity();
   onStep({ key: 'check', status: 'done', note: issues.length === 0 ? `No problems found (${checked} items checked)` : `${issues.length} issue${issues.length === 1 ? '' : 's'} found` });
 
+  let repaired = 0;
   if (issues.length === 0) {
     onStep({ key: 'repair', status: 'skipped', note: 'Nothing to repair' });
   } else {
     onStep({ key: 'repair', status: 'running', note: '' });
     const { fixed, skipped } = await repairDatabase();
+    repaired = fixed;
     onStep({ key: 'repair', status: 'done', note: `Fixed ${fixed}${skipped ? `, ${skipped} need manual review` : ''}` });
     if (skipped > 0) {
       const after = await checkIntegrity();
@@ -376,9 +384,32 @@ export async function runMaintenanceSteps(onStep: (result: MaintStepResult) => v
   const prunedTasks = await pruneOldDeletedTasks();
   onStep({ key: 'trash', status: 'done', note: prunedTasks > 0 ? `Removed ${prunedTasks} item${prunedTasks === 1 ? '' : 's'} older than 3 months` : 'Nothing old enough to remove' });
 
-  onStep({ key: 'compact', status: 'running', note: '' });
-  await db.compact();
-  onStep({ key: 'compact', status: 'done', note: 'Reclaimed disk space' });
+  // Compaction is the expensive step by a wide margin: PouchDB's _compact
+  // walks the whole changes feed from seq 0 and fires one compactDocument()
+  // per row concurrently, so on a heavily-churned database it queues
+  // thousands of IndexedDB transactions, starves the main thread for
+  // minutes, and the modal cannot even repaint.
+  //
+  // It is also almost always pointless here. core.ts opens the database with
+  // auto_compaction, so superseded revision bodies are discarded as each
+  // write lands and nothing accumulates. The only way this run can free
+  // space is if it just deleted something -- a repair, pruned history, or
+  // pruned trash. When all three did nothing there is, by construction,
+  // nothing new to reclaim.
+  //
+  // The exception is a database that predates auto_compaction: it carries
+  // real accumulated revisions and needs one full pass. COMPACTED_KEY marks
+  // that pass as done so it is paid once, never again.
+  const freedSomething = repaired > 0 || prunedLogs > 0 || prunedTasks > 0;
+  const everCompacted = localStorage.getItem(COMPACTED_KEY) === '1';
+  if (!freedSomething && everCompacted) {
+    onStep({ key: 'compact', status: 'skipped', note: 'Nothing new to reclaim' });
+  } else {
+    onStep({ key: 'compact', status: 'running', note: '' });
+    await db.compact();
+    localStorage.setItem(COMPACTED_KEY, '1');
+    onStep({ key: 'compact', status: 'done', note: 'Reclaimed disk space' });
+  }
 
   return { remainingIssues };
 }

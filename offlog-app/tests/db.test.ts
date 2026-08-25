@@ -794,6 +794,7 @@ describe('checkIntegrity / repairDatabase', () => {
 // that whole component — see its own comment in db.ts.
 describe('runMaintenanceSteps', () => {
   it('runs all 5 steps in order, each reported running-then-done, and skips repair when nothing is broken', async () => {
+    localStorage.removeItem('offlog_compacted');
     await seedSpace();
     const project = await createProject('space:unsorted', 'Clean Project');
     await createTask(project._id, 'space:unsorted', project.columns[0].id, 'A task');
@@ -812,6 +813,42 @@ describe('runMaintenanceSteps', () => {
       { key: 'trash', status: 'running' }, { key: 'trash', status: 'done' },
       { key: 'compact', status: 'running' }, { key: 'compact', status: 'done' },
     ]);
+  });
+
+  it('compacts once, then skips it on a later clean run', async () => {
+    // Compaction walks the entire changes feed and can block for minutes.
+    // auto_compaction means a run that deleted nothing has nothing to
+    // reclaim, so the second run must not pay that cost again.
+    localStorage.removeItem('offlog_compacted');
+    await seedSpace();
+    await createProject('space:unsorted', 'Clean Project');
+
+    const first: Record<string, string> = {};
+    await runMaintenanceSteps((s) => { if (s.status !== 'running') first[s.key] = s.status; });
+    expect(first.compact).toBe('done');
+    expect(localStorage.getItem('offlog_compacted')).toBe('1');
+
+    const second: Record<string, { status: string; note: string }> = {};
+    await runMaintenanceSteps((s) => { if (s.status !== 'running') second[s.key] = { status: s.status, note: s.note }; });
+    expect(second.compact.status).toBe('skipped');
+    expect(second.compact.note).toMatch(/Nothing new to reclaim/);
+  });
+
+  it('compacts again when the run actually freed something', async () => {
+    localStorage.setItem('offlog_compacted', '1');
+    await seedSpace();
+    const fallback = await createProject('space:unsorted', 'Fallback');
+    await db.put({
+      _id: 'task:orphan-compact', type: 'task', project_id: 'project:gone', space_id: 'space:unsorted',
+      column_id: 'col:x', title: 'Orphan', body: '', priority: 1, due_date: null, reminder_at: null,
+      tags: [], position: 0, deleted: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'pc',
+    });
+
+    const steps: Record<string, string> = {};
+    await runMaintenanceSteps((s) => { if (s.status !== 'running') steps[s.key] = s.status; });
+    expect(steps.repair).toBe('done');
+    expect(steps.compact).toBe('done');
+    expect((await db.get<any>('task:orphan-compact')).project_id).toBe(fallback._id);
   });
 
   it('repairs a fixable issue and reports it in the repair step note', async () => {
