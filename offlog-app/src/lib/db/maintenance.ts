@@ -284,7 +284,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
       issues.push({ type: 'orphaned_project', docId: p._id!, description: `Project "${p.name}" points to a missing space` });
     }
     if (!p.columns || p.columns.length === 0) {
-      issues.push({ type: 'no_columns', docId: p._id!, description: `Project "${p.name}" has no statuses (not auto-repaired — needs manual review)` });
+      issues.push({ type: 'no_columns', docId: p._id!, description: `Project "${p.name}" has no statuses — open it, add one with "+ Status", then run maintenance again to move its tasks in` });
     }
   }
 
@@ -343,7 +343,13 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
     // never on row.value.
     const doc = row.doc as { _conflicts?: string[] } | undefined;
     if (doc?._conflicts?.length) {
-      issues.push({ type: 'conflict', docId: row.id, description: `${doc._conflicts.length} unresolved conflicting revision(s)` });
+      // Never auto-resolved. Keeping whichever revision PouchDB calls the
+      // winner is arbitrary, not "most recent", so repairing this silently
+      // discarded one device's edit. Sync settings has a screen for choosing,
+      // and scanConflicts() already auto-settles the only safe case (a
+      // pristine default vs a real edit) -- whatever is left is a genuine
+      // disagreement that needs a person.
+      issues.push({ type: 'conflict', docId: row.id, description: `Edited on more than one device (${doc._conflicts.length} version(s) to choose from) — open Settings → Sync → Resolve conflicts` });
     }
   }
 
@@ -421,11 +427,6 @@ export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed:
         const attachments = (doc.attachments ?? []).filter(a => blobKeys.has(a.key));
         await db.put({ ...doc, attachments, updated_at: now(), source: SOURCE });
         fixed++;
-      } else if (issue.type === 'conflict') {
-        const doc = await db.get(issue.docId, { conflicts: true });
-        const conflicts: string[] = doc._conflicts ?? [];
-        for (const rev of conflicts) await db.remove(issue.docId, rev);
-        if (conflicts.length) fixed++; else skipped++;
       } else {
         skipped++;
       }

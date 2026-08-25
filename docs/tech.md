@@ -253,8 +253,13 @@ this catches only ones synced in from a device running an older build), `related
 were hard-pruned, active tasks inside an archived project, and
 `attachments[]` metadata that disagrees with PouchDB's own `_attachments`.
 
-`repairDatabase()` fixes all but the no-statuses case, which is left for
-manual review. It accepts the issue list a caller already computed —
+`repairDatabase()` fixes all but two, which are left for a person:
+the no-statuses case, and **conflicts**. Conflicts are never auto-resolved --
+keeping whichever revision PouchDB calls the winner is arbitrary, not "most
+recent", so repairing them silently discarded one device's edit.
+`scanConflicts()` already auto-settles the only safe case (a pristine default
+against a real edit), so anything still standing is a genuine disagreement;
+Settings -> Sync -> Resolve conflicts is where it gets decided. It accepts the issue list a caller already computed —
 `runMaintenanceSteps()` passes its own, so a run scans once rather than
 two or three times. Repair rewrites documents and drops conflicting
 revisions with no undo, so it asks first: `MaintOptions.confirmRepair` is a

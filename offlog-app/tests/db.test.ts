@@ -774,6 +774,34 @@ describe('checkIntegrity / repairDatabase', () => {
     expect(fixedDoc.project_id).toBe(fallback._id);
   });
 
+  it('never auto-resolves a genuine conflict, and points at the screen that can', async () => {
+    // Keeping whichever revision PouchDB calls the winner is arbitrary, not
+    // "most recent" -- auto-repairing this threw away one device's edit.
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Conflicted');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Two edits');
+
+    // Two competing leaves for the same doc, the shape replication produces.
+    const base = await db.get<any>(task._id!);
+    await db.put({ ...base, title: 'Edited on the laptop' });
+    await db.bulkDocs(
+      [{ ...base, _rev: base._rev.replace(/^\d+/, (n: string) => String(Number(n) + 1)).replace(/-.*/, '-conflictingrevisionhash'), title: 'Edited on the phone' }],
+      { new_edits: false },
+    );
+
+    const before = (await checkIntegrity()).issues.filter(i => i.type === 'conflict');
+    expect(before.length).toBe(1);
+    expect(before[0].description).toMatch(/Resolve conflicts/);
+
+    const { fixed, skipped } = await repairDatabase();
+    expect(fixed).toBe(0);
+    expect(skipped).toBe(1);
+
+    // Both versions survive for the user to choose between.
+    const after = await db.get<any>(task._id!, { conflicts: true });
+    expect(after._conflicts?.length).toBe(1);
+  });
+
   it('repairs an orphaned task for good, even with no project in Unsorted', async () => {
     // Archiving it and leaving project_id dangling looked like a fix but
     // was not: checkIntegrity does not skip archived tasks, so it came back
