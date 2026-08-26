@@ -58,19 +58,12 @@ found nothing there, and walking the feature as a user found three data
 bugs, one of which silently discarded an edit. The checklist does not
 substitute for this.
 
-Ordered by what a wrong answer costs, not by effort. Three are done — sync
-conflict handling, the trash/undo/retention lifecycle, and attachments.
-Their outcomes, including what each deliberately does not do, are in
-[decisions.md](decisions.md).
+Ordered by what a wrong answer costs, not by effort. Four are done — sync
+conflict handling, the trash/undo/retention lifecycle, attachments, and
+recurrence. Their outcomes, including what each deliberately does not do,
+are in [decisions.md](decisions.md).
 
-1. **Recurrence.** The code handles month-end and reminder shifting
-   carefully; that is not the concern. The concern is whether the model
-   matches what people mean: one doc that resets rather than a new card
-   each time, "every N" combined with weekdays-only, and what a completed
-   recurring task looks like in history. Is the interval control worth its
-   complexity, or does daily use only ever want daily/weekly/monthly?
-
-2. **What degrades over weeks.** The class that caught auto-backup
+1. **What degrades over weeks.** The class that caught auto-backup
    silently stopping — nothing here breaks on a fresh install. Current
    suspects: the change-feed catch-up added in v6.7.0 and its 500-change
    fallback, sync retry across days rather than minutes, log growth

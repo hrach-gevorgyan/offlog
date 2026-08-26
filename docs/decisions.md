@@ -309,6 +309,40 @@ not a cost worth optimising — 762 docs with 5.7 MB of attachments took
 before you hit them — the button disables and says so. Images are downscaled
 on the way in, so the caps bite on documents rather than photos.
 
+### Recurrence advances one occurrence per completion, never by wall clock
+
+Settled by the fourth feature audit (roadmap.md), which found nothing to
+change — recorded because the audit nearly changed the wrong thing.
+
+A recurring task missed for five weeks comes back still weeks overdue: one
+completion advances one occurrence, so catching up means ticking it once per
+missed cycle. That reads like a defect and is not one. Advancing once makes
+the next due date **a pure function of the document** — base date, cadence,
+interval — with no dependency on when the completion happens to be
+processed. Two devices completing the same task offline compute the same
+next date. A wall-clock catch-up loop would make the result depend on "now",
+so the same completion on a phone and a laptop would produce different due
+dates and a conflict over which is right. For a local-first app that is the
+wrong trade, and the sharp edge has an ordinary escape: edit the due date,
+or use Skip.
+
+It also keeps the tests honest. Because the reset never reads the clock,
+recurrence tests assert fixed dates and stay true as the calendar moves.
+
+**Everything else held up.** Month-end clamps rather than overflowing (Jan 31
+monthly lands on Feb 28, or Feb 29 in a leap year); a reminder keeps its
+local wall-clock time across a DST boundary; "every N" and weekdays-only
+compose; a missing interval means 1, so documents written before the field
+existed behave unchanged; completion resets the checklist and returns the
+card to the first column in place, never spawning a second card; and the
+card summarises itself in words — "Repeats every 3 days" — before anything
+is expanded.
+
+**The interval control stays.** It is one number beside the cadence, already
+explained by that summary line, and covered by tests. There is no evidence
+from use that it confuses anyone, and removing a working control on a
+suspicion is not an improvement.
+
 ---
 
 ## Distribution & business model
