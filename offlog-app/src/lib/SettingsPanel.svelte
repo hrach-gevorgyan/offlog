@@ -12,6 +12,7 @@
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo, type ConflictVersion,
+    getCustomFieldDefs,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
@@ -599,7 +600,11 @@
   let loadingConflicts = false;
   async function loadConflicts() {
     loadingConflicts = true;
-    try { conflictList = await getConflicts(); } finally { loadingConflicts = false; }
+    try {
+      conflictList = await getConflicts();
+      const defs = await getCustomFieldDefs();
+      conflictFieldNames = Object.fromEntries(defs.map(d => [d.id, d.name]));
+    } finally { loadingConflicts = false; }
   }
   async function resolve(c: ConflictInfo, v: ConflictVersion) {
     // Every other version is discarded, including any this screen is not
@@ -619,14 +624,41 @@
     }
   }
 
-  // Field values come from arbitrary doc types, so they are rendered as short
-  // readable text rather than assumed to be strings.
-  function fmtConflictValue(v: unknown): string {
+  // Custom values are keyed by field id, so the ids have to be resolved to
+  // names or the diff reads as gibberish. Loaded alongside the conflicts.
+  let conflictFieldNames: Record<string, string> = {};
+
+  // Field values come from arbitrary doc types. Structured ones get a shape
+  // a person can read: dumping raw JSON showed a status rename as 200
+  // characters of column ids with the one changed word buried inside.
+  function fmtConflictValue(field: string, v: unknown): string {
     if (v === undefined || v === null || v === '') return '—';
+
+    if (field === 'columns' && Array.isArray(v)) {
+      return v.map(c => (c as { name?: string })?.name ?? '?').join(' → ') || '—';
+    }
+    if (field === 'checklist' && Array.isArray(v)) {
+      if (!v.length) return '—';
+      const done = v.filter(i => (i as { done?: boolean })?.done).length;
+      const texts = v.map(i => (i as { text?: string })?.text ?? '').filter(Boolean);
+      return `${v.length} item${v.length === 1 ? '' : 's'}, ${done} done — ${texts.join(', ')}`;
+    }
+    if (field === 'custom_values' && typeof v === 'object') {
+      const pairs = Object.entries(v as Record<string, unknown>)
+        .map(([id, val]) => `${conflictFieldNames[id] ?? 'deleted field'}: ${val ?? '—'}`);
+      return pairs.length ? pairs.join(', ') : '—';
+    }
+    // Task ids mean nothing to a reader, and resolving every one of them for
+    // a screen this rare is not worth the round-trips -- the count is the
+    // part that differs in practice.
+    if ((field === 'related' || field === 'blocked_by') && Array.isArray(v)) {
+      return v.length ? `${v.length} task${v.length === 1 ? '' : 's'}` : '—';
+    }
+
     if (Array.isArray(v)) return v.length ? v.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(', ') : '—';
     if (typeof v === 'object') return JSON.stringify(v);
-    const s = String(v);
-    return s.length > 120 ? s.slice(0, 120) + '…' : s;
+    const str = String(v);
+    return str.length > 120 ? str.slice(0, 120) + '…' : str;
   }
 
   const CONFLICT_FIELD_LABELS: Record<string, string> = {
@@ -1167,7 +1199,7 @@
                 {#each c.differing as f}
                   <div class="conflict-field">
                     <span class="conflict-field-name">{conflictFieldLabel(f)}</span>
-                    <span class="conflict-field-value">{fmtConflictValue(v.doc[f])}</span>
+                    <span class="conflict-field-value">{fmtConflictValue(f, v.doc[f])}</span>
                   </div>
                 {/each}
               </div>

@@ -46,6 +46,8 @@ vi.mock('../src/lib/db', () => ({
   exportProjectDocs: vi.fn().mockResolvedValue([]),
   exportTasksCSV: vi.fn().mockResolvedValue(''),
   getConflicts: vi.fn().mockResolvedValue([]), resolveConflict: vi.fn(),
+  // loadConflicts() resolves custom-field ids to names for the diff.
+  getCustomFieldDefs: vi.fn().mockResolvedValue([]),
   getStorageBreakdown: vi.fn().mockResolvedValue(null),
   subscribe: vi.fn().mockReturnValue({ cancel: vi.fn() }),
   getDeviceLastSeen: vi.fn().mockResolvedValue([]),
