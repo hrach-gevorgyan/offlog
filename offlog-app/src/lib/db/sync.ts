@@ -305,9 +305,12 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
     const revs: string[] = row.doc?._conflicts ?? [];
     if (!revs.length) continue;
     const current = row.doc!;
-    // Only the first conflicting revision is shown — multi-way conflicts are
-    // rare for a single-user app and repairDatabase() remains available for
-    // those as a blunter "keep current, discard the rest" fallback.
+    // Only the first conflicting revision is shown, but resolveConflict()
+    // removes every one of them — so on a three-way conflict a single click
+    // discards a version the screen never displayed. There is no longer a
+    // fallback elsewhere: repairDatabase() used to offer a blunt "keep
+    // current, discard the rest", and no longer touches conflicts at all
+    // because keeping PouchDB's arbitrary winner threw away real edits.
     const other = await db.get<ConflictContent>(row.id, { rev: revs[0] });
     out.push({
       docId: row.id,
