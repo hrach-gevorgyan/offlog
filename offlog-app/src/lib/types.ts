@@ -94,6 +94,17 @@ export interface TaskDoc {
   deleted: boolean;
   pinned?: boolean;
   archived?: boolean;
+  // Set only by archiveProject()'s cascade, so unarchiveProject() can restore
+  // exactly the tasks it hid and no others. Without it the two are asymmetric
+  // -- archiving hid every open task, un-archiving restored none, and the
+  // project came back empty despite the UI promising "hidden until restored".
+  // Blindly restoring every archived task instead would resurrect ones the
+  // user had archived individually on purpose, which is the whole reason this
+  // needs recording rather than inferring.
+  // Absent/undefined = archived on its own, same as always. Tasks hidden by a
+  // cascade that ran before this field existed cannot be told apart, so they
+  // stay archived and must be restored by hand.
+  archivedWithProject?: boolean;
   // When true, reminder_at is derived from due_date + config.ts's
   // getDefaultReminderTime() rather than set independently — CardDetail
   // recomputes it whenever due_date (or the default time) changes while

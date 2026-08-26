@@ -447,7 +447,7 @@ export async function archiveProject(id: string): Promise<void> {
   await logChange(id, 'update', 'archived', false, true, { project_name: doc.name });
   const all = await getAllTasksRaw();
   const toArchive = all.filter(t => t.project_id === id && !t.deleted && !t.archived && t.column_id !== lastColId);
-  if (toArchive.length) await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true })));
+  if (toArchive.length) await Promise.all(toArchive.map(t => updateTask(t._id!, { archived: true, archivedWithProject: true })));
   invalidateTaskCache();
 }
 
@@ -455,6 +455,16 @@ export async function unarchiveProject(id: string): Promise<void> {
   const doc = await db.get<ProjectDoc>(id);
   await db.put({ ...doc, archived: false, updated_at: now(), source: SOURCE });
   await logChange(id, 'update', 'archived', true, false, { project_name: doc.name });
+
+  // Restore exactly what archiving hid. Filtering on archivedWithProject is
+  // the point: a task the user archived on its own must stay archived, and
+  // without the flag there is no way to tell the two apart -- which is why
+  // this used to restore nothing and hand back an empty project.
+  const all = await getAllTasksRaw();
+  const toRestore = all.filter(t => t.project_id === id && !t.deleted && t.archived && t.archivedWithProject);
+  if (toRestore.length) {
+    await Promise.all(toRestore.map(t => updateTask(t._id!, { archived: false, archivedWithProject: false })));
+  }
   invalidateTaskCache();
 }
 
@@ -1047,11 +1057,15 @@ export async function getArchivedTasksForProject(projectId: string): Promise<Tas
 export async function unarchiveTask(id: string): Promise<void> {
   // Routed through updateTask() (like archiveTask() below), not a direct
   // db.put(), so it logs a changelog entry the way archiving does.
-  await updateTask(id, { archived: false });
+  // Clearing archivedWithProject too: once restored by hand the task is no
+  // longer something the project's own un-archive should act on.
+  await updateTask(id, { archived: false, archivedWithProject: false });
 }
 
 export async function archiveTask(id: string): Promise<void> {
-  await updateTask(id, { archived: true });
+  // Deliberately not flagged as archivedWithProject: this is the user's own
+  // choice, and unarchiveProject() must leave it alone.
+  await updateTask(id, { archived: true, archivedWithProject: false });
 }
 
 export async function archiveColumnTasks(projectId: string, columnId: string): Promise<void> {

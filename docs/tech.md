@@ -198,6 +198,12 @@ One PouchDB database, `offlog`. The `_id` prefix is the document type.
 - **Soft delete.** Tasks get `deleted: true` and are never removed. A real
   removal would replicate as an absence and lose the history.
 - **Archive.** `archived: true` hides a task from normal views; restorable.
+  Archiving a *project* cascades onto its open tasks and marks each
+  `archivedWithProject: true`, so un-archiving restores exactly those and
+  leaves any the user archived individually alone. Without that flag the two
+  are indistinguishable, and un-archiving used to restore nothing — the
+  project came back empty. Tasks hidden by a cascade from before the flag
+  existed cannot be identified and stay archived.
 - **Ordering** uses fractional positions, so inserting between two tasks
   never renumbers the rest.
 - **Priority** is `1` low, `2` medium, `3` high — shown as a left border.

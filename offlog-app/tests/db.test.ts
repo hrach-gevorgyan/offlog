@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import db, {
   posBetween, computeDropPosition,
   createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
+  archiveTask, unarchiveTask,
   createTask, getTasksForProject, updateTask, deleteTask, getTaskById,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribeUndo,
   getAllTasksDue, getDashboardData, getStorageBreakdown,
@@ -1111,6 +1112,54 @@ describe('sync conflict resolution', () => {
     const resolved = await db.get<any>(task._id!, { conflicts: true } as any);
     expect(resolved._conflicts ?? []).toHaveLength(0);
     expect(resolved.title).toBe(wanted);
+  });
+});
+
+describe('archive round-trip', () => {
+  beforeEach(seedSpace);
+
+  it('restores exactly the tasks archiving hid, and leaves deliberate ones alone', async () => {
+    // Archiving cascaded onto open tasks; un-archiving flipped only the
+    // project's own flag, so the project came back EMPTY -- while the UI
+    // promised "hides a project and its open tasks... hidden until restored".
+    const project = await createProject('space:unsorted', 'Roundtrip');
+    const ordinary = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Ordinary');
+    const deliberate = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Archived on purpose');
+    await archiveTask(deliberate._id!);
+
+    await archiveProject(project._id);
+    expect((await db.get<any>(ordinary._id!)).archived).toBe(true);
+
+    await unarchiveProject(project._id);
+
+    // The cascade is reversed...
+    expect((await db.get<any>(ordinary._id!)).archived).toBe(false);
+    // ...and the user's own archive survives it.
+    expect((await db.get<any>(deliberate._id!)).archived).toBe(true);
+
+    const visible = (await getTasksForProject(project._id)).filter(t => !t.deleted && !t.archived);
+    expect(visible.map(t => t.title)).toEqual(['Ordinary']);
+  });
+
+  it('leaves a task archived by hand while the project was archived', async () => {
+    const project = await createProject('space:unsorted', 'Roundtrip 2');
+    const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Restored by hand');
+    await archiveProject(project._id);
+    // The user digs it out individually, then restores the whole project.
+    await unarchiveTask(t._id!);
+    await unarchiveProject(project._id);
+    expect((await db.get<any>(t._id!)).archived).toBe(false);
+  });
+
+  it('does not touch a completed task, which archiving never hid', async () => {
+    // archiveProject skips tasks already in the last column -- so restoring
+    // must not resurrect them into the active list either.
+    const project = await createProject('space:unsorted', 'Roundtrip 3');
+    const done = await createTask(project._id, 'space:unsorted', project.columns.at(-1)!.id, 'Already done');
+    await archiveProject(project._id);
+    expect((await db.get<any>(done._id!)).archived).toBeFalsy();
+    await unarchiveProject(project._id);
+    expect((await db.get<any>(done._id!)).archived).toBeFalsy();
   });
 });
 
