@@ -414,7 +414,11 @@ export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed:
         fixed++;
       } else if (issue.type === 'unarchived_in_archived') {
         const doc = await db.get<TaskDoc>(issue.docId);
-        await db.put({ ...doc, archived: true, updated_at: now(), source: SOURCE });
+        // archivedWithProject, because this is the project's archive catching
+        // up -- exactly what archiveProject()'s cascade does. Without the flag
+        // un-archiving the project would never bring this task back, so the
+        // repair would quietly make the hiding permanent.
+        await db.put({ ...doc, archived: true, archivedWithProject: true, updated_at: now(), source: SOURCE });
         fixed++;
       } else if (issue.type === 'attachment_mismatch') {
         const doc = await db.get<TaskDoc & { _attachments?: Record<string, unknown> }>(issue.docId);

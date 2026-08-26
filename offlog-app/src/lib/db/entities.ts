@@ -1009,7 +1009,20 @@ export async function duplicateTask(id: string): Promise<TaskDoc> {
 export async function undoDelete(id: string): Promise<void> {
   const current = await db.get<TaskDoc>(id);
   if (!current.deleted) return;
-  await db.put({ ...current, deleted: false, updated_at: now(), source: SOURCE });
+
+  // A task sitting in Recycle is skipped by removeColumn()'s move, so its
+  // status can be deleted out from under it. Restoring it unchanged put it
+  // back onto a status that no longer exists, where no view renders it --
+  // the task returned, invisibly, and only a maintenance run would say why.
+  let column_id = current.column_id;
+  try {
+    const proj = await db.get<ProjectDoc>(current.project_id);
+    if (proj.columns.length && !proj.columns.some(c => c.id === column_id)) {
+      column_id = proj.columns[0].id;
+    }
+  } catch { /* no project to check against; leave it for checkIntegrity */ }
+
+  await db.put({ ...current, deleted: false, column_id, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
   let projName: string | undefined;
   try { projName = (await db.get<ProjectDoc>(current.project_id)).name; } catch {}

@@ -1115,6 +1115,58 @@ describe('sync conflict resolution', () => {
   });
 });
 
+describe('restoring from Recycle', () => {
+  beforeEach(seedSpace);
+
+  it('lands a task on a real status when its own was deleted meanwhile', async () => {
+    // removeColumn() moves the tasks it can see, and a trashed task is not
+    // one of them -- so restoring used to put the task back onto a status
+    // that no longer existed, where no view renders it.
+    let project = await createProject('space:unsorted', 'Restore target');
+    const doomed = project.columns[1];
+    const task = await createTask(project._id, 'space:unsorted', doomed.id, 'Was in a removed status');
+
+    await deleteTask(task._id!);
+    project = await removeColumn(project._id, doomed.id);
+    await undoDelete(task._id!);
+
+    const back = await db.get<any>(task._id!);
+    expect(back.deleted).toBe(false);
+    expect(project.columns.some(c => c.id === back.column_id)).toBe(true);
+    // And it shows up where a person would look for it.
+    const onBoard = (await getTasksForProject(project._id)).filter(t => !t.deleted);
+    expect(onBoard.map(t => t.title)).toContain('Was in a removed status');
+  });
+
+  it('leaves the status alone when it still exists', async () => {
+    const project = await createProject('space:unsorted', 'Untouched');
+    const second = project.columns[1];
+    const task = await createTask(project._id, 'space:unsorted', second.id, 'Still fine');
+    await deleteTask(task._id!);
+    await undoDelete(task._id!);
+    expect((await db.get<any>(task._id!)).column_id).toBe(second.id);
+  });
+
+  it('archiving a stray task to match its project keeps it restorable', async () => {
+    // The repair mirrors archiveProject()'s cascade, so it has to mark the
+    // task the same way -- otherwise un-archiving the project never brings
+    // it back and the repair makes the hiding permanent.
+    const project = await createProject('space:unsorted', 'Catch up');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Stray');
+    await deleteTask(task._id!);
+    await archiveProject(project._id);
+    await undoDelete(task._id!);
+
+    const issues = (await checkIntegrity()).issues.filter(i => i.type === 'unarchived_in_archived');
+    expect(issues.length).toBeGreaterThan(0);
+    await repairDatabase(issues);
+    expect((await db.get<any>(task._id!)).archived).toBe(true);
+
+    await unarchiveProject(project._id);
+    expect((await db.get<any>(task._id!)).archived).toBe(false);
+  });
+});
+
 describe('archive round-trip', () => {
   beforeEach(seedSpace);
 

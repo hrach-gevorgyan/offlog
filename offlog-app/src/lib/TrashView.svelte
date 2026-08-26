@@ -54,13 +54,25 @@
     if (e.key === 'Escape') requestClose();
   }
 
+  // A task whose project was deleted is hard-removed with it, so its doc is
+  // gone and no amount of retrying brings it back. Saying "try again" for
+  // that invites a pointless loop.
+  const isGoneForever = (e: unknown) =>
+    (e as { status?: number; name?: string })?.status === 404 ||
+    (e as { name?: string })?.name === 'not_found';
+
   async function restore(id: string) {
     try {
       await undoDelete(id);
       await reloadTasks();
       await load();
-    } catch {
-      showError('Failed to restore task. Please try again.');
+    } catch (e) {
+      if (isGoneForever(e)) {
+        showError('That task no longer exists — it was removed permanently.');
+        await load();
+      } else {
+        showError('Failed to restore task. Please try again.');
+      }
     }
   }
 
@@ -78,10 +90,17 @@
     if (!items.length) return;
     if (!(await confirmAction(`Restore all ${items.length} item${items.length === 1 ? '' : 's'} from Recycle?`, { confirmLabel: 'Restore all' }))) return;
     restoringAll = true;
+    // Per task, not one try around the loop: a single failure used to abort
+    // the rest, so one unrestorable item left every task after it in Recycle
+    // while the message said only that "some" had failed.
+    let failed = 0;
     try {
-      for (const t of items) await undoDelete(t._id!);
+      for (const t of items) {
+        try { await undoDelete(t._id!); } catch { failed++; }
+      }
       await reloadTasks();
       await load();
+      if (failed) showError(`Restored ${items.length - failed} of ${items.length}. ${failed} could not be restored.`);
     } catch {
       showError('Failed to restore some tasks. Please try again.');
     } finally {
