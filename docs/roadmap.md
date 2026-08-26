@@ -36,40 +36,11 @@ Nothing here is blocked on us.
 
 ## Ours to do
 
-### Feature audits — usability, not test coverage
+Nothing. The five feature audits are done — sync conflict handling, the
+trash/undo/retention lifecycle, attachments, recurrence, and what degrades
+over weeks. What each found, and what each deliberately does not do, is in
+[decisions.md](decisions.md).
 
-Every function in the app works, in the sense that it does not throw. That
-is not the question. These audits ask whether each feature is worth having
-in the shape it currently has, run the way a person actually uses it
-rather than the way a test drives it. Each asks the same four things:
-
-- **Real use** — walk the feature from a full workspace, not an empty
-  database. Does the flow make sense end to end?
-- **Edge cases a person hits** — not synthetic ones. The states real usage
-  produces: two devices, a week away from the app, a deleted thing that
-  something else still points at.
-- **Is it earning its place** — a feature nobody reaches for is a
-  liability. Removing one is a valid outcome, recorded in decisions.md.
-- **Upgrade or leave alone** — if it is used but awkward, say precisely
-  what would make it better, or record that it is fine as it is.
-
-The precedent is the maintenance tool (24th pass): the Phase 1 checklist
-found nothing there, and walking the feature as a user found three data
-bugs, one of which silently discarded an edit. The checklist does not
-substitute for this.
-
-Ordered by what a wrong answer costs, not by effort. Four are done — sync
-conflict handling, the trash/undo/retention lifecycle, attachments, and
-recurrence. Their outcomes, including what each deliberately does not do,
-are in [decisions.md](decisions.md).
-
-1. **What degrades over weeks.** The class that caught auto-backup
-   silently stopping — nothing here breaks on a fresh install. Current
-   suspects: the change-feed catch-up added in v6.7.0 and its 500-change
-   fallback, sync retry across days rather than minutes, log growth
-   against the 6-month prune, and reminder rescheduling after long uptime
-   or a reboot.
-
-Not on this list, deliberately: `focusLock.ts` is the only module with no
-tests at all, but it is 25 defensive lines whose callers already filter
-deleted and archived tasks. Coverage is not the ranking.
+An empty section is the correct state for this file, not an invitation to
+refill it. The next entry should come from something that actually happened
+in use.

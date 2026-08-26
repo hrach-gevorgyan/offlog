@@ -343,6 +343,45 @@ explained by that summary line, and covered by tests. There is no evidence
 from use that it confuses anyone, and removing a working control on a
 suspicion is not an improvement.
 
+### What survives weeks of running, and how it is kept that way
+
+Settled by the fifth feature audit (roadmap.md), aimed at the class that
+breaks only after a while — nothing here shows on a fresh install.
+
+**The one real defect was in the task cache.** `fullReload()` read the change
+sequence and the documents concurrently. That sequence is where the next
+catch-up resumes, so it has to be a lower bound on what the cache holds:
+read together, a write landing in between is counted by the sequence but
+missing from the rows, and the catch-up resumes past it. The cache then
+serves a stale copy of that task until something forces another full reload,
+which normally never happens — a wrong title or due date that simply sticks.
+Sync delivers writes at arbitrary moments, so it needs weeks and a second
+device, not a fresh install. The sequence is read first now; the worst case
+is replaying a change the rows already have.
+
+**Anything periodic runs on a timer, never on app start.** The desktop app
+is tray-resident, so a session can last weeks and "next launch" may never
+come — the lesson auto-backup taught when it silently stopped. Retention
+pruning and the backup all run hourly, each with its own "is it due" check.
+
+**Reminders past setTimeout's ~24.8-day ceiling are skipped and re-armed
+later**, by the `rescheduleAll()` that follows every store reload. A task
+manager sees writes most days, so they self-heal; the residual case is a
+reminder set more than 24.8 days out on an app that is then never touched
+again until after it is due.
+
+**Log growth is not a problem at the volume the roadmap worried about.**
+Measured at 5,240 entries: recent-logs 34 ms, a task's own history 8 ms
+(indexed), integrity check 26 ms and no longer reading logs at all,
+retention pruning 1 ms when nothing is due — it range-scans to the cutoff
+rather than reading every entry. Retention was exercised with 1,200
+genuinely expired entries and removed exactly those.
+
+Bulk writes do block the UI while they run — 5,000 inserts or 1,200 deletes
+make the app unresponsive for tens of seconds. That is inherent to one
+thread over IndexedDB, only reachable by a first-pair sync or a restore, and
+not worth a worker for a single-user app.
+
 ---
 
 ## Distribution & business model
