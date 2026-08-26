@@ -225,6 +225,15 @@ One PouchDB database, `offlog`. The `_id` prefix is the document type.
   filename, type, size, date) — `key` is not the filename, since two files
   can share one. 10 MB per file, 10 per task. Images are downscaled to
   ~1600px and re-encoded to JPEG before saving.
+
+  Opening one is platform work, not a download: a blob URL on an
+  `<a download>` only functions in a browser, so Android writes to cache and
+  offers the share sheet and desktop opens a save dialog — the same gap
+  `downloadBlob()` documents for exports, but binary rather than UTF-8.
+  The filename is treated as data on the way to disk: it rides on the doc, so
+  it can arrive over sync or from a hand-edited backup, and `safeFileName()`
+  strips directory components and leading dots before either platform writes
+  it.
 - **Related** (`related[]`): non-directional "see also". Stored only on the
   task the link was added from; the reverse direction is computed at read
   time, because PouchDB cannot write two documents atomically.
