@@ -7,11 +7,12 @@ knowledge of backends, servers, or databases required. Install the PC app
 from a website, install the Android app from Google Play, use either one
 completely on its own. When someone has both, they sync automatically over
 home Wi-Fi — private, not public, secure enough on its own. A PC acting as
-the host is how that works today; removing the need for any one machine to
-be the host is the current direction (see roadmap.md). A small, trusted,
-co-located group (family, a small team, one office) can also share one local
-workspace by connecting their own devices to the same host — a shared board,
-not individual accounts or permissions.
+the host is how that works, and stays that way — removing the need for one
+machine to be the host was investigated as mesh sync and closed for good
+(see "Mesh sync: reopened, investigated, closed for good" below). A small,
+trusted, co-located group (family, a small team, one office) can also share
+one local workspace by connecting their own devices to the same host — a
+shared board, not individual accounts or permissions.
 
 The core app stays free, always, with no feature ever paywalled — open
 source, self-hostable, forkable. Integrations and automation are
@@ -49,6 +50,29 @@ from here.
 ---
 
 ## Storage & sync
+
+### Scale work waits for a threshold, not a schedule
+
+Whether one person's task manager ever accumulates enough data for scale
+to matter is still unanswered, and cannot be answered from an empty
+database. The measuring tool exists —
+`offlog-desktop/scripts/db-metrics/` reports counts, size percentiles,
+attachment bytes and revision depth from any host — so the question is not
+"can we measure" but "is there anything to measure yet".
+
+Existing coverage is already ahead of real use. `perfGuard.test.ts`
+exercises 400 tasks across 8 projects and asserts round-trip counts rather
+than wall-clock timings, so it catches the regressions that matter at a
+size daily use has not reached. Optimising further would be guessing.
+
+This lived in roadmap.md for several versions as an open item, which was
+wrong: it is not work, it is a condition. Re-measure and revisit only when
+one of these is true, never on a schedule:
+
+- more than 400 active tasks, so `perfGuard.test.ts` stops representing
+  reality
+- more than ~5,000 `log:` docs surviving the 6-month prune
+- attachments past a few tens of MB, where sync time starts to show
 
 ### File attachments: one database, not two
 Attachment bytes live in PouchDB's native `_attachments` map on the task

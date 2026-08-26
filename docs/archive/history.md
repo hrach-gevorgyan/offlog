@@ -270,5 +270,16 @@ rather than guessed at.
   model, every project-picker UI, and Dashboard/sidebar nesting — exactly
   the kind of architecture experiment the stabilization pivot exists to
   stop. Revisit post-release only if real daily use demands it.
+- **Snooze** — parked, never numbered. One-tap defer to tomorrow or next
+  week, extending the notification action to the task itself. Carried in
+  roadmap.md's "Later" bucket for several versions without daily use ever
+  asking for it, and moved here when that bucket was removed. Revisit only
+  if real use demands it.
+- **Import converters** — parked, never numbered. One-way Trello/ClickUp/
+  Jira export conversion, never a live connection. Same story: an idea, not
+  demand.
+- **Voice input for Quick Add** — parked, never numbered. Platform
+  speech-to-text into the existing parser, Android first. Same story.
+
 - **C4, F-Droid listing** — declined. Distribution stays GitHub, a website,
   and Google Play. See decisions.md.
