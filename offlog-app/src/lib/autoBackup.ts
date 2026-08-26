@@ -115,3 +115,37 @@ export async function runAutoBackupIfDue(): Promise<void> {
     console.warn('autoBackup: failed, will retry next launch', err);
   }
 }
+
+// What the kept backups occupy on disk. They live OUTSIDE IndexedDB -- app
+// storage on Android, appDataDir() on desktop -- so navigator.storage's
+// estimate, which is what Settings' storage headline reads, does not count
+// them at all. Attachments are inlined in every copy, so a workspace with a
+// few photos turns into several times that across the seven kept files while
+// the headline still reports the database alone.
+//
+// Returns null where there is nothing to measure (web, or the folder does not
+// exist yet) so the UI can stay silent rather than print a confident zero.
+export async function getAutoBackupUsage(): Promise<{ count: number; bytes: number } | null> {
+  try {
+    if (isNativePlatform()) {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const listing = await Filesystem.readdir({ path: 'auto-backups', directory: Directory.Data });
+      const files = listing.files.filter(f => f.type === 'file');
+      return { count: files.length, bytes: files.reduce((sum, f) => sum + (f.size ?? 0), 0) };
+    }
+    if (isTauri()) {
+      const { readDir, stat, exists } = await import('@tauri-apps/plugin-fs');
+      const { appDataDir, join } = await import('@tauri-apps/api/path');
+      const base = await join(await appDataDir(), 'auto-backups');
+      if (!(await exists(base))) return null;
+      const entries = await readDir(base);
+      let bytes = 0, count = 0;
+      for (const e of entries) {
+        if (!e.name) continue;
+        try { bytes += (await stat(await join(base, e.name))).size ?? 0; count++; } catch { /* vanished mid-scan */ }
+      }
+      return { count, bytes };
+    }
+  } catch { /* folder missing or unreadable -- nothing to report */ }
+  return null;
+}

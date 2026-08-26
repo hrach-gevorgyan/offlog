@@ -12,6 +12,7 @@
   export let storageAvailable: boolean;
   export let storagePercent: number;
   export let storageInfo: string;
+  export let backupUsage: { count: number; bytes: number } | null = null;
   export let breakdown: StorageBreakdown | null;
   export let autoBackupEnabled: boolean;
   export let toggleAutoBackup: () => void;
@@ -52,6 +53,13 @@
                     {#if breakdown.attachmentCount}
                       · {breakdown.attachmentCount} attachment{breakdown.attachmentCount === 1 ? '' : 's'} ({formatAttachmentSize(breakdown.attachmentBytes)})
                     {/if}
+                  </p>
+                {/if}
+                {#if backupUsage && backupUsage.count > 0}
+                  <p class="setting-hint">
+                    Plus {backupUsage.count} automatic backup{backupUsage.count === 1 ? '' : 's'}
+                    ({formatAttachmentSize(backupUsage.bytes)}) saved on this device. Each one is a full
+                    copy, attachments included, so these grow with your files rather than your task count.
                   </p>
                 {/if}
               </div>

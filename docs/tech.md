@@ -303,6 +303,15 @@ same JSON as a manual export to app-private storage (desktop
 the newest 7. Plain unencrypted JSON, on-device, never uploaded. Failures
 are logged and retried next run — the timestamp only advances on success.
 
+Each file is a full snapshot with attachments inlined as base64, so the
+folder grows with attachment size, not task count: 5.7 MB of attachments
+measured at 6.2 MB per file and 43 MB across the seven kept. That storage
+sits outside IndexedDB, so `navigator.storage.estimate()` — what Settings'
+storage headline reads — does not count it. `getAutoBackupUsage()` reads the
+folder so the figure appears alongside the database breakdown instead of
+being invisible. Collecting the JSON is not the cost: 762 docs with 5.7 MB
+of attachments took 55 ms end to end.
+
 ### Shared utilities (`utils.ts`)
 
 | Export | Used by |

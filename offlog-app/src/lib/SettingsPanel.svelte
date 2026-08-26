@@ -8,7 +8,7 @@
   import SecuritySettings from './settings/SecuritySettings.svelte';
   import AdvancedSettings from './settings/AdvancedSettings.svelte';
   import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from './settings/helpers';
-  import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from './autoBackup';
+  import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt, getAutoBackupUsage } from './autoBackup';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getConflicts, resolveConflict, type ConflictInfo, type ConflictVersion,
@@ -755,7 +755,14 @@
 
   // ── Data ────────────────────────────────────────────────────────────────
   let breakdown: StorageBreakdown | null = null;
-  async function loadBreakdown() { breakdown = await getStorageBreakdown(); }
+  // Kept backups are not in navigator.storage's estimate -- they live outside
+  // IndexedDB -- so without this the storage section can call the data "tiny"
+  // while several times that sits in the backup folder.
+  let backupUsage: { count: number; bytes: number } | null = null;
+  async function loadBreakdown() {
+    breakdown = await getStorageBreakdown();
+    backupUsage = await getAutoBackupUsage();
+  }
   onMount(() => {
     loadBreakdown();
     return subscribeDb(() => loadBreakdown());
@@ -1061,7 +1068,7 @@
               />
 
             {:else if activeCategory === 'data'}
-              <DataSettings
+              <DataSettings {backupUsage}
                 {storageAvailable} {storagePercent} {storageInfo} {breakdown}
                 {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
                 bind:backupScope {backupScopeOptions} {doBackup} {doExportCSV}

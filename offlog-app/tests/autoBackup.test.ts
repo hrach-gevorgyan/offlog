@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isBackupDue, filesToDelete } from '../src/lib/autoBackup';
+import { isBackupDue, filesToDelete, getAutoBackupUsage } from '../src/lib/autoBackup';
 
 describe('isBackupDue (B62)', () => {
   it('is due when never run before', () => {
@@ -55,5 +55,15 @@ describe('filesToDelete (B62)', () => {
       'offlog-autobackup-2026-07-19T00-00-00-000Z.json',
       'offlog-autobackup-2026-07-20T00-00-00-000Z.json',
     ]);
+  });
+});
+
+describe('getAutoBackupUsage', () => {
+  it('reports nothing on a platform that keeps no backups', async () => {
+    // Neither Tauri nor Capacitor here, so there is no backup folder to
+    // measure. It must return null rather than a confident zero -- the
+    // Settings section stays silent instead of claiming backups take no
+    // space when the truth is that none are kept at all.
+    await expect(getAutoBackupUsage()).resolves.toBeNull();
   });
 });
