@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, cleanup } from '@testing-library/svelte';
+import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 import { writable } from 'svelte/store';
 import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 
@@ -27,8 +27,16 @@ vi.mock('../src/lib/db', () => ({
   linkBlockedBy: vi.fn().mockResolvedValue(undefined),
   unlinkBlockedBy: vi.fn().mockResolvedValue(undefined),
   isBlockerResolved: vi.fn().mockReturnValue(false),
+  addAttachment: (...args: unknown[]) => addAttachment(...args),
+  deleteAttachment: vi.fn().mockResolvedValue({ attachments: [] }),
+  getAttachmentBlob: vi.fn().mockResolvedValue(null),
+  skipRecurrence: vi.fn().mockResolvedValue(undefined),
+  // Real value, not undefined: `attachments.length >= undefined` is always
+  // false, so a mock without it silently disables the per-task cap.
+  ATTACHMENT_MAX_PER_TASK: 10,
 }));
 
+const addAttachment = vi.fn().mockResolvedValue({ attachments: [{ key: 'att:1', filename: 'notes.txt', size: 12, content_type: 'text/plain', added_at: '2026-08-26T00:00:00.000Z' }] });
 const reloadTasks = vi.fn().mockResolvedValue(undefined);
 const showError = vi.fn();
 vi.mock('../src/lib/store', () => ({
@@ -134,6 +142,39 @@ describe('CardDetail save logic (A9)', () => {
     const pad = (n: number) => String(n).padStart(2, '0');
     const expectedStr = `${expected.getFullYear()}-${pad(expected.getMonth() + 1)}-${pad(expected.getDate())}`;
     expect(changes.due_date).toBe(expectedStr);
+  });
+
+  it('reports a rejected file even when a later one in the batch succeeds', async () => {
+    // Picking several files runs the attach per file. The rejection message
+    // used to live in one shared variable that every file overwrote, so a
+    // success after a failure erased it -- two of three files attached and
+    // the card said nothing. Order decided whether you were told.
+    addAttachment.mockClear();
+    const task = mkTask();
+    const { container } = render(CardDetail, { props: { task, project: mkProject() } });
+
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    // Attachments is the block that owns the hidden file input.
+    const toggles = [...container.querySelectorAll('.extra-block-toggle')] as HTMLButtonElement[];
+    for (const t of toggles) await fireEvent.click(t);
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+
+    // Rejected first, accepted second -- the order that used to hide it.
+    const rejected = new File(['x'], 'holiday.heic', { type: 'image/heic' });
+    const accepted = new File(['hello there'], 'notes.txt', { type: 'text/plain' });
+    Object.defineProperty(input, 'files', { value: [rejected, accepted], configurable: true });
+    await fireEvent.change(input);
+
+    // Reading the file is async, so the batch is still running when
+    // fireEvent resolves -- wait for it to settle rather than assert early.
+    await waitFor(() => expect(addAttachment).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      const text = container.textContent ?? '';
+      expect(text).toContain('holiday.heic');
+      expect(text).toContain('1 of 2');
+    });
   });
 
   it('toggling a checklist item\'s "done" state persists on save (Extras opened manually)', async () => {

@@ -390,35 +390,34 @@
   let attachmentError = '';
   let thumbnailUrls: Record<string, string> = {};
 
-  async function attachOneFile(file: File) {
+  // Returns why the file could not be attached, or null on success. It must
+  // NOT write attachmentError itself: picking several files at once runs this
+  // per file, and setting a shared message meant the last file decided what
+  // the user saw -- a success after a failure wiped the failure entirely, so
+  // two of three files attached and nothing said so.
+  async function attachOneFile(file: File): Promise<string | null> {
     if (attachments.length >= ATTACHMENT_MAX_PER_TASK) {
-      attachmentError = `This task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task).`;
-      return;
+      return `"${file.name}" — this task already has ${ATTACHMENT_MAX_PER_TASK} attachments (the max per task).`;
     }
     const ext = attachmentExtension(file.name);
     if (!isAttachmentExtensionAllowed(file.name)) {
-      attachmentError = (ext === 'heic' || ext === 'heif')
-        ? 'HEIC/HEIF photos aren’t supported yet -- please share or convert as JPEG first.'
-        : `Unsupported file type: .${ext || '?'}`;
-      return;
+      return (ext === 'heic' || ext === 'heif')
+        ? `"${file.name}" — HEIC/HEIF photos aren’t supported yet, please share or convert as JPEG first.`
+        : `"${file.name}" — unsupported file type: .${ext || '?'}`;
     }
-    attachmentError = '';
-    attachmentBusy = true;
     try {
       const out = isAttachmentImage(file.name)
         ? await downscaleImage(file)
         : { filename: file.name, base64Data: await blobToBase64(file), size: file.size };
       if (out.size > ATTACHMENT_MAX_BYTES) {
-        attachmentError = `"${file.name}" is too large (max ${ATTACHMENT_MAX_BYTES / (1024 * 1024)}MB).`;
-        return;
+        return `"${file.name}" — too large (max ${ATTACHMENT_MAX_BYTES / (1024 * 1024)}MB).`;
       }
       const result = await addAttachment(task._id!, out);
       attachments = result.attachments ?? [];
       await ensureThumbnails();
+      return null;
     } catch {
-      showError('Could not attach that file. Please try again.');
-    } finally {
-      attachmentBusy = false;
+      return `"${file.name}" — could not be attached.`;
     }
   }
 
@@ -426,7 +425,27 @@
     const input = e.target as HTMLInputElement;
     const files = Array.from(input.files ?? []);
     input.value = ''; // allow picking the same filename again later
-    for (const file of files) await attachOneFile(file);
+    if (!files.length) return;
+
+    attachmentError = '';
+    attachmentBusy = true;
+    const failures: string[] = [];
+    try {
+      for (const file of files) {
+        const err = await attachOneFile(file);
+        if (err) failures.push(err);
+      }
+    } finally {
+      attachmentBusy = false;
+    }
+
+    // Every failure is reported, and when only some of a batch failed the
+    // count leads -- otherwise a partial success reads as a total one.
+    if (!failures.length) return;
+    const attached = files.length - failures.length;
+    attachmentError = files.length === 1
+      ? failures[0]
+      : `Attached ${attached} of ${files.length}. ${failures.join(' ')}`;
   }
 
   async function removeAttachment(key: string) {
