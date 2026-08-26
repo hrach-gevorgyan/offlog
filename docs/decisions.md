@@ -195,9 +195,49 @@ conflicts come from two devices editing offline and syncing later — so no
 local ancestor ever exists. Offlog's own `log:` docs can't substitute for
 one either: the Changelog is user-clearable and auto-pruned, so a merge
 subsystem would depend on data the user is invited to delete. Instead the
-conflict modal shows which device made each change and when, alongside
-PouchDB's deterministic auto-resolution. Revisit only if the conflict
-*source* changes fundamentally.
+conflict modal shows every competing version and what differs between
+them, and the person picks one — see the entry below. Revisit only if the
+conflict *source* changes fundamentally.
+
+### Conflict resolution stops at "show both clearly and let them pick"
+
+Settled by the first feature audit (roadmap.md), which walked the screen
+with real two-device conflicts rather than reading the code.
+
+**What conflicts actually are here.** They need the *same document* changed
+on both sides while apart. A week away making a hundred one-sided changes
+produces none: measured through the real replicator, a week of completing,
+deleting, archiving, creating spaces and projects and attaching files
+replicated with **zero** conflicts. Volume is irrelevant; concurrency on one
+document is the only trigger. For one person, who is on one device at a
+time, that is rare. The one guaranteed case is first pairing of two
+installs that each already minted the fixed seed ids, and
+`autoResolvePristineDefaultConflicts()` settles that silently.
+
+The exception is the shared-workspace case the manifesto allows — a family
+or small team on one host, where two people genuinely do touch the same
+task. That is where the screen earns its keep.
+
+**So it is a safety net, not a daily surface**, and it is finished. The
+audit's fixes were the right level of investment: show every version, name
+the fields that differ, mark which is newest, and confirm before discarding.
+A screen someone meets twice a year has to be readable cold.
+
+**Not building further**, specifically:
+- no field-level or "merge both" UI. Merging wrongly is worse than choosing
+  wrongly, because a wrong choice is at least visible in the result
+- no three-way diff view. The ancestor does not exist locally — see the
+  entry above
+- no automatic resolution beyond the pristine-defaults case. Keeping
+  PouchDB's winner is arbitrary rather than newest, and maintenance used to
+  do exactly that, silently discarding one device's edit
+
+One limit worth stating rather than solving: "newest" comes from each
+device's own clock. Timezones are handled — every timestamp is UTC — but a
+device set to the wrong time will claim an edit it made earlier. The label
+says so, and the screen shows the content so the reader never has to trust
+it.
+
 
 ---
 

@@ -58,37 +58,32 @@ found nothing there, and walking the feature as a user found three data
 bugs, one of which silently discarded an edit. The checklist does not
 substitute for this.
 
-Ordered by what a wrong answer costs, not by effort.
+Ordered by what a wrong answer costs, not by effort. Sync conflict
+handling was the first and is done — its outcome, including why the screen
+is deliberately not built out further, is in
+[decisions.md](decisions.md).
 
-1. **Sync conflict handling.** The highest-stakes decision in the app: it
-   picks which of two real edits survives. Can a person tell the two
-   versions apart on the Resolve-conflicts screen well enough to choose?
-   What does `autoResolvePristineDefaultConflicts()` settle without
-   asking, and is every one of those cases genuinely safe to settle
-   silently? Newly relevant: maintenance no longer resolves conflicts at
-   all, so this screen is the only route.
-
-2. **Trash, undo and retention as one lifecycle.** Delete, restore, delete
+1. **Trash, undo and retention as one lifecycle.** Delete, restore, delete
    forever, empty trash and the automatic 3-month prune are one story to a
    user and four functions in code. Does undo reach far enough to be
    trusted? What happens restoring a task whose project is gone? Does
    anyone know trash empties itself after three months — and should it?
    The prune is already known to strand inbound links.
 
-3. **Attachments.** Whether the feature is pleasant at all: adding,
+2. **Attachments.** Whether the feature is pleasant at all: adding,
    viewing, replacing, removing, and what hitting the 10MB cap feels like.
    Whether attachments make sync or backup slow enough to notice, and
    whether the storage figures in Settings mean anything to a person.
    Least-covered of the four, and the backup path has had a real bug here.
 
-4. **Recurrence.** The code handles month-end and reminder shifting
+3. **Recurrence.** The code handles month-end and reminder shifting
    carefully; that is not the concern. The concern is whether the model
    matches what people mean: one doc that resets rather than a new card
    each time, "every N" combined with weekdays-only, and what a completed
    recurring task looks like in history. Is the interval control worth its
    complexity, or does daily use only ever want daily/weekly/monthly?
 
-5. **What degrades over weeks.** The class that caught auto-backup
+4. **What degrades over weeks.** The class that caught auto-backup
    silently stopping — nothing here breaks on a fresh install. Current
    suspects: the change-feed catch-up added in v6.7.0 and its 500-change
    fallback, sync retry across days rather than minutes, log growth
