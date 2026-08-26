@@ -2,7 +2,7 @@
 // they stay unit-testable without mounting the card.
 import type { TaskDoc, TaskAttachment } from '../types';
 import { fmtTime } from '../utils';
-import { getDefaultReminderTime } from '../../config';
+import { getDefaultReminderTime, isNativePlatform, isTauri } from '../../config';
 
 export function isoToLocalInput(iso: string): string {
   const d = new Date(iso);
@@ -85,4 +85,48 @@ export async function downscaleImage(file: File): Promise<{ filename: string; ba
     canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', IMAGE_JPEG_QUALITY);
   });
   return { filename: file.name.replace(/\.[^.]+$/, '') + '.jpg', base64Data: await blobToBase64(blob), size: blob.size };
+}
+
+// Hands an attachment to the user on whatever platform is running.
+//
+// A blob URL on an <a download> only works in a real browser. Capacitor's
+// Android WebView has no download manager to hand it to, and neither does
+// Tauri's WebView2 -- settings/helpers.ts's downloadBlob() already documents
+// exactly that and works around it for backup exports. The attachment opener
+// used the plain <a download> anyway, so files could be attached, stored,
+// synced and backed up on Android and Windows, and never opened again.
+//
+// Binary, not text: downloadBlob() writes UTF-8 strings, which would corrupt
+// every image and PDF.
+export async function openAttachmentFile(blob: Blob, filename: string): Promise<void> {
+  if (isNativePlatform()) {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    const { Share } = await import('@capacitor/share');
+    // No `encoding` means the base64 is written as bytes rather than text.
+    const written = await Filesystem.writeFile({
+      path: filename,
+      data: await blobToBase64(blob),
+      directory: Directory.Cache,
+    });
+    await Share.share({ title: filename, url: written.uri });
+    return;
+  }
+
+  if (isTauri()) {
+    const { save } = await import('@tauri-apps/plugin-dialog');
+    const { writeFile } = await import('@tauri-apps/plugin-fs');
+    const { documentDir, join } = await import('@tauri-apps/api/path');
+    const ext = filename.split('.').pop() ?? 'bin';
+    const defaultPath = await join(await documentDir(), filename).catch(() => filename);
+    const path = await save({ defaultPath, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+    if (!path) return; // user cancelled
+    await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }

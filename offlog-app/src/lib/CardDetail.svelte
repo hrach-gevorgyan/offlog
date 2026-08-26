@@ -21,7 +21,7 @@
   import BlockedByBlock from './carddetail/BlockedByBlock.svelte';
   import AttachmentsBlock from './carddetail/AttachmentsBlock.svelte';
   import NotesBlock from './carddetail/NotesBlock.svelte';
-  import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, downscaleImage } from './carddetail/helpers';
+  import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, downscaleImage, openAttachmentFile } from './carddetail/helpers';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -449,6 +449,13 @@
   }
 
   async function removeAttachment(key: string) {
+    // The only irreversible delete on this card. A task goes to Recycle and
+    // an undo toast follows it; the bytes behind an attachment are gone the
+    // moment this runs, so it asks first like every other destructive action
+    // in the app.
+    const name = attachments.find(a => a.key === key)?.filename ?? 'this file';
+    if (!(await confirmAction(`Remove "${name}"? The file is deleted permanently — this one isn't kept in Recycle.`,
+      { danger: true, confirmLabel: 'Remove' }))) return;
     attachmentBusy = true;
     try {
       const result = await deleteAttachment(task._id!, key);
@@ -475,11 +482,7 @@
   async function openAttachment(key: string, filename: string) {
     try {
       const blob = await getAttachmentBlob(task._id!, key);
-      const url = URL.createObjectURL(blob as Blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.rel = 'noopener';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      await openAttachmentFile(blob as Blob, filename);
     } catch {
       showError('Could not open that attachment.');
     }

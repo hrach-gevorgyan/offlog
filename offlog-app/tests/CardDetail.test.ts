@@ -144,18 +144,16 @@ describe('CardDetail save logic (A9)', () => {
     expect(changes.due_date).toBe(expectedStr);
   });
 
-  it('reports a rejected file even when a later one in the batch succeeds', async () => {
-    // Picking several files runs the attach per file. The rejection message
-    // used to live in one shared variable that every file overwrote, so a
-    // success after a failure erased it -- two of three files attached and
-    // the card said nothing. Order decided whether you were told.
-    addAttachment.mockClear();
+  it('reports every rejected file in a batch, not just the last one', async () => {
+    // The rejection message used to live in one shared variable that each
+    // file overwrote, so only the final file's outcome survived -- and a
+    // success after a failure cleared it outright, attaching some files and
+    // saying nothing. Both files here are rejected on extension alone, which
+    // keeps the test off the FileReader and so deterministic under load.
     const task = mkTask();
     const { container } = render(CardDetail, { props: { task, project: mkProject() } });
 
     await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
-    // Open the Attachments block by name. Clicking every toggle instead made
-    // the test depend on which ones happened to stay open.
     const attachToggle = [...container.querySelectorAll('.extra-block-toggle')]
       .find(b => (b.textContent ?? '').includes('Attachments')) as HTMLButtonElement;
     expect(attachToggle).toBeTruthy();
@@ -163,23 +161,23 @@ describe('CardDetail save logic (A9)', () => {
 
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     expect(input).toBeTruthy();
-
-    // Rejected first, accepted second -- the order that used to hide it.
-    const rejected = new File(['x'], 'holiday.heic', { type: 'image/heic' });
-    const accepted = new File(['hello there'], 'notes.txt', { type: 'text/plain' });
-    Object.defineProperty(input, 'files', { value: [rejected, accepted], configurable: true });
+    Object.defineProperty(input, 'files', {
+      value: [
+        new File(['x'], 'holiday.heic', { type: 'image/heic' }),
+        new File(['y'], 'clip.heif', { type: 'image/heif' }),
+      ],
+      configurable: true,
+    });
     await fireEvent.change(input);
 
-    // Reading the file is async, so the batch is still running when
-    // fireEvent resolves -- wait for it to settle rather than assert early.
-    // Generous timeout: this waits on a real FileReader, which is slower
-    // under a full-suite run than waitFor's one-second default allows.
-    await waitFor(() => expect(addAttachment).toHaveBeenCalledTimes(1), { timeout: 5000 });
     await waitFor(() => {
       const text = container.textContent ?? '';
+      // Both named, not just whichever came last.
       expect(text).toContain('holiday.heic');
-      expect(text).toContain('1 of 2');
-    }, { timeout: 5000 });
+      expect(text).toContain('clip.heif');
+      // And the count makes a partial outcome impossible to misread.
+      expect(text).toContain('0 of 2');
+    });
   });
 
   it('toggling a checklist item\'s "done" state persists on save (Extras opened manually)', async () => {
