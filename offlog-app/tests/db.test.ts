@@ -1197,6 +1197,41 @@ describe('conflict screen data (what a person needs to choose)', () => {
     expect(newest[0].doc.title).toBe('Book plumber for Thursday');
   });
 
+  it('orders newest by UTC instant, not by each device local wall time', async () => {
+    // now() writes toISOString(), so updated_at is always UTC and string
+    // order is chronological wherever the devices are. Two edits written at
+    // the same local hour in different zones are an hour apart in truth, and
+    // the marker has to follow the instant.
+    const project = await createProject('space:unsorted', 'Zones');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Anchor');
+
+    const doc = await db.get<any>(task._id!);
+    const gen = Number(doc._rev.split('-')[0]) + 1;
+    // Tokyo 09:00+09:00 = 00:00Z. London 02:00+01:00 = 01:00Z, an hour LATER
+    // despite the smaller-looking local clock reading.
+    await db.put({ ...doc, updated_at: new Date('2026-08-26T09:00:00+09:00').toISOString(), source: 'tokyo' });
+    await db.bulkDocs(
+      [{ ...doc, _rev: `${gen}-11111111111111111111111111111111`, title: 'From London',
+         updated_at: new Date('2026-08-26T02:00:00+01:00').toISOString(), source: 'london' }],
+      { new_edits: false } as any,
+    );
+
+    const c = (await getConflicts()).find(x => x.docId === task._id)!;
+    const newest = c.versions.filter(v => v.isNewest);
+    expect(newest).toHaveLength(1);
+    expect(newest[0].doc.source).toBe('london');
+
+    // The comparison is a plain string compare, which is only chronological
+    // because every timestamp the app writes is UTC. That is the actual
+    // invariant -- a local-offset timestamp would sort by wall-clock digits
+    // and mark the wrong device newest for half the world.
+    const fresh = await db.get<any>((await createTask(
+      project._id, 'space:unsorted', project.columns[0].id, 'Timestamp shape',
+    ))._id!);
+    expect(fresh.updated_at).toMatch(/Z$/);
+    expect(fresh.created_at).toMatch(/Z$/);
+  });
+
   it('does not report a difference between absent and empty', async () => {
     const project = await createProject('space:unsorted', 'Empties');
     const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Same really');

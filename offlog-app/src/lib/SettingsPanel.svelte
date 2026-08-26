@@ -1190,7 +1190,8 @@
             {#each c.versions as v (v.rev || 'current')}
               <div class="conflict-version">
                 <div class="conflict-item-row">
-                  <span class="conflict-item-meta">
+                  <span class="conflict-item-meta"
+                        title={v.isNewest ? "Latest by this device's own clock — a device set to the wrong time can claim this wrongly, so check the values below" : ''}>
                     {v.doc.source ?? 'Unknown device'}{v.isCurrent ? ' · shown now' : ''}{v.isNewest ? ' · newest' : ''}
                     — updated {fmtLastSynced(String(v.doc.updated_at ?? v.doc.created_at ?? ''))}
                   </span>

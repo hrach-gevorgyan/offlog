@@ -365,6 +365,13 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
     // decided by revision hash, not time, so the served version is regularly
     // the older edit -- saying so is the difference between an informed
     // choice and a coin toss.
+    //
+    // Timezones are not a problem here: now() writes toISOString(), so every
+    // updated_at is UTC and string order is chronological order wherever the
+    // devices are. Device CLOCKS are: this is each device's own idea of the
+    // time, and one running fast will claim an edit it made earlier. Treat
+    // the flag as the best available hint, never as proof -- which is why the
+    // UI still shows every version's content rather than leaning on it.
     let newest = 0;
     for (let i = 1; i < versions.length; i++) {
       const a = String(versions[i].doc.updated_at ?? versions[i].doc.created_at ?? '');
