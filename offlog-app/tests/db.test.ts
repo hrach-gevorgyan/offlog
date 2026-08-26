@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import db, {
   posBetween, computeDropPosition,
   createProject, createProjectFromTemplate, getProjects, deleteProject, removeColumn, archiveProject, unarchiveProject, getRecentLogs,
   archiveTask, unarchiveTask,
-  createTask, getTasksForProject, updateTask, deleteTask, getTaskById,
+  createTask, getTasksForProject, updateTask, deleteTask, getTaskById, getAllTags,
   getRecentlyDeleted, getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribeUndo,
   getAllTasksDue, getDashboardData, getStorageBreakdown,
   checkIntegrity, repairDatabase, runMaintenanceSteps,
@@ -746,6 +746,65 @@ describe('recurring tasks', () => {
     expect(result.due_date).toBe('2026-01-02');
     const tasks = await getTasksForProject(project._id);
     expect(tasks).toHaveLength(1);
+  });
+});
+
+describe('task cache sequence bookkeeping', () => {
+  beforeEach(seedSpace);
+
+  it('does not skip a write that lands during a full reload', async () => {
+    // The cache resumes from a stored sequence, so that number has to be a
+    // lower bound on what the cache actually holds. Taken alongside the rows
+    // rather than before them, a write arriving in between is counted by the
+    // sequence but missing from the rows, and the next catch-up resumes past
+    // it -- the cache then serves a stale copy until something forces another
+    // full reload, which normally never happens. Sync delivers writes at
+    // arbitrary moments, so this goes wrong over weeks, not on day one.
+    const project = await createProject('space:unsorted', 'Cache');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Tagged', {
+      tags: ['before'],
+    });
+
+    // Two spies, because the bug needs a FULL reload and a write inside it.
+    // First: make the incremental catch-up decline, which is what sends the
+    // cache down the full-reload path (its real trigger is >500 changes).
+    const realChanges = db.changes.bind(db);
+    let declined = false;
+    const changesSpy = vi.spyOn(db, 'changes').mockImplementation(((opts?: any) => {
+      if (!declined) {
+        declined = true;
+        return Promise.resolve({ results: new Array(600).fill({ id: 'x', changes: [] }), last_seq: 0 }) as any;
+      }
+      return realChanges(opts);
+    }) as any);
+
+    // Second: land a competing write while that reload is in flight. info()
+    // resolves only once the write is committed, which is exactly the moment
+    // the sequence must not be captured from.
+    const realInfo = db.info.bind(db);
+    let injected = false;
+    const infoSpy = vi.spyOn(db, 'info').mockImplementation((async () => {
+      if (!injected) {
+        injected = true;
+        const doc = await db.get<any>(task._id!);
+        await db.put({ ...doc, tags: ['after'] });
+      }
+      return realInfo();
+    }) as any);
+
+    try {
+      invalidateTaskCache();
+      await getAllTags(); // declines catch-up, full-reloads, write interleaved
+      expect(declined && injected).toBe(true); // the setup actually happened
+    } finally {
+      changesSpy.mockRestore();
+      infoSpy.mockRestore();
+    }
+
+    // Either the rows already carried the write, or the recorded sequence
+    // still lets the next catch-up replay it. Both are fine; losing it is not.
+    invalidateTaskCache();
+    expect(await getAllTags()).toContain('after');
   });
 });
 

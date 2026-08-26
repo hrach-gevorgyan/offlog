@@ -69,10 +69,17 @@ let _taskCacheStale = false;
 const CATCHUP_LIMIT = 500;
 
 async function fullReload(): Promise<TaskDoc[]> {
-  const [r, info] = await Promise.all([
-    db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true }),
-    db.info(),
-  ]);
+  // The sequence FIRST, then the documents -- never concurrently. This
+  // number is where the next catchUp() resumes, so it has to be a lower
+  // bound on what the cache actually contains. Read together, a write
+  // landing between them (a sync change arrives at any time) would be
+  // included in update_seq but missing from the rows, and catchUp() would
+  // resume past it: the cache keeps a stale copy of that task until
+  // something forces another full reload, which normally never happens.
+  // Taken first, the worst case is replaying a change the rows already
+  // have, which just re-sets the same doc.
+  const info = await db.info();
+  const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
   _taskCache = r.rows.map(r => r.doc!);
   _taskCacheSeq = info.update_seq;
   _taskCacheStale = false;
