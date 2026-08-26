@@ -31,6 +31,30 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.8.0
+
+### In short
+
+Files attached to a task could not be opened on Android or Windows at all — they can now, through the share sheet or a save dialog. The resolve-conflicts screen finally shows what actually differs between the two versions, and offers every version rather than just one. Archiving a project and restoring it no longer hands it back empty, restoring from Recycle can no longer produce a task you cannot see, and Settings now counts the space your backups take.
+
+### New
+- The resolve-conflicts screen lists what actually differs between the versions, instead of just a device name and a time.
+- It offers every version, not only one, and asks before you discard the others.
+- The most recent version is marked, with a note that it relies on both devices' clocks being right.
+- Settings shows how much space your automatic backups are using.
+- Deleting a file from a task now asks first — it is the one thing on a card that cannot be undone.
+
+### Fixed
+- Files attached to a task could not be opened on Android or Windows. They open now — through the share sheet on Android, a save dialog on the desktop.
+- Restoring an archived project gave it back with none of its tasks.
+- A task restored from Recycle could come back onto a status that no longer existed, leaving it invisible everywhere.
+- Restoring everything from Recycle stopped at the first task it could not restore, and said only that "some" had failed.
+- Picking several files at once could attach some and never tell you the others were rejected.
+- The small x that removes a checklist item, a link or a file was too small to hit reliably.
+- An edit arriving from another device could occasionally be ignored, leaving an old title or date showing until the app was restarted.
+
+---
+
 ## v6.7.0
 
 ### In short

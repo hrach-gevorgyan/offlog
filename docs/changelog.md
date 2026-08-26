@@ -17,6 +17,111 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.8.0] — 2026-08-26
+
+Five feature audits — sync conflicts, the trash/undo/retention lifecycle,
+attachments, recurrence, and what only breaks after weeks. Each walked the
+feature as a user rather than as a test suite. Twelve defects, one of them
+data-losing on every shipping platform.
+
+### Added
+- **The conflict screen shows what it is asking you to choose between.** It
+  rendered a device name and a timestamp per side; `getConflicts()` already
+  held both documents in full and the UI threw everything but the metadata
+  away. Every differing field is now listed per version, with bookkeeping
+  (`_rev`, `updated_at`, `source`) excluded and absent-vs-empty not counted
+  as a difference. Statuses read as a chain, checklists as items and counts,
+  custom values by field name; related and blocked-by show a count.
+- **Every competing version is offered, not just the first.**
+  `resolveConflict()` removes them all, so on a three-way conflict one click
+  destroyed a version the screen never displayed. Keeping one now confirms,
+  naming how many go.
+- **The newest version is marked**, and says how much that is worth. PouchDB
+  picks its winner by revision hash rather than time, so the version shown as
+  current is regularly the older edit. Timestamps are UTC (`toISOString()`),
+  pinned by a test, so the comparison is timezone-proof — but they are each
+  device's own clock, and the tooltip says so.
+- **Auto-backup size is reported in Settings**, beside the database
+  breakdown. Each backup is a full snapshot with attachments inlined and
+  seven are kept, so the folder grows with attachment size: 5.7 MB of
+  attachments measured as 43 MB across the seven, none of it counted by the
+  IndexedDB estimate the headline reads. Silent where there are no backups
+  rather than printing a confident zero.
+- **Removing an attachment confirms.** It is the only irreversible delete on
+  a card — a task goes to Recycle with an undo toast behind it.
+
+### Fixed
+- **Attachments could not be opened on either shipping platform.**
+  `openAttachment()` handed a blob URL to an `<a download>`, which works in a
+  browser and nowhere else: neither Capacitor's Android WebView nor Tauri's
+  WebView2 has a download manager to receive it. Files could be attached,
+  stored, synced and backed up on Android and Windows, and never opened
+  again. Android now writes to cache and offers the share sheet, desktop
+  opens a save dialog, the browser keeps the blob download.
+  `settings/helpers.ts`'s `downloadBlob()` could not be reused as-is, being
+  UTF-8 text only.
+- **An attachment's filename reached the filesystem unchecked.** That name
+  rides on the task doc, so it arrives over sync or from a hand-edited
+  backup; `"../../evil.txt"` would have been taken literally by the new write
+  paths. `safeFileName()` strips directory components and leading dots,
+  replaces control characters and the ones Windows refuses, and falls back to
+  `attachment`. Each guard is mutation-verified.
+- **Un-archiving a project handed back an empty project.**
+  `archiveProject()` cascaded onto every open task; `unarchiveProject()`
+  flipped only the project's own flag. The cascade now marks each task
+  `archivedWithProject` and un-archiving reverses exactly that set —
+  restoring everything archived would resurrect tasks archived individually.
+  Optional field, so old docs stay valid; tasks hidden by a pre-6.8.0 cascade
+  cannot be identified and stay archived.
+- **Restoring from Recycle could hand back an invisible task.**
+  `removeColumn()` moves the tasks it can see, and a trashed task is not one
+  of them, so a task could come back onto a status that no longer existed —
+  rendered by no view. It now lands on the project's first status.
+- **Restore-all aborted at the first failure**, leaving every task after it
+  in Recycle while reporting only that "some" had failed. Each is attempted
+  now, and the count reported. A task whose project was deleted can never be
+  restored, and no longer offers "Please try again".
+- **Restoring into an archived project** comes back archived alongside it,
+  instead of sitting as an integrity issue until a maintenance run archives
+  it anyway.
+- **A rejected file went unmentioned if a later one attached.** The rejection
+  message lived in one shared variable that every file in the batch
+  overwrote. Each file now reports its own outcome, and a partial success
+  leads with the count.
+- **The x that deletes a file was 12×14** — `.checklist-remove`, shared by
+  checklist items, related links, blocked-by links and attachments, under
+  WCAG 2.2 SC 2.5.8's 24px minimum. Only the hit box grew; rows stay 19px.
+- **The task cache could keep a stale copy of a synced-in edit.**
+  `fullReload()` read the change sequence and the documents concurrently. The
+  sequence is where the next catch-up resumes, so a write landing between the
+  two was counted by the sequence and missing from the rows, and the catch-up
+  resumed past it. Read first now; the worst case is replaying a change the
+  rows already have.
+- **Maintenance and the sync badge disagreed about conflicts.**
+  `checkIntegrity()` listed entity prefixes, so a conflict on
+  `meta:custom_fields` was counted by the badge and fixable on the
+  Resolve-conflicts screen but never reported by maintenance. Both read the
+  same range now.
+- Two `db` mocks were incomplete and hid real gaps: `SettingsPanel`'s missing
+  `getAutoBackupUsage()` had vitest exiting 1 on seven unhandled rejections
+  while printing "608 passed", and `CardDetail`'s missing attachment surface
+  left `ATTACHMENT_MAX_PER_TASK` undefined, so the per-task cap silently
+  never fired in tests.
+
+### Changed
+- **Release CI runs the tests.** `release.yml` verified the tag matched the
+  version, then built and published; `ci.yml` only fires on pushes to main,
+  so a tag cut from a commit CI never ran would publish regardless. A
+  `verify` job now gates both builds on `version:check`, the type-check and
+  the tests, scoped to `contents: read`.
+- **`roadmap.md` holds only open work**, and its header names where
+  everything else belongs. Mesh sync, scale metrics and three parked maybes
+  moved out. All five audits are closed, so "Ours to do" is empty.
+- 24th maintenance pass recorded; five audit outcomes recorded in
+  `decisions.md`, including what will deliberately not be built.
+
+---
+
 ## [6.7.0] — 2026-08-26
 
 Two threads: motion, which had never actually run, and the maintenance tool,
@@ -389,48 +494,7 @@ Maintenance pass (18th run), pulled forward at owner request.
 
 ---
 
-## [6.0.1] — 2026-07-30
-
-Maintenance pass (17th run), pulled forward right after v6.0.0.
-
-### Removed
-- `getRecentlyModifiedTasks()` — dead code, orphaned since the 5.9.0
-  redesign removed the Sidebar "Recent" section it fed.
-
-### Changed
-- `GlobalSearch.svelte` re-declared its own match-type union instead of
-  importing the already-exported `TaskSearchMatch` from `db.ts`. Deduped.
-
-### Security
-- `npm audit` 0 vulnerabilities. Build-output secret-leakage gate
-  re-checked against a real `.env.local` — clean.
-
----
-
-## [6.0.0] — 2026-07-30
-
-### Added
-- **File attachments.** Images, PDFs, spreadsheets or any file except
-  HEIC/HEIF, capped at 10 MB per file and 10 per task. Images are
-  downscaled to ~1600px and re-encoded to JPEG client-side before saving.
-  Bytes live in PouchDB's native `_attachments` on the task document, so
-  attachments ride the existing sync with no new code.
-- **Tag colour override** — a swatch picker in Settings → Organize, with an
-  "Auto" reset back to the deterministic hash colour.
-- Global Search now also matches checklist item text, and shows *why* a
-  result matched when the title alone doesn't contain the query.
-
-### Fixed
-- Monthly recurrence overflowed past shorter months — a task due Jan 31
-  rolled to Mar 3 instead of Feb 28/29. `advanceDate()` now clamps to the
-  target month's real last day. DST shifting and long-offline-gap
-  completion were audited and confirmed already correct.
-- The mobile sidebar could be collapsed into the desktop-only icon rail.
-
----
-
----
-
+[6.8.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.7.0...v6.8.0
 [6.7.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.6.0...v6.7.0
 [6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0
 [6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
@@ -440,5 +504,3 @@ Maintenance pass (17th run), pulled forward right after v6.0.0.
 [6.2.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.0...v6.2.1
 [6.2.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.1.0...v6.2.0
 [6.1.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.1...v6.1.0
-[6.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.0...v6.0.1
-[6.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v5.9.0...v6.0.0
