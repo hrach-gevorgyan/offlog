@@ -274,6 +274,41 @@ cleaned by a maintenance run. Scanning every task on each delete to strip
 them would make the common case pay for the rare one.
 
 
+### Attachments: stored simply, handed over per platform
+
+Settled by the third feature audit (roadmap.md), which attached, opened,
+removed and backed up real files rather than reading the code.
+
+**The one that mattered: files could not be opened on either shipping
+platform.** The opener handed a blob URL to an `<a download>`, which works
+in a browser and nowhere else — Capacitor's Android WebView has no download
+manager to receive it, and neither does Tauri's WebView2. The codebase
+already knew: `downloadBlob()` documents that exact gap for backup exports
+and works around it. The attachment opener never got the same treatment, so
+a file could be attached, synced and backed up on Android and Windows, and
+never opened again. It now writes to cache and offers the share sheet on
+Android, opens a save dialog on desktop, and keeps the blob download in a
+browser — written for binary, since `downloadBlob()`'s UTF-8 path would
+corrupt every image and PDF.
+
+**Removing an attachment asks first.** It is the only irreversible delete on
+the card: a task goes to Recycle with an undo toast behind it, while these
+bytes are gone on the click.
+
+**Backups carry the bytes, and that is the expensive part.** Every backup is
+a full snapshot with attachments inlined as base64, and seven are kept — so
+the folder grows with file size, not task count: 5.7 MB of attachments
+measured at 6.2 MB per file and 43 MB across the seven. That storage sits
+outside IndexedDB, so the estimate Settings reads never counted it; the
+figure is now shown next to the database breakdown. Collecting the JSON is
+not a cost worth optimising — 762 docs with 5.7 MB of attachments took
+55 ms.
+
+**Left as they are, deliberately.** No format allowlist beyond HEIC/HEIF
+(see the entry above). The 10 MB per file and 10 per task caps are stated
+before you hit them — the button disables and says so. Images are downscaled
+on the way in, so the caps bite on documents rather than photos.
+
 ---
 
 ## Distribution & business model

@@ -28,7 +28,7 @@
               <div class="extra-block-body attachments-field" in:slide={revealIn} out:slide={revealOut}>
                 {#each attachments as a (a.key)}
                   <div class="attachment-row">
-                    <button type="button" class="attachment-open" on:click={() => openAttachment(a.key, a.filename)} title="Download {a.filename}">
+                    <button type="button" class="attachment-open" on:click={() => openAttachment(a.key, a.filename)} title="Open {a.filename}">
                       {#if thumbnailUrls[a.key]}
                         <img class="attachment-thumb" src={thumbnailUrls[a.key]} alt="" />
                       {:else}

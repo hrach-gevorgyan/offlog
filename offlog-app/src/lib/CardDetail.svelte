@@ -1096,9 +1096,15 @@
   @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
   .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); transition: color var(--dur-hover) var(--ease-hover); }
   .extras-panel :global(.checklist-text.done) { color: var(--faint); text-decoration: line-through; }
+  /* 24x24 hit box, not a 24px glyph: the x keeps its size and the row keeps
+     its height. Below 24 this fails WCAG 2.2's minimum target size (2.5.8),
+     and the same button removes a checklist item, a link, and an attachment
+     -- that last one deletes the file permanently. */
   .extras-panel :global(.checklist-remove) {
     flex-shrink: 0; cursor: pointer; font-size: .9rem; line-height: 1;
-    color: var(--muted); background: none; border: none; padding: 0 2px;
+    color: var(--muted); background: none; border: none; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; margin: -4px -2px;
     transition: color var(--dur-hover) var(--ease-hover);
   }
   .extras-panel :global(.checklist-remove:hover) { color: var(--danger); }
