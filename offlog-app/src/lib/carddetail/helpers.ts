@@ -98,7 +98,25 @@ export async function downscaleImage(file: File): Promise<{ filename: string; ba
 //
 // Binary, not text: downloadBlob() writes UTF-8 strings, which would corrupt
 // every image and PDF.
-export async function openAttachmentFile(blob: Blob, filename: string): Promise<void> {
+// A filename is data, not a path. It arrives on the doc, so it can reach here
+// from another device over sync or from a hand-edited backup file -- and both
+// the Android and desktop branches below turn it into a real path on disk.
+// Strip anything that could climb out of the directory we mean to write to.
+export function safeFileName(name: string): string {
+  // Both separators: a Windows-style path would survive a POSIX-only split.
+  const base = name.split(/[\\/]/).pop() ?? '';
+  const cleaned = base
+    // Leading dots, so "..", "../" remnants and dotfiles cannot climb or hide.
+    .replace(/^\.+/, '')
+    // Control characters, and the ones Windows refuses in a filename.
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f<>:\"|?*]/g, '_')
+    .trim();
+  return cleaned || 'attachment';
+}
+
+export async function openAttachmentFile(blob: Blob, rawName: string): Promise<void> {
+  const filename = safeFileName(rawName);
   if (isNativePlatform()) {
     const { Filesystem, Directory } = await import('@capacitor/filesystem');
     const { Share } = await import('@capacitor/share');
