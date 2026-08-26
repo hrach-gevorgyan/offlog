@@ -239,6 +239,41 @@ says so, and the screen shows the content so the reader never has to trust
 it.
 
 
+### Delete is soft for tasks and permanent for projects, on purpose
+
+Settled by the second feature audit (roadmap.md), which walked the whole
+lifecycle — delete, undo toast, Recycle, delete forever, empty, and the
+automatic prune — rather than reading the four functions separately.
+
+**The asymmetry is deliberate and is stated at the point of action.**
+Deleting a task is `deleted: true`: it lands in Recycle, is restorable for
+three months, and its attachment bytes are kept that whole time because it
+might come back. Deleting a *project* hard-removes it and every task in it,
+and its confirm says so — "and all its tasks? This can't be undone." Soft
+deletes on a project would mean a hidden tree of tasks belonging to
+something the user believes is gone.
+
+**Undo has two ranges and both are needed.** The toast covers the last
+three deletions for five seconds each, for the misclick. Recycle covers
+everything else, shows what project each task came from, and says
+"auto-removed after 3 months" on its own header — so the prune is not a
+surprise.
+
+**Restoring must land somewhere the user can see.** This was the audit's
+main finding: `removeColumn()` moves the tasks it can see, and one sitting
+in Recycle is not among them, so restoring put the task back on a status
+that no longer existed and nothing rendered it. Restore now lands it on the
+project's first status, and if its project has since been archived it comes
+back archived alongside it, so it reappears when the project does rather
+than sitting as an inconsistency until a maintenance run.
+
+**What is accepted rather than fixed.** Permanently deleting a task leaves
+its id in the `related` / `blocked_by` arrays of tasks that pointed at it.
+Reads already ignore ids that do not resolve, so nothing breaks; the ids are
+cleaned by a maintenance run. Scanning every task on each delete to strip
+them would make the common case pay for the rare one.
+
+
 ---
 
 ## Distribution & business model

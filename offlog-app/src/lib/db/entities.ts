@@ -1015,14 +1015,21 @@ export async function undoDelete(id: string): Promise<void> {
   // back onto a status that no longer exists, where no view renders it --
   // the task returned, invisibly, and only a maintenance run would say why.
   let column_id = current.column_id;
+  // Restoring into an archived project cannot make the task visible -- the
+  // project itself is hidden. Coming back archived alongside it is the
+  // coherent outcome: it reappears when the project does, instead of sitting
+  // as an inconsistency until someone runs maintenance.
+  let archived = current.archived ?? false;
+  let archivedWithProject = current.archivedWithProject ?? false;
   try {
     const proj = await db.get<ProjectDoc>(current.project_id);
     if (proj.columns.length && !proj.columns.some(c => c.id === column_id)) {
       column_id = proj.columns[0].id;
     }
+    if (proj.archived && !archived) { archived = true; archivedWithProject = true; }
   } catch { /* no project to check against; leave it for checkIntegrity */ }
 
-  await db.put({ ...current, deleted: false, column_id, updated_at: now(), source: SOURCE });
+  await db.put({ ...current, deleted: false, column_id, archived, archivedWithProject, updated_at: now(), source: SOURCE });
   invalidateTaskCache();
   let projName: string | undefined;
   try { projName = (await db.get<ProjectDoc>(current.project_id)).name; } catch {}

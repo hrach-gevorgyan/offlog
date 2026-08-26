@@ -1147,15 +1147,38 @@ describe('restoring from Recycle', () => {
     expect((await db.get<any>(task._id!)).column_id).toBe(second.id);
   });
 
+  it('restores into an archived project as archived, so it returns with it', async () => {
+    // Restoring cannot make it visible either way -- the project is hidden.
+    // Coming back archived alongside it means it reappears when the project
+    // does, instead of being an inconsistency until someone runs maintenance.
+    const project = await createProject('space:unsorted', 'Hidden home');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Restored quietly');
+    await deleteTask(task._id!);
+    await archiveProject(project._id);
+
+    await undoDelete(task._id!);
+    const back = await db.get<any>(task._id!);
+    expect(back.deleted).toBe(false);
+    expect(back.archived).toBe(true);
+    // No integrity issue is created at all.
+    expect((await checkIntegrity()).issues.filter(i => i.docId === task._id)).toHaveLength(0);
+
+    // And it comes back with the project.
+    await unarchiveProject(project._id);
+    expect((await db.get<any>(task._id!)).archived).toBe(false);
+  });
+
   it('archiving a stray task to match its project keeps it restorable', async () => {
     // The repair mirrors archiveProject()'s cascade, so it has to mark the
     // task the same way -- otherwise un-archiving the project never brings
     // it back and the repair makes the hiding permanent.
     const project = await createProject('space:unsorted', 'Catch up');
     const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Stray');
-    await deleteTask(task._id!);
     await archiveProject(project._id);
-    await undoDelete(task._id!);
+    // An active task inside an archived project, written directly -- the shape
+    // an import or a sync merge delivers, since every in-app path now keeps
+    // the two in step.
+    await db.put({ ...(await db.get<any>(task._id!)), archived: false, archivedWithProject: false });
 
     const issues = (await checkIntegrity()).issues.filter(i => i.type === 'unarchived_in_archived');
     expect(issues.length).toBeGreaterThan(0);
