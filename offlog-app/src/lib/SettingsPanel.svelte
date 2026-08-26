@@ -11,7 +11,7 @@
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from './autoBackup';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
-    getConflicts, resolveConflict, type ConflictInfo,
+    getConflicts, resolveConflict, type ConflictInfo, type ConflictVersion,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     startSync, cancelSync, getDeviceLastSeen,
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
@@ -601,14 +601,43 @@
     loadingConflicts = true;
     try { conflictList = await getConflicts(); } finally { loadingConflicts = false; }
   }
-  async function resolve(c: ConflictInfo, keep: 'current' | 'other') {
+  async function resolve(c: ConflictInfo, v: ConflictVersion) {
+    // Every other version is discarded, including any this screen is not
+    // showing side by side -- so the confirm names the count rather than
+    // letting one click silently drop them.
+    const losing = c.versions.length - 1;
+    const ok = await confirmAction(
+      `Keep this version of "${c.label}"? The other ${losing === 1 ? 'version' : `${losing} versions`} will be discarded permanently.`,
+      { confirmLabel: 'Keep this one', danger: true },
+    );
+    if (!ok) return;
     try {
-      await resolveConflict(c.docId, keep, c.other.rev);
+      await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev);
       await loadConflicts();
     } catch {
       showError('Failed to resolve conflict. Please try again.');
     }
   }
+
+  // Field values come from arbitrary doc types, so they are rendered as short
+  // readable text rather than assumed to be strings.
+  function fmtConflictValue(v: unknown): string {
+    if (v === undefined || v === null || v === '') return '—';
+    if (Array.isArray(v)) return v.length ? v.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(', ') : '—';
+    if (typeof v === 'object') return JSON.stringify(v);
+    const s = String(v);
+    return s.length > 120 ? s.slice(0, 120) + '…' : s;
+  }
+
+  const CONFLICT_FIELD_LABELS: Record<string, string> = {
+    title: 'Title', name: 'Name', body: 'Notes', priority: 'Priority',
+    due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags',
+    column_id: 'Status', checklist: 'Checklist', custom_values: 'Custom fields',
+    related: 'Related', blocked_by: 'Blocked by', pinned: 'Pinned',
+    archived: 'Archived', deleted: 'In trash', position: 'Order',
+    columns: 'Statuses', color: 'Colour', icon: 'Icon', default_view: 'Default view',
+  };
+  const conflictFieldLabel = (f: string) => CONFLICT_FIELD_LABELS[f] ?? f;
   $: if (activeCategory === 'sync' && conflictCount > 0 && conflictList.length === 0 && !loadingConflicts) loadConflicts();
   $: if (activeCategory === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
@@ -1119,14 +1148,30 @@
         {#each conflictList as c (c.docId)}
           <div class="conflict-item">
             <div class="conflict-item-title">{c.label} <span class="conflict-item-type">({c.type})</span></div>
-            <div class="conflict-item-row">
-              <span class="conflict-item-meta">Current — {c.current.source ? `${c.current.source}, ` : ''}updated {fmtLastSynced(c.current.updated_at ?? c.current.created_at ?? '')}</span>
-              <button class="export-btn" on:click={() => resolve(c, 'current')}>Keep this</button>
-            </div>
-            <div class="conflict-item-row">
-              <span class="conflict-item-meta">Other — {c.other.doc.source ? `${c.other.doc.source}, ` : ''}updated {fmtLastSynced(c.other.doc.updated_at ?? c.other.doc.created_at ?? '')}</span>
-              <button class="export-btn" on:click={() => resolve(c, 'other')}>Keep this</button>
-            </div>
+            {#if c.differing.length}
+              <div class="conflict-diff-note">
+                Differs in {c.differing.map(conflictFieldLabel).join(', ')} — keeping one discards the other{c.versions.length > 2 ? 's' : ''}.
+              </div>
+            {:else}
+              <div class="conflict-diff-note">Same content on every device — keep either.</div>
+            {/if}
+            {#each c.versions as v (v.rev || 'current')}
+              <div class="conflict-version">
+                <div class="conflict-item-row">
+                  <span class="conflict-item-meta">
+                    {v.doc.source ?? 'Unknown device'}{v.isCurrent ? ' · shown now' : ''}{v.isNewest ? ' · newest' : ''}
+                    — updated {fmtLastSynced(String(v.doc.updated_at ?? v.doc.created_at ?? ''))}
+                  </span>
+                  <button class="export-btn" on:click={() => resolve(c, v)}>Keep this</button>
+                </div>
+                {#each c.differing as f}
+                  <div class="conflict-field">
+                    <span class="conflict-field-name">{conflictFieldLabel(f)}</span>
+                    <span class="conflict-field-value">{fmtConflictValue(v.doc[f])}</span>
+                  </div>
+                {/each}
+              </div>
+            {/each}
           </div>
         {/each}
       </div>
@@ -1506,6 +1551,18 @@
   .conflict-item-type { font-weight: 400; color: var(--faint); }
   .conflict-item-row { display: flex; align-items: center; gap: .75rem; }
   .conflict-item-meta { font-size: .72rem; color: var(--muted); flex: 1; }
+
+  /* What actually differs. Without this the screen asks a person to choose
+     between two device names and two timestamps, with no way to see what
+     either choice costs. */
+  .conflict-diff-note { font-size: .72rem; color: var(--muted); }
+  .conflict-version {
+    display: flex; flex-direction: column; gap: .2rem;
+    border-top: 1px solid var(--border); padding-top: .4rem; margin-top: .2rem;
+  }
+  .conflict-field { display: flex; gap: .5rem; font-size: .74rem; line-height: 1.45; }
+  .conflict-field-name { color: var(--faint); min-width: 5.5rem; flex-shrink: 0; }
+  .conflict-field-value { color: var(--text); word-break: break-word; }
 
   /* Maintenance step list */
   .progress-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }

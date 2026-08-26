@@ -276,8 +276,9 @@ export async function syncNow(): Promise<void> {
 // side of a genuine edit conflict. These two functions let Settings show
 // both versions of a conflicted doc and let the user decide.
 
-// The only fields Settings' conflict UI reads off a conflicted doc, which can
-// be of any type -- `title` for tasks, `name` for spaces/projects.
+// A conflicted doc can be of any type -- `title` for tasks, `name` for
+// spaces/projects -- and the UI also diffs whatever other fields it carries,
+// so the index signature is deliberate.
 interface ConflictContent {
   type: string;
   title?: string;
@@ -285,15 +286,60 @@ interface ConflictContent {
   source?: Source;
   created_at?: string;
   updated_at?: string;
+  [field: string]: unknown;
 }
 type ConflictDoc = PouchDB.Core.ExistingDocument<ConflictContent>;
+
+// Bookkeeping, not content: identical values here mean nothing to a person
+// choosing between two versions, and differing ones are guaranteed (every
+// revision has its own _rev and updated_at), so diffing them is pure noise.
+const DIFF_IGNORED = new Set([
+  '_id', '_rev', '_conflicts', '_revisions', '_attachments',
+  'type', 'source', 'source_id', 'created_at', 'updated_at',
+]);
+
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  // Absent and empty are the same thing to a reader -- a task that never had
+  // a body and one whose body was cleared are not a difference worth showing.
+  const empty = (v: unknown) => v === undefined || v === null || v === '' ||
+    (Array.isArray(v) && v.length === 0);
+  if (empty(a) && empty(b)) return true;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// Which fields actually differ across every competing version. This is the
+// whole point of the conflict screen: without it a person is choosing between
+// two device names and two timestamps, with no idea what changes either way.
+function differingFields(versions: ConflictVersion[]): string[] {
+  const keys = new Set<string>();
+  for (const v of versions) for (const k of Object.keys(v.doc)) if (!DIFF_IGNORED.has(k)) keys.add(k);
+  const first = versions[0].doc;
+  return [...keys]
+    .filter(k => versions.some(v => !sameValue(v.doc[k], first[k])))
+    .sort();
+}
+
+// One competing version of a document. `rev` is empty for the one PouchDB
+// currently serves -- that pick is deterministic but arbitrary, so nothing
+// here treats it as authoritative beyond labelling it.
+export interface ConflictVersion {
+  rev: string;
+  isCurrent: boolean;
+  isNewest: boolean;
+  doc: ConflictDoc;
+}
 
 export interface ConflictInfo {
   docId: string;
   type: string;
   label: string;
-  current: ConflictDoc;
-  other: { rev: string; doc: ConflictDoc };
+  // Every competing version, current first -- not just the first losing one.
+  // resolveConflict() removes them all, so showing a subset meant a single
+  // click could discard a version the screen never displayed.
+  versions: ConflictVersion[];
+  // Field names that differ across versions, for the UI to render per side.
+  differing: string[];
 }
 
 export async function getConflicts(): Promise<ConflictInfo[]> {
@@ -305,19 +351,34 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
     const revs: string[] = row.doc?._conflicts ?? [];
     if (!revs.length) continue;
     const current = row.doc!;
-    // Only the first conflicting revision is shown, but resolveConflict()
-    // removes every one of them — so on a three-way conflict a single click
-    // discards a version the screen never displayed. There is no longer a
-    // fallback elsewhere: repairDatabase() used to offer a blunt "keep
-    // current, discard the rest", and no longer touches conflicts at all
-    // because keeping PouchDB's arbitrary winner threw away real edits.
-    const other = await db.get<ConflictContent>(row.id, { rev: revs[0] });
+
+    const versions: ConflictVersion[] = [
+      { rev: '', isCurrent: true, isNewest: false, doc: current },
+    ];
+    for (const rev of revs) {
+      try {
+        versions.push({ rev, isCurrent: false, isNewest: false, doc: await db.get<ConflictContent>(row.id, { rev }) });
+      } catch { /* already gone — nothing to choose between */ }
+    }
+
+    // Which one a person would call "the latest". PouchDB's own winner is
+    // decided by revision hash, not time, so the served version is regularly
+    // the older edit -- saying so is the difference between an informed
+    // choice and a coin toss.
+    let newest = 0;
+    for (let i = 1; i < versions.length; i++) {
+      const a = String(versions[i].doc.updated_at ?? versions[i].doc.created_at ?? '');
+      const b = String(versions[newest].doc.updated_at ?? versions[newest].doc.created_at ?? '');
+      if (a > b) newest = i;
+    }
+    if (versions.length > 1) versions[newest].isNewest = true;
+
     out.push({
       docId: row.id,
       type: current.type,
       label: current.title ?? current.name ?? row.id,
-      current,
-      other: { rev: revs[0], doc: other },
+      versions,
+      differing: differingFields(versions),
     });
   }
   return out;

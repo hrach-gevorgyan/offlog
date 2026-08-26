@@ -1096,10 +1096,74 @@ describe('sync conflict resolution', () => {
     const conflict = conflicts.find(c => c.docId === task._id);
     expect(conflict).toBeDefined();
 
-    await resolveConflict(conflict!.docId, 'other', conflict!.other.rev);
+    // Every competing version is offered, not just the first losing one --
+    // resolving discards them all, so a hidden version would be destroyed
+    // by a click that never showed it.
+    expect(conflict!.versions).toHaveLength(3);
+    expect(conflict!.versions.filter(v => v.isCurrent)).toHaveLength(1);
+    // And the screen can say what choosing costs.
+    expect(conflict!.differing).toContain('title');
+
+    const pick = conflict!.versions.find(v => !v.isCurrent)!;
+    const wanted = pick.doc.title;
+    await resolveConflict(conflict!.docId, 'other', pick.rev);
 
     const resolved = await db.get<any>(task._id!, { conflicts: true } as any);
     expect(resolved._conflicts ?? []).toHaveLength(0);
+    expect(resolved.title).toBe(wanted);
+  });
+});
+
+describe('conflict screen data (what a person needs to choose)', () => {
+  beforeEach(seedSpace);
+
+  it('names every field that differs, and marks the newest version', async () => {
+    // The screen used to show a device name and a timestamp only, so keeping
+    // one version silently discarded notes, dates and priorities the reader
+    // never saw. PouchDB's served version is picked by revision hash, not
+    // time, so it is regularly the OLDER edit -- hence isNewest.
+    const project = await createProject('space:unsorted', 'Conflicts');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Call the plumber');
+
+    const doc = await db.get<any>(task._id!);
+    const gen = Number(doc._rev.split('-')[0]) + 1;
+    await db.bulkDocs(
+      [{
+        ...doc, _rev: `${gen}-dddddddddddddddddddddddddddddddd`,
+        title: 'Book plumber for Thursday', body: 'Ask about the boiler',
+        priority: 2, source: 'phone',
+        updated_at: new Date(Date.now() + 60_000).toISOString(),
+      }],
+      { new_edits: false } as any,
+    );
+
+    const c = (await getConflicts()).find(x => x.docId === task._id)!;
+    expect(c.differing).toEqual(expect.arrayContaining(['title', 'body', 'priority']));
+    // Bookkeeping must never be offered as a difference.
+    expect(c.differing).not.toContain('_rev');
+    expect(c.differing).not.toContain('updated_at');
+    // Exactly one version is flagged newest, and it is the later edit.
+    const newest = c.versions.filter(v => v.isNewest);
+    expect(newest).toHaveLength(1);
+    expect(newest[0].doc.title).toBe('Book plumber for Thursday');
+  });
+
+  it('does not report a difference between absent and empty', async () => {
+    const project = await createProject('space:unsorted', 'Empties');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Same really');
+
+    const doc = await db.get<any>(task._id!);
+    const gen = Number(doc._rev.split('-')[0]) + 1;
+    // body '' vs undefined, tags [] vs undefined -- identical to a reader.
+    const { body: _b, ...noBody } = doc;
+    await db.bulkDocs(
+      [{ ...noBody, _rev: `${gen}-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`, tags: [], source: 'phone' }],
+      { new_edits: false } as any,
+    );
+
+    const c = (await getConflicts()).find(x => x.docId === task._id)!;
+    expect(c.differing).not.toContain('body');
+    expect(c.differing).not.toContain('tags');
   });
 });
 
