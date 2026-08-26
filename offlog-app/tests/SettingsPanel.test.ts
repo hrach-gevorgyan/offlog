@@ -82,6 +82,10 @@ vi.mock('../src/lib/updateChecker', () => ({
 vi.mock('../src/lib/autoBackup', () => ({
   isAutoBackupEnabled: () => true, setAutoBackupEnabled: vi.fn(),
   getLastAutoBackupAt: () => null,
+  // loadBreakdown() reads this for the storage section. Omitting it left an
+  // unhandled rejection that every test still "passed" through -- the exact
+  // shape CLAUDE.md warns about: judge the run by its exit code.
+  getAutoBackupUsage: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../src/lib/theme', () => ({

@@ -154,9 +154,12 @@ describe('CardDetail save logic (A9)', () => {
     const { container } = render(CardDetail, { props: { task, project: mkProject() } });
 
     await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
-    // Attachments is the block that owns the hidden file input.
-    const toggles = [...container.querySelectorAll('.extra-block-toggle')] as HTMLButtonElement[];
-    for (const t of toggles) await fireEvent.click(t);
+    // Open the Attachments block by name. Clicking every toggle instead made
+    // the test depend on which ones happened to stay open.
+    const attachToggle = [...container.querySelectorAll('.extra-block-toggle')]
+      .find(b => (b.textContent ?? '').includes('Attachments')) as HTMLButtonElement;
+    expect(attachToggle).toBeTruthy();
+    await fireEvent.click(attachToggle);
 
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     expect(input).toBeTruthy();
@@ -169,12 +172,14 @@ describe('CardDetail save logic (A9)', () => {
 
     // Reading the file is async, so the batch is still running when
     // fireEvent resolves -- wait for it to settle rather than assert early.
-    await waitFor(() => expect(addAttachment).toHaveBeenCalledTimes(1));
+    // Generous timeout: this waits on a real FileReader, which is slower
+    // under a full-suite run than waitFor's one-second default allows.
+    await waitFor(() => expect(addAttachment).toHaveBeenCalledTimes(1), { timeout: 5000 });
     await waitFor(() => {
       const text = container.textContent ?? '';
       expect(text).toContain('holiday.heic');
       expect(text).toContain('1 of 2');
-    });
+    }, { timeout: 5000 });
   });
 
   it('toggling a checklist item\'s "done" state persists on save (Extras opened manually)', async () => {
