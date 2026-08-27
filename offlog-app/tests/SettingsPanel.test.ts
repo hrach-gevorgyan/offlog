@@ -186,6 +186,28 @@ describe('SettingsPanel sync save', () => {
   });
 });
 
+// Escape has a growing list of in-panel sub-flows it must back out of
+// instead of closing the whole modal (the connect/conflicts/maintenance
+// modals, the import preview) -- the PIN entry form was missing from that
+// list, so Escape fell through to the final `else requestClose()` and
+// closed all of Settings mid-PIN-entry instead of just dismissing the form.
+describe('SettingsPanel Escape key', () => {
+  it('backs out of the PIN entry form without closing the whole panel', async () => {
+    const { container, getByText, queryByText, getByLabelText } =
+      render(SettingsPanel, { initialCategory: 'security' });
+
+    await fireEvent.click(getByText('Set a PIN'));
+    expect(getByLabelText(/New PIN/i)).toBeTruthy();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(queryByText(/New PIN/i)).toBeNull();
+    // Settings itself is still open -- its nav (e.g. the Security tab
+    // button) is still in the document, not torn down by a close.
+    expect(container.querySelector('.nav-item')).toBeTruthy();
+  });
+});
+
 // doBackup() is the Back up button's handler. Its options are the whole
 // reason a backup is restorable: without `attachments: true, binary: false`
 // each attachment serialises as a {stub:true} placeholder with no bytes, and

@@ -713,3 +713,54 @@ one-sided. **Deletion** — a link to a soft-deleted task stays, shown as
 "(deleted)", until the task is permanently purged; only a hard purge
 drops the link. Links are click-through, with a link-icon badge on
 cards/rows so a task's links are visible without opening it.
+
+### Settings: per-tab controls apply live; the footer Save is Advanced-only
+
+The sixth feature audit (roadmap.md), which walked all seven Settings tabs
+live rather than reading the code, ships two real fixes.
+
+**Escape closed all of Settings instead of backing out of PIN entry.**
+`onWindowKeydown` special-cased every other in-panel sub-flow (the connect
+modal, conflicts, maintenance, import preview) but not `showPinForm` or
+`pinGateMode` — so Escape while typing a new PIN, or while `ConfirmPinGate`
+was asking for the current PIN to change/remove it, fell through to the
+final `else requestClose()` and closed the whole modal, discarding
+whatever was typed. Fixed by adding both to the same early-return chain.
+`ConfirmPinGate`'s own Escape handler also needed `stopPropagation()` —
+without it, the same keystroke both correctly cancelled the gate *and*
+reached the window handler and closed Settings, since the gate's own
+`dispatch('cancel')` had already nulled `pinGateMode` by the time the
+event bubbled up, so a bare `if (pinGateMode)` check in the window handler
+alone couldn't have caught it. Covered by a new regression test.
+
+**The Cancel/Save footer buttons were live for every tab, but only meant
+something on one.** Verified by reproduction: toggling Theme and High
+Contrast, then clicking Cancel, left both changes in place —
+`setThemeMode()`/`setHighContrast()` (and every other tab's toggles:
+notifications, auto-backup, haptics, reduce motion) write straight to
+their store on click, matching a documented, deliberate tradeoff
+(`saveSettings()`'s own comment: forcing a reload for every tab would
+re-trigger App Lock's cold-start check on a plain theme change). Only
+`syncUrl`/`credentialUser`/`credentialPass`, on the Advanced tab and only
+while Sync is on, are genuinely buffered behind that button. The
+buttons just didn't say so — Cancel implied an undo that didn't exist
+anywhere except there, and Save implied a commit that had usually
+already happened. Fixed by showing Cancel/"Save & restart sync" only on
+`activeCategory === 'advanced' && syncEnabled`, and a single "Close"
+everywhere else.
+
+**Recorded, not changed.** A handful of fire-and-forget
+`.catch(() => {})` calls on real I/O (`rescheduleAll()` after toggling
+notifications or saving quiet hours, `startSync()` after enabling Sync) —
+plausible as "best-effort, the next reload/sync reconciles it" given the
+app's own cancel-all-reschedule-from-scratch model elsewhere, but none of
+the three carry a comment saying so the way this file's other silent
+catches do. A worthwhile follow-up, not urgent enough to touch mid-audit.
+Also noted: a possible reactive reload loop in the Sync tab's conflict
+list if `conflictCount` (async, sync-engine-owned) and `conflictList`
+(a direct query) briefly disagree after resolving the last conflict; the
+debug-only "Reset test data" button using the native `confirm()` instead
+of the app's own dialog; and `resetBusy` only clearing on the failure
+path, not success (harmless — the app is expected to restart either way).
+None reproduced; all four are plausible enough to revisit if one ever
+actually fires in use, not fixed on a suspicion.

@@ -152,6 +152,12 @@
     if (showConflictsModal) { showConflictsModal = false; return; }
     if (showMaintenanceModal) { showMaintenanceModal = false; return; }
     if (pendingImportDocs) { cancelImport(); return; }
+    // PIN sub-flows: back out of just this step, the same as every other
+    // modal-within-Settings above. Without these, Escape fell through to
+    // the final else and closed the whole panel mid-PIN-entry, or while
+    // ConfirmPinGate was asking for the current PIN to change/remove it.
+    if (pinGateMode) { pinGateMode = null; return; }
+    if (showPinForm) { showPinForm = false; return; }
     if (isNarrow && activeCategory) backToList();
     else requestClose();
   }
@@ -1103,8 +1109,17 @@
     </div>
 
     <div class="settings-actions">
-      <button on:click={() => requestClose()}>Cancel</button>
-      <button class="save-btn" on:click={saveSettings}>{(activeCategory === 'sync' || activeCategory === 'advanced') && syncEnabled ? 'Save & restart sync' : 'Save'}</button>
+      {#if activeCategory === 'advanced' && syncEnabled}
+        <!-- The only tab with anything actually buffered -- see
+             saveSettings()'s comment. Every other tab's controls already
+             apply and persist on click, so a "Cancel" that can't cancel
+             anything and a "Save" that isn't saving anything new would
+             just be lying about what's about to happen. -->
+        <button on:click={() => requestClose()}>Cancel</button>
+        <button class="save-btn" on:click={saveSettings}>Save &amp; restart sync</button>
+      {:else}
+        <button class="save-btn" on:click={() => requestClose()}>Close</button>
+      {/if}
     </div>
   </div>
 </div>

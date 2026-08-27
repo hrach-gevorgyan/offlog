@@ -43,7 +43,13 @@
 
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Enter') submit();
-    if (e.key === 'Escape') dispatch('cancel');
+    if (e.key === 'Escape') {
+      // Stop it here -- SettingsPanel's own window-level Escape handler
+      // would otherwise see the same keystroke after this dispatch
+      // already backs out of the gate, and close the whole panel too.
+      e.stopPropagation();
+      dispatch('cancel');
+    }
   }
 </script>
 
