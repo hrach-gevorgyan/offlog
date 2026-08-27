@@ -552,7 +552,8 @@
   // this button is also never rendered in a release build, see below).
   let resetBusy = false;
   async function resetPcTestData() {
-    if (!confirm('Delete all tasks/projects on this PC and restart the app?')) return;
+    const ok = await confirmAction('Delete all tasks/projects on this PC and restart the app?', { confirmLabel: 'Delete everything', danger: true });
+    if (!ok) return;
     resetBusy = true;
     try {
       // Two halves, both needed: wipeAndReseed() clears this PC's own
@@ -808,6 +809,14 @@
   let importStatus = '';
   let pendingImportDocs: ImportedDoc[] | null = null;
   let importPreview: { toCreate: number; toSkip: number; byType: Record<string, number> } | null = null;
+  // Backup filenames already carry the scope/date by convention (doBackup()
+  // below writes `offlog-<name>-<date>.json`) -- showing the picked file's
+  // own name and last-modified time is the only way this preview screen
+  // can confirm "yes, this is the file you meant," given the app happily
+  // produces several similarly-named backups on the same device (today's
+  // auto-backup vs. last week's manual export).
+  let importFileName = '';
+  let importFileModified = '';
 
   function handleImport() {
     const input = document.createElement('input');
@@ -822,6 +831,8 @@
         if (!Array.isArray(docs)) throw new Error('Invalid format');
         pendingImportDocs = docs;
         importPreview = analyzeImport(docs);
+        importFileName = file.name;
+        importFileModified = file.lastModified ? fmtLastSynced(new Date(file.lastModified).toISOString()) : '';
       } catch (e) {
         importStatus = 'Error: ' + (e instanceof Error ? e.message : 'invalid file');
         setTimeout(() => { importStatus = ''; }, 4000);
@@ -830,12 +841,12 @@
     input.click();
   }
 
-  function cancelImport() { pendingImportDocs = null; importPreview = null; }
+  function cancelImport() { pendingImportDocs = null; importPreview = null; importFileName = ''; importFileModified = ''; }
 
   async function confirmImport() {
     if (!pendingImportDocs) return;
     const docs = pendingImportDocs;
-    pendingImportDocs = null; importPreview = null;
+    pendingImportDocs = null; importPreview = null; importFileName = ''; importFileModified = '';
     try {
       importStatus = 'Importing…';
       const { ok, skipped } = await importJSON(docs);
@@ -1314,6 +1325,11 @@
         <button class="mini-modal-close" on:click={cancelImport} aria-label="Close">✕</button>
       </div>
       <div class="mini-modal-body">
+        {#if importFileName}
+          <p class="setting-hint import-filename">
+            <strong>{importFileName}</strong>{#if importFileModified}&nbsp;— modified {importFileModified}{/if}
+          </p>
+        {/if}
         <p class="setting-hint">
           Will create <strong>{importPreview.byType.space}</strong> space{importPreview.byType.space === 1 ? '' : 's'},
           <strong>{importPreview.byType.project}</strong> project{importPreview.byType.project === 1 ? '' : 's'},
@@ -1511,7 +1527,7 @@
     color: var(--due-soon-ink); background: var(--due-soon-bg);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 500;
   }
-  .success-hint {
+  .success-hint, .detail-content :global(.success-hint) {
     color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 600;
   }
@@ -1588,6 +1604,15 @@
   }
   .export-btn:hover, .detail-content :global(.export-btn:hover) { background: var(--hover); }
   .export-btn:disabled, .detail-content :global(.export-btn:disabled) { opacity: .5; cursor: default; }
+  /* Matches TrashView's forever-delete button -- an irreversible action
+     needs the same visual weight wherever it appears, not just where it
+     happened to be built first. */
+  .detail-content :global(.export-btn-danger) {
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger);
+  }
+  .detail-content :global(.export-btn-danger:hover) {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
 
   .detail-content :global(.link-row) {
     display: flex; align-items: center; gap: .75rem;
@@ -1699,6 +1724,14 @@
   .mini-modal-body {
     flex: 1; overflow-y: auto; padding: 1.1rem;
     display: flex; flex-direction: column; gap: .75rem;
+  }
+  /* The app deliberately produces several similarly-named backups on the
+     same device (daily auto-backups, manual full/per-project exports) --
+     this is the only line confirming which actual file got picked, not
+     just what importing it would do. */
+  .import-filename {
+    font-family: var(--mono); background: var(--col-bg);
+    padding: .5rem .65rem; border-radius: var(--radius-sm);
   }
   .mini-modal-actions {
     display: flex; justify-content: flex-end; gap: .5rem;

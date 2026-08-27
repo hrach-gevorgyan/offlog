@@ -25,7 +25,7 @@
                     <span class="toggle-knob"></span>
                   </button>
                 </div>
-                <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'}>{connectionStatus.text}</p>
+                <p class="setting-hint" class:setting-hint-warn={connectionStatus.tone === 'warn'} class:success-hint={connectionStatus.tone === 'ok'}>{connectionStatus.text}</p>
                 {#if syncEnabled && isTauri && $otherHostsDetected.length}
                   <p class="setting-hint setting-hint-warn">
                     Another Offlog host ("{$otherHostsDetected[0].name}") was found on this

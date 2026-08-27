@@ -89,7 +89,7 @@
                 <div class="setting-group">
                   <div class="setting-section-title">Debug build only</div>
                   <p class="setting-hint">Wipes every task/project on this PC and restarts — for testing what a real first-run install looks like, never shown in a release build.</p>
-                  <button class="export-btn" on:click={resetPcTestData} disabled={resetBusy}>
+                  <button class="export-btn export-btn-danger" on:click={resetPcTestData} disabled={resetBusy}>
                     {resetBusy ? 'Resetting…' : 'Reset test data'}
                   </button>
                 </div>

@@ -758,6 +758,32 @@ Keep this the next time the same "but Cancel doesn't cancel anything"
 observation resurfaces — it's true and was already tried; the label stays
 for the reassurance, not because the buffering changed.
 
+**A follow-up UX/UI pass** (8 parallel reviewers, one per tab plus the
+shared shell, then a synthesis pass) found 24 more findings — pure UI/copy/
+consistency, no more correctness bugs. Three were fixed as high-impact:
+
+- **The single most destructive control in Settings was the one styled
+  like a routine one.** `resetPcTestData()`'s wipe was gated by a raw
+  `confirm()` instead of the app's own `confirmAction()` (which the
+  conflict-resolution and maintenance-repair flows already use, danger
+  option and all), and its button used the same neutral `.export-btn`
+  class as "Check for updates" — no `var(--danger)` treatment, unlike
+  every other irreversible-delete control in the app (Trash's forever-
+  delete, the four manager delete buttons, CardDetail's danger menu).
+  Both now match that pattern.
+- **A healthy sync connection was visually identical to "nothing
+  configured yet."** `connectionStatus`'s `ok` tone was computed but
+  never wired to a distinct style — it fell through to the same
+  `.setting-hint` gray as "Syncing…" and "Not connected yet." `.success-
+  hint` already existed (used for pairing-success messages) but wasn't
+  `:global()`-exposed for a child component to use; now it is, and the
+  Sync tab's status line uses it for `tone === 'ok'`.
+- **Restore's preview screen never confirmed which file you picked.** It
+  showed only aggregate counts, no filename — a real gap given the app
+  itself produces several similarly-named backups on one device (daily
+  auto-backups, manual full/per-project exports). The picked file's name
+  and last-modified time are now shown above the count summary.
+
 **Recorded, not changed.** A handful of fire-and-forget
 `.catch(() => {})` calls on real I/O (`rescheduleAll()` after toggling
 notifications or saving quiet hours, `startSync()` after enabling Sync) —
