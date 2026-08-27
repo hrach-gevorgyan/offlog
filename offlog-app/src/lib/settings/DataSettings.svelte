@@ -34,7 +34,7 @@
                     <span class="storage-headline storage-headline-warn">Storage is getting full ({(storagePercent * 100).toFixed(0)}%)</span>
                     <span class="storage-detail">{storageInfo}</span>
                   {:else}
-                    <span class="storage-headline">Your data is tiny — nothing to worry about</span>
+                    <span class="storage-headline">Storage use is well within limits</span>
                     <span class="storage-detail">{storageInfo || 'Calculating…'}</span>
                   {/if}
                 </div>

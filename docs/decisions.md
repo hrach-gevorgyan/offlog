@@ -812,6 +812,37 @@ Left for later, by choice, not by finding them safe/unsafe: the exact-
 alarm hint's technical copy, and cross-linking Archived Projects from
 Backup & Storage.
 
+**Seven low-impact findings, also owner-chosen** rather than the full
+list of fifteen:
+
+- Quiet hours' toggle label now reads "Delay reminders until quiet hours
+  end" instead of "Queue reminders…" — the fire-time behavior in the
+  label itself, not only in a separate hint below it.
+- PIN setup shows "Doesn't match yet" live once Confirm PIN is at least
+  as long as New PIN, instead of only on Save.
+- Organize's section title changed from the content-free "Manage" to
+  "Workspace", and Custom Fields (the one row of the four that isn't
+  self-explanatory) gets a hint: field definitions are shared across
+  every project.
+- The Connect-a-device modal's Cancel/Connect and Done buttons moved into
+  a pinned `.mini-modal-actions` footer, matching Maintenance/Import/
+  Recovery — the scan list's "Find my computer"/per-host "Connect" and
+  desktop's "Generate a code" stay inline, the same list-building-vs-
+  closing distinction that already justified Conflicts' inline Refresh.
+- Desktop pairing success now shows the same explicit "Done" close
+  Android's success state already had, instead of leaving "Generate a
+  new code" as the only visible control.
+- The healthy-storage headline changed from "Your data is tiny — nothing
+  to worry about" to "Storage use is well within limits", matching the
+  flat, factual tone of every other hint in the panel (including its own
+  warning-state sibling right next to it).
+
+Left alone by choice: the two-permissions-one-heading split, no live PIN
+length indicator, the setup-vs-change PIN form heading, Back-up/Export-CSV
+button styling, the CSV scope-selector question, Biometric/Privacy-Screen
+visibility, the Settings panel's own ✕, and extending nav-badge beyond
+Sync conflicts.
+
 **Recorded, not changed.** A handful of fire-and-forget
 `.catch(() => {})` calls on real I/O (`rescheduleAll()` after toggling
 notifications or saving quiet hours, `startSync()` after enabling Sync) —

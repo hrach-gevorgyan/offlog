@@ -1160,9 +1160,6 @@
         {#if isAndroid}
           {#if pairSuccessName}
             <p class="setting-hint success-hint">✓ Connected to "{pairSuccessName}" — syncing now.</p>
-            <div class="setting-row-end">
-              <button class="btn-primary" on:click={() => showConnectModal = false}>Done</button>
-            </div>
           {:else if !selectedHost}
             <button class="export-btn" on:click={startDeviceScan} disabled={$isScanning}>
               {$isScanning ? 'Looking for your computer…' : 'Find my computer'}
@@ -1183,12 +1180,6 @@
               <input bind:value={pairingCode} placeholder="123456" inputmode="numeric" maxlength="6" disabled={pairingBusy} />
             </label>
             {#if pairingError}<p class="setting-hint setting-hint-warn">{pairingError}</p>{/if}
-            <div class="setting-row-end">
-              <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; }} disabled={pairingBusy}>Cancel</button>
-              <button class="btn-primary" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
-                {pairingBusy ? 'Connecting…' : 'Connect'}
-              </button>
-            </div>
           {/if}
         {:else if isTauri}
           {#if pcPairedDeviceName}
@@ -1200,11 +1191,42 @@
           {:else}
             <p class="setting-hint">Generates a one-time code to enter on your phone (Settings → Sync → "Find my computer"), so it can connect to this PC.</p>
           {/if}
+        {/if}
+      </div>
+      <!-- Every other mini-modal in Settings pins its primary action(s) to
+           a footer, separated from the scrolling body -- this one used to
+           bury its Cancel/Connect (and Done) inline instead, the one
+           genuine oversight among the states here. The scan list's "Find
+           my computer"/per-host "Connect" and desktop's "Generate a code"
+           stay in the body: those build/refresh a list rather than close
+           the dialog, the same distinction that keeps Conflicts' Refresh
+           and per-item "Keep this" inline too. -->
+      {#if isAndroid && pairSuccessName}
+        <div class="mini-modal-actions">
+          <button class="btn-primary" on:click={() => showConnectModal = false}>Done</button>
+        </div>
+      {:else if isAndroid && selectedHost}
+        <div class="mini-modal-actions">
+          <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; }} disabled={pairingBusy}>Cancel</button>
+          <button class="btn-primary" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
+            {pairingBusy ? 'Connecting…' : 'Connect'}
+          </button>
+        </div>
+      {:else if isTauri && pcPairedDeviceName}
+        <!-- Matches Android's own success state: an explicit close now
+             that pairing actually finished, instead of leaving "Generate
+             a new code" as the only visible control and making someone
+             reach for the modal's own ✕ to confirm they're done. -->
+        <div class="mini-modal-actions">
+          <button class="btn-primary" on:click={() => showConnectModal = false}>Done</button>
+        </div>
+      {:else if isTauri}
+        <div class="mini-modal-actions">
           <button class="export-btn" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
             {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
           </button>
-        {/if}
-      </div>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -1585,8 +1607,6 @@
   }
   .btn-primary:hover { opacity: .9; }
   .btn-primary:disabled { opacity: .5; cursor: default; }
-
-  .setting-row-end { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; }
 
   .field-label, .detail-content :global(.field-label) {
     display: flex; flex-direction: column; gap: .35rem;

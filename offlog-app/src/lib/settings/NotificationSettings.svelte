@@ -70,7 +70,7 @@
               <div class="setting-group">
                 <div class="setting-section-title">Quiet hours</div>
                 <div class="setting-row">
-                  <span class="setting-label">Queue reminders during quiet hours</span>
+                  <span class="setting-label">Delay reminders until quiet hours end</span>
                   <button class="toggle-btn" class:on={quietHours.enabled} on:click={() => saveQuietHours({ enabled: !quietHours.enabled })} aria-label="Toggle quiet hours" role="switch" aria-checked={quietHours.enabled}>
                     <span class="toggle-knob"></span>
                   </button>

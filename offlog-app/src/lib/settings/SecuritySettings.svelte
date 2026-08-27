@@ -41,6 +41,14 @@
   // until after Confirm PIN and the hint were filled in too.
   function onNewPinInput(e: Event) { newPin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8); }
   function onConfirmPinInput(e: Event) { confirmPin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8); }
+
+  // Previously all four checks in savePin() (length, digits, match, hint)
+  // ran only on click -- a mismatched Confirm PIN surfaced only after
+  // filling in the hint too. This one is worth catching live: it's the
+  // check most likely to trip on a simple typo, and the earliest point a
+  // typo becomes checkable is the moment Confirm PIN is at least as long
+  // as New PIN (before that, of course it doesn't match yet).
+  $: confirmMismatch = confirmPin.length >= newPin.length && confirmPin.length > 0 && confirmPin !== newPin;
 </script>
 
               <div class="setting-group">
@@ -59,6 +67,7 @@
                       Confirm PIN
                       <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" value={confirmPin} on:input={onConfirmPinInput} placeholder="4–8 digits" />
                     </label>
+                    {#if confirmMismatch}<p class="setting-hint setting-hint-warn compact-hint">Doesn't match yet</p>{/if}
                     <label class="field-label">
                       Hint (optional)
                       <input type="text" maxlength="60" bind:value={pinHint} placeholder="A reminder only you'd understand" />
@@ -96,6 +105,7 @@
                     Confirm PIN
                     <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" value={confirmPin} on:input={onConfirmPinInput} placeholder="4–8 digits" />
                   </label>
+                  {#if confirmMismatch}<p class="setting-hint setting-hint-warn compact-hint">Doesn't match yet</p>{/if}
                   <label class="field-label">
                     Hint (optional)
                     <input type="text" maxlength="60" bind:value={pinHint} placeholder="A reminder only you'd understand" />
