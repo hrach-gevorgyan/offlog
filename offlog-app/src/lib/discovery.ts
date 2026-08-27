@@ -82,18 +82,61 @@ interface PairResponse {
   uuid: string;
 }
 
-// Posts the code the user read off the PC's "Pair a device" screen to
-// its one-shot pairing endpoint (pairing.rs) — on success, stores the
-// real per-install credentials it returns and starts syncing. The PC
-// side invalidates the code the instant this succeeds (single-use), so
-// this can't be replayed even by someone who saw it once.
+// Mirrors pairing.rs exactly -- same tag strings, round count, and key
+// sizes -- so this and the Rust side derive identical keys from the same
+// (code, nonce) without either value crossing the network. See that
+// module's own comment for the full protocol and its honest limit (a
+// 6-digit code is still only a 6-digit code against a resourced offline
+// attacker; this raises the bar from "instant plaintext read" to "costs
+// real effort," not to "unbreakable").
+const PBKDF2_ROUNDS = 210_000;
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+function fromBase64(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function deriveBits(code: string, nonce: Uint8Array, tag: string): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const salt = new Uint8Array(nonce.length + tag.length);
+  salt.set(nonce);
+  salt.set(encoder.encode(tag), nonce.length);
+  const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(code), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: PBKDF2_ROUNDS, hash: 'SHA-256' }, keyMaterial, 256);
+  return new Uint8Array(bits);
+}
+
+// Posts a proof of the code the user read off the PC's "Pair a device"
+// screen to its one-shot pairing endpoint (pairing.rs) — on success,
+// decrypts and stores the real per-install credentials it returns and
+// starts syncing. The PC side invalidates the code the instant this
+// succeeds (single-use), so this can't be replayed even by someone who
+// saw it once.
+//
+// Neither the code nor the credentials it unlocks ever cross the network
+// in the clear: a fresh nonce plus the code (typed here, never sent)
+// derives an auth proof and a separate response-decryption key, matching
+// what the PC side derives from the same nonce and its own copy of the
+// code.
 export async function pairWithHost(host: DiscoveredHost, code: string): Promise<void> {
   if (!host.pairingPort) throw new Error('This computer is running an older version of the Offlog desktop app — update it and try again.');
+  const trimmedCode = code.trim();
+  const nonce = crypto.getRandomValues(new Uint8Array(16));
+  const proof = await deriveBits(trimmedCode, nonce, 'auth');
+
   let res: Response;
   try {
     res = await fetch(`http://${host.address}:${host.pairingPort}/pair`, {
       method: 'POST',
-      body: code.trim(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nonce: toBase64(nonce), proof: toBase64(proof) }),
     });
   } catch {
     // fetch() itself rejects (not a non-ok response) when the host is
@@ -105,7 +148,27 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
     throw new Error("Couldn't reach that computer. Make sure it's turned on and both devices are on the same Wi-Fi network.");
   }
   if (!res.ok) throw new Error('Incorrect or expired code.');
-  const data = (await res.json()) as PairResponse;
+
+  const envelope = (await res.json()) as { iv: string; ciphertext: string };
+  const encKeyBits = await deriveBits(trimmedCode, nonce, 'enc');
+  // lib.dom.d.ts types Uint8Array as generic over its backing buffer;
+  // a plain `new Uint8Array(n)` infers Uint8Array<ArrayBufferLike>, which
+  // BufferSource's stricter `ArrayBufferView<ArrayBuffer>` no longer
+  // structurally accepts even though every one of these is a real,
+  // ArrayBuffer-backed Uint8Array at runtime. Casts, not a real type gap.
+  const encKey = await crypto.subtle.importKey('raw', encKeyBits as BufferSource, 'AES-GCM', false, ['decrypt']);
+  let plaintext: ArrayBuffer;
+  try {
+    plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromBase64(envelope.iv) as BufferSource }, encKey, fromBase64(envelope.ciphertext) as BufferSource);
+  } catch {
+    // A wrong code produces a wrong key, which AES-GCM's auth tag check
+    // rejects outright rather than silently returning garbage -- the
+    // built-in "did the wrong code even come back as noise" case reads
+    // identically to a rejected/expired one from the user's side, so it
+    // gets the same message.
+    throw new Error('Incorrect or expired code.');
+  }
+  const data = JSON.parse(new TextDecoder().decode(plaintext)) as PairResponse;
   // A freshly-installed device's own default seed (space:unsorted/personal/
   // work, project:draft — fixed ids, not per-install-random) collides with
   // the PC's independently-seeded copies the moment sync starts, producing a

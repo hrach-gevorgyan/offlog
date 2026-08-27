@@ -624,6 +624,63 @@ here, it is a broken one: Android enforces this at the OS level, so any
 host not on the list fails with no error reaching the app, and the sync
 host's LAN IP changes on any DHCP renewal or network switch.
 
+**Still true after the pairing-handshake hardening below** — ongoing sync
+traffic is unaffected by that change and stays plain HTTP. Real TLS on
+sync itself was scoped and explicitly deferred: PouchDB's replication in
+the Android app runs through the WebView's `fetch()`, which hard-rejects
+a self-signed certificate with no JS-level override — trust-on-first-pair
+pinning would need a real native networking layer (a Capacitor plugin
+wrapping OkHttp with its own TrustManager), not a config change. Revisit
+as its own project if it's ever worth that engineering cost; installing
+the self-signed CA as a trusted system cert was considered and rejected
+as worse UX than the status quo (Android's "network may be monitored"
+warning, aimed exactly at this non-technical audience).
+
+### Pairing handshake: the code and credentials never cross the network unencrypted
+
+Raised as a direct MITM question — "my data flows over Wi-Fi." The
+cleartext-sync tradeoff above stands (see its update note for why real
+TLS wasn't in scope here), but the **pairing handshake** specifically was
+a sharper, narrower, and cheaply fixable problem: the 6-digit code went
+phone→PC and the resulting sync credentials came back PC→phone, both as
+plain HTTP body text. A passive eavesdropper on the same network segment
+during that one exchange didn't need to guess anything — they could read
+the username and password directly off the wire, no cracking required.
+
+Fixed inside the exchange itself, no TLS involved: the phone derives an
+auth proof and a separate response-decryption key via PBKDF2-HMAC-SHA256
+(210,000 rounds, domain-separated by an "auth"/"enc" tag) from the code
+plus a fresh per-attempt nonce it generates — the code itself is never
+transmitted, only proof of knowing it. `pairing.rs` verifies the proof
+without ever seeing the client's copy of the code, then returns the
+credentials AES-256-GCM-encrypted under the same derivation. A passive
+capture of the whole exchange now has to brute-force the 6-digit space
+(1M candidates) against the PBKDF2-hardened proof *offline* to get
+anywhere, instead of reading credentials straight off the packet.
+
+**Honestly bounded, not airtight.** Six digits is six digits — no KDF
+changes that against someone with real compute (GPU-parallelized PBKDF2
+cracking could still clear 1M candidates in seconds to minutes). This
+raises the bar from "instant, zero-effort" to "costs a motivated attacker
+real work," matching the actual threat model (an opportunistic LAN
+eavesdropper, not a resourced adversary) — the same honest framing this
+file already applies to the PIN lock's throttle and the pairing server's
+online attempt cap. `MAX_ATTEMPTS = 8` still bounds *online* guessing
+against the live endpoint; this only closes the separate *offline*,
+captured-traffic reading that plaintext previously handed over for free.
+
+Implementation notes for later: `pairing.rs` and `discovery.ts` implement
+the identical derivation independently (matching tag strings, round
+count, key sizes) since there's no shared crypto module across the
+Rust/TypeScript boundary — verified cross-language-compatible by a
+`cargo test -- --nocapture` fixture decrypted by hand under Node's
+Web Crypto implementation once, then locked in as `tests/discovery.test.ts`
+(mocks `fetch`, asserts a real Rust-produced ciphertext decrypts
+correctly and that neither the request body nor a captured response
+contains the plaintext code). `pairing.rs` also gained real unit tests
+(key derivation, encrypt/decrypt round-trip, and the attempt-lockout
+state machine) — the previous version had none.
+
 ### CodeQL findings inside bundled Capacitor plugin source: dismiss manually
 `paths-ignore`/`.codeqlignore` only filter which files get *extracted*
 for interpreted languages. Under `build-mode: manual`, Gradle/javac

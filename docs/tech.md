@@ -633,9 +633,11 @@ lifetime on every exit path, including a crash. The binary is built by
 The PC advertises `_offlog._tcp` over mDNS carrying a uuid and pairing port
 — deliberately no credentials over the air. Pairing is a separate
 single-endpoint HTTP server: the PC shows a 6-digit code, single-use, valid
-5 minutes; the phone posts it once and gets real credentials back. There are
-no fixed username/password constants, because nothing could match a
-per-install random password.
+5 minutes; the phone posts a PBKDF2-derived proof of it (never the code
+itself) and gets the real credentials back AES-256-GCM-encrypted under a
+key derived the same way — see decisions.md's Security section for the
+full protocol and its honest limits. There are no fixed username/password
+constants, because nothing could match a per-install random password.
 
 **Sync URL resolution is three-way**, which is easy to get wrong:
 
