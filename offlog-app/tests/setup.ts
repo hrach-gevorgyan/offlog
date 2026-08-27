@@ -83,3 +83,25 @@ if (!Element.prototype.animate) {
     } as unknown as Animation;
   };
 }
+
+// jsdom ships no canvas backend (the real one is the optional `canvas`
+// native package, not worth installing just for this) — every
+// getContext('2d') call logs "Not implemented" to the console and
+// returns null. ListView's measureTextWidth() already tolerates that
+// null, but carddetail/helpers.ts's downscaleImage() does not (a bare
+// `getContext('2d')!`), so a null return is a latent
+// "Cannot read properties of null" the moment something exercises it.
+// A minimal stub covering what both call sites actually use --
+// measureText (a rough char-count width, plenty for layout tests that
+// don't assert exact pixel values) and drawImage/font as no-ops --
+// fixes both: no more log noise, and no more silent reliance on jsdom's
+// default of returning null.
+HTMLCanvasElement.prototype.getContext = function () {
+  return {
+    font: '',
+    measureText(text: string) { return { width: text.length * 7 } as TextMetrics; },
+    drawImage() {},
+    fillRect() {},
+    clearRect() {},
+  } as unknown as CanvasRenderingContext2D;
+} as typeof HTMLCanvasElement.prototype.getContext;
