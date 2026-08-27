@@ -17,6 +17,101 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.9.0] — 2026-08-28
+
+Notes gets real live markdown; Card Detail's tag colors, spacing, and
+recurrence controls get a round of retouches; and a sixth feature audit —
+the Settings menu, walked live rather than read as code — turns up an
+Escape-key bug that could lose a PIN mid-entry, a footer that lied about
+what Cancel/Save did, and a long tail of smaller UX gaps across Sync,
+Notifications, App Lock, and Backup & Storage.
+
+### Added
+- **Notes renders markdown live, in one pane**, instead of a Write/Preview
+  tab toggle. A CodeMirror 6 editor (`MarkdownEditor.svelte`,
+  `markdownLiveView.ts`) decorates bold/italic/strikethrough/headings/code/
+  blockquotes/lists/links/rules inline as you type — formatting marks (`**`,
+  `#`, `` ` ``) stay visible but dimmed, never hidden. Replaces the earlier
+  `marked`+`DOMPurify` render-on-preview approach; both dependencies are
+  gone, since there's no `{@html}` sink left to sanitize for.
+- **Tag chip colors expanded to a 24-color palette**, hue-ordered, at 45%
+  tint (`var(--radius-sm)` chips, not a full pill — matches Notion/GitHub's
+  small-rounded-rectangle convention rather than a Material filter-chip
+  shape). `ensureFreshTagColor()` now avoids handing a new tag a color
+  that's already in heavy use, checking both persisted tags and the current
+  card's own not-yet-saved ones.
+- **Repeat & Reminder's interval collapses behind "Customize"** for the
+  ordinary every-1 case — reads as a plain sentence ("every week") instead
+  of an always-visible number input — with a next-occurrence preview
+  computed through the same `advanceDate()` math a real save uses, so it
+  can't drift from what saving actually produces. Customize/Weekdays/Skip
+  now share one pill design instead of a mix of a bare text link and two
+  differently-styled buttons.
+- **The EXTRAS summary balances onto two lines** (`balanceIntoTwoLines()`)
+  instead of wrapping naively wherever the text happens to run out of room.
+- **Settings' "Reset test data"** (debug-only) now confirms through the
+  app's own `confirmAction()`, danger-styled, instead of the browser's
+  native `confirm()` — and its button gets the same `var(--danger)`
+  treatment as every other irreversible-delete control in the app, instead
+  of looking like "Check for updates."
+- **Sync's connection status visually distinguishes "connected" from
+  "nothing configured yet"** — the `ok` tone was already computed but never
+  rendered differently from `muted` until now.
+- **Restore's preview shows which file you actually picked** — name and
+  modified time, not just aggregate counts — since the app itself produces
+  several similarly-named backups on one device (daily auto-backups, manual
+  full/per-project exports).
+- Pairing a device now reports "couldn't reach that computer" for a network
+  failure instead of a raw `fetch()` `TypeError`; an Android scan that
+  finds nothing says so instead of the button silently reverting; "Devices
+  seen recently" and the conflict modal both mark which entry is this
+  device; PIN setup filters non-digit input live and shows "Doesn't match
+  yet" before Save is clicked; the Sync tab signposts where Advanced's
+  manual server fields live; Notifications' disclosure sections slide
+  open/closed like every other one in the app instead of snapping.
+
+### Fixed
+- **Escape during PIN entry closed all of Settings**, discarding whatever
+  was typed, instead of backing out of just that step.
+  `onWindowKeydown` special-cased every other in-panel sub-flow (connect,
+  conflicts, maintenance, import preview) but not `showPinForm` or
+  `pinGateMode`. `ConfirmPinGate`'s own Escape handler needed
+  `stopPropagation()` too — without it, the same keystroke both correctly
+  cancelled the gate *and* reached the window handler and closed Settings,
+  since the gate's own `dispatch('cancel')` had already nulled
+  `pinGateMode` before the event finished bubbling. Covered by a
+  regression test.
+- **The footer Cancel/Save buttons were live on every Settings tab, but
+  only ever meant something on one.** Verified by reproduction: toggling
+  Theme and High Contrast, then clicking Cancel, left both changes in
+  place — every tab but Advanced-with-Sync-on already writes its controls
+  straight to their store on click. A first fix replaced the footer with a
+  single "Close" everywhere else; reverted after real user feedback that a
+  missing Save button reads as "did my change even take?", not as
+  "nothing to save here." Save is shown on every tab again; Cancel stays
+  Advanced-only, where there's actually something to discard.
+
+### Changed
+- `CustomSelect` gained an optional per-option color dot (used by Priority).
+- `advanceDate()` moved from `db/entities.ts` to `utils.ts` — a pure
+  function with no DB access, now shared by the real recurrence advance and
+  the Repeat block's preview instead of each keeping its own copy.
+- jsdom test noise silenced: `HTMLCanvasElement.prototype.getContext` and
+  `HTMLAnchorElement.prototype.click` (the download trigger) are stubbed in
+  `tests/setup.ts`, matching its existing animate/matchMedia/scrollIntoView
+  pattern — no more "Not implemented" lines in every test run.
+- A long tail of Settings copy/consistency fixes, all owner-reviewed and
+  selected from a ranked UX audit rather than applied wholesale: Organize's
+  content-free "Manage" section title became "Workspace" with a hint under
+  every row (not just Custom Fields); the quiet-hours toggle reads "Delay
+  reminders until quiet hours end" instead of "Queue…"; the healthy-storage
+  headline dropped its jokey tone; the Connect-a-device modal's primary
+  actions moved into a pinned footer, matching every other modal-within-
+  Settings, and desktop pairing success gets the same explicit "Done" close
+  Android's already had.
+
+---
+
 ## [6.8.0] — 2026-08-26
 
 Five feature audits — sync conflicts, the trash/undo/retention lifecycle,
@@ -475,25 +570,7 @@ Maintenance pass (18th run), pulled forward at owner request.
 
 ---
 
-## [6.1.0] — 2026-07-31
-
-### Added
-- **Agenda month view** — a real calendar grid with priority-coloured dots,
-  title chips on wider viewports, and tap-a-day to see its tasks and add
-  one with that due date prefilled.
-- `skipRecurrence()` — jump a recurring task to its next occurrence
-  ("Skip this one") without logging a completion or moving its column.
-
-### Removed
-- Week view. Its only real value — seeing the current week by day — is
-  already covered by List's "This week" grouping plus Month's drill-in.
-
-### Fixed
-- The month grid stretched to fill leftover flex space, leaving a blank gap
-  before the day panel.
-
----
-
+[6.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.8.0...v6.9.0
 [6.8.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.7.0...v6.8.0
 [6.7.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.6.0...v6.7.0
 [6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0
@@ -503,4 +580,3 @@ Maintenance pass (18th run), pulled forward at owner request.
 [6.3.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.1...v6.3.0
 [6.2.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.0...v6.2.1
 [6.2.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.1.0...v6.2.0
-[6.1.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.0.1...v6.1.0

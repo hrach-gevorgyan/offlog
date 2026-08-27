@@ -31,6 +31,30 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.9.0
+
+### In short
+
+Notes now render markdown live as you type, in one pane, instead of a separate preview tab. The repeat-task controls are simpler for the everyday case. A Settings review fixed a bug where pressing Escape while entering a PIN closed the whole Settings screen and lost what you had typed, made the destructive test-data-reset button warn like the risky action it is, and cleaned up rough edges across Sync, Notifications, App Lock, and Backup & Restore.
+
+### New
+- Notes shows bold, italic, headings, code, lists, links and more as you type — no more switching to a separate preview to see how it looks.
+- Tags get a wider range of colors, and a brand-new tag no longer gets assigned a color that's already heavily used.
+- Setting a task to repeat reads as a plain sentence ("every week") for the common case, with a preview of when it'll come due next, instead of always showing a number to fill in.
+- The long summary line on a collapsed task card now splits evenly across two lines instead of wrapping wherever it runs out of room.
+- Settings: the "Reset test data" button (developer builds only) now asks with the same clearly-marked warning every other permanent-delete action in the app uses.
+- Settings: a working sync connection now looks different from "nothing set up yet."
+- Settings: restoring from a backup shows you which file you picked before you commit to it.
+- Settings: connecting a device gives clearer feedback — a real message when the other computer can't be reached, and a "nothing found" message instead of silence when a scan turns up empty.
+- Settings: your own device is now labeled in the device list and when resolving a sync conflict.
+- Settings: entering a PIN rejects letters as you type instead of only after you try to save, and tells you right away if the two PINs you typed don't match.
+
+### Fixed
+- Pressing Escape while setting or changing your PIN closed all of Settings and threw away what you'd typed, instead of just backing out of that one step.
+- Some Settings toggles (like Theme or High Contrast) took effect immediately but the Save/Cancel buttons made it look like you still needed to save — or that Cancel would undo them. Save now works consistently everywhere.
+
+---
+
 ## v6.8.0
 
 ### In short
