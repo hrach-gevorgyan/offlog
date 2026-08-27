@@ -80,6 +80,13 @@ jobs:
 
   build-android:
     needs: verify
+    # Narrower than the workflow default, same reasoning as verify's: this
+    # job only builds the APK and hands it to upload-artifact (its own
+    # token, unrelated to contents: write) -- it never creates or updates
+    # a release itself, unlike build-desktop-windows and draft-release
+    # below, which genuinely need write to call the GitHub Release API.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7

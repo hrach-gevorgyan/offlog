@@ -633,6 +633,49 @@ breaking the classpath manual build-mode exists to provide. Dismiss these
 vendored-third-party findings individually in the Code Scanning UI
 (**Won't fix**) rather than reworking the workflow.
 
+### A security survey, not an audit: three concrete fixes, most of the surface already closed
+
+Requested as "improve security, your suggestions." Checked first against
+this section and the rest of decisions.md so nothing here re-opens an
+already-settled tradeoff (at-rest encryption, LAN cleartext, the PIN's
+light throttle) — those are unchanged. What was actually new:
+
+- **The web/Android build had no Content-Security-Policy**, while
+  `tauri.conf.json` already carries one for desktop. Every `{@html}` sink
+  in the app (`GlobalSearch`, `UpdateModal`) already escapes untrusted
+  text before interpolating — so this isn't fixing a live XSS, it's
+  defense-in-depth for the next one: a CSP means a future bug in one of
+  those sinks doesn't also hand an injected script a path to an external
+  origin. Added via a build-only Vite plugin (`vite.config.ts`) that
+  injects the `<meta>` tag into `dist/index.html` — build-only because
+  Vite's dev server needs things (inline module eval, its own HMR
+  websocket) a CSP this strict would break, and dev is never what ships.
+  `connect-src` stays open to any LAN host (the sync address is
+  user-configured); `img-src` needs `blob:` for attachment thumbnails.
+  Verified against a real `vite preview` build: full app walkthrough,
+  zero CSP violations in the console.
+- **`file_paths.xml`'s `<external-path path="."/>`** — Capacitor's
+  scaffolded default, mapping the FileProvider to the *entire* shared
+  external-storage root — was never actually used. Every `Filesystem`
+  write in the app (`carddetail/helpers.ts`, `settings/helpers.ts`,
+  `autoBackup.ts`) targets `Directory.Cache` or `Directory.Data`, both
+  app-private; `<cache-path>` alone covers what `Share.share()` actually
+  hands out. Removed rather than left as unused broad-grant surface.
+- **`release.yml`'s `build-android` job inherited the workflow's
+  `contents: write`** with no actual need for it — it only builds the
+  APK and hands it to `upload-artifact` (its own token, unrelated to
+  `contents`). `verify` already narrows to `contents: read` for the same
+  reason; `build-android` gets the identical treatment now. (Every other
+  workflow file, and `build-desktop-windows`/`draft-release` in this one,
+  were already correctly scoped — `build-desktop-windows` and
+  `draft-release` genuinely need write to call the GitHub Release API.)
+
+Also checked and found already solid, so not touched: `npm audit` (0
+vulnerabilities), the pairing endpoint's brute-force cap and generic
+error responses (`pairing.rs`), `AndroidManifest.xml`'s exported
+components (each justified by its own comment), CI Action pins (full SHA,
+not floating tags, everywhere), and no workflow uses `pull_request_target`.
+
 ---
 
 ## Mobile / Android

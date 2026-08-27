@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
+    <!-- Attachment opening and CSV/backup export (carddetail/helpers.ts,
+         settings/helpers.ts) both write through Directory.Cache before
+         handing the file to the share sheet -- this is the only root the
+         app ever asks FileProvider to grant a content:// URI under.
+         The scaffolded `<external-path path="."/>` (Capacitor/Cordova's
+         default template) mapped the FileProvider to the entire shared
+         external-storage root with nothing in the app ever using it;
+         removed rather than left as unused broad-grant surface. -->
     <cache-path name="my_cache_images" path="." />
 </paths>
