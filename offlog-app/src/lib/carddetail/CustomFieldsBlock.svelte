@@ -11,11 +11,23 @@
   export let customValues: Record<string, string | number | null>;
   export let showAllFields: boolean;
   export let VISIBLE_FIELD_CAP: number;
+
+  // Every other extra-block badge counts things actually present (2/4
+  // checklist items, 1 related task) -- the equivalent here is fields
+  // that actually hold a value, not how many field definitions exist
+  // (that count never changes as you fill the card in, so it wouldn't
+  // tell you anything the way the others do).
+  $: filledCount = customFields.filter(f => {
+    const v = customValues[f.id];
+    return v !== null && v !== undefined && v !== '';
+  }).length;
 </script>
 
             <div class="extra-block">
               <button type="button" class="extra-block-toggle" on:click={() => showCustomFieldsBlock = !showCustomFieldsBlock} aria-expanded={showCustomFieldsBlock}>
-                <span class="field-label">Custom fields</span>
+                <span class="field-label">
+                  Custom fields{#if filledCount} <span class="checklist-progress">{filledCount}</span>{/if}
+                </span>
                 <svg class="section-chevron" class:open={showCustomFieldsBlock} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
               </button>
               {#if showCustomFieldsBlock}

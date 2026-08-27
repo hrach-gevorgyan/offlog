@@ -10,6 +10,7 @@ const createTask = vi.fn().mockResolvedValue(undefined);
 vi.mock('../src/lib/db', () => ({
   createTask: (...args: unknown[]) => createTask(...args),
   findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
+  ensureFreshTagColor: vi.fn().mockResolvedValue(undefined),
 }));
 
 const reloadTasks = vi.fn().mockResolvedValue(undefined);
@@ -105,6 +106,7 @@ describe('QuickAdd create pipeline (A32)', () => {
     expect(title).toBe('Call plumber');
     expect(extras.priority).toBe(3);
     expect(extras.tags).toEqual(['home']);
+    expect(showError).not.toHaveBeenCalled();
   });
 
   it('routes @project mentions to the matched project', async () => {

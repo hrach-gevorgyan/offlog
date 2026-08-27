@@ -4,7 +4,7 @@
 // cascades into tasks), so they deliberately live in one module.
 import { getDefaultReminderTime } from '../../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, CustomFieldDef, TaskAttachment, Source } from '../types';
-import { wordOverlapSimilarity, localDateStr } from '../utils';
+import { wordOverlapSimilarity, localDateStr, advanceDate } from '../utils';
 import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension, attachmentMimeType } from '../attachments';
 import { db, SOURCE, DEFAULT_COLS, initIndexes, getAllTasksRaw, invalidateTaskCache, now, nanoid, logChange, queueTaskWrite } from './core';
 
@@ -711,36 +711,6 @@ export async function createTask(
   try { projName = (await db.get<ProjectDoc>(projectId)).name; } catch {}
   await logChange(doc._id!, 'create', undefined, undefined, undefined, { task_title: title, project_name: projName });
   return doc;
-}
-
-// `interval` multiplies the step -- every N days/weeks/months, defaulting to
-// 1. `weekdaysOnly` only applies to daily: it skips forward past a landed-on
-// Saturday/Sunday to the following Monday.
-function advanceDate(dateStr: string, freq: 'daily' | 'weekly' | 'monthly', interval = 1, weekdaysOnly = false): string {
-  const step = Math.max(1, interval);
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (freq === 'daily') {
-    d.setDate(d.getDate() + step);
-    if (weekdaysOnly) {
-      const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
-      if (dow === 6) d.setDate(d.getDate() + 2);
-      else if (dow === 0) d.setDate(d.getDate() + 1);
-    }
-    return localDateStr(d);
-  }
-  if (freq === 'weekly') { d.setDate(d.getDate() + step * 7); return localDateStr(d); }
-  // Monthly: plain `d.setMonth(d.getMonth() + step)` overflows into the month
-  // after next when the day-of-month doesn't exist there -- Jan 31 + 1 month
-  // rolls to Mar 3, skipping February's occurrence entirely. Clamp to the
-  // target month's real last day so a task due the 31st recurs on the
-  // 28th/29th/30th of a shorter month.
-  const day = d.getDate();
-  const targetMonth = d.getMonth() + step; // may exceed 11 -- Date normalizes into a later year
-  const daysInTargetMonth = new Date(d.getFullYear(), targetMonth + 1, 0).getDate();
-  d.setDate(1); // avoid overflow while still on the original month
-  d.setMonth(targetMonth);
-  d.setDate(Math.min(day, daysInTargetMonth));
-  return localDateStr(d);
 }
 
 // Computes the reset-in-place fields for a recurring task that just got

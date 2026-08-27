@@ -223,9 +223,12 @@
   }
   .color-dot:hover { transform: scale(1.15); }
 
+  /* wrap, not nowrap: TAG_PALETTE grew past what one row fits without
+     crowding -- two tidy rows read better than 13 dots jammed edge to
+     edge with no breathing room. */
   .swatch-row {
-    display: flex; align-items: center; gap: 7px;
-    padding: 4px 0 10px 24px; border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 7px;
+    padding: 4px 24px 10px 24px; border-bottom: 1px solid var(--border);
   }
   .swatch {
     width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;

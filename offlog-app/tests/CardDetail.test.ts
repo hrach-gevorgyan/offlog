@@ -16,6 +16,8 @@ vi.mock('../src/lib/db', () => ({
   archiveTask: (...args: unknown[]) => archiveTask(...args),
   duplicateTask: (...args: unknown[]) => duplicateTask(...args),
   getAllTags: vi.fn().mockResolvedValue([]),
+  getTagColorOverrides: vi.fn().mockResolvedValue({}),
+  ensureFreshTagColor: vi.fn().mockResolvedValue(undefined),
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
   findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
   findSimilarNotes: vi.fn().mockResolvedValue([]),

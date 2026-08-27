@@ -3,7 +3,7 @@
   import { fade } from 'svelte/transition';
   import { scrimIn, scrimOut, quickAddIn, quickAddOut, revealIn, revealOut, exitMs } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
-  import { createTask, findTasksByTitleInProject } from './db';
+  import { createTask, findTasksByTitleInProject, ensureFreshTagColor } from './db';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
@@ -114,6 +114,17 @@
     if (!proj) { saving = false; return; }
     const firstCol = proj.columns[0].id;
     try {
+      // Before createTask, not after: once the task is saved these tags
+      // are themselves the "already persisted" record, and
+      // ensureFreshTagColor would see each one as not-new and skip it.
+      // Sequential, not parallel -- each #tag needs to see the color the
+      // previous one in this same line just claimed, the same way typing
+      // tags one at a time into CardDetail does.
+      for (const tag of parsed.tags) {
+        const others = parsed.tags.filter(x => x !== tag);
+        try { await ensureFreshTagColor(tag, others); }
+        catch (e) { console.warn('tag color assignment failed', e); }
+      }
       await createTask(projectId, proj.space_id, firstCol, t, {
         priority: parsed.priority ?? undefined,
         due_date: effectiveDueDate,

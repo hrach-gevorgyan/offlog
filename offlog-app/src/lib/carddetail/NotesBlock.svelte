@@ -1,6 +1,7 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
   import { revealIn, revealOut } from '../motion';
+  import MarkdownEditor from './MarkdownEditor.svelte';
 
   export let showNotesBlock: boolean;
   export let body: string;
@@ -15,7 +16,7 @@
             </button>
             {#if showNotesBlock}
               <div class="extra-block-body notes-wrap" in:slide={revealIn} out:slide={revealOut}>
-                <textarea class="notes-textarea" bind:value={body} rows="4" placeholder="Notes…"></textarea>
+                <MarkdownEditor bind:value={body} placeholderText="Notes… **bold**, *italic*, # heading, - list, `code`" />
                 {#if body.length > NOTES_SOFT_LIMIT}
                   <div class="notes-counter">{body.length} characters</div>
                 {/if}
@@ -23,22 +24,3 @@
               </div>
             {/if}
           </div>
-
-<style>
-  /* Base element styles live here, not in CardDetail's :global block:
-     a :global() element selector also matches nested components'
-     internals (CustomSelect, CalendarPicker), which the scoped
-     original never did. */
-  button {
-    padding: .38rem .8rem; border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong); cursor: pointer;
-    background: var(--surface); color: var(--text); font-size: .82rem; font-weight: 500;
-  }
-  textarea {
-    flex: 1; resize: vertical; min-height: 90px;
-    padding: .55rem .65rem; border: 1px solid var(--border);
-    border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
-    font-family: 'Hanken Grotesk', sans-serif; font-size: .85rem; line-height: 1.5;
-  }
-  textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
-</style>

@@ -3,8 +3,10 @@
   import { fade, fly, scale, slide } from 'svelte/transition';
   import { scrimIn, scrimOut, centredIn, centredOut, popIn, popOut, revealIn, revealOut, exitMs } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
-  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from './db';
+  import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK, getTagColorOverrides, ensureFreshTagColor } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension } from './attachments';
+  import { resolveTagColor } from './tagColors';
+  import { PRIORITY_COLOR } from './constants';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
@@ -31,6 +33,12 @@
   // See docs/motion.md.
   let __introReady = false;
   onMount(() => { __introReady = true; });
+
+  // The same per-tag color used everywhere else (Kanban cards, filters) --
+  // one-time fetch, not a live subscribe, since an override changing while
+  // this exact card is open is not worth the extra machinery.
+  let tagColorOverrides: Record<string, string> = {};
+  onMount(() => { getTagColorOverrides().then(o => tagColorOverrides = o).catch(() => {}); });
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
@@ -103,9 +111,9 @@
   $: priority = (Number(priorityStr) || 1) as 1 | 2 | 3;
   const statusOptions = project.columns.map(col => ({ value: col.id, label: col.name }));
   const priorityOptions = [
-    { value: '1', label: 'Low' },
-    { value: '2', label: 'Medium' },
-    { value: '3', label: 'High' },
+    { value: '1', label: 'Low', dotColor: PRIORITY_COLOR[1] },
+    { value: '2', label: 'Medium', dotColor: PRIORITY_COLOR[2] },
+    { value: '3', label: 'High', dotColor: PRIORITY_COLOR[3] },
   ];
   let due_date = task.due_date ?? '';
   let reminder_at = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
@@ -217,7 +225,7 @@
   let showAllFields = false;
   $: visibleFields = showAllFields ? customFields : customFields.slice(0, VISIBLE_FIELD_CAP);
 
-  $: extrasSummary = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, blockingTasks, unresolvedBlockers.length, attachments, body);
+  $: extrasSummaryLines = formatExtrasSummary(reminder_at, recurrence, recurrenceInterval, recurrenceWeekdaysOnly, checklist, relatedTasks, blockingTasks, unresolvedBlockers.length, attachments, body);
 
   // Delete/Archive/Duplicate/history all live in one "⋯" menu — same
   // click-outside-closes pattern CustomSelect.svelte uses, not a new
@@ -276,9 +284,21 @@
     }
   }
 
-  function addTag() {
+  async function addTag() {
     const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
-    if (t && !tags.includes(t)) tags = [...tags, t];
+    if (t && !tags.includes(t)) {
+      const others = tags; // before the push -- tags already on this card
+      tags = [...tags, t];
+      // Best-effort: a genuinely new tag gets a color that isn't already
+      // used by another tag already on this card (or the workspace's
+      // most-used, otherwise), so it reads as distinct rather than
+      // whatever the hash happened to land on. Never blocks adding the
+      // tag itself if this fails.
+      try {
+        await ensureFreshTagColor(t, others);
+        tagColorOverrides = await getTagColorOverrides();
+      } catch (e) { console.warn('tag color assignment failed', e); }
+    }
     tagInput = '';
   }
 
@@ -612,7 +632,7 @@
       <span class="field-label">Tags</span>
       <div class="tags-input-row">
         {#each tags as tag}
-          <span class="tag-chip">
+          <span class="tag-chip" style="background:color-mix(in srgb, {resolveTagColor(tag, tagColorOverrides)} 45%, transparent)">
             {tag}
             <button class="tag-remove" on:click={() => removeTag(tag)} aria-label="Remove tag {tag}">×</button>
           </span>
@@ -647,7 +667,12 @@
     <div class="collapsible-section">
       <button type="button" class="section-toggle extras-toggle" on:click={() => showExtras = !showExtras} aria-expanded={showExtras}>
         <span class="field-label">Extras</span>
-        {#if !showExtras}<span class="details-summary">{extrasSummary}</span>{/if}
+        {#if !showExtras}
+          <span class="details-summary">
+            <span class="details-summary-line">{extrasSummaryLines[0]}</span>
+            {#if extrasSummaryLines[1]}<span class="details-summary-line">{extrasSummaryLines[1]}</span>{/if}
+          </span>
+        {/if}
         <svg class="section-chevron" class:open={showExtras} viewBox="0 0 10 10" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,1 7,5 2,9"/></svg>
       </button>
       {#if showExtras}
@@ -811,23 +836,21 @@
     font-family: var(--mono); font-size: .62rem; letter-spacing: .05em;
     text-transform: uppercase; color: var(--faint);
   }
-  /* The picker keeps a fixed-ish width (doesn't stretch to fill the row
-     the way its own 100%-width trigger normally would) so the pills get
-     real room next to it instead of being pushed off/wrapped. */
-  .due-date-row { display: flex; align-items: center; gap: 8px; }
-  .due-date-row :global(.cal-field) { flex: 0 0 auto; width: 150px; }
-  /* One row, always -- nowrap + overflow-x auto as a safety valve on very
-     narrow widths (a horizontal scroll on 4 short pills reads better than
-     an awkward 3+1 wrap). */
-  .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 0; overflow-x: auto; flex: 1; min-width: 0; }
-  /* At true phone widths (~380px) the 150px calendar field eats most of
-     the row, squeezing the shortcuts into a sliver that clips at the
-     modal edge with no sign there's more to scroll. Stacking the two
-     rows gives the shortcuts a full-width row of their own without
-     reintroducing the wrap this row is built to avoid. */
+  /* Same gap as fields-row's Status/Priority pair (.5rem). The field is
+     wider than before -- 150px only left the shortcuts a narrower share
+     than 4 pills need, which pushed "1 month" into a horizontal-scroll
+     clip the first time this was tried as a strict two-column grid. */
+  .due-date-row { display: flex; align-items: center; gap: .5rem; }
+  .due-date-row :global(.cal-field) { flex: 0 0 auto; width: 162px; }
+  /* Packed tight and pushed to the row's own right edge -- the same right
+     edge Priority's field ends at -- rather than left-packed with the
+     dead space landing after "1 month" where the eye reads it as a
+     mistake, not a stopping point. */
+  .due-shortcuts { display: flex; gap: 6px; flex-wrap: nowrap; margin-left: auto; overflow-x: auto; min-width: 0; }
   @media (max-width: 480px) {
     .due-date-row { flex-direction: column; align-items: stretch; }
     .due-date-row :global(.cal-field) { width: 100%; }
+    .due-shortcuts { margin-left: 0; }
   }
   .due-shortcut {
     background: var(--col-bg); color: var(--muted); border: none;
@@ -869,9 +892,13 @@
      truncates to "Not rep…" there, so .compact must apply only once a
      real option is chosen and the row needs the room back. */
   .extras-panel :global(.repeat-select-wrap) { width: 150px; flex-shrink: 0; height: var(--repeat-ctrl-h); }
-  .extras-panel :global(.repeat-select-wrap.compact) { width: 86px; }
+  /* 74px, not 86px: "Month" (the longest option word) plus the chevron
+     only needs about this much -- the extra 12px in the old value read as
+     dead air inside the box, not padding, since .cs-value is flex:1 and
+     soaks up anything left over between the word and the chevron. */
+  .extras-panel :global(.repeat-select-wrap.compact) { width: 74px; }
   .extras-panel :global(.repeat-select-wrap .cs-trigger) {
-    height: var(--repeat-ctrl-h); box-sizing: border-box; padding: 0 6px; font-size: .8rem;
+    height: var(--repeat-ctrl-h); box-sizing: border-box; padding: 0 5px; font-size: .8rem;
   }
   /* CustomSelect's .cs-panel is `left:0;right:0`, i.e. the full width of
      its trigger -- at this trigger's compact 86px that wraps "Not
@@ -879,7 +906,7 @@
      always-visible trigger) keeps the row compact and the dropdown
      readable. */
   .extras-panel :global(.repeat-select-wrap .cs-panel) { width: 150px; right: auto; }
-  .extras-panel :global(.repeat-every-text) { flex-shrink: 0; }
+  .extras-panel :global(.repeat-every-text), .extras-panel :global(.repeat-unit-text) { flex-shrink: 0; }
   .extras-panel :global(.repeat-interval-input) {
     width: 30px; height: var(--repeat-ctrl-h); box-sizing: border-box;
     text-align: center; flex-shrink: 0;
@@ -904,6 +931,23 @@
      way .active does. */
   .extras-panel :global(.repeat-pill-accent) { border-color: var(--accent); color: var(--accent); }
   .extras-panel :global(.repeat-pill-accent:hover) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  /* A few extra px between the plain-text sentence and the first pill
+     that follows it -- reads as "pill group starts here," instead of the
+     row's uniform .25rem making the last word and the first pill blur
+     into one run-on cluster. */
+  .extras-panel :global(.repeat-every-text + .repeat-pill),
+  .extras-panel :global(.repeat-unit-text + .repeat-pill) {
+    margin-left: 6px;
+  }
+  /* Plain information, not an action -- var(--accent) here (matching
+     Customize/Skip right next to it) would promise a click that does
+     nothing. var(--muted) still reads as emphasized (the 600 weight)
+     without the link color. */
+  .extras-panel :global(.repeat-next-preview) {
+    font-size: .72rem; color: var(--muted); font-weight: 600;
+    text-transform: none; letter-spacing: normal; font-family: 'Hanken Grotesk', sans-serif;
+    margin-top: .35rem; display: block;
+  }
 
   /* flex:0 0 auto -- sizes to its own nowrap text and no further, so it
      leaves no dead space; the picker (flex:1 above) absorbs any leftover
@@ -969,9 +1013,28 @@
     cursor: text;
   }
   .tags-input-row:focus-within { border-color: var(--accent); }
+  /* Background is per-tag (resolveTagColor(), same hash/override every tag
+     chip elsewhere in the app already uses) set inline, at a 45% mix --
+     raised from 32% once TAG_PALETTE grew to 24: at 24 hues the average
+     gap between neighbours is ~15 degrees, and mixing toward white
+     compresses non-hue differences hard (measured: two reds 125 RGB
+     units apart pre-mix land only 40 apart post-mix at 32%), so pastel
+     and "24 distinct colors" are in real tension. Raising the tint only
+     helps a little (worst-pair distance 8->14 across the full 32-60%
+     range checked) since it can't widen a hue gap that's just too
+     narrow -- amber/yellow at 7 degrees apart stays the closest pair at
+     any tint. 45% was chosen as a real half-step, not a fix: contrast
+     stays comfortably safe (worst case ~6.6:1 against var(--text), full
+     unmixed hue still fails WCAG AA for red/blue/violet). Text stays
+     var(--text) rather than the raw hash color for the same
+     reason -- KanbanBoard's card-tag already worked this out once. */
+  /* A small rounded rectangle, not a full pill -- Notion's and GitHub's
+     label chips both use this shape; the capsule/999px radius is a
+     Material "filter chip" convention (an interactive toggle), not a
+     static tag-label one. */
   .tag-chip {
     display: inline-flex; align-items: center; gap: 2px;
-    background: var(--col-bg); color: var(--accent); border-radius: 5px;
+    background: var(--col-bg); color: var(--text); border-radius: var(--radius-sm);
     font-size: .74rem; font-weight: 500; padding: 0 2px 0 7px;
   }
   /* 24x24 hit box, not a 24px glyph: the × stays its old size and the chip
@@ -981,7 +1044,12 @@
     display: inline-flex; align-items: center; justify-content: center;
     width: 24px; height: 24px; border-radius: 4px;
     cursor: pointer; font-size: .9rem; line-height: 1; color: var(--muted);
-    background: none; border: none; padding: 0;
+    background: none; border: none;
+    /* Box-centered math already puts it dead center of its own 24x24 --
+       but a symbol glyph's own vertical center sits higher than a
+       lowercase word's optical center, so dead-center reads as too low
+       next to the tag text. Nudged up, not down. */
+    padding: 0 0 2px;
     transition: color var(--dur-hover) var(--ease-hover);
   }
   .tag-remove:hover { color: var(--danger); }
@@ -1015,16 +1083,24 @@
     transition: background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
   .section-toggle:hover { background: var(--hover); border-color: var(--border-strong); }
-  .section-toggle .field-label { flex: 1; }
+  /* EXTRAS stays put on the left at its own width; the summary claims the
+     rest of the row and right-aligns, ending flush with the chevron
+     instead of trailing right after the label on the left. */
+  .section-toggle .field-label { flex: 0 0 auto; }
+  /* Two pre-balanced lines (formatExtrasSummary splits by rendered length,
+     not by the browser's own wrap point), not one long string left to
+     wrap wherever it happens to fit -- that regularly left one line
+     nearly full and the other a short, ragged trailer. */
   .details-summary {
     font-family: 'Hanken Grotesk', sans-serif; font-size: .78rem;
     text-transform: none; letter-spacing: normal; color: var(--muted);
+    flex: 1; display: flex; flex-direction: column; align-items: flex-end;
   }
+  .details-summary-line { text-align: right; }
   .section-chevron, .extras-panel :global(.section-chevron) { color: var(--faint); flex-shrink: 0; transition: transform var(--dur-small) var(--ease-standard), color var(--dur-hover) var(--ease-hover); }
   .section-chevron.open, .extras-panel :global(.section-chevron.open) { transform: rotate(90deg); }
   .section-toggle:hover .section-chevron { color: var(--text); }
   .extras-panel :global(.notes-wrap) { display: block; }
-  .extras-panel :global(.notes-textarea) { width: 100%; box-sizing: border-box; }
   .extras-panel :global(.notes-counter) {
     font-family: var(--mono); font-size: .68rem; color: var(--faint);
     text-align: right; margin-top: 3px;

@@ -6,7 +6,7 @@
   import CalendarPicker from '../CalendarPicker.svelte';
   import CustomSelect from '../CustomSelect.svelte';
   import { getDefaultReminderTime } from '../../config';
-  import { fmtTime } from '../utils';
+  import { fmtTime, advanceDate } from '../utils';
 
   export let task: TaskDoc;
   export let showRepeatReminder: boolean;
@@ -18,6 +18,28 @@
   export let reminder_at: string;
   export let remindOnDue: boolean;
   export let skipToNext: () => void;
+
+  const UNIT_WORD: Record<string, string> = { daily: 'days', weekly: 'weeks', monthly: 'months' };
+  const UNIT_WORD_SINGULAR: Record<string, string> = { daily: 'day', weekly: 'week', monthly: 'month' };
+
+  // Things/Google Calendar/Apple's recurrence pickers all hide the "every
+  // N" interval behind a secondary path -- the common case (every single
+  // day/week/month, by far most real recurring tasks) reads as one plain
+  // sentence, no number to parse. Only an already-customized interval
+  // (set once, here or from a previous session) starts expanded; a fresh
+  // "Weekly" pick stays collapsed until asked to be more specific.
+  let customizingInterval = Number(recurrenceIntervalStr) > 1;
+
+  // What the current controls actually resolve to, computed with the exact
+  // same recurrence math a real save uses (advanceDate, shared with
+  // db/entities.ts) -- a hand-rolled preview formula would drift from real
+  // behaviour the moment either one changed without the other.
+  $: nextOccurrence = due_date && recurrenceStr
+    ? advanceDate(due_date, recurrenceStr as 'daily' | 'weekly' | 'monthly', Number(recurrenceIntervalStr) || 1, recurrenceWeekdaysOnly)
+    : null;
+  $: nextOccurrenceLabel = nextOccurrence
+    ? new Date(`${nextOccurrence}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
 </script>
 
           <div class="extra-block">
@@ -32,22 +54,37 @@
                     <div class="repeat-select-wrap" class:compact={!!recurrenceStr}>
                       <CustomSelect options={recurrenceOptions} bind:value={recurrenceStr} disabled={!due_date} />
                     </div>
+                    {#if recurrenceStr && !customizingInterval}
+                      <span class="repeat-every-text">every {UNIT_WORD_SINGULAR[recurrenceStr]}</span>
+                      <button type="button" class="repeat-pill repeat-pill-accent" on:click={() => customizingInterval = true}>Customize</button>
+                    {:else if recurrenceStr}
+                      <!-- A visible word, not a bare "x" -- "x2" reads as
+                           multiplication, not "every 2". -->
+                      <span class="repeat-every-text">every</span>
+                      <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat every N {UNIT_WORD[recurrenceStr]}" />
+                      <!-- The unit was previously only in the input's aria-label
+                           -- invisible to sighted users, who saw "Weekly [2]"
+                           with nothing confirming "2" meant weeks. -->
+                      <span class="repeat-unit-text">{UNIT_WORD[recurrenceStr]}</span>
+                    {/if}
                     {#if recurrenceStr}
-                      <span class="repeat-every-text" aria-hidden="true">×</span>
-                      <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat every N {recurrenceStr === 'daily' ? 'days' : recurrenceStr === 'weekly' ? 'weeks' : 'months'}" />
                       {#if recurrenceStr === 'daily'}
-                        <button type="button" class="repeat-pill" class:active={recurrenceWeekdaysOnly} on:click={() => recurrenceWeekdaysOnly = !recurrenceWeekdaysOnly}>
+                        <button type="button" class="repeat-pill" class:active={recurrenceWeekdaysOnly} on:click={() => recurrenceWeekdaysOnly = !recurrenceWeekdaysOnly} title="Skip weekends when this repeats">
                           Weekdays
                         </button>
                       {/if}
                       {#if task.recurrence}
-                        <button type="button" class="repeat-pill repeat-pill-accent" on:click={skipToNext}>
+                        <button type="button" class="repeat-pill repeat-pill-accent" on:click={skipToNext} title="Advance to the next occurrence without waiting for this one to be completed">
                           Skip
                         </button>
                       {/if}
                     {/if}
                   </div>
-                  {#if !due_date}<span class="repeat-hint">Set a due date to enable repeat</span>{/if}
+                  {#if !due_date}
+                    <span class="repeat-hint">Set a due date to enable repeat</span>
+                  {:else if nextOccurrenceLabel}
+                    <span class="repeat-next-preview">Next: {nextOccurrenceLabel}</span>
+                  {/if}
                 </div>
 
                 <div class="reminder-field">

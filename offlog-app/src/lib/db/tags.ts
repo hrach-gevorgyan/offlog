@@ -1,6 +1,7 @@
 // Tags: free-form strings on each task, plus the per-tag colour overrides.
 import type { TagColorDoc } from '../types';
 import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now } from './core';
+import { TAG_PALETTE, resolveTagColor } from '../tagColors';
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
 
@@ -59,6 +60,39 @@ export async function setTagColor(tag: string, color: string | null): Promise<vo
     updated_at: now(),
     source: SOURCE,
   });
+}
+
+// Called wherever a tag is newly typed into existence -- CardDetail's tag
+// input, QuickAdd's #tag parsing. A brand-new tag's hash color can land on
+// whatever the palette gives it, including one several other tags already
+// use; with 9 buckets that's common well before the workspace has 9 tags
+// total, since it only takes two tags landing on the same one. This picks
+// the least-used color across every tag already in the workspace and
+// persists it as an override, so a genuinely new tag reliably stands out
+// from what's already visible instead of leaving it to the hash. A no-op
+// for a tag that already exists (color is already settled -- changing it
+// now would be surprising everywhere else it's shown) or one that already
+// has an override.
+// alsoConsider is the caller's own in-progress, not-yet-saved tags (e.g. the
+// other tags already added to the card being edited). getAllTags() only
+// sees what's persisted -- two tags typed onto the same unsaved card would
+// otherwise be invisible to each other's collision count, which defeats the
+// one thing this exists for: tags on one card reading as distinct.
+export async function ensureFreshTagColor(tag: string, alsoConsider: string[] = []): Promise<void> {
+  const [persistedTags, overrides] = await Promise.all([getAllTags(), getTagColorOverrides()]);
+  if (persistedTags.includes(tag) || tag in overrides) return;
+
+  const existingTags = [...new Set([...persistedTags, ...alsoConsider])].filter(t => t !== tag);
+  const counts = new Map<string, number>(TAG_PALETTE.map(c => [c, 0]));
+  for (const t of existingTags) {
+    const c = resolveTagColor(t, overrides);
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  const minCount = Math.min(...counts.values());
+  if (counts.get(resolveTagColor(tag, overrides)) === minCount) return; // hash already lands well
+
+  const leastUsed = TAG_PALETTE.find(c => counts.get(c) === minCount)!;
+  await setTagColor(tag, leastUsed);
 }
 
 export async function getTagCounts(): Promise<{ tag: string; count: number }[]> {

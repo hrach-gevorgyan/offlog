@@ -37,10 +37,31 @@ const RECURRENCE_LABEL: Record<string, string> = { daily: 'Repeats daily', weekl
 // read must be passed in as an argument (not read from closure) so
 // Svelte's static dependency analysis on the `$:` call re-runs this
 // when any of them changes.
+// Splits parts across two lines as evenly as possible by rendered length,
+// not by item count -- a plain word-wrap on one long joined string picks
+// its break point by whatever fits the container width, which regularly
+// leaves one line nearly full and the other a short, ragged trailer.
+// Tries every possible split point (at most ~9 parts, so this is cheap)
+// and keeps the one whose two halves are closest in length.
+function balanceIntoTwoLines(parts: string[], sep: string): [string, string] {
+  if (parts.length <= 1) return [parts.join(sep), ''];
+  const join = (arr: string[]) => arr.join(sep);
+  const total = join(parts).length;
+  let bestSplit = 1, bestDiff = Infinity;
+  for (let i = 1; i < parts.length; i++) {
+    const lenA = join(parts.slice(0, i)).length;
+    const diff = Math.abs(lenA - (total - lenA));
+    if (diff < bestDiff) { bestDiff = diff; bestSplit = i; }
+  }
+  return [join(parts.slice(0, bestSplit)), join(parts.slice(bestSplit))];
+}
+
+const EXTRAS_EMPTY_PARTS = ['Repeat', 'reminder', 'checklist', 'custom fields', 'related tasks', 'attachments', 'notes'];
+
 export function formatExtrasSummary(
   reminder: string, repeat: string | null, interval: number, weekdaysOnly: boolean,
   cl: { text: string; done: boolean }[], related: TaskDoc[], blocking: TaskDoc[], unresolvedCount: number, atts: TaskAttachment[], notes: string,
-): string {
+): [string, string] {
   const parts: string[] = [];
   if (repeat === 'daily' && weekdaysOnly) parts.push('Repeats weekdays');
   else if (repeat && interval > 1) parts.push(`Repeats every ${interval} ${repeat === 'daily' ? 'days' : repeat === 'weekly' ? 'weeks' : 'months'}`);
@@ -51,7 +72,7 @@ export function formatExtrasSummary(
   if (blocking.length) parts.push(unresolvedCount ? `blocked by ${unresolvedCount}` : `${blocking.length} blocked by (done)`);
   if (atts.length) parts.push(`${atts.length} attachment${atts.length > 1 ? 's' : ''}`);
   if (notes.trim()) parts.push('notes');
-  return parts.length ? parts.join(' · ') : 'Repeat, reminder, checklist, custom fields, related tasks, attachments, notes';
+  return parts.length ? balanceIntoTwoLines(parts, ' · ') : balanceIntoTwoLines(EXTRAS_EMPTY_PARTS, ', ');
 }
 
 export function blobToBase64(blob: Blob): Promise<string> {

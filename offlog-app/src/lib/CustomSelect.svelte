@@ -10,7 +10,9 @@
   // (Up/Down/Enter/Escape) and closes on an outside click; Escape here
   // stops propagation so it only closes this popover, not a parent modal
   // it happens to be opened inside of.
-  export let options: { value: string; label: string; group?: string }[] = [];
+  // dotColor is optional and additive -- every existing caller omits it and
+  // renders exactly as before. Only priority currently sets it.
+  export let options: { value: string; label: string; group?: string; dotColor?: string }[] = [];
   export let value: string;
   export let placeholder = 'Select…';
   export let placement: 'up' | 'down' = 'down';
@@ -92,7 +94,7 @@
     aria-haspopup="listbox"
     aria-expanded={open}
   >
-    <span class="cs-value">{selected?.label ?? placeholder}</span>
+    <span class="cs-value">{#if selected?.dotColor}<span class="cs-dot" style="background:{selected.dotColor}"></span>{/if}{selected?.label ?? placeholder}</span>
     <svg class="cs-chevron" viewBox="0 0 10 6" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 5,5 9,1" /></svg>
   </button>
 
@@ -111,7 +113,7 @@
             aria-selected={o.value === value}
             on:click={() => choose(o)}
             on:mouseenter={() => highlighted = idx}
-          >{o.label}</button>
+          >{#if o.dotColor}<span class="cs-dot" style="background:{o.dotColor}"></span>{/if}{o.label}</button>
         {/each}
       {/each}
     </div>
@@ -131,6 +133,9 @@
   .cs-trigger.cs-disabled { opacity: .5; cursor: default; }
   .cs-trigger:focus-visible, .cs-trigger[aria-expanded="true"] { outline: none; border-color: var(--accent); }
   .cs-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* inline-block, not flex -- keeps every dot-less select's existing
+     ellipsis truncation untouched. */
+  .cs-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
   .cs-chevron { flex-shrink: 0; opacity: .6; }
 
   .cs-panel {

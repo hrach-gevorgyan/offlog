@@ -36,6 +36,7 @@ aren't obvious from the code.
 | Clipboard / Haptics / Launcher | `@capacitor/clipboard`, `-haptics`, `-app-launcher` | |
 | Styling | CSS custom properties | No CSS framework |
 | Fonts | Hanken Grotesk only | `--mono` points at the same face |
+| Notes editor | **CodeMirror 6** (`@codemirror/*`, `@lezer/markdown`) | Live markdown rendering in one pane — see `carddetail/MarkdownEditor.svelte` |
 
 **Two TypeScripts, on purpose.** `@typescript/native` is an alias for
 TypeScript 7 (the native compiler) and does the real checking, via
@@ -135,7 +136,10 @@ src/
       RelatedBlock.svelte         Related tasks
       BlockedByBlock.svelte       Blocking dependencies
       AttachmentsBlock.svelte     File attachments
-      NotesBlock.svelte           Markdown notes
+      NotesBlock.svelte           Markdown notes, via MarkdownEditor
+      MarkdownEditor.svelte       CodeMirror 6 wrapper, one live-rendering pane
+      markdownLiveView.ts         CodeMirror decorations: bold/italic/heading/etc
+                                   render inline as you type, no separate preview
       helpers.ts                  Pure helpers: dates, summary text, image encoding
 
     SettingsPanel.svelte        Settings shell: category nav, shared state, save/close

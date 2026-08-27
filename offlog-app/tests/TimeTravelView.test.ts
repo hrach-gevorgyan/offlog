@@ -22,6 +22,7 @@ vi.mock('../src/lib/db', () => ({
   // reached only when an entry is opened into CardDetail
   updateTask: vi.fn().mockResolvedValue(undefined),
   getAllTags: vi.fn().mockResolvedValue([]),
+  getTagColorOverrides: vi.fn().mockResolvedValue({}),
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
   findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
   findSimilarNotes: vi.fn().mockResolvedValue([]),
