@@ -84,6 +84,17 @@ if (!Element.prototype.animate) {
   };
 }
 
+// downloadBlob() (carddetail/helpers.ts, settings/helpers.ts) triggers a
+// browser download the same way in every real browser: build a blob: URL
+// on a throwaway <a download>, call .click(), done. jsdom has no download
+// manager, so it treats that click as a real navigation attempt instead
+// and logs "Not implemented: navigation to another Document". Nothing in
+// either helper depends on the click event actually dispatching (both
+// return immediately after), so a no-op is enough -- and scoped to
+// HTMLAnchorElement specifically, so it can't mask a real navigation bug
+// on some other element.
+HTMLAnchorElement.prototype.click = function () {};
+
 // jsdom ships no canvas backend (the real one is the optional `canvas`
 // native package, not worth installing just for this) — every
 // getContext('2d') call logs "Not implemented" to the console and
