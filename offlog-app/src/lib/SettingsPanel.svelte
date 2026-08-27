@@ -475,12 +475,20 @@
   // the modal reads as stuck.
   let pairSuccessName: string | null = null;
 
+  let scanAttempted = false;
   function startDeviceScan() {
     selectedHost = null;
     pairingError = '';
     pairSuccessName = null;
+    scanAttempted = true;
     scanForHosts();
   }
+  // scanForHosts() runs for a fixed 10s then flips isScanning back to
+  // false on its own -- with nothing found, the button reverting to
+  // "Find my computer" was the only signal, indistinguishable from "still
+  // running" or "silently failed." True only once a scan has actually
+  // completed with zero hosts, so it's not shown before any scan ran.
+  $: scanFoundNothing = scanAttempted && !$isScanning && $discoveredHosts.length === 0;
 
   async function submitPairingCode() {
     if (!selectedHost) return;
@@ -542,7 +550,7 @@
   // Stop polling (and clear any stale success message on either side)
   // once the modal closes, so it doesn't keep running in the background
   // or show last time's result if it's reopened.
-  $: if (!showConnectModal) { stopPcPairPoll(); pcPairedDeviceName = null; pairSuccessName = null; }
+  $: if (!showConnectModal) { stopPcPairPoll(); pcPairedDeviceName = null; pairSuccessName = null; scanAttempted = false; }
   onDestroy(stopPcPairPoll);
 
   // Dev-only: wipes this PC's NyxDB data and restarts, so testing "what
@@ -1165,6 +1173,9 @@
                 <button class="export-btn" on:click={() => { selectedHost = host; stopScan(); }}>Connect</button>
               </div>
             {/each}
+            {#if scanFoundNothing}
+              <p class="setting-hint setting-hint-warn">No computer found. Make sure Sync is turned on there and both devices are on the same Wi-Fi network, then try again.</p>
+            {/if}
           {:else}
             <p class="setting-hint">Enter the code shown on the "{selectedHost.name}" screen.</p>
             <label class="field-label">
@@ -1230,7 +1241,7 @@
                 <div class="conflict-item-row">
                   <span class="conflict-item-meta"
                         title={v.isNewest ? "Latest by this device's own clock — a device set to the wrong time can claim this wrongly, so check the values below" : ''}>
-                    {v.doc.source ?? 'Unknown device'}{v.isCurrent ? ' · shown now' : ''}{v.isNewest ? ' · newest' : ''}
+                    {v.doc.source ?? 'Unknown device'}{v.doc.source === deviceName ? ' (this device)' : ''}{v.isCurrent ? ' · shown now' : ''}{v.isNewest ? ' · newest' : ''}
                     — updated {fmtLastSynced(String(v.doc.updated_at ?? v.doc.created_at ?? ''))}
                   </span>
                   <button class="export-btn" on:click={() => resolve(c, v)}>Keep this</button>
@@ -1508,6 +1519,14 @@
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: .85rem .9rem;
   }
+  /* A slide/fade reveal wrapper (NotificationSettings' Permission/Reminder
+     timing/Quiet hours groups, mounted only once notificationsEnabled) has
+     to carry .detail-fade's own gap itself -- nesting the groups one level
+     deeper removes them from .detail-fade's direct flex children, which is
+     where that gap normally comes from. */
+  .detail-content :global(.reveal-wrap) {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
   .detail-content :global(.setting-section-title) {
     display: flex; align-items: center; gap: .4rem;
     font-family: var(--mono); font-size: .62rem; text-transform: uppercase;
@@ -1534,6 +1553,16 @@
   .detail-content :global(.setting-label) { font-size: .88rem; color: var(--text); flex: 1; }
   .detail-content :global(.setting-value) { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .storage-info, .detail-content :global(.storage-info) { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
+  /* "Devices seen recently" always includes this device's own writes
+     (they're logged like any other edit) mixed in with remote ones --
+     nothing previously said which entry that was, so matching it against
+     this device's own name (already known, right above in the same tab)
+     is the only way to tell without remembering what you typed there. */
+  .detail-content :global(.this-device-tag) {
+    font-family: 'Hanken Grotesk', sans-serif; font-size: .68rem; font-weight: 600;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+    padding: 1px 6px; border-radius: 999px; vertical-align: middle;
+  }
 
   /* Headline reads as a plain sentence; the raw MB/quota numbers are
      demoted to a small mono detail line underneath, not the first thing

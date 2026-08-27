@@ -46,6 +46,7 @@
                   {:else}
                     <p class="setting-hint">Happens from the Android app (Settings → Sync → "Find my computer") or the PC app (Settings → Sync → "Generate a code") — not from a plain web browser.</p>
                   {/if}
+                  <p class="setting-hint">Running your own sync server by hand instead? Enter its address in Settings → Advanced.</p>
                 </div>
 
                 <div class="setting-group">
@@ -63,7 +64,7 @@
                     <div class="setting-section-title">Devices seen recently</div>
                     {#each deviceLastSeen as d (d.device)}
                       <div class="setting-row">
-                        <span class="storage-info">{d.device}</span>
+                        <span class="storage-info">{d.device}{#if d.device === deviceName} <span class="this-device-tag">this device</span>{/if}</span>
                         <span class="storage-info" style="color: var(--faint)">{timeAgo(d.lastSeen)}</span>
                       </div>
                     {/each}

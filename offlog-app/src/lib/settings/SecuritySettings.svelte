@@ -34,6 +34,13 @@
   export let openBiometricEnrollment: () => void;
   export let privacyScreenEnabled: boolean;
   export let togglePrivacyScreen: () => void;
+
+  // Matches ConfirmPinGate's own onPinInput -- that re-auth field already
+  // strips non-digits live; this, the primary entry form for the same PIN
+  // value, only rejected them on Save, so a stray letter went unnoticed
+  // until after Confirm PIN and the hint were filled in too.
+  function onNewPinInput(e: Event) { newPin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8); }
+  function onConfirmPinInput(e: Event) { confirmPin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8); }
 </script>
 
               <div class="setting-group">
@@ -46,11 +53,11 @@
                   {:else}
                     <label class="field-label">
                       New PIN
-                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
+                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" value={newPin} on:input={onNewPinInput} placeholder="4–8 digits" />
                     </label>
                     <label class="field-label">
                       Confirm PIN
-                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
+                      <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" value={confirmPin} on:input={onConfirmPinInput} placeholder="4–8 digits" />
                     </label>
                     <label class="field-label">
                       Hint (optional)
@@ -83,11 +90,11 @@
                 {:else}
                   <label class="field-label">
                     New PIN
-                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={newPin} placeholder="4–8 digits" />
+                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" value={newPin} on:input={onNewPinInput} placeholder="4–8 digits" />
                   </label>
                   <label class="field-label">
                     Confirm PIN
-                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" bind:value={confirmPin} placeholder="4–8 digits" />
+                    <input type="password" inputmode="numeric" autocomplete="off" maxlength="8" value={confirmPin} on:input={onConfirmPinInput} placeholder="4–8 digits" />
                   </label>
                   <label class="field-label">
                     Hint (optional)

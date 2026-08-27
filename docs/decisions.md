@@ -784,6 +784,34 @@ consistency, no more correctness bugs. Three were fixed as high-impact:
   auto-backups, manual full/per-project exports). The picked file's name
   and last-modified time are now shown above the count summary.
 
+**Six of the medium-impact findings were fixed too**, chosen by the
+owner from the ranked list rather than all of them:
+
+- `pairWithHost()`'s `fetch()` now catches network failure specifically
+  (unreachable host — off Wi-Fi, firewalled, asleep) and throws a real
+  message instead of letting the raw `TypeError` reach the UI verbatim.
+- An Android scan that completes with zero hosts now says so
+  ("No computer found…") instead of the button just reverting with an
+  empty list and no way to tell "still running" from "found nothing."
+- Both "Devices seen recently" and the conflict-resolution modal now
+  label whichever entry matches this device's own name, instead of
+  requiring the reader to remember what they typed into the Name field
+  and match it by eye.
+- `SecuritySettings`' New/Confirm PIN inputs filter non-digits live now,
+  matching `ConfirmPinGate`'s re-auth field — previously only rejected on
+  Save, after Confirm PIN and the hint were filled in too.
+- The Sync tab now mentions where the manual server-connection fields
+  live (Advanced) for anyone running their own server by hand; Advanced
+  already pointed back the other way.
+- Notifications' Permission/Reminder-timing/Quiet-hours sections (and the
+  quiet-hours start/end row) now use the same `revealIn`/`revealOut`
+  slide every other disclosure section in the app uses, instead of
+  snapping open/closed via a bare `{#if}`.
+
+Left for later, by choice, not by finding them safe/unsafe: the exact-
+alarm hint's technical copy, and cross-linking Archived Projects from
+Backup & Storage.
+
 **Recorded, not changed.** A handful of fire-and-forget
 `.catch(() => {})` calls on real I/O (`rescheduleAll()` after toggling
 notifications or saving quiet hours, `startSync()` after enabling Sync) —

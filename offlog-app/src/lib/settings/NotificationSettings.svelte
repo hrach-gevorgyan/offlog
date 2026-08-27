@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import TimePicker from '../TimePicker.svelte';
   import type { QuietHours } from '../../config';
   import { requestPermission, permissionState, exactAlarmState, requestExactAlarmPermission } from '../notifications';
@@ -25,6 +27,7 @@
               </div>
 
               {#if notificationsEnabled}
+              <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
               <div class="setting-group">
                 <div class="setting-section-title">Permission</div>
                 <div class="setting-row">
@@ -73,7 +76,7 @@
                   </button>
                 </div>
                 {#if quietHours.enabled}
-                  <div class="setting-row">
+                  <div class="setting-row" in:slide={revealIn} out:slide={revealOut}>
                     <span class="setting-label">From</span>
                     <TimePicker value={quietHours.start} placement="up" on:change={(e) => saveQuietHours({ start: e.detail })} />
                     <span class="setting-label">to</span>
@@ -81,6 +84,7 @@
                   </div>
                 {/if}
                 <p class="setting-hint">A reminder due in this window fires as soon as it ends instead of interrupting you.</p>
+              </div>
               </div>
               {/if}
 

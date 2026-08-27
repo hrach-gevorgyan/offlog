@@ -89,10 +89,21 @@ interface PairResponse {
 // this can't be replayed even by someone who saw it once.
 export async function pairWithHost(host: DiscoveredHost, code: string): Promise<void> {
   if (!host.pairingPort) throw new Error('This computer is running an older version of the Offlog desktop app — update it and try again.');
-  const res = await fetch(`http://${host.address}:${host.pairingPort}/pair`, {
-    method: 'POST',
-    body: code.trim(),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`http://${host.address}:${host.pairingPort}/pair`, {
+      method: 'POST',
+      body: code.trim(),
+    });
+  } catch {
+    // fetch() itself rejects (not a non-ok response) when the host is
+    // unreachable -- off Wi-Fi, firewalled, asleep -- with a raw
+    // TypeError ("Failed to fetch" / "NetworkError...") that means
+    // nothing to a non-technical reader. The caller's catch block just
+    // shows e.message verbatim, so the friendly text has to originate
+    // here, not there.
+    throw new Error("Couldn't reach that computer. Make sure it's turned on and both devices are on the same Wi-Fi network.");
+  }
   if (!res.ok) throw new Error('Incorrect or expired code.');
   const data = (await res.json()) as PairResponse;
   // A freshly-installed device's own default seed (space:unsorted/personal/
