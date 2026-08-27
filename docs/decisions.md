@@ -734,20 +734,29 @@ event bubbled up, so a bare `if (pinGateMode)` check in the window handler
 alone couldn't have caught it. Covered by a new regression test.
 
 **The Cancel/Save footer buttons were live for every tab, but only meant
-something on one.** Verified by reproduction: toggling Theme and High
-Contrast, then clicking Cancel, left both changes in place —
-`setThemeMode()`/`setHighContrast()` (and every other tab's toggles:
-notifications, auto-backup, haptics, reduce motion) write straight to
-their store on click, matching a documented, deliberate tradeoff
-(`saveSettings()`'s own comment: forcing a reload for every tab would
-re-trigger App Lock's cold-start check on a plain theme change). Only
-`syncUrl`/`credentialUser`/`credentialPass`, on the Advanced tab and only
-while Sync is on, are genuinely buffered behind that button. The
-buttons just didn't say so — Cancel implied an undo that didn't exist
-anywhere except there, and Save implied a commit that had usually
-already happened. Fixed by showing Cancel/"Save & restart sync" only on
-`activeCategory === 'advanced' && syncEnabled`, and a single "Close"
-everywhere else.
+something on one — then real feedback overrode the "fix."** Verified by
+reproduction: toggling Theme and High Contrast, then clicking Cancel, left
+both changes in place — `setThemeMode()`/`setHighContrast()` (and every
+other tab's toggles: notifications, auto-backup, haptics, reduce motion)
+write straight to their store on click, matching a documented, deliberate
+tradeoff (`saveSettings()`'s own comment: forcing a reload for every tab
+would re-trigger App Lock's cold-start check on a plain theme change).
+Only `syncUrl`/`credentialUser`/`credentialPass`, on the Advanced tab and
+only while Sync is on, are genuinely buffered behind that button.
+
+First fix replaced the footer with a single "Close" everywhere except
+`activeCategory === 'advanced' && syncEnabled`, on the theory that a
+button promising to save/cancel something that already happened is worse
+than no button. Reversed after the first real users tried it: a missing
+Save button reads as "did my change even take?", not as "there's nothing
+to save here" — the reassurance the label provides outweighs it being
+mechanically a no-op on every tab but one. Landed on: "Save" shown on
+every tab (still routed through `saveSettings()`, which is already a
+no-op when nothing's buffered, so this stays correct if that ever
+changes), Cancel only where Advanced genuinely has something to discard.
+Keep this the next time the same "but Cancel doesn't cancel anything"
+observation resurfaces — it's true and was already tried; the label stays
+for the reassurance, not because the buffering changed.
 
 **Recorded, not changed.** A handful of fire-and-forget
 `.catch(() => {})` calls on real I/O (`rescheduleAll()` after toggling

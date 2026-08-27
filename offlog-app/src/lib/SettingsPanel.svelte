@@ -1111,14 +1111,19 @@
     <div class="settings-actions">
       {#if activeCategory === 'advanced' && syncEnabled}
         <!-- The only tab with anything actually buffered -- see
-             saveSettings()'s comment. Every other tab's controls already
-             apply and persist on click, so a "Cancel" that can't cancel
-             anything and a "Save" that isn't saving anything new would
-             just be lying about what's about to happen. -->
+             saveSettings()'s comment below. -->
         <button on:click={() => requestClose()}>Cancel</button>
         <button class="save-btn" on:click={saveSettings}>Save &amp; restart sync</button>
       {:else}
-        <button class="save-btn" on:click={() => requestClose()}>Close</button>
+        <!-- Every other tab's controls already apply and persist on
+             click, so this button has nothing left to actually save --
+             but real users read "no Save button" as "did my change even
+             take?", not as "there's nothing to save here." saveSettings()
+             is still the handler (not a bare requestClose()): it's a
+             no-op when nothing's buffered, so this stays correct if that
+             ever changes, and it's the one visible action that says
+             "you're done" regardless of which tab you're looking at. -->
+        <button class="save-btn" on:click={saveSettings}>Save</button>
       {/if}
     </div>
   </div>
