@@ -690,6 +690,24 @@ breaking the classpath manual build-mode exists to provide. Dismiss these
 vendored-third-party findings individually in the Code Scanning UI
 (**Won't fix**) rather than reworking the workflow.
 
+### `pairing.rs`'s test-only fixed nonces trip "hard-coded cryptographic value": dismiss as "Used in tests"
+Four CodeQL alerts (`rust/hard-coded-cryptographic-value`) on the
+`#[cfg(test)]` module added alongside the pairing-handshake hardening —
+`[1u8; 16]`/`[2u8; 16]`/`[3u8; 16]` nonces used only so a test's derived
+key is reproducible across runs (same code + same nonce should always
+derive the same key; that assertion needs a fixed nonce to assert
+against). CodeQL can't tell a test assertion from a real key — it flags
+any literal byte array flowing into a key-derivation call, full stop.
+
+Verified false positive by reading the real path, not just asserting it:
+`spawn_server`'s actual request handling never uses a fixed nonce (it
+comes from the network request, i.e. the client), the AES-GCM IV is
+always freshly randomized (`rand::random::<u8>()`), and the pairing code
+itself is always randomly generated. Nothing test-only ever reaches a
+real cryptographic operation. Dismissed individually in the Code Scanning
+UI, reason **"Used in tests"** — the exact case that dismiss reason
+exists for, unlike the vendored-code entry above which uses "Won't fix."
+
 ### A security survey, not an audit: three concrete fixes, most of the surface already closed
 
 Requested as "improve security, your suggestions." Checked first against
