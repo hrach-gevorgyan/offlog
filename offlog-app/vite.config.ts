@@ -10,7 +10,12 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 // (URL.createObjectURL()). build-only: Vite's dev server relies on
 // techniques (inline module eval, its own HMR websocket) a CSP this
 // strict would break, and the dev server is never what ships.
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self' http://*:* https://*:*; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+// frame-ancestors is deliberately absent here: the CSP spec only honors it
+// via a real HTTP header, never a <meta> tag -- Tauri desktop already
+// enforces the equivalent through tauri.conf.json's own header-based CSP,
+// so the meta version was a pure no-op that only produced a console
+// warning on every launch.
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self' http://*:* https://*:*; object-src 'none'; base-uri 'self'; form-action 'self'"
 
 function cspPlugin(): Plugin {
   return {

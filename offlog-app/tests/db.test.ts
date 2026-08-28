@@ -21,6 +21,7 @@ import db, {
   searchAllTasks,
   addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK,
   skipRecurrence,
+  getDeviceLastSeen,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -2462,5 +2463,39 @@ describe('"Blocked by" task dependencies (archive/history.md)', () => {
     await updateTask(b._id!, { column_id: project.columns.at(-1)!.id }); // mark b done
 
     expect((await getOpenTasksForFocusPicker()).map(t => t._id)).toContain(a._id);
+  });
+});
+
+// A device that logged before source_id existed and again after it does
+// owns two identity keys (the literal name string, then a real source_id)
+// with the same display name -- reproduced live: SyncSettings.svelte keys
+// its device list by `d.device`, and two rows both named "PC" crashed
+// Svelte with each_key_duplicate the instant the Sync tab rendered.
+describe('getDeviceLastSeen() merges a device that upgraded from legacy source-string grouping', () => {
+  async function putLog(id: string, ts: string, source: string, source_id?: string) {
+    await db.put({ _id: id, type: 'log', ts, source, source_id, ref: 'task:x', action: 'update' });
+  }
+
+  it('collapses a legacy (no source_id) entry and a new (source_id) entry with the same name into one row', async () => {
+    // Older entry: pre-source_id, grouped by the literal "PC" string.
+    await putLog('log:1', '2026-01-01T00:00:00.000Z', 'PC');
+    // Newer entry: same physical device, now writing a real source_id --
+    // a different map key, same display name.
+    await putLog('log:2', '2026-08-28T00:00:00.000Z', 'PC', 'device-uuid-abc');
+
+    const result = await getDeviceLastSeen();
+
+    expect(result.filter(d => d.device === 'PC')).toHaveLength(1);
+    // Newest write wins.
+    expect(result.find(d => d.device === 'PC')?.lastSeen).toBe('2026-08-28T00:00:00.000Z');
+  });
+
+  it('keeps two genuinely different devices as two rows', async () => {
+    await putLog('log:1', '2026-08-28T00:00:00.000Z', 'PC', 'device-uuid-abc');
+    await putLog('log:2', '2026-08-28T01:00:00.000Z', 'Phone', 'device-uuid-def');
+
+    const result = await getDeviceLastSeen();
+
+    expect(result.map(d => d.device).sort()).toEqual(['PC', 'Phone']);
   });
 });

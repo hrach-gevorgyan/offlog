@@ -17,6 +17,46 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.10.3] — 2026-08-29
+
+The real fix for the Settings → Sync crash that persisted through
+v6.10.1 and v6.10.2: both of those releases hardened async call sites
+that could reject, but the actual crash was a Svelte `each_key_duplicate`
+error thrown by `getDeviceLastSeen()` (`src/lib/db/core.ts`) — a device
+that logged before `source_id` existed and again after it ended up as
+two rows sharing one display name, and Svelte throws the instant a keyed
+`{#each}` sees a duplicate key. Fixed by merging entries by display name
+(newest write wins) after the identity-key grouping pass, with a
+regression test reproducing the duplicate-name case.
+
+### Fixed
+- `each_key_duplicate` crash opening Settings → Sync — the actual root
+  cause behind the "Something went wrong" crash reported after
+  v6.10.0/.1/.2.
+- CSP `frame-ancestors 'none'` removed from the `<meta>` tag in
+  `vite.config.ts` — spec-only enforceable via an HTTP header, so it was
+  a silent no-op that still logged a console warning on every load.
+  Desktop's own header-based CSP already covers this via Tauri.
+- Auto-backup writes into `$APPDATA/auto-backups` were silently failing
+  on desktop: `fs:allow-write-text-file` grants the command but not a
+  path, and no `fs:scope` entry existed for that folder. Added one
+  narrowly scoped to `auto-backups` only.
+- "Devices seen recently" — the "this device" pill's spacing/vertical
+  alignment against the device name.
+
+### Added
+- Desktop now emits a `pairing-succeeded` Tauri event from `pairing.rs`
+  the instant a phone completes the handshake, and shows an immediate
+  success state in Settings instead of waiting on the next unrelated
+  database poll to notice.
+
+### Changed
+- First-run onboarding (`NamePrompt.svelte`): the sync offer now comes
+  after the quick-preferences step instead of before it. Previously,
+  choosing "Set up sync" handed off straight to full Settings and
+  silently skipped the preferences step that would otherwise have
+  followed.
+
 ## [6.10.2] — 2026-08-28
 
 v6.10.1's fix wasn't the whole story: the same "opened Settings" crash
@@ -541,69 +581,9 @@ itself is unchanged.
 - Documentation rewritten end to end — 29% smaller, with CLAUDE.md down 56%
   to invariants and gotchas only.
 
-## [6.5.0] — 2026-08-24
-
-A hardening release: no new surface, a far stronger base under it.
-
-### Added
-- Kanban card menu now offers **Move to** statuses — the keyboard and touch
-  path to a column change that previously existed only as drag-and-drop.
-  Reuses `onCardListDrop`'s write path, so a menu move and a drag move are
-  the same operation.
-- `replication.test.ts` — PouchDB's real replicator between two databases:
-  convergence, soft-delete propagation, attachment bytes, conflict creation
-  and both resolutions, first-pair seed collision.
-- `backupRestore.test.ts` — a real database through export → wipe → restore.
-- `perfGuard.test.ts` — gates read-path cost by counting database
-  round-trips, never wall-clock time.
-
-### Changed
-- **Tests 279 → 569.** Every component with real logic now has one. Each
-  was mutation-verified; tests that survived their mutation were rewritten
-  or deleted rather than kept for the count.
-- **`db.ts` split** (2,191 lines) into a barrel over
-  `db/{core,entities,sync,tags,stats,maintenance}.ts`, with all 107
-  exported names preserved so no call site changed.
-- **`SettingsPanel.svelte`** 2,056 → 1,530 lines into `settings/*`, and
-  **`CardDetail.svelte`** 1,432 → 1,137 into `carddetail/*`. Both verified
-  by fingerprinting the computed styles of every rendered element before
-  and after.
-- **Fully typed.** 63 `any` in the db layer down to 2 justified ones, and
-  42 → 0 elsewhere, removing casts the typings never needed. The
-  `row.doc._conflicts` invariant is now compiler-enforced rather than
-  comment-enforced. Emitted JavaScript verified byte-identical across all
-  53 build assets.
-- `AgendaView` renamed from `DeadlinesView` to match the name used
-  everywhere else.
-- CI workflows now cancel superseded in-flight runs for the same ref.
-
-### Fixed
-- `SettingsPanel`'s `onMount` credential read had no `try/catch`, unlike
-  `saveSettings`' guarded read of the same call — a secure-storage failure
-  escaped as an unhandled rejection. This also made CI red while the suite
-  printed "540 passed", since vitest exits non-zero on an unhandled error.
-- A `:global(button)` rule reached into nested `CustomSelect` and
-  `CalendarPicker` internals and restyled them, where the scoped original
-  never had. Caught only by computed-style comparison — the DOM structure
-  and element counts were identical.
-- `analyzeImport()` counted `meta` and `tag_color` documents as skipped
-  while `importJSON()` imported them, so the preview shown before a restore
-  under-reported it.
-- An `allDocs` row can carry no document (a deletion tombstone); reading
-  `_id` off one threw mid-backup, so a single tombstone could take the
-  whole Back up action down.
-- `invokeTauri()` asserted Tauri's IPC global rather than rejecting
-  off-Tauri, throwing synchronously past any caller's `.catch`.
-- CodeQL's `java-kotlin` job configured its extractor before the JDK was
-  installed and so never uploaded a fresh analysis, leaving stale alerts
-  open.
-- Two `svelte-ignore` directives suppressed warnings that no longer
-  applied.
-
 ---
 
----
-
+[6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
 [6.10.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.1...v6.10.2
 [6.10.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.0...v6.10.1
 [6.10.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.9.0...v6.10.0
@@ -613,4 +593,3 @@ A hardening release: no new surface, a far stronger base under it.
 [6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0
 [6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
 [6.5.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.0...v6.5.1
-[6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0

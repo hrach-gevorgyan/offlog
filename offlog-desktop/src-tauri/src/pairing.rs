@@ -17,6 +17,7 @@
 // attacker real effort," matching the threat model above; it isn't a
 // substitute for TLS if the real goal is defeating a resourced attacker.
 use crate::sync_host::SyncHostInfo;
+use tauri::Emitter;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -178,7 +179,7 @@ fn encrypt_response(code: &str, nonce: &[u8], payload: &PairResponse) -> Option<
 /// only route -- anything else, or a wrong/expired/already-used proof,
 /// gets a bare 403 with no distinguishing detail (don't leak whether a
 /// proof was "close" or "expired" vs. "never existed").
-pub fn spawn_server(state: Arc<PairingState>, uuid: String) -> std::io::Result<u16> {
+pub fn spawn_server(state: Arc<PairingState>, uuid: String, app_handle: tauri::AppHandle) -> std::io::Result<u16> {
     let server = Server::http("0.0.0.0:0")
         .map_err(|e| std::io::Error::other(format!("failed to bind pairing server: {e}")))?;
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
@@ -231,6 +232,16 @@ pub fn spawn_server(state: Arc<PairingState>, uuid: String) -> std::io::Result<u
                 let _ = request.respond(Response::empty(403).with_header(cors_header()));
                 continue;
             };
+            // Fired the instant the handshake itself succeeds, before the
+            // response even goes out -- the PC previously had no direct
+            // signal that pairing finished at all, and inferred it only by
+            // polling getDeviceLastSeen() for a new device name, which
+            // stays empty (and the PC screen stuck on the code) until the
+            // phone happens to write something of its own. This doesn't
+            // carry the phone's chosen device name (not known yet, only
+            // discoverable once it actually syncs a doc) -- the frontend's
+            // existing poll still resolves that separately.
+            let _ = app_handle.emit("pairing-succeeded", ());
             let payload = PairResponse {
                 port: state.info.port,
                 user: &state.info.user,

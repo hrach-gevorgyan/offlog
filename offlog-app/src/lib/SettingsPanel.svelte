@@ -530,6 +530,12 @@
   // generated is the only way this side can tell; 3s is frequent enough
   // to feel live without hammering the local DB read.
   let pcPairedDeviceName: string | null = null;
+  // Set the instant the "pairing-succeeded" Tauri event arrives (see
+  // pairing.rs's own comment) -- true well before pcPairedDeviceName can
+  // resolve a real name, since that still depends on the phone's first
+  // sync write reaching getDeviceLastSeen(). Success is shown off this
+  // flag; the name upgrades in place once the poll below finds it.
+  let pcJustPaired = false;
   let pcPollTimer: ReturnType<typeof setInterval> | null = null;
   function stopPcPairPoll() {
     if (pcPollTimer) { clearInterval(pcPollTimer); pcPollTimer = null; }
@@ -556,6 +562,7 @@
   async function generatePcPairingCode() {
     pcPairingBusy = true;
     pcPairedDeviceName = null;
+    pcJustPaired = false;
     pcPairingExpired = false;
     clearPcPairingExpiryTimer();
     try {
@@ -568,10 +575,22 @@
       pcPairingBusy = false;
     }
   }
+  // The Rust side emits this the instant the handshake itself succeeds --
+  // see pairing.rs's own comment. Registered once, harmless to receive
+  // while no code is showing (nothing reads pcJustPaired outside the
+  // pcPairingCode-shown states below).
+  if (isTauri) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('pairing-succeeded', () => {
+        pcJustPaired = true;
+        clearPcPairingExpiryTimer();
+      });
+    }).catch(() => {});
+  }
   // Stop polling (and clear any stale success message on either side)
   // once the modal closes, so it doesn't keep running in the background
   // or show last time's result if it's reopened.
-  $: if (!showConnectModal) { stopPcPairPoll(); clearPcPairingExpiryTimer(); pcPairedDeviceName = null; pairSuccessName = null; scanAttempted = false; }
+  $: if (!showConnectModal) { stopPcPairPoll(); clearPcPairingExpiryTimer(); pcPairedDeviceName = null; pcJustPaired = false; pairSuccessName = null; scanAttempted = false; }
   onDestroy(() => { stopPcPairPoll(); clearPcPairingExpiryTimer(); });
 
   // Dev-only: wipes this PC's NyxDB data and restarts, so testing "what
@@ -1257,6 +1276,14 @@
         {:else if isTauri}
           {#if pcPairedDeviceName}
             <p class="setting-hint success-hint">✓ Connected to "{pcPairedDeviceName}" — syncing now.</p>
+          {:else if pcJustPaired}
+            <!-- The name isn't known yet -- pairing-succeeded fires before
+                 the phone's first sync write ever reaches
+                 getDeviceLastSeen(), which is the only way this side
+                 learns a device's chosen name. The poll above keeps
+                 running and upgrades this to the named message once it
+                 resolves. -->
+            <p class="setting-hint success-hint">✓ A device just connected — syncing now.</p>
           {:else if pcPairingCode && pcPairingExpired}
             <p class="setting-hint setting-hint-warn">This code has expired. Generate a new one below.</p>
           {:else if pcPairingCode}
@@ -1287,7 +1314,7 @@
             {pairingBusy ? 'Connecting…' : 'Connect'}
           </button>
         </div>
-      {:else if isTauri && pcPairedDeviceName}
+      {:else if isTauri && (pcPairedDeviceName || pcJustPaired)}
         <!-- Matches Android's own success state: an explicit close now
              that pairing actually finished, instead of leaving "Generate
              a new code" as the only visible control and making someone
@@ -1656,10 +1683,13 @@
      nothing previously said which entry that was, so matching it against
      this device's own name (already known, right above in the same tab)
      is the only way to tell without remembering what you typed there. */
+  .detail-content :global(.device-name-row) { display: inline-flex; align-items: center; gap: 6px; }
+
   .detail-content :global(.this-device-tag) {
     font-family: 'Hanken Grotesk', sans-serif; font-size: .68rem; font-weight: 600;
+    line-height: 1; display: inline-flex; align-items: center;
     color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
-    padding: 1px 6px; border-radius: 999px; vertical-align: middle;
+    padding: 3px 6px; border-radius: 999px;
   }
 
   /* Headline reads as a plain sentence; the raw MB/quota numbers are

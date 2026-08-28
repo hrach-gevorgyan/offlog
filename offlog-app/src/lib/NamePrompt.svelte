@@ -16,25 +16,27 @@
   let __introReady = false;
   onMount(() => { __introReady = true; });
 
-  // 'setupSync' fires only from step 2's "Set up sync" button — App.svelte
-  // uses it to open Settings straight into the Sync tab. 'close' fires
-  // whenever the flow actually ends (step 1's Skip, step 3's Done,
-  // Escape/scrim-click on step 1 or 3).
+  // 'setupSync' fires only from the last step's "Set up sync" button —
+  // App.svelte uses it to open Settings straight into the Sync tab.
+  // 'close' fires whenever the flow actually ends (Skip on step 1 or the
+  // sync step, Done on the prefs step when sync isn't offered).
   const dispatch = createEventDispatcher<{ close: void; setupSync: void }>();
 
   // Pre-filled with the same auto-generated default Settings shows
   // ("PC" / "Android phone"), so saving unchanged is a no-op.
   let name = getDeviceName();
 
-  // Sync is offered once here, as step 2, rather than via a standing
-  // button elsewhere. Only meaningful on native: desktop/web always have
-  // a default sync URL (config.ts's DEFAULT_SYNC_URL), so "not
-  // configured" is a native-only state.
+  // Sync is offered once here, rather than via a standing button
+  // elsewhere. Only meaningful on native: desktop/web always have a
+  // default sync URL (config.ts's DEFAULT_SYNC_URL), so "not configured"
+  // is a native-only state.
   const offerSync = isNativePlatform() && !getSyncUrl();
 
-  // Step 3 is a quick-preferences screen (theme/week-start/time-format +
+  // Step 2 is a quick-preferences screen (theme/week-start/time-format +
   // a notification-permission ask) duplicating controls SettingsPanel
-  // also exposes. Shown on every platform, unlike step 2.
+  // also exposes, shown on every platform. Sync is offered last, as step
+  // 3, so choosing "Set up sync" — which hands off to full Settings —
+  // never skips past prefs that were still ahead of it.
   let step: 1 | 2 | 3 = 1;
 
   let themeMode: ThemeMode = getThemeMode();
@@ -66,23 +68,25 @@
 
   function next() {
     setDeviceName(name);
-    step = offerSync ? 2 : 3;
+    step = 2;
+  }
+
+  // Prefs' "Done" advances to the sync offer when there is one, otherwise
+  // ends the flow.
+  function finishPrefs() {
+    if (offerSync) { step = 3; } else { dismiss(); }
   }
 
   function setupSync() {
     dispatch('setupSync');
   }
 
-  // Declining sync still lands on step 3's preferences — only step 1's
-  // "Skip" bails out of the whole flow.
-  function declineSync() {
-    step = 3;
-  }
-
   // Mirrors each step's own decline button, so Escape/scrim-click never
-  // does something more drastic than the visible "Skip" would.
+  // does something more drastic than the visible control would.
   function decline() {
-    if (step === 2) { declineSync(); } else { dismiss(); }
+    if (step === 1) { dismiss(); }
+    else if (step === 2) { finishPrefs(); }
+    else { dismiss(); }
   }
 
   function onWindowKeydown(e: KeyboardEvent) {
@@ -108,18 +112,6 @@
     </div>
   </div>
 {:else if step === 2}
-  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
-    <p class="prompt-title">Sync across your devices?</p>
-    <p class="prompt-hint">
-      Offlog can keep this device in sync with your other phones or a PC running the Offlog desktop app — everything stays local, there's no account or cloud involved. If you'd rather use this device on its own, that's the default and nothing else needs to change.
-    </p>
-    <p class="prompt-hint">You can always set this up later from Settings → Sync.</p>
-    <div class="prompt-actions">
-      <button class="skip-btn" on:click={declineSync}>Skip</button>
-      <button class="save-btn" on:click={setupSync}>Set up sync</button>
-    </div>
-  </div>
-{:else}
   <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
     <p class="prompt-title">A couple of quick preferences</p>
     <p class="prompt-hint">All of this lives in Settings too, whenever you want to change it.</p>
@@ -166,7 +158,19 @@
     {/if}
 
     <div class="prompt-actions">
-      <button class="save-btn" on:click={dismiss}>Done</button>
+      <button class="save-btn" on:click={finishPrefs}>Done</button>
+    </div>
+  </div>
+{:else}
+  <div class="prompt-panel" role="dialog" aria-modal="true" use:trapFocus in:dialogIn out:dialogOut>
+    <p class="prompt-title">Sync across your devices?</p>
+    <p class="prompt-hint">
+      Offlog can keep this device in sync with your other phones or a PC running the Offlog desktop app — everything stays local, there's no account or cloud involved. If you'd rather use this device on its own, that's the default and nothing else needs to change.
+    </p>
+    <p class="prompt-hint">You can always set this up later from Settings → Sync.</p>
+    <div class="prompt-actions">
+      <button class="skip-btn" on:click={dismiss}>Skip</button>
+      <button class="save-btn" on:click={setupSync}>Set up sync</button>
     </div>
   </div>
 {/if}

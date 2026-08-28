@@ -12,6 +12,17 @@
     "dialog:default",
     "fs:default",
     "fs:allow-write-text-file",
+    "fs:allow-mkdir",
+    "fs:allow-read-dir",
+    "fs:allow-remove",
+    "fs:allow-exists",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$APPDATA/auto-backups" },
+        { "path": "$APPDATA/auto-backups/**" }
+      ]
+    },
     "updater:default",
     "process:default",
     "global-shortcut:default",

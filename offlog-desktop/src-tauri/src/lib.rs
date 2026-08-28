@@ -343,7 +343,7 @@ pub fn run() {
                                     }
                                 }
                                 let pairing_state = Arc::new(pairing::PairingState::new(info_bg.clone()));
-                                match pairing::spawn_server(pairing_state.clone(), uuid.clone()) {
+                                match pairing::spawn_server(pairing_state.clone(), uuid.clone(), app_handle.clone()) {
                                     Ok(pairing_port) => {
                                         app_handle.manage(pairing_state);
                                         let name = device_name();

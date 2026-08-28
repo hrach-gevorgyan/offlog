@@ -52,10 +52,18 @@ function renderPrompt() {
   return { close, setupSync, ...utils };
 }
 
-// Step 3 is only reachable through step 1 (and step 2 on native).
+// Step 2 (preferences) is reached straight from step 1's Next.
 async function toPrefs(c: HTMLElement) {
   await fireEvent.click(btn(c, 'Next'));
-  await waitFor(() => { if (!title(c)!.includes('preferences')) throw new Error('did not reach step 3'); });
+  await waitFor(() => { if (!title(c)!.includes('preferences')) throw new Error('did not reach step 2'); });
+}
+
+// Step 3 (sync) is only reachable through prefs' Done, and only when
+// sync is actually being offered.
+async function toSync(c: HTMLElement) {
+  await toPrefs(c);
+  await fireEvent.click(btn(c, 'Done'));
+  await waitFor(() => { if (!title(c)!.includes('Sync')) throw new Error('did not reach step 3'); });
 }
 
 beforeEach(() => {
@@ -118,53 +126,53 @@ describe('NamePrompt step 1', () => {
 });
 
 describe('NamePrompt sync step', () => {
-  // Only native with no sync URL has an unconfigured-sync state to offer.
+  // Only native with no sync URL has an unconfigured-sync state to offer,
+  // so prefs' Done ends the flow directly instead of advancing to it.
   it('is skipped on non-native platforms', async () => {
-    const { container } = renderPrompt();
-    await fireEvent.click(btn(container, 'Next'));
-    await waitFor(() => { if (!title(container)!.includes('preferences')) throw new Error('did not skip step 2'); });
+    const { container, close } = renderPrompt();
+    await toPrefs(container);
+    await fireEvent.click(btn(container, 'Done'));
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
   it('is skipped on native when sync is already configured', async () => {
     isNativePlatform.mockReturnValue(true);
     getSyncUrl.mockReturnValue('http://host:5984/offlog');
-    const { container } = renderPrompt();
-    await fireEvent.click(btn(container, 'Next'));
-    await waitFor(() => { if (!title(container)!.includes('preferences')) throw new Error('did not skip step 2'); });
+    const { container, close } = renderPrompt();
+    await toPrefs(container);
+    await fireEvent.click(btn(container, 'Done'));
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
-  it('is offered on native with no sync URL, and dispatches setupSync', async () => {
+  // It comes after preferences, not before, so choosing it never skips
+  // past prefs that were still ahead of it.
+  it('is offered last on native with no sync URL, and dispatches setupSync', async () => {
     isNativePlatform.mockReturnValue(true);
     const { container, setupSync, close } = renderPrompt();
-    await fireEvent.click(btn(container, 'Next'));
-    await waitFor(() => { if (!title(container)!.includes('Sync')) throw new Error('did not reach step 2'); });
+    await toSync(container);
 
     await fireEvent.click(btn(container, 'Set up sync'));
     expect(setupSync).toHaveBeenCalledTimes(1);
     expect(close).not.toHaveBeenCalled();
   });
 
-  // Declining sync is not declining the flow: step 3 still follows.
-  it('Skip on the sync step advances to preferences instead of closing', async () => {
+  // Sync is the last step, so declining it ends the whole flow.
+  it('Skip on the sync step closes the flow', async () => {
     isNativePlatform.mockReturnValue(true);
     const { container, close } = renderPrompt();
-    await fireEvent.click(btn(container, 'Next'));
-    await waitFor(() => { if (!title(container)!.includes('Sync')) throw new Error('did not reach step 2'); });
+    await toSync(container);
 
     await fireEvent.click(btn(container, 'Skip'));
-    await waitFor(() => { if (!title(container)!.includes('preferences')) throw new Error('did not advance'); });
-    expect(close).not.toHaveBeenCalled();
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
-  it('Escape on the sync step declines it rather than closing the flow', async () => {
+  it('Escape on the sync step closes the flow, same as Skip', async () => {
     isNativePlatform.mockReturnValue(true);
     const { container, close } = renderPrompt();
-    await fireEvent.click(btn(container, 'Next'));
-    await waitFor(() => { if (!title(container)!.includes('Sync')) throw new Error('did not reach step 2'); });
+    await toSync(container);
 
     await fireEvent.keyDown(window, { key: 'Escape' });
-    await waitFor(() => { if (!title(container)!.includes('preferences')) throw new Error('did not advance'); });
-    expect(close).not.toHaveBeenCalled();
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 });
 

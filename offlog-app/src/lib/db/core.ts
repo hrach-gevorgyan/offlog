@@ -223,8 +223,20 @@ export async function getDeviceLastSeen(): Promise<{ device: string; lastSeen: s
     seen.set(key, doc.ts);
     names.set(key, doc.source);
   }
-  return [...seen.entries()]
-    .map(([key, lastSeen]) => ({ device: names.get(key)!, lastSeen }))
+  // A device that logged before source_id existed and again after it does
+  // owns two identity keys above (the literal name string, then a real
+  // source_id) with the same display name -- without this merge, the
+  // caller's keyed {#each device.device} render gets two rows named "PC"
+  // and Svelte throws each_key_duplicate the instant this list renders.
+  // Newest write wins per display name.
+  const byName = new Map<string, string>();
+  for (const [key, ts] of seen) {
+    const name = names.get(key)!;
+    const existing = byName.get(name);
+    if (!existing || ts > existing) byName.set(name, ts);
+  }
+  return [...byName.entries()]
+    .map(([device, lastSeen]) => ({ device, lastSeen }))
     .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
 }
 

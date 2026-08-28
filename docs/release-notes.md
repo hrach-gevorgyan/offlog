@@ -31,6 +31,21 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.10.3
+
+### In short
+
+Found and fixed the actual bug behind the Settings → Sync crash some of you hit — v6.10.1 and v6.10.2 were partial fixes. Also: an instant success message when a phone finishes pairing, first-time setup no longer skips your preferences if you choose to set up sync, and a couple of small fixes.
+
+### Fixed
+- The real cause of the Settings → Sync crash, after two earlier releases only partly fixed it.
+- Auto backups on desktop were silently failing to save.
+- A console warning on every app load, and some spacing in the device list.
+
+### Changed
+- First-time setup no longer skips your preferences if you choose to set up sync — that step now comes last.
+- The desktop app shows an instant confirmation when a phone finishes pairing.
+
 ## v6.10.2
 
 ### In short
