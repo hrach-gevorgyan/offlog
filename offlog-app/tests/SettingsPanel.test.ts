@@ -37,6 +37,8 @@ vi.mock('../src/config', () => ({
   otherHostsDetected: writable([]),
 }));
 
+const getConflicts = vi.fn().mockResolvedValue([]);
+const getDeviceLastSeen = vi.fn().mockResolvedValue([]);
 vi.mock('../src/lib/db', () => ({
   default: { allDocs: vi.fn().mockResolvedValue({ rows: [] }) },
   __esModule: true,
@@ -45,12 +47,12 @@ vi.mock('../src/lib/db', () => ({
   importJSON: vi.fn(), analyzeImport: vi.fn(),
   exportProjectDocs: vi.fn().mockResolvedValue([]),
   exportTasksCSV: vi.fn().mockResolvedValue(''),
-  getConflicts: vi.fn().mockResolvedValue([]), resolveConflict: vi.fn(),
+  getConflicts: (...a: unknown[]) => getConflicts(...a), resolveConflict: vi.fn(),
   // loadConflicts() resolves custom-field ids to names for the diff.
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
   getStorageBreakdown: vi.fn().mockResolvedValue(null),
   subscribe: vi.fn().mockReturnValue({ cancel: vi.fn() }),
-  getDeviceLastSeen: vi.fn().mockResolvedValue([]),
+  getDeviceLastSeen: (...a: unknown[]) => getDeviceLastSeen(...a),
   runMaintenanceSteps: vi.fn(), wipeAndReseed: vi.fn(),
 }));
 
@@ -290,5 +292,36 @@ describe('SettingsPanel restore file errors', () => {
     // Plain language, not a raw JSON.parse SyntaxError -- "Unexpected token"
     // means nothing to someone who just picked the wrong file.
     expect(container.textContent).toContain("doesn't look like an Offlog backup file");
+  });
+});
+
+// Both loadDeviceLastSeen() and loadConflicts() fire from a bare reactive
+// statement the moment the Sync tab is shown, with nothing awaiting or
+// catching them -- a real query failure there became an unhandled
+// rejection (main.ts's crash net: a generic "Something went wrong" toast,
+// with no specific error and no path back to a working state).
+describe('SettingsPanel sync tab load failures', () => {
+  it('surfaces a specific error instead of an unhandled rejection when the device list fails to load', async () => {
+    getDeviceLastSeen.mockRejectedValueOnce(new Error('IDB transaction failed'));
+    render(SettingsPanel, { initialCategory: 'sync' });
+
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(showError).toHaveBeenCalledWith('Failed to load recent devices.');
+  });
+
+  it('surfaces a specific error instead of an unhandled rejection when conflicts fail to load', async () => {
+    getConflicts.mockRejectedValueOnce(new Error('IDB transaction failed'));
+    // loadConflicts() only fires when conflictCount > 0 -- syncState is a
+    // plain mutable object read at component init, not a store, so it has
+    // to be set before render.
+    const { syncState } = await import('../src/lib/db');
+    (syncState as { conflictCount: number }).conflictCount = 1;
+    render(SettingsPanel, { initialCategory: 'sync' });
+
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(showError).toHaveBeenCalledWith('Failed to load sync conflicts.');
+    (syncState as { conflictCount: number }).conflictCount = 0;
   });
 });

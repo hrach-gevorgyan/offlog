@@ -31,6 +31,16 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.10.1
+
+### In short
+
+A hotfix for a real bug found within hours of v6.10.0: opening Settings could, in rare cases, trigger a runaway loop that froze the app and forced a restart. Fixed. Desktop crashes are now also written to the log file so future issues are easier to track down.
+
+### Fixed
+- A rare freeze when opening Settings → Sync, caused by a failed background check retrying itself forever instead of giving up and showing an error.
+- Desktop crash details now get written to a log file, not just the on-screen error, so problems like this are easier to diagnose.
+
 ## v6.10.0
 
 ### In short

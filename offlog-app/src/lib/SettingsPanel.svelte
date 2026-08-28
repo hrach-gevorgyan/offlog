@@ -612,7 +612,15 @@
   let deviceLastSeenLoaded = false;
   async function loadDeviceLastSeen() {
     deviceLastSeenLoaded = true; // set before the await — a genuinely-empty result must not retrigger this every reactive tick
-    deviceLastSeen = await getDeviceLastSeen();
+    try {
+      deviceLastSeen = await getDeviceLastSeen();
+    } catch {
+      // Fired from a reactive statement with nothing awaiting it -- an
+      // uncaught rejection here becomes the generic crash-net toast
+      // (main.ts's unhandledrejection listener) instead of a message that
+      // says what actually failed.
+      showError('Failed to load recent devices.');
+    }
   }
 
   let syncStatus = syncState.status;
@@ -634,12 +642,23 @@
 
   let conflictList: ConflictInfo[] = [];
   let loadingConflicts = false;
+  // Tracks which conflictCount the last load attempt was for -- not just
+  // whether one is in flight. Without this, a failed getConflicts() left
+  // conflictList empty and loadingConflicts false, and the reactive
+  // trigger below re-fired on every tick forever: a real query failure
+  // here span an infinite retry loop that pegs the main thread solid
+  // (reproduced: a single rejection OOM'd the whole process under test).
+  let conflictsAttemptedFor = -1;
   async function loadConflicts() {
     loadingConflicts = true;
     try {
       conflictList = await getConflicts();
       const defs = await getCustomFieldDefs();
       conflictFieldNames = Object.fromEntries(defs.map(d => [d.id, d.name]));
+    } catch {
+      // Same reasoning as loadDeviceLastSeen() -- this also fires from a
+      // reactive statement with nothing awaiting it.
+      showError('Failed to load sync conflicts.');
     } finally { loadingConflicts = false; }
   }
   async function resolve(c: ConflictInfo, v: ConflictVersion) {
@@ -706,7 +725,10 @@
     columns: 'Statuses', color: 'Colour', icon: 'Icon', default_view: 'Default view',
   };
   const conflictFieldLabel = (f: string) => CONFLICT_FIELD_LABELS[f] ?? f;
-  $: if (activeCategory === 'sync' && conflictCount > 0 && conflictList.length === 0 && !loadingConflicts) loadConflicts();
+  $: if (activeCategory === 'sync' && conflictCount > 0 && conflictCount !== conflictsAttemptedFor && !loadingConflicts) {
+    conflictsAttemptedFor = conflictCount;
+    loadConflicts();
+  }
   $: if (activeCategory === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
   // ── Organize (Manage Spaces / Manage Tags) ─────────────────────────────

@@ -17,6 +17,33 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.10.1] — 2026-08-28
+
+A real crash from v6.10.0, caught live from the actual installed desktop
+build within hours of release: opening Settings → Sync could hit an
+unhandled promise rejection that spun into an uncaught-forever retry loop,
+pegging the main thread until the renderer ran out of heap (reproduced
+directly in a test: the failure path OOM'd a Node worker in ~5 minutes).
+
+### Fixed
+- `loadConflicts()` and `loadDeviceLastSeen()` in `SettingsPanel.svelte`
+  both fire from a bare reactive statement the moment the Sync tab opens,
+  with nothing awaiting or catching them. A real query failure became an
+  unhandled rejection — the generic "Something went wrong" crash-net toast,
+  with no specific message. Worse, `loadConflicts()`'s retry guard
+  (`conflictList.length === 0`) never became false on failure, so it
+  re-fired on every reactive tick, forever, entirely as microtasks with no
+  macrotask in between — starving the event loop so completely that even a
+  vitest test timeout never got a chance to fire before the process ran out
+  of memory. Both now surface a specific `showError()` message, and
+  `loadConflicts()` tracks which `conflictCount` it already attempted so a
+  failure doesn't retry until the underlying conflict count actually
+  changes.
+- Desktop crashes now also write to `Offlog.log` (via
+  `@tauri-apps/plugin-log`, `log:default` capability), not just the
+  browser devtools console — this exact bug was undiagnosable from the log
+  file alone before this fix.
+
 ## [6.10.0] — 2026-08-28
 
 A massive, multi-agent human/product-usability audit across every app
@@ -601,25 +628,7 @@ The last feature release, and the hardening pass behind it.
 
 ---
 
-## [6.2.1] — 2026-07-31
-
-Maintenance pass (18th run), pulled forward at owner request.
-
-### Fixed
-- `App.svelte`'s `handleUndo()` was the one call site missing this
-  codebase's audited `try/catch` + `showError()` invariant — an undo
-  failure surfaced nothing.
-
-### Changed
-- Deduped an identical `escapeHtml()` carried separately in
-  `GlobalSearch.svelte` and `UpdateModal.svelte` into `utils.ts`.
-- Fixed 14 stale `GOAL.md` / `IDEAS.md` references across 9 files, left
-  over from an earlier documentation consolidation.
-
----
-
----
-
+[6.10.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.0...v6.10.1
 [6.10.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.9.0...v6.10.0
 [6.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.8.0...v6.9.0
 [6.8.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.7.0...v6.8.0
