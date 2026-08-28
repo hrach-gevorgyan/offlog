@@ -28,3 +28,9 @@ offlog-app/android/build/
 # as the evidence behind decisions.md's mesh entry, not published -- the
 # decision and its reasoning are in the docs, which is what a reader needs.
 /offlog-desktop/scripts/mesh-spike/
+
+# Local tool that recomputes stats (test count, maintenance pass count, ...)
+# and writes them into <!--DYN:key-->...<!--/DYN--> markers across the
+# tracked *.md files, so those numbers never sit hand-typed and drifting.
+# The tool and its computed-values cache stay local, not the docs it edits.
+/tools/docsync/

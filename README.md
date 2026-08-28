@@ -169,10 +169,11 @@ The plan it was built to is complete — that was the goal, not a stopping
 point. Bugs found in real use get fixed, dependencies get updated,
 security reports get answered.
 
-Every release runs a zero-warning build, a clean type check and **569
-tests** through CI. It has been through 22 structured maintenance
-audits against a written checklist of blind spots earned from real
-shipped bugs — [what each one found](docs/archive/maintenance.md).
+Every release runs a zero-warning build, a clean type check and
+**<!--DYN:test_count-->639<!--/DYN--> tests** through CI. It has been
+through <!--DYN:maintenance_passes-->25<!--/DYN--> structured
+maintenance audits against a written checklist of blind spots earned
+from real shipped bugs — [what each one found](docs/archive/maintenance.md).
 
 **What's next:** nothing planned. Peer-to-peer sync between phones was
 investigated and closed — Android blocks every route to it, and the
