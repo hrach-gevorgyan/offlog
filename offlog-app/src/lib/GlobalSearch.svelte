@@ -10,6 +10,7 @@
   import { closeOnBack, discardTop } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { localDateStr, escapeHtml } from './utils';
+  import { showError } from './store';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -61,9 +62,15 @@
     if (query.trim().length >= 1) {
       searching = true;
       debounce = setTimeout(async () => {
-        results = await searchAllTasks(query);
-        selectedIdx = 0;
-        searching = false;
+        try {
+          results = await searchAllTasks(query);
+          selectedIdx = 0;
+        } catch {
+          results = [];
+          showError('Search failed. Please try again.');
+        } finally {
+          searching = false;
+        }
       }, 180);
     } else {
       results = [];

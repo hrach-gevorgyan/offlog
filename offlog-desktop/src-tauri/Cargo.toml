@@ -67,4 +67,4 @@ tauri-winrt-notification = "0.8"
 # via `cargo tree -i windows-core`); this crate's Win32 calls don't share
 # its types, so a second windows-core version coexisting here is expected,
 # not a drift to chase down.
-windows = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
+windows = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation", "UI_Notifications"] }

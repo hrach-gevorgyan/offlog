@@ -12,7 +12,7 @@ vi.mock('../src/lib/db', () => ({
 // created inside it and imported back below rather than closed over.
 vi.mock('../src/lib/store', async () => {
   const { writable } = await import('svelte/store');
-  return { projects: writable([] as ProjectDoc[]) };
+  return { projects: writable([] as ProjectDoc[]), showError: vi.fn() };
 });
 
 // discardTop() vs the closeOnBack() close: which one a row uses decides
@@ -23,7 +23,7 @@ vi.mock('../src/lib/modalStack', () => ({
   discardTop: (...a: unknown[]) => discardTop(...a),
 }));
 
-import { projects } from '../src/lib/store';
+import { projects, showError } from '../src/lib/store';
 import GlobalSearch from '../src/lib/GlobalSearch.svelte';
 
 const PROJECT: ProjectDoc = {
@@ -102,6 +102,16 @@ describe('GlobalSearch matching', () => {
       if (!hint) throw new Error('empty hint not shown');
       expect(hint.textContent).toContain('zzzz');
     });
+  });
+
+  it('surfaces a search failure instead of leaving the spinner running forever', async () => {
+    searchAllTasks.mockRejectedValue(new Error('boom'));
+    const { container } = render(GlobalSearch, { props: { commands: COMMANDS } });
+
+    await typeQuery(container, 'report');
+
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Search failed. Please try again.'));
+    expect(container.querySelector('.spinner')).toBeNull();
   });
 });
 

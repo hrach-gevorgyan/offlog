@@ -385,11 +385,9 @@ export async function updateCustomFieldDef(fieldId: string, patch: { name?: stri
   return fields;
 }
 
-// Removing a field definition intentionally leaves any task's stored
-// custom_values[fieldId] in place (dead but harmless keyed data) rather
-// than sweeping every task in the database to strip it — cheap to skip,
-// and CardDetail only ever renders values for fields still in this list,
-// so a stale key is simply never shown again.
+// Removing a field definition also sweeps custom_values[fieldId] off every
+// task that has it (below) — the caller's confirm dialog must say so, not
+// "kept but hidden".
 export async function removeCustomFieldDef(fieldId: string): Promise<CustomFieldDef[]> {
   let doc: CustomFieldsDoc;
   try { doc = await db.get<CustomFieldsDoc>(CUSTOM_FIELDS_DOC_ID); } catch { return []; }

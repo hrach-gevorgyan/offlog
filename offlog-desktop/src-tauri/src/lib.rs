@@ -97,6 +97,27 @@ fn send_task_notification(app: tauri::AppHandle, title: String, body: String, ta
         .map_err(|e| format!("failed to show notification: {e}"))
 }
 
+// tauri-plugin-notification's isPermissionGranted()/requestPermission() are
+// hardcoded to return granted on desktop (no real permission model behind
+// them), so the frontend can't tell a genuinely-blocked toast from a
+// working one through the plugin. This queries the real Windows per-app
+// notification toggle directly via WinRT -- the same setting the user
+// flips under Settings > Notifications. Any query failure (unregistered
+// AUMID, non-Windows target, API unavailable) falls back to `true`, same
+// as the frontend's prior always-granted assumption -- an unreadable
+// setting shouldn't regress a working install to "blocked".
+#[tauri::command]
+fn check_desktop_notification_setting(app: tauri::AppHandle) -> bool {
+    use windows::UI::Notifications::{NotificationSetting, ToastNotificationManager};
+    use windows::core::HSTRING;
+    let app_id = app.config().identifier.clone();
+    (|| -> windows::core::Result<bool> {
+        let notifier = ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(app_id))?;
+        Ok(notifier.Setting()? == NotificationSetting::Enabled)
+    })()
+    .unwrap_or(true)
+}
+
 // The main window starts hidden (tauri.conf.json's `visible: false`) so
 // there's no blank-white-then-content-pops-in flash while the frontend's
 // own onMount does its thing (theme, init(), view restore) -- App.svelte
@@ -461,7 +482,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, get_detected_other_hosts, store_sync_secret, get_sync_secret])
+        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, check_desktop_notification_setting, get_detected_other_hosts, store_sync_secret, get_sync_secret])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

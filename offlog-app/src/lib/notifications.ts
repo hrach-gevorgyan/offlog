@@ -128,10 +128,13 @@ export async function requestPermission(): Promise<PermissionState> {
       return state;
     }
     if (isTauriPlatform()) {
-      // No real desktop permission model to request against (see
-      // initNotificationListeners' comment) -- 'granted' is just the truth.
-      permissionState.set('granted');
-      return 'granted';
+      // tauri-plugin-notification has no real permission model to request
+      // against, but Windows does -- query it directly (see
+      // check_desktop_notification_setting's own comment).
+      const enabled = await invokeTauri<boolean>('check_desktop_notification_setting');
+      const state: PermissionState = enabled ? 'granted' : 'denied';
+      permissionState.set(state);
+      return state;
     }
     if (typeof Notification === 'undefined') {
       permissionState.set('unsupported');
@@ -464,11 +467,11 @@ async function snoozeTaskFromNotification(taskId: string): Promise<void> {
 
 export async function initNotificationListeners(): Promise<void> {
   if (isTauriPlatform()) {
-    // tauri-plugin-notification's isPermissionGranted()/requestPermission()
-    // are hardcoded to return granted on desktop -- there is no real desktop
-    // permission model behind them, so checking would be theater. Desktop
-    // notification display isn't gated on anything observable here.
-    permissionState.set('granted');
+    // tauri-plugin-notification's own isPermissionGranted()/requestPermission()
+    // are hardcoded to return granted on desktop, but Windows' real per-app
+    // toggle is queryable directly -- see requestPermission()'s Tauri branch
+    // and check_desktop_notification_setting's own comment.
+    await requestPermission();
     const { listen } = await import('@tauri-apps/api/event');
     await listen<[string, string]>('notification-action', (event) => {
       const [actionId, taskId] = event.payload;

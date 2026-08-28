@@ -66,7 +66,7 @@
   }
 
   async function remove(field: CustomFieldDef) {
-    if (!(await confirmAction(`Remove the "${field.name}" field? Existing values on tasks are kept but will no longer be shown.`, { danger: true, confirmLabel: 'Remove' }))) return;
+    if (!(await confirmAction(`Remove the "${field.name}" field? Its value will be permanently erased from every task that has it.`, { danger: true, confirmLabel: 'Remove' }))) return;
     try {
       fields = await removeCustomFieldDef(field.id);
     } catch {
