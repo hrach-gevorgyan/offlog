@@ -196,9 +196,11 @@
             <span class="day-label">{g.label}</span>
             <span class="day-summary">{summarize(g.counts)}</span>
           </div>
+          <div class="entries-list" role="list" aria-label="{g.entries.length} change{g.entries.length === 1 ? '' : 's'} on {g.label}">
           {#each g.entries as log (log._id)}
             {@const clickable = entityLabel(log) === 'task'}
             {#if clickable}
+              <div role="listitem">
               <div
                 class="entry clickable"
                 role="button"
@@ -216,8 +218,9 @@
                   <span class="entry-project">{log.project_name}</span>
                 {/if}
               </div>
+              </div>
             {:else}
-              <!-- role="listitem" matches the day-group's implicit list semantics;
+              <!-- role="listitem" matches entries-list's role="list" above;
                    never focusable since these entries have no click action. -->
               <div class="entry" role="listitem">
                 <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
@@ -236,6 +239,7 @@
               </div>
             {/if}
           {/each}
+          </div>
         </div>
       {/each}
       {#if hasMore}

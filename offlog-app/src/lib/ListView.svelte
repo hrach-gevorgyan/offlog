@@ -427,7 +427,7 @@
     // checkIntegrity then flags as invalid_column). Every path that moves a
     // task to the last column guards this.
     const target = lastColId();
-    if (!target) { showError('This project has no statuses to mark done into.'); return; }
+    if (!target) { showError("This project has no statuses, so there's nowhere to mark this task done."); return; }
     try {
       await updateTask(task._id!, { column_id: target });
       await reloadTasks();
@@ -657,7 +657,7 @@
 
       {#if sorted.length === 0}
         <div class="empty">
-          {#if activeFilters > 0}No tasks match the current filters.{:else}No tasks yet — add one from the kanban view.{/if}
+          {#if activeFilters > 0}No tasks match the current filters.{:else}No tasks yet — add one from the Kanban view.{/if}
         </div>
       {/if}
     </div>

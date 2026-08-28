@@ -50,7 +50,10 @@
 
   async function quickAdd(colId: string) {
     const t = quickAddTitle.trim();
-    if (!t) { quickAddCol = null; return; }
+    // Stay open on empty submit rather than closing as if Cancel had been
+    // clicked -- Add doing nothing is more honest than Add silently acting
+    // like Cancel.
+    if (!t) return;
     try {
       await createTask(project._id, project.space_id, colId, t);
       await reloadTasks();
@@ -275,16 +278,17 @@
 
   async function doAddCol() {
     const name = newColName.trim();
-    if (!name) { addingCol = false; return; }
+    // Same reasoning as quickAdd() above -- stay open on empty submit.
+    if (!name) return;
     try {
       const updated = await addColumn(project._id, name);
       project = updated;
       dispatch('projectUpdated', updated);
       newColName = '';
+      addingCol = false;
     } catch {
       showError('Failed to add status. Please try again.');
     }
-    addingCol = false;
   }
 
   async function doRemoveCol(colId: string) {
@@ -560,7 +564,7 @@
             </svg>
           </button>
           {#if (tasksByCol[col.id]?.length ?? 0) > 0}
-            <button class="col-archive" title="Archive all tasks in this status" on:click={async () => {
+            <button class="col-archive" title="Archive all tasks in this status" aria-label="Archive all tasks in {col.name}" on:click={async () => {
               if (!(await confirmAction(`Archive all ${tasksByCol[col.id]?.length} tasks in "${col.name}"?`, { confirmLabel: 'Archive' }))) return;
               try {
                 await archiveColumnTasks(project._id, col.id);
@@ -574,7 +578,7 @@
               </svg>
             </button>
           {/if}
-          <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status">
+          <button class="col-remove" on:click={() => doRemoveCol(col.id)} title="Remove status" aria-label="Remove {col.name} status">
             <svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 2l10 10M12 2L2 12"/>
             </svg>

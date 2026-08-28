@@ -23,6 +23,7 @@
   export let doExportCSV: () => void;
   export let importStatus: string;
   export let handleImport: () => void;
+  export let importBusy: boolean;
 </script>
 
               <div class="setting-group">
@@ -105,7 +106,7 @@
                 <div class="setting-section-title">Restore</div>
                 <div class="setting-row">
                   <span class="storage-info" style="color: var(--muted)">{importStatus || 'Restore from a backup file'}</span>
-                  <button class="export-btn" on:click={handleImport}>Choose backup file</button>
+                  <button class="export-btn" on:click={handleImport} disabled={importBusy}>Choose backup file</button>
                 </div>
               </div>
 

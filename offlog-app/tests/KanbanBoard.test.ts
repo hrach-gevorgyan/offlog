@@ -152,3 +152,44 @@ describe('KanbanBoard "Move to" status', () => {
     expect(itemsIn(menu)).toEqual(['Pin', 'Archive', 'Duplicate', 'Delete']);
   });
 });
+
+// Submitting either form empty used to close it as if Cancel had been
+// clicked -- silently discarding the "+ Add card"/"+ Status" affordance the
+// user had just opened. Both now just stay open and do nothing.
+//
+// Under jsdom, Element.animate() is stubbed with a finish callback that
+// never fires (tests/setup.ts), so the quick-add-form/add-col-form's own
+// {#if} branch never actually unmounts once its outro starts -- checking
+// its continued presence would pass whether or not the fix is really there
+// (see docs/motion.md's own note on this). The {:else} branch's button is
+// NOT gated on that outro finishing, so checking it reappear is the
+// reliable signal instead.
+describe('KanbanBoard empty-submit forms', () => {
+  // Single column: with the default 3-column project, the other columns'
+  // own untouched "+ Add card" buttons stay visible the whole time, making
+  // container-wide presence checks pass regardless of this column's state.
+  const oneCol = mkProject([{ id: 'col:only', name: 'Only' }]);
+
+  it('does not fall back to the "+ Add card" button when "Add" is clicked with no title typed', async () => {
+    const { container, getByPlaceholderText } = render(KanbanBoard, { project: oneCol, tasks: [] });
+
+    await fireEvent.click(container.querySelector('.add-card-btn') as HTMLButtonElement);
+    expect(getByPlaceholderText('Task title…')).toBeTruthy();
+
+    const addBtn = [...container.querySelectorAll('.quick-add-actions .add-btn')][0] as HTMLButtonElement;
+    await fireEvent.click(addBtn);
+
+    expect(container.querySelector('.add-card-btn')).toBeNull();
+  });
+
+  it('does not fall back to the "+ Status" button when "Add" is clicked with no status name typed', async () => {
+    const { container, getByPlaceholderText } = render(KanbanBoard, { project: oneCol, tasks: [] });
+
+    await fireEvent.click(container.querySelector('.add-col-btn') as HTMLButtonElement);
+    expect(getByPlaceholderText('Status name…')).toBeTruthy();
+
+    await fireEvent.click(container.querySelector('.add-col-form .add-btn') as HTMLButtonElement);
+
+    expect(container.querySelector('.add-col-btn')).toBeNull();
+  });
+});

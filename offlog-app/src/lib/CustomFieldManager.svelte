@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { panelIn, panelOut, panelScrimIn, panelScrimOut, exitMs } from './motion';
-  import { getCustomFieldDefs, addCustomFieldDef, removeCustomFieldDef, updateCustomFieldDef } from './db';
+  import { getCustomFieldDefs, addCustomFieldDef, removeCustomFieldDef, updateCustomFieldDef, getCustomFieldUsageCount } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
@@ -66,7 +66,9 @@
   }
 
   async function remove(field: CustomFieldDef) {
-    if (!(await confirmAction(`Remove the "${field.name}" field? Its value will be permanently erased from every task that has it.`, { danger: true, confirmLabel: 'Remove' }))) return;
+    const count = await getCustomFieldUsageCount(field.id);
+    const usage = count > 0 ? ` Its value will be permanently erased from ${count} task${count === 1 ? '' : 's'}.` : '';
+    if (!(await confirmAction(`Remove the "${field.name}" field?${usage}`, { danger: true, confirmLabel: 'Remove' }))) return;
     try {
       fields = await removeCustomFieldDef(field.id);
     } catch {

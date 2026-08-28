@@ -848,6 +848,7 @@
   let importFileModified = '';
 
   function handleImport() {
+    if (importBusy) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json,application/json';
@@ -856,14 +857,21 @@
       if (!file) return;
       try {
         const text = await file.text();
-        const docs = JSON.parse(text);
-        if (!Array.isArray(docs)) throw new Error('Invalid format');
-        pendingImportDocs = docs;
-        importPreview = analyzeImport(docs);
+        let docs: unknown;
+        try {
+          docs = JSON.parse(text);
+        } catch {
+          // A raw SyntaxError ("Unexpected token < in JSON at position 0")
+          // means nothing to someone who just picked the wrong file.
+          throw new Error("That doesn't look like an Offlog backup file.");
+        }
+        if (!Array.isArray(docs)) throw new Error("That doesn't look like an Offlog backup file.");
+        pendingImportDocs = docs as ImportedDoc[];
+        importPreview = analyzeImport(docs as ImportedDoc[]);
         importFileName = file.name;
         importFileModified = file.lastModified ? fmtLastSynced(new Date(file.lastModified).toISOString()) : '';
       } catch (e) {
-        importStatus = 'Error: ' + (e instanceof Error ? e.message : 'invalid file');
+        importStatus = e instanceof Error ? e.message : "That doesn't look like an Offlog backup file.";
         setTimeout(() => { importStatus = ''; }, 4000);
       }
     };
@@ -872,10 +880,16 @@
 
   function cancelImport() { pendingImportDocs = null; importPreview = null; importFileName = ''; importFileModified = ''; }
 
+  // Closing the preview modal doesn't wait on importJSON() -- it's fire-
+  // and-forget from here so the UI doesn't hang on a big restore. Without
+  // this flag, "Choose backup file" stayed clickable underneath while that
+  // import was still running, letting a second one start concurrently.
+  let importBusy = false;
   async function confirmImport() {
     if (!pendingImportDocs) return;
     const docs = pendingImportDocs;
     pendingImportDocs = null; importPreview = null; importFileName = ''; importFileModified = '';
+    importBusy = true;
     try {
       importStatus = 'Importing…';
       const { ok, skipped } = await importJSON(docs);
@@ -883,6 +897,7 @@
     } catch {
       importStatus = 'Import failed. Please try again.';
     }
+    importBusy = false;
     setTimeout(() => { importStatus = ''; }, 4000);
   }
 
@@ -1118,7 +1133,7 @@
                 {storageAvailable} {storagePercent} {storageInfo} {breakdown}
                 {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
                 bind:backupScope {backupScopeOptions} {doBackup} {doExportCSV}
-                {importStatus} {handleImport}
+                {importStatus} {handleImport} {importBusy}
               />
 
             {:else if activeCategory === 'security'}

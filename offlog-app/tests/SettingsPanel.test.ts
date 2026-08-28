@@ -287,6 +287,8 @@ describe('SettingsPanel restore file errors', () => {
     await (picked!.onchange as () => Promise<void>)();
     await new Promise(r => setTimeout(r, 0));
 
-    expect(container.textContent).toMatch(/Error:/);
+    // Plain language, not a raw JSON.parse SyntaxError -- "Unexpected token"
+    // means nothing to someone who just picked the wrong file.
+    expect(container.textContent).toContain("doesn't look like an Offlog backup file");
   });
 });

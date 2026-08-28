@@ -385,6 +385,16 @@ export async function updateCustomFieldDef(fieldId: string, patch: { name?: stri
   return fields;
 }
 
+// Read-only count for the remove confirm dialog -- same shape as
+// getTagCounts(), and the same tasks removeCustomFieldDef's sweep below
+// would actually touch (deleted tasks included, since a restore from
+// Recycle would otherwise resurrect a value for a field that no longer
+// has a definition).
+export async function getCustomFieldUsageCount(fieldId: string): Promise<number> {
+  const all = await getAllTasksRaw();
+  return all.filter(t => t.custom_values && fieldId in t.custom_values).length;
+}
+
 // Removing a field definition also sweeps custom_values[fieldId] off every
 // task that has it (below) — the caller's confirm dialog must say so, not
 // "kept but hidden".

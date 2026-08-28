@@ -10,11 +10,13 @@ const getCustomFieldDefs = vi.fn().mockResolvedValue([]);
 const addCustomFieldDef = vi.fn().mockResolvedValue([]);
 const removeCustomFieldDef = vi.fn().mockResolvedValue([]);
 const updateCustomFieldDef = vi.fn().mockResolvedValue([]);
+const getCustomFieldUsageCount = vi.fn().mockResolvedValue(0);
 vi.mock('../src/lib/db', () => ({
   getCustomFieldDefs: (...a: unknown[]) => getCustomFieldDefs(...a),
   addCustomFieldDef: (...a: unknown[]) => addCustomFieldDef(...a),
   removeCustomFieldDef: (...a: unknown[]) => removeCustomFieldDef(...a),
   updateCustomFieldDef: (...a: unknown[]) => updateCustomFieldDef(...a),
+  getCustomFieldUsageCount: (...a: unknown[]) => getCustomFieldUsageCount(...a),
 }));
 
 const showError = vi.fn();
@@ -56,6 +58,7 @@ beforeEach(() => {
   addCustomFieldDef.mockResolvedValue(FIELDS);
   removeCustomFieldDef.mockResolvedValue([]);
   updateCustomFieldDef.mockResolvedValue(FIELDS);
+  getCustomFieldUsageCount.mockResolvedValue(0);
 });
 afterEach(cleanup);
 
@@ -171,6 +174,29 @@ describe('CustomFieldManager delete', () => {
     expect(removeCustomFieldDef).toHaveBeenCalledWith('field:aaa');
     // The list is replaced by the call's return value, not re-fetched.
     await waitFor(() => expect(container.querySelector('.empty')).not.toBeNull());
+  });
+
+  it('states the affected-task count in the confirmation, same as tag delete', async () => {
+    confirmAction.mockResolvedValue(true);
+    getCustomFieldUsageCount.mockResolvedValue(4);
+    const { container } = await open();
+
+    await fireEvent.click(deleteButton(container, 'Estimate'));
+
+    await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
+    expect(getCustomFieldUsageCount).toHaveBeenCalledWith('field:aaa');
+    expect(String(confirmAction.mock.calls[0][0])).toContain('4 tasks');
+  });
+
+  it('omits the task count when nothing uses the field', async () => {
+    confirmAction.mockResolvedValue(true);
+    getCustomFieldUsageCount.mockResolvedValue(0);
+    const { container } = await open();
+
+    await fireEvent.click(deleteButton(container, 'Estimate'));
+
+    await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
+    expect(String(confirmAction.mock.calls[0][0])).not.toContain('erased from');
   });
 
   it('declining the confirmation removes nothing', async () => {
