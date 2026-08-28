@@ -54,9 +54,23 @@
     await loadFocusSummary();
   }
 
+  // Same day-rollover gap as FocusView.svelte's own fix: loadFocusLock()
+  // discards a stale lock, but nothing re-invoked it on the clock, so a
+  // tray-resident session left open past midnight kept the Daily Brief
+  // card labeled "Today's Focus" on yesterday's picks.
+  const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
   onMount(() => {
     load();
-    return subscribe(() => load());
+    const unsub = subscribe(() => load());
+    const dayTimer = setInterval(loadFocusSummary, DAY_ROLLOVER_CHECK_MS);
+    window.addEventListener('focus', loadFocusSummary);
+    document.addEventListener('visibilitychange', loadFocusSummary);
+    return () => {
+      unsub();
+      clearInterval(dayTimer);
+      window.removeEventListener('focus', loadFocusSummary);
+      document.removeEventListener('visibilitychange', loadFocusSummary);
+    };
   });
 
   function openTask(t: TaskDoc) {

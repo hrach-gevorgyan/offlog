@@ -291,9 +291,18 @@ Android, opens a save dialog on desktop, and keeps the blob download in a
 browser — written for binary, since `downloadBlob()`'s UTF-8 path would
 corrupt every image and PDF.
 
-**Removing an attachment asks first.** It is the only irreversible delete on
-the card: a task goes to Recycle with an undo toast behind it, while these
-bytes are gone on the click.
+**Attachments, Related, and Blocked-by are now batched into Save, not
+immediate-write.** Previously each wrote to PouchDB the instant you picked a
+file or a link — deliberately, per their own code comments, because a
+Related/Blocked-by link can touch two docs. A later audit flagged the
+inconsistency this created: some fields on the card only persist on Save,
+others the instant you touch them, and Cancel/Escape only protects the
+first group. Fixed by buffering all three the same way, replaying the diff
+against the original loaded state as real link/unlink/attach/delete calls
+inside `save()` — the two-doc functions themselves are unchanged, just
+called later. A blocked-by cycle is now only caught at Save time (no live
+check while picking), surfaced alongside any other save error, with the
+invalid pick rolled back out of the list.
 
 **Backups carry the bytes, and that is the expensive part.** Every backup is
 a full snapshot with attachments inlined as base64, and seven are kept — so

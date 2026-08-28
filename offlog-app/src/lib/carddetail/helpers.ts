@@ -84,6 +84,17 @@ export function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+// The inverse of blobToBase64() -- lets a pending (not-yet-saved) attachment
+// get a real thumbnail/open target from the payload already sitting in
+// memory, instead of needing a round-trip through the database it hasn't
+// been written to yet.
+export function base64ToBlob(base64Data: string, contentType: string): Blob {
+  const binary = atob(base64Data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: contentType });
+}
+
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_JPEG_QUALITY = 0.8;
 

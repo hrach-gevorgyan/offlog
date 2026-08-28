@@ -10,6 +10,14 @@ const updateTask = vi.fn().mockResolvedValue(undefined);
 const deleteTask = vi.fn().mockResolvedValue(undefined);
 const archiveTask = vi.fn().mockResolvedValue(undefined);
 const duplicateTask = vi.fn().mockResolvedValue(undefined);
+const getRelatedTasks = vi.fn().mockResolvedValue([]);
+const searchTasksForLinking = vi.fn().mockResolvedValue([]);
+const linkRelatedTask = vi.fn().mockResolvedValue(undefined);
+const unlinkRelatedTask = vi.fn().mockResolvedValue(undefined);
+const getBlockingTasks = vi.fn().mockResolvedValue([]);
+const linkBlockedBy = vi.fn().mockResolvedValue(undefined);
+const unlinkBlockedBy = vi.fn().mockResolvedValue(undefined);
+const deleteAttachment = vi.fn().mockResolvedValue({ attachments: [] });
 vi.mock('../src/lib/db', () => ({
   updateTask: (...args: unknown[]) => updateTask(...args),
   deleteTask: (...args: unknown[]) => deleteTask(...args),
@@ -21,22 +29,31 @@ vi.mock('../src/lib/db', () => ({
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
   findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
   findSimilarNotes: vi.fn().mockResolvedValue([]),
-  getRelatedTasks: vi.fn().mockResolvedValue([]),
-  searchTasksForLinking: vi.fn().mockResolvedValue([]),
-  linkRelatedTask: vi.fn().mockResolvedValue(undefined),
-  unlinkRelatedTask: vi.fn().mockResolvedValue(undefined),
-  getBlockingTasks: vi.fn().mockResolvedValue([]),
-  linkBlockedBy: vi.fn().mockResolvedValue(undefined),
-  unlinkBlockedBy: vi.fn().mockResolvedValue(undefined),
+  getRelatedTasks: (...args: unknown[]) => getRelatedTasks(...args),
+  searchTasksForLinking: (...args: unknown[]) => searchTasksForLinking(...args),
+  linkRelatedTask: (...args: unknown[]) => linkRelatedTask(...args),
+  unlinkRelatedTask: (...args: unknown[]) => unlinkRelatedTask(...args),
+  getBlockingTasks: (...args: unknown[]) => getBlockingTasks(...args),
+  linkBlockedBy: (...args: unknown[]) => linkBlockedBy(...args),
+  unlinkBlockedBy: (...args: unknown[]) => unlinkBlockedBy(...args),
   isBlockerResolved: vi.fn().mockReturnValue(false),
   addAttachment: (...args: unknown[]) => addAttachment(...args),
-  deleteAttachment: vi.fn().mockResolvedValue({ attachments: [] }),
+  deleteAttachment: (...args: unknown[]) => deleteAttachment(...args),
   getAttachmentBlob: vi.fn().mockResolvedValue(null),
   skipRecurrence: vi.fn().mockResolvedValue(undefined),
   // Real value, not undefined: `attachments.length >= undefined` is always
   // false, so a mock without it silently disables the per-task cap.
   ATTACHMENT_MAX_PER_TASK: 10,
 }));
+
+// blobToBase64() reads through a real FileReader, which jsdom emulates with
+// genuine (if usually fast) async I/O timing -- unreliable under this whole
+// suite's full parallel load. Every other helper here is real; only the
+// actual file read is swapped for a synchronous stand-in.
+vi.mock('../src/lib/carddetail/helpers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/lib/carddetail/helpers')>();
+  return { ...actual, blobToBase64: vi.fn().mockResolvedValue('eA==') }; // "x" in base64
+});
 
 const addAttachment = vi.fn().mockResolvedValue({ attachments: [{ key: 'att:1', filename: 'notes.txt', size: 12, content_type: 'text/plain', added_at: '2026-08-26T00:00:00.000Z' }] });
 const reloadTasks = vi.fn().mockResolvedValue(undefined);
@@ -95,6 +112,15 @@ beforeEach(() => {
   reloadTasks.mockClear();
   showError.mockClear();
   confirmAction.mockReset();
+  getRelatedTasks.mockReset().mockResolvedValue([]);
+  searchTasksForLinking.mockReset().mockResolvedValue([]);
+  linkRelatedTask.mockReset().mockResolvedValue(undefined);
+  unlinkRelatedTask.mockReset().mockResolvedValue(undefined);
+  getBlockingTasks.mockReset().mockResolvedValue([]);
+  linkBlockedBy.mockReset().mockResolvedValue(undefined);
+  unlinkBlockedBy.mockReset().mockResolvedValue(undefined);
+  deleteAttachment.mockReset().mockResolvedValue({ attachments: [] });
+  addAttachment.mockReset().mockResolvedValue({ attachments: [{ key: 'att:1', filename: 'notes.txt', size: 12, content_type: 'text/plain', added_at: '2026-08-26T00:00:00.000Z' }] });
 });
 
 afterEach(() => cleanup());
@@ -108,7 +134,11 @@ describe('CardDetail save logic (A9)', () => {
     await fireEvent.input(titleInput, { target: { value: 'Updated title' } });
     await fireEvent.click(getByText('Save'));
 
-    expect(updateTask).toHaveBeenCalledTimes(1);
+    // save() now flushes attachments/related/blocked-by before the main
+    // updateTask call (all batched into Save, not immediate-write anymore),
+    // so a real Save takes a few more microtask hops than fireEvent.click's
+    // own implicit tick() covers.
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(1));
     const [id, changes] = updateTask.mock.calls[0];
     expect(id).toBe('task:1');
     expect(changes.title).toBe('Updated title');
@@ -117,15 +147,18 @@ describe('CardDetail save logic (A9)', () => {
   it('reloads tasks after a successful save', async () => {
     const { getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
     await fireEvent.click(getByText('Save'));
-    expect(reloadTasks).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(reloadTasks).toHaveBeenCalledTimes(1));
   });
 
-  it('shows an error and does not reload if the save fails', async () => {
+  it('shows an error and keeps the card open if the save fails', async () => {
     updateTask.mockRejectedValueOnce(new Error('network down'));
     const { getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
     await fireEvent.click(getByText('Save'));
-    expect(showError).toHaveBeenCalledTimes(1);
-    expect(reloadTasks).not.toHaveBeenCalled();
+    await waitFor(() => expect(showError).toHaveBeenCalledTimes(1));
+    // Still mounted with its Save button -- a failed save (unlike a
+    // successful one) must not requestClose(), so the user can retry
+    // without losing whatever else they'd typed.
+    expect(getByText('Save')).toBeTruthy();
   });
 
   it('sets due_date via the "Today" quick-shortcut and saves it as a bare date string', async () => {
@@ -139,6 +172,7 @@ describe('CardDetail save logic (A9)', () => {
     await fireEvent.click(todayShortcut);
     await fireEvent.click(getByText('Save'));
 
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(1));
     const [, changes] = updateTask.mock.calls[0];
     const expected = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -198,8 +232,109 @@ describe('CardDetail save logic (A9)', () => {
     await fireEvent.click(checkbox);
     await fireEvent.click(getByText('Save'));
 
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(1));
     const [, changes] = updateTask.mock.calls[0];
     expect(changes.checklist?.[0].done).toBe(true);
+  });
+});
+
+function openExtraBlock(container: HTMLElement, label: string) {
+  return fireEvent.click(
+    [...container.querySelectorAll('.extra-block-toggle')].find(b => (b.textContent ?? '').includes(label)) as HTMLButtonElement,
+  );
+}
+
+describe('CardDetail batches related/blocked-by/attachments into Save (A2)', () => {
+  it('does not link a related task until Save, then links it', async () => {
+    const other = mkTask({ _id: 'task:2', title: 'Other task' });
+    searchTasksForLinking.mockResolvedValue([other]);
+    const { container, getByText, getByPlaceholderText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await openExtraBlock(container, 'Related');
+    await fireEvent.input(getByPlaceholderText('Link another task…'), { target: { value: 'Other' } });
+    await waitFor(() => expect(getByText('Other task')).toBeTruthy());
+    await fireEvent.mouseDown(getByText('Other task'));
+
+    // Picking a suggestion only edits the local list -- no write yet.
+    expect(linkRelatedTask).not.toHaveBeenCalled();
+
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(linkRelatedTask).toHaveBeenCalledWith('task:1', 'task:2'));
+  });
+
+  it('does not unlink a related task until Save, then unlinks it', async () => {
+    const other = mkTask({ _id: 'task:2', title: 'Other task' });
+    getRelatedTasks.mockResolvedValue([other]);
+    const { container, getByText, getByLabelText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await openExtraBlock(container, 'Related');
+    await waitFor(() => expect(getByText('Other task')).toBeTruthy());
+    await fireEvent.click(getByLabelText('Remove link'));
+
+    expect(unlinkRelatedTask).not.toHaveBeenCalled();
+
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(unlinkRelatedTask).toHaveBeenCalledWith('task:1', 'task:2'));
+  });
+
+  it('rolls back a blocked-by link that turns out to be a cycle at Save time', async () => {
+    const blocker = mkTask({ _id: 'task:2', title: 'Blocker task' });
+    searchTasksForLinking.mockResolvedValue([blocker]);
+    linkBlockedBy.mockRejectedValue(new Error('circular dependency'));
+    const { container, getByText, getByPlaceholderText, queryByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await openExtraBlock(container, 'Blocked by');
+    await fireEvent.input(getByPlaceholderText("This task can't start until…"), { target: { value: 'Blocker' } });
+    await waitFor(() => expect(getByText('Blocker task')).toBeTruthy());
+    await fireEvent.mouseDown(getByText('Blocker task'));
+
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(showError).toHaveBeenCalled());
+    expect(String(showError.mock.calls[0][0])).toContain('already block each other');
+    // The invalid link doesn't linger in the list looking like it worked.
+    expect(queryByText('Blocker task')).toBeNull();
+  });
+
+  it('does not attach a picked file until Save, then attaches it', async () => {
+    const { container, getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await openExtraBlock(container, 'Attachments');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'notes.txt', { type: 'text/plain' })], configurable: true });
+    await fireEvent.change(input);
+
+    await waitFor(() => expect(container.textContent).toContain('notes.txt'));
+    expect(addAttachment).not.toHaveBeenCalled();
+
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(addAttachment).toHaveBeenCalledWith('task:1', expect.objectContaining({ filename: 'notes.txt' })));
+  });
+
+  it('Cancel discards a picked-but-unsaved attachment, a related pick, and a removed link', async () => {
+    const other = mkTask({ _id: 'task:2', title: 'Other task' });
+    getRelatedTasks.mockResolvedValue([other]);
+    searchTasksForLinking.mockResolvedValue([]);
+    const { container, getByText, getByLabelText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+
+    await fireEvent.click(container.querySelector('.extras-toggle') as HTMLButtonElement);
+    await openExtraBlock(container, 'Related');
+    await waitFor(() => expect(getByText('Other task')).toBeTruthy());
+    await fireEvent.click(getByLabelText('Remove link'));
+    await openExtraBlock(container, 'Attachments');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'notes.txt', { type: 'text/plain' })], configurable: true });
+    await fireEvent.change(input);
+    await waitFor(() => expect(container.textContent).toContain('notes.txt'));
+
+    await fireEvent.click(getByText('Cancel'));
+
+    expect(unlinkRelatedTask).not.toHaveBeenCalled();
+    expect(addAttachment).not.toHaveBeenCalled();
+    expect(updateTask).not.toHaveBeenCalled();
   });
 });
 

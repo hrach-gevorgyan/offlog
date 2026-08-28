@@ -8,7 +8,6 @@
   export let relatedTasks: TaskDoc[];
   export let relatedInput: string;
   export let relatedSuggestions: TaskDoc[];
-  export let relatedBusy: boolean;
   export let projectNameFor: (t: TaskDoc) => string;
   export let addRelated: (otherId: string) => void;
   export let removeRelated: (otherId: string) => void;
@@ -33,14 +32,13 @@
                       <button type="button" class="related-title related-title-link" on:click={() => dispatch('openRelated', rt._id!)}>{rt.title}</button>
                     {/if}
                     <span class="related-proj">{projectNameFor(rt)}</span>
-                    <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} disabled={relatedBusy} aria-label="Remove link">×</button>
+                    <button type="button" class="checklist-remove" on:click={() => removeRelated(rt._id!)} aria-label="Remove link">×</button>
                   </div>
                 {/each}
                 <input
                   class="checklist-input"
                   bind:value={relatedInput}
                   placeholder="Link another task…"
-                  disabled={relatedBusy}
                 />
                 {#if relatedSuggestions.length}
                   <div class="tag-suggestions">

@@ -1392,6 +1392,7 @@
           <strong>{importPreview.byType.task}</strong> task{importPreview.byType.task === 1 ? '' : 's'}
           {#if importPreview.toSkip > 0}— <strong>{importPreview.toSkip}</strong> unrecognized entr{importPreview.toSkip === 1 ? 'y' : 'ies'} will be skipped{/if}.
           Anything matching something you already have will be updated in place, not duplicated.
+          This isn't a full revert — anything you've created, changed or deleted since this backup was taken stays exactly as it is now.
         </p>
       </div>
       <div class="mini-modal-actions">

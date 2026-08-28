@@ -121,10 +121,25 @@
     else await loadPicker();
   }
 
+  // The lock is date-stamped and loadFocusLock() already discards a stale
+  // one, but nothing re-invoked it on the clock -- refresh() only fired on
+  // mount and task mutations, so a tray-resident desktop session left open
+  // past midnight kept showing yesterday's lock as "Today's Focus" until an
+  // unrelated write happened to trigger a reload. Same fix as AgendaView's
+  // own day-rollover timer.
+  const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
   onMount(() => {
     refresh();
     const unsub = subscribe(() => refresh());
-    return unsub;
+    const dayTimer = setInterval(refresh, DAY_ROLLOVER_CHECK_MS);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      unsub();
+      clearInterval(dayTimer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   });
 
   function toggleSelect(id: string) {

@@ -2,7 +2,7 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import { fade } from 'svelte/transition';
   import { scrimIn, scrimOut, dialogIn, dialogOut, exitMs } from './motion';
-  import { getDeviceName, setDeviceName, isNativePlatform, getSyncUrl, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h } from '../config';
+  import { getDeviceName, setDeviceName, isNativePlatform, isTauri, getSyncUrl, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h } from '../config';
   import { getThemeMode, setThemeMode, type ThemeMode } from './theme';
   import { permissionState, requestPermission } from './notifications';
   import { trapFocus } from './focusTrap';
@@ -153,7 +153,13 @@
       <div class="pref-row">
         <span class="pref-label-group">
           <span class="pref-label">Notifications</span>
-          <span class="pref-sublabel">Needed for reminders to fire</span>
+          <span class="pref-sublabel">
+            {#if $permissionState === 'denied'}
+              Blocked — allow them for Offlog in {isTauri() ? 'Windows Settings → Notifications' : 'your browser/system settings'}, then tap Enable to re-check
+            {:else}
+              Needed for reminders to fire
+            {/if}
+          </span>
         </span>
         <button class="notif-btn" on:click={() => requestPermission()}>Enable</button>
       </div>

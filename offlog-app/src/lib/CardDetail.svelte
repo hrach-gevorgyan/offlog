@@ -4,7 +4,7 @@
   import { scrimIn, scrimOut, centredIn, centredOut, popIn, popOut, revealIn, revealOut, exitMs } from './motion';
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK, getTagColorOverrides, ensureFreshTagColor } from './db';
-  import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension } from './attachments';
+  import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, attachmentMimeType } from './attachments';
   import { resolveTagColor } from './tagColors';
   import { PRIORITY_COLOR } from './constants';
   import { reloadTasks, showError, modalOpen, projects } from './store';
@@ -23,7 +23,7 @@
   import BlockedByBlock from './carddetail/BlockedByBlock.svelte';
   import AttachmentsBlock from './carddetail/AttachmentsBlock.svelte';
   import NotesBlock from './carddetail/NotesBlock.svelte';
-  import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, downscaleImage, openAttachmentFile } from './carddetail/helpers';
+  import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, base64ToBlob, downscaleImage, openAttachmentFile } from './carddetail/helpers';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -165,31 +165,32 @@
   let saving = false;
   let showHistory = false;
 
-  // Task linking, non-directional "related to" only. Unlike
-  // Tags/Checklist above, this is immediate-write, not batched into
-  // save() — a link can live on either of two different task docs
-  // (db.ts's linkRelatedTask()/unlinkRelatedTask()), so it doesn't fit
-  // the "collect locally, write this one doc on Save" pattern the rest
-  // of this form uses.
+  // Task linking, non-directional "related to" only. Batched into save()
+  // like every other field on this card -- add/remove just edit this local
+  // list; the diff against originalRelatedIds is replayed as real
+  // linkRelatedTask()/unlinkRelatedTask() calls when Save is actually
+  // clicked, so closing the card any other way discards it same as a tag.
   let relatedTasks: TaskDoc[] = [];
   let relatedInput = '';
   let relatedSuggestions: TaskDoc[] = [];
-  let relatedBusy = false;
+  let originalRelatedIds = new Set<string>();
 
   async function loadRelatedTasks() {
     relatedTasks = await getRelatedTasks(task._id!);
+    originalRelatedIds = new Set(relatedTasks.map(t => t._id!));
   }
 
-  // "Blocked by" — same immediate-write pattern as Related above, kept as
-  // its own separate block/field rather than folded into Related, which
-  // stays non-directional and dependency-free.
+  // "Blocked by" — same batched pattern as Related above, kept as its own
+  // separate block/field rather than folded into Related, which stays
+  // non-directional and dependency-free.
   let blockingTasks: TaskDoc[] = [];
   let blockedByInput = '';
   let blockedBySuggestions: TaskDoc[] = [];
-  let blockedByBusy = false;
+  let originalBlockedByIds = new Set<string>();
 
   async function loadBlockingTasks() {
     blockingTasks = await getBlockingTasks(task._id!);
+    originalBlockedByIds = new Set(blockingTasks.map(t => t._id!));
   }
 
   $: lastColByProject = Object.fromEntries($projects.map(p => [p._id, p.columns.at(-1)?.id]));
@@ -348,67 +349,97 @@
     return $projects.find(p => p._id === t.project_id)?.name ?? '—';
   }
 
-  async function addRelated(otherId: string) {
+  // These four just edit the local list -- see relatedTasks' own comment.
+  // The suggestion is already a full TaskDoc (searchTasksForLinking()'s
+  // result), so no round-trip through the database is needed to display it.
+  function addRelated(otherId: string) {
+    const found = relatedSuggestions.find(s => s._id === otherId);
     relatedInput = '';
     relatedSuggestions = [];
-    relatedBusy = true;
-    try {
-      await linkRelatedTask(task._id!, otherId);
-      await loadRelatedTasks();
-    } catch {
-      showError('Could not link that task. Please try again.');
-    } finally {
-      relatedBusy = false;
-    }
+    if (!found || relatedTasks.some(t => t._id === otherId)) return;
+    relatedTasks = [...relatedTasks, found];
   }
 
-  async function removeRelated(otherId: string) {
-    relatedBusy = true;
-    try {
-      await unlinkRelatedTask(task._id!, otherId);
-      await loadRelatedTasks();
-    } catch {
-      showError('Could not remove that link. Please try again.');
-    } finally {
-      relatedBusy = false;
-    }
+  function removeRelated(otherId: string) {
+    relatedTasks = relatedTasks.filter(t => t._id !== otherId);
   }
 
-  async function addBlockedBy(otherId: string) {
+  function addBlockedBy(otherId: string) {
+    const found = blockedBySuggestions.find(s => s._id === otherId);
     blockedByInput = '';
     blockedBySuggestions = [];
-    blockedByBusy = true;
-    try {
-      await linkBlockedBy(task._id!, otherId);
-      await loadBlockingTasks();
-    } catch (e) {
-      showError(e instanceof Error && e.message === 'circular dependency'
-        ? "These two tasks already block each other, so this link isn't allowed."
-        : 'Could not link that task. Please try again.');
-    } finally {
-      blockedByBusy = false;
-    }
+    if (!found || blockingTasks.some(t => t._id === otherId)) return;
+    blockingTasks = [...blockingTasks, found];
   }
 
-  async function removeBlockedBy(otherId: string) {
-    blockedByBusy = true;
-    try {
-      await unlinkBlockedBy(task._id!, otherId);
-      await loadBlockingTasks();
-    } catch {
-      showError('Could not remove that link. Please try again.');
-    } finally {
-      blockedByBusy = false;
-    }
+  function removeBlockedBy(otherId: string) {
+    blockingTasks = blockingTasks.filter(t => t._id !== otherId);
   }
 
-  // File attachments. Immediate-write like Related above: attaching a
-  // file is its own discrete action, not part of the "collect locally,
-  // write on Save" pattern the rest of this form uses.
-  let attachments: TaskAttachment[] = [...(task.attachments ?? [])];
+  // Replays the relatedTasks/blockingTasks diffs as real link/unlink calls
+  // on Save, in place -- succeeded items are removed from the diff so a
+  // second Save (after fixing an error below) doesn't redo them. A blocked-by
+  // cycle is only ever caught here, not at add time (see addBlockedBy's own
+  // comment): the invalid link is rolled back out of the local list so it
+  // doesn't sit there looking like it worked when it never will.
+  async function flushRelated(): Promise<string[]> {
+    const errors: string[] = [];
+    const currentIds = new Set(relatedTasks.map(t => t._id!));
+    for (const id of [...originalRelatedIds]) {
+      if (currentIds.has(id)) continue;
+      try { await unlinkRelatedTask(task._id!, id); originalRelatedIds.delete(id); }
+      catch { errors.push('Could not remove a related-task link. Please try again.'); }
+    }
+    for (const id of currentIds) {
+      if (originalRelatedIds.has(id)) continue;
+      try { await linkRelatedTask(task._id!, id); originalRelatedIds.add(id); }
+      catch { errors.push('Could not link a related task. Please try again.'); }
+    }
+    return errors;
+  }
+
+  async function flushBlockedBy(): Promise<string[]> {
+    const errors: string[] = [];
+    const currentIds = new Set(blockingTasks.map(t => t._id!));
+    for (const id of [...originalBlockedByIds]) {
+      if (currentIds.has(id)) continue;
+      try { await unlinkBlockedBy(task._id!, id); originalBlockedByIds.delete(id); }
+      catch { errors.push('Could not remove a dependency. Please try again.'); }
+    }
+    for (const id of currentIds) {
+      if (originalBlockedByIds.has(id)) continue;
+      try {
+        await linkBlockedBy(task._id!, id);
+        originalBlockedByIds.add(id);
+      } catch (e) {
+        const name = blockingTasks.find(t => t._id === id)?.title ?? 'that task';
+        errors.push(e instanceof Error && e.message === 'circular dependency'
+          ? `Can't be blocked by "${name}" — these two tasks already block each other.`
+          : `Could not link "${name}" as a blocker. Please try again.`);
+        blockingTasks = blockingTasks.filter(t => t._id !== id);
+      }
+    }
+    return errors;
+  }
+
+  // File attachments. Batched into save() like every other field -- a
+  // pending attachment carries its own base64 payload locally (already
+  // downscaled/encoded by attachOneFile below) until Save actually writes
+  // it, keyed by a temporary "pending:N" id that doubles as the #each key
+  // AttachmentsBlock uses and what removeAttachment() matches on.
+  interface PendingAttachment { key: string; filename: string; content_type: string; size: number; base64Data: string }
+  let savedAttachments: TaskAttachment[] = [...(task.attachments ?? [])];
+  let removedAttachmentKeys = new Set<string>();
+  let pendingAttachments: PendingAttachment[] = [];
+  let pendingAttachmentSeq = 0;
   let attachmentBusy = false;
   let attachmentError = '';
   let thumbnailUrls: Record<string, string> = {};
+
+  $: attachments = [
+    ...savedAttachments.filter(a => !removedAttachmentKeys.has(a.key)),
+    ...pendingAttachments.map(p => ({ key: p.key, filename: p.filename, content_type: p.content_type, size: p.size, added_at: '' } as TaskAttachment)),
+  ];
 
   // Returns why the file could not be attached, or null on success. It must
   // NOT write attachmentError itself: picking several files at once runs this
@@ -432,19 +463,16 @@
       if (out.size > ATTACHMENT_MAX_BYTES) {
         return `"${file.name}" — too large (max ${ATTACHMENT_MAX_BYTES / (1024 * 1024)}MB).`;
       }
-      const result = await addAttachment(task._id!, out);
-      attachments = result.attachments ?? [];
-      await ensureThumbnails();
+      const key = `pending:${pendingAttachmentSeq++}`;
+      const content_type = attachmentMimeType(out.filename);
+      pendingAttachments = [...pendingAttachments, { key, filename: out.filename, content_type, size: out.size, base64Data: out.base64Data }];
+      if (isAttachmentImage(out.filename)) {
+        thumbnailUrls[key] = URL.createObjectURL(base64ToBlob(out.base64Data, content_type));
+        thumbnailUrls = thumbnailUrls;
+      }
       return null;
-    } catch (e) {
-      // A generic "try again" is actively wrong advice when storage is
-      // genuinely full -- the retry fails identically. IndexedDB (via
-      // PouchDB) surfaces this as a QuotaExceededError, but not always
-      // with that exact `.name` once wrapped, so the message is checked too.
-      const isQuota = e instanceof Error && (e.name === 'QuotaExceededError' || /quota/i.test(e.message));
-      return isQuota
-        ? `"${file.name}" — your device is out of storage space. Free some up (see Settings → Data) and try again.`
-        : `"${file.name}" — could not be attached.`;
+    } catch {
+      return `"${file.name}" — could not be attached.`;
     }
   }
 
@@ -475,29 +503,25 @@
       : `Attached ${attached} of ${files.length}. ${failures.join(' ')}`;
   }
 
-  async function removeAttachment(key: string) {
-    // The only irreversible delete on this card. A task goes to Recycle and
-    // an undo toast follows it; the bytes behind an attachment are gone the
-    // moment this runs, so it asks first like every other destructive action
-    // in the app.
-    const name = attachments.find(a => a.key === key)?.filename ?? 'this file';
-    if (!(await confirmAction(`Remove "${name}"? The file is deleted permanently — this one isn't kept in Recycle.`,
-      { danger: true, confirmLabel: 'Remove' }))) return;
-    attachmentBusy = true;
-    try {
-      const result = await deleteAttachment(task._id!, key);
-      attachments = result.attachments ?? [];
-      if (thumbnailUrls[key]) { URL.revokeObjectURL(thumbnailUrls[key]); delete thumbnailUrls[key]; thumbnailUrls = thumbnailUrls; }
-    } catch {
-      showError('Could not remove that attachment. Please try again.');
-    } finally {
-      attachmentBusy = false;
+  // Nothing is written until Save -- a pending attachment is just dropped
+  // from the local list, and an already-saved one is staged for removal
+  // the same way a removed tag is, no confirmation needed twice (Save
+  // itself is the point of no return now).
+  function removeAttachment(key: string) {
+    if (key.startsWith('pending:')) {
+      pendingAttachments = pendingAttachments.filter(p => p.key !== key);
+    } else {
+      removedAttachmentKeys = new Set([...removedAttachmentKeys, key]);
     }
+    if (thumbnailUrls[key]) { URL.revokeObjectURL(thumbnailUrls[key]); delete thumbnailUrls[key]; thumbnailUrls = thumbnailUrls; }
   }
 
+  // Only ever needed for already-saved attachments -- a pending one gets its
+  // thumbnail set directly in attachOneFile from the base64 payload already
+  // in memory, since getAttachmentBlob() has nothing to fetch until Save.
   async function ensureThumbnails() {
-    for (const a of attachments) {
-      if (thumbnailUrls[a.key] || !isAttachmentImage(a.filename)) continue;
+    for (const a of savedAttachments) {
+      if (removedAttachmentKeys.has(a.key) || thumbnailUrls[a.key] || !isAttachmentImage(a.filename)) continue;
       try {
         const blob = await getAttachmentBlob(task._id!, a.key);
         thumbnailUrls[a.key] = URL.createObjectURL(blob as Blob);
@@ -508,6 +532,11 @@
 
   async function openAttachment(key: string, filename: string) {
     try {
+      if (key.startsWith('pending:')) {
+        const p = pendingAttachments.find(x => x.key === key);
+        if (p) await openAttachmentFile(base64ToBlob(p.base64Data, p.content_type), filename);
+        return;
+      }
       const blob = await getAttachmentBlob(task._id!, key);
       await openAttachmentFile(blob as Blob, filename);
     } catch {
@@ -515,8 +544,45 @@
     }
   }
 
+  // Same replay-the-diff shape as flushRelated/flushBlockedBy: succeeded
+  // items are removed from the pending/removed sets so a retry Save (after
+  // fixing whatever else failed) doesn't redo them.
+  async function flushAttachments(): Promise<string[]> {
+    const errors: string[] = [];
+    for (const key of [...removedAttachmentKeys]) {
+      try {
+        await deleteAttachment(task._id!, key);
+        savedAttachments = savedAttachments.filter(a => a.key !== key);
+        removedAttachmentKeys.delete(key);
+      } catch {
+        errors.push('Could not remove an attachment. Please try again.');
+      }
+    }
+    for (const p of [...pendingAttachments]) {
+      try {
+        await addAttachment(task._id!, { filename: p.filename, base64Data: p.base64Data, size: p.size });
+        pendingAttachments = pendingAttachments.filter(x => x.key !== p.key);
+      } catch (e) {
+        // A generic "try again" is actively wrong advice when storage is
+        // genuinely full -- the retry fails identically. IndexedDB (via
+        // PouchDB) surfaces this as a QuotaExceededError, but not always
+        // with that exact `.name` once wrapped, so the message is checked too.
+        const isQuota = e instanceof Error && (e.name === 'QuotaExceededError' || /quota/i.test(e.message));
+        errors.push(isQuota
+          ? `"${p.filename}" — your device is out of storage space. Free some up (see Settings → Data) and try again.`
+          : `"${p.filename}" — could not be attached.`);
+      }
+    }
+    return errors;
+  }
+
   async function save() {
     saving = true;
+    const errors: string[] = [
+      ...await flushAttachments(),
+      ...await flushRelated(),
+      ...await flushBlockedBy(),
+    ];
     try {
       await updateTask(task._id!, {
         title, body,
@@ -528,13 +594,16 @@
         recurrenceInterval: recurrence ? recurrenceInterval : undefined,
         recurrenceWeekdaysOnly: recurrence === 'daily' ? recurrenceWeekdaysOnly : undefined,
       });
-      await reloadTasks();
-      requestClose();
     } catch (e) {
-      showError('Failed to save task. Please try again.');
-    } finally {
-      saving = false;
+      errors.push('Failed to save the rest of the task. Please try again.');
     }
+    await reloadTasks();
+    saving = false;
+    if (errors.length) {
+      showError(errors.length === 1 ? errors[0] : `${errors.length} things didn't save: ${errors.join(' ')}`);
+      return; // stay open so the user can see and fix what failed
+    }
+    requestClose();
   }
 
   async function softDelete() {
@@ -705,13 +774,13 @@
 
           <RelatedBlock
             bind:showRelatedBlock {relatedTasks} bind:relatedInput {relatedSuggestions}
-            {relatedBusy} {projectNameFor} {addRelated} {removeRelated}
+            {projectNameFor} {addRelated} {removeRelated}
             on:openRelated={(e) => dispatch('openRelated', e.detail)}
           />
 
           <BlockedByBlock
             bind:showBlockedByBlock {blockingTasks} {unresolvedBlockers} {lastColByProject}
-            bind:blockedByInput {blockedBySuggestions} {blockedByBusy} {projectNameFor}
+            bind:blockedByInput {blockedBySuggestions} {projectNameFor}
             {addBlockedBy} {removeBlockedBy}
             on:openRelated={(e) => dispatch('openRelated', e.detail)}
           />

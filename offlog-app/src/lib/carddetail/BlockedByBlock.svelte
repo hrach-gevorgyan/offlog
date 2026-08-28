@@ -11,7 +11,6 @@
   export let lastColByProject: Record<string, string | undefined>;
   export let blockedByInput: string;
   export let blockedBySuggestions: TaskDoc[];
-  export let blockedByBusy: boolean;
   export let projectNameFor: (t: TaskDoc) => string;
   export let addBlockedBy: (otherId: string) => void;
   export let removeBlockedBy: (otherId: string) => void;
@@ -38,14 +37,13 @@
                     {/if}
                     <span class="blocked-status" class:blocked-status-done={resolved}>{resolved ? 'Done' : 'Not done'}</span>
                     <span class="related-proj">{projectNameFor(bt)}</span>
-                    <button type="button" class="checklist-remove" on:click={() => removeBlockedBy(bt._id!)} disabled={blockedByBusy} aria-label="Remove dependency">×</button>
+                    <button type="button" class="checklist-remove" on:click={() => removeBlockedBy(bt._id!)} aria-label="Remove dependency">×</button>
                   </div>
                 {/each}
                 <input
                   class="checklist-input"
                   bind:value={blockedByInput}
                   placeholder="This task can't start until…"
-                  disabled={blockedByBusy}
                 />
                 {#if blockedBySuggestions.length}
                   <div class="tag-suggestions">
