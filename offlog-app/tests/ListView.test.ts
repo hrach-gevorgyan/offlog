@@ -7,11 +7,12 @@ import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 // mark-done/undo decision logic and the arguments it writes, not a real
 // database round-trip (db.test.ts covers that).
 const updateTask = vi.fn().mockResolvedValue(undefined);
+const getCustomFieldDefs = vi.fn().mockResolvedValue([]);
 vi.mock('../src/lib/db', () => ({
   updateTask: (...args: unknown[]) => updateTask(...args),
   unarchiveTask: vi.fn().mockResolvedValue(undefined),
   getArchivedTasksForProject: vi.fn().mockResolvedValue([]),
-  getCustomFieldDefs: vi.fn().mockResolvedValue([]),
+  getCustomFieldDefs: (...args: unknown[]) => getCustomFieldDefs(...args),
   getTaskById: vi.fn().mockResolvedValue(null),
   // reached only when a row is opened into CardDetail
   getAllTags: vi.fn().mockResolvedValue([]),
@@ -119,6 +120,16 @@ describe('ListView mark done', () => {
 
     expect(showError).toHaveBeenCalled();
     expect(undoButton(container)).toBeNull();
+  });
+});
+
+describe('ListView mount', () => {
+  it('shows an error instead of crashing if loading custom fields fails', async () => {
+    getCustomFieldDefs.mockRejectedValueOnce(new Error('db unreachable'));
+    render(ListView, { project: mkProject(), tasks: [mkTask()] });
+
+    await waitFor(() => expect(showError).toHaveBeenCalled());
+    expect(String(showError.mock.calls[0][0])).toMatch(/custom fields/i);
   });
 });
 

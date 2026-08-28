@@ -212,7 +212,11 @@
     // Custom fields are global (not per-project) — fetched once here so
     // their ids are known before reconciling saved column state against
     // them. New fields default OFF (opt-in), same as created/updated/source.
-    customFields = await getCustomFieldDefs();
+    try {
+      customFields = await getCustomFieldDefs();
+    } catch {
+      showError('Failed to load custom fields.');
+    }
     const knownKeys = [...DEFAULT_ORDER, ...customFields.map(f => f.id)];
     try {
       const saved = JSON.parse(localStorage.getItem(COLS_KEY) ?? 'null');

@@ -170,8 +170,8 @@ point. Bugs found in real use get fixed, dependencies get updated,
 security reports get answered.
 
 Every release runs a zero-warning build, a clean type check and
-**<!--DYN:test_count-->639<!--/DYN--> tests** through CI. It has been
-through <!--DYN:maintenance_passes-->25<!--/DYN--> structured
+**<!--DYN:test_count-->645<!--/DYN--> tests** through CI. It has been
+through <!--DYN:maintenance_passes-->26<!--/DYN--> structured
 maintenance audits against a written checklist of blind spots earned
 from real shipped bugs — [what each one found](docs/archive/maintenance.md).
 

@@ -250,8 +250,12 @@
 
   onMount(async () => {
     modalOpen.set(true);
-    [allTags, projectTags, customFields] = await Promise.all([getAllTags(), getAllTags(project._id), getCustomFieldDefs()]);
-    await Promise.all([loadRelatedTasks(), loadBlockingTasks()]);
+    try {
+      [allTags, projectTags, customFields] = await Promise.all([getAllTags(), getAllTags(project._id), getCustomFieldDefs()]);
+      await Promise.all([loadRelatedTasks(), loadBlockingTasks()]);
+    } catch {
+      showError('Failed to load task details. Please try again.');
+    }
   });
   onDestroy(() => modalOpen.set(false));
 

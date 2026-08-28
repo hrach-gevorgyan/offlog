@@ -349,10 +349,15 @@
   // as revealTauriWindow above.
   async function listenForTrayEvents() {
     if (!isTauri()) return;
-    const { listen } = await import('@tauri-apps/api/event');
-    await listen('show-dashboard', () => goToDashboard());
-    await listen('quick-capture', () => openQuickAdd());
-    await listen('open-settings', () => sidebarRef?.openSettings());
+    try {
+      const { listen } = await import('@tauri-apps/api/event');
+      await listen('show-dashboard', () => goToDashboard());
+      await listen('quick-capture', () => openQuickAdd());
+      await listen('open-settings', () => sidebarRef?.openSettings());
+    } catch {
+      // Tray menu items just won't do anything -- not worth an error toast
+      // for a background listener setup the user never directly triggered.
+    }
   }
 
   onMount(async () => {

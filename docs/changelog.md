@@ -17,6 +17,32 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.10.4] — 2026-08-29
+
+Maintenance pass 26, pulled forward by the just-shipped v6.10.3 crash: its
+root cause (`each_key_duplicate`) survived two earlier fix releases, so
+this pass's recurring-blind-spots sweep specifically hunted for the same
+bug shape elsewhere — an unguarded async call in `onMount`/a timer — and
+for the "flag set after an await" race that caused the mobile device-scan
+UI flash reported separately this session.
+
+### Fixed
+- `discovery.ts`'s `scanForHosts()` awaited a dynamic
+  `import('capacitor-zeroconf')` before setting `isScanning`/clearing
+  `discoveredHosts` — a real await point even on a warm module cache, so
+  Settings' "scan found nothing" state was briefly true right after
+  tapping "Find my computer," flashing that warning before the scan had
+  even started. Both stores are now set synchronously, before the import.
+- Five more unguarded async call sites found by this pass's sweep, same
+  shape as v6.10.3's root cause: `CardDetail.svelte`'s `onMount` (the
+  app's most-used modal); `SettingsPanel.svelte`'s `startPcPairPoll()`,
+  which calls `getDeviceLastSeen()` unguarded every 3s — the very
+  function v6.10.3 fixed, from a second call site; `App.svelte`'s
+  `listenForTrayEvents()`; `ListView.svelte`'s `onMount`; and
+  `TimeTravelView.svelte`'s `load()`, which additionally left `loading`
+  stuck `true` forever after any failed load, silently blocking every
+  load after the first failure.
+
 ## [6.10.3] — 2026-08-29
 
 The real fix for the Settings → Sync crash that persisted through
@@ -549,40 +575,9 @@ measuring nothing.
 
 ---
 
-## [6.5.1] — 2026-08-24
-
-Tooling and documentation only. One user-visible string corrected; the app
-itself is unchanged.
-
-### Fixed
-- The Android widget picker described the widget as offering "your agenda
-  brief", which it has never rendered — it is three buttons and no data.
-- `styles.xml` documented the splash mark at 92% of canvas;
-  `generate-splash.cjs` has used 78% since the value was corrected.
-- The cleartext-HTTP / no-TLS-on-LAN tradeoff was recorded only in a
-  `QUESTIONS.md` that no longer exists, leaving an accepted security
-  decision with no rationale anywhere. Now a decisions.md entry.
-- 37 references across docs, tests, scripts and workflow config still
-  pointed at pre-rename uppercase filenames or at roadmap IDs that had
-  moved to the archive.
-
-### Changed
-- **Versioning is enforced, not remembered.** MAJOR now means only that an
-  older install can no longer read, sync or restore; features are never
-  MAJOR. `scripts/version.js` writes all three version sources at once and
-  derives `versionCode` (`MAJOR*10000 + MINOR*100 + PATCH`); `version:check`
-  runs in CI, and `release.yml` refuses a tag that disagrees with it.
-- CodeQL's Java/Kotlin analysis moved to its own workflow, scoped to
-  Android-affecting paths, compiling rather than assembling, with Gradle
-  cached and the Capacitor plugin modules built in parallel — 4m47s to
-  3m38s. `release.yml` restores the same cache.
-- Dependabot no longer proposes TypeScript 7 over `svelte-check`'s peer
-  range; TypeScript 7 is already in use as `@typescript/native`.
-- Documentation rewritten end to end — 29% smaller, with CLAUDE.md down 56%
-  to invariants and gotchas only.
-
 ---
 
+[6.10.4]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.3...v6.10.4
 [6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
 [6.10.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.1...v6.10.2
 [6.10.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.0...v6.10.1
@@ -592,4 +587,3 @@ itself is unchanged.
 [6.7.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.6.0...v6.7.0
 [6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0
 [6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
-[6.5.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.0...v6.5.1

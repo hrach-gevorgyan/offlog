@@ -1,4 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { get } from 'svelte/store';
+
+vi.mock('capacitor-zeroconf', () => ({
+  ZeroConf: {
+    watch: vi.fn().mockResolvedValue('watch-id'),
+    unwatch: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 // pairWithHost()'s crypto (PBKDF2 + AES-256-GCM via Web Crypto) has to
 // produce output pairing.rs can actually decrypt, and vice versa -- a
@@ -36,7 +44,7 @@ vi.mock('../src/lib/db', () => ({
   syncState: { status: 'idle', error: null, listeners: new Set() },
 }));
 
-import { pairWithHost, type DiscoveredHost } from '../src/lib/discovery';
+import { pairWithHost, scanForHosts, stopScan, isScanning, discoveredHosts, type DiscoveredHost } from '../src/lib/discovery';
 
 const host: DiscoveredHost = { name: 'PC', url: '', uuid: 'test-uuid', address: '127.0.0.1', pairingPort: 5000 };
 
@@ -104,5 +112,35 @@ describe('pairWithHost', () => {
   it('surfaces a friendly message when the host is unreachable, not the raw fetch TypeError', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     await expect(pairWithHost(host, FIXTURE.code)).rejects.toThrow(/couldn.t reach/i);
+  });
+});
+
+describe('scanForHosts', () => {
+  beforeEach(() => {
+    (window as any).Capacitor = { isNativePlatform: () => true };
+  });
+  afterEach(async () => {
+    await stopScan();
+    delete (window as any).Capacitor;
+  });
+
+  // scanForHosts() awaits a dynamic import('capacitor-zeroconf') before it
+  // used to flip isScanning -- a real await point even on a warm module
+  // cache, which left Settings' "scan found nothing" state (scanAttempted
+  // && !isScanning && zero hosts) briefly true right after the button was
+  // pressed. isScanning must already be true the instant the call returns,
+  // before that import has any chance to resolve.
+  it('sets isScanning synchronously, before the dynamic import resolves', () => {
+    discoveredHosts.set([]);
+    const promise = scanForHosts();
+    expect(get(isScanning)).toBe(true);
+    return promise;
+  });
+
+  it('clears any hosts left over from a previous scan', () => {
+    discoveredHosts.set([{ name: 'Stale', url: '', uuid: 'stale', address: '', pairingPort: null }]);
+    const promise = scanForHosts();
+    expect(get(discoveredHosts)).toEqual([]);
+    return promise;
   });
 });

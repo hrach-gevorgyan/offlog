@@ -63,11 +63,16 @@
     if (loading && logs.length > 0) return; // already loading, not the initial mount
     loading = true;
     const scrollTop = bodyEl?.scrollTop ?? 0;
-    const fetched = await getRecentLogs(limit);
-    hasMore = fetched.length === limit; // exactly the cap -> there may be more
-    logs = fetched;
-    loading = false;
-    if (bodyEl) requestAnimationFrame(() => { bodyEl.scrollTop = scrollTop; });
+    try {
+      const fetched = await getRecentLogs(limit);
+      hasMore = fetched.length === limit; // exactly the cap -> there may be more
+      logs = fetched;
+      if (bodyEl) requestAnimationFrame(() => { bodyEl.scrollTop = scrollTop; });
+    } catch {
+      showError('Failed to load history.');
+    } finally {
+      loading = false;
+    }
   }
 
   function loadMore() { limit += PAGE_SIZE; load(); }

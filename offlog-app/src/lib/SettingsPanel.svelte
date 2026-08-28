@@ -552,11 +552,22 @@
   }
   async function startPcPairPoll() {
     stopPcPairPoll();
-    const before = new Set((await getDeviceLastSeen()).map(d => d.device));
+    let before: Set<string>;
+    try {
+      before = new Set((await getDeviceLastSeen()).map(d => d.device));
+    } catch {
+      showError('Failed to check for a connected device.');
+      return;
+    }
     pcPollTimer = setInterval(async () => {
-      const now = await getDeviceLastSeen();
-      const found = now.find(d => !before.has(d.device));
-      if (found) { pcPairedDeviceName = found.device; stopPcPairPoll(); clearPcPairingExpiryTimer(); }
+      try {
+        const now = await getDeviceLastSeen();
+        const found = now.find(d => !before.has(d.device));
+        if (found) { pcPairedDeviceName = found.device; stopPcPairPoll(); clearPcPairingExpiryTimer(); }
+      } catch {
+        // Transient read failure -- next tick tries again rather than
+        // surfacing an error for every missed 3s poll.
+      }
     }, 3000);
   }
   async function generatePcPairingCode() {

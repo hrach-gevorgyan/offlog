@@ -9,6 +9,17 @@ pass 22 and maintenance.md's scoping note.
 
 ---
 
+## 25th run — 2026-08-28
+
+Standard Phase 1 checklist only. `[SAFE]` fixes: dead exports, a
+`windows`-crate comment, a `MaintStatus` naming collision. `[REVIEW]`
+fixes, approved: unguarded notification-permission calls now catch
+internally; two silent reminder-clear swallows got explanatory comments.
+Zero `[RISKY]` findings. `dist`'s main chunk crossed the 500kB
+bundler-warning threshold — code-splitting candidate, not acted on.
+
+---
+
 ## 24th run — 2026-08-26 (after v6.7.0)
 
 Triggered by the pointer's "or on the next bug hit in daily use" clause:

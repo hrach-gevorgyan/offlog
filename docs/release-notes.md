@@ -31,6 +31,16 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.10.4
+
+### In short
+
+A maintenance pass triggered by the last crash fix: swept the app for other spots with the same kind of bug and fixed five of them before they became a problem. Also fixed the phone's "Find my computer" button briefly flashing a "not found" warning before it actually starts searching.
+
+### Fixed
+- The Android/desktop device-search button showed a brief "not found" flash right when you tapped it, before the search had even started.
+- Five other spots in the app that could have crashed or frozen the same way the last Settings bug did, found and fixed before they caused a real problem.
+
 ## v6.10.3
 
 ### In short

@@ -14,11 +14,12 @@ const ts = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h)
 const getRecentLogs = vi.fn().mockResolvedValue([]);
 const getTaskById = vi.fn().mockResolvedValue(null);
 const clearLogs = vi.fn().mockResolvedValue(undefined);
+const subscribe = vi.fn().mockReturnValue(() => {});
 vi.mock('../src/lib/db', () => ({
   getRecentLogs: (...a: unknown[]) => getRecentLogs(...a),
   getTaskById: (...a: unknown[]) => getTaskById(...a),
   clearLogs: (...a: unknown[]) => clearLogs(...a),
-  subscribe: vi.fn().mockReturnValue(() => {}),
+  subscribe: (...a: unknown[]) => subscribe(...a),
   // reached only when an entry is opened into CardDetail
   updateTask: vi.fn().mockResolvedValue(undefined),
   getAllTags: vi.fn().mockResolvedValue([]),
@@ -179,6 +180,30 @@ describe('TimeTravelView day grouping', () => {
 
     expect(container.querySelector('.empty')!.textContent).toContain('Nothing logged yet');
     expect(container.querySelector('.load-more-btn')).toBeNull();
+  });
+});
+
+describe('TimeTravelView load failure', () => {
+  it('shows an error instead of crashing or hanging when the log read fails', async () => {
+    getRecentLogs.mockRejectedValueOnce(new Error('db unreachable'));
+    render(TimeTravelView, { events: {} } as any);
+
+    await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+    expect(String((showError as any).mock.calls[0][0])).toMatch(/history/i);
+  });
+
+  it('does not get stuck refusing to load again after a failed load', async () => {
+    getRecentLogs.mockRejectedValueOnce(new Error('db unreachable'));
+    const { container } = render(TimeTravelView, { events: {} } as any);
+    await vi.waitFor(() => expect(showError).toHaveBeenCalledTimes(1));
+
+    // A second load (the subscribe() change feed firing) must still go
+    // through -- the failed one must not leave `loading` stuck true, which
+    // would silently swallow every load after the first failure.
+    getRecentLogs.mockResolvedValueOnce([mkLog('log:1')]);
+    const onDbChange = subscribe.mock.calls[0][0];
+    onDbChange();
+    await vi.waitFor(() => { if (entries(container).length === 0) throw new Error('still not loaded'); });
   });
 });
 

@@ -15,6 +15,7 @@ const searchTasksForLinking = vi.fn().mockResolvedValue([]);
 const linkRelatedTask = vi.fn().mockResolvedValue(undefined);
 const unlinkRelatedTask = vi.fn().mockResolvedValue(undefined);
 const getBlockingTasks = vi.fn().mockResolvedValue([]);
+const getAllTags = vi.fn().mockResolvedValue([]);
 const linkBlockedBy = vi.fn().mockResolvedValue(undefined);
 const unlinkBlockedBy = vi.fn().mockResolvedValue(undefined);
 const deleteAttachment = vi.fn().mockResolvedValue({ attachments: [] });
@@ -23,7 +24,7 @@ vi.mock('../src/lib/db', () => ({
   deleteTask: (...args: unknown[]) => deleteTask(...args),
   archiveTask: (...args: unknown[]) => archiveTask(...args),
   duplicateTask: (...args: unknown[]) => duplicateTask(...args),
-  getAllTags: vi.fn().mockResolvedValue([]),
+  getAllTags: (...args: unknown[]) => getAllTags(...args),
   getTagColorOverrides: vi.fn().mockResolvedValue({}),
   ensureFreshTagColor: vi.fn().mockResolvedValue(undefined),
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
@@ -112,6 +113,7 @@ beforeEach(() => {
   reloadTasks.mockClear();
   showError.mockClear();
   confirmAction.mockReset();
+  getAllTags.mockReset().mockResolvedValue([]);
   getRelatedTasks.mockReset().mockResolvedValue([]);
   searchTasksForLinking.mockReset().mockResolvedValue([]);
   linkRelatedTask.mockReset().mockResolvedValue(undefined);
@@ -159,6 +161,13 @@ describe('CardDetail save logic (A9)', () => {
     // successful one) must not requestClose(), so the user can retry
     // without losing whatever else they'd typed.
     expect(getByText('Save')).toBeTruthy();
+  });
+
+  it('shows an error instead of crashing if loading tags/fields/related tasks fails on open', async () => {
+    getAllTags.mockRejectedValueOnce(new Error('db unreachable'));
+    render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+    await waitFor(() => expect(showError).toHaveBeenCalledTimes(1));
+    expect(String(showError.mock.calls[0][0])).toMatch(/load/i);
   });
 
   it('sets due_date via the "Today" quick-shortcut and saves it as a bare date string', async () => {

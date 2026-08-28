@@ -45,10 +45,14 @@ function remove(uuid: string) {
 // this is relevant, and a full-time listener would drain battery.
 export async function scanForHosts(): Promise<void> {
   if (!isNative()) return;
-  const { ZeroConf } = await import('capacitor-zeroconf');
-
+  // Set before the dynamic import below, which is a real await point (even
+  // on a warm cache) -- setting these after it left a gap where Settings'
+  // "scan found nothing" state (scanAttempted && !isScanning && zero hosts)
+  // was briefly true, flashing that warning before the scan had even started.
   discoveredHosts.set([]);
   isScanning.set(true);
+
+  const { ZeroConf } = await import('capacitor-zeroconf');
 
   watchId = await ZeroConf.watch({ type: SERVICE_TYPE, domain: DOMAIN }, (result) => {
     const { action, service } = result;
