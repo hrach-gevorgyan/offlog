@@ -71,6 +71,11 @@
     const next = editingName.trim().toLowerCase().replace(/\s+/g, '-');
     editingTag = null;
     if (!next || next === tag) return;
+    // Renaming onto an existing tag merges the two (renameTag's own
+    // behavior) -- that's a wider-blast-radius action than plain delete,
+    // so it needs at least as much confirmation, not less.
+    const target = items.find(i => i.tag === next);
+    if (target && !(await confirmAction(`Merge "${tag}" into "${next}"? All ${target.count} task${target.count === 1 ? '' : 's'} tagged "${tag}" will be retagged "${next}" instead.`, { danger: true, confirmLabel: 'Merge' }))) return;
     try {
       await renameTag(tag, next);
       await reloadTasks();

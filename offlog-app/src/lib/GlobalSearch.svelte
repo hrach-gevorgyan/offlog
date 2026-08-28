@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, tick } from 'svelte';
   import { fade } from 'svelte/transition';
   import { scrimIn, scrimOut, searchIn, searchOut, exitMs } from './motion';
   import { searchAllTasks, type TaskSearchMatch } from './db';
@@ -111,12 +111,24 @@
     else if (results[i - matchingCommands.length]) openResult(results[i - matchingCommands.length]);
   }
 
+  let resultsEl: HTMLDivElement;
+  async function moveSelection(next: number) {
+    selectedIdx = next;
+    await tick();
+    resultsEl?.querySelector('.result-row.selected')?.scrollIntoView({ block: 'nearest' });
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') { requestClose(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, combinedLength - 1); }
-    if (e.key === 'ArrowUp')   { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(Math.min(selectedIdx + 1, combinedLength - 1)); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); moveSelection(Math.max(selectedIdx - 1, 0)); }
     if (e.key === 'Enter' && combinedLength > 0) selectAt(selectedIdx);
   }
+
+  // Referenced by the input's aria-activedescendant so a screen reader
+  // announces which row arrow keys have moved to — role="option" rows alone
+  // only expose aria-selected, which nothing reads without this pointer.
+  $: activeDescendantId = combinedLength > 0 ? `search-option-${selectedIdx}` : undefined;
 
   // r.title is sync-derived, untrusted data (can arrive from another
   // device) — must be HTML-escaped before the <mark> wrap, not after,
@@ -153,6 +165,10 @@
       bind:value={query}
       class="search-input"
       placeholder="Search tasks or run a command…"
+      role="combobox"
+      aria-expanded={combinedLength > 0}
+      aria-controls="search-results-listbox"
+      aria-activedescendant={activeDescendantId}
       on:keydown={onKey}
     />
     {#if query}
@@ -164,13 +180,14 @@
        above, listbox-style — rows themselves are mouse targets only.
        Commands and task results share one combined index (commands first)
        so arrow keys move through both as a single list. -->
-  <div class="results" role="listbox" aria-label="Commands and search results">
+  <div class="results" role="listbox" aria-label="Commands and search results" id="search-results-listbox" bind:this={resultsEl}>
     {#if matchingCommands.length > 0}
       <div class="section-label">Commands</div>
       {#each matchingCommands as c, i (c.id)}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div
           class="result-row"
+          id="search-option-{i}"
           role="option"
           aria-selected={i === selectedIdx}
           tabindex="-1"
@@ -193,6 +210,7 @@
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div
           class="result-row"
+          id="search-option-{i}"
           role="option"
           aria-selected={i === selectedIdx}
           tabindex="-1"

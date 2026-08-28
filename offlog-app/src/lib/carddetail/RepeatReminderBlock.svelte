@@ -5,7 +5,7 @@
   import { requestPermission, permissionState } from '../notifications';
   import CalendarPicker from '../CalendarPicker.svelte';
   import CustomSelect from '../CustomSelect.svelte';
-  import { getDefaultReminderTime } from '../../config';
+  import { getDefaultReminderTime, isTauri } from '../../config';
   import { fmtTime, advanceDate } from '../utils';
 
   export let task: TaskDoc;
@@ -102,6 +102,8 @@
                     <div class="reminder-hint">
                       {#if $permissionState === 'unsupported'}
                         Notifications aren't supported in this browser.
+                      {:else if $permissionState === 'denied'}
+                        Notifications are blocked — allow them for Offlog in {isTauri() ? 'Windows Settings → Notifications' : 'your browser settings'} so this reminder can notify you.
                       {:else}
                         Notifications aren't enabled yet —
                         <button type="button" class="reminder-enable-btn" on:click={() => requestPermission()}>enable them</button>

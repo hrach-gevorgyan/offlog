@@ -244,16 +244,20 @@
 
   // Android hardware/gesture back button: delegate to browser history when
   // there's somewhere to go back to (which is exactly when an overlay
-  // registered via closeOnBack has pushed an entry — see modalStack.ts),
-  // otherwise let the OS handle it normally (minimize the app — the
-  // correct behavior at the true root, unlike falling through to this
-  // when a modal is actually open). @capacitor/app is a no-op import on
-  // web, so this listener only ever fires on native.
+  // registered via closeOnBack has pushed an entry — see modalStack.ts).
+  // The sidebar drawer is checked next, not through that history path
+  // (see closeSidebar()'s own comment on why it stays plain) — dismissing
+  // an open nav drawer with Back is a near-universal platform convention,
+  // so it must not fall through to exiting the app. Only past both does
+  // the OS handle it normally (minimize the app — correct at the true
+  // root). @capacitor/app is a no-op import on web, so this listener only
+  // ever fires on native.
   async function setupBackButton() {
     if (!window.Capacitor?.isNativePlatform?.()) return;
     const { App: CapApp } = await import('@capacitor/app');
     CapApp.addListener('backButton', ({ canGoBack }) => {
       if (canGoBack) window.history.back();
+      else if (sidebarOpen) closeSidebar();
       else CapApp.exitApp();
     });
   }

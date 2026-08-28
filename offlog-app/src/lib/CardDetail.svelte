@@ -383,7 +383,7 @@
       await loadBlockingTasks();
     } catch (e) {
       showError(e instanceof Error && e.message === 'circular dependency'
-        ? 'That would create a circular dependency.'
+        ? "These two tasks already block each other, so this link isn't allowed."
         : 'Could not link that task. Please try again.');
     } finally {
       blockedByBusy = false;
@@ -436,8 +436,15 @@
       attachments = result.attachments ?? [];
       await ensureThumbnails();
       return null;
-    } catch {
-      return `"${file.name}" — could not be attached.`;
+    } catch (e) {
+      // A generic "try again" is actively wrong advice when storage is
+      // genuinely full -- the retry fails identically. IndexedDB (via
+      // PouchDB) surfaces this as a QuotaExceededError, but not always
+      // with that exact `.name` once wrapped, so the message is checked too.
+      const isQuota = e instanceof Error && (e.name === 'QuotaExceededError' || /quota/i.test(e.message));
+      return isQuota
+        ? `"${file.name}" — your device is out of storage space. Free some up (see Settings → Data) and try again.`
+        : `"${file.name}" — could not be attached.`;
     }
   }
 
@@ -1168,7 +1175,7 @@
     font-size: .68rem; color: var(--on-accent); cursor: pointer; padding: 0;
     transition: background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover);
   }
-  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); animation: check-pop .15s cubic-bezier(0.4,0,0.2,1); }
+  .extras-panel :global(.checklist-check.done) { background: var(--accent); border-color: var(--accent); animation: check-pop var(--dur-small) var(--ease-standard); }
   @keyframes check-pop { from { transform: scale(.7); } to { transform: scale(1); } }
   .extras-panel :global(.checklist-text) { flex: 1; font-size: .84rem; color: var(--text); transition: color var(--dur-hover) var(--ease-hover); }
   .extras-panel :global(.checklist-text.done) { color: var(--faint); text-decoration: line-through; }

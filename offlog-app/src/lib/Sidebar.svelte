@@ -428,7 +428,7 @@
   }
 
   async function doDeleteProject(id: string, name: string) {
-    if (!(await confirmAction(`Delete project "${name}" and all its tasks?`, { danger: true, confirmLabel: 'Delete' }))) return;
+    if (!(await confirmAction(`Delete project "${name}" and all its tasks? This can't be undone.`, { danger: true, confirmLabel: 'Delete' }))) return;
     try {
       await deleteProject(id);
       if ($activeProjectId === id) activeProjectId.set('');
@@ -485,6 +485,7 @@
       class="nav-btn"
       class:active={showDashboard}
       title="Dashboard"
+      aria-label="Dashboard"
       on:click={() => { showDashboard = true; showAgenda = false; showFocus = false; activeProjectId.set(''); dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
@@ -500,6 +501,7 @@
       class="nav-btn"
       class:active={showFocus}
       title="Focus"
+      aria-label="Focus"
       on:click={() => { showFocus = true; showDashboard = false; showAgenda = false; activeProjectId.set(''); dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
@@ -514,6 +516,7 @@
       class="nav-btn"
       class:active={showAgenda}
       title="Agenda"
+      aria-label="Agenda"
       on:click={() => { showAgenda = true; showDashboard = false; showFocus = false; activeProjectId.set(''); dispatch('navigate'); }}
     >
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
@@ -540,6 +543,7 @@
           class:active={$activeSpaceId === space._id}
           style="color:{space.color}; background:color-mix(in srgb, {space.color} 18%, transparent)"
           title={space.name}
+          aria-label={space.name}
           on:click={() => expandToSpace(space._id)}
         >
           {@html getSpaceIconSvg(space)}

@@ -203,7 +203,7 @@
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     width: min(320px, 100%);
   }
-  .lock-card.shake { animation: shake .35s ease; }
+  .lock-card.shake { animation: shake var(--dur-large) var(--ease-standard); }
   @keyframes shake {
     10%, 90% { transform: translateX(-2px); }
     20%, 80% { transform: translateX(4px); }

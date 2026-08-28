@@ -54,9 +54,11 @@ export function trapFocus(node: HTMLElement) {
     const last = focusable[focusable.length - 1];
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
+      e.stopPropagation(); // don't also let an ancestor trap (a nested mini-modal) act on this Tab
       last.focus();
     } else if (!e.shiftKey && document.activeElement === last) {
       e.preventDefault();
+      e.stopPropagation();
       first.focus();
     }
   }

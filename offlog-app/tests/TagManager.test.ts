@@ -86,6 +86,28 @@ describe('TagManager rename', () => {
     expect(renameTag).toHaveBeenCalledWith('home', 'house');
   });
 
+  it('confirms before merging into an existing tag on rename', async () => {
+    confirmAction.mockResolvedValue(true);
+    const { container } = await open();
+
+    const input = await startRename(container, 'urgent', 'home');
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => expect(renameTag).toHaveBeenCalledWith('urgent', 'home'));
+    expect(String(confirmAction.mock.calls[0][0])).toContain('Merge');
+  });
+
+  it('does not merge when the confirmation is declined', async () => {
+    confirmAction.mockResolvedValue(false);
+    const { container } = await open();
+
+    const input = await startRename(container, 'urgent', 'home');
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(confirmAction).toHaveBeenCalled();
+    expect(renameTag).not.toHaveBeenCalled();
+  });
+
   it('writes nothing when the name is unchanged', async () => {
     const { container } = await open();
 

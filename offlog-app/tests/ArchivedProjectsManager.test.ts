@@ -21,10 +21,14 @@ vi.mock('../src/lib/db', () => ({
 
 const reloadTasks = vi.fn().mockResolvedValue(undefined);
 const showError = vi.fn();
-vi.mock('../src/lib/store', () => ({
-  reloadTasks: (...a: unknown[]) => reloadTasks(...a),
-  showError: (...a: unknown[]) => showError(...a),
-}));
+vi.mock('../src/lib/store', async () => {
+  const { writable } = await import('svelte/store');
+  return {
+    reloadTasks: (...a: unknown[]) => reloadTasks(...a),
+    showError: (...a: unknown[]) => showError(...a),
+    activeProjectId: writable(''),
+  };
+});
 
 const confirmAction = vi.fn();
 vi.mock('../src/lib/confirm', () => ({
@@ -35,6 +39,8 @@ vi.mock('../src/lib/modalStack', () => ({
   closeOnBack: (cb: () => void) => cb,
 }));
 
+import { activeProjectId } from '../src/lib/store';
+import { get } from 'svelte/store';
 import ArchivedProjectsManager from '../src/lib/ArchivedProjectsManager.svelte';
 
 function mkProject(overrides: Partial<ProjectDoc> = {}): ProjectDoc {
@@ -55,6 +61,7 @@ beforeEach(() => {
   reloadTasks.mockClear();
   showError.mockClear();
   confirmAction.mockReset().mockResolvedValue(true);
+  activeProjectId.set('');
 });
 
 afterEach(() => cleanup());
@@ -142,6 +149,30 @@ describe('ArchivedProjectsManager archive', () => {
     await waitFor(() => expect(archiveProject).toHaveBeenCalledWith('project:live'));
     expect(confirmAction.mock.calls[0][0]).toContain('Live One');
     await waitFor(() => expect(reloadTasks).toHaveBeenCalled());
+  });
+
+  it('clears activeProjectId when archiving the project currently open, so the board does not go silently blank', async () => {
+    activeProjectId.set('project:live');
+    const { getByText, getByRole } = await renderWith([mkProject({ _id: 'project:live', name: 'Live One' })], []);
+
+    await fireEvent.click(getByRole('button', { name: /Choose a project/ }));
+    await fireEvent.click(getByText('Live One'));
+    await fireEvent.click(getByText('Archive'));
+
+    await waitFor(() => expect(archiveProject).toHaveBeenCalledWith('project:live'));
+    expect(get(activeProjectId)).toBe('');
+  });
+
+  it('leaves activeProjectId alone when archiving a project that is not the open one', async () => {
+    activeProjectId.set('project:other');
+    const { getByText, getByRole } = await renderWith([mkProject({ _id: 'project:live', name: 'Live One' })], []);
+
+    await fireEvent.click(getByRole('button', { name: /Choose a project/ }));
+    await fireEvent.click(getByText('Live One'));
+    await fireEvent.click(getByText('Archive'));
+
+    await waitFor(() => expect(archiveProject).toHaveBeenCalledWith('project:live'));
+    expect(get(activeProjectId)).toBe('project:other');
   });
 
   it('does not archive when the confirmation is cancelled', async () => {

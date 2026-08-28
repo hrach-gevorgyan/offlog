@@ -470,6 +470,11 @@
   let pairingCode = '';
   let pairingBusy = false;
   let pairingError = '';
+  // "Incorrect or expired code." deliberately never distinguishes a typo
+  // from a dead/locked-out code (see discovery.ts's own comment on why),
+  // so a repeated failure has to nudge toward the fix generically rather
+  // than naming the cause.
+  let pairingFailCount = 0;
   // A distinct success state, rather than resetting to the initial "Find
   // my computer" screen: with nothing acknowledging that pairing worked,
   // the modal reads as stuck.
@@ -506,8 +511,11 @@
       selectedHost = null;
       pairingCode = '';
       pairSuccessName = pairedName;
+      pairingFailCount = 0;
     } catch (e) {
+      pairingFailCount++;
       pairingError = e instanceof Error ? e.message : 'Failed to pair.';
+      if (pairingFailCount >= 3) pairingError += ' Double-check the code on the PC screen, or generate a new one there.';
     } finally {
       pairingBusy = false;
     }
@@ -526,20 +534,33 @@
   function stopPcPairPoll() {
     if (pcPollTimer) { clearInterval(pcPollTimer); pcPollTimer = null; }
   }
+  // Mirrors pairing.rs's own CODE_TTL (5 min) purely for display: the code
+  // dies server-side silently, and without this the PC screen kept showing
+  // the same digits indefinitely with no cue they'd stopped working, so a
+  // user re-reading the (unchanged) code and retyping it correctly on the
+  // phone just got "Incorrect or expired code." with no way to tell why.
+  let pcPairingExpired = false;
+  let pcPairingExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+  function clearPcPairingExpiryTimer() {
+    if (pcPairingExpiryTimer) { clearTimeout(pcPairingExpiryTimer); pcPairingExpiryTimer = null; }
+  }
   async function startPcPairPoll() {
     stopPcPairPoll();
     const before = new Set((await getDeviceLastSeen()).map(d => d.device));
     pcPollTimer = setInterval(async () => {
       const now = await getDeviceLastSeen();
       const found = now.find(d => !before.has(d.device));
-      if (found) { pcPairedDeviceName = found.device; stopPcPairPoll(); }
+      if (found) { pcPairedDeviceName = found.device; stopPcPairPoll(); clearPcPairingExpiryTimer(); }
     }, 3000);
   }
   async function generatePcPairingCode() {
     pcPairingBusy = true;
     pcPairedDeviceName = null;
+    pcPairingExpired = false;
+    clearPcPairingExpiryTimer();
     try {
       pcPairingCode = await invokeTauri<string>('generate_pairing_code');
+      pcPairingExpiryTimer = setTimeout(() => { pcPairingExpired = true; stopPcPairPoll(); }, 5 * 60 * 1000);
       startPcPairPoll();
     } catch {
       showError('Failed to generate a pairing code.');
@@ -550,8 +571,8 @@
   // Stop polling (and clear any stale success message on either side)
   // once the modal closes, so it doesn't keep running in the background
   // or show last time's result if it's reopened.
-  $: if (!showConnectModal) { stopPcPairPoll(); pcPairedDeviceName = null; pairSuccessName = null; scanAttempted = false; }
-  onDestroy(stopPcPairPoll);
+  $: if (!showConnectModal) { stopPcPairPoll(); clearPcPairingExpiryTimer(); pcPairedDeviceName = null; pairSuccessName = null; scanAttempted = false; }
+  onDestroy(() => { stopPcPairPoll(); clearPcPairingExpiryTimer(); });
 
   // Dev-only: wipes this PC's NyxDB data and restarts, so testing "what
   // does a real first-run user see" on a freshly-reinstalled phone
@@ -1151,7 +1172,7 @@
 {#if showConnectModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showConnectModal = false} in:fade={scrimIn} out:fade={scrimOut}>
-    <div class="mini-modal" in:dialogIn out:dialogOut>
+    <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Connect a device" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Connect a device</span>
         <button class="mini-modal-close" on:click={() => showConnectModal = false} aria-label="Close">✕</button>
@@ -1184,6 +1205,8 @@
         {:else if isTauri}
           {#if pcPairedDeviceName}
             <p class="setting-hint success-hint">✓ Connected to "{pcPairedDeviceName}" — syncing now.</p>
+          {:else if pcPairingCode && pcPairingExpired}
+            <p class="setting-hint setting-hint-warn">This code has expired. Generate a new one below.</p>
           {:else if pcPairingCode}
             <p class="setting-hint">Enter this code on your phone (Settings → Sync → Find my computer):</p>
             <p class="storage-info" style="font-size: 1.5rem; letter-spacing: 0.2em; text-align: center;">{pcPairingCode}</p>
@@ -1207,7 +1230,7 @@
         </div>
       {:else if isAndroid && selectedHost}
         <div class="mini-modal-actions">
-          <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; }} disabled={pairingBusy}>Cancel</button>
+          <button class="export-btn" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; pairingFailCount = 0; }} disabled={pairingBusy}>Cancel</button>
           <button class="btn-primary" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
             {pairingBusy ? 'Connecting…' : 'Connect'}
           </button>
@@ -1234,7 +1257,7 @@
 {#if showConflictsModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showConflictsModal = false} in:fade={scrimIn} out:fade={scrimOut}>
-    <div class="mini-modal" in:dialogIn out:dialogOut>
+    <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Resolve conflicts" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Resolve conflicts</span>
         <button class="mini-modal-close" on:click={() => showConflictsModal = false} aria-label="Close">✕</button>
@@ -1286,7 +1309,7 @@
 {#if showMaintenanceModal}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showMaintenanceModal = false} in:fade={scrimIn} out:fade={scrimOut}>
-    <div class="mini-modal" in:dialogIn out:dialogOut>
+    <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Maintenance" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Maintenance</span>
         <button class="mini-modal-close" on:click={() => showMaintenanceModal = false} aria-label="Close">✕</button>
@@ -1352,7 +1375,7 @@
 {#if importPreview}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={cancelImport} in:fade={scrimIn} out:fade={scrimOut}>
-    <div class="mini-modal" in:dialogIn out:dialogOut>
+    <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Restore from backup" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Restore from backup</span>
         <button class="mini-modal-close" on:click={cancelImport} aria-label="Close">✕</button>
@@ -1386,7 +1409,7 @@
        once; there's no "view it again later" since only its hash is
        ever stored (config.ts). -->
   <div class="mini-modal-scrim" in:fade={scrimIn} out:fade={scrimOut}>
-    <div class="mini-modal recovery-modal" in:dialogIn out:dialogOut>
+    <div class="mini-modal recovery-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Save your recovery code" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
         <span class="mini-modal-title">Save your recovery code</span>
       </div>

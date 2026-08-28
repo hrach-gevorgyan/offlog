@@ -3,7 +3,7 @@
   import { fade, fly } from 'svelte/transition';
   import { panelIn, panelOut, panelScrimIn, panelScrimOut, exitMs } from './motion';
   import { getProjects, getArchivedProjects, archiveProject, unarchiveProject, deleteProject, subscribe } from './db';
-  import { reloadTasks, showError } from './store';
+  import { reloadTasks, showError, activeProjectId } from './store';
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
@@ -60,6 +60,10 @@
     if (!(await confirmAction(`Archive project "${name}"? It'll be hidden until restored here.`, { confirmLabel: 'Archive' }))) return;
     try {
       await archiveProject(pickerId);
+      // Same as Sidebar's doDeleteProject: archiving the project currently
+      // open would otherwise leave activeProjectId pointing at a project
+      // that's no longer in $projects, and the board goes silently blank.
+      if ($activeProjectId === pickerId) activeProjectId.set('');
       pickerId = '';
       await load();
       await reloadTasks();
