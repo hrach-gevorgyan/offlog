@@ -17,6 +17,80 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.10.0] — 2026-08-28
+
+A massive, multi-agent human/product-usability audit across every app
+surface (18 dimensions, adversarially verified) drove most of this release:
+23 confirmed findings fixed, from a stuck-forever search spinner to a
+misleading data-loss confirm dialog. The largest single change reverses
+Attachments/Related/Blocked-by from immediate-write to batched-into-Save,
+matching every other field on the card.
+
+### Added
+- `getCustomFieldUsageCount()` — the custom-field delete confirm now states
+  how many tasks would lose their value, same as tag delete already did.
+- A real desktop notification-permission check
+  (`check_desktop_notification_setting`, via `ToastNotificationManager`) —
+  Settings no longer claims reminders are "Enabled" when Windows has
+  actually blocked Offlog's toasts.
+
+### Changed
+- **Attachments, Related, and Blocked-by are batched into Save**, not
+  immediate-write. Picking a file or linking a task now only edits the
+  card locally; Cancel/Escape discards it like every other field, and Save
+  replays the diff as real writes. A blocked-by cycle is now caught at
+  Save time instead of at pick time.
+- The 5 stacked Settings mini-modals (Connect a device, Resolve conflicts,
+  Maintenance, Restore from backup, Save your recovery code) now trap
+  keyboard focus and carry `role="dialog"`; `focusTrap.ts` stops
+  propagation on the Tab it handles so a nested trap can't leak to the one
+  behind it.
+- Notification-permission functions (`requestPermission`,
+  `checkExactAlarmPermission`, `requestExactAlarmPermission`) now catch
+  their own plugin-call rejections instead of leaving every call site
+  responsible for it.
+- Restore-from-backup's preview now says explicitly that it isn't a full
+  revert — anything created, changed, or deleted since the backup stays as
+  it is.
+- The PC-side pairing code now visibly expires after 5 minutes instead of
+  sitting there dead with no cue once its real TTL passes.
+- Time Travel's entries now sit inside a real `role="list"` with a
+  labeled count, instead of orphan `role="listitem"`s with no list
+  ancestor.
+
+### Fixed
+- A search failure left the spinner running forever with no error and no
+  way out — now caught and surfaced.
+- Custom field delete claimed values were "kept but hidden"; the code
+  actually erased them from every task. Copy (and a stale code comment)
+  now say what really happens.
+- Closing a card any way but Save silently discarded every edit; some
+  fields saved immediately while others didn't, with no warning either
+  way — see batching change above.
+- Archiving the currently-open project left the board silently blank
+  instead of clearing `activeProjectId`.
+- Renaming a tag onto an existing name silently merged the two on blur,
+  less guarded than plain delete.
+- The activity log rendered raw `blocked_by changed` instead of a human
+  label.
+- Android hardware/gesture Back exited the app instead of closing the
+  open sidebar drawer.
+- PIN-lock shake and checklist-check-pop animations used literal
+  durations, so Reduce Motion never reached them.
+- Storage-full attachment failures looked like any other generic error,
+  with "try again" as actively wrong advice.
+- Kanban's quick-add-card and + Status forms silently closed on an empty
+  submit, as if Cancel had been clicked — they now just stay open.
+- A corrupt/invalid backup file surfaced a raw `JSON.parse` `SyntaxError`
+  instead of a plain-language message; "Choose backup file" also stayed
+  clickable while a previous import was still running.
+- Various accessibility gaps: collapsed sidebar nav buttons and Kanban
+  column archive/remove buttons had no `aria-label`; GlobalSearch's arrow
+  navigation didn't scroll the selection into view or announce it via
+  `aria-activedescendant`.
+- 25th maintenance pass: a handful of dead/unused exports, a `MaintStatus`
+  naming collision between two modules, a stale `windows`-crate comment.
+
 ## [6.9.0] — 2026-08-28
 
 Notes gets real live markdown; Card Detail's tag colors, spacing, and
@@ -544,32 +618,9 @@ Maintenance pass (18th run), pulled forward at owner request.
 
 ---
 
-## [6.2.0] — 2026-07-31
-
-### Added
-- Custom recurrence intervals — every N days/weeks/months — plus a
-  weekdays-only option. Both purely additive to `TaskDoc`.
-- Custom-field filtering in `FilterBar`: a list of `{fieldId, value}`
-  filters ANDed together, wired through List, Kanban and saved filters.
-- Sortable custom-field columns in `ListView` (text/date/select via
-  `localeCompare`, numbers numerically).
-- Search now also matches attachment filenames.
-
-### Changed
-- CardDetail's Repeat & reminder section rewritten to a single select with
-  no separate enable checkbox, tuned to fit one line at a real 375px width.
-- Agenda month view: uniform fixed row heights instead of each week sizing
-  to its busiest day, dots moved to each cell's top-right, a percentage
-  side gutter, and the Today button anchored with a real `top`.
-
-### Fixed
-- A generic `label { flex-direction: column }` rule silently beat a
-  higher-specificity class.
-- A compact select trigger shrank its own dropdown panel, truncating "Not
-  repeating".
-
 ---
 
+[6.10.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.9.0...v6.10.0
 [6.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.8.0...v6.9.0
 [6.8.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.7.0...v6.8.0
 [6.7.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.6.0...v6.7.0
@@ -579,4 +630,3 @@ Maintenance pass (18th run), pulled forward at owner request.
 [6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0
 [6.3.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.1...v6.3.0
 [6.2.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.0...v6.2.1
-[6.2.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.1.0...v6.2.0

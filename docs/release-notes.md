@@ -31,6 +31,29 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.10.0
+
+### In short
+
+A big usability sweep across the whole app. Attachments and linked tasks on a card now wait for Save like everything else, instead of saving the instant you touch them. Fixed a search box that could hang forever, a delete confirmation that quietly lied about what it would erase, and a notifications setting that said "Enabled" even when Windows had blocked it. Plus a long list of smaller fixes and accessibility improvements.
+
+### New
+- Nothing new-feature — this release is fixes and polish.
+
+### Fixed
+- Attachments and linked tasks on a card now only save when you tap Save — closing the card any other way discards them, same as every other field.
+- A search that failed used to leave the spinner spinning forever with no error; it now tells you and lets you try again.
+- Deleting a custom field said your data would be "kept but hidden" — it was actually erased. The warning now says so.
+- Desktop notifications could silently stop working if Windows blocked them, while Settings still said "Enabled." It now checks the real setting.
+- Archiving the project you had open no longer leaves the screen blank.
+- Renaming a tag onto an existing tag's name now asks first, since it merges the two.
+- The pairing code for connecting a device now visibly expires instead of sitting there looking valid after it's dead.
+- Android's Back button now closes the sidebar menu instead of exiting the app.
+- Kanban's "+ Add card" and "+ Status" no longer close themselves if you submit with nothing typed.
+- A corrupt or wrong backup file now gets a plain explanation instead of a technical error.
+- "Choose backup file" no longer stays clickable while a restore is already running.
+- Several screen-reader and keyboard-navigation fixes across Search, Settings, and Kanban.
+
 ## v6.9.0
 
 ### In short
