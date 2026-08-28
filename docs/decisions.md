@@ -625,61 +625,19 @@ host not on the list fails with no error reaching the app, and the sync
 host's LAN IP changes on any DHCP renewal or network switch.
 
 **Still true after the pairing-handshake hardening below** — ongoing sync
-traffic is unaffected by that change and stays plain HTTP. Real TLS on
-sync itself was scoped and explicitly deferred: PouchDB's replication in
-the Android app runs through the WebView's `fetch()`, which hard-rejects
-a self-signed certificate with no JS-level override — trust-on-first-pair
-pinning would need a real native networking layer (a Capacitor plugin
-wrapping OkHttp with its own TrustManager), not a config change. Revisit
-as its own project if it's ever worth that engineering cost; installing
-the self-signed CA as a trusted system cert was considered and rejected
-as worse UX than the status quo (Android's "network may be monitored"
-warning, aimed exactly at this non-technical audience).
+traffic stays plain HTTP. Real TLS was scoped and declined: the Android
+WebView's `fetch()` can't accept a self-signed cert without a native
+plugin, and installing a trusted CA is worse UX than the status quo.
 
-### Pairing handshake: the code and credentials never cross the network unencrypted
-
-Raised as a direct MITM question — "my data flows over Wi-Fi." The
-cleartext-sync tradeoff above stands (see its update note for why real
-TLS wasn't in scope here), but the **pairing handshake** specifically was
-a sharper, narrower, and cheaply fixable problem: the 6-digit code went
-phone→PC and the resulting sync credentials came back PC→phone, both as
-plain HTTP body text. A passive eavesdropper on the same network segment
-during that one exchange didn't need to guess anything — they could read
-the username and password directly off the wire, no cracking required.
-
-Fixed inside the exchange itself, no TLS involved: the phone derives an
-auth proof and a separate response-decryption key via PBKDF2-HMAC-SHA256
-(210,000 rounds, domain-separated by an "auth"/"enc" tag) from the code
-plus a fresh per-attempt nonce it generates — the code itself is never
-transmitted, only proof of knowing it. `pairing.rs` verifies the proof
-without ever seeing the client's copy of the code, then returns the
-credentials AES-256-GCM-encrypted under the same derivation. A passive
-capture of the whole exchange now has to brute-force the 6-digit space
-(1M candidates) against the PBKDF2-hardened proof *offline* to get
-anywhere, instead of reading credentials straight off the packet.
-
-**Honestly bounded, not airtight.** Six digits is six digits — no KDF
-changes that against someone with real compute (GPU-parallelized PBKDF2
-cracking could still clear 1M candidates in seconds to minutes). This
-raises the bar from "instant, zero-effort" to "costs a motivated attacker
-real work," matching the actual threat model (an opportunistic LAN
-eavesdropper, not a resourced adversary) — the same honest framing this
-file already applies to the PIN lock's throttle and the pairing server's
-online attempt cap. `MAX_ATTEMPTS = 8` still bounds *online* guessing
-against the live endpoint; this only closes the separate *offline*,
-captured-traffic reading that plaintext previously handed over for free.
-
-Implementation notes for later: `pairing.rs` and `discovery.ts` implement
-the identical derivation independently (matching tag strings, round
-count, key sizes) since there's no shared crypto module across the
-Rust/TypeScript boundary — verified cross-language-compatible by a
-`cargo test -- --nocapture` fixture decrypted by hand under Node's
-Web Crypto implementation once, then locked in as `tests/discovery.test.ts`
-(mocks `fetch`, asserts a real Rust-produced ciphertext decrypts
-correctly and that neither the request body nor a captured response
-contains the plaintext code). `pairing.rs` also gained real unit tests
-(key derivation, encrypt/decrypt round-trip, and the attempt-lockout
-state machine) — the previous version had none.
+### Pairing handshake is encrypted, not just the code
+The 6-digit code and the sync credentials it unlocked used to cross the
+network as plain HTTP text — a passive listener on the same Wi-Fi could
+read the password straight off the wire. Both `pairing.rs` and
+`discovery.ts` now derive a challenge proof and a response key from the
+code via PBKDF2 + AES-GCM, so a capture requires offline-brute-forcing
+the 6-digit space instead of just reading it. Still bounded by that
+entropy against a resourced attacker — same honest framing as the PIN
+lock's throttle, not a claim of airtight security.
 
 ### CodeQL findings inside bundled Capacitor plugin source: dismiss manually
 `paths-ignore`/`.codeqlignore` only filter which files get *extracted*
@@ -690,78 +648,25 @@ breaking the classpath manual build-mode exists to provide. Dismiss these
 vendored-third-party findings individually in the Code Scanning UI
 (**Won't fix**) rather than reworking the workflow.
 
-**Same root cause explains the run's own warning annotation**, not just
-its findings: "Cannot build an overlay-base database because build-mode
-is set to 'manual' instead of 'none'. Falling back to creating a normal
-full database instead." Overlay-base is a CodeQL speed optimization that
-only applies to `build-mode: none`/`autobuild`; this job needs `manual`
-for the real Gradle classpath (see the workflow file's own header
-comment). The fallback is a complete, correct full analysis — the same
-kind this job has always run — just without an optimization that was
-never compatible with the setup in the first place. Not a regression,
-nothing to clean up; switching build-mode to make the warning go away
-would reintroduce the classpath gap the entry above exists to avoid.
+The same build-mode tradeoff also explains the job's "Cannot build an
+overlay-base database... falling back to a normal full database" warning
+— that optimization needs `build-mode: none`/`autobuild`; this job needs
+`manual` for a real classpath. Harmless, not fixable without losing the
+classpath the entry above exists to keep.
 
-### `pairing.rs`'s test-only fixed nonces trip "hard-coded cryptographic value": dismiss as "Used in tests"
-Four CodeQL alerts (`rust/hard-coded-cryptographic-value`) on the
-`#[cfg(test)]` module added alongside the pairing-handshake hardening —
-`[1u8; 16]`/`[2u8; 16]`/`[3u8; 16]` nonces used only so a test's derived
-key is reproducible across runs (same code + same nonce should always
-derive the same key; that assertion needs a fixed nonce to assert
-against). CodeQL can't tell a test assertion from a real key — it flags
-any literal byte array flowing into a key-derivation call, full stop.
+`pairing.rs`'s test module also trips 4 "hard-coded cryptographic value"
+alerts — fixed nonces used only so a test's derived key is reproducible,
+never a real key (the real request path always randomizes). Dismissed as
+**"Used in tests."**
 
-Verified false positive by reading the real path, not just asserting it:
-`spawn_server`'s actual request handling never uses a fixed nonce (it
-comes from the network request, i.e. the client), the AES-GCM IV is
-always freshly randomized (`rand::random::<u8>()`), and the pairing code
-itself is always randomly generated. Nothing test-only ever reaches a
-real cryptographic operation. Dismissed individually in the Code Scanning
-UI, reason **"Used in tests"** — the exact case that dismiss reason
-exists for, unlike the vendored-code entry above which uses "Won't fix."
-
-### A security survey, not an audit: three concrete fixes, most of the surface already closed
-
-Requested as "improve security, your suggestions." Checked first against
-this section and the rest of decisions.md so nothing here re-opens an
-already-settled tradeoff (at-rest encryption, LAN cleartext, the PIN's
-light throttle) — those are unchanged. What was actually new:
-
-- **The web/Android build had no Content-Security-Policy**, while
-  `tauri.conf.json` already carries one for desktop. Every `{@html}` sink
-  in the app (`GlobalSearch`, `UpdateModal`) already escapes untrusted
-  text before interpolating — so this isn't fixing a live XSS, it's
-  defense-in-depth for the next one: a CSP means a future bug in one of
-  those sinks doesn't also hand an injected script a path to an external
-  origin. Added via a build-only Vite plugin (`vite.config.ts`) that
-  injects the `<meta>` tag into `dist/index.html` — build-only because
-  Vite's dev server needs things (inline module eval, its own HMR
-  websocket) a CSP this strict would break, and dev is never what ships.
-  `connect-src` stays open to any LAN host (the sync address is
-  user-configured); `img-src` needs `blob:` for attachment thumbnails.
-  Verified against a real `vite preview` build: full app walkthrough,
-  zero CSP violations in the console.
-- **`file_paths.xml`'s `<external-path path="."/>`** — Capacitor's
-  scaffolded default, mapping the FileProvider to the *entire* shared
-  external-storage root — was never actually used. Every `Filesystem`
-  write in the app (`carddetail/helpers.ts`, `settings/helpers.ts`,
-  `autoBackup.ts`) targets `Directory.Cache` or `Directory.Data`, both
-  app-private; `<cache-path>` alone covers what `Share.share()` actually
-  hands out. Removed rather than left as unused broad-grant surface.
-- **`release.yml`'s `build-android` job inherited the workflow's
-  `contents: write`** with no actual need for it — it only builds the
-  APK and hands it to `upload-artifact` (its own token, unrelated to
-  `contents`). `verify` already narrows to `contents: read` for the same
-  reason; `build-android` gets the identical treatment now. (Every other
-  workflow file, and `build-desktop-windows`/`draft-release` in this one,
-  were already correctly scoped — `build-desktop-windows` and
-  `draft-release` genuinely need write to call the GitHub Release API.)
-
-Also checked and found already solid, so not touched: `npm audit` (0
-vulnerabilities), the pairing endpoint's brute-force cap and generic
-error responses (`pairing.rs`), `AndroidManifest.xml`'s exported
-components (each justified by its own comment), CI Action pins (full SHA,
-not floating tags, everywhere), and no workflow uses `pull_request_target`.
+### Web/Android build gets a CSP; a few other small hardenings
+`index.html` had no Content-Security-Policy while `tauri.conf.json`
+already carried one for desktop — added via a build-only Vite plugin
+(dev server needs things a strict CSP would break). Also: trimmed
+`file_paths.xml`'s unused `<external-path>` (mapped FileProvider to the
+whole external-storage root; nothing in the app writes there), and
+scoped `release.yml`'s `build-android` job to `contents: read` (it only
+uploads an artifact, never touches the Release API).
 
 ---
 
@@ -845,146 +750,19 @@ drops the link. Links are click-through, with a link-icon badge on
 cards/rows so a task's links are visible without opening it.
 
 ### Settings: per-tab controls apply live; the footer Save is Advanced-only
+Every tab but Advanced (and only while Sync is on) writes straight to its
+store on click — there's nothing buffered for Cancel to discard. Tried
+replacing the footer with a plain "Close" to stop implying otherwise;
+reverted after real feedback that a missing Save button reads as "did my
+change even take?" — worse than the button being a no-op. Landed on:
+Save shown everywhere (routed through `saveSettings()`, a no-op when
+nothing's buffered), Cancel only where Advanced genuinely has something
+to discard. Don't re-remove Save over the "but it doesn't cancel
+anything" observation — it's true, and was already tried.
 
-The sixth feature audit (roadmap.md), which walked all seven Settings tabs
-live rather than reading the code, ships two real fixes.
-
-**Escape closed all of Settings instead of backing out of PIN entry.**
-`onWindowKeydown` special-cased every other in-panel sub-flow (the connect
-modal, conflicts, maintenance, import preview) but not `showPinForm` or
-`pinGateMode` — so Escape while typing a new PIN, or while `ConfirmPinGate`
-was asking for the current PIN to change/remove it, fell through to the
-final `else requestClose()` and closed the whole modal, discarding
-whatever was typed. Fixed by adding both to the same early-return chain.
-`ConfirmPinGate`'s own Escape handler also needed `stopPropagation()` —
-without it, the same keystroke both correctly cancelled the gate *and*
-reached the window handler and closed Settings, since the gate's own
-`dispatch('cancel')` had already nulled `pinGateMode` by the time the
-event bubbled up, so a bare `if (pinGateMode)` check in the window handler
-alone couldn't have caught it. Covered by a new regression test.
-
-**The Cancel/Save footer buttons were live for every tab, but only meant
-something on one — then real feedback overrode the "fix."** Verified by
-reproduction: toggling Theme and High Contrast, then clicking Cancel, left
-both changes in place — `setThemeMode()`/`setHighContrast()` (and every
-other tab's toggles: notifications, auto-backup, haptics, reduce motion)
-write straight to their store on click, matching a documented, deliberate
-tradeoff (`saveSettings()`'s own comment: forcing a reload for every tab
-would re-trigger App Lock's cold-start check on a plain theme change).
-Only `syncUrl`/`credentialUser`/`credentialPass`, on the Advanced tab and
-only while Sync is on, are genuinely buffered behind that button.
-
-First fix replaced the footer with a single "Close" everywhere except
-`activeCategory === 'advanced' && syncEnabled`, on the theory that a
-button promising to save/cancel something that already happened is worse
-than no button. Reversed after the first real users tried it: a missing
-Save button reads as "did my change even take?", not as "there's nothing
-to save here" — the reassurance the label provides outweighs it being
-mechanically a no-op on every tab but one. Landed on: "Save" shown on
-every tab (still routed through `saveSettings()`, which is already a
-no-op when nothing's buffered, so this stays correct if that ever
-changes), Cancel only where Advanced genuinely has something to discard.
-Keep this the next time the same "but Cancel doesn't cancel anything"
-observation resurfaces — it's true and was already tried; the label stays
-for the reassurance, not because the buffering changed.
-
-**A follow-up UX/UI pass** (8 parallel reviewers, one per tab plus the
-shared shell, then a synthesis pass) found 24 more findings — pure UI/copy/
-consistency, no more correctness bugs. Three were fixed as high-impact:
-
-- **The single most destructive control in Settings was the one styled
-  like a routine one.** `resetPcTestData()`'s wipe was gated by a raw
-  `confirm()` instead of the app's own `confirmAction()` (which the
-  conflict-resolution and maintenance-repair flows already use, danger
-  option and all), and its button used the same neutral `.export-btn`
-  class as "Check for updates" — no `var(--danger)` treatment, unlike
-  every other irreversible-delete control in the app (Trash's forever-
-  delete, the four manager delete buttons, CardDetail's danger menu).
-  Both now match that pattern.
-- **A healthy sync connection was visually identical to "nothing
-  configured yet."** `connectionStatus`'s `ok` tone was computed but
-  never wired to a distinct style — it fell through to the same
-  `.setting-hint` gray as "Syncing…" and "Not connected yet." `.success-
-  hint` already existed (used for pairing-success messages) but wasn't
-  `:global()`-exposed for a child component to use; now it is, and the
-  Sync tab's status line uses it for `tone === 'ok'`.
-- **Restore's preview screen never confirmed which file you picked.** It
-  showed only aggregate counts, no filename — a real gap given the app
-  itself produces several similarly-named backups on one device (daily
-  auto-backups, manual full/per-project exports). The picked file's name
-  and last-modified time are now shown above the count summary.
-
-**Six of the medium-impact findings were fixed too**, chosen by the
-owner from the ranked list rather than all of them:
-
-- `pairWithHost()`'s `fetch()` now catches network failure specifically
-  (unreachable host — off Wi-Fi, firewalled, asleep) and throws a real
-  message instead of letting the raw `TypeError` reach the UI verbatim.
-- An Android scan that completes with zero hosts now says so
-  ("No computer found…") instead of the button just reverting with an
-  empty list and no way to tell "still running" from "found nothing."
-- Both "Devices seen recently" and the conflict-resolution modal now
-  label whichever entry matches this device's own name, instead of
-  requiring the reader to remember what they typed into the Name field
-  and match it by eye.
-- `SecuritySettings`' New/Confirm PIN inputs filter non-digits live now,
-  matching `ConfirmPinGate`'s re-auth field — previously only rejected on
-  Save, after Confirm PIN and the hint were filled in too.
-- The Sync tab now mentions where the manual server-connection fields
-  live (Advanced) for anyone running their own server by hand; Advanced
-  already pointed back the other way.
-- Notifications' Permission/Reminder-timing/Quiet-hours sections (and the
-  quiet-hours start/end row) now use the same `revealIn`/`revealOut`
-  slide every other disclosure section in the app uses, instead of
-  snapping open/closed via a bare `{#if}`.
-
-Left for later, by choice, not by finding them safe/unsafe: the exact-
-alarm hint's technical copy, and cross-linking Archived Projects from
-Backup & Storage.
-
-**Seven low-impact findings, also owner-chosen** rather than the full
-list of fifteen:
-
-- Quiet hours' toggle label now reads "Delay reminders until quiet hours
-  end" instead of "Queue reminders…" — the fire-time behavior in the
-  label itself, not only in a separate hint below it.
-- PIN setup shows "Doesn't match yet" live once Confirm PIN is at least
-  as long as New PIN, instead of only on Save.
-- Organize's section title changed from the content-free "Manage" to
-  "Workspace", and Custom Fields (the one row of the four that isn't
-  self-explanatory) gets a hint: field definitions are shared across
-  every project.
-- The Connect-a-device modal's Cancel/Connect and Done buttons moved into
-  a pinned `.mini-modal-actions` footer, matching Maintenance/Import/
-  Recovery — the scan list's "Find my computer"/per-host "Connect" and
-  desktop's "Generate a code" stay inline, the same list-building-vs-
-  closing distinction that already justified Conflicts' inline Refresh.
-- Desktop pairing success now shows the same explicit "Done" close
-  Android's success state already had, instead of leaving "Generate a
-  new code" as the only visible control.
-- The healthy-storage headline changed from "Your data is tiny — nothing
-  to worry about" to "Storage use is well within limits", matching the
-  flat, factual tone of every other hint in the panel (including its own
-  warning-state sibling right next to it).
-
-Left alone by choice: the two-permissions-one-heading split, no live PIN
-length indicator, the setup-vs-change PIN form heading, Back-up/Export-CSV
-button styling, the CSV scope-selector question, Biometric/Privacy-Screen
-visibility, the Settings panel's own ✕, and extending nav-badge beyond
-Sync conflicts.
-
-**Recorded, not changed.** A handful of fire-and-forget
-`.catch(() => {})` calls on real I/O (`rescheduleAll()` after toggling
-notifications or saving quiet hours, `startSync()` after enabling Sync) —
-plausible as "best-effort, the next reload/sync reconciles it" given the
-app's own cancel-all-reschedule-from-scratch model elsewhere, but none of
-the three carry a comment saying so the way this file's other silent
-catches do. A worthwhile follow-up, not urgent enough to touch mid-audit.
-Also noted: a possible reactive reload loop in the Sync tab's conflict
-list if `conflictCount` (async, sync-engine-owned) and `conflictList`
-(a direct query) briefly disagree after resolving the last conflict; the
-debug-only "Reset test data" button using the native `confirm()` instead
-of the app's own dialog; and `resetBusy` only clearing on the failure
-path, not success (harmless — the app is expected to restart either way).
-None reproduced; all four are plausible enough to revisit if one ever
-actually fires in use, not fixed on a suspicion.
+Also fixed in the same pass: Escape closed all of Settings instead of
+backing out of PIN entry (`onWindowKeydown` missed `showPinForm`/
+`pinGateMode`; `ConfirmPinGate` needed `stopPropagation()` too, or the
+same keystroke both cancelled the gate and closed Settings). A UX audit
+afterward found ~24 smaller findings across Sync/Notifications/App Lock/
+Backup; details in git history rather than repeated here.
