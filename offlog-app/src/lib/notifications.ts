@@ -70,20 +70,31 @@ export const permissionState = writable<PermissionState>('default');
 export type ExactAlarmState = 'granted' | 'denied' | 'unsupported';
 export const exactAlarmState = writable<ExactAlarmState>('unsupported');
 
+// Bare-called from onMount and button handlers with no local error handling
+// at any call site, so a plugin-call rejection is caught here instead of
+// becoming an unhandled rejection -- 'denied' is the safe fallback state.
 export async function checkExactAlarmPermission(): Promise<void> {
   if (!isNative()) return;
-  const { LocalNotifications } = await import('@capacitor/local-notifications');
-  const res = await LocalNotifications.checkExactNotificationSetting();
-  exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const res = await LocalNotifications.checkExactNotificationSetting();
+    exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+  } catch {
+    exactAlarmState.set('denied');
+  }
 }
 
 // Deep-links to the OS "Alarms & reminders" settings screen for this app —
 // there's no runtime permission dialog for this one, unlike requestPermission().
 export async function requestExactAlarmPermission(): Promise<void> {
   if (!isNative()) return;
-  const { LocalNotifications } = await import('@capacitor/local-notifications');
-  const res = await LocalNotifications.changeExactNotificationSetting();
-  exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const res = await LocalNotifications.changeExactNotificationSetting();
+    exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+  } catch {
+    exactAlarmState.set('denied');
+  }
 }
 
 const isNative = () => !!window.Capacitor?.isNativePlatform?.();
@@ -104,28 +115,36 @@ function numericId(taskId: string): number {
   return Math.abs(h) || 1;
 }
 
+// Bare-called from Enable buttons with no local error handling, so a
+// plugin-call rejection is caught here instead of becoming an unhandled
+// rejection -- 'denied' is the safe fallback state.
 export async function requestPermission(): Promise<PermissionState> {
-  if (isNative()) {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
-    const res = await LocalNotifications.requestPermissions();
-    const state: PermissionState = res.display === 'granted' ? 'granted' : 'denied';
+  try {
+    if (isNative()) {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const res = await LocalNotifications.requestPermissions();
+      const state: PermissionState = res.display === 'granted' ? 'granted' : 'denied';
+      permissionState.set(state);
+      return state;
+    }
+    if (isTauriPlatform()) {
+      // No real desktop permission model to request against (see
+      // initNotificationListeners' comment) -- 'granted' is just the truth.
+      permissionState.set('granted');
+      return 'granted';
+    }
+    if (typeof Notification === 'undefined') {
+      permissionState.set('unsupported');
+      return 'unsupported';
+    }
+    const res = await Notification.requestPermission();
+    const state = res as PermissionState;
     permissionState.set(state);
     return state;
+  } catch {
+    permissionState.set('denied');
+    return 'denied';
   }
-  if (isTauriPlatform()) {
-    // No real desktop permission model to request against (see
-    // initNotificationListeners' comment) -- 'granted' is just the truth.
-    permissionState.set('granted');
-    return 'granted';
-  }
-  if (typeof Notification === 'undefined') {
-    permissionState.set('unsupported');
-    return 'unsupported';
-  }
-  const res = await Notification.requestPermission();
-  const state = res as PermissionState;
-  permissionState.set(state);
-  return state;
 }
 
 export function checkPermission(): void {
@@ -202,7 +221,9 @@ function fireWebNotification(task: TaskDoc): Promise<void> {
   // Reminders are one-shot, not recurring — clear it once shown so an
   // unrelated later save/reload doesn't re-trigger the same notification
   // via the catch-up check (it would otherwise keep re-firing for as
-  // long as reminder_at stays inside the catch-up window).
+  // long as reminder_at stays inside the catch-up window). A failed clear
+  // isn't user-initiated and isn't worth a toast — the notification already
+  // fired, and the next catch-up pass retries the same clear.
   return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
 }
 
@@ -411,7 +432,7 @@ function catchUpTauri(tasks: TaskDoc[]) {
         fireTauriNotification(t);
       }
     }
-    else updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {});
+    else updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {}); // see fireWebNotification()'s comment on this pattern
   }
 }
 

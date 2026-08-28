@@ -21,7 +21,7 @@ export function showError(msg: string) {
 
 export const spaces = writable<SpaceDoc[]>([]);
 export const projects = writable<ProjectDoc[]>([]);
-export const tasks = writable<TaskDoc[]>([]);
+const tasks = writable<TaskDoc[]>([]);
 
 const storedSpaceId   = localStorage.getItem('activeSpaceId')   ?? 'space:unsorted';
 const storedProjectId = localStorage.getItem('activeProjectId') ?? '';
@@ -111,6 +111,9 @@ export async function init() {
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 10000);
   subscribe(scheduleReload);
   checkPermission();
+  // Listener setup failing (e.g. platform plugin unavailable) shouldn't
+  // block the rest of startup -- notifications degrade, the rest of the
+  // app still works.
   initNotificationListeners().catch(() => {});
   runHousekeeping();
   // Housekeeping must run on a timer, not only once per app start: the

@@ -3,11 +3,13 @@
 import { isTauri as isTauriCheck } from '../../config';
 import type { MaintStepResult } from '../db';
 
-export type MaintStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
+// Named distinctly from db.ts's MaintStatus -- this one adds 'pending' for
+// steps that haven't started yet, so the two aren't interchangeable.
+export type MaintStepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
 // key is the same narrow union db.ts's MaintStepResult uses, not a bare
 // string -- setMaintStep() requires that union, so a plain `string` here
 // meant every call site was one typo away from silently matching nothing.
-export interface MaintStep { key: MaintStepResult['key']; label: string; status: MaintStatus; note: string }
+export interface MaintStep { key: MaintStepResult['key']; label: string; status: MaintStepStatus; note: string }
 
 export function freshMaintSteps(): MaintStep[] {
   return [

@@ -63,8 +63,8 @@ tauri-winrt-notification = "0.8"
 # current Windows user account, transparent, no prompt. Official
 # Microsoft-maintained crate; narrower than pulling in a whole
 # cross-platform keyring abstraction for a single OS-specific need.
-# Pinned to match the version tauri-winrt-notification already pulls in
-# (confirmed via `cargo tree -i windows-core`) -- avoids a third
-# windows-core version in the dependency graph and the resulting
-# cross-version type-mismatch errors that causes.
+# tauri-winrt-notification pulls in its own older windows-core (confirmed
+# via `cargo tree -i windows-core`); this crate's Win32 calls don't share
+# its types, so a second windows-core version coexisting here is expected,
+# not a drift to chase down.
 windows = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
