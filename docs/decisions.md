@@ -690,6 +690,18 @@ breaking the classpath manual build-mode exists to provide. Dismiss these
 vendored-third-party findings individually in the Code Scanning UI
 (**Won't fix**) rather than reworking the workflow.
 
+**Same root cause explains the run's own warning annotation**, not just
+its findings: "Cannot build an overlay-base database because build-mode
+is set to 'manual' instead of 'none'. Falling back to creating a normal
+full database instead." Overlay-base is a CodeQL speed optimization that
+only applies to `build-mode: none`/`autobuild`; this job needs `manual`
+for the real Gradle classpath (see the workflow file's own header
+comment). The fallback is a complete, correct full analysis — the same
+kind this job has always run — just without an optimization that was
+never compatible with the setup in the first place. Not a regression,
+nothing to clean up; switching build-mode to make the warning go away
+would reintroduce the classpath gap the entry above exists to avoid.
+
 ### `pairing.rs`'s test-only fixed nonces trip "hard-coded cryptographic value": dismiss as "Used in tests"
 Four CodeQL alerts (`rust/hard-coded-cryptographic-value`) on the
 `#[cfg(test)]` module added alongside the pairing-handshake hardening —
