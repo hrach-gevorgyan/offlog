@@ -240,6 +240,14 @@ inside and import it back.
 - Read narrowly (`Grep`, or `Read` with offset/limit) and use a subagent for
   open-ended exploration.
 - Keep responses terse; commit messages are 2–4 lines.
+- **Surface assumptions instead of picking one silently.** If a request has
+  more than one reasonable reading, name the readings and ask rather than
+  guessing and building the wrong one.
+- **A diff should trace to the request.** Touch what the task needs, not
+  adjacent code/comments/formatting you'd have done differently. If your
+  own change makes an import/variable/function unused, remove it; if you
+  notice *pre-existing* dead code while you're in there, leave it and say
+  so rather than deleting it unasked.
 
 ## Release
 
