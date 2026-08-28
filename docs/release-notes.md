@@ -31,6 +31,15 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.10.2
+
+### In short
+
+Another hotfix: v6.10.1 fixed one cause of the Settings freeze, but not all of them. A full sweep found and fixed three more spots with the same bug. Opening Settings should now be reliable.
+
+### Fixed
+- Three more places where a failed background check could freeze the app instead of just showing an error, all in Settings — the same class of bug v6.10.1 partly fixed.
+
 ## v6.10.1
 
 ### In short

@@ -17,6 +17,26 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.10.2] — 2026-08-28
+
+v6.10.1's fix wasn't the whole story: the same "opened Settings" crash
+recurred on a genuinely-updated v6.10.1 build. A full sweep of
+`SettingsPanel.svelte` found three more instances of the identical
+pattern — an unawaited async call fired from `onMount`/a reactive
+statement with no `try/catch` anywhere in the chain.
+
+### Fixed
+- `loadBreakdown()` — fires from a bare `onMount` on **every** Settings
+  category (not just Sync), and again on **every single** `subscribeDb()`
+  change event for as long as the panel stays open. The most likely of the
+  four to have been the actual repeat crash, given how often it fires
+  during active sync.
+- `loadStorage()` — `navigator.storage.estimate()` can reject in some
+  WebView/sandboxed contexts; now falls back to the existing "Not
+  available" state instead of an unhandled rejection.
+- Both now surface `showError('Failed to load storage usage.')` on
+  failure instead of the generic crash-net toast.
+
 ## [6.10.1] — 2026-08-28
 
 A real crash from v6.10.0, caught live from the actual installed desktop
@@ -582,52 +602,9 @@ A hardening release: no new surface, a far stronger base under it.
 
 ---
 
-## [6.3.0] — 2026-07-31
-
-The last feature release, and the hardening pass behind it.
-
-### Added
-- **Tray-resident desktop app.** Closing the window hides it instead of
-  quitting; tray menu with Show / Quick Add / Settings / Start on login /
-  Quit, and `Ctrl+Alt+O` from anywhere landing on Dashboard.
-- **"Blocked by" task dependencies** (`TaskDoc.blocked_by`) — a real
-  directional dependency, distinct from the non-directional `related`.
-  Direct and transitive cycle detection, a done/not-done pill in
-  CardDetail, a lock badge on Kanban cards, and Focus excluding still-
-  blocked tasks outright.
-
-### Fixed
-- **Every backup containing an attachment was unrestorable.** Exports wrote
-  attachment *stubs* with no bytes, and PouchDB rejects an entire
-  `bulkDocs` batch on a `missing_stub` — so one attached photo silently
-  turned each backup file into a brick reporting only "Import failed."
-  Backups now inline attachment bytes; restores drop unresolvable stubs
-  rather than failing wholesale, fall back to per-document writes when a
-  batch is rejected, no longer filter out `meta`/`tag_color` documents, and
-  normalize malformed documents instead of importing them.
-- Automatic backups and both retention prunes only ran at app *start*, so a
-  weeks-long tray-resident session silently stopped backing up while still
-  reporting a recent timestamp. Now hourly.
-- The live change feed had no `error` handler and never restarted, going
-  permanently deaf after a sleep/resume.
-- A sync burst fired one full reload *per document*; now debounced with
-  last-writer-wins.
-- `auto_compaction` was off, so deleting a 10 MB attachment freed no disk.
-- Agenda never noticed midnight passing.
-- A global-shortcut collision panicked the app on startup.
-- A second launch forked a second NyxDB onto the same port and data
-  directory.
-- Reminders missed by more than an hour were deleted without ever firing;
-  the window is now 24 hours.
-- Removing or dragging a status column silently redefined done-ness
-  project-wide with no warning.
-- "Clear all" history had no confirmation.
-
-### Security
-- `npm audit` 2 advisories → 0. Clippy clean.
-
 ---
 
+[6.10.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.1...v6.10.2
 [6.10.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.0...v6.10.1
 [6.10.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.9.0...v6.10.0
 [6.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.8.0...v6.9.0
@@ -637,5 +614,3 @@ The last feature release, and the hardening pass behind it.
 [6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
 [6.5.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.0...v6.5.1
 [6.5.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.3.0...v6.5.0
-[6.3.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.1...v6.3.0
-[6.2.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.2.0...v6.2.1

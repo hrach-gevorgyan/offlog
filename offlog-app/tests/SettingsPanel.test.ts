@@ -39,6 +39,7 @@ vi.mock('../src/config', () => ({
 
 const getConflicts = vi.fn().mockResolvedValue([]);
 const getDeviceLastSeen = vi.fn().mockResolvedValue([]);
+const getStorageBreakdown = vi.fn().mockResolvedValue(null);
 vi.mock('../src/lib/db', () => ({
   default: { allDocs: vi.fn().mockResolvedValue({ rows: [] }) },
   __esModule: true,
@@ -50,7 +51,7 @@ vi.mock('../src/lib/db', () => ({
   getConflicts: (...a: unknown[]) => getConflicts(...a), resolveConflict: vi.fn(),
   // loadConflicts() resolves custom-field ids to names for the diff.
   getCustomFieldDefs: vi.fn().mockResolvedValue([]),
-  getStorageBreakdown: vi.fn().mockResolvedValue(null),
+  getStorageBreakdown: (...a: unknown[]) => getStorageBreakdown(...a),
   subscribe: vi.fn().mockReturnValue({ cancel: vi.fn() }),
   getDeviceLastSeen: (...a: unknown[]) => getDeviceLastSeen(...a),
   runMaintenanceSteps: vi.fn(), wipeAndReseed: vi.fn(),
@@ -81,13 +82,14 @@ vi.mock('../src/lib/updateChecker', () => ({
   checkForUpdate: vi.fn(),
 }));
 
+const getAutoBackupUsage = vi.fn().mockResolvedValue(null);
 vi.mock('../src/lib/autoBackup', () => ({
   isAutoBackupEnabled: () => true, setAutoBackupEnabled: vi.fn(),
   getLastAutoBackupAt: () => null,
   // loadBreakdown() reads this for the storage section. Omitting it left an
   // unhandled rejection that every test still "passed" through -- the exact
   // shape CLAUDE.md warns about: judge the run by its exit code.
-  getAutoBackupUsage: vi.fn().mockResolvedValue(null),
+  getAutoBackupUsage: (...a: unknown[]) => getAutoBackupUsage(...a),
 }));
 
 vi.mock('../src/lib/theme', () => ({
@@ -127,6 +129,8 @@ beforeEach(() => {
   storedUrl = 'http://old.local:5984/offlog';
   storedCreds = { user: 'olduser', pass: 'oldpass' };
   vi.stubGlobal('location', { reload, href: 'http://localhost/' });
+  getStorageBreakdown.mockResolvedValue(null);
+  getAutoBackupUsage.mockResolvedValue(null);
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -323,5 +327,48 @@ describe('SettingsPanel sync tab load failures', () => {
 
     expect(showError).toHaveBeenCalledWith('Failed to load sync conflicts.');
     (syncState as { conflictCount: number }).conflictCount = 0;
+  });
+
+  // loadBreakdown() fires unawaited from onMount on EVERY category, not
+  // just Sync -- and again on every single subscribeDb() change event
+  // while the panel is open, so this one is the most likely of the four to
+  // have been the actual repeat crash.
+  it('surfaces a specific error instead of an unhandled rejection when storage breakdown fails to load', async () => {
+    getStorageBreakdown.mockRejectedValueOnce(new Error('allDocs failed'));
+    render(SettingsPanel, { initialCategory: 'appearance' });
+
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(showError).toHaveBeenCalledWith('Failed to load storage usage.');
+  });
+
+  it('surfaces a specific error instead of an unhandled rejection when auto-backup usage fails to load', async () => {
+    getAutoBackupUsage.mockRejectedValueOnce(new Error('readdir failed'));
+    render(SettingsPanel, { initialCategory: 'appearance' });
+
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(showError).toHaveBeenCalledWith('Failed to load storage usage.');
+  });
+
+  it('falls back to "Not available" instead of an unhandled rejection when navigator.storage.estimate() rejects', async () => {
+    // Object.defineProperty on the real navigator, not vi.stubGlobal -- this
+    // component (and jsdom itself) reads other navigator properties too, so
+    // replacing the whole global would be a much bigger change than the one
+    // property this test actually needs to control.
+    const original = Object.getOwnPropertyDescriptor(navigator, 'storage');
+    Object.defineProperty(navigator, 'storage', {
+      value: { estimate: vi.fn().mockRejectedValue(new Error('estimate blocked')) },
+      configurable: true,
+    });
+
+    const { container } = render(SettingsPanel, { initialCategory: 'data' });
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(container.textContent).toContain('Storage info not available');
+    expect(showError).not.toHaveBeenCalledWith(expect.stringContaining('storage'));
+
+    if (original) Object.defineProperty(navigator, 'storage', original);
+    else delete (navigator as { storage?: unknown }).storage;
   });
 });

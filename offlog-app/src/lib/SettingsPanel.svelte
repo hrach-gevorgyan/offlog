@@ -818,8 +818,16 @@
   // while several times that sits in the backup folder.
   let backupUsage: { count: number; bytes: number } | null = null;
   async function loadBreakdown() {
-    breakdown = await getStorageBreakdown();
-    backupUsage = await getAutoBackupUsage();
+    // Fires unawaited from onMount and on every single subscribeDb()
+    // change event below -- during active sync that can be rapid-fire, so
+    // a real query failure here must not become an unhandled rejection
+    // (main.ts's crash-net toast) on every one of them.
+    try {
+      breakdown = await getStorageBreakdown();
+      backupUsage = await getAutoBackupUsage();
+    } catch {
+      showError('Failed to load storage usage.');
+    }
   }
   onMount(() => {
     loadBreakdown();
@@ -837,11 +845,18 @@
   let storagePercent = 0;
   let storageAvailable = true;
   async function loadStorage() {
-    if (navigator.storage?.estimate) {
-      const { usage = 0, quota = 0 } = await navigator.storage.estimate();
-      ({ info: storageInfo, percent: storagePercent } = formatStorageEstimate(usage, quota));
-      storageAvailable = true;
-    } else { storageInfo = 'Not available'; storageAvailable = false; }
+    // Fires unawaited from onMount below -- a rejecting estimate() (some
+    // WebView/sandboxed contexts refuse it) must not become an unhandled
+    // rejection, same reasoning as loadBreakdown() above.
+    try {
+      if (navigator.storage?.estimate) {
+        const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+        ({ info: storageInfo, percent: storagePercent } = formatStorageEstimate(usage, quota));
+        storageAvailable = true;
+      } else { storageInfo = 'Not available'; storageAvailable = false; }
+    } catch {
+      storageInfo = 'Not available'; storageAvailable = false;
+    }
   }
   onMount(loadStorage);
   // Re-check on every open, not just at app-start init — the user may have
