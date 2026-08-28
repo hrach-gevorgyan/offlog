@@ -4,11 +4,14 @@ A scheduled audit routine, tailored to this repo. **Not a feature
 session:** external behaviour must stay identical. Read this whole file
 before touching code.
 
-**Current pointer** — last pass: **24th run** (2026-08-26, right after
-v6.7.0; two `[SAFE]` fixes, both regressions introduced by that release's
-own work). Next pass due: **2026-12-01, or on the next bug hit in daily
-use, whichever comes first.** The old "every 3 minor versions" cadence no
-longer applies; the project is in maintenance mode.
+**Current pointer** — last pass: **25th run** (2026-08-28; standard Phase 1
+checklist only. `[SAFE]` fixes: dead exports, a `windows`-crate comment,
+a `MaintStatus` naming collision. `[REVIEW]` fixes, approved: unguarded
+notification-permission calls now catch internally; two silent
+reminder-clear swallows got explanatory comments. Zero `[RISKY]` findings.
+`dist`'s main chunk crossed the 500kB bundler-warning threshold —
+code-splitting candidate, not acted on). Next pass due: **2026-12-01, or
+on the next bug hit in daily use, whichever comes first.**
 
 This pointer is the only tracker state in this file. Past passes are
 narrated in
