@@ -52,7 +52,7 @@ tiny_http = "0.12"
 # module's own comment for the full threat model.
 pbkdf2 = "0.12"
 sha2 = "0.10"
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 base64 = "0.22"
 
 [target.'cfg(windows)'.dependencies]
