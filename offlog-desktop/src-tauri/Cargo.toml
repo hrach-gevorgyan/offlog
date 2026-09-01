@@ -53,7 +53,7 @@ tiny_http = "0.12"
 pbkdf2 = "0.12"
 sha2 = "0.10"
 aes-gcm = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 
 [target.'cfg(windows)'.dependencies]
 win32job = "2"
