@@ -50,7 +50,7 @@ tiny_http = "0.12"
 # to authenticate and encrypt the /pair exchange instead of travelling
 # (and unlocking the credential response) in plain HTTP -- see that
 # module's own comment for the full threat model.
-pbkdf2 = "0.12"
+pbkdf2 = "0.13"
 sha2 = "0.10"
 aes-gcm = "0.10"
 base64 = "0.22"
