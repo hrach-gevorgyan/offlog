@@ -51,7 +51,7 @@ tiny_http = "0.12"
 # (and unlocking the credential response) in plain HTTP -- see that
 # module's own comment for the full threat model.
 pbkdf2 = "0.12"
-sha2 = "0.10"
+sha2 = "0.11"
 aes-gcm = "0.10"
 base64 = "0.22"
 
