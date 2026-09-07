@@ -160,7 +160,7 @@ struct PairEnvelope {
 
 fn encrypt_response(code: &str, nonce: &[u8], payload: &PairResponse) -> Option<PairEnvelope> {
     let key_bytes = derive_key(code, nonce, b"enc");
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key_bytes));
+    let cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(key_bytes));
     // A fresh random IV per response -- reusing the encryption *key*
     // across pair attempts never happens anyway (each code, and so each
     // key, is single-use), but a random IV costs nothing and rules out
@@ -170,7 +170,7 @@ fn encrypt_response(code: &str, nonce: &[u8], payload: &PairResponse) -> Option<
         *b = rand::random::<u8>();
     }
     let json = serde_json::to_vec(payload).ok()?;
-    let ciphertext = cipher.encrypt(Nonce::from_slice(&iv_bytes), json.as_ref()).ok()?;
+    let ciphertext = cipher.encrypt(&Nonce::from(iv_bytes), json.as_ref()).ok()?;
     Some(PairEnvelope { iv: BASE64.encode(iv_bytes), ciphertext: BASE64.encode(ciphertext) })
 }
 
@@ -281,6 +281,21 @@ mod tests {
         assert_ne!(derive_key(code, &nonce, b"auth"), derive_key("000000", &nonce, b"auth"));
     }
 
+    // The tests above only prove derive_key() is self-consistent: a crate
+    // bump that changed its output would keep every one of them green
+    // while silently breaking pairing against any phone, since the JS side
+    // derives the same bytes independently. This pins the actual bytes
+    // against the exact fixture tests/discovery.test.ts checks its own
+    // WebCrypto implementation with, so the cross-language contract now
+    // fails loudly from whichever side drifts first.
+    #[test]
+    fn derive_key_matches_the_javascript_sides_fixture_byte_for_byte() {
+        let auth_proof = BASE64
+            .decode("UP+xg803OQQ1jqjCLNJKRNj7DPaZO6Y1wgbaM3/edQA=")
+            .unwrap();
+        assert_eq!(derive_key("482913", &[1u8; 16], b"auth").as_slice(), auth_proof.as_slice());
+    }
+
     #[test]
     fn ct_eq_matches_standard_equality_without_early_exit() {
         assert!(ct_eq(b"identical", b"identical"));
@@ -307,18 +322,19 @@ mod tests {
         let envelope = encrypt_response(code, &nonce, &payload).unwrap();
 
         let key_bytes = derive_key(code, &nonce, b"enc");
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key_bytes));
+        let cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(key_bytes));
         let iv = BASE64.decode(&envelope.iv).unwrap();
         let ciphertext = BASE64.decode(&envelope.ciphertext).unwrap();
-        let plaintext = cipher.decrypt(Nonce::from_slice(&iv), ciphertext.as_ref()).unwrap();
+        let nonce_iv = Nonce::try_from(iv.as_slice()).unwrap();
+        let plaintext = cipher.decrypt(&nonce_iv, ciphertext.as_ref()).unwrap();
         let decoded: serde_json::Value = serde_json::from_slice(&plaintext).unwrap();
         assert_eq!(decoded["port"], 25984);
         assert_eq!(decoded["user"], "offlog");
         assert_eq!(decoded["password"], "s3cr3t-pw");
 
         let wrong_key = derive_key("000000", &nonce, b"enc");
-        let wrong_cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&wrong_key));
-        assert!(wrong_cipher.decrypt(Nonce::from_slice(&iv), ciphertext.as_ref()).is_err());
+        let wrong_cipher = Aes256Gcm::new(&Key::<Aes256Gcm>::from(wrong_key));
+        assert!(wrong_cipher.decrypt(&nonce_iv, ciphertext.as_ref()).is_err());
     }
 
     #[test]

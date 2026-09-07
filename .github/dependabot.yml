@@ -75,6 +75,31 @@ updates:
       interval: "monthly"
     open-pull-requests-limit: 5
     groups:
+      # These three share RustCrypto's `digest`/`crypto-common` trait
+      # generation and are all consumed by pairing.rs, so they can only
+      # move together. `pbkdf2_hmac::<Sha256>` is the hard case: pbkdf2
+      # takes sha2's type as a generic parameter, so bumping either alone
+      # is a guaranteed type mismatch, not a risk -- Dependabot opened
+      # pbkdf2 0.13 and sha2 0.11 as two separate PRs and both failed to
+      # compile, exactly as they had to.
+      #
+      # This group must name "major" explicitly. They are 0.x crates, and
+      # a 0.x minor bump is a breaking change under Cargo's semver rules,
+      # so Dependabot classifies 0.12 -> 0.13 as major -- which is what
+      # let them escape cargo-minor-and-patch below and arrive one per PR.
+      #
+      # base64 is deliberately NOT here: pairing.rs uses it for the wire
+      # encoding, but it shares no traits with the three above, so adding
+      # it would widen the blast radius of a single PR for no safety gain.
+      rustcrypto:
+        patterns:
+          - "pbkdf2"
+          - "sha2"
+          - "aes-gcm"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
       cargo-minor-and-patch:
         patterns:
           - "*"
