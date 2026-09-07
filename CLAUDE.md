@@ -20,6 +20,7 @@ change not reflected in the doc it affects isn't finished.
 | [docs/roadmap.md](docs/roadmap.md) | starting planned work or sequencing it |
 | [docs/motion.md](docs/motion.md) | adding or changing any animation, transition or hover state |
 | [docs/brand.md](docs/brand.md) | any public-facing copy; also forks, name/icon reuse, trademark questions |
+| [docs/security.md](docs/security.md) | touching crypto, credentials, permissions, CSP, or anything else with a security claim attached |
 | [docs/changelog.md](docs/changelog.md), [docs/release-notes.md](docs/release-notes.md) | release time only |
 | [docs/maintenance.md](docs/maintenance.md) | running a maintenance pass |
 

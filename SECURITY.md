@@ -71,6 +71,10 @@ Please check decisions.md before reporting any of the above.
 
 ## What is protected
 
+**[docs/security.md](docs/security.md) explains all of this in plain
+language, with examples** — what each protection does, and what it
+deliberately doesn't cover. The summary below is the short version.
+
 For clarity on where the bar actually is:
 
 - **The stored sync password is encrypted at rest** on both real

@@ -18,6 +18,11 @@ crash reporting, no advertising, no data sent to the developer or to
 any third party, ever. Everything you enter into the app stays on your
 own device(s).
 
+This page covers *what data exists and where*. For how that data is
+protected — the pairing handshake, App Lock, where the sync password is
+stored, and the limits of each — see
+[security.md](security.md).
+
 ## What data exists, and where it lives
 
 - **Your tasks, projects, and everything else you create** are stored
