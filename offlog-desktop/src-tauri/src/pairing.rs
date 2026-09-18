@@ -22,7 +22,7 @@ use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
-use pbkdf2::pbkdf2_hmac;
+use pbkdf2::pbkdf2_hmac_array;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::sync::{Arc, Mutex};
@@ -126,9 +126,7 @@ fn derive_key(code: &str, nonce: &[u8], tag: &[u8]) -> [u8; 32] {
     let mut salt = Vec::with_capacity(nonce.len() + tag.len());
     salt.extend_from_slice(nonce);
     salt.extend_from_slice(tag);
-    let mut key = [0u8; 32];
-    pbkdf2_hmac::<Sha256>(code.as_bytes(), &salt, PBKDF2_ROUNDS, &mut key);
-    key
+    pbkdf2_hmac_array::<Sha256, 32>(code.as_bytes(), &salt, PBKDF2_ROUNDS)
 }
 
 #[derive(Deserialize)]
