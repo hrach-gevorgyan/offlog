@@ -93,7 +93,15 @@ For clarity on where the bar actually is:
 
 ## Known, accepted dependency advisories
 
-**Current status (2026-08-24): `npm audit` reports 0 vulnerabilities.**
+**Current status (2026-09-29): `npm audit` and `cargo audit` both report
+0 vulnerabilities.** The last one, RUSTSEC-2026-0285 in `rustls` (reached
+through the desktop updater's HTTPS client), was fixed by moving to
+0.23.45.
+
+`cargo audit` also lists *unmaintained* warnings, which are not
+vulnerabilities: the `unic-*` crates arrive through Tauri's own
+`tauri-utils`, so only an upstream Tauri release can drop them, and
+`proc-macro-error` is not compiled into the Windows build at all.
 
 One Rust advisory remains, accepted:
 
