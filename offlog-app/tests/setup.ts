@@ -95,6 +95,15 @@ if (!Element.prototype.animate) {
 // on some other element.
 HTMLAnchorElement.prototype.click = function () {};
 
+// The same helpers build that blob: URL first. jsdom 30.1+ implements
+// URL.createObjectURL itself but only accepts its own internal Blob, and
+// the Blob global in vitest's jsdom environment isn't backed by one, so
+// every call throws "reading '_bytes'" -- turning each Back up / Export
+// into a failed-toast path in tests while real browsers are fine. Nothing
+// reads the URL back (the click above is a no-op), so any string will do.
+URL.createObjectURL = () => 'blob:test';
+URL.revokeObjectURL = () => {};
+
 // jsdom ships no canvas backend (the real one is the optional `canvas`
 // native package, not worth installing just for this) — every
 // getContext('2d') call logs "Not implemented" to the console and

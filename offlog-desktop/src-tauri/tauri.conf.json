@@ -4,7 +4,10 @@
   "version": "6.10.4",
   "identifier": "com.offlog.app",
   "build": {
-    "frontendDist": "../../offlog-app/dist"
+    "frontendDist": "../../offlog-app/dist",
+    "windows": {
+      "staticVCRuntime": true
+    }
   },
   "app": {
     "windows": [
