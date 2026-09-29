@@ -175,3 +175,28 @@ describe('ListView mark-done undo', () => {
     expect(showError).toHaveBeenCalled();
   });
 });
+
+describe('ListView due cell', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-03-11T10:00:00'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const dueCell = (container: HTMLElement) => container.querySelector('.cell-due') as HTMLElement;
+
+  it('says "Overdue" for an open task past its date', () => {
+    const { container } = render(ListView, { project: mkProject(), tasks: [mkTask({ column_id: 'col:todo', due_date: '2026-03-01' })] });
+
+    expect(dueCell(container).textContent).toBe('Overdue · Mar 1');
+  });
+
+  // A checked-off task kept its red "Overdue" label -- a false alarm on
+  // every finished row whose date had passed.
+  it('shows only the date, in quiet ink, once the task is done', () => {
+    const { container } = render(ListView, { project: mkProject(), tasks: [mkTask({ column_id: 'col:done', due_date: '2026-03-01' })] });
+
+    expect(dueCell(container).textContent).toBe('Mar 1');
+    expect(dueCell(container).style.color).toBe('var(--faint)');
+  });
+});

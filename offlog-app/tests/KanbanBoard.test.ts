@@ -193,3 +193,38 @@ describe('KanbanBoard empty-submit forms', () => {
     expect(container.querySelector('.add-col-btn')).toBeNull();
   });
 });
+
+describe('KanbanBoard due badge', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-03-11T10:00:00'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const badge = (container: HTMLElement) => container.querySelector('.due-badge') as HTMLElement;
+  const withDue = (column_id: string, due_date: string): TaskDoc => ({ ...mkTask(), column_id, due_date });
+
+  it('flags an open task past its date as overdue', () => {
+    const { container } = render(KanbanBoard, { project: mkProject(), tasks: [withDue('col:idea', '2026-03-09')] });
+
+    expect(badge(container).classList.contains('overdue')).toBe(true);
+    expect(badge(container).textContent!.trim()).toBe('Overdue · Mar 9');
+  });
+
+  // A finished task has no deadline left. Flagging it red was a false
+  // alarm on every completed card whose date had passed.
+  it('never flags a task in the last status, however old its date', () => {
+    const { container } = render(KanbanBoard, { project: mkProject(), tasks: [withDue('col:done', '2026-03-09')] });
+
+    expect(badge(container).classList.contains('overdue')).toBe(false);
+    expect(badge(container).classList.contains('soon')).toBe(false);
+    expect(badge(container).textContent!.trim()).toBe('Mar 9');
+  });
+
+  // Same wording as List view, not the raw stored "2026-03-11".
+  it('shows a readable date, not the stored ISO string', () => {
+    const { container } = render(KanbanBoard, { project: mkProject(), tasks: [withDue('col:idea', '2026-03-11')] });
+
+    expect(badge(container).textContent!.trim()).toBe('Today');
+  });
+});

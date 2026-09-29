@@ -10,7 +10,7 @@
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
   import PinStar from './PinStar.svelte';
-  import { filterTasks, localDateStr, type CustomFieldFilter } from './utils';
+  import { filterTasks, localDateStr, dueLabel, type CustomFieldFilter } from './utils';
   import { hapticToggle, hapticDragStart, hapticDragDrop } from './haptics';
   import { resolveTagColor } from './tagColors';
 
@@ -359,8 +359,11 @@
   // binary overdue/not. The "soon" threshold (<=3 days) must stay in
   // step with FocusView.svelte's due_soon bucket so the two views agree
   // on what counts as soon.
-  function dueDateClass(due: string): 'overdue' | 'soon' | '' {
-    const days = Math.round((new Date(`${due}T00:00:00`).getTime() - new Date(`${localDateStr(new Date())}T00:00:00`).getTime()) / 86_400_000);
+  // A finished task (last status -- done is positional) has no deadline
+  // left, so it gets no urgency colour however long ago its date was.
+  function dueDateClass(task: TaskDoc): 'overdue' | 'soon' | '' {
+    if (!task.due_date || task.column_id === project.columns.at(-1)?.id) return '';
+    const days = Math.round((new Date(`${task.due_date}T00:00:00`).getTime() - new Date(`${localDateStr(new Date())}T00:00:00`).getTime()) / 86_400_000);
     if (days < 0) return 'overdue';
     if (days <= 3) return 'soon';
     return '';
@@ -667,9 +670,9 @@
             </div>
             <div class="card-meta">
               {#if task.due_date}
-                <span class="meta-badge due-badge {dueDateClass(task.due_date)}">
+                <span class="meta-badge due-badge {dueDateClass(task)}">
                   <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="4" y1="1" x2="4" y2="3.5"/><line x1="10" y1="1" x2="10" y2="3.5"/></svg>
-                  {task.due_date}
+                  {dueLabel(task.due_date, '', task.column_id === project.columns.at(-1)?.id)}
                 </span>
               {/if}
               {#if task.recurrence}

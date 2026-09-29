@@ -641,7 +641,7 @@
                 {PRIO_LABEL[task.priority]}
               </span>
             {:else if key === 'due'}
-              <span class="cell-due" style="color:{dueInk(task.due_date)}">{dueLabel(task.due_date, '—')}</span>
+              <span class="cell-due" style="color:{dueInk(task.due_date, task.column_id === lastColId())}">{dueLabel(task.due_date, '—', task.column_id === lastColId())}</span>
             {:else if key === 'tags'}
               <span class="cell-tags">
                 {#each task.tags as tag}<span class="tag">{tag}</span>{/each}
@@ -748,6 +748,8 @@
     font-size: 10.5px; color: var(--faint); opacity: .65;
     padding: 0 4px; margin: 10px 0 4px;
   }
+  /* Touch screens have no Shift key, so the hint describes nothing they can do. */
+  @media (hover: none) { .sort-hint { display: none; } }
 
   .search-box {
     display: flex; align-items: center; gap: 7px;

@@ -101,11 +101,13 @@ export function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function dueLabel(due: string | null, fallback = ''): string {
+// `done`: a finished task's date is history, not a deadline -- it must never
+// read "Overdue". Done is positional (last status), so the caller decides.
+export function dueLabel(due: string | null, fallback = '', done = false): string {
   if (!due) return fallback;
   const days = daysDiff(due);
   const short = new Date(due + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  if (days < 0) return `Overdue · ${short}`;
+  if (days < 0) return done ? short : `Overdue · ${short}`;
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return short;
@@ -136,8 +138,8 @@ export function dueRelative(due: string): string {
   return `in ${days}d`;
 }
 
-export function dueInk(due: string | null): string {
-  if (!due) return 'var(--faint)';
+export function dueInk(due: string | null, done = false): string {
+  if (!due || done) return 'var(--faint)';
   const days = daysDiff(due);
   if (days < 0) return 'var(--overdue-ink)';
   if (days <= 1) return 'var(--due-soon-ink)';
