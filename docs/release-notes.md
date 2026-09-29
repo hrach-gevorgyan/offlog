@@ -31,6 +31,21 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.10.5
+
+### In short
+
+Housekeeping: everything Offlog is built on moved to its latest version, including a security fix in the part of the desktop app that downloads its own updates. Nothing changes in how the app looks or works — but it's worth installing, and it clears a problem that would have blocked future Android releases.
+
+### Security
+- Fixed a flaw in the code the Windows app uses to download its own updates, and replaced a random-number component its makers had withdrawn.
+
+### Changed
+- Updated every part Offlog is built on to its latest version. No change to how the app looks or behaves.
+
+### Fixed
+- Our release system could no longer build the Android app, after an outside tool it depends on broke. Fixed before it blocked a release.
+
 ## v6.10.4
 
 ### In short

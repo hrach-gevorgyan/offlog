@@ -17,6 +17,53 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.10.5] — 2026-09-29
+
+A dependency release: every npm package, Rust crate and GitHub Action
+moved to its latest stable version, which also closed a security
+advisory in code the desktop app actually ships.
+
+### Security
+- **`rustls` RUSTSEC-2026-0285** (medium, TLS 1.3 handshake messages
+  accepted across encryption-level boundaries). Reached the shipped
+  Windows build through the updater's HTTPS client — 0.23.43 → 0.23.45.
+- **`chacha20` 0.10.1 had been yanked** from crates.io. It backs `rand`,
+  which generates the pairing codes — 0.10.1 → 0.10.2.
+
+### Changed
+- **Tauri 2.11 → 2.12**, core plus all nine plugins. The Rust
+  `tauri-plugin-*` crates and the JS `@tauri-apps/*` packages now match
+  version-for-version, and the `Cargo.toml` floors were raised to what
+  is installed so the two halves can't drift apart again.
+- **vitest 4 → 5**, and every other npm dependency to latest (Capacitor
+  8.5.2, Vite 8.3, Svelte 5.57.1, CodeMirror, jsdom 30.1).
+- `build.windows.staticVCRuntime` set explicitly in `tauri.conf.json`.
+  tauri-cli 2.12 still sets the `STATIC_VCRUNTIME` env var that
+  tauri-build 2.7 deprecates, so a release build warned on every run;
+  the key is set to the same value that variable produced, and the exe
+  still imports no VC++ runtime DLL.
+- Three GitHub Actions pins advanced to their newest SHA: `setup-java`
+  6.0.1, `codeql-action` 4.38.2, `action-gh-release` 3.0.3.
+- Plain `typescript` deliberately stays on 6.x: svelte-check refuses to
+  run unless TS 6 is installed beside TS 7, which already does the
+  type-checking as `@typescript/native` via `--tsgo`.
+
+### Fixed
+- **CI could not build the Android APK.** `android-actions/setup-android`
+  was pinned at v4.0.1, which installs an SDK `tools` package Google
+  removed on 2026-09-17; every run since failed at that step. `release.yml`
+  used the same pin, so the next tag would have failed to package
+  Android. Now v4.0.4.
+- `derive_key()` no longer fills a zero-initialised buffer, which CodeQL
+  read as a hard-coded cryptographic value (alert #30). `pbkdf2_hmac_array`
+  returns the key directly; output is byte-identical.
+
+### Added
+- A test for the notes editor. It was the one place the app hands a live
+  CodeMirror instance real user text and had no coverage at all, so a
+  CodeMirror bump could have broken note editing with every other gate
+  still green.
+
 ## [6.10.4] — 2026-08-29
 
 Maintenance pass 26, pulled forward by the just-shipped v6.10.3 crash: its
@@ -544,39 +591,9 @@ measuring nothing.
 
 ---
 
-## [6.5.2] — 2026-08-24
-
-### Changed
-- **The Android status bar strip follows the theme.** It was pinned dark in
-  both themes since v4.29.0, which split it off from `--sidebar-bg` when
-  the sidebar became theme-aware. It now matches `--sidebar-bg` again in
-  both themes, and `theme.ts` flips the native icon style with it —
-  Style.Light in light mode, Style.Dark in dark — so the icons never blend
-  into their own background. The browser `theme-color` follows the same
-  two values, set pre-paint in `theme-init.js` so mobile browser chrome
-  cannot flash the wrong colour.
-
-### Fixed
-- Settings' Software updates block spaced its version row at half the
-  rhythm of every other row. A `compact-row` negative margin, used in
-  exactly that one place, subtracted from the group gap — and that row is
-  the tallest in the group, so the tightest gap landed where it should
-  have been loosest. Rule removed with its only caller.
-- The update dialog split a wrapped sentence from the release notes into
-  one paragraph per source line. `renderNotes()` folded wrapped **bullets**
-  into a single `<li>` but emitted a `<p>` per line for prose, which no
-  entry had exercised until 6.5.1 wrote its summary as flowing text.
-  Covered by two mutation-verified tests.
-- CodeQL's Java/Kotlin analysis failed on every run with a warm Gradle
-  build cache: 152 compile tasks returned `FROM-CACHE`, so `javac` never
-  ran and the extractor saw no source. That job now compiles with
-  `--no-build-cache`; the dependency cache still applies, and release
-  builds keep task-output reuse.
-
 ---
 
----
-
+[6.10.5]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.4...v6.10.5
 [6.10.4]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.3...v6.10.4
 [6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
 [6.10.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.1...v6.10.2
@@ -586,4 +603,3 @@ measuring nothing.
 [6.8.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.7.0...v6.8.0
 [6.7.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.6.0...v6.7.0
 [6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0
-[6.5.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.1...v6.5.2
