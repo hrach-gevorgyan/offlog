@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog — step 2b, D and E blended</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#E9E9E7; color:#1C1C1C; -webkit-font-smoothing:antialiased; }
+  header.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 32px; background:#E9E9E7; border-bottom:1px solid #D4D4D1; }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid #9A9A96; background:none; color:inherit; cursor:pointer; opacity:.6; }
+  .chip.on { opacity:1; background:#1C1C1C; color:#fff; border-color:#1C1C1C; }
+  .notes { margin:16px 32px 0; max-width:96ch; font-size:14px; line-height:1.6; color:#444; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(560px, 1fr)); gap:28px; padding:24px 32px 80px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 10px; font-size:13px; color:#555; line-height:1.5; }
+
+  .light { --page:#FBFAF8; --side:#F3F1EC; --line:#E6E2DA; --ink:#1F1D1A; --muted:#5F5A52; --faint:#9A948A; --check:#BDB6AA; --sel:#E9E5DD; --accent:#1E3A5F; --on-accent:#FFFFFF; --late:#B03A2E; }
+  .dark  { --page:#171614; --side:#121110; --line:#2A2825; --ink:#EDEAE4; --muted:#AFA89D; --faint:#77716A; --check:#4E4A44; --sel:#23211E; --accent:#8FB0D6; --on-accent:#121110; --late:#E48A7E; }
+
+  .f { display:flex; height:430px; border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); background:var(--page); color:var(--ink); font-size:14px; line-height:1.45; }
+  .side { width:160px; flex-shrink:0; background:var(--side); padding:16px 10px; display:flex; flex-direction:column; gap:1px; border-right:1px solid var(--line); font-size:13.5px; }
+  .logo { font-weight:700; font-size:14px; padding:2px 8px 14px; }
+  .nav { padding:6px 8px; border-radius:6px; color:var(--muted); }
+  .nav.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .sp { margin:14px 8px 4px; font-size:12px; color:var(--faint); font-weight:500; }
+  .pj { padding:4px 8px; color:var(--muted); }
+  .main { flex:1; min-width:0; overflow:hidden; }
+  .c { width:16px; height:16px; border-radius:50%; border:1.5px solid var(--check); flex-shrink:0; }
+  .done .c { background:var(--accent); border-color:var(--accent); }
+  .done .t { color:var(--faint); text-decoration:line-through; }
+  .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .p { color:var(--faint); white-space:nowrap; }
+  .due { text-align:right; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .due.late { color:var(--late); font-weight:600; }
+  .due.today { color:var(--accent); }
+  .btn { background:var(--accent); color:var(--on-accent); border-radius:7px; padding:7px 12px; font-weight:600; font-size:13px; white-space:nowrap; }
+  .row { display:flex; align-items:center; gap:12px; }
+
+  /* A · Quiet: a modest title, small grey labels, generous rows */
+  .A .main { padding:24px 28px; }
+  .A .hd { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:18px; }
+  .A h3 { margin:0; font-size:22px; font-weight:600; letter-spacing:-.01em; }
+  .A .date { display:block; font-size:12.5px; color:var(--faint); margin-bottom:2px; }
+  .A .sec { font-size:11.5px; font-weight:600; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; margin:18px 0 6px; }
+  .A .row { padding:11px 0; border-top:1px solid var(--line); font-size:14.5px; }
+  .A .p, .A .due { font-size:12.5px; } .A .due { width:84px; }
+
+  /* B · Big title: a strong page title, plain small sections */
+  .B .main { padding:32px 32px; }
+  .B .hd { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; }
+  .B h3 { margin:0; font-size:42px; font-weight:700; letter-spacing:-.03em; line-height:1; }
+  .B .date { display:block; font-size:14px; color:var(--muted); margin-top:8px; }
+  .B .sec { font-size:13px; font-weight:600; color:var(--muted); margin:20px 0 4px; }
+  .B .row { padding:10px 0; border-top:1px solid var(--line); font-size:15px; }
+  .B .p, .B .due { font-size:12.5px; } .B .due { width:84px; }
+
+  /* C · Light and airy: a large thin title, lots of space */
+  .C .main { padding:36px 36px; }
+  .C .hd { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:26px; }
+  .C h3 { margin:0; font-size:44px; font-weight:300; letter-spacing:-.03em; line-height:1; }
+  .C .date { display:block; font-size:13px; color:var(--faint); margin-bottom:8px; }
+  .C .sec { font-size:12.5px; color:var(--faint); margin:22px 0 4px; }
+  .C .row { padding:12px 0; font-size:15px; }
+  .C .row + .row { border-top:1px solid var(--line); }
+  .C .p, .C .due { font-size:12.5px; } .C .due { width:84px; }
+
+  /* D · Dense tool: a slim header bar, compact rows, counts */
+  .D .main { display:flex; flex-direction:column; }
+  .D .hd { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid var(--line); }
+  .D h3 { margin:0; font-size:16px; font-weight:600; }
+  .D .date { font-size:12.5px; color:var(--faint); margin-left:10px; font-weight:400; }
+  .D .btn { padding:5px 10px; font-size:12.5px; }
+  .D .body { padding:6px 20px; }
+  .D .sec { font-size:12.5px; font-weight:600; margin:14px 0 4px; display:flex; gap:6px; }
+  .D .sec span { color:var(--faint); font-weight:500; }
+  .D .row { padding:7px 0; border-top:1px solid var(--line); font-size:13.5px; }
+  .D .p, .D .due { font-size:12px; } .D .due { width:78px; }
+
+  /* E · Strong groups: modest title, sections as the real structure */
+  .E .main { padding:26px 30px; }
+  .E .hd { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px; }
+  .E h3 { margin:0; font-size:24px; font-weight:650; letter-spacing:-.015em; }
+  .E .date { display:block; font-size:12.5px; color:var(--faint); margin-bottom:2px; }
+  .E .sec { font-size:17px; font-weight:650; margin:22px 0 8px; display:flex; align-items:baseline; gap:8px; letter-spacing:-.01em; }
+  .E .sec span { font-size:13px; font-weight:500; color:var(--faint); }
+  .E .sec.late-sec { color:var(--late); }
+  .E .row { padding:10px 0; border-top:1px solid var(--line); font-size:14.5px; }
+  .E .p, .E .due { font-size:12.5px; } .E .due { width:84px; }
+
+  /* F · Numbers first: the day as figures, then the list */
+  .F .main { padding:26px 30px; }
+  .F .hd { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+  .F h3 { margin:0; font-size:22px; font-weight:600; }
+  .F .date { display:block; font-size:12.5px; color:var(--faint); margin-bottom:2px; }
+  .F .figs { display:flex; gap:28px; margin:0 0 18px; }
+  .F .figs div { display:flex; flex-direction:column; }
+  .F .figs b { font-size:34px; font-weight:600; letter-spacing:-.02em; line-height:1; font-variant-numeric:tabular-nums; }
+  .F .figs span { font-size:12.5px; color:var(--faint); margin-top:4px; }
+  .F .figs .l b { color:var(--late); }
+  .F .sec { font-size:12.5px; font-weight:600; color:var(--muted); margin:14px 0 4px; }
+  .F .row { padding:9px 0; border-top:1px solid var(--line); font-size:14.5px; }
+  .F .p, .F .due { font-size:12.5px; } .F .due { width:84px; }
+
+  /* G · D's bar and density, E's groups */
+  .G .main { display:flex; flex-direction:column; }
+  .G .hd { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid var(--line); }
+  .G h3 { margin:0; font-size:16px; font-weight:600; }
+  .G .date { font-size:12.5px; color:var(--faint); margin-left:10px; font-weight:400; }
+  .G .btn { padding:5px 10px; font-size:12.5px; }
+  .G .body { padding:4px 20px; }
+  .G .sec { font-size:16px; font-weight:650; margin:18px 0 6px; display:flex; align-items:baseline; gap:8px; letter-spacing:-.01em; }
+  .G .sec span { font-size:12.5px; font-weight:500; color:var(--faint); }
+  .G .sec.late-sec { color:var(--late); }
+  .G .row { padding:7px 0; border-top:1px solid var(--line); font-size:13.5px; }
+  .G .p, .G .due { font-size:12px; } .G .due { width:78px; }
+
+  /* H · E's title and air, D's compact rows */
+  .H .main { padding:24px 28px; }
+  .H .hd { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:4px; }
+  .H h3 { margin:0; font-size:24px; font-weight:650; letter-spacing:-.015em; }
+  .H .date { display:block; font-size:12.5px; color:var(--faint); margin-bottom:2px; }
+  .H .sec { font-size:16px; font-weight:650; margin:20px 0 6px; display:flex; align-items:baseline; gap:8px; letter-spacing:-.01em; }
+  .H .sec span { font-size:12.5px; font-weight:500; color:var(--faint); }
+  .H .sec.late-sec { color:var(--late); }
+  .H .row { padding:7px 0; border-top:1px solid var(--line); font-size:13.5px; }
+  .H .p, .H .due { font-size:12px; } .H .due { width:78px; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Step 2b · D and E blended</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>D and E as before, and two blends of them. <b>G</b> keeps D's slim header bar and compact rows, and uses E's strong groups. <b>H</b> keeps E's page title and breathing room, and uses D's compact rows and counts.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const side = `<div class="side"><div class="logo">Offlog</div><div class="nav on">Today</div><div class="nav">Focus</div><div class="nav">Agenda</div>
+  <div class="sp">Work</div><div class="pj">Q4 Product Sprint</div><div class="pj">API Migration</div>
+  <div class="sp">New House</div><div class="pj">New House Build</div><div class="pj">Backyard</div></div>`;
+const R = (cls, t, p, due, dcls = '') => `<div class="row ${cls}"><span class="c"></span><span class="t">${t}</span><span class="p">${p}</span><span class="due ${dcls}">${due}</span></div>`;
+const today = R('done', 'Review pull request #482', 'Q4 Product Sprint', 'Today') + R('', 'Fix login redirect bug', 'Q4 Product Sprint', 'Today', 'today') + R('', 'Get contractor quotes', 'New House Build', 'Today', 'today') + R('', 'Pick up Liam from practice', "Liam's Soccer", 'Today', 'today');
+const late = R('', 'Refactor auth module', 'Q4 Product Sprint', '2 days late', 'late') + R('', 'Order new flooring', 'New House Build', '1 day late', 'late');
+
+const OPTS = [
+  ['D · Dense tool', 'A slim header bar, compact rows and counts, like Linear. Efficient; the most on screen.',
+    `<div class="hd"><h3>Today<span class="date">Wed 30 Sep</span></h3><span class="btn">New task</span></div>
+     <div class="body"><div class="sec">Due today <span>4</span></div>${today}<div class="sec">Earlier <span>2</span></div>${late}</div>`],
+  ['E · Strong groups', 'A modest title, with the groups (Due today, Late) as the real structure and late shown as its own heading.',
+    `<div class="hd"><div><span class="date">Wednesday 30 September</span><h3>Today</h3></div><span class="btn">New task</span></div>
+     <div class="sec">Due today <span>4</span></div>${today}<div class="sec late-sec">Late <span>2</span></div>${late}`],
+  ['G · D + E: bar and groups', "D's slim header bar and compact rows, with E's strong groups and a red Late heading. The most efficient of the two.",
+    `<div class="hd"><h3>Today<span class="date">Wed 30 Sep</span></h3><span class="btn">New task</span></div>
+     <div class="body"><div class="sec">Due today <span>4</span></div>${today}<div class="sec late-sec">Late <span>2</span></div>${late}</div>`],
+  ['H · E + D: title and density', "E's page title and breathing room, with D's compact rows and counts. A little calmer at the top.",
+    `<div class="hd"><div><span class="date">Wednesday 30 September</span><h3>Today</h3></div><span class="btn">New task</span></div>
+     <div class="sec">Due today <span>4</span></div>${today}<div class="sec late-sec">Late <span>2</span></div>${late}`],
+];
+const grid = document.getElementById('grid');
+for (const [name, desc, body] of OPTS) {
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><div class="f th light ${name[0]}">${side}<div class="main">${body}</div></div>`;
+  grid.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+});
+</script>
+</body></html>

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog — step 3, surfaces</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#E9E9E7; color:#1C1C1C; -webkit-font-smoothing:antialiased; }
+  header.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 32px; background:#E9E9E7; border-bottom:1px solid #D4D4D1; }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid #9A9A96; background:none; color:inherit; cursor:pointer; opacity:.6; }
+  .chip.on { opacity:1; background:#1C1C1C; color:#fff; border-color:#1C1C1C; }
+  .notes { margin:16px 32px 0; max-width:96ch; font-size:14px; line-height:1.6; color:#444; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(640px, 1fr)); gap:28px; padding:24px 32px 80px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 10px; font-size:13px; color:#555; line-height:1.5; }
+
+  .light { --page:#FBFAF8; --side:#F3F1EC; --tile:#F3F1EC; --sheet:#FFFFFF; --desk:#EFECE6; --line:#E6E2DA; --line-2:#D6D0C5; --ink:#1F1D1A; --muted:#5F5A52; --faint:#9A948A; --check:#BDB6AA; --sel:#E9E5DD; --accent:#1E3A5F; --on-accent:#FFFFFF; --late:#B03A2E; --shadow:rgba(40,30,15,.08); }
+  .dark  { --page:#171614; --side:#121110; --tile:#201E1C; --sheet:#1C1B19; --desk:#111010; --line:#2A2825; --line-2:#3A3733; --ink:#EDEAE4; --muted:#AFA89D; --faint:#77716A; --check:#4E4A44; --sel:#23211E; --accent:#8FB0D6; --on-accent:#121110; --late:#E48A7E; --shadow:rgba(0,0,0,.45); }
+
+  /* The frame: D's hierarchy. Left: the Today list. Right: two board columns. */
+  .f { display:flex; height:380px; border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); background:var(--page); color:var(--ink); font-size:13.5px; line-height:1.4; }
+  .side { width:140px; flex-shrink:0; background:var(--side); padding:12px 8px; display:flex; flex-direction:column; gap:1px; font-size:13px; }
+  .logo { font-weight:700; padding:2px 8px 12px; }
+  .nav { padding:5px 8px; color:var(--muted); }
+  .nav.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .sp { margin:12px 8px 3px; font-size:11.5px; color:var(--faint); }
+  .pj { padding:3px 8px; color:var(--muted); }
+  .main { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .hd { display:flex; justify-content:space-between; align-items:center; padding:10px 18px; }
+  .hd h3 { margin:0; font-size:15px; font-weight:600; } .hd h3 span { font-size:12px; color:var(--faint); font-weight:400; margin-left:8px; }
+  .btn { background:var(--accent); color:var(--on-accent); padding:4px 10px; font-weight:600; font-size:12px; }
+  .body { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:8px 18px 14px; min-height:0; }
+  .sec { font-size:12px; font-weight:600; margin:6px 0 4px; display:flex; gap:6px; } .sec span { color:var(--faint); font-weight:500; }
+  .row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+  .c { width:14px; height:14px; border-radius:50%; border:1.4px solid var(--check); flex-shrink:0; }
+  .done .c { background:var(--accent); border-color:var(--accent); } .done .t { color:var(--faint); text-decoration:line-through; }
+  .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .due { color:var(--muted); font-size:11.5px; white-space:nowrap; } .due.late { color:var(--late); font-weight:600; } .due.today { color:var(--accent); }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; min-height:0; }
+  .col h4 { margin:6px 0 6px; font-size:12px; font-weight:600; display:flex; gap:6px; } .col h4 span { color:var(--faint); font-weight:500; }
+  .card { padding:8px 10px; margin-bottom:6px; font-size:12.5px; }
+  .card small { display:block; margin-top:3px; color:var(--faint); font-size:11px; }
+  .card small.late { color:var(--late); font-weight:600; }
+
+  /* A · Hairlines: lines separate, nothing is filled; square-ish corners */
+  .A .hd { border-bottom:1px solid var(--line); } .A .side { border-right:1px solid var(--line); }
+  .A .row { border-top:1px solid var(--line); } .A .nav, .A .btn { border-radius:5px; }
+  .A .card { border:1px solid var(--line-2); border-radius:6px; background:var(--page); }
+
+  /* B · Soft fills: no lines at all; tone separates, rounded */
+  .B .side { background:var(--side); } .B .nav, .B .btn { border-radius:8px; }
+  .B .row { border-radius:6px; }
+  .B .card { background:var(--tile); border-radius:10px; }
+  .B .col { background:none; }
+
+  /* C · Cards with a soft lift: bordered, rounded, a faint shadow (Notion-like) */
+  .C .hd { border-bottom:1px solid var(--line); } .C .side { border-right:1px solid var(--line); }
+  .C .row { border-top:1px solid var(--line); } .C .nav, .C .btn { border-radius:6px; }
+  .C .card { background:var(--sheet); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow), 0 2px 6px var(--shadow); }
+
+  /* D · Space only: no lines, no fills; spacing and alignment do the work */
+  .D .row { padding:7px 0; } .D .nav, .D .btn { border-radius:6px; }
+  .D .card { padding:6px 0 10px; }
+  .D .col h4 { margin-bottom:2px; }
+
+  /* E · Sheet on a desk: the whole content sits on one lighter sheet */
+  .E .f, .E.f { background:var(--desk); }
+  .E .main { margin:8px 8px 8px 0; background:var(--sheet); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .E .side { background:var(--desk); }
+  .E .hd { border-bottom:1px solid var(--line); } .E .row { border-top:1px solid var(--line); }
+  .E .nav, .E .btn { border-radius:6px; } .E .nav.on { background:var(--sheet); box-shadow:0 0 0 1px var(--line); }
+  .E .card { background:var(--desk); border-radius:7px; }
+
+  /* F · Precise grid: sharp corners, stronger lines, everything on a grid */
+  .F .hd { border-bottom:1px solid var(--line-2); } .F .side { border-right:1px solid var(--line-2); }
+  .F .row { border-top:1px solid var(--line); } .F .nav, .F .btn { border-radius:0; }
+  .F .nav.on { background:none; box-shadow:inset 2px 0 0 var(--ink); }
+  .F .cols { gap:0; } .F .col + .col { border-left:1px solid var(--line-2); padding-left:10px; } .F .col:first-child { padding-right:10px; }
+  .F .card { border:1px solid var(--line-2); border-radius:0; background:var(--page); }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Step 3 · Surfaces</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>B's colours, Hanken Grotesk and D's compact layout, all kept. What changes is how things are separated and framed: lines, fills, space, corners and depth. The left half is the Today list and the right half is a piece of the board, because surfaces matter most on cards.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const side = `<div class="side"><div class="logo">Offlog</div><div class="nav on">Today</div><div class="nav">Focus</div><div class="nav">Agenda</div>
+  <div class="sp">Work</div><div class="pj">Q4 Product Sprint</div><div class="pj">API Migration</div><div class="sp">New House</div><div class="pj">New House Build</div></div>`;
+const R = (cls, t, due, d = '') => `<div class="row ${cls}"><span class="c"></span><span class="t">${t}</span><span class="due ${d}">${due}</span></div>`;
+const list = `<div><div class="sec">Due today <span>4</span></div>
+  ${R('done', 'Review pull request #482', 'Today')}${R('', 'Fix login redirect bug', 'Today', 'today')}${R('', 'Get contractor quotes', 'Today', 'today')}${R('', 'Pick up Liam from practice', 'Today', 'today')}
+  <div class="sec" style="margin-top:12px">Earlier <span>2</span></div>
+  ${R('', 'Refactor auth module', '2 days late', 'late')}${R('', 'Order new flooring', '1 day late', 'late')}</div>`;
+const board = `<div class="cols">
+  <div class="col"><h4>Backlog <span>3</span></h4>
+    <div class="card">Fix login redirect bug<small>Today</small></div>
+    <div class="card">Set up CI pipeline<small>Sat 3 Oct</small></div>
+    <div class="card">Write API docs<small>1 of 3 steps</small></div></div>
+  <div class="col"><h4>In progress <span>1</span></h4>
+    <div class="card">Refactor auth module<small class="late">2 days late</small></div></div></div>`;
+const OPTS = [
+  ['A · Hairlines', 'Thin lines separate everything, and nothing is filled. Cards are outlined with small corners. Crisp and quiet, like Linear.'],
+  ['B · Soft fills', 'No lines at all: a slightly darker tone separates the sidebar and the cards. Soft rounded corners. Gentle and modern.'],
+  ['C · Lifted cards', 'Lines for the list, and white cards with a border and a faint shadow on the board. Tangible, like Notion.'],
+  ['D · Space only', 'No lines, no fills, no boxes. Spacing and alignment alone create the order. The most minimal, but it relies on alignment.'],
+  ['E · Sheet on a desk', 'All the content sits on one lighter sheet with a rounded edge, and the sidebar is the desk around it. Calm and premium, like Things or Craft.'],
+  ['F · Precise grid', 'Sharp corners, slightly stronger lines, and columns divided by rules. Engineered and exact, like a Swiss timetable.'],
+];
+const grid = document.getElementById('grid');
+for (const [name, desc] of OPTS) {
+  const el = document.createElement('section'); el.className = 'opt ' + name[0];
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><div class="f th light">${side}<div class="main"><div class="hd"><h3>Today<span>Wed 30 Sep</span></h3><span class="btn">New task</span></div><div class="body">${list}${board}</div></div></div>`;
+  grid.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+});
+</script>
+</body></html>

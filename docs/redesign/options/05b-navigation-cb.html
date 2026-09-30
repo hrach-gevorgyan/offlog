@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog — step 5, C + B</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#E9E9E7; color:#1C1C1C; -webkit-font-smoothing:antialiased; }
+  header.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 32px; background:#E9E9E7; border-bottom:1px solid #D4D4D1; }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid #9A9A96; background:none; color:inherit; cursor:pointer; opacity:.6; }
+  .chip.on { opacity:1; background:#1C1C1C; color:#fff; border-color:#1C1C1C; }
+  .notes { margin:16px 32px 0; max-width:100ch; font-size:14px; line-height:1.6; color:#444; }
+  .notes p { margin:0 0 6px; }
+  .list { display:flex; flex-direction:column; gap:40px; padding:24px 32px 80px; }
+  .opt h2 { margin:0 0 4px; font-size:16px; font-weight:600; }
+  .opt p.d { margin:0 0 12px; font-size:13.5px; color:#555; line-height:1.55; max-width:110ch; }
+  .opt .pc { font-size:12.5px; color:#555; margin:-6px 0 12px; display:flex; gap:24px; flex-wrap:wrap; }
+  .opt .pc b { color:#1C1C1C; font-weight:600; }
+
+  .light { --page:#FBFAF8; --tile:#F3F1EC; --hover:#EFECE6; --sel:#E9E5DD; --ink:#1F1D1A; --muted:#5F5A52; --faint:#9A948A; --check:#BDB6AA; --accent:#1E3A5F; --on-accent:#FFFFFF; --late:#B03A2E; }
+  .dark  { --page:#171614; --tile:#201E1C; --hover:#24221F; --sel:#2A2826; --ink:#EDEAE4; --muted:#AFA89D; --faint:#77716A; --check:#4E4A44; --accent:#8FB0D6; --on-accent:#121110; --late:#E48A7E; }
+
+  /* The whole app at 1100 x 620, built from the decided pieces. */
+  .app { width:1100px; max-width:100%; height:660px; display:flex; border-radius:12px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.1); background:var(--page); color:var(--ink); font-size:13.5px; line-height:1.4; position:relative; }
+  .side { width:220px; flex-shrink:0; background:var(--tile); padding:14px 10px; display:flex; flex-direction:column; gap:1px; }
+  .logo { font-weight:700; font-size:14px; padding:2px 8px 14px; display:flex; justify-content:space-between; align-items:center; }
+  .nav { display:flex; align-items:center; gap:9px; padding:6px 8px; border-radius:8px; color:var(--muted); }
+  .nav.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .nav .n { margin-left:auto; font-size:12px; color:var(--faint); font-weight:500; }
+  .app svg { width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+  .grp { margin:14px 8px 4px; font-size:11.5px; color:var(--faint); font-weight:600; display:flex; justify-content:space-between; }
+  .pj { padding:5px 8px 5px 8px; border-radius:8px; color:var(--muted); display:flex; justify-content:space-between; }
+  .pj .n { font-size:12px; color:var(--faint); }
+  .plist { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:1px; }
+  .foot { margin-top:auto; padding-top:8px; display:flex; flex-direction:column; gap:1px; }
+  .sync { font-size:11.5px; color:var(--faint); padding:6px 8px 0; }
+  .main { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .hd { display:flex; align-items:center; gap:10px; padding:11px 20px; }
+  .hd h3 { margin:0; font-size:16px; font-weight:600; } .hd .date { font-size:12.5px; color:var(--faint); }
+  .hd .sp { flex:1; }
+  .btn { background:var(--accent); color:var(--on-accent); padding:5px 11px; font-weight:600; font-size:12.5px; border-radius:8px; white-space:nowrap; }
+  .ghost { color:var(--muted); font-size:12.5px; padding:5px 9px; border-radius:8px; background:var(--tile); white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+  .body { padding:2px 12px 12px; overflow:hidden; }
+  .sec { font-size:12.5px; font-weight:600; margin:10px 8px 4px; display:flex; gap:6px; } .sec span { color:var(--faint); font-weight:500; }
+  .row { display:flex; align-items:center; gap:11px; padding:6px 8px; border-radius:8px; }
+  .row.sel { background:var(--sel); }
+  .c { width:15px; height:15px; border-radius:50%; border:1.5px solid var(--check); flex-shrink:0; }
+  .done .c { background:var(--accent); border-color:var(--accent); } .done .t { color:var(--faint); text-decoration:line-through; }
+  .g { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .s { font-size:11.5px; color:var(--faint); display:flex; gap:9px; white-space:nowrap; overflow:hidden; }
+  .due { font-size:11.5px; color:var(--muted); white-space:nowrap; } .due.late { color:var(--late); font-weight:600; } .due.today { color:var(--accent); }
+
+  /* B · the detail pane */
+  .detail { width:330px; flex-shrink:0; background:var(--tile); padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+  .detail h4 { margin:0; font-size:17px; font-weight:600; line-height:1.3; }
+  .detail .crumb { font-size:11.5px; color:var(--faint); }
+  .kv { display:grid; grid-template-columns:78px 1fr; gap:6px 10px; font-size:12.5px; } .kv dt { color:var(--faint); } .kv dd { margin:0; }
+  .detail .note { font-size:12.5px; color:var(--muted); line-height:1.55; }
+  .detail .st { display:flex; gap:8px; align-items:center; font-size:12.5px; } .detail .st .c { width:13px; height:13px; }
+
+  /* C · icon rail + project column */
+  .rail { width:52px; flex-shrink:0; background:var(--tile); display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 0; }
+  .rail .r { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+  .rail .r.on { background:var(--sel); color:var(--ink); }
+  .rail .lg { width:22px; height:22px; border-radius:6px; background:var(--accent); margin-bottom:10px; }
+  .rail .bt { margin-top:auto; }
+  .pcol { width:200px; flex-shrink:0; padding:14px 10px; display:flex; flex-direction:column; gap:1px; box-shadow:inset -1px 0 0 var(--tile); }
+
+  /* D · top bar */
+  .top { display:flex; align-items:center; gap:6px; padding:10px 18px; background:var(--tile); }
+  .top .tab { padding:5px 11px; border-radius:8px; color:var(--muted); }
+  .top .tab.on { background:var(--page); color:var(--ink); font-weight:600; }
+  .top .srch { margin-left:auto; width:240px; padding:5px 10px; border-radius:8px; background:var(--page); color:var(--faint); font-size:12.5px; display:flex; gap:7px; align-items:center; }
+  .center { max-width:720px; width:100%; margin:0 auto; }
+
+  /* E · the More menu */
+  .menu { position:absolute; left:14px; bottom:52px; width:200px; background:var(--page); border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.18); padding:6px; font-size:13px; }
+  .menu div { padding:6px 9px; border-radius:7px; color:var(--ink); display:flex; gap:9px; align-items:center; }
+  .menu div:first-child { background:var(--tile); }
+  .menu hr { border:0; height:1px; background:var(--tile); margin:4px 0; }
+
+  /* F · command bar */
+  .cmd { margin:16px auto 6px; width:560px; max-width:92%; background:var(--tile); border-radius:10px; padding:9px 14px; color:var(--faint); display:flex; gap:9px; align-items:center; font-size:13.5px; }
+  .cmd kbd { margin-left:auto; font:inherit; font-size:11px; color:var(--muted); background:var(--page); border-radius:5px; padding:1px 6px; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Step 5 · C + B together</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>C's frame (the icon rail and a project column you can hide) with B's way of opening a task (a pane on the right, not a popup). One rule keeps it from getting cramped: <b>opening a task tucks the project column away, and closing the task brings it back.</b> Below are the two states of the same screen.</p>
+</div>
+<div class="list" id="list"></div>
+
+<script>
+const ic = {
+  today: '<svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="10.5" rx="2"/><path d="M2.5 6.5h11M5.5 1.5v3M10.5 1.5v3"/></svg>',
+  focus: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/></svg>',
+  agenda: '<svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h6"/></svg>',
+  proj: '<svg viewBox="0 0 16 16"><path d="M2.5 4.5a1 1 0 011-1h3l1.5 1.5h4.5a1 1 0 011 1v6a1 1 0 01-1 1h-9a1 1 0 01-1-1z"/></svg>',
+  search: '<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>',
+  plus: '<svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>',
+  gear: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>',
+  more: '<svg viewBox="0 0 16 16"><circle cx="4" cy="8" r=".8"/><circle cx="8" cy="8" r=".8"/><circle cx="12" cy="8" r=".8"/></svg>',
+  bin: '<svg viewBox="0 0 16 16"><path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9"/></svg>',
+  clock: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg>',
+  sync: '<svg viewBox="0 0 16 16"><path d="M13 6a5 5 0 00-9-1.5M3 10a5 5 0 009 1.5M13 2.5V6H9.5M3 13.5V10h3.5"/></svg>',
+};
+const R = (t, s, due, dc = '', cls = '') => `<div class="row ${cls}"><span class="c"></span><span class="g"><span class="t">${t}</span><span class="s">${s}</span></span><span class="due ${dc}">${due}</span></div>`;
+const rows = `<div class="sec">Due today <span>4</span></div>
+  ${R('Review pull request #482', '<span>Q4 Product Sprint</span>', 'Today', '', 'done')}
+  ${R('Fix login redirect bug', '<span>Q4 Product Sprint</span><span>#urgent</span><span>1/3 steps</span>', 'Today', 'today', 'SEL')}
+  ${R('Get contractor quotes', '<span>New House Build</span><span>14:00</span>', 'Today', 'today')}
+  ${R('Pick up Liam from practice', "<span>Liam's Soccer Season</span>", 'Today', 'today')}
+  <div class="sec">Earlier <span>2</span></div>
+  ${R('Refactor auth module', '<span>Q4 Product Sprint</span><span>#code-review</span>', '2 days late', 'late')}
+  ${R('Order new flooring', '<span>New House Build</span>', '1 day late', 'late')}`;
+const rowsSel = rows.replace('SEL', 'sel'), rowsPlain = rows.replace('SEL', '');
+const P = (n, c, on = '') => `<div class="pj ${on}">${n}<span class="n">${c}</span></div>`;
+const projects = `<div class="plist"><div class="grp">Work</div>${P('Q4 Product Sprint', 6)}${P('API Platform Migration', 4)}${P('Team Offsite Planning', 3)}
+  <div class="grp">New House</div>${P('New House Build', 7)}${P('Backyard & Landscaping', 3)}
+  <div class="grp">Family</div>${P("Emma's School Year", 4)}${P("Liam's Soccer Season", 4)}
+  <div class="grp">Personal</div>${P('Marathon Training', 3)}</div>`;
+const hd = (extra = '') => `<div class="hd"><h3>Today</h3><span class="date">Wed 30 Sep</span><span class="sp"></span>${extra}<span class="btn">New task</span></div>`;
+const primary = on => `<div class="nav ${on === 't' ? 'on' : ''}">${ic.today}Today<span class="n">4</span></div><div class="nav">${ic.focus}Focus<span class="n">1/3</span></div><div class="nav">${ic.agenda}Agenda</div>`;
+
+const OPTS = [
+  ['A · Sidebar, tidied', 'Today\'s structure, cleaned up. The sidebar holds Today, Focus and Agenda, then the spaces with their projects and counts. Search, New task and Settings are at the bottom with the sync line. A task opens as a panel over the page.',
+    '<b>Strength:</b> familiar; everything is one glance away', '<b>Cost:</b> the sidebar is long once you have many projects',
+    `<div class="side"><div class="logo">Offlog</div>${primary('t')}${projects}<div class="foot"><div class="nav">${ic.search}Search</div><div class="nav">${ic.gear}Settings</div><div class="sync">Synced · 2 devices</div></div></div>
+     <div class="main">${hd()}<div class="body">${rowsPlain}</div></div>`],
+  ['B · Sidebar + detail pane', 'The same sidebar, but a task opens in a pane on the right instead of over the page, like Mail or Linear. Click down the list and the pane follows, with no opening or closing.',
+    '<b>Strength:</b> fast; you see the list and the task together', '<b>Cost:</b> the list gets narrower; needs a wide window',
+    `<div class="side"><div class="logo">Offlog</div>${primary('t')}${projects}<div class="foot"><div class="nav">${ic.search}Search</div><div class="nav">${ic.gear}Settings</div><div class="sync">Synced · 2 devices</div></div></div>
+     <div class="main">${hd()}<div class="body">${rowsSel}</div></div>
+     <div class="detail"><span class="crumb">Work · Q4 Product Sprint</span><h4>Fix login redirect bug</h4>
+       <dl class="kv"><dt>Status</dt><dd>Backlog</dd><dt>Due</dt><dd style="color:var(--accent)">Today</dd><dt>Priority</dt><dd>High</dd><dt>Tags</dt><dd>#urgent #code-review</dd></dl>
+       <p class="note">Users land on /home instead of the page they asked for after signing in. Check the redirect param survives the OAuth round trip.</p>
+       <div class="st"><span class="c" style="background:var(--accent);border-color:var(--accent)"></span><span style="color:var(--faint);text-decoration:line-through">Reproduce locally</span></div>
+       <div class="st"><span class="c"></span>Keep the redirect param</div><div class="st"><span class="c"></span>Add a regression test</div></div>`],
+  ['C · Icon rail + project column', 'A narrow rail of icons for Today, Focus, Agenda, Projects, Search and Settings. The project list is a second column that you can show or hide, so the page gets the full width when you don\'t need it.',
+    '<b>Strength:</b> the most room for content; very clean', '<b>Cost:</b> icons need learning; projects are one click further',
+    `<div class="rail"><span class="lg"></span><span class="r on">${ic.today}</span><span class="r">${ic.focus}</span><span class="r">${ic.agenda}</span><span class="r">${ic.proj}</span><span class="r">${ic.search}</span><span class="r bt">${ic.gear}</span></div>
+     <div class="pcol">${projects.replace('<div class="grp">Work</div>', '<div class="grp" style="margin-top:2px">Work</div>')}</div>
+     <div class="main">${hd()}<div class="body">${rowsPlain}</div></div>`],
+  ['D · Top bar, no sidebar', 'No sidebar at all: a slim top bar with Today, Focus, Agenda and Projects, and search on the right. Content sits in a centred column. Projects is its own page listing every space.',
+    '<b>Strength:</b> the calmest and most focused; nothing on the side', '<b>Cost:</b> switching between projects takes two clicks',
+    `<div class="main"><div class="top"><b style="margin-right:14px">Offlog</b><span class="tab on">Today</span><span class="tab">Focus</span><span class="tab">Agenda</span><span class="tab">Projects</span><span class="srch">${ic.search}Search or jump to…</span><span class="ghost" style="background:none">${ic.gear}</span></div>
+     <div class="center">${hd()}<div class="body">${rowsPlain}</div></div></div>`],
+  ['E · Sidebar with one More menu', 'Like A, but the sidebar keeps only the everyday things: Today, Focus, Agenda and the projects. Search, Settings, History, the Recycle bin and sync all live in one menu under your name at the bottom (shown open).',
+    '<b>Strength:</b> the shortest, calmest sidebar with all tools in one place', '<b>Cost:</b> tools you use weekly are one click deeper',
+    `<div class="side"><div class="logo">Offlog <span class="ghost" style="padding:3px 6px">${ic.search}</span></div>${primary('t')}${projects}<div class="foot"><div class="nav on" style="font-weight:500">${ic.more}Hrach · Synced</div></div></div>
+     <div class="main">${hd()}<div class="body">${rowsPlain}</div></div>
+     <div class="menu"><div>${ic.gear}Settings</div><div>${ic.clock}History</div><div>${ic.bin}Recycle bin</div><hr><div>${ic.sync}Sync: 2 devices, just now</div></div>`],
+  ['F · Command first', 'A short sidebar, and a large "find or add" bar at the top of every page. Typing jumps to any project or task, or creates one. Keyboard first, like Raycast or Linear\'s command menu.',
+    '<b>Strength:</b> the fastest for keyboard users; one place for everything', '<b>Cost:</b> less discoverable; relies on typing',
+    `<div class="side"><div class="logo">Offlog</div>${primary('t')}${projects}<div class="foot"><div class="nav">${ic.gear}Settings</div><div class="sync">Synced · 2 devices</div></div></div>
+     <div class="main"><div class="cmd">${ic.search}Find a task or project, or type to add one…<kbd>Ctrl K</kbd></div>${hd()}<div class="body">${rowsPlain}</div></div>`],
+];
+const list = document.getElementById('list');
+// A, D and E were ruled out by the owner.
+const detailHTML = '<div class="detail">' + OPTS.find(o => o[0].startsWith('B'))[4].split('<div class="detail">')[1];
+const rail = `<div class="rail"><span class="lg"></span><span class="r on">${ic.today}</span><span class="r">${ic.focus}</span><span class="r">${ic.agenda}</span><span class="r">${ic.proj}</span><span class="r">${ic.search}</span><span class="r bt">${ic.gear}</span></div>`;
+const CB = [
+  ['1 · Browsing', 'Nothing is open. The rail, the project column and the full list: you see where everything lives.',
+    '<b>Layout:</b> rail · projects · list', '',
+    rail + `<div class="pcol">${projects}</div><div class="main">${hd()}<div class="body">${rowsPlain}</div></div>`],
+  ['2 · A task open', 'Clicking a task opens it on the right, and the project column tucks away so the list keeps its room. Click another task and the pane follows; close it (Esc) and the projects come back.',
+    '<b>Layout:</b> rail · list · task', '',
+    rail + `<div class="main">${hd()}<div class="body">${rowsSel}</div></div>` + detailHTML],
+];
+for (const [name, desc, pro, con, inner] of CB) {
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><p class="pc"><span>${pro}</span><span>${con}</span></p><div class="app th light">${inner}</div>`;
+  list.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+});
+</script>
+</body></html>

@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog prototype</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+
+  /* ---- Decisions 1-4: Stone & Ink, Hanken Grotesk, D hierarchy, soft fills, two-line rows ---- */
+  :root {
+    --page:#FBFAF8; --tile:#F3F1EC; --rail:#ECE9E2; --hover:#EFECE6; --sel:#E6E2D9; --field:#FFFFFF;
+    --ink:#1F1D1A; --muted:#5F5A52; --faint:#9A948A; --check:#BDB6AA;
+    --accent:#1E3A5F; --on-accent:#FFFFFF; --accent-soft:#E3E9F0; --late:#B03A2E;
+    --shadow:0 10px 40px rgba(40,30,15,.18);
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --page:#171614; --tile:#201E1C; --rail:#121110; --hover:#24221F; --sel:#2C2A27; --field:#171614;
+    --ink:#EDEAE4; --muted:#AFA89D; --faint:#77716A; --check:#4E4A44;
+    --accent:#8FB0D6; --on-accent:#121110; --accent-soft:#22303F; --late:#E48A7E;
+    --shadow:0 10px 40px rgba(0,0,0,.55);
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body { font-family:'Hanken Grotesk',system-ui,sans-serif; background:var(--page); color:var(--ink); font-size:14px; line-height:1.4; -webkit-font-smoothing:antialiased; overflow:hidden; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; padding:0; }
+  input, textarea, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  svg.i { width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+
+  .app { display:flex; height:100vh; }
+
+  /* ---- The collapsed sidebar: a rail, with a label under every icon ---- */
+  .rail { width:68px; flex-shrink:0; background:var(--rail); display:flex; flex-direction:column; align-items:center; padding:12px 0 10px; gap:2px; }
+  .rail .mark { width:26px; height:26px; border-radius:8px; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; margin-bottom:12px; }
+  .rail .r { width:56px; padding:7px 0 5px; border-radius:10px; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted); font-size:10.5px; font-weight:500; transition:background .16s, color .16s; }
+  .rail .r:hover { background:var(--hover); color:var(--ink); }
+  .rail .r.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .rail .r svg { width:18px; height:18px; }
+  .rail .grow { flex:1; }
+  .rail .sync { width:7px; height:7px; border-radius:50%; background:#6F9E7B; margin:6px 0 2px; }
+
+  /* ---- The sidebar (expanded) ---- */
+  .pcol { width:232px; flex-shrink:0; background:var(--tile); padding:14px 10px; overflow-y:auto; display:flex; flex-direction:column; gap:1px; transition:width .22s, padding .22s, opacity .18s; }
+  .pcol.hidden { display:none; }
+  /* The sidebar: one fixed column with labels. */
+  /* Expanded: the sidebar. Collapsed: the rail. Only the user's toggle changes it. */
+  .app:not(.collapsed) .rail { display:none; }
+  .app.collapsed .pcol { display:none; }
+  .pcol .logo { justify-content:space-between; }
+  .pcol .logo span { display:flex; align-items:center; gap:9px; }
+  .fold { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:var(--faint); }
+  .fold:hover { background:var(--hover); color:var(--ink); }
+  .rail .fold { margin-bottom:10px; }
+  .pcol .navi { display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; color:var(--muted); text-align:left; transition:background .16s; }
+  .pcol .navi:hover { background:var(--hover); color:var(--ink); }
+  .pcol .navi.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .pcol .navi .n { margin-left:auto; font-size:12px; color:var(--faint); font-weight:500; }
+  .pcol .logo { display:flex; align-items:center; gap:9px; font-weight:700; padding:2px 8px 12px; }
+  .pcol .logo i { width:22px; height:22px; border-radius:7px; background:var(--accent); color:var(--on-accent); font-style:normal; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .pcol .spacer { flex:1; min-height:12px; }
+  .pcol .syncline { font-size:11.5px; color:var(--faint); padding:4px 8px 0; display:flex; align-items:center; gap:6px; }
+  .pcol .syncline::before { content:''; width:6px; height:6px; border-radius:50%; background:#6F9E7B; }
+
+  .pcol h2 { margin:2px 8px 10px; font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; white-space:nowrap; }
+  .pcol h2 button { color:var(--faint); padding:2px 5px; border-radius:6px; } .pcol h2 button:hover { background:var(--hover); color:var(--ink); }
+  .space { margin:12px 8px 3px; font-size:11.5px; font-weight:600; color:var(--faint); white-space:nowrap; }
+  .pj { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; color:var(--muted); text-align:left; white-space:nowrap; transition:background .16s; }
+  .pj:hover { background:var(--hover); color:var(--ink); }
+  .pj.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .pj .n { font-size:12px; color:var(--faint); font-weight:500; }
+  .pj span:first-child { overflow:hidden; text-overflow:ellipsis; }
+
+  /* ---- D: the page with its slim header bar ---- */
+  .main { flex:1; min-width:0; display:flex; flex-direction:column; background:var(--page); }
+  .hd { display:flex; align-items:center; gap:10px; padding:12px 22px; min-height:52px; }
+  .hd .crumb { color:var(--faint); font-size:13px; }
+  .hd h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  .hd .date { font-size:12.5px; color:var(--faint); }
+  .hd .sp { flex:1; }
+  .seg { display:inline-flex; background:var(--tile); border-radius:8px; padding:2px; }
+  .seg button { padding:4px 11px; border-radius:6px; font-size:12.5px; color:var(--muted); }
+  .seg button.on { background:var(--page); color:var(--ink); font-weight:600; }
+  .btn { background:var(--accent); color:var(--on-accent); padding:6px 12px; font-weight:600; font-size:12.5px; border-radius:8px; white-space:nowrap; }
+  .btn:hover { filter:brightness(1.08); }
+  .quiet-btn { padding:6px 10px; border-radius:8px; font-size:12.5px; color:var(--muted); background:var(--tile); }
+  .quiet-btn:hover { color:var(--ink); }
+  .scroll { flex:1; overflow-y:auto; padding:0 14px 40px; }
+  .narrow { max-width:860px; }
+
+  .sec { font-size:12.5px; font-weight:600; margin:16px 8px 4px; display:flex; gap:6px; align-items:baseline; }
+  .sec span { color:var(--faint); font-weight:500; }
+  .empty { color:var(--faint); padding:6px 8px; font-size:13px; }
+
+  /* ---- 4: the two-line row ---- */
+  .row { display:flex; align-items:center; gap:12px; padding:7px 8px; border-radius:8px; cursor:default; position:relative; transition:background .16s; }
+  .row:hover { background:var(--hover); }
+  .row.sel { background:var(--sel); }
+  .chk { width:16px; height:16px; border-radius:50%; border:1.5px solid var(--check); flex-shrink:0; position:relative; transition:border-color .16s, background .16s; }
+  .chk:hover { border-color:var(--accent); }
+  .chk.on { background:var(--accent); border-color:var(--accent); }
+  .chk.on::after { content:''; position:absolute; left:4.5px; top:1.5px; width:3.5px; height:7px; border:solid var(--on-accent); border-width:0 1.5px 1.5px 0; transform:rotate(45deg); }
+  .chk::before { content:''; position:absolute; inset:-9px; }
+  .g { flex:1; min-width:0; display:flex; flex-direction:column; cursor:pointer; }
+  .t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row.done .t { color:var(--faint); text-decoration:line-through; }
+  .s { font-size:12px; color:var(--faint); display:flex; gap:10px; white-space:nowrap; overflow:hidden; align-items:center; }
+  .s span { display:inline-flex; align-items:center; gap:4px; }
+  .s svg.i { width:12px; height:12px; }
+  .due { font-size:12px; color:var(--muted); white-space:nowrap; min-width:70px; text-align:right; }
+  .due.late { color:var(--late); font-weight:600; } .due.today { color:var(--accent); }
+  .acts { display:none; gap:2px; }
+  .row:hover .acts, .row:focus-within .acts { display:flex; }
+  .acts button { font-size:12px; color:var(--muted); padding:3px 7px; border-radius:6px; background:var(--tile); }
+  .acts button:hover { color:var(--ink); }
+
+  /* composer */
+  .composer { display:flex; align-items:center; gap:12px; padding:8px 8px; border-radius:8px; background:var(--tile); margin:10px 0 4px; }
+  .composer input { flex:1; border:0; background:none; outline:none; font-size:14px; }
+  .composer select { border:0; background:var(--page); border-radius:6px; padding:3px 6px; font-size:12.5px; color:var(--muted); }
+
+  /* ---- board ---- */
+  .board { display:flex; gap:14px; padding:6px 8px 20px; align-items:flex-start; }
+  .col { flex:1 1 220px; min-width:220px; max-width:300px; }
+  .col h3 { margin:6px 4px 8px; font-size:12.5px; font-weight:600; display:flex; gap:6px; } .col h3 span { color:var(--faint); font-weight:500; }
+  .card { background:var(--tile); border-radius:10px; padding:10px 12px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start; cursor:pointer; transition:background .16s; }
+  .card:hover { background:var(--hover); } .card.sel { background:var(--sel); }
+  .card .chk { margin-top:2px; }
+  .card .g { gap:2px; } .card .t { white-space:normal; }
+  .card .s { flex-wrap:wrap; white-space:normal; gap:4px 10px; }
+  .card.done .t { color:var(--faint); text-decoration:line-through; }
+  .addcard { color:var(--faint); font-size:13px; padding:6px 4px; border-radius:8px; width:100%; text-align:left; }
+  .addcard:hover { color:var(--ink); background:var(--hover); }
+
+  /* ---- B: the detail pane ---- */
+  .detail { width:400px; flex-shrink:0; background:var(--tile); display:flex; flex-direction:column; overflow:hidden; transition:width .22s; }
+  .detail.hidden { width:0; }
+  .dtop { display:flex; align-items:center; gap:8px; padding:12px 16px 4px; color:var(--faint); font-size:12.5px; white-space:nowrap; }
+  .dtop .sp { flex:1; }
+  .dtop button { padding:4px 7px; border-radius:6px; color:var(--muted); } .dtop button:hover { background:var(--hover); color:var(--ink); }
+  .dbody { flex:1; overflow-y:auto; padding:6px 20px 24px; min-width:400px; }
+  .dtitle { width:100%; border:0; background:none; font-size:20px; font-weight:600; letter-spacing:-.01em; resize:none; outline:none; padding:4px 0; line-height:1.3; }
+  .props { display:grid; grid-template-columns:92px 1fr; gap:4px 12px; margin:10px 0 18px; align-items:center; font-size:13px; }
+  .props dt { color:var(--faint); }
+  .props dd { margin:0; }
+  .props select, .props input { border:0; background:none; padding:4px 6px; margin-left:-6px; border-radius:6px; width:100%; }
+  .props select:hover, .props input:hover { background:var(--hover); }
+  .pseg { display:inline-flex; gap:2px; }
+  .pseg button { padding:3px 9px; border-radius:6px; font-size:12.5px; color:var(--muted); }
+  .pseg button.on { background:var(--page); color:var(--ink); font-weight:600; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .tag { font-size:12px; color:var(--muted); background:var(--page); padding:2px 8px; border-radius:6px; }
+  .dlabel { font-size:12.5px; font-weight:600; margin:16px 0 6px; display:flex; gap:6px; } .dlabel span { color:var(--faint); font-weight:500; }
+  .note { width:100%; min-height:84px; border:0; background:var(--page); border-radius:8px; padding:10px 12px; resize:vertical; outline:none; font-size:13.5px; line-height:1.55; }
+  .step { display:flex; gap:10px; align-items:center; padding:5px 2px; font-size:13.5px; }
+  .step.done span { color:var(--faint); text-decoration:line-through; }
+  .step .chk { width:14px; height:14px; } .step .chk.on::after { left:3.8px; top:1px; width:3px; height:6px; }
+  .addstep { border:0; background:none; outline:none; font-size:13.5px; padding:5px 2px 5px 26px; width:100%; color:var(--ink); }
+  .more { margin-top:18px; display:flex; flex-wrap:wrap; gap:6px; }
+  .more button { font-size:12.5px; color:var(--muted); background:var(--page); padding:5px 10px; border-radius:8px; }
+  .more button:hover { color:var(--ink); }
+
+  /* ---- Focus ---- */
+  .focus { max-width:620px; margin:30px auto 0; padding:0 8px; }
+  .focus .big { font-size:13px; color:var(--faint); margin:0 8px 6px; }
+  .focus .prog { display:flex; gap:6px; margin:6px 8px 18px; } .focus .prog i { flex:1; height:4px; border-radius:2px; background:var(--tile); } .focus .prog i.on { background:var(--accent); }
+  .pick .row { cursor:pointer; } .pick .row.picked { background:var(--accent-soft); }
+
+  /* ---- Settings ---- */
+  .settings { display:flex; flex:1; min-height:0; }
+  .snav { width:200px; flex-shrink:0; padding:8px 10px; display:flex; flex-direction:column; gap:1px; }
+  .snav button { text-align:left; padding:7px 10px; border-radius:8px; color:var(--muted); }
+  .snav button:hover { background:var(--hover); color:var(--ink); } .snav button.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .snav .div { height:10px; }
+  .spane { flex:1; overflow-y:auto; padding:8px 28px 40px; max-width:720px; }
+  .spane h2 { font-size:12.5px; font-weight:600; margin:18px 0 6px; }
+  .srow { display:flex; align-items:center; gap:16px; padding:10px 12px; border-radius:8px; background:var(--tile); margin-bottom:4px; }
+  .srow .l { flex:1; } .srow .l small { display:block; color:var(--faint); font-size:12px; margin-top:1px; }
+  .tog { width:34px; height:20px; border-radius:999px; background:var(--check); position:relative; flex-shrink:0; }
+  .tog::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:var(--page); transition:left .16s; }
+  .tog.on { background:var(--accent); } .tog.on::after { left:17px; }
+
+  /* ---- Search ---- */
+  .veil { position:fixed; inset:0; background:rgba(20,15,10,.28); display:none; align-items:flex-start; justify-content:center; padding-top:12vh; z-index:20; }
+  .veil.on { display:flex; }
+  .palette { width:600px; max-width:92vw; background:var(--page); border-radius:12px; box-shadow:var(--shadow); overflow:hidden; }
+  .palette input { width:100%; border:0; outline:none; background:none; padding:16px 18px; font-size:16px; }
+  .palette .res { max-height:52vh; overflow-y:auto; padding:0 8px 8px; }
+  .palette .res .row { cursor:pointer; }
+  .palette .kbd { font-size:11px; color:var(--faint); padding:8px 18px; background:var(--tile); display:flex; gap:14px; }
+
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--page); padding:8px 14px; border-radius:10px; font-size:13px; display:none; gap:12px; align-items:center; z-index:30; }
+  .toast.on { display:flex; }
+  .toast button { color:var(--accent-soft); font-weight:600; }
+  .tip { position:fixed; right:14px; bottom:14px; font-size:11.5px; color:var(--faint); background:var(--tile); padding:6px 10px; border-radius:8px; z-index:5; }
+</style>
+<script>
+// The demo dataset (scripts/seed-demo.js), exported from the dev database on
+// 30 Sep 2026. Dates are relative to that day; the prototype pins "today" to it.
+window.OFFLOG_DATA = JSON.parse("{\"spaces\":[{\"id\":\"space:h0t926db\",\"name\":\"Work\",\"position\":0},{\"id\":\"space:kas5tt89\",\"name\":\"New House\",\"position\":1},{\"id\":\"space:32rt3dem\",\"name\":\"Family\",\"position\":2},{\"id\":\"space:26zuivxq\",\"name\":\"Personal\",\"position\":3}],\"projects\":[{\"id\":\"project:7tzz1g1c\",\"space\":\"space:32rt3dem\",\"name\":\"Emma's School Year\",\"columns\":[{\"id\":\"col:ym7gdpni\",\"name\":\"Idea\"},{\"id\":\"col:ifdn2h11\",\"name\":\"Task\"},{\"id\":\"col:migrf7a7\",\"name\":\"In Process\"},{\"id\":\"col:62ocbty3\",\"name\":\"Completed\"}],\"pinned\":false,\"position\":0},{\"id\":\"project:io3sab5n\",\"space\":\"space:kas5tt89\",\"name\":\"New House Build\",\"columns\":[{\"id\":\"col:pfttkhii\",\"name\":\"Planning\"},{\"id\":\"col:fylzzxdi\",\"name\":\"Foundation\"},{\"id\":\"col:b5jkccwf\",\"name\":\"Framing\"},{\"id\":\"col:88p4zymh\",\"name\":\"Finishing\"},{\"id\":\"col:yuzg46w1\",\"name\":\"Done\"}],\"pinned\":false,\"position\":0},{\"id\":\"project:p4kyznou\",\"space\":\"space:h0t926db\",\"name\":\"Q4 Product Sprint\",\"columns\":[{\"id\":\"col:v973yt2o\",\"name\":\"Backlog\"},{\"id\":\"col:byoio2n6\",\"name\":\"In Progress\"},{\"id\":\"col:9a2qdr35\",\"name\":\"Review\"},{\"id\":\"col:l69mwkx7\",\"name\":\"Done\"}],\"pinned\":false,\"position\":0},{\"id\":\"project:tahc2so5\",\"space\":\"space:26zuivxq\",\"name\":\"Marathon Training\",\"columns\":[{\"id\":\"col:dldwkfpv\",\"name\":\"To Do\"},{\"id\":\"col:ppg5zoy1\",\"name\":\"Doing\"},{\"id\":\"col:asx4uutn\",\"name\":\"Done\"}],\"pinned\":false,\"position\":0},{\"id\":\"project:5uqej1sc\",\"space\":\"space:32rt3dem\",\"name\":\"Liam's Soccer Season\",\"columns\":[{\"id\":\"col:j45q4bb1\",\"name\":\"To Do\"},{\"id\":\"col:gzia14a5\",\"name\":\"Doing\"},{\"id\":\"col:144jfod0\",\"name\":\"Done\"}],\"pinned\":false,\"position\":1},{\"id\":\"project:9o2jwwws\",\"space\":\"space:kas5tt89\",\"name\":\"Backyard & Landscaping\",\"columns\":[{\"id\":\"col:6conqm72\",\"name\":\"To Do\"},{\"id\":\"col:km6ces6i\",\"name\":\"Doing\"},{\"id\":\"col:7uu73mo4\",\"name\":\"Done\"}],\"pinned\":false,\"position\":1},{\"id\":\"project:qdzmglxr\",\"space\":\"space:h0t926db\",\"name\":\"API Platform Migration\",\"columns\":[{\"id\":\"col:50k7kgbg\",\"name\":\"To Do\"},{\"id\":\"col:wfia86av\",\"name\":\"Doing\"},{\"id\":\"col:tjgissl6\",\"name\":\"Done\"}],\"pinned\":false,\"position\":1},{\"id\":\"project:sal2o7ov\",\"space\":\"space:26zuivxq\",\"name\":\"Weekend Woodworking\",\"columns\":[{\"id\":\"col:6js8f9q6\",\"name\":\"Idea\"},{\"id\":\"col:agwtwn52\",\"name\":\"Task\"},{\"id\":\"col:qxkuomt9\",\"name\":\"In Process\"},{\"id\":\"col:4z5d8kx1\",\"name\":\"Completed\"}],\"pinned\":false,\"position\":1},{\"id\":\"project:73bhhyep\",\"space\":\"space:h0t926db\",\"name\":\"Team Offsite Planning\",\"columns\":[{\"id\":\"col:6uwercz8\",\"name\":\"Idea\"},{\"id\":\"col:ekrtiox1\",\"name\":\"Task\"},{\"id\":\"col:spvlrjs2\",\"name\":\"In Process\"},{\"id\":\"col:3wqiy1mp\",\"name\":\"Completed\"}],\"pinned\":false,\"position\":2},{\"id\":\"project:e2jdg3oo\",\"space\":\"space:kas5tt89\",\"name\":\"Move-In Checklist\",\"columns\":[{\"id\":\"col:qhwg4998\",\"name\":\"To Pack\"},{\"id\":\"col:gy7k54nq\",\"name\":\"Packed\"},{\"id\":\"col:vrzssdq1\",\"name\":\"Unpacked\"}],\"pinned\":false,\"position\":2},{\"id\":\"project:jkx4t9xt\",\"space\":\"space:26zuivxq\",\"name\":\"Recipe App\",\"columns\":[{\"id\":\"col:9zo4s0us\",\"name\":\"Backlog\"},{\"id\":\"col:e6hvak9x\",\"name\":\"In Progress\"},{\"id\":\"col:69p91n1u\",\"name\":\"Review\"},{\"id\":\"col:y2qrtfxw\",\"name\":\"Done\"}],\"pinned\":false,\"position\":2},{\"id\":\"project:p0kcl8hx\",\"space\":\"space:32rt3dem\",\"name\":\"Summer Family Trip\",\"columns\":[{\"id\":\"col:d29ht6tl\",\"name\":\"Idea\"},{\"id\":\"col:npbhfwgu\",\"name\":\"Task\"},{\"id\":\"col:8gvkwm5t\",\"name\":\"In Process\"},{\"id\":\"col:xu3dez6f\",\"name\":\"Completed\"}],\"pinned\":false,\"position\":2}],\"tasks\":[{\"id\":\"task:14mmj980\",\"project\":\"project:7tzz1g1c\",\"col\":\"col:ym7gdpni\",\"title\":\"Sign permission slip — field trip\",\"body\":\"\",\"priority\":3,\"due\":\"2026-10-01\",\"reminder\":\"2026-10-01T05:00:00.000Z\",\"tags\":[\"urgent\",\"school\"],\"steps\":[],\"pinned\":true,\"repeat\":null,\"position\":2048},{\"id\":\"task:6kwtf8z1\",\"project\":\"project:7tzz1g1c\",\"col\":\"col:ym7gdpni\",\"title\":\"Buy school supplies\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-03\",\"reminder\":null,\"tags\":[\"shopping\",\"school\"],\"steps\":[{\"text\":\"Notebooks\",\"done\":true},{\"text\":\"Backpack\",\"done\":false},{\"text\":\"Lunchbox\",\"done\":false}],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:6zo9ttay\",\"project\":\"project:7tzz1g1c\",\"col\":\"col:ym7gdpni\",\"title\":\"Parent-teacher conference\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-09\",\"reminder\":null,\"tags\":[\"appointment\",\"school\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:uxo4u756\",\"project\":\"project:7tzz1g1c\",\"col\":\"col:ym7gdpni\",\"title\":\"Help with science fair project\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-14\",\"reminder\":null,\"tags\":[\"school\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":4096},{\"id\":\"task:0yqzi1b4\",\"project\":\"project:io3sab5n\",\"col\":\"col:pfttkhii\",\"title\":\"Pick paint colors\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-04\",\"reminder\":null,\"tags\":[\"shopping\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:19ey5uev\",\"project\":\"project:io3sab5n\",\"col\":\"col:b5jkccwf\",\"title\":\"Check on construction progress\",\"body\":\"\",\"priority\":2,\"due\":\"2026-09-30\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":\"weekly\",\"position\":2048},{\"id\":\"task:3v4megaj\",\"project\":\"project:io3sab5n\",\"col\":\"col:b5jkccwf\",\"title\":\"Schedule electrical inspection\",\"body\":\"\",\"priority\":3,\"due\":\"2026-10-06\",\"reminder\":\"2026-10-06T05:00:00.000Z\",\"tags\":[\"appointment\",\"contractor\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:8a7o1tgq\",\"project\":\"project:io3sab5n\",\"col\":\"col:88p4zymh\",\"title\":\"Choose cabinet hardware\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-20\",\"reminder\":null,\"tags\":[\"shopping\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:c7480ic4\",\"project\":\"project:io3sab5n\",\"col\":\"col:88p4zymh\",\"title\":\"Pay contractor invoice\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-03\",\"reminder\":null,\"tags\":[\"contractor\"],\"steps\":[],\"pinned\":false,\"repeat\":\"monthly\",\"position\":2048},{\"id\":\"task:e80reaim\",\"project\":\"project:io3sab5n\",\"col\":\"col:pfttkhii\",\"title\":\"Get contractor quotes\",\"body\":\"\",\"priority\":3,\"due\":\"2026-09-30\",\"reminder\":null,\"tags\":[\"contractor\",\"urgent\"],\"steps\":[{\"text\":\"Call 3 contractors\",\"done\":true},{\"text\":\"Compare bids\",\"done\":true},{\"text\":\"Pick one\",\"done\":false}],\"pinned\":true,\"repeat\":null,\"position\":1024},{\"id\":\"task:gsoevvas\",\"project\":\"project:io3sab5n\",\"col\":\"col:fylzzxdi\",\"title\":\"Order new flooring\",\"body\":\"Contractor said tile delivery pushed back — confirm new date before demo day.\",\"priority\":3,\"due\":\"2026-09-29\",\"reminder\":null,\"tags\":[\"contractor\",\"urgent\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:47kmdovp\",\"project\":\"project:p4kyznou\",\"col\":\"col:v973yt2o\",\"title\":\"Fix login redirect bug\",\"body\":\"\",\"priority\":3,\"due\":\"2026-09-30\",\"reminder\":null,\"tags\":[\"urgent\",\"code-review\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:4vf2hf0v\",\"project\":\"project:p4kyznou\",\"col\":\"col:byoio2n6\",\"title\":\"Refactor auth module\",\"body\":\"\",\"priority\":3,\"due\":\"2026-09-28\",\"reminder\":null,\"tags\":[\"urgent\",\"code-review\"],\"steps\":[],\"pinned\":true,\"repeat\":null,\"position\":1024},{\"id\":\"task:sis0kxsz\",\"project\":\"project:p4kyznou\",\"col\":\"col:v973yt2o\",\"title\":\"Write API docs\",\"body\":\"\",\"priority\":1,\"due\":null,\"reminder\":null,\"tags\":[\"code-review\"],\"steps\":[{\"text\":\"Draft outline\",\"done\":true},{\"text\":\"Review with team\",\"done\":false},{\"text\":\"Publish\",\"done\":false}],\"pinned\":false,\"repeat\":null,\"position\":4096},{\"id\":\"task:t15ulvlw\",\"project\":\"project:p4kyznou\",\"col\":\"col:9a2qdr35\",\"title\":\"Review pull request #482\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-01\",\"reminder\":null,\"tags\":[\"code-review\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:vedqle40\",\"project\":\"project:p4kyznou\",\"col\":\"col:v973yt2o\",\"title\":\"Interview 5 users\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-07\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:x8w6nr94\",\"project\":\"project:p4kyznou\",\"col\":\"col:v973yt2o\",\"title\":\"Set up CI pipeline\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-03\",\"reminder\":null,\"tags\":[\"code-review\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:dqy7vr9u\",\"project\":\"project:tahc2so5\",\"col\":\"col:dldwkfpv\",\"title\":\"Long run — 12 miles\",\"body\":\"\",\"priority\":2,\"due\":\"2026-09-30\",\"reminder\":null,\"tags\":[\"quick-win\"],\"steps\":[],\"pinned\":false,\"repeat\":\"weekly\",\"position\":1024},{\"id\":\"task:h4tk0og7\",\"project\":\"project:tahc2so5\",\"col\":\"col:dldwkfpv\",\"title\":\"Buy new running shoes\",\"body\":\"Old ones have 400+ miles on them.\",\"priority\":1,\"due\":\"2026-10-05\",\"reminder\":null,\"tags\":[\"shopping\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:rksc5hwf\",\"project\":\"project:tahc2so5\",\"col\":\"col:dldwkfpv\",\"title\":\"Sign up for half marathon\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-10\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:9nwuckt6\",\"project\":\"project:5uqej1sc\",\"col\":\"col:j45q4bb1\",\"title\":\"Buy new cleats\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-06\",\"reminder\":null,\"tags\":[\"shopping\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:g39g5o6m\",\"project\":\"project:5uqej1sc\",\"col\":\"col:j45q4bb1\",\"title\":\"Register for spring league\",\"body\":\"\",\"priority\":3,\"due\":\"2026-10-02\",\"reminder\":\"2026-10-02T05:00:00.000Z\",\"tags\":[\"urgent\",\"family\"],\"steps\":[],\"pinned\":true,\"repeat\":null,\"position\":1024},{\"id\":\"task:pdczcfg3\",\"project\":\"project:5uqej1sc\",\"col\":\"col:j45q4bb1\",\"title\":\"Team snack schedule — sign up\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-04\",\"reminder\":null,\"tags\":[\"family\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:qweqt9ip\",\"project\":\"project:5uqej1sc\",\"col\":\"col:gzia14a5\",\"title\":\"Pick up Liam from practice\",\"body\":\"\",\"priority\":2,\"due\":\"2026-09-30\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":\"weekly\",\"position\":1024},{\"id\":\"task:elpzcsav\",\"project\":\"project:9o2jwwws\",\"col\":\"col:6conqm72\",\"title\":\"Design backyard layout\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-25\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:h7fawkl7\",\"project\":\"project:9o2jwwws\",\"col\":\"col:6conqm72\",\"title\":\"Get sod delivery quote\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-15\",\"reminder\":null,\"tags\":[\"contractor\",\"shopping\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:rbg50uwf\",\"project\":\"project:9o2jwwws\",\"col\":\"col:km6ces6i\",\"title\":\"Plant new trees\",\"body\":\"\",\"priority\":1,\"due\":\"2026-09-30\",\"reminder\":null,\"tags\":[\"quick-win\"],\"steps\":[],\"pinned\":false,\"repeat\":\"daily\",\"position\":1024},{\"id\":\"task:fbywf3bk\",\"project\":\"project:qdzmglxr\",\"col\":\"col:50k7kgbg\",\"title\":\"Migrate database schema\",\"body\":\"\",\"priority\":3,\"due\":\"2026-10-10\",\"reminder\":null,\"tags\":[\"code-review\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:s5fr4b6p\",\"project\":\"project:qdzmglxr\",\"col\":\"col:50k7kgbg\",\"title\":\"Plan sprint retro\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-02\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:uhpwpy5h\",\"project\":\"project:qdzmglxr\",\"col\":\"col:50k7kgbg\",\"title\":\"Update dependency versions\",\"body\":\"\",\"priority\":1,\"due\":null,\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:vdoyxx2a\",\"project\":\"project:qdzmglxr\",\"col\":\"col:wfia86av\",\"title\":\"Draft rollback plan\",\"body\":\"Check with DevOps before finalizing.\",\"priority\":2,\"due\":\"2026-10-05\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:3yf8w62t\",\"project\":\"project:sal2o7ov\",\"col\":\"col:6js8f9q6\",\"title\":\"Build kids' bookshelf\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-12\",\"reminder\":null,\"tags\":[],\"steps\":[{\"text\":\"Cut wood\",\"done\":true},{\"text\":\"Sand edges\",\"done\":false},{\"text\":\"Stain\",\"done\":false},{\"text\":\"Assemble\",\"done\":false}],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:f8yse3nk\",\"project\":\"project:sal2o7ov\",\"col\":\"col:6js8f9q6\",\"title\":\"Buy wood stain\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-06\",\"reminder\":null,\"tags\":[\"shopping\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:3mzjrwca\",\"project\":\"project:73bhhyep\",\"col\":\"col:6uwercz8\",\"title\":\"Order catering\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-13\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:bw8mkoyv\",\"project\":\"project:73bhhyep\",\"col\":\"col:6uwercz8\",\"title\":\"Send travel itinerary\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-12\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:yhq2h0vf\",\"project\":\"project:73bhhyep\",\"col\":\"col:6uwercz8\",\"title\":\"Book offsite venue\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-14\",\"reminder\":null,\"tags\":[\"waiting\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:3ajwq3dd\",\"project\":\"project:e2jdg3oo\",\"col\":\"col:qhwg4998\",\"title\":\"Forward mail to new address\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-28\",\"reminder\":null,\"tags\":[\"urgent\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:7duvkfnq\",\"project\":\"project:e2jdg3oo\",\"col\":\"col:qhwg4998\",\"title\":\"Pack kitchen boxes\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-30\",\"reminder\":null,\"tags\":[],\"steps\":[{\"text\":\"Label boxes\",\"done\":false},{\"text\":\"Wrap fragile items\",\"done\":false},{\"text\":\"Set aside essentials\",\"done\":false}],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:icv9lwne\",\"project\":\"project:e2jdg3oo\",\"col\":\"col:qhwg4998\",\"title\":\"Set up internet at new house\",\"body\":\"\",\"priority\":3,\"due\":\"2026-10-27\",\"reminder\":null,\"tags\":[\"appointment\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:rgrcgvhj\",\"project\":\"project:jkx4t9xt\",\"col\":\"col:9zo4s0us\",\"title\":\"Set up ingredient database\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-11\",\"reminder\":null,\"tags\":[\"code-review\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:x4qbw00m\",\"project\":\"project:jkx4t9xt\",\"col\":\"col:9zo4s0us\",\"title\":\"Design app icon\",\"body\":\"\",\"priority\":1,\"due\":null,\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:xsshxoma\",\"project\":\"project:jkx4t9xt\",\"col\":\"col:9zo4s0us\",\"title\":\"Write recipe parser\",\"body\":\"\",\"priority\":2,\"due\":\"2026-10-08\",\"reminder\":null,\"tags\":[\"code-review\",\"quick-win\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024},{\"id\":\"task:5eqqwptd\",\"project\":\"project:p0kcl8hx\",\"col\":\"col:d29ht6tl\",\"title\":\"Research kid-friendly hotels\",\"body\":\"\",\"priority\":1,\"due\":\"2026-10-18\",\"reminder\":null,\"tags\":[],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":3072},{\"id\":\"task:eev7ete0\",\"project\":\"project:p0kcl8hx\",\"col\":\"col:d29ht6tl\",\"title\":\"Renew passports\",\"body\":\"Kids' passports expire before the trip — need to expedite.\",\"priority\":3,\"due\":\"2026-09-27\",\"reminder\":null,\"tags\":[\"urgent\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":2048},{\"id\":\"task:z3g0qvb0\",\"project\":\"project:p0kcl8hx\",\"col\":\"col:d29ht6tl\",\"title\":\"Book flights\",\"body\":\"\",\"priority\":3,\"due\":\"2026-10-20\",\"reminder\":null,\"tags\":[\"urgent\"],\"steps\":[],\"pinned\":false,\"repeat\":null,\"position\":1024}],\"trash\":[{\"title\":\"Order company swag\",\"project\":\"project:73bhhyep\"},{\"title\":\"Sign up for pottery class\",\"project\":\"project:sal2o7ov\"},{\"title\":\"Look into pool installation\",\"project\":\"project:io3sab5n\"},{\"title\":\"Consider open floor plan\",\"project\":\"project:io3sab5n\"}]}");
+</script>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Main">
+    <button class="fold" data-fold title="Expand sidebar (Ctrl \\)" aria-label="Expand sidebar"></button>
+    <button class="r" data-go="today"></button>
+    <button class="r" data-go="focus"></button>
+    <button class="r" data-go="agenda"></button>
+    <button class="r" data-go="projects"></button>
+    <button class="r" data-go="search"></button>
+    <div class="grow"></div>
+    <span class="sync" title="Synced with 2 devices, just now"></span>
+    <button class="r" data-go="settings"></button>
+  </nav>
+  <aside class="pcol" id="pcol" aria-label="Projects"></aside>
+  <main class="main" id="main"></main>
+  <aside class="detail hidden" id="detail" aria-label="Task"></aside>
+</div>
+<div class="veil" id="veil"><div class="palette" role="dialog" aria-label="Search"><input id="q" placeholder="Search tasks and projects…" autocomplete="off"><div class="res" id="res"></div><div class="kbd"><span>↑ ↓ to move</span><span>Enter to open</span><span>Esc to close</span></div></div></div>
+<div class="toast" id="toast"><span id="toastText"></span><button id="undo">Undo</button></div>
+<div class="tip">Prototype · Ctrl K search · N new task · Ctrl \ sidebar · Esc close</div>
+
+<script>
+// ---------------------------------------------------------------- data
+const D = window.OFFLOG_DATA;
+const TODAY = '2026-09-30';
+const spaces = [...D.spaces].sort((a, b) => a.position - b.position);
+const projects = D.projects;
+const tasks = D.tasks.map(t => ({ ...t }));
+const trash = D.trash.map(t => ({ ...t }));
+const P = id => projects.find(p => p.id === id);
+const S = id => spaces.find(s => s.id === id);
+const lastCol = p => p.columns.at(-1).id;
+const isDone = t => t.col === lastCol(P(t.project));
+
+// ---------------------------------------------------------------- dates
+const dayMs = 864e5;
+const toDate = s => new Date(s + 'T12:00:00');
+const iso = d => d.toISOString().slice(0, 10);
+const addDays = (s, n) => iso(new Date(toDate(s).getTime() + n * dayMs));
+const diff = s => Math.round((toDate(s) - toDate(TODAY)) / dayMs);
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const short = s => { const d = toDate(s); return `${WD[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`; };
+function dueText(t) {
+  if (!t.due) return ['', ''];
+  const n = diff(t.due);
+  if (!isDone(t) && n < 0) return [n === -1 ? '1 day late' : `${-n} days late`, 'late'];
+  if (n === 0) return ['Today', 'today'];
+  if (n === 1) return ['Tomorrow', ''];
+  if (n > 1 && n < 7) return [WD[toDate(t.due).getDay()], ''];
+  return [short(t.due), ''];
+}
+
+// ---------------------------------------------------------------- icons
+const I = {
+  today: '<svg class="i" viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="10.5" rx="2"/><path d="M2.5 6.5h11M5.5 1.5v3M10.5 1.5v3"/></svg>',
+  focus: '<svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/></svg>',
+  agenda: '<svg class="i" viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h6"/></svg>',
+  projects: '<svg class="i" viewBox="0 0 16 16"><path d="M2.5 4.5a1 1 0 011-1h3l1.5 1.5h4.5a1 1 0 011 1v6a1 1 0 01-1 1h-9a1 1 0 01-1-1z"/></svg>',
+  search: '<svg class="i" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>',
+  settings: '<svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>',
+  steps: '<svg class="i" viewBox="0 0 14 14"><path d="M2 4l1.5 1.5L6 3M2 10l1.5 1.5L6 9M8 4h4M8 10h4"/></svg>',
+  bell: '<svg class="i" viewBox="0 0 14 14"><path d="M3.5 9.5V6.5a3.5 3.5 0 017 0v3l1 1.5h-9zM6 12.5h2"/></svg>',
+  repeat: '<svg class="i" viewBox="0 0 14 14"><path d="M2.5 6.5V5a2 2 0 012-2h7M9.5 1l2 2-2 2M11.5 7.5V9a2 2 0 01-2 2h-7M4.5 13l-2-2 2-2"/></svg>',
+  note: '<svg class="i" viewBox="0 0 14 14"><path d="M3 2h8v10H3zM5 5h4M5 7.5h4M5 10h2"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 14 14"><path d="M7 9.5v3.5M5 1.5h4l-.4 4 1.9 1.8V8.5h-7V6.8l1.9-1.8z"/></svg>',
+  fold: '<svg class="i" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M6 2.5v11"/></svg>',
+  close: '<svg class="i" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>',
+};
+const LABEL = { today: 'Today', focus: 'Focus', agenda: 'Agenda', projects: 'Projects', search: 'Search', settings: 'Settings' };
+document.querySelectorAll('.rail .r').forEach(b => { b.innerHTML = I[b.dataset.go] + LABEL[b.dataset.go]; });
+document.querySelector('.rail .fold').innerHTML = I.fold;
+
+// ---------------------------------------------------------------- state
+const st = { collapsed: false, view: 'today', project: null, mode: 'list', open: null, focus: [], picking: [], settings: 'Appearance', composing: false };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------------------------------------------------------------- pieces
+function second(t, { inProject = false } = {}) {
+  const parts = [];
+  parts.push(`<span>${esc(inProject ? P(t.project).columns.find(c => c.id === t.col)?.name : P(t.project).name)}</span>`);
+  for (const g of t.tags) parts.push(`<span>#${esc(g)}</span>`);
+  if (t.steps.length) parts.push(`<span>${I.steps}${t.steps.filter(s => s.done).length}/${t.steps.length}</span>`);
+  if (t.reminder) parts.push(`<span>${I.bell}${new Date(t.reminder).toTimeString().slice(0, 5)}</span>`);
+  if (t.repeat) parts.push(`<span>${I.repeat}${t.repeat[0].toUpperCase() + t.repeat.slice(1)}</span>`);
+  if (t.body) parts.push(`<span>${I.note}</span>`);
+  if (t.pinned) parts.push(`<span>${I.pin}</span>`);
+  return parts.join('');
+}
+function row(t, opts = {}) {
+  const [dt, dc] = dueText(t);
+  return `<div class="row ${isDone(t) ? 'done' : ''} ${st.open === t.id ? 'sel' : ''}" data-id="${t.id}">
+    <button class="chk ${isDone(t) ? 'on' : ''}" data-act="done" aria-label="${isDone(t) ? 'Mark not done' : 'Finish'}: ${esc(t.title)}"></button>
+    <span class="g" data-act="open"><span class="t">${esc(t.title)}</span><span class="s">${second(t, opts)}</span></span>
+    <span class="acts"><button data-act="tomorrow">Tomorrow</button><button data-act="pin">${t.pinned ? 'Unpin' : 'Pin'}</button><button data-act="delete">Delete</button></span>
+    <span class="due ${dc}">${dt}</span></div>`;
+}
+const section = (name, list, opts) => list.length ? `<div class="sec">${name} <span>${list.length}</span></div>${list.map(t => row(t, opts)).join('')}` : '';
+const byDue = (a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999') || b.priority - a.priority;
+const open = () => tasks.filter(t => !isDone(t) || t.justDone);
+const header = (title, extra = '', crumb = '') => `<div class="hd">${crumb}<h1>${title}</h1>${extra}<span class="sp"></span>${st.view === 'settings' ? '' : `<button class="btn" data-act="new">New task</button>`}</div>`;
+const composer = () => st.composing ? `<div class="composer">${I.plus}<input id="newTitle" placeholder="${st.view === 'project' ? 'New task in ' + esc(P(st.project).name) : 'New task, due today'}" autofocus>${st.view === 'project' ? '' : `<select id="newProj">${projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>`}</div>` : '';
+
+// ---------------------------------------------------------------- views
+function vToday() {
+  const o = open();
+  const today = o.filter(t => t.due === TODAY).sort(byDue);
+  const late = o.filter(t => t.due && t.due < TODAY && !isDone(t)).sort(byDue);
+  const pinned = o.filter(t => t.pinned && !(t.due && t.due <= TODAY)).sort(byDue);
+  return header('Today', `<span class="date">${short(TODAY)}</span>`) +
+    `<div class="scroll"><div class="narrow">${composer()}${section('Due today', today) || '<div class="sec">Due today <span>0</span></div><div class="empty">Nothing due today.</div>'}${section('Earlier', late)}${section('Pinned', pinned)}</div></div>`;
+}
+function vAgenda() {
+  const o = tasks.filter(t => t.due && (!isDone(t) || t.justDone)).sort(byDue);
+  const g = { Earlier: [], Today: [], Tomorrow: [], 'This week': [], Later: [] };
+  for (const t of o) { const n = diff(t.due); (n < 0 ? g.Earlier : n === 0 ? g.Today : n === 1 ? g.Tomorrow : n < 7 ? g['This week'] : g.Later).push(t); }
+  return header('Agenda', `<span class="date">${o.length} with a date</span>`) +
+    `<div class="scroll"><div class="narrow">${composer()}${Object.entries(g).map(([k, v]) => section(k, v)).join('')}</div></div>`;
+}
+function vProject() {
+  const p = P(st.project);
+  const ts = tasks.filter(t => t.project === p.id).sort((a, b) => a.position - b.position);
+  const seg = `<span class="seg" role="group" aria-label="View"><button class="${st.mode === 'list' ? 'on' : ''}" data-mode="list">List</button><button class="${st.mode === 'board' ? 'on' : ''}" data-mode="board">Board</button></span>`;
+  const crumb = `<span class="crumb">${esc(S(p.space).name)} /</span>`;
+  let body;
+  if (st.mode === 'list') {
+    body = `<div class="narrow">${composer()}${p.columns.map(c => { const l = ts.filter(t => t.col === c.id); return l.length ? section(c.name, l, { inProject: true }) : `<div class="sec">${esc(c.name)} <span>0</span></div>`; }).join('')}</div>`;
+  } else {
+    body = `${composer()}<div class="board">${p.columns.map(c => { const l = ts.filter(t => t.col === c.id);
+      return `<div class="col"><h3>${esc(c.name)} <span>${l.length}</span></h3>${l.map(t => { const [dt, dc] = dueText(t);
+        return `<div class="card ${isDone(t) ? 'done' : ''} ${st.open === t.id ? 'sel' : ''}" data-id="${t.id}"><button class="chk ${isDone(t) ? 'on' : ''}" data-act="done" aria-label="Finish ${esc(t.title)}"></button><span class="g" data-act="open"><span class="t">${esc(t.title)}</span><span class="s">${dt ? `<span class="due ${dc}" style="min-width:0;text-align:left">${dt}</span>` : ''}${second(t, { inProject: true }).replace(/^<span>[^<]*<\/span>/, '')}</span></span></div>`; }).join('')}
+        <button class="addcard" data-act="new">+ Add a task</button></div>`; }).join('')}</div>`;
+  }
+  return header(esc(p.name), seg, crumb) + `<div class="scroll">${body}</div>`;
+}
+function vFocus() {
+  const chosen = st.focus.map(id => tasks.find(t => t.id === id));
+  if (chosen.length) {
+    const done = chosen.filter(isDone).length;
+    return header('Focus', `<span class="date">${done} of ${chosen.length} done</span>`) + `<div class="scroll"><div class="focus">
+      <div class="prog">${chosen.map(t => `<i class="${isDone(t) ? 'on' : ''}"></i>`).join('')}</div>
+      ${chosen.map(t => row(t)).join('')}
+      <div style="margin:18px 8px"><button class="quiet-btn" data-act="refocus">Change the three</button></div></div></div>`;
+  }
+  const cand = open().filter(t => !isDone(t)).sort((a, b) => (a.due && a.due <= TODAY ? 0 : 1) - (b.due && b.due <= TODAY ? 0 : 1) || b.priority - a.priority || byDue(a, b)).slice(0, 12);
+  return header('Focus', `<span class="date">Choose up to three for today</span>`) + `<div class="scroll"><div class="focus pick">
+    <p class="big">Suggested: late, due today and high priority first.</p>
+    ${cand.map(t => row(t).replace('class="row ', `class="row ${st.picking.includes(t.id) ? 'picked' : ''} `).replace('data-act="open"', 'data-act="pick"')).join('')}
+    <div style="margin:18px 8px;display:flex;gap:10px;align-items:center"><button class="btn" data-act="startfocus" ${st.picking.length ? '' : 'disabled style="opacity:.45;cursor:default"'}>Focus on ${st.picking.length || 'these'}</button><span style="color:var(--faint);font-size:12.5px">${st.picking.length}/3 chosen</span></div></div></div>`;
+}
+function vSettings() {
+  const sections = ['Appearance', 'Notifications', 'Sync', 'Security', 'Organize', 'Data', '|', 'Recycle bin', 'History'];
+  const theme = document.documentElement.dataset.theme || 'light';
+  const panes = {
+    Appearance: `<h2>Theme</h2><div class="srow"><span class="l">Theme</span><span class="seg"><button class="${theme === 'light' ? 'on' : ''}" data-set-theme="light">Light</button><button class="${theme === 'dark' ? 'on' : ''}" data-set-theme="dark">Dark</button></span></div>
+      <h2>Calendar</h2><div class="srow"><span class="l">Week starts on</span><span class="seg"><button class="on">Monday</button><button>Sunday</button></span></div><div class="srow"><span class="l">Time format</span><span class="seg"><button>12h</button><button class="on">24h</button></span></div>
+      <h2>Accessibility</h2><div class="srow"><span class="l">High contrast<small>Stronger borders and text.</small></span><span class="tog"></span></div><div class="srow"><span class="l">Reduce motion<small>Turns off slides and fades.</small></span><span class="tog"></span></div>`,
+    Notifications: `<h2>Reminders</h2><div class="srow"><span class="l">Notifications<small>Allowed</small></span><span class="tog on"></span></div><div class="srow"><span class="l">Quiet hours<small>22:00 to 07:00</small></span><span class="tog on"></span></div>`,
+    Sync: `<h2>This device</h2><div class="srow"><span class="l">Synced with 2 devices<small>Last sync: just now</small></span><button class="quiet-btn">Sync now</button></div><h2>Connect a device</h2><div class="srow"><span class="l">Pair a phone or computer<small>A one-time code, works for 5 minutes.</small></span><button class="quiet-btn">Show code</button></div>`,
+    Security: `<h2>App lock</h2><div class="srow"><span class="l">PIN lock<small>Ask for a PIN to open Offlog.</small></span><span class="tog"></span></div>`,
+    Organize: `<h2>Structure</h2><div class="srow"><span class="l">Spaces<small>Groups for your projects.</small></span><button class="quiet-btn">Manage</button></div><div class="srow"><span class="l">Tags<small>Rename and recolour tags everywhere.</small></span><button class="quiet-btn">Manage</button></div><div class="srow"><span class="l">Custom fields<small>Extra fields on every task.</small></span><button class="quiet-btn">Manage</button></div><div class="srow"><span class="l">Archived projects<small>Bring one back, or delete it for good.</small></span><button class="quiet-btn">Open</button></div>`,
+    Data: `<h2>Backup</h2><div class="srow"><span class="l">Export everything<small>A file you can restore later.</small></span><button class="quiet-btn">Export</button></div><div class="srow"><span class="l">Restore from a backup</span><button class="quiet-btn">Choose file</button></div><h2>Storage</h2><div class="srow"><span class="l">45 tasks · 12 projects<small>2.1 MB used</small></span></div>`,
+    'Recycle bin': `<h2>${trash.length} deleted tasks</h2>${trash.length ? trash.map((t, i) => `<div class="srow"><span class="l">${esc(t.title)}<small>${esc(P(t.project)?.name ?? '')}</small></span><button class="quiet-btn" data-restore="${i}">Restore</button></div>`).join('') : '<div class="empty">The Recycle bin is empty.</div>'}`,
+    History: `<h2>Recent changes</h2>${['Finished “Review pull request #482” · 10:42', 'Moved “Refactor auth module” to In Progress · yesterday', 'Created “Order new flooring” · Mon', 'Renamed a status in New House Build · Sun'].map(x => `<div class="srow"><span class="l">${x}</span></div>`).join('')}`,
+  };
+  return header('Settings') + `<div class="settings"><div class="snav">${sections.map(s => s === '|' ? '<div class="div"></div>' : `<button class="${st.settings === s ? 'on' : ''}" data-settings="${s}">${s}</button>`).join('')}</div><div class="spane">${panes[st.settings]}</div></div>`;
+}
+
+// ---------------------------------------------------------------- project column
+function renderProjects() {
+  const count = p => tasks.filter(t => t.project === p.id && !isDone(t)).length;
+  const col = document.getElementById('pcol');
+  const dueToday = tasks.filter(t => t.due === TODAY && !isDone(t)).length;
+  const fx = st.focus.length ? `${st.focus.filter(id => isDone(tasks.find(t => t.id === id))).length}/${st.focus.length}` : '';
+  const nav = (go, n = '') => `<button class="navi ${st.view === go ? 'on' : ''}" data-go="${go}">${I[go]}${LABEL[go]}${n ? `<span class="n">${n}</span>` : ''}</button>`;
+  col.innerHTML = `<div class="logo"><span><i>O</i>Offlog</span><button class="fold" data-fold title="Collapse sidebar (Ctrl \\)" aria-label="Collapse sidebar">${I.fold}</button></div>${nav('today', dueToday)}${nav('focus', fx)}${nav('agenda')}${nav('search')}
+    <h2 style="margin-top:18px">Projects <button title="New project">${I.plus}</button></h2>` + spaces.map(s =>
+    `<div class="space">${esc(s.name)}</div>` + projects.filter(p => p.space === s.id).sort((a, b) => a.position - b.position).map(p =>
+      `<button class="pj ${st.view === 'project' && st.project === p.id ? 'on' : ''}" data-project="${p.id}"><span>${esc(p.name)}</span><span class="n">${count(p)}</span></button>`).join('')).join('') +
+    `<div class="spacer"></div>${nav('settings')}<div class="syncline">Synced · 2 devices</div>`;
+}
+
+// ---------------------------------------------------------------- the detail pane (B)
+function renderDetail() {
+  const el = document.getElementById('detail');
+  const t = tasks.find(x => x.id === st.open);
+  el.classList.toggle('hidden', !t);
+  if (!t) { el.innerHTML = ''; return; }
+  const p = P(t.project);
+  el.innerHTML = `<div class="dtop"><span>${esc(S(p.space).name)} · ${esc(p.name)}</span><span class="sp"></span><button data-act="pin">${t.pinned ? 'Unpin' : 'Pin'}</button><button data-act="delete">Delete</button><button data-act="close" aria-label="Close" title="Close (Esc)">${I.close}</button></div>
+  <div class="dbody">
+    <textarea class="dtitle" rows="2" data-field="title">${esc(t.title)}</textarea>
+    <dl class="props">
+      <dt>Status</dt><dd><select data-field="col">${p.columns.map(c => `<option value="${c.id}" ${c.id === t.col ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></dd>
+      <dt>Due</dt><dd><input type="date" data-field="due" value="${t.due ?? ''}"></dd>
+      <dt>Priority</dt><dd><span class="pseg">${['Low', 'Normal', 'High'].map((n, i) => `<button class="${t.priority === i + 1 ? 'on' : ''}" data-prio="${i + 1}">${n}</button>`).join('')}</span></dd>
+      <dt>Tags</dt><dd><span class="tags">${t.tags.map(g => `<span class="tag">#${esc(g)}</span>`).join('') || '<span style="color:var(--faint)">None</span>'}</span></dd>
+      <dt>Reminder</dt><dd style="color:${t.reminder ? 'var(--ink)' : 'var(--faint)'}">${t.reminder ? short(t.reminder.slice(0, 10)) + ', ' + new Date(t.reminder).toTimeString().slice(0, 5) : 'None'}</dd>
+      <dt>Repeat</dt><dd style="color:${t.repeat ? 'var(--ink)' : 'var(--faint)'}">${t.repeat ? t.repeat[0].toUpperCase() + t.repeat.slice(1) : 'Never'}</dd>
+    </dl>
+    <div class="dlabel">Note</div>
+    <textarea class="note" data-field="body" placeholder="Add a note…">${esc(t.body)}</textarea>
+    <div class="dlabel">Steps <span>${t.steps.length ? t.steps.filter(s => s.done).length + ' of ' + t.steps.length : ''}</span></div>
+    ${t.steps.map((s, i) => `<div class="step ${s.done ? 'done' : ''}"><button class="chk ${s.done ? 'on' : ''}" data-step="${i}" aria-label="Toggle step"></button><span>${esc(s.text)}</span></div>`).join('')}
+    <input class="addstep" id="addstep" placeholder="Add a step">
+    <div class="more" title="Everything else is one click away">
+      <button>Links</button><button>Blocked by</button><button>Attachments</button><button>Custom fields</button><button>History</button><button>Move to project…</button><button>Duplicate</button>
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- render
+function render() {
+  document.querySelectorAll('.rail .r').forEach(b => b.classList.toggle('on',
+    b.dataset.go === st.view || (b.dataset.go === 'projects' && st.view === 'project')));
+  document.querySelector('.app').classList.toggle('collapsed', st.collapsed);
+  const V = { today: vToday, agenda: vAgenda, project: vProject, focus: vFocus, settings: vSettings }[st.view];
+  document.getElementById('main').innerHTML = V();
+  renderProjects();
+  renderDetail();
+  const nt = document.getElementById('newTitle'); if (nt) nt.focus();
+}
+
+// ---------------------------------------------------------------- toast + undo
+let undoFn = null, toastTimer;
+function toast(text, undo) {
+  undoFn = undo; document.getElementById('toastText').textContent = text;
+  document.getElementById('undo').style.display = undo ? '' : 'none';
+  const el = document.getElementById('toast'); el.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), 4000);
+}
+document.getElementById('undo').onclick = () => { undoFn?.(); document.getElementById('toast').classList.remove('on'); render(); };
+
+// ---------------------------------------------------------------- actions
+function act(a, t, e) {
+  const p = t && P(t.project);
+  if (a === 'done') {
+    const before = t.col;
+    t.col = isDone(t) ? p.columns[0].id : lastCol(p);
+    t.justDone = isDone(t);
+    toast(`${isDone(t) ? 'Done' : 'Not done'}: ${t.title}`, () => { t.col = before; t.justDone = false; });
+  } else if (a === 'open') { st.open = st.open === t.id && e?.detail > 1 ? t.id : t.id; }
+  else if (a === 'close') { st.open = null; }
+  else if (a === 'tomorrow') { const b = t.due; t.due = addDays(TODAY, 1); toast(`Moved to tomorrow: ${t.title}`, () => { t.due = b; }); }
+  else if (a === 'pin') { t.pinned = !t.pinned; }
+  else if (a === 'delete') { const i = tasks.indexOf(t); tasks.splice(i, 1); trash.unshift({ title: t.title, project: t.project }); if (st.open === t.id) st.open = null; toast(`Deleted: ${t.title}`, () => { tasks.splice(i, 0, t); trash.shift(); }); }
+  else if (a === 'new') { st.composing = true; }
+  else if (a === 'pick') { const i = st.picking.indexOf(t.id); if (i >= 0) st.picking.splice(i, 1); else if (st.picking.length < 3) st.picking.push(t.id); }
+  else if (a === 'startfocus') { if (st.picking.length) { st.focus = [...st.picking]; st.picking = []; } }
+  else if (a === 'refocus') { st.picking = [...st.focus]; st.focus = []; }
+  render();
+}
+document.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]');
+  if (go) {
+    const v = go.dataset.go;
+    if (v === 'search') return openSearch();
+    if (v === 'projects') { st.collapsed = false; render(); return; }
+    st.view = v; st.open = null; st.composing = false; render(); return;
+  }
+  const pj = e.target.closest('[data-project]');
+  if (pj) { st.view = 'project'; st.project = pj.dataset.project; st.open = null; st.composing = false; render(); return; }
+  const fd = e.target.closest('[data-fold]'); if (fd) { st.collapsed = !st.collapsed; render(); return; }
+  const md = e.target.closest('[data-mode]'); if (md) { st.mode = md.dataset.mode; render(); return; }
+  const th = e.target.closest('[data-set-theme]'); if (th) { document.documentElement.dataset.theme = th.dataset.setTheme; render(); return; }
+  const se = e.target.closest('[data-settings]'); if (se) { st.settings = se.dataset.settings; render(); return; }
+  const rs = e.target.closest('[data-restore]'); if (rs) { trash.splice(+rs.dataset.restore, 1); toast('Restored to its project'); render(); return; }
+  const tg = e.target.closest('.tog'); if (tg) { tg.classList.toggle('on'); return; }
+  const pr = e.target.closest('[data-prio]'); if (pr) { tasks.find(x => x.id === st.open).priority = +pr.dataset.prio; render(); return; }
+  const stp = e.target.closest('[data-step]'); if (stp) { const s = tasks.find(x => x.id === st.open).steps[+stp.dataset.step]; s.done = !s.done; render(); return; }
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const holder = a.closest('[data-id]');
+  const t = holder ? tasks.find(x => x.id === holder.dataset.id) : tasks.find(x => x.id === st.open);
+  act(a.dataset.act, t, e);
+});
+// Edits in the pane write straight through, like the app's autosave.
+document.addEventListener('change', e => {
+  const f = e.target.dataset?.field; if (!f) return;
+  const t = tasks.find(x => x.id === st.open); if (!t) return;
+  t[f] = e.target.value || (f === 'due' ? null : e.target.value);
+  render();
+});
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'newTitle' && e.key === 'Enter' && e.target.value.trim()) {
+    const proj = st.view === 'project' ? P(st.project) : P(document.getElementById('newProj').value);
+    tasks.unshift({ id: 'task:new' + Date.now(), project: proj.id, col: proj.columns[0].id, title: e.target.value.trim(), body: '', priority: 2, due: st.view === 'project' ? null : TODAY, reminder: null, tags: [], steps: [], pinned: false, repeat: null, position: 0 });
+    st.composing = false; toast(`Added to ${proj.name}`); render(); return;
+  }
+  if (e.target.id === 'addstep' && e.key === 'Enter' && e.target.value.trim()) {
+    tasks.find(x => x.id === st.open).steps.push({ text: e.target.value.trim(), done: false }); render(); document.getElementById('addstep').focus(); return;
+  }
+  if (e.key === 'Escape') {
+    if (document.getElementById('veil').classList.contains('on')) return closeSearch();
+    if (st.composing) { st.composing = false; return render(); }
+    if (st.open) { st.open = null; return render(); }
+  }
+  const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); return openSearch(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === '\\') { e.preventDefault(); st.collapsed = !st.collapsed; return render(); }
+  if (!typing && (e.key === 'n' || e.key === 'N') && st.view !== 'settings') { e.preventDefault(); st.composing = true; render(); }
+});
+
+// ---------------------------------------------------------------- search
+let hits = [], hi = 0;
+function openSearch() { document.getElementById('veil').classList.add('on'); const q = document.getElementById('q'); q.value = ''; runSearch(); q.focus(); }
+function closeSearch() { document.getElementById('veil').classList.remove('on'); }
+function runSearch() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const ps = projects.filter(p => !q || p.name.toLowerCase().includes(q)).slice(0, q ? 5 : 4).map(p => ({ kind: 'p', p }));
+  const ts = tasks.filter(t => !q || t.title.toLowerCase().includes(q) || t.tags.some(g => g.includes(q))).sort(byDue).slice(0, 8).map(t => ({ kind: 't', t }));
+  hits = [...ps, ...ts]; hi = 0; drawHits();
+}
+function drawHits() {
+  document.getElementById('res').innerHTML = (hits.some(h => h.kind === 'p') ? '<div class="sec">Projects</div>' : '') +
+    hits.map((h, i) => h.kind === 'p'
+      ? `<div class="row ${i === hi ? 'sel' : ''}" data-hit="${i}"><span class="g"><span class="t">${esc(h.p.name)}</span><span class="s"><span>${esc(S(h.p.space).name)}</span></span></span></div>`
+      : (i === hits.findIndex(x => x.kind === 't') ? '<div class="sec">Tasks</div>' : '') + row(h.t).replace('class="row ', `class="row ${i === hi ? 'sel' : ''} `).replace('data-id=', `data-hit="${i}" data-x=`)).join('') || '<div class="empty">No matches.</div>';
+}
+function choose(h) {
+  closeSearch();
+  if (h.kind === 'p') { st.view = 'project'; st.project = h.p.id; st.open = null; }
+  else { st.open = h.t.id; if (st.view === 'settings') st.view = 'today'; }
+  render();
+}
+document.getElementById('q').addEventListener('input', runSearch);
+document.getElementById('q').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { hi = Math.min(hits.length - 1, hi + 1); drawHits(); e.preventDefault(); }
+  if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); drawHits(); e.preventDefault(); }
+  if (e.key === 'Enter' && hits[hi]) choose(hits[hi]);
+});
+document.getElementById('res').addEventListener('click', e => { const h = e.target.closest('[data-hit]'); if (h) { e.stopPropagation(); choose(hits[+h.dataset.hit]); } });
+document.getElementById('veil').addEventListener('click', e => { if (e.target.id === 'veil') closeSearch(); });
+
+if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark';
+render();
+</script>
+</body></html>

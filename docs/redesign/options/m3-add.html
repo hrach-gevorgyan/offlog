@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog phone — step M3, adding a task</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#dfe2e8; color:#1f2937; -webkit-font-smoothing:antialiased; }
+  body.night { background:#0d0f14; color:#f3f4f6; }
+  header.bar { position:sticky; top:0; z-index:9; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 28px; background:inherit; border-bottom:1px solid rgba(128,128,128,.25); }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid currentColor; background:none; color:inherit; cursor:pointer; opacity:.55; }
+  .chip.on { opacity:1; font-weight:600; background:rgba(128,128,128,.2); }
+  .notes { margin:16px 28px 0; max-width:100ch; font-size:14px; line-height:1.6; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:flex; flex-wrap:wrap; gap:36px 32px; padding:24px 28px 80px; }
+  .opt { width:375px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 12px; font-size:13px; line-height:1.5; opacity:.8; min-height:78px; }
+
+  .light { --bg:#f6f7f9; --surface:#ffffff; --col:#eceef2; --border:#e2e4ea; --text:#1f2937; --muted:#4b5563; --faint:#6b7280; --accent:#5457e0; --on-accent:#fff; --late-bg:#fee2e2; --late:#b91c1c; --hi:#ef4444; --mid:#f59e0b; --lo:#22c55e; --tab:#ffffff; --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08); --scrim:rgba(15,20,30,.35);
+           --work:#3b82f6; --house:#f59e0b; --family:#ec4899; --personal:#8b5cf6; --tagA:#dbeafe; --tagAi:#1d4ed8; --tagB:#dcfce7; --tagBi:#15803d; }
+  .dark  { --bg:#181a20; --surface:#242934; --col:#1e222c; --border:#2f3542; --text:#f3f4f6; --muted:#a3a9b7; --faint:#8b93a5; --accent:#818cf8; --on-accent:#181a20; --late-bg:#3a1620; --late:#fb7185; --hi:#f87171; --mid:#fbbf24; --lo:#4ade80; --tab:#1c1f27; --shadow:0 1px 2px rgba(0,0,0,.4); --scrim:rgba(0,0,0,.55);
+           --work:#60a5fa; --house:#fbbf24; --family:#f472b6; --personal:#a78bfa; --tagA:#1e3a5f; --tagAi:#93c5fd; --tagB:#14391f; --tagBi:#86efac; }
+
+  .phone { width:375px; height:780px; border-radius:44px; border:8px solid #111; overflow:hidden; position:relative; background:var(--bg); color:var(--text); display:flex; flex-direction:column; font-size:15px; }
+  .sb { height:44px; flex-shrink:0; display:flex; justify-content:space-between; align-items:flex-end; padding:0 26px 6px; font-size:13px; font-weight:600; }
+  svg.i { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+  .nav { display:flex; align-items:center; justify-content:space-between; padding:4px 12px 6px; }
+  .nav .back { display:flex; align-items:center; gap:2px; color:var(--accent); font-size:15px; font-weight:500; }
+  .nav .acts { display:flex; gap:6px; }
+  .ibtn { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); background:var(--surface); box-shadow:var(--shadow); }
+  .body { flex:1; overflow:hidden; padding:0 16px; }
+  .crumb { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--faint); margin:2px 2px 6px; }
+  .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .ttl { display:flex; gap:12px; align-items:flex-start; margin:0 2px 14px; }
+  .ttl .c { width:24px; height:24px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; margin-top:3px; }
+  .ttl h3 { margin:0; font-size:23px; font-weight:700; letter-spacing:-.015em; line-height:1.2; }
+  .group { background:var(--surface); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; margin-bottom:14px; }
+  .it { display:flex; align-items:center; gap:12px; padding:11px 14px; font-size:15px; min-height:46px; }
+  .it + .it { border-top:1px solid var(--border); }
+  .it .k { color:var(--muted); display:flex; align-items:center; gap:10px; }
+  .it .v { margin-left:auto; display:flex; align-items:center; gap:6px; font-weight:500; }
+  .it .v.faint { color:var(--faint); font-weight:400; }
+  .it .chev { color:var(--faint); }
+  .ico { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .ico svg.i { width:15px; height:15px; }
+  .pill { font-size:12.5px; font-weight:600; padding:3px 10px; border-radius:999px; background:var(--col); color:var(--muted); white-space:nowrap; }
+  .pill.today { background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--accent); }
+  .pill.hi { background:var(--late-bg); color:var(--late); }
+  .tag { font-size:12px; font-weight:600; padding:2px 9px; border-radius:999px; }
+  .note { background:var(--surface); border-radius:14px; box-shadow:var(--shadow); padding:12px 14px; color:var(--faint); font-size:14.5px; min-height:64px; margin-bottom:14px; }
+  .sec { font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin:4px 4px 8px; display:flex; justify-content:space-between; }
+  .step { display:flex; gap:12px; align-items:center; padding:10px 14px; font-size:15px; }
+  .step + .step { border-top:1px solid var(--border); }
+  .step .c { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; position:relative; }
+  .step.done .c { background:var(--accent); border-color:var(--accent); }
+  .step.done span { color:var(--faint); text-decoration:line-through; }
+  .step.add { color:var(--faint); }
+  .quick { display:flex; gap:8px; overflow:hidden; margin:0 0 14px; }
+  .qa { flex-shrink:0; display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:12px; background:var(--surface); box-shadow:var(--shadow); font-size:13.5px; font-weight:600; color:var(--muted); }
+  .qa.on { background:color-mix(in srgb, var(--accent) 14%, var(--surface)); color:var(--accent); }
+  .bottombar { flex-shrink:0; display:flex; gap:10px; padding:10px 16px 26px; background:var(--tab); border-top:1px solid var(--border); }
+  .bottombar .b { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:600; color:var(--muted); }
+  .bottombar .b.primary { color:var(--accent); }
+
+  /* sheet over Today */
+  .under { position:absolute; inset:44px 0 0 0; padding:0 16px; filter:saturate(.9); }
+  .under .lt { font-size:30px; font-weight:700; margin:6px 2px 12px; }
+  .ucard { background:var(--surface); border-radius:12px; box-shadow:var(--shadow); height:58px; margin-bottom:8px; }
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; top:210px; background:var(--bg); border-radius:22px 22px 0 0; box-shadow:0 -8px 30px rgba(0,0,0,.2); display:flex; flex-direction:column; }
+  .grab { width:40px; height:5px; border-radius:3px; background:var(--border); margin:8px auto 6px; }
+  .sheet .body { padding-top:6px; }
+  .sheet .hint { text-align:center; font-size:11.5px; color:var(--faint); margin:-2px 0 8px; }
+  .kb { position:absolute; left:0; right:0; bottom:0; height:250px; background:#d1d4db; padding:8px 4px 30px; display:flex; flex-direction:column; gap:9px; }
+  .dark .kb { background:#2b2e36; }
+  .kb .kr { display:flex; gap:5px; justify-content:center; }
+  .kb .kr i { width:31px; height:40px; border-radius:6px; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,.25); }
+  .dark .kb .kr i { background:#4a4e59; }
+  .kb .kr i.w { width:180px; } .kb .kr i.m { width:44px; background:#adb2bc; } .dark .kb .kr i.m { background:#3a3e48; }
+  .qsheet { position:absolute; left:0; right:0; bottom:250px; background:var(--bg); border-radius:20px 20px 0 0; box-shadow:0 -8px 24px rgba(0,0,0,.18); padding:10px 14px 12px; }
+  .qsheet .grab { width:40px; height:5px; border-radius:3px; background:var(--border); margin:0 auto 10px; }
+  .field { font-size:17px; padding:6px 2px 10px; display:flex; align-items:center; gap:2px; }
+  .field .caret { width:2px; height:22px; background:var(--accent); margin-left:1px; }
+  .hl { background:color-mix(in srgb, var(--accent) 16%, transparent); color:var(--accent); border-radius:5px; padding:0 3px; font-weight:600; }
+  .chips { display:flex; gap:7px; overflow:hidden; }
+  .chips > span { flex-shrink:0; display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; padding:6px 10px; border-radius:10px; background:var(--surface); box-shadow:var(--shadow); color:var(--muted); }
+  .chips > span.on { background:color-mix(in srgb, var(--accent) 14%, var(--surface)); color:var(--accent); }
+  .chips svg.i { width:15px; height:15px; }
+  .addrow { display:flex; align-items:center; justify-content:space-between; margin-top:10px; }
+  .addbtn { width:40px; height:40px; border-radius:50%; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; }
+  .under { position:absolute; inset:44px 0 0 0; padding:0 16px; }
+  .under .lt { font-size:30px; font-weight:700; margin:6px 2px 12px; }
+  .ucard { background:var(--surface); border-radius:12px; box-shadow:var(--shadow); height:58px; margin-bottom:8px; }
+  .scrim { position:absolute; inset:0; background:var(--scrim); }
+  .newcard { background:var(--surface); border-radius:12px; box-shadow:0 0 0 2px var(--accent); padding:12px 14px; display:flex; gap:12px; align-items:center; margin-bottom:8px; }
+  .newcard .c { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; }
+  .newcard .field { padding:0; font-size:15px; font-weight:600; }
+  .kbbar { position:absolute; left:0; right:0; bottom:250px; background:var(--tab); border-top:1px solid var(--border); padding:8px 12px; }
+  .sec2 { font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin:4px 2px 8px; }
+  .fullrow { display:flex; align-items:center; justify-content:space-between; padding:4px 12px 6px; }
+  .fullrow .cancel { color:var(--accent); font-size:15px; } .fullrow .add { color:var(--accent); font-size:15px; font-weight:700; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Phone · step M3 · adding a task (the +)</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>What happens when you tap the big + in the middle of the tab bar. In every option you're typing straight away, and main's smart words still work: "tomorrow", "friday" or "!high" are understood and highlighted as you type. The task goes to the project you're in; from Today or Home it's due today, in the project you last used.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const I = {
+  back: '<svg class="i" viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M15 5l-7 7 7 7"/></svg>',
+  more: '<svg class="i" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 16v5M8.5 3h7l-.7 6 3.2 3v2H6v-2l3.2-3z"/></svg>',
+  status: '<svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1.5"/><rect x="14" y="4" width="6" height="10" rx="1.5"/></svg>',
+  cal: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4"/></svg>',
+  flag: '<svg class="i" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  tag: '<svg class="i" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5h8l9 9-8 8z"/><circle cx="8" cy="9" r="1.3"/></svg>',
+  bell: '<svg class="i" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0112 0v5l1.5 2h-15zM10 21h4"/></svg>',
+  repeat: '<svg class="i" viewBox="0 0 24 24"><path d="M4 11V9a3 3 0 013-3h12M16 3l3 3-3 3M20 13v2a3 3 0 01-3 3H5M8 21l-3-3 3-3"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M9 6l6 6-6 6"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+  moon: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+};
+const crumb = `<div class="crumb"><span class="dot" style="background:var(--house)"></span>New House · New House Build</div>`;
+const title = `<div class="ttl"><span class="c"></span><h3>Get contractor quotes</h3></div>`;
+const tags = `<span class="tag" style="background:var(--tagA);color:var(--tagAi)">contractor</span><span class="tag" style="background:var(--late-bg);color:var(--late)">urgent</span>`;
+const props = `<div class="group">
+  <div class="it"><span class="k"><span class="ico" style="background:var(--work)">${I.status}</span>Status</span><span class="v">Planning</span><span class="chev">${I.chev}</span></div>
+  <div class="it"><span class="k"><span class="ico" style="background:var(--accent)">${I.cal}</span>Due</span><span class="v"><span class="pill today">Today</span></span><span class="chev">${I.chev}</span></div>
+  <div class="it"><span class="k"><span class="ico" style="background:var(--hi)">${I.flag}</span>Priority</span><span class="v">High</span><span class="chev">${I.chev}</span></div>
+  <div class="it"><span class="k"><span class="ico" style="background:var(--lo)">${I.tag}</span>Tags</span><span class="v">${tags}</span><span class="chev">${I.chev}</span></div>
+</div>
+<div class="group">
+  <div class="it"><span class="k"><span class="ico" style="background:var(--house)">${I.bell}</span>Reminder</span><span class="v faint">None</span><span class="chev">${I.chev}</span></div>
+  <div class="it"><span class="k"><span class="ico" style="background:var(--personal)">${I.repeat}</span>Repeat</span><span class="v faint">Never</span><span class="chev">${I.chev}</span></div>
+</div>`;
+const steps = `<div class="sec">Steps <span>2 of 3</span></div><div class="group">
+  <div class="step done"><span class="c"></span><span>Call 3 contractors</span></div>
+  <div class="step done"><span class="c"></span><span>Compare bids</span></div>
+  <div class="step"><span class="c"></span><span>Pick one</span></div>
+  <div class="step add"><span style="width:20px;text-align:center">+</span>Add a step</div></div>`;
+const note = `<div class="note">Add a note…</div>`;
+const nav = `<div class="nav"><span class="back">${I.back}Today</span><span class="acts"><span class="ibtn">${I.pin}</span><span class="ibtn">${I.more}</span></span></div>`;
+
+const kb = '<div class="kb"><div class="kr">' + '<i></i>'.repeat(10) + '</div><div class="kr">' + '<i></i>'.repeat(9) + '</div><div class="kr"><i class="m"></i>' + '<i></i>'.repeat(7) + '<i class="m"></i></div><div class="kr"><i class="m"></i><i class="w"></i><i class="m"></i></div></div>';
+const typed = `Call electrician <span class="hl">tomorrow</span> <span class="hl">!high</span><span class="caret"></span>`;
+const chips = `<div class="chips"><span class="on">${I.cal}Tomorrow</span><span><span class="dot" style="background:var(--house)"></span>New House Build</span><span>${I.flag}High</span><span>${I.tag}Tag</span><span>${I.bell}</span></div>`;
+const under = `<div class="under"><div class="lt">Today</div>${'<div class="ucard"></div>'.repeat(8)}</div>`;
+const OPTS = [
+  ['A · Quick sheet over the keyboard', 'A small sheet slides up with the keyboard: one line to type in, and chips just above the keys for date, project, priority, tag and reminder. The words you type fill the chips in for you. Tap the arrow (or Return) to add, and it stays open for the next one.',
+    `${under}<div class="scrim"></div><div class="qsheet"><div class="grab"></div><div class="field">${typed}</div>${chips}<div class="addrow"><span style="font-size:12.5px;color:var(--faint)">Adds to New House Build · due tomorrow</span><span class="addbtn">${I.check}</span></div></div>${kb}`],
+  ['B · A new row, right in the list', 'The + drops an empty task at the top of the list you\'re looking at, and you type into it in place. A slim bar above the keyboard has the same chips. It feels like writing a list; you see exactly where it lands.',
+    `<div class="body" style="padding-top:6px"><div style="font-size:30px;font-weight:700;margin:0 2px 12px">Today</div><div class="sec2">Due today</div><div class="newcard"><span class="c"></span><div class="field">${typed}</div></div>${'<div class="ucard"></div>'.repeat(3)}</div><div class="kbbar">${chips}</div>${kb}`],
+  ['C · A full new-task screen', 'The + opens an empty task screen, the same as opening a task (step M2 A): the title at the top and every field as a row below. The most complete, but slower for a quick thought.',
+    `<div class="fullrow"><span class="cancel">Cancel</span><b style="font-size:15px">New task</b><span class="add">Add</span></div><div class="body"><div class="ttl"><span class="c"></span><h3 style="font-weight:600">Call electrician<span style="display:inline-block;width:2px;height:22px;background:var(--accent);vertical-align:-3px;margin-left:2px"></span></h3></div>
+      <div class="group"><div class="it"><span class="k"><span class="ico" style="background:var(--work)">${I.status}</span>Project</span><span class="v">New House Build</span><span class="chev">${I.chev}</span></div><div class="it"><span class="k"><span class="ico" style="background:var(--accent)">${I.cal}</span>Due</span><span class="v faint">None</span><span class="chev">${I.chev}</span></div></div></div>${kb}`],
+];
+const grid = document.getElementById('grid');
+for (const [name, desc, inner] of OPTS) {
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><div class="phone th light"><div class="sb"><span>9:41</span><span>●●●</span></div>${inner}</div>`;
+  grid.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+  document.body.classList.toggle('night', b.dataset.t === 'dark');
+});
+</script>
+</body></html>

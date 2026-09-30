@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog phone — step M1, B + C</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#dfe2e8; color:#1f2937; -webkit-font-smoothing:antialiased; }
+  body.night { background:#0d0f14; color:#f3f4f6; }
+  header.bar { position:sticky; top:0; z-index:9; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 28px; background:inherit; border-bottom:1px solid rgba(128,128,128,.25); }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid currentColor; background:none; color:inherit; cursor:pointer; opacity:.55; }
+  .chip.on { opacity:1; font-weight:600; background:rgba(128,128,128,.2); }
+  .notes { margin:16px 28px 0; max-width:100ch; font-size:14px; line-height:1.6; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:flex; flex-wrap:wrap; gap:36px 32px; padding:24px 28px 80px; }
+  .opt { width:375px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 12px; font-size:13px; line-height:1.5; opacity:.8; min-height:78px; }
+
+  /* main's tokens */
+  .light { --bg:#f6f7f9; --surface:#ffffff; --col:#eceef2; --border:#e2e4ea; --text:#1f2937; --muted:#4b5563; --faint:#6b7280; --accent:#5457e0; --on-accent:#fff; --soon-bg:#fef3c7; --soon:#92400e; --late-bg:#fee2e2; --late:#b91c1c; --hi:#ef4444; --mid:#f59e0b; --lo:#22c55e; --tab:#ffffff; --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+           --work:#3b82f6; --house:#f59e0b; --family:#ec4899; --personal:#8b5cf6; }
+  .dark  { --bg:#181a20; --surface:#242934; --col:#1e222c; --border:#2f3542; --text:#f3f4f6; --muted:#a3a9b7; --faint:#8b93a5; --accent:#818cf8; --on-accent:#181a20; --soon-bg:#3a2e10; --soon:#fbbf24; --late-bg:#3a1620; --late:#fb7185; --hi:#f87171; --mid:#fbbf24; --lo:#4ade80; --tab:#1c1f27; --shadow:0 1px 2px rgba(0,0,0,.4);
+           --work:#60a5fa; --house:#fbbf24; --family:#f472b6; --personal:#a78bfa; }
+
+  .phone { width:375px; height:780px; border-radius:44px; border:8px solid #111; overflow:hidden; position:relative; background:var(--bg); color:var(--text); display:flex; flex-direction:column; font-size:15px; }
+  .sb { height:44px; flex-shrink:0; display:flex; justify-content:space-between; align-items:flex-end; padding:0 26px 6px; font-size:13px; font-weight:600; }
+  .body { flex:1; overflow:hidden; padding:0 16px; }
+  .ltitle { font-size:30px; font-weight:700; letter-spacing:-.02em; margin:6px 2px 2px; }
+  .lsub { font-size:13px; color:var(--faint); margin:0 2px 14px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin:4px 0 0; }
+  .ibtn { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); background:var(--surface); box-shadow:var(--shadow); }
+  svg.i { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+
+  /* main's card language */
+  .focus { background:var(--surface); border-radius:14px; box-shadow:var(--shadow); padding:12px 14px; margin-bottom:14px; }
+  .focus .h { display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); }
+  .focus .h b { color:var(--accent); letter-spacing:0; text-transform:none; font-size:12.5px; }
+  .focus .bar { display:flex; gap:5px; margin:8px 0 2px; } .focus .bar i { flex:1; height:5px; border-radius:3px; background:var(--col); } .focus .bar i.on { background:var(--accent); }
+  .sec { font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin:14px 2px 8px; display:flex; gap:8px; align-items:center; }
+  .sec .n { background:var(--col); color:var(--muted); border-radius:999px; padding:0 7px; font-size:11px; letter-spacing:0; }
+  .sec.late { color:var(--late); }
+  .card { background:var(--surface); border-radius:12px; box-shadow:var(--shadow); padding:11px 12px 11px 14px; margin-bottom:8px; display:flex; gap:12px; align-items:center; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--p, transparent); }
+  .card .c { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; }
+  .card .g { flex:1; min-width:0; } .card .t { font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card .s { font-size:12px; color:var(--faint); margin-top:2px; display:flex; gap:6px; align-items:center; }
+  .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .pill { font-size:11.5px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--col); color:var(--muted); white-space:nowrap; }
+  .pill.today { background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--accent); }
+  .pill.late { background:var(--late-bg); color:var(--late); }
+
+  /* bottom tab bar */
+  .tabs { height:78px; flex-shrink:0; background:var(--tab); border-top:1px solid var(--border); display:flex; justify-content:space-around; align-items:flex-start; padding-top:9px; }
+  .tabs .tb { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10.5px; font-weight:600; color:var(--faint); width:62px; }
+  .tabs .tb.on { color:var(--accent); }
+  .tabs .plus { width:50px; height:50px; border-radius:50%; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; margin-top:-4px; box-shadow:0 4px 12px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .fab { position:absolute; right:20px; bottom:96px; width:56px; height:56px; border-radius:50%; background:var(--accent); color:var(--on-accent); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .fab svg.i, .tabs .plus svg.i { width:24px; height:24px; stroke-width:2.2; }
+
+  /* C: overview tiles */
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:6px 0 16px; }
+  .tile { background:var(--surface); border-radius:14px; box-shadow:var(--shadow); padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .tile .top { display:flex; justify-content:space-between; align-items:center; }
+  .tile .ic { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .tile .ic svg.i { width:16px; height:16px; }
+  .tile b { font-size:24px; font-weight:700; }
+  .tile span { font-size:14px; font-weight:600; color:var(--muted); }
+  .group { background:var(--surface); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; margin-bottom:14px; }
+  .group .it { display:flex; align-items:center; gap:12px; padding:11px 14px; font-size:15px; }
+  .group .it + .it { border-top:1px solid var(--border); }
+  .group .it .n { margin-left:auto; color:var(--faint); font-size:14px; }
+  .group .it .chev { color:var(--faint); }
+  .sic { width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:700; }
+
+  /* D: segmented top */
+  .segtop { display:flex; background:var(--col); border-radius:10px; padding:3px; margin:6px 0 14px; }
+  .segtop span { flex:1; text-align:center; padding:7px 0; border-radius:8px; font-size:13.5px; font-weight:600; color:var(--muted); }
+  .segtop span.on { background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
+  .swipehint { text-align:center; font-size:11.5px; color:var(--faint); margin-top:4px; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Phone · step M1 · B + C together</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>B's tab bar with the big + in the middle, and C's overview as one of its tabs. The tabs are <b>Home</b> (C's tiles, then spaces and projects), <b>Today</b>, <b>+</b> to add, <b>Agenda</b> and <b>Search</b>. Two phones, same app: on the left the app opens on Home; on the right you tapped Today. Tapping a tile such as Late, or any project, opens it full screen with a back arrow.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const I = {
+  today: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4"/></svg>',
+  proj: '<svg class="i" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 012-2h4l2 2.5h7a2 2 0 012 2V17a2 2 0 01-2 2h-13a2 2 0 01-2-2z"/></svg>',
+  agenda: '<svg class="i" viewBox="0 0 24 24"><path d="M5 6.5h14M5 12h14M5 17.5h9"/></svg>',
+  focus: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  more: '<svg class="i" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18.5" cy="12" r="1"/></svg>',
+  gear: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 16v5M8.5 3h7l-.7 6 3.2 3v2H6v-2l3.2-3z"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M9 6l6 6-6 6"/></svg>',
+};
+const card = (t, proj, sp, pill, pc = '', p = '') => `<div class="card" style="--p:var(--${p || 'mid'})"><span class="c"></span><span class="g"><div class="t">${t}</div><div class="s"><span class="dot" style="background:var(--${sp})"></span>${proj}</div></span><span class="pill ${pc}">${pill}</span></div>`;
+const todayCards = card('Get contractor quotes', 'New House Build', 'house', 'Today', 'today', 'hi') + card('Fix login redirect bug', 'Q4 Product Sprint', 'work', 'Today', 'today', 'hi') + card('Long run — 12 miles', 'Marathon Training', 'personal', 'Today', 'today', 'mid') + card('Pick up Liam', "Liam's Soccer Season", 'family', 'Today', 'today', 'mid');
+const lateCards = card('Renew passports', 'Summer Family Trip', 'family', '3d late', 'late', 'hi') + card('Refactor auth module', 'Q4 Product Sprint', 'work', '2d late', 'late', 'hi');
+const focusCard = `<div class="focus"><div class="h">Today's focus<b>1 of 3 done</b></div><div class="bar"><i class="on"></i><i></i><i></i></div></div>`;
+const tabs = (on, center) => `<div class="tabs">${[['today', 'Today'], ['agenda', 'Agenda'], center ? ['plus', ''] : ['focus', 'Focus'], ['proj', 'Projects'], ['search', 'Search']].map(([k, l]) => k === 'plus' ? `<span class="plus">${I.plus}</span>` : `<span class="tb ${on === k ? 'on' : ''}">${I[k]}${l}</span>`).join('')}</div>`;
+
+const home = '<svg class="i" viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5V19a1.5 1.5 0 01-1.5 1.5H14V15h-4v5.5H5.5A1.5 1.5 0 014 19z"/></svg>';
+const tabsBC = on => `<div class="tabs">${[['home', 'Home'], ['today', 'Today'], ['plus', ''], ['agenda', 'Agenda'], ['search', 'Search']].map(([k, l]) => k === 'plus' ? `<span class="plus">${I.plus}</span>` : `<span class="tb ${on === k ? 'on' : ''}">${k === 'home' ? home : I[k]}${l}</span>`).join('')}</div>`;
+const OPTS = [
+  ['Home tab (C\'s overview)', 'Where the app opens. Four tiles for the day at a glance, then every space and its projects. Settings sits top right.',
+    `<div class="body"><div class="topbar"><div class="ltitle">Offlog</div><span class="ibtn">${I.gear}</span></div><div class="lsub">Wednesday 30 September</div>
+      <div class="tiles">
+        <div class="tile"><div class="top"><span class="ic" style="background:var(--accent)">${I.today}</span><b>6</b></div><span>Today</span></div>
+        <div class="tile"><div class="top"><span class="ic" style="background:var(--late)">${I.agenda}</span><b>3</b></div><span>Late</span></div>
+        <div class="tile"><div class="top"><span class="ic" style="background:var(--personal)">${I.focus}</span><b>1/3</b></div><span>Focus</span></div>
+        <div class="tile"><div class="top"><span class="ic" style="background:var(--house)">${I.pin}</span><b>4</b></div><span>Pinned</span></div>
+      </div>
+      <div class="sec">Work</div><div class="group">${['Q4 Product Sprint|6', 'API Platform Migration|4', 'Team Offsite Planning|3'].map(x => `<div class="it"><span class="sic" style="background:var(--work)">${x[0]}</span>${x.split('|')[0]}<span class="n">${x.split('|')[1]}</span><span class="chev">${I.chev}</span></div>`).join('')}</div>
+      <div class="sec">New House</div><div class="group">${['New House Build|7', 'Backyard & Landscaping|3'].map(x => `<div class="it"><span class="sic" style="background:var(--house)">${x[0]}</span>${x.split('|')[0]}<span class="n">${x.split('|')[1]}</span><span class="chev">${I.chev}</span></div>`).join('')}</div>
+    </div>${tabsBC('home')}`],
+  ['Today tab (B)', 'One tap away. The focus card, then what\'s due today, then what\'s late, in main\'s cards. The + in the middle adds a task from any tab.',
+    `<div class="body"><div class="topbar"><div><div class="ltitle">Today</div></div><span class="ibtn">${I.gear}</span></div><div class="lsub">Wednesday 30 September · 6 due</div>${focusCard}<div class="sec">Due today <span class="n">6</span></div>${todayCards}<div class="sec late">Late <span class="n">3</span></div>${lateCards}</div>${tabsBC('today')}`],
+];
+const grid = document.getElementById('grid');
+for (const [name, desc, inner] of OPTS) {
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><div class="phone th light"><div class="sb"><span>9:41</span><span>●●●</span></div>${inner}</div>`;
+  grid.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+  document.body.classList.toggle('night', b.dataset.t === 'dark');
+});
+</script>
+</body></html>

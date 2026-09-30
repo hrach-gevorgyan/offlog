@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog — step 4, the task row</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#E9E9E7; color:#1C1C1C; -webkit-font-smoothing:antialiased; }
+  header.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 32px; background:#E9E9E7; border-bottom:1px solid #D4D4D1; }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid #9A9A96; background:none; color:inherit; cursor:pointer; opacity:.6; }
+  .chip.on { opacity:1; background:#1C1C1C; color:#fff; border-color:#1C1C1C; }
+  .notes { margin:16px 32px 0; max-width:96ch; font-size:14px; line-height:1.6; color:#444; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(600px, 1fr)); gap:28px; padding:24px 32px 80px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 10px; font-size:13px; color:#555; line-height:1.5; }
+
+  .light { --page:#FBFAF8; --tile:#F3F1EC; --hover:#EFECE6; --ink:#1F1D1A; --muted:#5F5A52; --faint:#9A948A; --check:#BDB6AA; --accent:#1E3A5F; --on-accent:#FFFFFF; --late:#B03A2E; --s-work:#6F7F92; --s-house:#9A8468; --s-family:#9A7482; --s-personal:#7F8F74; }
+  .dark  { --page:#171614; --tile:#201E1C; --hover:#24221F; --ink:#EDEAE4; --muted:#AFA89D; --faint:#77716A; --check:#4E4A44; --accent:#8FB0D6; --on-accent:#121110; --late:#E48A7E; --s-work:#7F8FA2; --s-house:#AA9478; --s-family:#AA8492; --s-personal:#8F9F84; }
+
+  /* The frame: B colours, D density, B soft fills. Only the row changes. */
+  .f { border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); background:var(--page); color:var(--ink); font-size:13.5px; line-height:1.4; padding:12px 14px 14px; }
+  .hd { display:flex; justify-content:space-between; align-items:center; padding:2px 6px 10px; }
+  .hd h3 { margin:0; font-size:15px; font-weight:600; } .hd h3 span { font-size:12px; color:var(--faint); font-weight:400; margin-left:8px; }
+  .btn { background:var(--accent); color:var(--on-accent); padding:4px 10px; font-weight:600; font-size:12px; border-radius:8px; }
+  .sec { font-size:12px; font-weight:600; margin:8px 6px 4px; display:flex; gap:6px; } .sec span { color:var(--faint); font-weight:500; }
+  .row { display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px; position:relative; min-height:34px; }
+  .row.hover { background:var(--hover); }
+  .c { width:15px; height:15px; border-radius:50%; border:1.5px solid var(--check); flex-shrink:0; }
+  .done .c { background:var(--accent); border-color:var(--accent); } .done .t { color:var(--faint); text-decoration:line-through; }
+  .t { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .grow { flex:1; min-width:0; display:flex; align-items:center; gap:8px; }
+  .m { color:var(--faint); font-size:11.5px; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; }
+  .due { color:var(--muted); font-size:11.5px; white-space:nowrap; text-align:right; min-width:64px; }
+  .due.late { color:var(--late); font-weight:600; } .due.today { color:var(--accent); }
+  .ico { width:13px; height:13px; stroke:var(--faint); fill:none; stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+  .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .prio { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+  .acts { display:none; gap:2px; margin-left:4px; }
+  .row.hover .acts { display:flex; }
+  .acts i { font-style:normal; font-size:11.5px; color:var(--muted); padding:2px 6px; border-radius:6px; background:var(--tile); }
+  .tag { font-size:11px; color:var(--muted); background:var(--tile); padding:1px 7px; border-radius:6px; white-space:nowrap; }
+  .two { flex-direction:column; align-items:flex-start; gap:1px; }
+  .two .sub { display:flex; gap:10px; }
+  .ring-high .c { border-color:var(--accent); border-width:2px; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Step 4 · The task row</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>The row is the most repeated thing in the app: Today, projects, Agenda, search. Colours, density and soft fills are already decided, so only how much a row shows changes here. Each panel has the same five tasks with real details: high priority, tags, steps, a reminder, a repeat, a note and a late date. The second row is shown as hovered, which reveals quick actions.</p>
+  <p>Options E and F also answer the open question: a small dot per space. Tell me which row, and whether you want the space dots.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const I = {
+  steps: '<svg class="ico" viewBox="0 0 14 14"><path d="M2 4l1.5 1.5L6 3M2 10l1.5 1.5L6 9M8 4h4M8 10h4"/></svg>',
+  bell: '<svg class="ico" viewBox="0 0 14 14"><path d="M3.5 9.5V6.5a3.5 3.5 0 017 0v3l1 1.5h-9zM6 12.5h2"/></svg>',
+  repeat: '<svg class="ico" viewBox="0 0 14 14"><path d="M2.5 6.5V5a2 2 0 012-2h7M9.5 1l2 2-2 2M11.5 7.5V9a2 2 0 01-2 2h-7M4.5 13l-2-2 2-2"/></svg>',
+  note: '<svg class="ico" viewBox="0 0 14 14"><path d="M3 2h8v10H3zM5 5h4M5 7.5h4M5 10h2"/></svg>',
+};
+// title, project, space, due, dueClass, extras
+const T = [
+  { t: 'Review pull request #482', p: 'Q4 Product Sprint', s: 'work', due: 'Today', dc: '', done: true, tags: ['code-review'] },
+  { t: 'Fix login redirect bug', p: 'Q4 Product Sprint', s: 'work', due: 'Today', dc: 'today', high: true, tags: ['urgent', 'code-review'], steps: '1/3' },
+  { t: 'Get contractor quotes', p: 'New House Build', s: 'house', due: 'Today', dc: 'today', bell: '14:00' },
+  { t: 'Long run — 12 miles', p: 'Marathon Training', s: 'personal', due: 'Sat 3 Oct', dc: '', repeat: 'Weekly' },
+  { t: 'Refactor auth module', p: 'Q4 Product Sprint', s: 'work', due: '2 days late', dc: 'late', high: true, note: true, tags: ['code-review'] },
+];
+const acts = '<span class="acts"><i>Tomorrow</i><i>Pin</i><i>⋯</i></span>';
+const dot = x => `<span class="dot" style="background:var(--s-${x.s})"></span>`;
+
+const OPTS = [
+  ['A · Title only', 'Just the check, the title and the date. Everything else is in the task itself. The calmest, but you can\'t tell which project a task belongs to.',
+    x => `<span class="grow"><span class="t">${x.t}</span></span>`],
+  ['B · Title and project', 'The title, the project in quiet grey, and the date. The essentials only; everything else stays in the task.',
+    x => `<span class="grow"><span class="t">${x.t}</span><span class="m">${x.p}</span></span>`],
+  ['C · Quiet icons', 'Title and project, then small grey icons only when a task has steps, a reminder, a repeat or a note. You see what\'s there without reading it.',
+    x => `<span class="grow">${x.high ? '<span class="prio"></span>' : ''}<span class="t">${x.t}</span><span class="m">${x.p}</span>${x.steps ? `<span class="m">${I.steps}${x.steps}</span>` : ''}${x.bell ? `<span class="m">${I.bell}${x.bell}</span>` : ''}${x.repeat ? `<span class="m">${I.repeat}</span>` : ''}${x.note ? `<span class="m">${I.note}</span>` : ''}</span>`],
+  ['D · Two lines', 'The title on its own line, and every detail on a quiet line below. The most information, but rows are taller.',
+    x => `<span class="grow two"><span class="t">${x.t}</span><span class="sub"><span class="m">${x.p}</span>${x.tags ? x.tags.map(t => `<span class="m">#${t}</span>`).join('') : ''}${x.steps ? `<span class="m">${I.steps}${x.steps}</span>` : ''}${x.bell ? `<span class="m">${I.bell}${x.bell}</span>` : ''}${x.repeat ? `<span class="m">${I.repeat}${x.repeat}</span>` : ''}</span></span>`],
+  ['E · Space dot and tags', 'A small muted dot shows the space, then the project, and tags as soft chips. More colour and more to read.',
+    x => `<span class="grow"><span class="t">${x.t}</span><span class="m">${dot(x)}${x.p}</span>${x.tags ? x.tags.map(t => `<span class="tag">${t}</span>`).join('') : ''}</span>`],
+  ['F · Priority on the circle', 'High priority is a stronger ring on the check itself, with no extra dot. The space dot sits beside the project. Details stay as quiet icons.',
+    x => `<span class="grow"><span class="t">${x.t}</span><span class="m">${dot(x)}${x.p}</span>${x.steps ? `<span class="m">${I.steps}${x.steps}</span>` : ''}${x.bell ? `<span class="m">${I.bell}</span>` : ''}${x.repeat ? `<span class="m">${I.repeat}</span>` : ''}${x.note ? `<span class="m">${I.note}</span>` : ''}</span>`],
+];
+const grid = document.getElementById('grid');
+for (const [name, desc, mid] of OPTS) {
+  const ring = name.startsWith('F');
+  const rows = T.map((x, i) => `<div class="row ${x.done ? 'done' : ''} ${i === 1 ? 'hover' : ''} ${ring && x.high ? 'ring-high' : ''}"><span class="c"></span>${mid(x)}${i === 1 ? acts : ''}<span class="due ${x.dc}">${x.due}</span></div>`);
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><div class="f th light"><div class="hd"><h3>Today<span>Wed 30 Sep</span></h3><span class="btn">New task</span></div>
+    <div class="sec">Due today <span>3</span></div>${rows.slice(0, 3).join('')}<div class="sec">Coming up <span>1</span></div>${rows[3]}<div class="sec">Earlier <span>1</span></div>${rows[4]}</div>`;
+  grid.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+});
+</script>
+</body></html>

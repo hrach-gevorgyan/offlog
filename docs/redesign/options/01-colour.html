@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog — step 1, colour</title>
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Hanken Grotesk',system-ui,sans-serif; background:#E9E9E7; color:#1C1C1C; -webkit-font-smoothing:antialiased; }
+  header.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 32px; background:#E9E9E7; border-bottom:1px solid #D4D4D1; }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid #9A9A96; background:none; color:inherit; cursor:pointer; opacity:.6; }
+  .chip.on { opacity:1; background:#1C1C1C; color:#fff; border-color:#1C1C1C; }
+  .notes { margin:16px 32px 0; max-width:96ch; font-size:14px; line-height:1.6; color:#444; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(620px, 1fr)); gap:28px; padding:24px 32px 80px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 10px; font-size:13px; color:#555; line-height:1.5; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); }
+
+  /* ---- the frame: identical in every option; only tokens change ---- */
+  .f { display:flex; height:330px; background:var(--page); color:var(--ink); font-size:12.5px; }
+  .f .side { width:118px; flex-shrink:0; background:var(--side); padding:12px 8px; display:flex; flex-direction:column; gap:1px; border-right:1px solid var(--line); }
+  .f .logo { font-weight:700; font-size:12px; padding:2px 6px 10px; letter-spacing:.01em; }
+  .f .nav { padding:5px 6px; border-radius:5px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .f .nav.on { background:var(--sel); color:var(--sel-ink); font-weight:600; }
+  .f .sp { margin:10px 6px 3px; font-size:10.5px; color:var(--faint); display:flex; align-items:center; gap:6px; }
+  .f .sp i { width:6px; height:6px; border-radius:50%; background:var(--faint); display:none; }
+  .meaning-more .f .sp i { display:block; }
+  .f .pj { padding:3px 6px; color:var(--muted); }
+  .f .main { flex:1; min-width:0; padding:16px 18px; display:flex; flex-direction:column; }
+  .f .hd { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:12px; }
+  .f .hd h3 { margin:0; font-size:19px; font-weight:650; letter-spacing:-.01em; }
+  .f .hd small { display:block; color:var(--faint); font-size:11px; margin-bottom:2px; }
+  .f .btn { background:var(--accent); color:var(--on-accent); border-radius:6px; padding:5px 10px; font-weight:600; font-size:11.5px; }
+  .f .row { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line); }
+  .f .row:last-child { border-bottom:1px solid var(--line); }
+  .f .c { width:14px; height:14px; border-radius:50%; border:1.4px solid var(--check); flex-shrink:0; }
+  .f .row.done .c { background:var(--accent); border-color:var(--accent); }
+  .f .row.done .t { color:var(--faint); text-decoration:line-through; }
+  .f .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .f .prio { display:none; width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+  .f .row.high .prio { display:block; }
+  .f .p { color:var(--faint); font-size:11px; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+  .f .p i { width:6px; height:6px; border-radius:50%; display:none; }
+  .meaning-more .f .p i { display:block; }
+  .f .due { width:62px; text-align:right; color:var(--muted); font-size:11px; white-space:nowrap; }
+  .f .due.late { color:var(--late); font-weight:600; }
+  .f .due.today { color:var(--accent-ink); }
+  .f .sec { font-size:10.5px; color:var(--faint); margin:12px 0 4px; font-weight:600; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Step 1 · Colour system</h1>
+  <button class="chip on" data-m="less">Colour means: accent + late only</button>
+  <button class="chip" data-m="more">…plus a muted dot per space</button>
+</header>
+<div class="notes">
+  <p>Every panel has the same layout, type and content: only the colours change. Each option shows light on the left and dark on the right. The accent appears in only four places: the New task button, the selected item in the sidebar, "Today", and the done check. Red means late, and nothing else. A small dot marks high priority.</p>
+  <p>The switch at the top adds a muted colour dot for each space. Try it on your favourite option to see whether spaces should carry colour at all. Pick one option, or say "A's neutrals with D's accent", for example.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<template id="frame">
+  <div class="f">
+    <div class="side">
+      <div class="logo">Offlog</div>
+      <div class="nav on">Today</div><div class="nav">Focus</div><div class="nav">Agenda</div>
+      <div class="sp"><i style="background:var(--s1)"></i>Work</div><div class="pj">Q4 Product Sprint</div><div class="pj">API Migration</div>
+      <div class="sp"><i style="background:var(--s2)"></i>New House</div><div class="pj">New House Build</div>
+      <div class="sp"><i style="background:var(--s3)"></i>Family</div><div class="pj">Emma's School</div>
+    </div>
+    <div class="main">
+      <div class="hd"><div><small>Wednesday 30 September</small><h3>Today</h3></div><span class="btn">New task</span></div>
+      <div class="rows">
+        <div class="row done"><span class="c"></span><span class="t">Review pull request #482</span><span class="p"><i style="background:var(--s1)"></i>Q4 Product Sprint</span><span class="due">Today</span></div>
+        <div class="row high"><span class="c"></span><span class="prio"></span><span class="t">Fix login redirect bug</span><span class="p"><i style="background:var(--s1)"></i>Q4 Product Sprint</span><span class="due today">Today</span></div>
+        <div class="row"><span class="c"></span><span class="t">Get contractor quotes</span><span class="p"><i style="background:var(--s2)"></i>New House Build</span><span class="due today">Today</span></div>
+        <div class="row"><span class="c"></span><span class="t">Pick up Liam from practice</span><span class="p"><i style="background:var(--s3)"></i>Liam's Soccer</span><span class="due today">Today</span></div>
+      </div>
+      <div class="sec">Earlier</div>
+      <div class="rows">
+        <div class="row high"><span class="c"></span><span class="prio"></span><span class="t">Refactor auth module</span><span class="p"><i style="background:var(--s1)"></i>Q4 Product Sprint</span><span class="due late">2 days late</span></div>
+        <div class="row"><span class="c"></span><span class="t">Order new flooring</span><span class="p"><i style="background:var(--s2)"></i>New House Build</span><span class="due late">1 day late</span></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+// Each option: name, description, light tokens, dark tokens.
+const OPTS = [
+  ['A · Graphite & Cobalt', 'Cool, precise greys with a clear blue. Crisp and technical, close to Linear.',
+    { page:'#FFFFFF', side:'#F6F7F8', line:'#E7E9EC', ink:'#16181D', muted:'#4E5561', faint:'#8B919B', check:'#B4B9C1', sel:'#ECEEF1', 'sel-ink':'#16181D', accent:'#2E5BFF', 'accent-ink':'#2349D6', 'on-accent':'#FFFFFF', late:'#D23A3A', s1:'#7C8AA5', s2:'#A58F7C', s3:'#8FA07F' },
+    { page:'#111316', side:'#0C0D10', line:'#23262C', ink:'#ECEEF1', muted:'#A9AFB8', faint:'#6F7680', check:'#4A505A', sel:'#1D2026', 'sel-ink':'#FFFFFF', accent:'#5C80FF', 'accent-ink':'#8AA3FF', 'on-accent':'#FFFFFF', late:'#FF6B6B', s1:'#7C8AA5', s2:'#A58F7C', s3:'#8FA07F' }],
+  ['B · Stone & Ink', 'Warm paper greys with a deep ink blue. Quiet and bookish, the most "Japanese" of the set.',
+    { page:'#FBFAF8', side:'#F3F1EC', line:'#E6E2DA', ink:'#1F1D1A', muted:'#5F5A52', faint:'#9A948A', check:'#BDB6AA', sel:'#E9E5DD', 'sel-ink':'#1F1D1A', accent:'#1E3A5F', 'accent-ink':'#1E3A5F', 'on-accent':'#FFFFFF', late:'#B03A2E', s1:'#6F7F92', s2:'#9A8468', s3:'#7F8F74' },
+    { page:'#171614', side:'#121110', line:'#2A2825', ink:'#EDEAE4', muted:'#AFA89D', faint:'#77716A', check:'#4E4A44', sel:'#23211E', 'sel-ink':'#FFFFFF', accent:'#8FB0D6', 'accent-ink':'#A9C3E2', 'on-accent':'#121110', late:'#E48A7E', s1:'#6F7F92', s2:'#9A8468', s3:'#7F8F74' }],
+  ['C · Pure grey & Violet', 'Colourless greys with a soft violet. Clean and modern, a familiar product look.',
+    { page:'#FFFFFF', side:'#F7F7F7', line:'#EBEBEB', ink:'#171717', muted:'#525252', faint:'#8F8F8F', check:'#BDBDBD', sel:'#EFEFEF', 'sel-ink':'#171717', accent:'#6E56CF', 'accent-ink':'#5B45B8', 'on-accent':'#FFFFFF', late:'#DC3E42', s1:'#8E8AA8', s2:'#A89A8A', s3:'#8AA897' },
+    { page:'#121212', side:'#0D0D0D', line:'#242424', ink:'#EDEDED', muted:'#A3A3A3', faint:'#6E6E6E', check:'#4A4A4A', sel:'#1F1F1F', 'sel-ink':'#FFFFFF', accent:'#9B87F5', 'accent-ink':'#B3A4F8', 'on-accent':'#121212', late:'#FF6369', s1:'#8E8AA8', s2:'#A89A8A', s3:'#8AA897' }],
+  ['D · Monochrome & Signal orange', 'Black, white and grey, with one hot orange used sparingly, like a Braun switch. Bold and confident.',
+    { page:'#FFFFFF', side:'#F5F5F4', line:'#E7E5E4', ink:'#111111', muted:'#4A4A48', faint:'#8C8A87', check:'#B8B6B2', sel:'#111111', 'sel-ink':'#FFFFFF', accent:'#FF5A1F', 'accent-ink':'#E04A12', 'on-accent':'#FFFFFF', late:'#111111', s1:'#8A8A8A', s2:'#A8A8A8', s3:'#6E6E6E' },
+    { page:'#0E0E0E', side:'#080808', line:'#222222', ink:'#F2F2F2', muted:'#A8A8A8', faint:'#6B6B6B', check:'#454545', sel:'#F2F2F2', 'sel-ink':'#0E0E0E', accent:'#FF6A33', 'accent-ink':'#FF8A5C', 'on-accent':'#0E0E0E', late:'#F2F2F2', s1:'#8A8A8A', s2:'#A8A8A8', s3:'#6E6E6E' }],
+  ['E · Warm neutral & Forest', 'Soft warm greys with a deep green. Calm, natural and grown-up.',
+    { page:'#FCFCFA', side:'#F4F4F0', line:'#E6E6E0', ink:'#1B1D1A', muted:'#575A54', faint:'#90938B', check:'#B7BAB1', sel:'#E8EAE3', 'sel-ink':'#1B1D1A', accent:'#2F6B4F', 'accent-ink':'#2A6047', 'on-accent':'#FFFFFF', late:'#B8432F', s1:'#7D8A99', s2:'#9C8B74', s3:'#7F9480' },
+    { page:'#141613', side:'#0F110E', line:'#262923', ink:'#E9ECE6', muted:'#A7ACA2', faint:'#71766C', check:'#474C44', sel:'#1F221D', 'sel-ink':'#FFFFFF', accent:'#6FB08F', 'accent-ink':'#8CC4A7', 'on-accent':'#0F110E', late:'#E3907F', s1:'#7D8A99', s2:'#9C8B74', s3:'#7F9480' }],
+  ['F · Sumi & Vermilion', 'Near-black ink on white, with the red of a hanko seal as the accent. Late tasks are shown in bold ink, because red already means "you".',
+    { page:'#FFFFFF', side:'#F6F5F3', line:'#E8E6E2', ink:'#141414', muted:'#4F4D4A', faint:'#8F8C87', check:'#B9B6B0', sel:'#EFEDEA', 'sel-ink':'#141414', accent:'#C8392B', 'accent-ink':'#B8301F', 'on-accent':'#FFFFFF', late:'#141414', s1:'#7A7F88', s2:'#9A8F80', s3:'#83907F' },
+    { page:'#121111', side:'#0C0B0B', line:'#252322', ink:'#EFECE8', muted:'#AAA6A0', faint:'#716D68', check:'#4A4643', sel:'#1F1D1C', 'sel-ink':'#FFFFFF', accent:'#E0604F', 'accent-ink':'#EB8374', 'on-accent':'#121111', late:'#EFECE8', s1:'#7A7F88', s2:'#9A8F80', s3:'#83907F' }],
+];
+const grid = document.getElementById('grid'), tpl = document.getElementById('frame');
+const vars = o => Object.entries(o).map(([k, v]) => `--${k}:${v}`).join(';');
+for (const [name, desc, light, dark] of OPTS) {
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p><div class="pair"></div>`;
+  for (const t of [light, dark]) {
+    const f = tpl.content.firstElementChild.cloneNode(true); f.setAttribute('style', vars(t)); el.querySelector('.pair').append(f);
+  }
+  grid.append(el);
+}
+document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b));
+  document.body.classList.toggle('meaning-more', b.dataset.m === 'more');
+});
+</script>
+</body></html>

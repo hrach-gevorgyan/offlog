@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offlog — step 2, type</title>
+<!-- Comparison page only: loads candidates from Google Fonts. The chosen
+     face will be self-hosted in the app, like Hanken Grotesk is today. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+  @font-face { font-family:'Hanken Grotesk'; src:url('../../../offlog-app/public/fonts/HankenGrotesk-variable.woff2') format('woff2'); font-weight:100 900; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,sans-serif; background:#E9E9E7; color:#1C1C1C; -webkit-font-smoothing:antialiased; }
+  header.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 32px; background:#E9E9E7; border-bottom:1px solid #D4D4D1; }
+  header.bar h1 { margin:0 16px 0 0; font-size:16px; font-weight:600; }
+  .chip { font:inherit; font-size:13px; padding:6px 14px; border-radius:999px; border:1px solid #9A9A96; background:none; color:inherit; cursor:pointer; opacity:.6; }
+  .chip.on { opacity:1; background:#1C1C1C; color:#fff; border-color:#1C1C1C; }
+  .notes { margin:16px 32px 0; max-width:96ch; font-size:14px; line-height:1.6; color:#444; }
+  .notes p { margin:0 0 6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(560px, 1fr)); gap:28px; padding:24px 32px 80px; }
+  .opt h2 { margin:0 0 4px; font-size:15px; font-weight:600; }
+  .opt p.d { margin:0 0 10px; font-size:13px; color:#555; line-height:1.5; }
+
+  /* Stone & Ink, both themes */
+  .light { --page:#FBFAF8; --side:#F3F1EC; --line:#E6E2DA; --ink:#1F1D1A; --muted:#5F5A52; --faint:#9A948A; --check:#BDB6AA; --sel:#E9E5DD; --accent:#1E3A5F; --on-accent:#FFFFFF; --late:#B03A2E; }
+  .dark  { --page:#171614; --side:#121110; --line:#2A2825; --ink:#EDEAE4; --muted:#AFA89D; --faint:#77716A; --check:#4E4A44; --sel:#23211E; --accent:#8FB0D6; --on-accent:#121110; --late:#E48A7E; }
+
+  /* ---- the frame: one fixed size scale, only the face changes ---- */
+  .f { display:flex; height:400px; border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); background:var(--page); color:var(--ink); font-family:var(--face); font-size:14px; line-height:1.45; }
+  .f .side { width:168px; flex-shrink:0; background:var(--side); padding:16px 10px; display:flex; flex-direction:column; gap:1px; border-right:1px solid var(--line); font-size:13.5px; }
+  .f .logo { font-weight:700; font-size:14px; padding:2px 8px 14px; }
+  .f .nav { padding:6px 8px; border-radius:6px; color:var(--muted); }
+  .f .nav.on { background:var(--sel); color:var(--ink); font-weight:600; }
+  .f .sp { margin:14px 8px 4px; font-size:12px; color:var(--faint); font-weight:500; }
+  .f .pj { padding:4px 8px; color:var(--muted); }
+  .f .main { flex:1; min-width:0; padding:22px 26px; display:flex; flex-direction:column; }
+  .f .hd { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:16px; }
+  .f .date { display:block; color:var(--faint); font-size:12.5px; margin-bottom:4px; }
+  .f h3 { margin:0; font-family:var(--head, var(--face)); font-size:28px; font-weight:var(--hw, 650); letter-spacing:var(--ls, -.02em); line-height:1.1; }
+  .f .btn { background:var(--accent); color:var(--on-accent); border-radius:7px; padding:7px 12px; font-weight:600; font-size:13px; }
+  .f .sub { color:var(--muted); font-size:14px; margin:0 0 14px; }
+  .f .row { display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line); }
+  .f .row:last-child { border-bottom:1px solid var(--line); }
+  .f .c { width:16px; height:16px; border-radius:50%; border:1.5px solid var(--check); flex-shrink:0; }
+  .f .row.done .c { background:var(--accent); border-color:var(--accent); }
+  .f .row.done .t { color:var(--faint); text-decoration:line-through; }
+  .f .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14.5px; }
+  .f .p { color:var(--faint); font-size:12.5px; white-space:nowrap; }
+  .f .due { width:84px; text-align:right; color:var(--muted); font-size:12.5px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .f .due.late { color:var(--late); font-weight:600; }
+  .f .due.today { color:var(--accent); }
+  .f .sec { font-size:12px; color:var(--faint); margin:16px 0 4px; font-weight:600; }
+</style></head>
+<body>
+<header class="bar">
+  <h1>Step 2 · Type</h1>
+  <button class="chip on" data-t="light">Light</button>
+  <button class="chip" data-t="dark">Dark</button>
+</header>
+<div class="notes">
+  <p>Every panel uses B (Stone &amp; Ink) and the same sizes and weights. Only the typeface changes. Look at the big "Today", the task titles, the small grey text, and the numbers in the dates.</p>
+  <p>F is the one different idea: a serif for page titles only, with Geist for everything else. Pick one, or say what you like in two of them.</p>
+</div>
+<div class="grid" id="grid"></div>
+
+<template id="frame">
+  <div class="f">
+    <div class="side">
+      <div class="logo">Offlog</div>
+      <div class="nav on">Today</div><div class="nav">Focus</div><div class="nav">Agenda</div>
+      <div class="sp">Work</div><div class="pj">Q4 Product Sprint</div><div class="pj">API Platform Migration</div>
+      <div class="sp">New House</div><div class="pj">New House Build</div><div class="pj">Backyard &amp; Landscaping</div>
+    </div>
+    <div class="main">
+      <div class="hd"><div><span class="date">Wednesday 30 September</span><h3>Today</h3></div><span class="btn">New task</span></div>
+      <p class="sub">6 due today · 2 late</p>
+      <div>
+        <div class="row done"><span class="c"></span><span class="t">Review pull request #482</span><span class="p">Q4 Product Sprint</span><span class="due">Today</span></div>
+        <div class="row"><span class="c"></span><span class="t">Fix login redirect bug</span><span class="p">Q4 Product Sprint</span><span class="due today">Today</span></div>
+        <div class="row"><span class="c"></span><span class="t">Get contractor quotes</span><span class="p">New House Build</span><span class="due today">Today</span></div>
+        <div class="row"><span class="c"></span><span class="t">Long run — 12 miles</span><span class="p">Marathon Training</span><span class="due">Sat 3 Oct</span></div>
+      </div>
+      <div class="sec">Earlier</div>
+      <div>
+        <div class="row"><span class="c"></span><span class="t">Refactor auth module</span><span class="p">Q4 Product Sprint</span><span class="due late">2 days late</span></div>
+        <div class="row"><span class="c"></span><span class="t">Order new flooring</span><span class="p">New House Build</span><span class="due late">1 day late</span></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+const OPTS = [
+  ['A · Hanken Grotesk (today)', 'What the app uses now. Friendly and slightly geometric.', "'Hanken Grotesk',sans-serif", {}],
+  ['B · Geist', 'Made by Vercel. Precise, modern, a little technical; very "premium tool".', "'Geist',sans-serif", {}],
+  ['C · IBM Plex Sans', 'Engineered and logical, with distinctive details. Serious, with character.', "'IBM Plex Sans',sans-serif", { ls: '-.01em' }],
+  ['D · Instrument Sans', 'Refined and slightly narrow, with a crafted feel. Elegant without being cold.', "'Instrument Sans',sans-serif", {}],
+  ['E · Inter', 'The safe, neutral standard. Extremely readable, but seen everywhere.', "'Inter',sans-serif", {}],
+  ['F · Newsreader titles + Geist', 'A book serif for page titles only, and Geist for everything else. Editorial and calm, and it suits the "bookish" Stone & Ink.', "'Geist',sans-serif", { head: "'Newsreader',serif", hw: '500', ls: '-.01em' }],
+];
+const grid = document.getElementById('grid'), tpl = document.getElementById('frame');
+for (const [name, desc, face, extra] of OPTS) {
+  const el = document.createElement('section'); el.className = 'opt';
+  el.innerHTML = `<h2>${name}</h2><p class="d">${desc}</p>`;
+  const f = tpl.content.firstElementChild.cloneNode(true);
+  f.classList.add('th', 'light');
+  f.style.setProperty('--face', face);
+  for (const [k, v] of Object.entries(extra)) f.style.setProperty('--' + k, v);
+  el.append(f); grid.append(el);
+}
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.th').forEach(f => { f.classList.toggle('light', b.dataset.t === 'light'); f.classList.toggle('dark', b.dataset.t === 'dark'); });
+});
+</script>
+</body></html>

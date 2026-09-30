@@ -50,8 +50,7 @@ async function main() {
   const remote = new PouchDB(target.url, { auth: { username: target.user, password: target.password } });
   // Pull into memory and measure locally: NyxDB implements no _all_docs
   // (replication drives off _changes and never needs one), so a direct
-  // query is not available -- the same reason mesh-spike.js verifies
-  // through a reader instead of asking the server.
+  // query is not available.
   const local = new PouchDB('metrics-scratch', { adapter: 'memory' });
   await new Promise((resolve, reject) =>
     remote.replicate.to(local).on('complete', resolve).on('error', reject));
