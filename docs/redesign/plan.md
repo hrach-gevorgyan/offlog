@@ -50,6 +50,21 @@ owner's words where possible, before any code changes. Read
 [../redesign-minimal-lessons.md](../redesign-minimal-lessons.md) first:
 it explains why the last attempt failed.
 
+## Build (offlog-app)
+
+The prototype is being built into the app on `redesign/full`, one committed phase at a time. Phone only: screens up to 768px wide, or a landscape phone, get `src/lib/phone/`; desktop is unchanged. Phones get new screens where the prototype designed them; other screens reuse today's components until their phase replaces them.
+
+| phase | scope | state |
+|---|---|---|
+| 1 | Shell: four tabs with their own screen stacks, Android back, transitions, `+` button. Home (hero, scroll-linked bar, tiles, projects), Today / Late / Pinned lists, Search. Project, Agenda and Focus reuse the desktop views; opening a task uses the existing task dialog; Settings uses the existing panel. | done 1 Oct 2026 |
+| 2 | Project screen: status pills with swipe, list with select/bulk bar, filter sheet, card long-press menu, project menu (statuses, view, archive, pin, delete), New project. | next |
+| 3 | Full-screen task screen with rows and bottom-sheet pickers (status, due, priority, tags, reminder, repeat, blocked by, related, attachments, fields, note preview, steps). | |
+| 4 | Quick add as a bottom sheet (chips, duplicate warning, project/day context). | |
+| 5 | Agenda (list/month) and Focus in the phone style. | |
+| 6 | Settings as pushed phone pages; Trash, History, Organize, Archived projects. | |
+
+**Known gaps after phase 1:** the status bar stays page-coloured above the indigo hero (its colour is paired with the native icon style in `theme.ts`); there is no user name, so the hero greets without one.
+
 ## 0. Brief
 
 **Four words for the finished app:** premium, minimal, logical, focused.

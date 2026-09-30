@@ -56,6 +56,10 @@
 
   /* meaning */
   --accent: #5457e0;
+  /* The phone Home's hero band and what sits on it. Dark mode deepens it
+     rather than using the lighter dark --accent, which glares as a fill. */
+  --hero: #5457e0;
+  --on-hero: #ffffff;
   --on-accent: #ffffff; /* text/icon color for anything sitting on --accent — see body.dark override */
   /* Fixed (not overridden in body.dark) — --success is bright in BOTH
      themes, unlike --accent/--overdue-ink/--faint which swap light↔dark
@@ -168,6 +172,8 @@ body.dark {
   --muted: #a3a9b7;
   --faint: #8b93a5;
   --accent: #818cf8;
+  --hero: #35388f;
+  --on-hero: #eef0ff;
   --on-accent: #181a20; /* dark accent is light — needs dark text, not white (was hardcoded #fff before, 2.98:1) */
   --danger: #f87171;
   --success: #4ade80;

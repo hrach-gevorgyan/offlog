@@ -62,7 +62,14 @@ flowchart LR
 ```
 
 - **UI** — `App.svelte` routes between Dashboard, Focus, Agenda, Kanban,
-  List, plus modals (CardDetail, QuickAdd, GlobalSearch, Settings).
+  List, plus modals (CardDetail, QuickAdd, GlobalSearch, Settings). On a
+  phone-sized screen (`PHONE_QUERY` in `phone/nav.ts`, the same breakpoint as
+  the desktop layout's mobile rules) `<main>` renders `phone/PhoneApp.svelte`
+  instead: four tabs (Home, Today, Agenda, Search), each a stack of screens.
+  Every pushed screen owns one `modalStack` history entry, so Android back
+  pops screens and overlays in one LIFO order; back at a non-Home tab root
+  goes Home before the app exits. The shell asks App for what App owns
+  (QuickAdd, CardDetail, the Sidebar-hosted Settings) through `nav.actions`.
 - **store.ts** — the only reactive state layer. Holds spaces, projects,
   tasks and the active selection; reloads on any database change.
 - **db.ts** — all reads and writes, the changelog, the undo buffer, and
@@ -529,6 +536,8 @@ native theming. Derived tints use
 | `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
 | `--accent` | `#5457E0` | `#818CF8` | indigo — buttons, active states |
 | `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
+| `--hero` | `#5457E0` | `#35388F` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent |
+| `--on-hero` | `#FFFFFF` | `#EEF0FF` | ink and the muted mark on `--hero` |
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
 | `--danger` | `#DC2626` | `#F87171` | destructive actions |
 | `--success` | `#22C55E` | `#4ADE80` | done, sync ok |

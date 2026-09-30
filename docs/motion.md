@@ -164,6 +164,22 @@ runs four `onMount` DB loads, on the app's most frequent navigation, and the
 search button and view toggle blink for no reason. Key the title, or the body —
 not the header that contains controls whose state did not change.
 
+### Phone screens (`phone/PhoneApp.svelte`)
+Material's *shared axis*, with only the arrival animating: `screenIn` takes the
+way the screen arrived (`arrival` in `phone/nav.ts`). A pushed screen slides in
+from the right edge (300ms, standard); going back, the screen underneath
+returns from −24% while fading up from 0.4; a tab switch fades through
+(200ms, decelerate, scale .98→1). The outgoing screen is removed at once — no
+`out:` — so two screens are never on screen together and no grid stacking is
+needed. The navigation bar's pill grows from its centre (`pillIn`) only on a
+real tab switch, never on a re-render.
+
+Home's top bar is **scroll-linked, not timed**: `--t` (0..1, smoothstepped
+across the hero's last 40px) mixes the bar from `--hero` to `--bg`, and two
+copies of the title crossfade so it never passes through grey. It follows the
+finger; stop halfway and it stays halfway. Under Reduce Motion the watermark
+scrolls 1:1 instead of at 0.65x.
+
 ### List items appearing and disappearing
 `revealIn`/`revealOut` with `transition:slide` for a disclosure section opening
 in place (`slide` measures its own height, so the preset carries only timing).

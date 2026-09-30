@@ -209,3 +209,20 @@ export function searchOut(_node: Element) {
 // view snaps to full size when the old one unmounts.
 export const viewIn = { get duration() { return d(DUR.small); }, get delay() { return d(90); }, easing: easeDecelerate };
 export const viewOut = { get duration() { return d(90); }, easing: easeAccelerate };
+
+// ── Phone screens (phone/PhoneApp.svelte) ────────────────────────────────────
+// Material's shared axis: a pushed screen slides in from the right edge; going
+// back, the screen underneath returns from the left, starting partly faded.
+// A tab switch is a fade through. The outgoing screen is removed at once, so
+// only the arrival animates and nothing overlaps.
+export function screenIn(_node: Element, { kind }: { kind: 'push' | 'pop' | 'tab' | 'none' }) {
+  if (kind === 'push') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * 100}%)` };
+  if (kind === 'pop') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * -24}%); opacity: ${0.4 + 0.6 * t}` };
+  if (kind === 'tab') return { duration: d(DUR.medium), easing: easeDecelerate, css: (t: number) => `opacity: ${t}; transform: scale(${0.98 + 0.02 * t})` };
+  return { duration: 0 };
+}
+
+// The navigation bar's active pill grows out from its centre on a tab switch.
+export function pillIn(_node: Element) {
+  return { duration: d(DUR.medium), easing: easeStandard, css: (t: number) => `clip-path: inset(0 ${(1 - t) * 50}% round 16px)` };
+}

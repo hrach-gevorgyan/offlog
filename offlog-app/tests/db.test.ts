@@ -388,6 +388,29 @@ describe('"done" is positional (column_id === last column)', () => {
     expect(data.todayTasks.map(t => t._id)).not.toContain(t1._id);
   });
 
+  it('getDashboardData: uncapped today counts (open and finished), per-project open count, uncapped pinned list', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Phone Home');
+    const lastCol = project.columns.at(-1)!;
+    const todayStr = localDateStr(new Date());
+    // 12 open tasks due today: todayTasks caps at 10, the counts must not.
+    for (let i = 0; i < 12; i++) {
+      const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, `Open ${i}`);
+      await updateTask(t._id!, { due_date: todayStr, pinned: true });
+    }
+    const done = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Finished today');
+    await updateTask(done._id!, { due_date: todayStr, column_id: lastCol.id });
+
+    const data = await getDashboardData();
+    expect(data.todayTasks).toHaveLength(10);
+    expect(data.todayOpenCount).toBe(12);
+    expect(data.todayDoneCount).toBe(1);
+    expect(data.byProject[project._id].open).toBe(12);
+    expect(data.byProject[project._id].total).toBe(13);
+    expect(data.pinnedTasks).toHaveLength(10);
+    expect(data.pinnedAll).toHaveLength(12);
+  });
+
   it('getDashboardData excludes a completed task from the pinned list and count (owner-caught bug, 2026-07-30)', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Pinned Project');

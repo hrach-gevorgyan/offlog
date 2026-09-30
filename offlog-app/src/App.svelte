@@ -27,6 +27,8 @@
   import AppLock from './lib/AppLock.svelte';
   import UpdateModal from './lib/UpdateModal.svelte';
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
+  import PhoneApp from './lib/phone/PhoneApp.svelte';
+  import { isPhone, actions as phoneActions, backAtRoot, switchTab, push } from './lib/phone/nav';
 
   // The version an already-dismissed banner shouldn't reappear for until
   // a *different* update is found — background checks re-run every ~6h
@@ -258,6 +260,7 @@
     CapApp.addListener('backButton', ({ canGoBack }) => {
       if (canGoBack) window.history.back();
       else if (sidebarOpen) closeSidebar();
+      else if (get(isPhone) && backAtRoot()) return;
       else CapApp.exitApp();
     });
   }
@@ -291,6 +294,7 @@
     // new view. No-ops if nothing's open (cold start, the common case).
     closeAll();
     if (host === 'quickadd') { openQuickAdd(); return false; } // an overlay, not a view change
+    if (get(isPhone)) return handlePhoneWidgetUrl(host, url);
     if (host === 'agenda') { showDashboard = false; showAgenda = true; return true; }
     if (host === 'focus') { showDashboard = false; showAgenda = false; showFocus = true; return true; }
     if (host === 'dashboard') { showAgenda = false; showFocus = false; showDashboard = true; return true; }
@@ -300,6 +304,19 @@
       // localStorage view-restore below, just via a different trigger.
       const id = new URL(url).searchParams.get('id');
       if (id && get(projects).some(p => p._id === id)) { showDashboard = false; goToProject(id); return true; }
+    }
+    return false;
+  }
+
+  // The phone shell navigates through its own tab stacks instead of the
+  // desktop view booleans.
+  function handlePhoneWidgetUrl(host: string, url: string): boolean {
+    if (host === 'agenda') { switchTab('agenda'); return true; }
+    if (host === 'focus') { switchTab('home'); push({ k: 'focus' }); return true; }
+    if (host === 'dashboard') { switchTab('home'); return true; }
+    if (host === 'project') {
+      const id = new URL(url).searchParams.get('id');
+      if (id && get(projects).some(p => p._id === id)) { switchTab('home'); push({ k: 'project', id }); return true; }
     }
     return false;
   }
@@ -462,6 +479,16 @@
 
   function retryInit() { location.reload(); }
 
+  phoneActions.quickAdd = (due = null) => openQuickAdd(due);
+  phoneActions.openSettings = () => sidebarRef?.openSettings();
+  phoneActions.openTask = (task) => {
+    const proj = get(projects).find(p => p._id === task.project_id);
+    if (proj) openSearchDetail(task, proj);
+    else showError('Could not open this task right now.');
+  };
+  // Toasts sit above the phone's navigation bar rather than on top of it.
+  $: document.body.classList.toggle('phone', $isPhone);
+
   async function setView(v: View) {
     currentView = v;
     if (!$activeProject) return;
@@ -519,7 +546,9 @@
     {/if}
 
     <main class="main">
-      {#if showDashboard}
+      {#if $isPhone}
+        <div class="view-fade"><PhoneApp /></div>
+      {:else if showDashboard}
         <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
           <DashboardView
             on:menu={() => sidebarOpen = true}
@@ -665,7 +694,7 @@
   {/if}
 {/if}
 
-{#if !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showAgenda && !showFocus}
+{#if !$isPhone && !showQuickAdd && !showSearch && !searchDetailTask && !sidebarOpen && !$modalOpen && !showAgenda && !showFocus}
 <button class="fab" on:click={() => openQuickAdd()} title="Quick add task (Ctrl+N)">
   <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
     <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
@@ -934,6 +963,9 @@
     box-shadow: 0 4px 20px rgba(0,0,0,.25);
     z-index: 1000; white-space: nowrap;
   }
+
+  :global(body.phone) .toast-stack { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  :global(body.phone) .error-toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
   /* ── Undo toast ── */
   .toast-stack {

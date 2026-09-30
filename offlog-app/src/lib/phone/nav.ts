@@ -1,0 +1,78 @@
+// Phone navigation: four tabs, each a stack of screens.
+//
+// Every pushed screen owns one modalStack history entry, registered here at
+// push time (not in a component's setup), so Android back pops screens in
+// the same LIFO order as overlays and the {#key} remount rule in
+// modalStack.ts does not apply to screens.
+import { writable, readable, get } from 'svelte/store';
+import { closeOnBack, closeAll } from '../modalStack';
+import type { TaskDoc } from '../types';
+
+// Same breakpoint as the desktop layout's own mobile rules (App.svelte,
+// Sidebar.svelte): a landscape phone is still a phone.
+export const PHONE_QUERY = '(max-width: 768px), (max-height: 500px) and (orientation: landscape)';
+
+export const isPhone = readable(false, set => {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  const mq = window.matchMedia(PHONE_QUERY);
+  set(mq.matches);
+  const on = (e: MediaQueryListEvent) => set(e.matches);
+  mq.addEventListener?.('change', on);
+  return () => mq.removeEventListener?.('change', on);
+});
+
+export type Tab = 'home' | 'today' | 'agenda' | 'search';
+export type Screen =
+  | { k: Tab }
+  | { k: 'late' | 'pinned' | 'focus' }
+  | { k: 'project'; id: string };
+type Entry = Screen & { requestClose?: () => void };
+
+// Things only App.svelte can do (it owns QuickAdd, CardDetail and the
+// Sidebar-hosted Settings); App fills these in when it mounts the shell.
+export const actions = {
+  quickAdd: (_due: string | null = null) => {},
+  openTask: (_task: TaskDoc) => {},
+  openSettings: () => {},
+};
+
+export const TABS: Tab[] = ['home', 'today', 'agenda', 'search'];
+export const tab = writable<Tab>('home');
+export const stack = writable<Entry[]>([{ k: 'home' }]);
+// How the screen now on top arrived; the shell picks its transition from it.
+export const arrival = writable<'push' | 'pop' | 'tab' | 'none'>('none');
+
+export function push(screen: Screen) {
+  const entry: Entry = { ...screen };
+  entry.requestClose = closeOnBack(() => {
+    stack.update(s => (s.at(-1) === entry ? s.slice(0, -1) : s.filter(x => x !== entry)));
+    arrival.set('pop');
+  });
+  arrival.set('push');
+  stack.update(s => [...s, entry]);
+}
+
+// On-screen back arrow: goes through history so hardware back and the arrow
+// share one path (see modalStack.ts on why requestClose is the only door).
+export function back() {
+  get(stack).at(-1)?.requestClose?.();
+}
+
+// A tab switch starts the new tab at its root; tapping the current tab
+// returns it to its root. Either way the old stack's history entries are
+// unwound in one synchronous step.
+export function switchTab(t: Tab) {
+  const same = get(tab) === t;
+  if (get(stack).length > 1) closeAll();
+  tab.set(t);
+  stack.set([{ k: t }]);
+  arrival.set(same ? 'none' : 'tab');
+}
+
+// Hardware back with no history left: a non-Home tab goes Home before the
+// app is allowed to exit (Material's navigation-bar convention).
+export function backAtRoot(): boolean {
+  if (get(tab) === 'home') return false;
+  switchTab('home');
+  return true;
+}

@@ -54,22 +54,22 @@ export async function getDashboardData() {
   const tasks = all.filter(d => !d.deleted && !d.archived && activeProjectIds.has(d.project_id));
   const today = localDateStr(new Date());
 
-  const byProject: Record<string, { total: number; pinned: number; overdue: number; lastColId: string }> = {};
+  const byProject: Record<string, { total: number; open: number; pinned: number; overdue: number; lastColId: string }> = {};
   for (const p of allProjects) {
-    byProject[p._id] = { total: 0, pinned: 0, overdue: 0, lastColId: p.columns.at(-1)?.id ?? '' };
+    byProject[p._id] = { total: 0, open: 0, pinned: 0, overdue: 0, lastColId: p.columns.at(-1)?.id ?? '' };
   }
   for (const t of tasks) {
     if (!byProject[t.project_id]) continue;
     byProject[t.project_id].total++;
+    if (t.column_id !== byProject[t.project_id].lastColId) byProject[t.project_id].open++;
     if (t.pinned && t.column_id !== byProject[t.project_id].lastColId) byProject[t.project_id].pinned++;
     if (t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id].lastColId) byProject[t.project_id].overdue++;
   }
 
   // Excludes done tasks (last column) like overdueTasks/todayTasks below --
   // otherwise a completed pinned task shows here indefinitely.
-  const pinnedTasks = tasks
-    .filter(t => t.pinned && t.column_id !== byProject[t.project_id]?.lastColId)
-    .slice(0, 10);
+  const pinnedAll = tasks.filter(t => t.pinned && t.column_id !== byProject[t.project_id]?.lastColId);
+  const pinnedTasks = pinnedAll.slice(0, 10);
   const overdueTasks = tasks
     .filter(t => t.due_date && t.due_date < today && t.column_id !== byProject[t.project_id]?.lastColId)
     .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
@@ -78,6 +78,13 @@ export async function getDashboardData() {
     .filter(t => t.due_date === today && t.column_id !== byProject[t.project_id]?.lastColId)
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 10);
+  // Uncapped, and counting finished ones too: the phone Home reads "N left
+  // today · X of Y done", which todayTasks (open only, max 10) can't give.
+  let todayOpenCount = 0, todayDoneCount = 0;
+  for (const t of tasks) {
+    if (t.due_date !== today) continue;
+    if (t.column_id === byProject[t.project_id]?.lastColId) todayDoneCount++; else todayOpenCount++;
+  }
   const projCache: Record<string, string> = Object.fromEntries(allProjects.map(p => [p._id, p.name]));
 
   // "Completed in the last week" for the Dashboard summary strip. There is no
@@ -104,8 +111,8 @@ export async function getDashboardData() {
   const busiestProjectName = busiestProjectId ? (projCache[busiestProjectId] ?? null) : null;
 
   return {
-    allProjects, allSpaces, byProject, pinnedTasks, overdueTasks, todayTasks, projCache,
-    totalTasks: tasks.length, completedLast7Days, busiestProjectName,
+    allProjects, allSpaces, byProject, pinnedTasks, pinnedAll, overdueTasks, todayTasks, projCache,
+    totalTasks: tasks.length, completedLast7Days, busiestProjectName, todayOpenCount, todayDoneCount,
   };
 }
 
