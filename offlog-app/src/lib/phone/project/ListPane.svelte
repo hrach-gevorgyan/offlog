@@ -179,7 +179,7 @@
         </button>
       {:else}
         <div class="row" class:done>
-          {#if finishable}<button class="chk" class:prio={!!t.priority} style:--prio={PRIORITY_COLOR[t.priority ?? 0] ?? null} class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}></button>{/if}
+          {#if finishable}<button class="chk" class:prio={!!t.priority} style:--prio={PRIORITY_COLOR[t.priority ?? 0] ?? null} class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
           <button class="open" on:click={() => openRow(t)} on:pointerdown={e => holdDown(e, t._id)} on:pointermove={holdMove}
             on:pointerup={holdCancel} on:pointercancel={holdCancel} on:pointerleave={holdCancel} on:contextmenu={e => context(e, t._id)}>
             <span class="main">
@@ -263,6 +263,8 @@
   .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after, .picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
+  /* The fill and tick wait for the loop (phone.css .p-loop) to close. */
+  .chk.on, .chk.on::after { transition-delay: var(--dur-large); }
   .row.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }
   .row.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
   /* The tab bar under the screen already clears the gesture area. */

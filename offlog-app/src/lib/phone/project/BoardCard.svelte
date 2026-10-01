@@ -61,7 +61,7 @@
 </script>
 
 <div class="card" class:done>
-  {#if canFinish(project)}<button class="chk" class:prio={!!task.priority} style:--prio={PRIORITY_COLOR[task.priority ?? 0] ?? null} class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>{/if}
+  {#if canFinish(project)}<button class="chk" class:prio={!!task.priority} style:--prio={PRIORITY_COLOR[task.priority ?? 0] ?? null} class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
   <button class="g" on:click={click} on:pointerdown={down} on:pointermove={move} on:pointerup={cancel} on:pointercancel={cancel} on:pointerleave={cancel} on:contextmenu={context}>
     <span class="t">{#if task.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{task.title}{#if task.priority}<span class="p-sr">, {PRIORITY_LABEL[task.priority].toLowerCase()} priority</span>{/if}</span>
     {#if pill || steps.length || task.tags.length || blocked || related || files || task.recurrence}
@@ -124,4 +124,6 @@
   .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
+  /* The fill and tick wait for the loop (phone.css .p-loop) to close. */
+  .chk.on, .chk.on::after { transition-delay: var(--dur-large); }
 </style>

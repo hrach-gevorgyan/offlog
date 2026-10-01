@@ -405,7 +405,7 @@
   </div>
 
   <div class="ttl" use:watchTitle>
-    {#if canFinish}<button class="chk" class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}></button>{/if}
+    {#if canFinish}<button class="chk" class:prio={!!task.priority} style:--prio={PRIORITY_COLOR[task.priority ?? 0] ?? null} class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
     <textarea rows="1" bind:value={title} use:autosize={title} aria-label="Title" placeholder="Task title"
       on:focus={() => titleFocused = true} on:blur={commitTitle} on:keydown={onTitleKey}></textarea>
   </div>
@@ -569,8 +569,11 @@
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0;
     transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
+  .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
+  /* The fill and tick wait for the loop (phone.css .p-loop) to close. */
+  .chk.on, .chk.on::after { transition-delay: var(--dur-large); }
   .tbar {
     position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 0 16px; background: var(--bg); box-shadow: 0 1px 0 transparent;
     transition: background var(--dur-small-out) var(--ease-standard), box-shadow var(--dur-small-out) var(--ease-standard);

@@ -149,6 +149,13 @@ describe('phone TaskCard', () => {
     } finally { vi.useRealTimers(); }
   });
 
+  it('the finish circle carries the loop stroke that draws it closed', () => {
+    const { container } = render(TaskCard, { task: task() });
+    const path = container.querySelector('.chk > svg.p-loop path');
+    expect(path?.getAttribute('pathLength')).toBe('1');
+    expect(container.querySelector('.chk svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('marks the search text in the title', () => {
     const { container } = render(TaskCard, { task: task(), highlight: 'TIL' });
     expect(container.querySelector('mark')?.textContent).toBe('til');

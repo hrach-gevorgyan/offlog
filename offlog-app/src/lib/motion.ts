@@ -300,7 +300,7 @@ export function paneOut(node: Element, { dir, from = 0, gap = 0 }: Pane) {
 // vanishing; Undo grows it back. Put on a wrapper inside the list's keyed
 // {#each} (local transitions only run there), and pass `on` from
 // phone/rowMotion.ts so a filter or a sync still removes rows at once.
-// The collapse waits for the check's own fill (--dur-small) to be seen.
+// The collapse waits for the check's loop (--dur-large) and fill (--dur-small) to be seen.
 // The children's outer margins are counted: overflow:hidden stops them
 // collapsing through the wrapper, so its box grows by that much.
 function rowHeight(node: Element): number {
@@ -310,7 +310,7 @@ function rowHeight(node: Element): number {
 const rowCss = (h: number) => (t: number) => `overflow: hidden; height: ${t * h}px; opacity: ${Math.max(0, 2 * t - 1)}`;
 export function collapseOut(node: Element, { on }: { on: boolean }) {
   if (!on) return { duration: 0 };
-  return { delay: d(DUR.small), duration: d(OUT(DUR.medium)), easing: easeAccelerate, css: rowCss(rowHeight(node)) };
+  return { delay: d(DUR.large + DUR.small), duration: d(OUT(DUR.medium)), easing: easeAccelerate, css: rowCss(rowHeight(node)) };
 }
 export function collapseIn(node: Element, { on }: { on: boolean }) {
   if (!on) return { duration: 0 };
