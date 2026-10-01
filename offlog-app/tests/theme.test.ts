@@ -45,6 +45,19 @@ describe('theme — native status bar', () => {
     await vi.waitFor(() => expect(setStyle).toHaveBeenCalledWith({ style: 'LIGHT' }));
   });
 
+  it('over the phone hero: hero-coloured strip with light icons, back to the theme after', async () => {
+    const { setStatusBarOnHero } = await import('../src/lib/theme');
+    nativeOn();
+    setMode('light');
+    setStatusBarOnHero(true);
+    expect(document.body.classList.contains('statusbar-hero')).toBe(true);
+    await vi.waitFor(() => expect(setStyle).toHaveBeenCalledWith({ style: 'DARK' }));
+    setStyle.mockClear();
+    setStatusBarOnHero(false);
+    expect(document.body.classList.contains('statusbar-hero')).toBe(false);
+    await vi.waitFor(() => expect(setStyle).toHaveBeenCalledWith({ style: 'LIGHT' }));
+  });
+
   it('does not touch the native status bar off Android', async () => {
     const { applyTheme } = await import('../src/lib/theme');
     nativeOff();

@@ -3,7 +3,7 @@
   import { getDashboardData, getTaskById, subscribe } from '../db';
   import { spaces, projects, showError } from '../store';
   import { loadFocusLock } from '../focusLock';
-  import { prefersReducedMotion } from '../theme';
+  import { prefersReducedMotion, setStatusBarOnHero } from '../theme';
   import { push, actions } from './nav';
   import { greeting, shortDate } from './format';
   import { localDateStr } from '../utils';
@@ -28,7 +28,8 @@
 
   let unsub: (() => void) | undefined;
   onMount(() => { load(); unsub = subscribe(load); });
-  onDestroy(() => unsub?.());
+  onMount(() => setStatusBarOnHero(true));
+  onDestroy(() => { unsub?.(); setStatusBarOnHero(false); });
 
   $: left = data?.todayOpenCount ?? 0;
   $: doneToday = data?.todayDoneCount ?? 0;
@@ -54,6 +55,7 @@
       const lin = Math.min(1, Math.max(0, (y - (end - span)) / span));
       t = lin * lin * (3 - 2 * lin); // smoothstep: the muddy middle of the mix passes quickly
       markY = prefersReducedMotion() ? y : y * .65; // the mark drifts slower than the page: depth
+      setStatusBarOnHero(t < .5);
     });
   }
 </script>

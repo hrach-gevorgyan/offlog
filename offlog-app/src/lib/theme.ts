@@ -66,8 +66,20 @@ export function applyTheme(): void {
   document.body.classList.toggle('dark', dark);
   document.body.classList.toggle('high-contrast', getHighContrast());
   syncTauriWindowTheme(dark);
-  syncAndroidStatusBar(dark);
+  syncAndroidStatusBar(dark || onHero);
   syncBrowserThemeColor(dark);
+}
+
+// The phone Home's indigo hero runs up under the status bar, so while it is
+// showing, the strip takes the hero colour (body.statusbar-hero in app.css)
+// and the OS icons go light. Switched in one step with the icon style for the
+// same lockstep reason as the theme itself: never animate one without the other.
+let onHero = false;
+export function setStatusBarOnHero(on: boolean): void {
+  if (on === onHero) return;
+  onHero = on;
+  document.body.classList.toggle('statusbar-hero', on);
+  syncAndroidStatusBar(isEffectivelyDark() || on);
 }
 
 // The strip behind Android's transparent status bar is CSS
