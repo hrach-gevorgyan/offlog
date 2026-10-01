@@ -16,8 +16,6 @@ export const I = {
   late: svg('<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>'),
   focus: svg('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>'),
   repeat: svg('<path d="M4 11V9a3 3 0 013-3h12M16 3l3 3-3 3M20 13v2a3 3 0 01-3 3H5M8 21l-3-3 3-3"/>'),
-  list: svg('<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>'),
-  board: svg('<rect x="3.5" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="16.5" y="4" width="4" height="7" rx="1.5"/>'),
   flag: svg('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'),
   tag: svg('<path d="M3.5 12.5V4.5h8l9 9-8 8z"/><circle cx="8" cy="9" r="1.3"/>'),
   bell: svg('<path d="M6 16v-5a6 6 0 0112 0v5l1.5 2h-15zM10 21h4"/>'),

@@ -57,6 +57,9 @@
     return new Date(yy, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: yy !== thisYear ? 'numeric' : undefined });
   }
 
+  // The device chip only tells devices apart, so it shows once there are two.
+  $: multiDevice = new Set(logs.map(l => l.source ?? 'pc')).size > 1;
+
   $: groups = (() => {
     const map = new Map<string, LogDoc[]>();
     for (const log of logs) {
@@ -98,19 +101,19 @@
   <p class="p-empty">Nothing logged yet.</p>
 {:else if groups.length}
   {#each groups as g (g.key)}
-    <div class="p-sec">{g.label}</div>
+    <div class="p-sec" role="heading" aria-level="2">{g.label}</div>
     <div class="p-group">
       {#each g.entries as log (log._id)}
         {@const isTask = entityLabel(log) === 'task'}
         {@const sub = (ACTION_LABEL[log.action] ?? log.action) + (log.project_name && entityLabel(log) !== 'project' ? ` · ${log.project_name}` : '')}
         {#if isTask}
           <button class="p-row entry" on:click={() => open(log)}>
-            <span class="p-k"><span class="desc">{describeLog(log)}</span><span class="p-sub">{sub} · <span class="src">{log.source ?? 'pc'}</span></span></span>
+            <span class="p-k"><span class="desc">{describeLog(log)}</span><span class="p-sub">{sub}{#if multiDevice} · <span class="src">{log.source ?? 'pc'}</span>{/if}</span></span>
             <span class="p-v">{fmt(log.ts).split(' · ')[1] ?? ''}</span>
           </button>
         {:else}
           <div class="p-row entry static">
-            <span class="p-k"><span class="desc">{describeLog(log)}</span><span class="p-sub">{sub} · <span class="src">{log.source ?? 'pc'}</span></span></span>
+            <span class="p-k"><span class="desc">{describeLog(log)}</span><span class="p-sub">{sub}{#if multiDevice} · <span class="src">{log.source ?? 'pc'}</span>{/if}</span></span>
             <span class="p-v">{fmt(log.ts).split(' · ')[1] ?? ''}</span>
           </div>
         {/if}

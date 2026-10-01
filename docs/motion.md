@@ -180,8 +180,10 @@ row per family; a new phone animation joins one of these or does not exist.
 | Soft keyboard | sheets: `.psheet.kbjump` (no transition) then back to `--dur-large --ease-standard`; nav bar `keyboardBarIn`, + button `keyboardFabIn` | Android resizes the window in one step while the keyboard slides (~250ms). A sheet is put back where it was and glides to its new place, so it rides up and down with the keyboard (resizes under 80px are ignored). The nav bar and + leave at once (the keyboard covers them) and rise back in as it goes down. |
 | Snackbar | `snackIn`/`snackOut` (16px rise, 200/150ms); `snackSwapIn`/`snackSwapOut` when one replaces another | A keyed `{#each}`, not `{#if}{#key}` — a key block inside an `{#if}` loses its outro when the `{#if}` closes. A replacement does not rise from the edge again: the old fades in place (113ms), the new settles with a 6px lift (150ms). `showError` toasts drop 16px from the top with the snack timings. |
 | FAB lift | `translate` `--dur-medium --ease-decelerate` up, `--dur-medium-out --ease-accelerate` down | Moves with the snackbar's own timings. Lift is `translate`, press is `scale` — separate properties, so a press is never slowed to the lift's pace. |
-| Status switch (Board), month change (Agenda) | `axisIn({ dir })` — 40px + fade, 200ms standard | Content enters from the side of travel (forward = from the right); the old content is replaced at once, so the fade completes in the first third (a full-length fade reads as a blank frame). The container clips (`.month` has `overflow: hidden`). |
-| Page dots | `width`, `background` at `--dur-medium --ease-standard` | Same duration as the status slide they mirror. |
+| FAB on scroll | `.fab.away`: `transform` (96px down, scale .6) + `opacity`, `--dur-medium-out --ease-accelerate` out, `--dur-medium --ease-decelerate` back | After more than 120px of downward scroll in any vertical scroller of the current screen (`fabScroll.ts`, one capturing listener in PhoneApp), back on any upward scroll, at the end of the list, or on a new screen. The nav bar never hides. |
+| Tab reselect | `scrollTo({ top: 0, behavior: 'smooth' })`, `'auto'` under Reduce Motion | Tapping the current tab at its root returns that screen to its top. |
+| Month change (Agenda) | `axisIn({ dir })` — 40px + fade, 200ms standard | Content enters from the side of travel (forward = from the right); the old content is replaced at once, so the fade completes in the first third (a full-length fade reads as a blank frame). The container clips (`.month` has `overflow: hidden`). |
+| Status switch (Board) | drag: `.pane` follows the finger (no transition while `.dragging`), springs back on `--dur-medium --ease-standard`; page: `paneIn`/`paneOut({ dir, from, gap })`, standard curve | A pager. The axis is decided after 10px (vertical is left to the page scroll via `touch-action: pan-y`); touches starting within 24px of either screen edge belong to the Android back gesture. Past the first or last status the pane gives a third of the finger's travel. Let go past 35% of the width, or a ≥60px flick under 600ms, and both panes move as one pair from where the finger left them (`from`): the old one out toward the side of travel, the new one beside it, sharing one cell of a grid — no blank frame. Duration is `--dur-large` scaled to the travel still to go (at least `--dur-small`). A pill tap is the same page from 0. No page dots: the selected pill shows position. |
 | Status pills, chips, switches | `--dur-small --ease-standard` (pills, `.p-sw`); `--dur-hover --ease-hover` (chips: background, colour, box-shadow) | A selection tint is a state change, not travel. |
 | Segmented control | `.p-seg::before`, `transform` at `--dur-medium --ease-standard` | One indicator slides between segments. Set `--n` (count) and `--i` (selected index) on every `.p-seg`. |
 | Checkboxes (cards, rows, steps, Focus, task screen) | base rule `--dur-small-out --ease-accelerate`, `.on` rule `--dur-small --ease-decelerate` | Fill and tick pop in (tick scale .4→1 with opacity), leave faster. Cards and list rows fill on the tap, before the write lands; a failed write or the next data puts it back. |
@@ -193,7 +195,8 @@ row per family; a new phone animation joins one of these or does not exist.
 | Board pills scrolling into view | `scrollIntoView({ behavior })`, `'auto'` under Reduce Motion | Smooth scrolling is motion the tokens cannot reach. |
 
 Home's logo mark sits inside the band (clipped by its diagonal) and enters
-once per Home mount with `markIn` — a 1.1s decelerating drift and quarter-turn,
+once per app launch (a module flag in Home.svelte; later Home mounts show it
+at rest) with `markIn` — a 1.1s decelerating drift and quarter-turn,
 the one deliberately long animation, decorative only. It then scrolls at a
 third less than the page.
 
@@ -202,6 +205,13 @@ across the hero's last 40px) mixes the bar from `--hero` to `--bg`, and two
 copies of the title crossfade so it never passes through grey. It follows the
 finger; stop halfway and it stays halfway. Under Reduce Motion the watermark
 scrolls 1:1 instead of at 0.65x.
+
+The task screen's top bar is sticky and **state-switched, not scroll-linked**:
+an IntersectionObserver flips `.stuck` once the title field is under the bar,
+which fills it with `--surface` plus a `--border` hairline and fades the
+one-line title in (`--dur-small --ease-decelerate`; back out at
+`--dur-small-out --ease-accelerate`). Tokens only, so Reduce Motion makes it
+a cut.
 
 ### List items appearing and disappearing
 `revealIn`/`revealOut` with `transition:slide` for a disclosure section opening

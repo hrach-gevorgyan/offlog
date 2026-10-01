@@ -4,10 +4,12 @@
   import { getAllTasksDue, getDashboardData, subscribe } from '../db';
   import { showError } from '../store';
   import { localDateStr } from '../utils';
-  import { actions } from './nav';
+  import { actions, push } from './nav';
+  import { I } from './icons';
   import { shortDate } from './format';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
+  import TaskMenu from './TaskMenu.svelte';
   import { collapseIn, collapseOut } from '../motion';
   import { leaves, returns } from './rowMotion';
 
@@ -16,8 +18,10 @@
   export let root = false;
 
   type Row = TaskDoc & { project_name?: string };
-  let sections: { label: string; late?: boolean; tasks: Row[] }[] = [];
+  let sections: { label: string; date?: string; tasks: Row[] }[] = [];
   let count = 0;
+  // Today shows late tasks as one row at the top that opens the Late screen.
+  let lateCount = 0;
   let loaded = false;
   let today = localDateStr(new Date());
   const byDue = (a: Row, b: Row) => (a.due_date ?? '9').localeCompare(b.due_date ?? '9') || b.priority - a.priority;
@@ -35,8 +39,9 @@
         if (kind === 'late') { sections = [{ label: '', tasks: late }]; count = late.length; }
         else {
           const now = due.filter(t => t.due_date === today).sort(byDue);
-          sections = [{ label: 'Due today', tasks: now }, { label: 'Late', late: true, tasks: late }];
+          sections = [{ label: 'Due today', date: today, tasks: now }];
           count = now.length;
+          lateCount = late.length;
         }
       }
       loaded = true;
@@ -52,20 +57,29 @@
   onDestroy(() => unsub?.());
 
   const TITLE = { today: 'Today', late: 'Late', pinned: 'Pinned' };
-  const EMPTY = { today: 'Nothing due today.', late: 'Nothing late.', pinned: 'Pin a task to keep it here.' };
+  const EMPTY = { today: 'Nothing due today.', late: 'Nothing late.', pinned: 'Hold a task, or tap the pin on its page, to pin it.' };
+  // The card menu; {#key} bumped on every open (Sheet rule).
+  let menuTask: Row | null = null, menuSession = 0;
+  function openMenu(t: Row) { menuTask = t; menuSession++; }
+
   $: sub = kind === 'today' ? `${shortDate(today)} · ${count} due` : kind === 'late' ? `${count} past their date` : `${count} pinned`;
 </script>
 
 <TopBar title={TITLE[kind]} {sub} {root} />
+{#if kind === 'today' && lateCount}
+  <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Late: {lateCount} late {lateCount === 1 ? 'task' : 'tasks'}">
+    <span class="lbl">{lateCount} late</span>{@html I.chev}
+  </button>
+{/if}
 {#each sections as s}
   {#if s.label && s.tasks.length}
     <!-- Its last task finishing takes the heading along with the row. -->
-    <div out:collapseOut={{ on: true }}><div class="p-sec" class:late={s.late}>{s.label} <span class="p-n">{s.tasks.length}</span></div></div>
+    <div out:collapseOut={{ on: true }}><div class="p-sec" role="heading" aria-level="2">{s.label} <span class="p-n">{s.tasks.length}</span></div></div>
   {/if}
   {#each s.tasks as t (t._id)}
-    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} /></div>
+    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} sectionDate={s.date ?? null} menu on:open={() => actions.openTask(t)} on:changed={load} on:menu={() => openMenu(t)} /></div>
   {:else}
-    {#if !s.late && loaded}
+    {#if loaded}
       <div class="p-empty list-empty">
         <p>{EMPTY[kind]}</p>
         {#if kind !== 'pinned'}<button class="p-tbtn" on:click={() => actions.quickAdd()}>Add a task</button>{/if}
@@ -74,7 +88,20 @@
   {/each}
 {/each}
 
+{#key menuSession}
+  {#if menuTask}<TaskMenu task={menuTask} on:close={() => (menuTask = null)} />{/if}
+{/key}
+
 <style>
   .p-empty.list-empty { padding-bottom: 8px; }
   .list-empty p { margin: 0 0 4px; }
+  .late-row {
+    display: flex; align-items: center; width: 100%; gap: 6px; margin: 0 0 10px; padding: 10px 12px 10px 14px;
+    background: var(--overdue-bg); color: var(--overdue-ink); border: 0; border-radius: 12px;
+    font: inherit; font-size: var(--p-fs-m); font-weight: 600; text-align: left; cursor: pointer;
+    transition: transform var(--dur-hover) var(--ease-hover);
+  }
+  .late-row:active { transform: scale(.98); }
+  .late-row .lbl { flex: 1; }
+  .late-row :global(svg) { width: 16px; height: 16px; }
 </style>

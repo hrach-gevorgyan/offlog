@@ -11,6 +11,7 @@
   import { duePill } from '../format';
   import { I } from '../icons';
   import { toggleDone, canFinish } from './actions';
+  import { hapticDragStart } from '../../haptics';
   import { SORTS, type Sort } from './filter';
   import BulkSheet from './BulkSheet.svelte';
   import Sheet from '../Sheet.svelte';
@@ -104,6 +105,35 @@
     if (next.has(id)) next.delete(id); else next.add(id);
     selected = next;
   }
+  // Holding a row enters Select mode with that row picked. The click that
+  // follows the release lands on the select-mode row now under the finger,
+  // so it is swallowed rather than unpicking it; the next press resets that.
+  const HOLD_MS = 480;
+  let holdTimer: ReturnType<typeof setTimeout> | undefined;
+  let held = false, hx = 0, hy = 0;
+  function holdDown(e: PointerEvent, id: string) {
+    held = false; hx = e.clientX; hy = e.clientY;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => hold(id), HOLD_MS);
+  }
+  function holdMove(e: PointerEvent) { if (Math.abs(e.clientX - hx) + Math.abs(e.clientY - hy) > 8) clearTimeout(holdTimer); }
+  function holdCancel() { clearTimeout(holdTimer); }
+  function hold(id: string) {
+    held = true;
+    hapticDragStart();
+    startSelecting();
+    toggle(id);
+  }
+  function context(e: MouseEvent, id: string) {
+    e.preventDefault();
+    if (held || selecting) return;
+    clearTimeout(holdTimer);
+    hold(id);
+  }
+  function openRow(t: TaskDoc) { if (held) { held = false; return; } dispatch('open', t); }
+  function pickRow(id: string) { if (held) { held = false; return; } toggle(id); }
+  onDestroy(() => clearTimeout(holdTimer));
+
   // A task filtered out of view leaves the selection, so a bulk change
   // never reaches a task nobody can see.
   $: { const vis = new Set(rows.map(t => t._id)); if ([...selected].some(id => !vis.has(id))) selected = new Set([...selected].filter(id => vis.has(id))); }
@@ -138,7 +168,7 @@
       {@const pill = duePill(t.due_date, done)}
       <div class="rw" in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}>
       {#if selecting}
-        <button class="row" class:done class:hi={t.priority === 3} class:picked={selected.has(t._id)} role="checkbox" aria-checked={selected.has(t._id)} aria-label={t.title} on:click={() => toggle(t._id)}>
+        <button class="row" class:done class:hi={t.priority === 3} class:picked={selected.has(t._id)} role="checkbox" aria-checked={selected.has(t._id)} aria-label={t.title} on:pointerdown={() => (held = false)} on:click={() => pickRow(t._id)}>
           <span class="box"></span>
           <span class="main">
             <span class="t">{t.title}</span>
@@ -149,7 +179,8 @@
       {:else}
         <div class="row" class:done class:hi={t.priority === 3}>
           {#if finishable}<button class="chk" class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}></button>{/if}
-          <button class="open" on:click={() => dispatch('open', t)}>
+          <button class="open" on:click={() => openRow(t)} on:pointerdown={e => holdDown(e, t._id)} on:pointermove={holdMove}
+            on:pointerup={holdCancel} on:pointercancel={holdCancel} on:pointerleave={holdCancel} on:contextmenu={e => context(e, t._id)}>
             <span class="main">
               <span class="t">{#if t.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{t.title}{#if t.priority === 3}<span class="p-sr">, high priority</span>{/if}{#if t.recurrence}<span class="rep" title="Repeats {t.recurrence}">{@html I.repeat}</span>{/if}</span>
               {#if !g.name}<span class="st">{statusOf(t)}</span>{/if}
@@ -199,7 +230,7 @@
   .gh span { font-weight: 600; opacity: .8; }
   .rows { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); overflow: hidden; }
   .rows + .rows { margin-top: 10px; }
-  .row { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 14px; min-height: 48px; font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; text-align: left; transition: background var(--dur-hover) var(--ease-hover); }
+  .row { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 14px; min-height: 48px; font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; text-align: left; transition: background var(--dur-hover) var(--ease-hover); -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
   button.row { cursor: pointer; }
   .rw + .rw .row { border-top: 1px solid var(--border); }
   .row.hi::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
@@ -213,7 +244,7 @@
   .rep :global(svg.i) { width: 13px; height: 13px; }
   .done .t { color: var(--faint); text-decoration: line-through; }
   .st { font-size: var(--p-fs-xs); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
-  .chk, .box { width: 22px; height: 22px; flex-shrink: 0; position: relative; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); background: none; padding: 0; cursor: pointer; }
+  .chk, .box { width: 22px; height: 22px; flex-shrink: 0; position: relative; border: 2px solid var(--check-ring); background: none; padding: 0; cursor: pointer; }
   .chk { border-radius: 50%; }
   .chk::before { content: ''; position: absolute; inset: -11px; }
   .box { border-radius: 7px; }
@@ -228,7 +259,7 @@
   }
   .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after, .picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
-  .row.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+  .row.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }
   .row.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
   /* The tab bar under the screen already clears the gesture area. */
   .bulkbar {

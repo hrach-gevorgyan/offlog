@@ -13,7 +13,60 @@
   export let saveDefaultReminderTime: (e: CustomEvent<string>) => void;
   export let quietHours: QuietHours;
   export let saveQuietHours: (patch: Partial<QuietHours>) => void;
+  // The phone page: one switch, and a warning row only when a grant is missing.
+  export let phone = false;
 </script>
+
+{#if phone}
+              <div class="setting-group">
+                <div class="setting-row">
+                  <span class="setting-label">Reminders</span>
+                  <button class="toggle-btn" class:on={notificationsEnabled} on:click={toggleNotificationsEnabled} aria-label="Reminders" role="switch" aria-checked={notificationsEnabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                {#if notificationsEnabled && $permissionState === 'denied'}
+                  <div class="setting-row setting-hint-warn" role="status">
+                    <span class="setting-label">{isAndroid ? 'Blocked in Android settings' : 'Notifications are blocked'}</span>
+                    <button class="export-btn" on:click={() => requestPermission()}>Allow</button>
+                  </div>
+                {:else if notificationsEnabled && isAndroid && $exactAlarmState === 'denied'}
+                  <div class="setting-row setting-hint-warn" role="status">
+                    <span class="setting-label">May arrive a few minutes late</span>
+                    <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Make exact</button>
+                  </div>
+                {/if}
+              </div>
+
+              {#if notificationsEnabled}
+              <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
+              <div class="setting-group">
+                <label class="field-label">
+                  Default reminder time
+                  <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
+                </label>
+              </div>
+
+              <div class="setting-group">
+                <div class="setting-row">
+                  <span class="setting-label">Quiet hours</span>
+                  <button class="toggle-btn" class:on={quietHours.enabled} on:click={() => saveQuietHours({ enabled: !quietHours.enabled })} aria-label="Quiet hours" role="switch" aria-checked={quietHours.enabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                {#if quietHours.enabled}
+                  <div class="setting-row" in:slide={revealIn} out:slide={revealOut}>
+                    <span class="setting-label">From</span>
+                    <TimePicker value={quietHours.start} placement="up" on:change={(e) => saveQuietHours({ start: e.detail })} />
+                    <span class="setting-label">to</span>
+                    <TimePicker value={quietHours.end} placement="up" on:change={(e) => saveQuietHours({ end: e.detail })} />
+                  </div>
+                  <p class="setting-hint">Reminders in this window wait until it ends.</p>
+                {/if}
+              </div>
+              </div>
+              {/if}
+{:else}
 
               <div class="setting-group">
                 <div class="setting-section-title">Status</div>
@@ -87,4 +140,4 @@
               </div>
               </div>
               {/if}
-
+{/if}

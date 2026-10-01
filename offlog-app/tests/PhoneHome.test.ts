@@ -17,6 +17,12 @@ vi.mock('../src/lib/store', async () => {
   };
 });
 
+const markIn = vi.hoisted(() => ({ calls: 0 }));
+vi.mock('../src/lib/motion', async (orig) => {
+  const m = await orig<typeof import('../src/lib/motion')>();
+  return { ...m, markIn: (n: Element) => { markIn.calls++; return m.markIn(n); } };
+});
+
 // Home measures the hero with bind:clientHeight, which needs ResizeObserver (absent in jsdom).
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
 
@@ -37,11 +43,14 @@ describe('phone Home', () => {
     vi.mocked(showError).mockClear();
   });
 
-  it('shows what is left today, done of total, late and pinned counts, and each project', async () => {
+  it('shows what is left today, late and pinned counts, and each project; late is said once above the fold', async () => {
     const { getByText, getAllByText, getByLabelText, container } = render(Home);
     await waitFor(() => expect(getByLabelText('Open Today: 4 left, 2 of 6 done, 3 late')).toBeTruthy());
     expect(getByText('Q4 Sprint')).toBeTruthy();
-    expect(getAllByText('3 late')).toHaveLength(2); // hero line and the project row
+    expect(getAllByText('3 late')).toHaveLength(1); // the project row; the Late tile carries the total
+    expect(container.querySelector('.hero .meta')).toBeNull();
+    expect(container.querySelector('.tile b.late')?.textContent).toBe('3');
+    expect(container.querySelector('.appbar small')?.textContent).toBe('4 left');
     expect(getByText('6')).toBeTruthy(); // open count badge
     expect(container.querySelector('.stat')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('5 finished this past week · busiest: Q4 Sprint');
   });
@@ -133,5 +142,14 @@ describe('phone Home', () => {
     await scrollTo(40); // greeting at 34, under the title: gone
     expect(op('hi')).toBe('0');
     spy.mockRestore();
+  });
+
+  // Runs last: every earlier test mounted Home too.
+  it('the mark entrance plays on the first Home of the launch only', async () => {
+    const a = render(Home); a.unmount();
+    const b = render(Home);
+    await new Promise(r => setTimeout(r, 20));
+    expect(b.container.querySelector('.markwrap')).not.toBeNull();
+    expect(markIn.calls).toBe(1);
   });
 });

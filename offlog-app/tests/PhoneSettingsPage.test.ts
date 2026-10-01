@@ -94,7 +94,9 @@ vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confi
 import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
 import { showError } from '../src/lib/store';
 import * as nav from '../src/lib/phone/nav';
-import { get } from 'svelte/store';
+import { get, type Writable } from 'svelte/store';
+import * as notif from '../src/lib/notifications';
+import * as db from '../src/lib/db';
 
 const settle = (ms = 30) => new Promise(r => setTimeout(r, ms));
 
@@ -175,6 +177,48 @@ describe('phone settings pages', () => {
     // The next back is the page's own again.
     history.back();
     await waitFor(() => expect(get(nav.stack)).toHaveLength(1));
+  });
+
+  describe('Notifications', () => {
+    const perm = () => notif.permissionState as unknown as Writable<string>;
+    const exact = () => notif.exactAlarmState as unknown as Writable<string>;
+    beforeEach(() => { (window as { Capacitor?: unknown }).Capacitor = { getPlatform: () => 'android' }; });
+    afterEach(() => { delete (window as { Capacitor?: unknown }).Capacitor; perm().set('granted'); exact().set('granted'); });
+
+    it('everything granted: one Reminders switch and no warning or explainer', () => {
+      const { getByRole, container } = render(SettingsPage, { page: 'notifications' });
+      expect(getByRole('switch', { name: 'Reminders' })).toBeTruthy();
+      expect(container.querySelector('.setting-hint-warn')).toBeNull();
+      expect(container.textContent).not.toContain('Android 12');
+      expect(container.textContent).toContain('Default reminder time');
+    });
+
+    it('exact alarms off: one warning row whose button opens the system setting', async () => {
+      exact().set('denied');
+      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
+      expect(container.querySelector('.setting-hint-warn')?.textContent).toContain('May arrive a few minutes late');
+      await fireEvent.click(getByText('Make exact'));
+      expect(notif.requestExactAlarmPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it('notifications blocked: the warning row asks again', async () => {
+      perm().set('denied');
+      const { getByText } = render(SettingsPage, { page: 'notifications' });
+      expect(getByText('Blocked in Android settings')).toBeTruthy();
+      await fireEvent.click(getByText('Allow'));
+      expect(notif.requestPermission).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('Backup: the actions come first and the counts are one line', async () => {
+    vi.mocked(db.getStorageBreakdown).mockResolvedValueOnce({ activeTasks: 48, archivedTasks: 2, deletedTasks: 4, logEntries: 95, attachmentCount: 0, attachmentBytes: 0 } as never);
+    const { container, getByText } = render(SettingsPage, { page: 'data' });
+    await waitFor(() => getByText('48 tasks · 4 in bin · 95 history'));
+    const labels = [...container.querySelectorAll('.pset button')].map(b => b.textContent!.trim() || b.getAttribute('aria-label'));
+    expect(labels.indexOf('Back up')).toBeLessThan(labels.indexOf('Restore'));
+    expect(labels.indexOf('Back up')).toBe(1); // after the scope picker only
+    expect(labels.indexOf('Restore')).toBe(2);
+    expect(container.textContent).not.toContain('well within limits');
   });
 
   it('an unknown page says so', () => {

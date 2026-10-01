@@ -431,4 +431,141 @@ describe('phone TaskScreen', () => {
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this task. Please try again.'));
     expect(get(toast)?.text ?? '').not.toBe('Done: Order tiles');
   });
+
+  it('shows unset optional fields as + chips, and a set one as its row', async () => {
+    const { getByLabelText, queryByLabelText, getByText, container } = await open();
+    for (const l of ['Add reminder', 'Add repeat', 'Add blocked by', 'Add related', 'Add attachment']) expect(getByLabelText(l)).toBeTruthy();
+    // No custom fields defined: no Field chip.
+    expect(queryByLabelText('Add field')).toBeNull();
+    expect(container.querySelectorAll('.p-row').length).toBe(4);
+    expect(getByText('Due').closest('button')!.querySelector('.p-v')!.textContent!.trim()).toBe('—');
+    expect(getByText('Tags').closest('button')!.querySelector('.p-v')!.textContent!.trim()).toBe('—');
+  });
+
+  it('a cleared reminder turns its row back into a chip', async () => {
+    const { getByText, queryByLabelText, findByLabelText } = await open(task({ reminder_at: new Date(2030, 0, 2, 9, 0).toISOString() }));
+    expect(queryByLabelText('Add reminder')).toBeNull();
+    await fireEvent.click(getByText('Reminder'));
+    await fireEvent.click(sheetRow('No reminder'));
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { reminder_at: null, remindOnDue: false });
+    expect(await findByLabelText('Add reminder')).toBeTruthy();
+  });
+
+  it('a chip opens the same sheet as its row', async () => {
+    const { getByLabelText } = await open(task({ due_date: '2026-10-01' }));
+    await fireEvent.click(getByLabelText('Add repeat'));
+    await fireEvent.click(sheetRow('Weekly'));
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { recurrence: 'weekly', recurrenceInterval: 1, recurrenceWeekdaysOnly: undefined });
+  });
+
+  it('the note sits between the title and the field rows', async () => {
+    const { getByLabelText, getByText } = await open();
+    const note = getByLabelText('Note');
+    expect(getByLabelText('Title').compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(note.compareDocumentPosition(getByText('Status')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('the bar fills in and shows the title once the title scrolls under it', async () => {
+    let fire: (hidden: boolean) => void = () => {};
+    // The editor observes too; only the title field drives the bar.
+    const IO = vi.fn(function (cb: (e: { isIntersecting: boolean }[]) => void) {
+      return {
+        observe(n: Element) { if (n.classList.contains('ttl')) fire = hidden => cb([{ isIntersecting: !hidden }]); },
+        unobserve() {}, disconnect() {}, takeRecords: () => [],
+      };
+    });
+    vi.stubGlobal('IntersectionObserver', IO);
+    try {
+      const { container, getByRole } = await open();
+      const bar = container.querySelector('.tbar')!;
+      expect(getByRole('heading', { level: 1 }).textContent).toBe('Order tiles');
+      expect(bar.classList.contains('stuck')).toBe(false);
+      fire(true);
+      await waitFor(() => expect(bar.classList.contains('stuck')).toBe(true));
+      fire(false);
+      await waitFor(() => expect(bar.classList.contains('stuck')).toBe(false));
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('the Due sheet ticks a date none of its shortcuts covers, in the app format', async () => {
+    const { getByText } = await open(task({ due_date: '2030-03-04' }));
+    await fireEvent.click(getByText('Due'));
+    expect(sheetRow('Mon 4 Mar 2030').getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('.psheet .cal-trigger')!.textContent!.trim()).toBe('Mon 4 Mar 2030');
+  });
+
+  it('Weekdays is a top-level repeat: daily, weekdays only', async () => {
+    const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'daily', recurrenceInterval: 1 }));
+    await fireEvent.click(getByText('Repeat'));
+    await fireEvent.click(sheetRow('Weekdays'));
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { recurrence: 'daily', recurrenceInterval: 1, recurrenceWeekdaysOnly: true });
+    await waitFor(() => expect(sheetRow('Weekdays').getAttribute('aria-pressed')).toBe('true'));
+    expect(getByText('Weekdays', { selector: '.p-v' })).toBeTruthy();
+    await fireEvent.click(sheetRow('Daily'));
+    expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { recurrence: 'daily', recurrenceInterval: 1, recurrenceWeekdaysOnly: false });
+  });
+
+  it('offers "Later today" three hours out, rounded up to the hour', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 1, 9, 35));
+    try {
+      const { getByLabelText } = await open();
+      await fireEvent.click(getByLabelText('Add reminder'));
+      await fireEvent.click(sheetRow('Later today'));
+      expect(db.updateTask).toHaveBeenCalledWith('task:t', { reminder_at: new Date(2026, 9, 1, 13, 0).toISOString() });
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('the Tags field says it finds as well as adds', async () => {
+    const { getByText } = await open();
+    await fireEvent.click(getByText('Tags'));
+    expect((document.querySelector('.psheet input') as HTMLInputElement).placeholder).toBe('Find or add a tag');
+  });
+
+  describe('Fields', () => {
+    const defs = [
+      { _id: 'f1', id: 'f1', name: 'Vendor', type: 'select', options: ['Acme', 'Bolt'] },
+      { _id: 'f2', id: 'f2', name: 'Budget', type: 'number' },
+    ];
+
+    it('a select field picks from a list instead of a native dropdown', async () => {
+      db.getCustomFieldDefs.mockResolvedValue(defs);
+      const { findByLabelText } = await open();
+      await fireEvent.click(await findByLabelText('Add field'));
+      expect(document.querySelector('.psheet select')).toBeNull();
+      const vendor = sheetRow('Vendor');
+      expect(vendor.textContent).toContain('—');
+      await fireEvent.click(vendor);
+      expect(vendor.getAttribute('aria-expanded')).toBe('true');
+      await fireEvent.click(sheetRow('Bolt'));
+      expect(db.updateTask).toHaveBeenCalledWith('task:t', { custom_values: { f1: 'Bolt' } });
+      await waitFor(() => expect(sheetRow('Vendor').textContent).toContain('Bolt'));
+      await fireEvent.click(sheetRow('Vendor'));
+      await fireEvent.click(sheetRow('Clear'));
+      expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { custom_values: { f1: null } });
+    });
+
+    it('a number field edits inline with the same empty dash', async () => {
+      db.getCustomFieldDefs.mockResolvedValue(defs);
+      const { findByLabelText } = await open();
+      await fireEvent.click(await findByLabelText('Add field'));
+      const input = document.querySelector('.psheet input.val') as HTMLInputElement;
+      expect(input.placeholder).toBe('—');
+      await fireEvent.change(input, { target: { value: '120' } });
+      expect(db.updateTask).toHaveBeenCalledWith('task:t', { custom_values: { f2: 120 } });
+    });
+  });
+});
+
+describe('phone task dates', () => {
+  it('laterToday rounds three hours ahead up to the hour, and stops after 21:00', async () => {
+    const { laterToday, dateLabel } = await import('../src/lib/phone/task/when');
+    expect(laterToday(new Date(2026, 9, 1, 9, 35))).toBe('2026-10-01T13:00');
+    expect(laterToday(new Date(2026, 9, 1, 10, 0))).toBe('2026-10-01T13:00');
+    expect(laterToday(new Date(2026, 9, 1, 18, 0))).toBe('2026-10-01T21:00');
+    expect(laterToday(new Date(2026, 9, 1, 18, 1))).toBeNull();
+    expect(laterToday(new Date(2026, 9, 1, 23, 0))).toBeNull();
+    expect(dateLabel('2026-10-04', new Date(2026, 9, 1))).toBe('Sun 4 Oct');
+    expect(dateLabel('2027-10-04', new Date(2026, 9, 1))).toBe('Mon 4 Oct 2027');
+  });
 });

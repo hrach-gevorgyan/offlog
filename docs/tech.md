@@ -68,10 +68,20 @@ flowchart LR
   instead: four tabs (Home, Today, Agenda, Search), each a stack of screens.
   Every pushed screen owns one `modalStack` history entry, so Android back
   pops screens and overlays in one LIFO order; back at a non-Home tab root
-  goes Home before the app exits. Screens: Home, Today/Late/Pinned, Search,
-  Project (board by status with swipe, list with select + bulk bar, filter
-  and menu sheets) and Statuses, Task (full screen, every field saved as it
-  changes, pickers in bottom sheets), Agenda (list/month), Focus, Settings
+  goes Home, and back at Home's root sends the app to the background
+  (`CapApp.minimizeApp()`, never `exitApp()`, which would make the next open
+  a cold start). Re-tapping the current tab at its root scrolls it to the
+  top; the + steps aside on a long downward scroll (`fabScroll.ts`).
+  Week start and 12/24h follow the device locale (`Intl`) until chosen in
+  Appearance. Screens: Home, Today/Late/Pinned, Search,
+  Project (board by status with a drag-following swipe, list with select +
+  bulk bar — a held row enters Select — filter and menu sheets; the card
+  menu's status pills move a task in one tap) and Statuses, Task (full screen, every field saved as it
+  changes, pickers in bottom sheets; order is title, note, fields, steps —
+  Status/Due/Priority/Tags always show, the other fields only once set, the
+  unset ones as `+` chips opening the same sheets; an empty value reads as a
+  muted "—"; dates read "Sun 4 Oct" via `phone/task/when.ts` `dateLabel`,
+  which phone sheets pass to `CalendarPicker`'s `formatDate`), Agenda (list/month), Focus, Settings
   (pushed pages that reuse `settings/*`, plus Recycle bin, History, Archived
   projects, and Organize — spaces, tags and fields in `phone/settings/organize/`
   instead of the desktop manager overlays). Quick add is a bottom sheet that adds where the user is (the
@@ -89,7 +99,14 @@ flowchart LR
   move, archive, delete, Focus reset) act at once with Undo; confirms are kept
   for deleting a project, deleting for good, emptying the bin and clearing
   history. Widget and notification jumps use `nav.navigate()`, which waits
-  for `closeAll()`'s history jump before pushing.
+  for `closeAll()`'s history jump before pushing. Cross-project rows
+  (`phone/TaskCard.svelte`: Today, Late, Pinned, Agenda, Search) finish
+  through the project list's `toggleDone`, so haptic, snackbar and Undo
+  match; holding one opens the board's `CardMenuSheet` through
+  `phone/TaskMenu.svelte`. A row drops its date pill when its section
+  already names that day. `searchAllTasks()` (shared with the desktop's
+  GlobalSearch) returns open before done, title matches first, then by due
+  date (undated last), then title.
 - **store.ts** — the only reactive state layer. Holds spaces, projects,
   tasks and the active selection; reloads on any database change.
 - **db.ts** — all reads and writes, the changelog, the undo buffer, and
@@ -189,7 +206,7 @@ src/
     CalendarPicker.svelte       Themed date picker
     TimePicker.svelte           Themed time picker
     ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
-    NamePrompt.svelte           First-run "name this device"
+    NamePrompt.svelte           First-run quick preferences + sync offer (the device name is asked when Sync is first turned on)
     UpdateModal.svelte          Desktop update available/downloading/failed
     AppLock.svelte              PIN lock screen; Escape must not dismiss it
     ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
@@ -560,6 +577,8 @@ native theming. Derived tints use
 | `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
 | `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
 | `--accent` | `#575FCA` | `#8590E5` | indigo — buttons, active states |
+| `--accent-ink` | `#4C54BD` | `#9AA3EE` | accent text on an accent tint (selected pills, "Today"), 4.5:1 where plain accent falls short |
+| `--check-ring` | `--faint` 75% | `--faint` 75% | unticked check circle/box border, 3:1 against cards (declared on `body`) |
 | `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
 | `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent |
 | `--on-hero` | `#FFFFFF` | `#EFF0FC` | ink and the muted mark on `--hero` |
@@ -618,7 +637,16 @@ cheaper than tracking every call site.
 with the app fully closed. Task ids are hashed to a 32-bit integer because
 the plugin requires numeric ids. Tapping a notification opens that task.
 Needs `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and
-`RECEIVE_BOOT_COMPLETED`.
+`RECEIVE_BOOT_COMPLETED`. Exact alarms are requested only while
+`exactAlarmState` is `granted`: the plugin's `schedule()` opens the system
+"Alarms & reminders" page by itself for any exact request without the grant,
+which would happen on every launch. Without it reminders are scheduled
+inexact, and the first reminder newly set in a launch bumps
+`exactAlarmNudge`; the phone shell turns that into a "Reminders may be a few
+minutes late · Make exact" snackbar. Settings › Notifications shows the same
+fix as a warning row. On every return to the foreground `recheckGrants()`
+re-reads both grants and reschedules everything if the exact-alarm grant
+changed.
 
 **Web** is best-effort: there is no push backend by design, so notifications
 use `setTimeout` while the tab is open, plus a catch-up on load that fires
@@ -656,7 +684,20 @@ same UI.
   In quick add a picker panel and the keyboard never share the screen:
   opening a panel blurs the title; a pick, Done, or a tap on the title
   refocuses it inside that tap (Android only raises the keyboard for a focus
-  made during a user gesture) and closes the panel.
+  made during a user gesture) and closes the panel. The panel is sized to
+  the last keyboard height measured (`phone/quickadd/memory.ts`: the drop
+  below the tallest visual viewport at this width; 280px until one is
+  seen), so the title row stays put when one swaps for the other.
+- **Quick add parse feedback**: `parseQuickAdd()` also returns `spans`
+  (offsets into the typed text). The title `<input>` has transparent text
+  over an `aria-hidden` mirror that draws the same text with those spans
+  tinted; the two share font, line-height and padding, and the mirror
+  copies the input's `scrollLeft`. Tapping a tinted token offers "Keep as
+  text", which inserts a `\` before it — the parser's per-token escape — so
+  the choice lives in the text and survives edits. Chips with a value sort
+  first. The default project is the last one added to from Quick add
+  (`offlog_quickadd_last_project` in localStorage), after an `@mention` or
+  the opening project's context.
 - **Notification icons** must be white silhouettes with transparency, or
   Android substitutes a generic triangle.
 - **Home-screen widget** (`OffologWidgetProvider.java`,

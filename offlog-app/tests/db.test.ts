@@ -1742,6 +1742,23 @@ describe('searchAllTasks', () => {
     expect(result.matchedIn).toBe('attachments');
   });
 
+  it('orders open before done, title matches first, then by due date (undated last), then title', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const [first, last] = [project.columns[0].id, project.columns.at(-1)!.id];
+    const mk = (title: string, over: { due_date?: string; body?: string } = {}, col = first) =>
+      createTask(project._id, 'space:unsorted', col, title, over);
+    await mk('Done tile job', { due_date: '2026-01-01' }, last);
+    await mk('Note only', { body: 'about the tile order' });
+    await mk('Tile undated');
+    await mk('B tile later', { due_date: '2026-03-01' });
+    await mk('A tile later', { due_date: '2026-03-01' });
+    await mk('Tile soon', { due_date: '2026-02-01' });
+
+    const r = await searchAllTasks('tile');
+    expect(r.map(t => t.title)).toEqual(['Tile soon', 'A tile later', 'B tile later', 'Tile undated', 'Note only', 'Done tile job']);
+  });
+
   it('excludes deleted and archived tasks the same as a title-only search would', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Test Project');

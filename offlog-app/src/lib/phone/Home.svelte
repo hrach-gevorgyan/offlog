@@ -1,3 +1,9 @@
+<script context="module" lang="ts">
+  // The mark's entrance belongs to the app opening, not to every return to
+  // Home; a module flag lives exactly as long as the launch does.
+  let markPlayed = false;
+</script>
+
 <script lang="ts">
   import { soften } from '../tagColors';
   import NewProjectSheet from './NewProjectSheet.svelte';
@@ -69,7 +75,9 @@
   // Mounted after Home, so its entrance plays even on the app's first frame
   // (an intro does not run on the initial render).
   let markShown = false;
-  onMount(() => { markShown = true; });
+  const markReplay = !markPlayed;
+  const markEntrance = (node: Element) => (markReplay ? markIn(node) : { duration: 0 });
+  onMount(() => { markShown = true; markPlayed = true; });
   // The bar is see-through over the band, so the band's lines would slide
   // under the "Offlog" title. Each line fades out over the 30px before it
   // reaches the title (a large title collapsing); at rest the first line sits
@@ -110,7 +118,7 @@
   <div class="appbar" style="--t:{t};--fill:{fill}">
     <span class="bt">
       <b><span class="on-hero">Offlog</span><span class="on-page" aria-hidden="true">Offlog</span></b>
-      <small>{firstRun ? 'No tasks yet' : total ? `${left} left · ${doneToday} of ${total} done` : 'Nothing due today'}</small>
+      <small>{firstRun ? 'No tasks yet' : total ? `${left} left` : 'Nothing due today'}</small>
     </span>
     <button class="ibtn" on:click={() => actions.openSettings()} aria-label="Settings">{@html I.gear}</button>
   </div>
@@ -118,7 +126,7 @@
   <div class="scr" on:scroll={onScroll}>
     <div class="hero" bind:clientHeight={heroH} bind:this={heroEl}>
       {#if markShown}
-        <div class="markwrap" aria-hidden="true" in:markIn>
+        <div class="markwrap" aria-hidden="true" in:markEntrance>
           <svg class="mark" viewBox="0 0 1024 1024" style="transform:translateY({markY}px);opacity:{0.1 * (1 - fill)}">
             {#each MARK_PATHS as d}<path {d} />{/each}
           </svg>
@@ -134,11 +142,9 @@
         <span class="hi">{greeting()} <span>· {shortDate(todayStr)}</span></span>
         {#if total || !data}
           <span class="count"><b>{left}</b><span>left today</span></span>
-          <span class="meta">{doneToday} of {total} done{#if late}{' · '}<span class="l">{late} late</span>{/if}</span>
           <span class="track">{#each Array(dashN) as _, i}<i class:on={i < dashOn}></i>{/each}</span>
         {:else}
           <span class="none">Nothing due today</span>
-          {#if late}<span class="meta"><span class="l">{late} late</span></span>{/if}
         {/if}
       </button>
       {/if}
@@ -158,7 +164,7 @@
 
     {#each sortedSpaces as s (s._id)}
       {@const ps = $projects.filter(p => p.space_id === s._id).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || a.position - b.position)}
-      <div class="p-sec sec">
+      <div class="p-sec sec" role="heading" aria-level="2">
         <span>{s.name}</span>
         {#if ps.length}<button class="secadd" on:click={() => newProject(s._id)} aria-label="New project in {s.name}">{@html I.plus}</button>{/if}
       </div>
@@ -213,7 +219,7 @@
   .bt .on-hero { color: var(--on-hero); opacity: calc(1 - var(--t)); }
   .bt .on-page { color: var(--text); opacity: var(--t); }
   .bt small { font-size: var(--p-fs-s); font-weight: 600; color: var(--faint); overflow: hidden; height: calc(var(--t) * 16px); opacity: clamp(0, calc(var(--t) * 2 - 1), 1); }
-  .ibtn { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: inherit; }
+  .ibtn { position: relative; margin-left: auto; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: inherit; }
   .ibtn:active { background: color-mix(in srgb, currentColor 12%, transparent); }
 
   /* Inside the band, so its diagonal clips it; starts below the top bar. */
@@ -225,8 +231,8 @@
 
   .hero {
     position: relative; overflow: hidden;
-    margin: 0 -16px; padding: 64px 20px 84px; background: var(--hero); color: var(--on-hero);
-    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 64px), 0 100%);
+    margin: 0 -16px; padding: 64px 20px 68px; background: var(--hero); color: var(--on-hero);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 52px), 0 100%);
   }
   /* stretch is spelled out: older WebViews give buttons align-items:
      flex-start, which collapses the tile rows and the progress track. */
@@ -239,14 +245,12 @@
   .count { display: flex; align-items: baseline; gap: 10px; }
   .count b { font-size: 56px; font-weight: 800; letter-spacing: -.04em; line-height: .9; }
   .count span { font-size: var(--p-fs-xl); font-weight: 600; }
-  .meta { font-size: var(--p-fs-m); opacity: .9; margin: 10px 0 12px; }
   .none { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 4px; }
-  .meta .l { font-weight: 700; }
-  .track { display: flex; gap: 5px; max-width: 190px; }
+  .track { display: flex; gap: 5px; max-width: 190px; margin-top: 14px; }
   .track i { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--on-hero) 24%, transparent); transition: background var(--dur-medium) var(--ease-standard); }
   .track i.on { background: var(--on-hero); }
 
-  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -54px 0 18px; position: relative; z-index: 2; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -46px 0 18px; position: relative; z-index: 2; }
   /* Before the first load the numbers would read as a real "nothing due /
      0 late" for a frame; the usual layout holds the space instead. */
   .hbody.pending > :not(.hi), .tiles.pending b { visibility: hidden; }
@@ -260,13 +264,16 @@
   .tile .lbl { font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); }
 
   .sec { justify-content: space-between; min-height: 32px; margin-bottom: 4px; }
-  .secadd { width: 44px; height: 44px; margin: -6px -10px -6px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--accent); transition: background var(--dur-hover) var(--ease-hover); }
-  .secadd:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .secadd { position: relative; width: 44px; height: 44px; margin: -6px -10px -6px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--faint); transition: background var(--dur-hover) var(--ease-hover); }
+  .secadd:active { background: var(--col-bg); }
+  /* 48px touch target around the 44px visual. */
+  .ibtn::before, .secadd::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
   .secadd :global(svg) { width: 20px; height: 20px; }
   .p-row.add { font-size: var(--p-fs-m); min-height: 48px; }
   .plus { display: flex; width: 8px; justify-content: center; }
   .plus :global(svg) { width: 18px; height: 18px; }
-  .p-row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Two lines before truncating: at large system font sizes one line cuts most names. */
+  .p-row .lbl { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
   .late-n { color: var(--overdue-ink); font-size: var(--p-fs-xs); font-weight: 600; }
   .stat { font-size: var(--p-fs-s); color: var(--faint); text-align: center; margin: 4px 0 0; }
 </style>

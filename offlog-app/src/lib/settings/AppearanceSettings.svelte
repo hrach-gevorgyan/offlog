@@ -14,6 +14,8 @@
   export let toggleReduceMotion: () => void;
   export let hapticsEnabled: boolean;
   export let toggleHaptics: () => void;
+  // The phone page drops the hints its labels already make obvious.
+  export let phone = false;
 </script>
 
               <div class="setting-group">
@@ -34,7 +36,7 @@
                     {/each}
                   </div>
                 </div>
-                <p class="setting-hint">"System" follows your device's light/dark setting automatically.</p>
+                {#if !phone}<p class="setting-hint">"System" follows your device's light/dark setting automatically.</p>{/if}
 
                 <div class="setting-row">
                   <div class="setting-label">Week starts on</div>
@@ -55,7 +57,7 @@
                     >Monday</button>
                   </div>
                 </div>
-                <p class="setting-hint">Controls Agenda's month grid and "this week" grouping.</p>
+                {#if !phone}<p class="setting-hint">Controls Agenda's month grid and "this week" grouping.</p>{/if}
 
                 <div class="setting-row">
                   <div class="setting-label">Time format</div>
@@ -76,7 +78,7 @@
                     >24h</button>
                   </div>
                 </div>
-                <p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>
+                {#if !phone}<p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>{/if}
               </div>
 
               <div class="setting-group">
@@ -95,7 +97,7 @@
                     <span class="toggle-knob"></span>
                   </button>
                 </div>
-                <p class="setting-hint">Turns off panel/dialog slide and fade animations throughout the app.</p>
+                {#if !phone}<p class="setting-hint">Turns off panel/dialog slide and fade animations throughout the app.</p>{/if}
 
                 {#if isNativePlatform()}
                   <div class="setting-row">
@@ -104,7 +106,7 @@
                       <span class="toggle-knob"></span>
                     </button>
                   </div>
-                  <p class="setting-hint">A small vibration on checkbox toggles and drag-and-drop.</p>
+                  {#if !phone}<p class="setting-hint">A small vibration on checkbox toggles and drag-and-drop.</p>{/if}
                 {/if}
               </div>
 

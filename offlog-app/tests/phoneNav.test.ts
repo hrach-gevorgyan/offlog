@@ -124,6 +124,8 @@ describe('phone formatting', () => {
   it('duePill: late, today, tomorrow, weekday, date', () => {
     expect(duePill('2026-09-29', false, today)).toEqual({ text: '1 day late', tone: 'late' });
     expect(duePill('2026-09-27', false, today)).toEqual({ text: '3 days late', tone: 'late' });
+    expect(duePill('2026-08-31', false, today)).toEqual({ text: '30 days late', tone: 'late' });
+    expect(duePill('2026-08-30', false, today)).toEqual({ text: '30+ days late', tone: 'late' });
     expect(duePill('2026-09-30', false, today)).toEqual({ text: 'Today', tone: 'today' });
     expect(duePill('2026-10-01', false, today)).toEqual({ text: 'Tomorrow', tone: '' });
     expect(duePill('2026-10-03', false, today)).toEqual({ text: 'Sat', tone: '' });
@@ -139,5 +141,67 @@ describe('phone formatting', () => {
     expect(greeting(14)).toBe('Good afternoon');
     expect(greeting(20)).toBe('Good evening');
   });
-  it('shortDate', () => { expect(shortDate('2026-10-01')).toBe('Thu 1 Oct'); });
+  it('shortDate names the year only when it is not this year', () => {
+    const now = new Date('2026-10-01T12:00:00');
+    expect(shortDate('2026-10-01', now)).toBe('Thu 1 Oct');
+    expect(shortDate('2027-08-03', now)).toBe('Tue 3 Aug 2027');
+  });
+});
+
+describe('phone shell: reselect and the + on scroll', () => {
+  beforeEach(() => { switchTab('home'); });
+
+  it('re-tapping the current tab at its root asks for scroll-to-top; with a screen pushed it pops instead', async () => {
+    const { reselect } = await import('../src/lib/phone/nav');
+    const n = get(reselect);
+    switchTab('home');
+    expect(get(reselect)).toBe(n + 1);
+    push({ k: 'focus' });
+    switchTab('home');
+    expect(get(reselect)).toBe(n + 1);
+    expect(get(stack).map(s => s.k)).toEqual(['home']);
+    switchTab('today');
+    expect(get(reselect)).toBe(n + 1);
+  });
+
+  it('the + hides after 120px of downward scroll and returns on any scroll up or at the end', async () => {
+    const { fabScrollTracker } = await import('../src/lib/phone/fabScroll');
+    let away = false;
+    const t = fabScrollTracker(v => (away = v));
+    const el = { scrollTop: 0, clientHeight: 500, scrollHeight: 2000 } as unknown as Element;
+    const to = (y: number) => { (el as { scrollTop: number }).scrollTop = y; t.onScroll(el); };
+    to(60); to(120);
+    expect(away).toBe(false);
+    to(130);
+    expect(away).toBe(true);
+    to(125);
+    expect(away).toBe(false);
+    to(400);
+    expect(away).toBe(true);
+    to(1500); // the end of the list
+    expect(away).toBe(false);
+    to(1500);
+    t.reset();
+    expect(away).toBe(false);
+  });
+
+  it('a horizontal scroller never moves the +', async () => {
+    const { fabScrollTracker } = await import('../src/lib/phone/fabScroll');
+    const set = vi.fn();
+    const t = fabScrollTracker(set);
+    t.onScroll({ scrollTop: 0, clientHeight: 40, scrollHeight: 40 } as unknown as Element);
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('a toast can carry a labelled action and stays up longer', () => {
+    vi.useFakeTimers();
+    const run = vi.fn();
+    showToast('Reminders may be a few minutes late', undefined, { label: 'Make exact', run });
+    expect(get(toast)?.action?.label).toBe('Make exact');
+    vi.advanceTimersByTime(4500);
+    expect(get(toast)).not.toBeNull();
+    vi.advanceTimersByTime(2000);
+    expect(get(toast)).toBeNull();
+    vi.useRealTimers();
+  });
 });

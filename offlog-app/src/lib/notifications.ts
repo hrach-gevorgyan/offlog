@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
 import { invokeTauri, isTauri as isTauriPlatform, getQuietHours, getNotificationsEnabled } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
@@ -83,6 +83,15 @@ export async function checkExactAlarmPermission(): Promise<void> {
     exactAlarmState.set('denied');
   }
 }
+
+// Bumped when a reminder is newly set while exact alarms are off, at most
+// once per launch, so the phone shell can offer the fix in context. Never
+// sent to the system page unasked: that only happens from requestExactAlarmPermission().
+export const exactAlarmNudge = writable(0);
+let exactNudged = false;
+// Reminders seen by the previous native pass; null until the first one, so
+// reminders that already existed at launch never count as "just set".
+let knownReminders: Set<string> | null = null;
 
 // Deep-links to the OS "Alarms & reminders" settings screen for this app —
 // there's no runtime permission dialog for this one, unlike requestPermission().
@@ -351,8 +360,19 @@ async function scheduleNative(tasks: TaskDoc[]) {
   if (pending.notifications.length) {
     await LocalNotifications.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
   }
-  const toSchedule = tasks
-    .filter(t => t.reminder_at && new Date(t.reminder_at).getTime() > Date.now())
+  if (get(exactAlarmState) === 'unsupported') await checkExactAlarmPermission();
+  // isExactNotification must follow the grant: the plugin's schedule() opens
+  // the system "Alarms & reminders" page by itself whenever an exact alarm
+  // is requested without it, which would happen on every launch.
+  const exact = get(exactAlarmState) === 'granted';
+  const upcoming = tasks.filter(t => t.reminder_at && new Date(t.reminder_at).getTime() > Date.now());
+  const keys = new Set(upcoming.map(t => `${t._id}:${t.reminder_at}`));
+  if (!exact && !exactNudged && knownReminders && [...keys].some(k => !knownReminders!.has(k))) {
+    exactNudged = true;
+    exactAlarmNudge.update(n => n + 1);
+  }
+  knownReminders = keys;
+  const toSchedule = upcoming
     .map((t, i) => ({
       id: numericId(t._id!),
       title: t.title,
@@ -361,6 +381,7 @@ async function scheduleNative(tasks: TaskDoc[]) {
       extra: { taskId: t._id },
       actionTypeId: REMINDER_ACTION_TYPE,
       channelId: REMINDER_CHANNEL_ID,
+      isExactNotification: exact,
     }));
   if (toSchedule.length) await LocalNotifications.schedule({ notifications: toSchedule });
 }
@@ -494,6 +515,9 @@ export async function initNotificationListeners(): Promise<void> {
   permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
   await checkExactAlarmPermission();
   await ensureReminderChannel();
+  // Back from the system settings (or anywhere): either grant may have
+  // changed. A new exact-alarm state re-arms every reminder with it.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) recheckGrants().catch(() => {}); });
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
     const taskId = (action.notification.extra as { taskId?: string } | undefined)?.taskId;
     if (!taskId) return;
@@ -501,6 +525,16 @@ export async function initNotificationListeners(): Promise<void> {
     else if (action.actionId === 'snooze') snoozeTaskFromNotification(taskId).catch(() => notificationActionError.set('Could not snooze that reminder. Please try again.'));
     else pendingOpenTaskId.set(taskId); // 'tap' (default open) — anything else falls through to opening the task
   });
+}
+
+export async function recheckGrants(): Promise<void> {
+  if (!isNative()) return;
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  const perm = await LocalNotifications.checkPermissions();
+  permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
+  const before = get(exactAlarmState);
+  await checkExactAlarmPermission();
+  if (get(exactAlarmState) !== before) await rescheduleAll();
 }
 
 // Cancel-all-then-reschedule-from-scratch, called after every store reload

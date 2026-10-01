@@ -54,7 +54,7 @@ vi.mock('../src/lib/store', async () => {
 
 import ProjectScreen from '../src/lib/phone/ProjectScreen.svelte';
 import { projects, projectTasks, activeProjectId, showError, reloadTasks } from '../src/lib/store';
-import { actions, stack, switchTab, push, toast } from '../src/lib/phone/nav';
+import { actions, addContext, stack, switchTab, push, toast } from '../src/lib/phone/nav';
 import { toggleDone } from '../src/lib/phone/project/actions';
 import { leaves, returns } from '../src/lib/phone/rowMotion';
 
@@ -90,6 +90,9 @@ window.matchMedia = ((q: string) => ({
 // A title as seen: the screen-reader-only priority note left out.
 const seen = (e: Element) => [...e.childNodes].filter(n => !(n as Element).classList?.contains('p-sr')).map(n => n.textContent).join('').trim();
 const titles = (c: HTMLElement) => [...c.querySelectorAll('.card .t')].map(seen);
+// A filter sheet chip by its label, its count left out.
+const chip = (r: { getByText: (m: (c: string, e: Element | null) => boolean) => HTMLElement }, label: string) =>
+  r.getByText((_, e) => !!e?.matches('.psheet .p-chip') && e.firstChild?.textContent === label);
 
 beforeEach(async () => {
   // A closed sheet's history.back() lands as an async popstate; let it
@@ -125,21 +128,81 @@ describe('phone Project screen — board', () => {
     const body = container.querySelector('[role="tabpanel"]')!;
     await fireEvent.touchStart(body, { touches: [{ clientX: 300, clientY: 100 }] });
     await fireEvent.touchEnd(body, { changedTouches: [{ clientX: 150, clientY: 110 }] });
-    expect(getByText('Nothing in Done.')).toBeTruthy();
+    expect(getByText('Tick a task to finish it.')).toBeTruthy();
     await fireEvent.touchStart(body, { touches: [{ clientX: 100, clientY: 100 }] });
     await fireEvent.touchEnd(body, { changedTouches: [{ clientX: 180, clientY: 300 }] });
-    expect(getByText('Nothing in Done.')).toBeTruthy();
+    expect(getByText('Tick a task to finish it.')).toBeTruthy();
     await fireEvent.touchStart(body, { touches: [{ clientX: 100, clientY: 100 }] });
     await fireEvent.touchEnd(body, { changedTouches: [{ clientX: 250, clientY: 110 }] });
     expect(titles(container)).toEqual(['d']);
   });
 
-  it('an empty status offers Add a task', async () => {
+  it('the pane follows a sideways drag, gives at the ends, and springs back when let go short', async () => {
+    const { container } = setup();
+    const body = container.querySelector('[role="tabpanel"]')!;
+    const pane = () => container.querySelector('.pane') as HTMLElement;
+    await fireEvent.touchStart(body, { touches: [{ clientX: 300, clientY: 100 }] });
+    await fireEvent.touchMove(body, { touches: [{ clientX: 260, clientY: 102 }] });
+    expect(pane().style.transform).toBe('translateX(-40px)');
+    expect(pane().classList.contains('dragging')).toBe(true);
+    // Back past the first status: a third of the finger's travel.
+    await fireEvent.touchMove(body, { touches: [{ clientX: 390, clientY: 102 }] });
+    expect(pane().style.transform).toBe('translateX(30px)');
+    await fireEvent.touchEnd(body, { changedTouches: [{ clientX: 390, clientY: 102 }] });
+    expect(pane().style.transform).toBe('');
+    expect(titles(container)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('a vertical drag never moves the pane; a drag from the screen edge is left to the system', async () => {
+    const { container, getByRole } = setup();
+    const body = container.querySelector('[role="tabpanel"]')!;
+    const pane = () => container.querySelector('.pane') as HTMLElement;
+    await fireEvent.touchStart(body, { touches: [{ clientX: 200, clientY: 100 }] });
+    await fireEvent.touchMove(body, { touches: [{ clientX: 205, clientY: 140 }] });
+    await fireEvent.touchMove(body, { touches: [{ clientX: 300, clientY: 150 }] });
+    expect(pane().style.transform).toBe('');
+    await fireEvent.touchEnd(body, { changedTouches: [{ clientX: 300, clientY: 150 }] });
+    await fireEvent.touchStart(body, { touches: [{ clientX: window.innerWidth - 10, clientY: 100 }] });
+    await fireEvent.touchMove(body, { touches: [{ clientX: window.innerWidth - 200, clientY: 100 }] });
+    await fireEvent.touchEnd(body, { changedTouches: [{ clientX: window.innerWidth - 200, clientY: 100 }] });
+    expect(pane().style.transform).toBe('');
+    expect(getByRole('tab', { name: 'To do 3' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('an empty status offers Add a task; the empty last status offers a hint instead', async () => {
     const spy = vi.spyOn(actions, 'quickAdd').mockImplementation(() => {});
-    const { getByRole, getByText } = setup();
-    await fireEvent.click(getByRole('tab', { name: 'Done 0' }));
+    const { getByRole, getByText, queryByText } = setup({}, tasks.slice(0, 3));
+    await fireEvent.click(getByRole('tab', { name: 'Doing 0' }));
     await fireEvent.click(getByText('Add a task'));
     expect(spy).toHaveBeenCalled();
+    await fireEvent.click(getByRole('tab', { name: 'Done 0' }));
+    expect(getByText('Tick a task to finish it.')).toBeTruthy();
+    expect(queryByText('Add a task')).toBeNull();
+  });
+
+  it('+ adds to the status on show, but never to the last one: a task added there would be born finished', async () => {
+    const { getByRole } = setup();
+    await fireEvent.click(getByRole('tab', { name: 'Doing 1' }));
+    expect(get(addContext)).toEqual({ projectId: 'project:p', columnId: 'col:doing' });
+    await fireEvent.click(getByRole('tab', { name: /^Done/ }));
+    expect(get(addContext)).toEqual({ projectId: 'project:p', columnId: null });
+  });
+
+  it('a one-status project still offers Add a task when empty', () => {
+    const r = setup({ columns: [{ id: 'col:todo', name: 'To do' }] }, []);
+    expect(r.getByText('Add a task')).toBeTruthy();
+  });
+
+  it('the last status pill is marked as the done one; there are no page dots', () => {
+    const { getByRole, container } = setup();
+    expect(getByRole('tab', { name: 'Done 0' }).classList.contains('last')).toBe(true);
+    expect(getByRole('tab', { name: 'To do 3' }).classList.contains('last')).toBe(false);
+    expect(container.querySelector('.dots')).toBeNull();
+  });
+
+  it('the title may wrap to two lines', () => {
+    const { container } = setup();
+    expect(container.querySelector('h1')?.classList.contains('wrap')).toBe(true);
   });
 
   it('tapping a card opens it; the checkbox finishes it and offers Undo', async () => {
@@ -184,15 +247,21 @@ describe('phone Project screen — board', () => {
 
   it('Board or List is kept on this device, never written to the synced project', async () => {
     const r = setup();
-    await fireEvent.click(r.getByLabelText('Show as list'));
+    expect(r.getByRole('button', { name: 'Board' }).getAttribute('aria-pressed')).toBe('true');
+    expect(r.getByRole('button', { name: 'List' }).getAttribute('aria-pressed')).toBe('false');
+    await fireEvent.click(r.getByRole('button', { name: 'List' }));
     expect(await r.findByLabelText('Search tasks')).toBeTruthy();
+    expect(r.getByRole('button', { name: 'List' }).getAttribute('aria-pressed')).toBe('true');
     expect(localStorage.getItem('offlog_phone_view_project:p')).toBe('list');
     expect(updateProject).not.toHaveBeenCalled();
+    // Tapping the view on show changes nothing.
+    await fireEvent.click(r.getByRole('button', { name: 'List' }));
+    expect(r.getByLabelText('Search tasks')).toBeTruthy();
     cleanup();
     // The desktop's default_view no longer decides once this device chose.
     const again = setup({ default_view: 'kanban' });
     expect(again.getByLabelText('Search tasks')).toBeTruthy();
-    await fireEvent.click(again.getByLabelText('Show as board'));
+    await fireEvent.click(again.getByRole('button', { name: 'Board' }));
     expect(localStorage.getItem('offlog_phone_view_project:p')).toBe('board');
     expect(again.queryByLabelText('Search tasks')).toBeNull();
   });
@@ -208,7 +277,7 @@ describe('phone Project screen — board', () => {
     await fireEvent.click(r.getByRole('tab', { name: 'Doing 1' }));
     await fireEvent.click(r.getByLabelText('Filter'));
     await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
-    await fireEvent.click(r.getByText('Medium', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(chip(r, 'Medium'));
     await fireEvent.click(r.getByText('Show 3 tasks'));
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     cleanup();
@@ -238,12 +307,11 @@ describe('phone Project screen — card menu', () => {
     const r = setup();
     await fireEvent.click(r.getByLabelText('Filter'));
     await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
-    await fireEvent.click(r.getByText('High', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(chip(r, 'High'));
     await fireEvent.click(r.getByText('Show 1 task'));
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     await openMenu(r, 'c');
-    await fireEvent.click(r.getByText('Move to status…'));
-    await fireEvent.click(r.getByText('Doing', { selector: '.psheet .p-row' }));
+    await fireEvent.click(r.getByRole('button', { name: 'Doing' }));
     // d, hidden by the filter, sits at 500 in Doing.
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:c', { column_id: 'col:doing', position: 1524 }));
   });
@@ -256,7 +324,7 @@ describe('phone Project screen — card menu', () => {
     ]);
     await fireEvent.click(r.getByLabelText('Filter'));
     await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
-    await fireEvent.click(r.getByText('High', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(chip(r, 'High'));
     await fireEvent.click(r.getByText('Show 2 tasks'));
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     await openMenu(r, 'c');
@@ -265,13 +333,45 @@ describe('phone Project screen — card menu', () => {
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:c', { position: 762 }));
   });
 
-  it('Move to status appends to the end of the target status', async () => {
+  it('the status pills move a task in one tap: appended to the end, with Undo', async () => {
     const r = setup();
     await openMenu(r, 'a');
-    await fireEvent.click(r.getByText('Move to status…'));
-    await fireEvent.click(r.getByText('Doing', { selector: '.psheet .p-row' }));
+    expect(r.getByRole('button', { name: 'To do' }).getAttribute('aria-pressed')).toBe('true');
+    expect(r.queryByText('Move to status…')).toBeNull();
+    await fireEvent.click(r.getByRole('button', { name: 'Doing' }));
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:a', { column_id: 'col:doing', position: 1524 }));
     expect(reloadTasks).toHaveBeenCalled();
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    expect(get(toast)?.text).toBe('Moved to Doing');
+    await get(toast)!.undo!();
+    expect(updateTask).toHaveBeenLastCalledWith('task:a', expect.objectContaining({ column_id: 'col:todo', position: 1024 }));
+  });
+
+  it('the last status pill finishes the task, as the checkbox does; a failure surfaces an error', async () => {
+    const r = setup();
+    await openMenu(r, 'a');
+    await fireEvent.click(r.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:a', { column_id: 'col:done' }));
+    await waitFor(() => expect(get(toast)?.text).toBe('Done: a'));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    updateTask.mockRejectedValue(new Error('boom'));
+    await openMenu(r, 'b');
+    await fireEvent.click(r.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this task. Please try again.'));
+  });
+
+  it('a failed status move surfaces an error', async () => {
+    updateTask.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMenu(r, 'a');
+    await fireEvent.click(r.getByRole('button', { name: 'Doing' }));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not move this task. Please try again.'));
+  });
+
+  it('a one-status project has no status pills in the card menu', async () => {
+    const r = setup({ columns: [{ id: 'col:todo', name: 'To do' }] });
+    await openMenu(r, 'a');
+    expect(r.container.ownerDocument.querySelector('.psheet [aria-label="Status"]')).toBeNull();
   });
 
   it('Move up / Move down step between neighbours', async () => {
@@ -327,7 +427,7 @@ describe('phone Project screen — filter', () => {
     const r = setup();
     await fireEvent.click(r.getByLabelText('Filter'));
     await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
-    await fireEvent.click(r.getByText('High'));
+    await fireEvent.click(chip(r, 'High'));
     await fireEvent.click(r.getByText('Show 1 task'));
     await waitFor(() => expect(titles(r.container)).toEqual(['c']));
     expect(r.getByLabelText('Filter, 1 on')).toBeTruthy();
@@ -341,11 +441,24 @@ describe('phone Project screen — filter', () => {
     await fireEvent.input(r.getByLabelText('Search tasks'), { target: { value: 'a' } });
     await fireEvent.click(r.getByLabelText('Filter'));
     await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
-    await fireEvent.click(r.getByText('High', { selector: '.psheet .p-chip' }));
-    await fireEvent.click(r.getByText('Clear', { selector: '.psheet .p-row' }));
+    await fireEvent.click(chip(r, 'High'));
+    await fireEvent.click(r.getByText('Clear', { selector: '.psheet .p-tbtn' }));
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     expect((r.getByLabelText('Search tasks') as HTMLInputElement).value).toBe('a');
     expect([...r.container.querySelectorAll('.rows .t')].map(seen)).toEqual(['a']);
+  });
+
+  it('each chip counts what it would show with the rest of the draft; a chip that would show nothing is dimmed', async () => {
+    const r = setup();
+    await fireEvent.click(r.getByLabelText('Filter'));
+    await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
+    const k = (l: string) => chip(r, l).querySelector('i')?.textContent;
+    expect([k('To do'), k('Doing'), k('Done'), k('High'), k('Medium'), k('Low')]).toEqual(['3', '1', '0', '1', '3', '0']);
+    expect(chip(r, 'Done').classList.contains('none')).toBe(true);
+    await fireEvent.click(chip(r, 'High'));
+    expect([k('To do'), k('Doing'), k('#tiles')]).toEqual(['1', '0', '0']);
+    expect(chip(r, 'Doing').classList.contains('none')).toBe(true);
+    expect(chip(r, 'High').classList.contains('none')).toBe(false);
   });
 
   it('saves a filter under the desktop key and applies it later', async () => {
@@ -353,7 +466,9 @@ describe('phone Project screen — filter', () => {
     const r = setup();
     await fireEvent.click(r.getByLabelText('Filter'));
     await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
-    await fireEvent.click(r.getByText('#tiles', { selector: '.psheet .p-chip' }));
+    // Nothing to save until a chip is chosen.
+    expect(r.queryByLabelText('Filter name')).toBeNull();
+    await fireEvent.click(chip(r, '#tiles'));
     await fireEvent.input(r.getByLabelText('Filter name'), { target: { value: 'Tiles' } });
     await fireEvent.click(r.getByText('Save'));
     expect(JSON.parse(localStorage.getItem('offlog_saved_filters_project:p')!)).toEqual([
@@ -389,7 +504,7 @@ describe('phone Project screen — project menu', () => {
     expect(get(projects)[0].pinned).toBe(false);
   });
 
-  it('has no Opens as row; Board or List lives on the top bar', async () => {
+  it('has no Opens as row; Board or List lives on the meta line', async () => {
     const r = setup();
     await openMore(r);
     expect(r.queryByText('Opens as')).toBeNull();
@@ -424,7 +539,8 @@ describe('phone Project screen — project menu', () => {
     await openMore(r);
     await fireEvent.click(r.getByText('Delete project'));
     expect(deleteProject).not.toHaveBeenCalled();
-    expect(r.getByText('Deletes the project and its tasks. Can’t be undone.')).toBeTruthy();
+    expect(r.container.ownerDocument.querySelector('.psheet .p-say')?.textContent?.replace(/\s+/g, ' ').trim())
+      .toBe('Deletes House and its 4 tasks. Can’t be undone.');
     await fireEvent.click(r.getByText('Delete project', { selector: '.p-go' }));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete this project. Please try again.'));
     expect(get(stack).map(s => s.k)).toEqual(['home', 'project']);
@@ -433,5 +549,15 @@ describe('phone Project screen — project menu', () => {
     await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home']));
     expect(get(activeProjectId)).toBe('');
     expect(get(projects)).toEqual([]);
+  });
+
+  it('the delete confirmation counts archived tasks too', async () => {
+    getArchivedTasksForProject.mockResolvedValue([task('task:old', { archived: true })]);
+    const r = setup({}, [tasks[0]]);
+    await openMore(r);
+    await waitFor(() => expect(getArchivedTasksForProject).toHaveBeenCalled());
+    await fireEvent.click(r.getByText('Delete project'));
+    await waitFor(() => expect(r.container.ownerDocument.querySelector('.psheet .p-say')?.textContent?.replace(/\s+/g, ' ').trim())
+      .toBe('Deletes House and its 2 tasks, archived ones included. Can’t be undone.'));
   });
 });

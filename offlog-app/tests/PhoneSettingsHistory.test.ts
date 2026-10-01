@@ -43,6 +43,13 @@ describe('phone History', () => {
     expect(getRecentLogs).toHaveBeenCalledWith(150);
   });
 
+  it('one device only: no device chip', async () => {
+    getRecentLogs.mockResolvedValue(logs.map(l => ({ ...l, source: 'Pixel' })));
+    const { getByText, container } = render(SettingsPage, { page: 'history' });
+    await waitFor(() => getByText('Today'));
+    expect(container.querySelector('.src')).toBeNull();
+  });
+
   it('a change that lands mid-load queues exactly one follow-up load', async () => {
     let release!: (v: unknown) => void;
     getRecentLogs.mockReturnValueOnce(new Promise(r => { release = r; }));

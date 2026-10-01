@@ -152,6 +152,14 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
     const key = p.name.trim().toLowerCase();
     nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
   }
+  // Open before done, then title matches before note/step/tag ones, then by
+  // due date (undated last), then title.
+  const isDone = (t: TaskDoc) => t.column_id === projCache[t.project_id]?.columns.at(-1)?.id;
+  tasks.sort((a, b) =>
+    Number(isDone(a.doc)) - Number(isDone(b.doc))
+    || Number(a.matchedIn !== 'title') - Number(b.matchedIn !== 'title')
+    || (a.doc.due_date ?? '9').localeCompare(b.doc.due_date ?? '9')
+    || a.doc.title.localeCompare(b.doc.title));
   return tasks.map(({ doc: t, matchedIn }) => {
     const proj = projCache[t.project_id];
     const isDup = proj && (nameCounts.get(proj.name.trim().toLowerCase()) ?? 0) > 1;

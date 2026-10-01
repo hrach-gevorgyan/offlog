@@ -11,6 +11,8 @@
   import Sheet from '../Sheet.svelte';
 
   export let project: ProjectDoc;
+  // The project's tasks on show; archived ones are loaded here.
+  export let tasks: TaskDoc[] = [];
 
   const dispatch = createEventDispatcher<{ close: void }>();
   let sheet: Sheet;
@@ -92,6 +94,7 @@
       busy = false;
     }
   }
+  $: total = tasks.length + archived.length;
   const nameOf = (colId: string) => project.columns.find(c => c.id === colId)?.name ?? '';
 </script>
 
@@ -118,7 +121,9 @@
       <p class="p-empty">No archived tasks.</p>
     {/if}
   {:else}
-    <p class="p-say">Deletes the project and its tasks. Can’t be undone.</p>
+    <p class="p-say">
+      Deletes <b>{project.name}</b>{#if total}{' and its '}<b>{total} {total === 1 ? 'task' : 'tasks'}</b>{#if archived.length}, archived ones included{/if}{/if}. Can’t be undone.
+    </p>
     <button class="p-go danger" disabled={busy} on:click={remove}>Delete project</button>
     <button class="p-row cancel" on:click={() => view = 'main'}>Cancel</button>
   {/if}

@@ -53,6 +53,18 @@ describe('parseQuickAdd() -- dates', () => {
     expect(parseQuickAdd('Dentist Aug 3', [], NOW).due_date).toBe('2026-08-03');
   });
 
+  it('a month/day without a year already behind today means next year', () => {
+    const oct1 = new Date(2026, 9, 1, 9, 0);
+    expect(parseQuickAdd('Dentist aug 3', [], oct1).due_date).toBe('2027-08-03');
+    expect(parseQuickAdd('Pay rent 7/25', [], oct1).due_date).toBe('2027-07-25');
+    // Today itself and later this year stay this year.
+    expect(parseQuickAdd('Dentist oct 1', [], oct1).due_date).toBe('2026-10-01');
+    expect(parseQuickAdd('Dentist aug 3', [], new Date(2026, 7, 3, 23, 0)).due_date).toBe('2026-08-03');
+    // A typed year is taken as typed, even in the past.
+    expect(parseQuickAdd('Dentist aug 3, 2026', [], oct1).due_date).toBe('2026-08-03');
+    expect(parseQuickAdd('Pay rent 7/25/2026', [], oct1).due_date).toBe('2026-07-25');
+  });
+
   it('leaves due_date null when nothing matches', () => {
     expect(parseQuickAdd('Buy milk', [], NOW).due_date).toBeNull();
   });
@@ -70,8 +82,22 @@ describe('parseQuickAdd() -- time / reminders', () => {
     expect(r.reminder_at).toBe(new Date(2026, 6, 15, 17, 0).toISOString());
   });
 
-  it('defaults the reminder date to today when only a time is given', () => {
+  it('defaults the reminder date to today when only a time still ahead today is given', () => {
+    const r = parseQuickAdd('Call mom at 11am', [], NOW);
+    expect(r.due_date).toBe('2026-07-15');
+    expect(r.reminder_at).toBe(new Date(2026, 6, 15, 11, 0).toISOString());
+  });
+
+  it('a bare time already past today rolls to tomorrow', () => {
     const r = parseQuickAdd('Call mom at 9am', [], NOW);
+    expect(r.due_date).toBe('2026-07-16');
+    expect(r.reminder_at).toBe(new Date(2026, 6, 16, 9, 0).toISOString());
+    // The exact current minute has passed too.
+    expect(parseQuickAdd('Call mom 10:00', [], NOW).due_date).toBe('2026-07-16');
+  });
+
+  it('an explicit "today" keeps a past time on today', () => {
+    const r = parseQuickAdd('Call mom today 9am', [], NOW);
     expect(r.due_date).toBe('2026-07-15');
     expect(r.reminder_at).toBe(new Date(2026, 6, 15, 9, 0).toISOString());
   });
@@ -217,5 +243,43 @@ describe('parseQuickAdd() -- escape hatches', () => {
 
   it('raw is false for a normal parse', () => {
     expect(parseQuickAdd('Buy milk tomorrow', [], NOW).raw).toBe(false);
+  });
+});
+
+describe('parseQuickAdd() -- spans and per-token escape', () => {
+  const at = (input: string) => parseQuickAdd(input, projects, NOW).spans.map(s => [input.slice(s.start, s.end), s.kind]);
+
+  it('reports each recognised token as an offset span into the typed text, in order', () => {
+    expect(at('  Log workout tomorrow at 6am !high #gym #legs @fitness')).toEqual([
+      ['tomorrow', 'date'], ['at 6am', 'time'], ['!high', 'priority'], ['#gym', 'tag'], ['#legs', 'tag'], ['@fitness', 'project'],
+    ]);
+    expect(at('Ship it !!! aug 3 17:30')).toEqual([['!!!', 'priority'], ['aug 3', 'date'], ['17:30', 'time']]);
+  });
+
+  it('has no spans for plain text, an unmatched @mention, an escaped sigil or a quoted title', () => {
+    expect(at('Buy milk')).toEqual([]);
+    expect(at('Email @bob \\#42')).toEqual([]);
+    expect(parseQuickAdd('"Tomorrow #x"', projects, NOW).spans).toEqual([]);
+  });
+
+  it('a backslash before a date or time token keeps it as title text', () => {
+    const r = parseQuickAdd('\\Friday team lunch notes', [], NOW);
+    expect(r.title).toBe('Friday team lunch notes');
+    expect(r.due_date).toBeNull();
+    expect(r.spans).toEqual([]);
+    const t = parseQuickAdd('Meet \\at 5pm tomorrow', [], NOW);
+    expect(t.title).toBe('Meet at 5pm');
+    expect(t.reminder_at).toBeNull();
+    expect(t.due_date).toBe('2026-07-16');
+  });
+
+  it('an escaped token hides from later patterns: the next occurrence still parses', () => {
+    const r = parseQuickAdd('\\friday prep, due monday', [], NOW);
+    expect(r.title).toBe('friday prep, due');
+    expect(r.due_date).toBe('2026-07-20');
+  });
+
+  it('a backslash before unrecognised text stays', () => {
+    expect(parseQuickAdd('Clean C:\\temp folder', [], NOW).title).toBe('Clean C:\\temp folder');
   });
 });

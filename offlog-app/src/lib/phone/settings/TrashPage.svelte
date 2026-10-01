@@ -104,7 +104,8 @@
 </TopBar>
 
 {#if loaded && items.length === 0}
-  <p class="p-empty">Empty.</p>
+  <!-- maintenance.ts TASK_RETENTION_MONTHS -->
+  <p class="p-empty">Nothing here. Deleted tasks stay for 3 months.</p>
 {:else if items.length}
   <div class="p-group">
     {#each items as t (t._id)}

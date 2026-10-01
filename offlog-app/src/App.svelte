@@ -270,9 +270,11 @@
   // (see closeSidebar()'s own comment on why it stays plain) — dismissing
   // an open nav drawer with Back is a near-universal platform convention,
   // so it must not fall through to exiting the app. Only past both does
-  // the OS handle it normally (minimize the app — correct at the true
-  // root). @capacitor/app is a no-op import on web, so this listener only
-  // ever fires on native.
+  // the app go to the background. minimizeApp(), never exitApp(): Android
+  // 12+ backgrounds a root activity on Back, and finishing it turns the
+  // next open into a cold start that loses the open screens.
+  // @capacitor/app is a no-op import on web, so this listener only ever
+  // fires on native.
   async function setupBackButton() {
     if (!window.Capacitor?.isNativePlatform?.()) return;
     const { App: CapApp } = await import('@capacitor/app');
@@ -280,7 +282,7 @@
       if (canGoBack) window.history.back();
       else if (sidebarOpen) closeSidebar();
       else if (get(isPhone) && backAtRoot()) return;
-      else CapApp.exitApp();
+      else CapApp.minimizeApp();
     });
   }
 

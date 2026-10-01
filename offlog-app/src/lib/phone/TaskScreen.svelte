@@ -359,14 +359,26 @@
     const day = localDateStr(d);
     return `${fmtTime(d)}, ${day === localDateStr(new Date()) ? 'today' : shortDate(day)}`;
   }
-  $: repeatText = task?.recurrence
-    ? ((task.recurrenceInterval ?? 1) > 1 ? `Every ${task.recurrenceInterval} ${UNIT[task.recurrence]}` : REPEAT_WORD[task.recurrence])
-      + (task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? ', weekdays' : '')
-    : '';
+  $: repeatText = !task?.recurrence ? ''
+    : (task.recurrenceInterval ?? 1) > 1
+      ? `Every ${task.recurrenceInterval} ${UNIT[task.recurrence]}` + (task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? ', weekdays' : '')
+      : task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? 'Weekdays' : REPEAT_WORD[task.recurrence];
   $: fieldsSet = fields.filter(f => { const v = task?.custom_values?.[f.id]; return v !== null && v !== undefined && v !== ''; }).length;
+  $: files = task?.attachments?.length ?? 0;
   $: steps = task?.checklist ?? [];
   $: tagColor = (t: string) => soften(resolveTagColor(t, colors));
   $: canFinish = (project?.columns.length ?? 0) > 1;
+
+  // The bar fills in and shows the title once the title field has scrolled
+  // under it (64px: the bar's height).
+  let stuck = false;
+  function watchTitle(node: HTMLElement) {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => { stuck = !e.isIntersecting; },
+      { root: node.closest('.screen'), rootMargin: '-64px 0px 0px 0px' });
+    io.observe(node);
+    return { destroy: () => io.disconnect() };
+  }
 
   function autosize(node: HTMLTextAreaElement, _value: string) {
     const fit = () => { node.style.height = 'auto'; node.style.height = node.scrollHeight + 'px'; };
@@ -375,13 +387,14 @@
   }
 </script>
 
-<!-- The heading is for screen readers; the title field below is what shows. -->
+<!-- Order, top to bottom: title, note, fields, steps. The bar's heading
+     shows the title only once the title field has scrolled under it. -->
 {#if !task}
   <div class="tbar"><TopBar title="Task" /></div>
   {#if loaded}<p class="p-empty">This task was deleted.</p>{/if}
 {:else}
-  <div class="tbar">
-    <TopBar title="Task">
+  <div class="tbar" class:stuck>
+    <TopBar title={task.title}>
       <button class="ib" class:on={task.pinned} aria-pressed={!!task.pinned} aria-label={task.pinned ? 'Unpin' : 'Pin'} on:click={togglePin}>{@html I.pin}</button>
       <button class="ib" aria-label="More" on:click={() => openSheet('more')}>{@html I.more}</button>
     </TopBar>
@@ -391,12 +404,18 @@
     {#if space}<span class="p-dot" style:background={soften(space.color)}></span>{/if}<span>{space ? `${space.name} · ` : ''}{project?.name ?? ''}</span>{#if task.archived}<span class="p-pill">Archived</span>{/if}
   </div>
 
-  <div class="ttl">
+  <div class="ttl" use:watchTitle>
     {#if canFinish}<button class="chk" class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}></button>{/if}
     <textarea rows="1" bind:value={title} use:autosize={title} aria-label="Title" placeholder="Task title"
       on:focus={() => titleFocused = true} on:blur={commitTitle} on:keydown={onTitleKey}></textarea>
   </div>
-  {#if titleHint}<p class="p-say hint">{titleHint}</p>{/if}
+  {#if titleHint}<p class="p-say hint" class:indent={canFinish}>{titleHint}</p>{/if}
+
+  <div class="note" class:indent={canFinish} on:focusin={() => noteFocused = true} on:focusout={() => { noteFocused = false; flushNote(); }} role="group" aria-label="Note">
+    <MarkdownEditor bind:value={body} placeholderText="Add a note" />
+  </div>
+  {#if body.length > 500}<p class="p-say count">{body.length} characters</p>{/if}
+  {#if noteHint}<p class="p-say hint" class:indent={canFinish}>{noteHint}</p>{/if}
 
   <div class="p-group">
     <button class="p-row" on:click={() => openSheet('status')}>
@@ -405,7 +424,7 @@
     </button>
     <button class="p-row" on:click={() => openSheet('due')}>
       <span class="p-ico">{@html I.today}</span><span class="p-k"><span>Due</span></span>
-      <span class="p-v" class:set={!!pill}>{#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{:else}None{/if}</span>
+      <span class="p-v" class:set={!!pill}>{#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{:else}—{/if}</span>
     </button>
     <button class="p-row" on:click={() => openSheet('prio')}>
       <span class="p-ico">{@html I.flag}</span><span class="p-k"><span>Priority</span></span>
@@ -414,52 +433,69 @@
     <button class="p-row" on:click={() => openSheet('tags')}>
       <span class="p-ico">{@html I.tag}</span><span class="p-k"><span>Tags</span></span>
       <span class="p-v tags" class:set={task.tags.length > 0}>
-        {#each task.tags.slice(0, 2) as t (t)}<span class="p-tag" style="--tag:{tagColor(t)}">#{t}</span>{:else}None{/each}
+        {#each task.tags.slice(0, 2) as t (t)}<span class="p-tag" style="--tag:{tagColor(t)}">#{t}</span>{:else}—{/each}
         {#if task.tags.length > 2}<span class="more-tags">+{task.tags.length - 2}</span>{/if}
       </span>
     </button>
   </div>
 
-  <div class="p-group">
-    <button class="p-row" on:click={() => openSheet('reminder')}>
-      <span class="p-ico">{@html I.bell}</span><span class="p-k"><span>Reminder</span></span>
-      <span class="p-v" class:set={!!reminderText}>{reminderText || 'None'}</span>
-    </button>
-    <button class="p-row" on:click={() => openSheet('repeat')}>
-      <span class="p-ico">{@html I.repeat}</span><span class="p-k"><span>Repeat</span></span>
-      <span class="p-v" class:set={!!repeatText}>{repeatText || 'Never'}</span>
-    </button>
-  </div>
+  <!-- The rest show as rows only once set; unset ones wait as + chips. -->
+  {#if reminderText || repeatText}
+    <div class="p-group">
+      {#if reminderText}
+        <button class="p-row" on:click={() => openSheet('reminder')}>
+          <span class="p-ico">{@html I.bell}</span><span class="p-k"><span>Reminder</span></span>
+          <span class="p-v set">{reminderText}</span>
+        </button>
+      {/if}
+      {#if repeatText}
+        <button class="p-row" on:click={() => openSheet('repeat')}>
+          <span class="p-ico">{@html I.repeat}</span><span class="p-k"><span>Repeat</span></span>
+          <span class="p-v set">{repeatText}</span>
+        </button>
+      {/if}
+    </div>
+  {/if}
 
-  <div class="p-group">
-    <button class="p-row" on:click={() => openSheet('blocked')}>
-      <span class="p-ico">{@html I.block}</span><span class="p-k"><span>Blocked by</span></span>
-      <span class="p-v" class:set={blocking.length > 0}>
-        {#if !blocking.length}Nothing{:else if openBlockers}<span class="blk">{openBlockers} open</span>{:else}{blocking.length} done{/if}
-      </span>
-    </button>
-    <button class="p-row" on:click={() => openSheet('related')}>
-      <span class="p-ico">{@html I.link}</span><span class="p-k"><span>Related</span></span>
-      <span class="p-v" class:set={related.length > 0}>{related.length || 'None'}</span>
-    </button>
-    <button class="p-row" on:click={() => openSheet('files')}>
-      <span class="p-ico">{@html I.clip}</span><span class="p-k"><span>Attachments</span></span>
-      <span class="p-v" class:set={!!task.attachments?.length}>{task.attachments?.length || 'None'}</span>
-    </button>
-    {#if fields.length}
-      <button class="p-row" on:click={() => openSheet('fields')}>
-        <span class="p-ico">{@html I.field}</span><span class="p-k"><span>Fields</span></span>
-        <span class="p-v" class:set={fieldsSet > 0}>{fieldsSet ? `${fieldsSet} set` : 'None'}</span>
-      </button>
-    {/if}
-  </div>
+  {#if blocking.length || related.length || files || fieldsSet}
+    <div class="p-group">
+      {#if blocking.length}
+        <button class="p-row" on:click={() => openSheet('blocked')}>
+          <span class="p-ico">{@html I.block}</span><span class="p-k"><span>Blocked by</span></span>
+          <span class="p-v set">{#if openBlockers}<span class="blk">{openBlockers} open</span>{:else}{blocking.length} done{/if}</span>
+        </button>
+      {/if}
+      {#if related.length}
+        <button class="p-row" on:click={() => openSheet('related')}>
+          <span class="p-ico">{@html I.link}</span><span class="p-k"><span>Related</span></span>
+          <span class="p-v set">{related.length}</span>
+        </button>
+      {/if}
+      {#if files}
+        <button class="p-row" on:click={() => openSheet('files')}>
+          <span class="p-ico">{@html I.clip}</span><span class="p-k"><span>Attachments</span></span>
+          <span class="p-v set">{files}</span>
+        </button>
+      {/if}
+      {#if fieldsSet}
+        <button class="p-row" on:click={() => openSheet('fields')}>
+          <span class="p-ico">{@html I.field}</span><span class="p-k"><span>Fields</span></span>
+          <span class="p-v set">{fieldsSet} set</span>
+        </button>
+      {/if}
+    </div>
+  {/if}
 
-  <div class="p-sec">Note</div>
-  <div class="note" on:focusin={() => noteFocused = true} on:focusout={() => { noteFocused = false; flushNote(); }} role="group" aria-label="Note">
-    <MarkdownEditor bind:value={body} placeholderText="Add a note" />
-  </div>
-  {#if body.length > 500}<p class="p-say count">{body.length} characters</p>{/if}
-  {#if noteHint}<p class="p-say hint">{noteHint}</p>{/if}
+  {#if !reminderText || !repeatText || !blocking.length || !related.length || !files || (fields.length && !fieldsSet)}
+    <div class="p-cpick adds">
+      {#if !reminderText}<button class="p-chip" aria-label="Add reminder" on:click={() => openSheet('reminder')}>{@html I.plus}<span>Reminder</span></button>{/if}
+      {#if !repeatText}<button class="p-chip" aria-label="Add repeat" on:click={() => openSheet('repeat')}>{@html I.plus}<span>Repeat</span></button>{/if}
+      {#if !blocking.length}<button class="p-chip" aria-label="Add blocked by" on:click={() => openSheet('blocked')}>{@html I.plus}<span>Blocked by</span></button>{/if}
+      {#if !related.length}<button class="p-chip" aria-label="Add related" on:click={() => openSheet('related')}>{@html I.plus}<span>Related</span></button>{/if}
+      {#if !files}<button class="p-chip" aria-label="Add attachment" on:click={() => openSheet('files')}>{@html I.plus}<span>Attachment</span></button>{/if}
+      {#if fields.length && !fieldsSet}<button class="p-chip" aria-label="Add field" on:click={() => openSheet('fields')}>{@html I.plus}<span>Field</span></button>{/if}
+    </div>
+  {/if}
 
   <Steps items={steps} on:change={e => setSteps(e.detail)} />
 {/if}
@@ -512,16 +548,17 @@
 <style>
   .crumb { display: flex; align-items: center; gap: 6px; font-size: var(--p-fs-s); color: var(--faint); margin: 0 2px 8px; flex-wrap: wrap; }
   .crumb .p-pill { margin-left: 4px; }
-  .ttl { display: flex; gap: 12px; align-items: flex-start; margin: 0 2px 16px; }
+  .ttl { display: flex; gap: 12px; align-items: flex-start; margin: 0 2px 6px; }
   .ttl textarea {
     flex: 1; min-width: 0; border: 0; background: none; color: var(--text); resize: none; overflow: hidden;
     font: inherit; font-size: var(--p-fs-t); font-weight: 700; letter-spacing: -.015em; line-height: 1.22; padding: 0;
   }
-  .ttl textarea:focus-visible { outline: none; box-shadow: 0 2px 0 var(--accent); }
+  .ttl textarea { transition: box-shadow var(--dur-hover) var(--ease-hover); }
+  .ttl textarea:focus { outline: none; box-shadow: 0 2px 0 var(--accent); }
   .ttl textarea::placeholder { color: var(--faint); }
   .chk {
     width: 26px; height: 26px; margin-top: 3px; border-radius: 50%; flex-shrink: 0; position: relative; padding: 0; cursor: pointer;
-    background: none; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent);
+    background: none; border: 2px solid var(--check-ring);
   }
   .chk::before { content: ''; position: absolute; inset: -10px; }
   .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -534,15 +571,23 @@
   }
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
-  .tbar { display: contents; }
-  .tbar :global(h1) { clip-path: inset(50%); }
-  .hint { color: var(--faint); margin-top: -10px; }
+  .tbar {
+    position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 0 16px; background: var(--bg); box-shadow: 0 1px 0 transparent;
+    transition: background var(--dur-small-out) var(--ease-standard), box-shadow var(--dur-small-out) var(--ease-standard);
+  }
+  .tbar.stuck { background: var(--surface); box-shadow: 0 1px 0 var(--border); transition-duration: var(--dur-small); }
+  .tbar :global(h1) { font-size: var(--p-fs-xl); opacity: 0; transition: opacity var(--dur-small-out) var(--ease-accelerate); }
+  .tbar.stuck :global(h1) { opacity: 1; transition: opacity var(--dur-small) var(--ease-decelerate); }
+  .hint { color: var(--faint); }
+  .indent { margin-left: 40px; }
   .p-v .p-pill { font-size: var(--p-fs-s); }
   .tags { min-width: 0; flex-shrink: 1; gap: 4px; }
   .more-tags { font-size: var(--p-fs-s); color: var(--muted); }
   .blk { color: var(--overdue-ink); font-weight: 600; }
-  .note { margin-bottom: 14px; }
-  .note :global(.md-editor) { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); min-height: 96px; }
-  .note :global(.cm-content) { font-size: var(--p-fs-m); padding: 12px 14px; }
+  /* A quiet line under the title that grows with its text; no box. */
+  .note { margin: 0 2px 16px; }
+  .note :global(.md-editor), div.note:focus-within :global(.md-editor) { border: 0; border-radius: 0; background: none; min-height: 0; }
+  .note :global(.cm-content) { font-size: var(--p-fs-m); padding: 4px 0; }
+  .adds { margin-bottom: 18px; }
   .count { text-align: right; font-size: var(--p-fs-xs); color: var(--faint); margin-top: -8px; }
 </style>

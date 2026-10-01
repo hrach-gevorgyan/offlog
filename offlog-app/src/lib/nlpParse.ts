@@ -8,15 +8,23 @@
 // silent guess is worse than no parse, since the due date is only useful if
 // it can be trusted.
 //
-// Two escape hatches exist for text that legitimately needs a sigil character
-// or a date-like word:
+// Escape hatches for text that legitimately needs a sigil character or a
+// date-like word:
 //   - `\#`, `\@`, `\!` keep that one character literal (e.g. "Reply to
 //     ticket \#42") while the rest of the title still gets parsed.
+//   - A backslash right before any other recognised token keeps that whole
+//     token as text: `\friday`, `\at 5pm`, `\aug 3`. The backslash itself
+//     leaves the title; a backslash before anything unrecognised stays.
 //   - Wrapping the WHOLE title in double quotes turns off parsing
 //     entirely, for a title that happens to contain a real date/time
 //     word ("Tomorrow Land festival budget") rather than just a sigil.
 
 import type { ProjectDoc } from './types';
+
+export type ParsedSpanKind = 'date' | 'time' | 'priority' | 'tag' | 'project';
+// Offsets into the input exactly as passed in (untrimmed), end exclusive.
+// Spans never overlap and come back sorted by start.
+export interface ParsedSpan { start: number; end: number; kind: ParsedSpanKind }
 
 export interface ParsedQuickAdd {
   title: string;
@@ -27,6 +35,7 @@ export interface ParsedQuickAdd {
   projectId: string | null;
   matchedProjectLabel: string | null; // for showing what matched, e.g. "Fitness Tracker"
   raw: boolean; // true when the whole-title quote escape was used -- caller can show "parsing off" instead of chips
+  spans: ParsedSpan[]; // what was recognised, for highlighting it in the input
 }
 
 const WEEKDAY_ALIASES: Record<string, number> = {
@@ -43,104 +52,129 @@ const MONTH_ALIASES: Record<string, number> = {
 function pad2(n: number): string { return String(n).padStart(2, '0'); }
 function isoDate(d: Date): string { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 
-function stripMatch(text: string, match: RegExpExecArray): string {
-  return (text.slice(0, match.index) + ' ' + text.slice(match.index + match[0].length)).replace(/\s+/g, ' ').trim();
-}
-
-// `\#`/`\@`/`\!` -> sentinel chars before extraction (so none of the
-// sigil regexes below can ever match an escaped one), then back to the
-// literal character afterwards. \uXXXX escapes (private-use-area code
-// points, never occur in ordinary typed text) keep this file itself
-// plain ASCII rather than relying on a pasted-in literal character
-// surviving every future edit/diff/encoding round-trip unchanged.
-const HASH_SENTINEL = '';
-const AT_SENTINEL = '';
-const BANG_SENTINEL = '';
+// Escaped sigils become `\` + a sentinel (same length, so offsets keep
+// matching the typed text) and no sigil regex can see them. Private-use
+// code points never occur in ordinary typed text.
+const HASH_SENTINEL = String.fromCharCode(0xE000);
+const AT_SENTINEL = String.fromCharCode(0xE001);
+const BANG_SENTINEL = String.fromCharCode(0xE002);
 const SIGIL_ESCAPE: Record<string, string> = { '#': HASH_SENTINEL, '@': AT_SENTINEL, '!': BANG_SENTINEL };
 const SIGIL_UNESCAPE: Record<string, string> = { [HASH_SENTINEL]: '#', [AT_SENTINEL]: '@', [BANG_SENTINEL]: '!' };
-const SENTINEL_RE = new RegExp(`[${HASH_SENTINEL}${AT_SENTINEL}${BANG_SENTINEL}]`, 'g');
+const ESCAPED_SIGIL_RE = new RegExp(`\\\\([${HASH_SENTINEL}${AT_SENTINEL}${BANG_SENTINEL}])`, 'g');
 
-// A separate sentinel for an @mention that didn't match any project.
-// extractProject deliberately leaves it in the title untouched (so a typo is
-// visible, not silently eaten), but the "@" is gone from around it by the
-// time extractDate/extractTime run, leaving a clean \b boundary that would
-// misread "@friday" or "@august 3" as a real date. Hiding the whole mention
-// behind one placeholder char until after date/time extraction, then swapping
-// the original text back in, keeps typos visible without exposing them to the
-// date/time regexes.
-const MENTION_SENTINEL = String.fromCharCode(0xE003);
+// Masks text that later patterns must not see but that stays in the title:
+// an unmatched @mention (a typo stays visible, yet "@friday" must not read as
+// a date once the "@" is out of the way) and a backslash-escaped token.
+// Non-word and non-space, so it gives no \b or \s boundary to match against.
+const HIDE = String.fromCharCode(0xE003);
 
-function protectEscapedSigils(text: string): string {
-  return text.replace(/\\([#@!])/g, (_, ch: string) => SIGIL_ESCAPE[ch]);
+// Every extractor matches against `text`, a same-length copy of the input:
+// a recognised token is blanked to spaces and a hidden one to HIDE, so match
+// offsets are always offsets into the typed text.
+interface Work { text: string; spans: ParsedSpan[]; dropBackslash: Set<number> }
+
+function blank(w: Work, start: number, end: number, ch: string) {
+  w.text = w.text.slice(0, start) + ch.repeat(end - start) + w.text.slice(end);
 }
-function restoreEscapedSigils(text: string): string {
-  return text.replace(SENTINEL_RE, (ch) => SIGIL_UNESCAPE[ch]);
+// `(?:^|\s)` and trailing `\s*` belong to the match, not to the token.
+function bounds(m: RegExpExecArray): [number, number] {
+  const lead = m[0].length - m[0].trimStart().length;
+  return [m.index + lead, m.index + m[0].trimEnd().length];
+}
+// First match not escaped by a backslash right before it. An escaped one is
+// hidden from every later pattern and its backslash marked for removal.
+function find(w: Work, re: RegExp): RegExpExecArray | null {
+  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+  let m: RegExpExecArray | null;
+  while ((m = g.exec(w.text))) {
+    const [s, e] = bounds(m);
+    if (w.text[s - 1] !== '\\') return m;
+    w.dropBackslash.add(s - 1);
+    blank(w, s, e, HIDE);
+  }
+  return null;
+}
+function take(w: Work, m: RegExpExecArray, kind: ParsedSpanKind) {
+  const [s, e] = bounds(m);
+  w.spans.push({ start: s, end: e, kind });
+  blank(w, s, e, ' ');
+}
+
+// A month/day typed without a year means its next occurrence, never a
+// date already behind today.
+function upcoming(year: number | null, month: number, day: number, today: Date): Date {
+  const d = new Date(year ?? today.getFullYear(), month, day);
+  if (year !== null) return d;
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return d < start ? new Date(today.getFullYear() + 1, month, day) : d;
 }
 
 // Tries each date pattern in order, first hit wins -- explicit dates before
 // relative ones so "next friday" doesn't get shadowed by a coincidental
 // weekday match inside a longer phrase.
-function extractDate(text: string, today: Date): { date: Date | null; rest: string } {
+function extractDate(w: Work, today: Date): Date | null {
   // ISO: 2026-07-25
-  let m = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(text);
+  let m = find(w, /\b(\d{4})-(\d{2})-(\d{2})\b/);
   if (m) {
     const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    if (!isNaN(d.getTime())) return { date: d, rest: stripMatch(text, m) };
+    if (!isNaN(d.getTime())) { take(w, m, 'date'); return d; }
   }
 
   // Slash: 7/25 or 7/25/2026. Known ambiguity, accepted deliberately
   // rather than guessed around: "went 8/10 today" (a fraction/ratio) also
   // matches this and gets misread as Aug 10 -- same tradeoff every
-  // Todoist-style quick-add parser makes for this syntax. The whole-title
-  // quote escape is the fix for a title that hits this.
-  m = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/.exec(text);
+  // Todoist-style quick-add parser makes for this syntax. A backslash before
+  // it, or the whole-title quote escape, is the fix for a title that hits this.
+  m = find(w, /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
   if (m) {
-    const year = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : today.getFullYear();
-    const d = new Date(year, Number(m[1]) - 1, Number(m[2]));
-    if (!isNaN(d.getTime())) return { date: d, rest: stripMatch(text, m) };
+    const year = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : null;
+    const d = upcoming(year, Number(m[1]) - 1, Number(m[2]), today);
+    if (!isNaN(d.getTime())) { take(w, m, 'date'); return d; }
   }
 
   // "Jul 25", "July 25th", "July 25, 2026"
   const monthNames = Object.keys(MONTH_ALIASES).sort((a, b) => b.length - a.length).join('|');
-  m = new RegExp(`\\b(${monthNames})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`, 'i').exec(text);
+  m = find(w, new RegExp(`\\b(${monthNames})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`, 'i'));
   if (m) {
-    const month = MONTH_ALIASES[m[1].toLowerCase()];
-    const year = m[3] ? Number(m[3]) : today.getFullYear();
-    const d = new Date(year, month, Number(m[2]));
-    if (!isNaN(d.getTime())) return { date: d, rest: stripMatch(text, m) };
+    const d = upcoming(m[3] ? Number(m[3]) : null, MONTH_ALIASES[m[1].toLowerCase()], Number(m[2]), today);
+    if (!isNaN(d.getTime())) { take(w, m, 'date'); return d; }
   }
 
   // today / tonight
-  m = /\b(today|tonight|tod)\b/i.exec(text);
-  if (m) return { date: new Date(today), rest: stripMatch(text, m) };
+  m = find(w, /\b(today|tonight|tod)\b/i);
+  if (m) { take(w, m, 'date'); return new Date(today); }
 
   // tomorrow
-  m = /\b(tomorrow|tmrw|tmr)\b/i.exec(text);
+  m = find(w, /\b(tomorrow|tmrw|tmr)\b/i);
   if (m) {
+    take(w, m, 'date');
     const d = new Date(today); d.setDate(d.getDate() + 1);
-    return { date: d, rest: stripMatch(text, m) };
+    return d;
   }
 
   // "in N day(s)" / "in N week(s)"
-  m = /\bin\s+(\d+)\s+(day|days|week|weeks)\b/i.exec(text);
+  m = find(w, /\bin\s+(\d+)\s+(day|days|week|weeks)\b/i);
   if (m) {
+    take(w, m, 'date');
     const n = Number(m[1]);
     const days = /week/i.test(m[2]) ? n * 7 : n;
     const d = new Date(today); d.setDate(d.getDate() + days);
-    return { date: d, rest: stripMatch(text, m) };
+    return d;
   }
 
   // "next week"
-  m = /\bnext\s+week\b/i.exec(text);
+  m = find(w, /\bnext\s+week\b/i);
   if (m) {
+    take(w, m, 'date');
     const d = new Date(today); d.setDate(d.getDate() + 7);
-    return { date: d, rest: stripMatch(text, m) };
+    return d;
   }
 
   // "next <weekday>" / bare "<weekday>"
   const weekdayNames = Object.keys(WEEKDAY_ALIASES).sort((a, b) => b.length - a.length).join('|');
-  m = new RegExp(`\\b(next\\s+)?(${weekdayNames})\\b`, 'i').exec(text);
+  m = find(w, new RegExp(`\\b(next\\s+)?(${weekdayNames})\\b`, 'i'));
   if (m) {
+    take(w, m, 'date');
     const target = WEEKDAY_ALIASES[m[2].toLowerCase()];
     const skipThisWeek = !!m[1];
     let delta = (target - today.getDay() + 7) % 7;
@@ -148,28 +182,29 @@ function extractDate(text: string, today: Date): { date: Date | null; rest: stri
     else if (delta === 0) delta = 0;
     else if (skipThisWeek) delta += 7;
     const d = new Date(today); d.setDate(d.getDate() + delta);
-    return { date: d, rest: stripMatch(text, m) };
+    return d;
   }
 
-  return { date: null, rest: text };
+  return null;
 }
 
 // Only parses a time when the text unambiguously signals one (an "at "
 // prefix, an am/pm suffix, or a colon) -- otherwise a plain number in the
 // title ("buy 5 apples") would get misread as a time.
-function extractTime(text: string): { hours: number | null; minutes: number; rest: string } {
-  let m = /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i.exec(text);
-  if (!m) m = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i.exec(text);
-  if (!m) m = /\b(\d{1,2}):(\d{2})\b/.exec(text);
-  if (!m) return { hours: null, minutes: 0, rest: text };
+function extractTime(w: Work): { hours: number; minutes: number } | null {
+  const m = find(w, /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i)
+    ?? find(w, /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i)
+    ?? find(w, /\b(\d{1,2}):(\d{2})\b/);
+  if (!m) return null;
 
   let hours = Number(m[1]);
   const minutes = m[2] ? Number(m[2]) : 0;
   const meridiem = m[3]?.toLowerCase();
   if (meridiem === 'pm' && hours < 12) hours += 12;
   if (meridiem === 'am' && hours === 12) hours = 0;
-  if (hours > 23 || minutes > 59) return { hours: null, minutes: 0, rest: text };
-  return { hours, minutes, rest: stripMatch(text, m) };
+  if (hours > 23 || minutes > 59) return null;
+  take(w, m, 'time');
+  return { hours, minutes };
 }
 
 const PRIORITY_WORDS: Record<string, 1 | 2 | 3> = {
@@ -178,91 +213,92 @@ const PRIORITY_WORDS: Record<string, 1 | 2 | 3> = {
   high: 3, h: 3, p1: 3, urgent: 3, important: 3, asap: 3,
 };
 
-function extractPriority(text: string): { priority: 1 | 2 | 3 | null; rest: string } {
+function extractPriority(w: Work): 1 | 2 | 3 | null {
   const words = Object.keys(PRIORITY_WORDS).sort((a, b) => b.length - a.length).join('|');
-  let m = new RegExp(`(?:^|\\s)!(${words})(?=\\s|$)`, 'i').exec(text);
-  if (m) return { priority: PRIORITY_WORDS[m[1].toLowerCase()], rest: stripMatch(text, m) };
+  let m = find(w, new RegExp(`(?:^|\\s)!(${words})(?=\\s|$)`, 'i'));
+  if (m) { take(w, m, 'priority'); return PRIORITY_WORDS[m[1].toLowerCase()]; }
   // Bare "!!"/"!!!" as an isolated token -- a single "!" is too common in
   // ordinary text ("done!") to treat as a priority marker.
-  m = /(?:^|\s)(!{2,3})(?=\s|$)/.exec(text);
-  if (m) return { priority: m[1].length === 3 ? 3 : 2, rest: stripMatch(text, m) };
-  return { priority: null, rest: text };
+  m = find(w, /(?:^|\s)(!{2,3})(?=\s|$)/);
+  if (m) { take(w, m, 'priority'); return m[1].length === 3 ? 3 : 2; }
+  return null;
 }
 
-function extractTags(text: string): { tags: string[]; rest: string } {
+function extractTags(w: Work): string[] {
   const tags: string[] = [];
-  let rest = text;
-  const re = /(?:^|\s)#([a-z0-9_-]+)/gi;
   let m: RegExpExecArray | null;
-  const spans: RegExpExecArray[] = [];
-  while ((m = re.exec(text))) spans.push(m);
-  for (const span of spans) tags.push(span[1]);
-  for (let i = spans.length - 1; i >= 0; i--) rest = stripMatch(rest, spans[i]);
-  return { tags, rest };
+  while ((m = find(w, /(?:^|\s)#([a-z0-9_-]+)/i))) { tags.push(m[1]); take(w, m, 'tag'); }
+  return tags;
 }
 
-function extractProject(text: string, projects: ProjectDoc[]): { projectId: string | null; label: string | null; rest: string; unmatchedMention: string | null } {
-  const m = /(?:^|\s)@([a-z0-9_-]+)/i.exec(text);
-  if (!m) return { projectId: null, label: null, rest: text, unmatchedMention: null };
+function extractProject(w: Work, projects: ProjectDoc[]): ProjectDoc | null {
+  const m = find(w, /(?:^|\s)@([a-z0-9_-]+)/i);
+  if (!m) return null;
   const needle = m[1].toLowerCase();
   // Whole-name match first, then "starts with a word in the name" -- lets
   // "@fitness" hit "Fitness Tracker" without requiring the full name.
   const hit = projects.find(p => p.name.toLowerCase().replace(/\s+/g, '') === needle)
-    ?? projects.find(p => p.name.toLowerCase().split(/\s+/).some(w => w.startsWith(needle)));
-  if (!hit) {
-    // Unmatched @word stays in the title (a typo should be visible, not
-    // silently eaten) but gets hidden behind a sentinel until after
-    // date/time extraction -- see MENTION_SENTINEL's comment above.
-    const raw = m[0].trim();
-    const placeholder = (text.slice(0, m.index) + ' ' + MENTION_SENTINEL + ' ' + text.slice(m.index + m[0].length))
-      .replace(/\s+/g, ' ').trim();
-    return { projectId: null, label: null, rest: placeholder, unmatchedMention: raw };
-  }
-  return { projectId: hit._id, label: hit.name, rest: stripMatch(text, m), unmatchedMention: null };
+    ?? projects.find(p => p.name.toLowerCase().split(/\s+/).some(x => x.startsWith(needle)));
+  if (hit) { take(w, m, 'project'); return hit; }
+  const [s, e] = bounds(m);
+  blank(w, s, e, HIDE);
+  return null;
 }
 
 export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date = new Date()): ParsedQuickAdd {
   const trimmed = input.trim();
 
   // Whole-title escape: wrap the entire text in double quotes to skip
-  // parsing completely (the individual \#/\@/\! escapes below can't help
-  // with a real date/time WORD like "tomorrow" appearing legitimately).
+  // parsing completely.
   const quoteMatch = /^"([\s\S]*)"$/.exec(trimmed);
   if (quoteMatch) {
     return {
       title: quoteMatch[1].trim(),
       due_date: null, reminder_at: null, priority: null, tags: [],
-      projectId: null, matchedProjectLabel: null, raw: true,
+      projectId: null, matchedProjectLabel: null, raw: true, spans: [],
     };
   }
 
-  let rest = protectEscapedSigils(input);
+  const escaped = input.replace(/\\([#@!])/g, (_, ch: string) => '\\' + SIGIL_ESCAPE[ch]);
+  const w: Work = { text: escaped, spans: [], dropBackslash: new Set() };
 
-  const tagResult = extractTags(rest); rest = tagResult.rest;
-  const prioResult = extractPriority(rest); rest = prioResult.rest;
-  const projResult = extractProject(rest, projects); rest = projResult.rest;
-  const timeResult = extractTime(rest); rest = timeResult.rest;
-  const dateResult = extractDate(rest, now); rest = dateResult.rest;
+  const tags = extractTags(w);
+  const priority = extractPriority(w);
+  const project = extractProject(w, projects);
+  const time = extractTime(w);
+  const date = extractDate(w, now);
 
-  let due_date: string | null = dateResult.date ? isoDate(dateResult.date) : null;
+  let due_date: string | null = date ? isoDate(date) : null;
   let reminder_at: string | null = null;
-  if (timeResult.hours !== null) {
-    const base = dateResult.date ?? now;
-    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), timeResult.hours, timeResult.minutes);
+  if (time) {
+    // A bare time already past today means tomorrow; a typed date is kept.
+    let base = date ?? now;
+    let d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), time.hours, time.minutes);
+    if (!date && d.getTime() <= now.getTime()) {
+      base = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), time.hours, time.minutes);
+    }
     reminder_at = d.toISOString();
     if (!due_date) due_date = isoDate(base);
   }
 
-  if (projResult.unmatchedMention) rest = rest.replace(MENTION_SENTINEL, projResult.unmatchedMention);
+  const spans = w.spans.sort((a, b) => a.start - b.start);
+  let title = '', i = 0;
+  const keep = (from: number, to: number) => {
+    for (let j = from; j < to; j++) if (!w.dropBackslash.has(j)) title += escaped[j];
+  };
+  for (const s of spans) { keep(i, s.start); title += ' '; i = s.end; }
+  keep(i, escaped.length);
 
   return {
-    title: restoreEscapedSigils(rest.trim()),
+    title: title.replace(ESCAPED_SIGIL_RE, (_, s: string) => SIGIL_UNESCAPE[s]).replace(/\s+/g, ' ').trim(),
     due_date,
     reminder_at,
-    priority: prioResult.priority,
-    tags: tagResult.tags,
-    projectId: projResult.projectId,
-    matchedProjectLabel: projResult.label,
+    priority,
+    tags,
+    projectId: project?._id ?? null,
+    matchedProjectLabel: project?.name ?? null,
     raw: false,
+    spans,
   };
 }

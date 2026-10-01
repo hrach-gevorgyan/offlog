@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd } from './nav';
+  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd, reselect, showToast } from './nav';
+  import { fabScrollTracker } from './fabScroll';
+  import { prefersReducedMotion } from '../theme';
+  import { exactAlarmNudge, requestExactAlarmPermission } from '../notifications';
   import type { Tab } from './nav';
   import { keyboardBarIn, keyboardFabIn, screenIn, screenOut, pillIn, snackIn, snackOut, snackSwapIn, snackSwapOut } from '../motion';
   import { fly, scale } from 'svelte/transition';
@@ -80,10 +83,42 @@
   $: { const id = $toast?.id ?? null; swap = lastToast !== null && id !== null; lastToast = id; }
 
   const LABEL: Record<Tab, string> = { home: 'Home', today: 'Today', agenda: 'Agenda', search: 'Search' };
+
+  // Scroll events do not bubble, so one capturing listener on the screens
+  // sees every scroller inside them (Home's own list included).
+  let screensEl: HTMLElement;
+  let fabAway = false;
+  const fabScroll = fabScrollTracker(v => (fabAway = v));
+  $: if (key) fabScroll.reset(); // a new screen starts with the + shown
+  onMount(() => {
+    const on = (e: Event) => { if (e.target instanceof Element) fabScroll.onScroll(e.target); };
+    screensEl.addEventListener('scroll', on, true);
+    return () => screensEl.removeEventListener('scroll', on, true);
+  });
+
+  // Re-tapping the current tab at its root: back to the top of that screen.
+  function scrollToTop() {
+    const root = screensEl?.querySelector('.screen');
+    if (!root) return;
+    const behavior: ScrollBehavior = prefersReducedMotion() ? 'auto' : 'smooth';
+    for (const el of [root, ...root.querySelectorAll('*')]) {
+      if (el.scrollTop > 0) { if (el.scrollTo) el.scrollTo({ top: 0, behavior }); else el.scrollTop = 0; }
+    }
+  }
+  // Both counters only react to bumps after mount, not to their current value.
+  onMount(() => { const seen = get(reselect); return reselect.subscribe(n => { if (n > seen) scrollToTop(); }); });
+
+  // A reminder just set while exact alarms are off: say so once, with the fix.
+  onMount(() => {
+    const seen = get(exactAlarmNudge);
+    return exactAlarmNudge.subscribe(n => {
+      if (n > seen) showToast('Reminders may be a few minutes late', undefined, { label: 'Make exact', run: () => { requestExactAlarmPermission(); } });
+    });
+  });
 </script>
 
 <div class="phone-shell" class:kb>
-  <div class="screens">
+  <div class="screens" bind:this={screensEl}>
     {#key key}
       <div class="screen" class:flush={top.k === 'home'} class:board={top.k === 'project'} in:screenIn={{ kind: $arrival }} out:screenOut={{ kind: $arrival }}>
         {#if top.k === 'home'}
@@ -111,7 +146,7 @@
     {/key}
   </div>
 
-  {#if !kb && !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" in:scale={keyboardFabIn} class:lift={!!$toast} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !kb && !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" in:scale={keyboardFabIn} class:lift={!!$toast} class:away={fabAway} aria-hidden={fabAway || undefined} tabindex={fabAway ? -1 : undefined} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}
@@ -124,7 +159,8 @@
   {#each $toast ? [$toast] : [] as t (t.id)}
     <div class="snack" in:fly={swap ? snackSwapIn : snackIn} out:fly={swap ? snackSwapOut : snackOut}>
       <span class="msg">{t.text}</span>
-      {#if t.undo}<button on:click={() => { const u = t.undo; toast.set(null); u?.(); }}>Undo</button>{/if}
+      {#if t.undo}<button on:click={() => { const u = t.undo; toast.set(null); u?.(); }}>Undo</button>
+      {:else if t.action}<button on:click={() => { const a = t.action; toast.set(null); a?.run(); }}>{t.action.label}</button>{/if}
     </div>
   {/each}
 
@@ -162,22 +198,26 @@
   .screen.board { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
   .fab {
-    position: absolute; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 10;
+    position: absolute; right: 16px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 10;
     width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
     background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 12px rgba(0,0,0,.18);
     /* translate rides with the snackbar (its timings: rises decelerating,
        drops accelerating); scale is the press. Separate properties, so a
        press is never slowed to the lift's pace. */
-    transition: translate var(--dur-medium-out) var(--ease-accelerate), scale var(--dur-hover) var(--ease-hover);
+    transition: translate var(--dur-medium-out) var(--ease-accelerate), scale var(--dur-hover) var(--ease-hover), transform var(--dur-medium) var(--ease-decelerate), opacity var(--dur-medium) var(--ease-decelerate);
   }
   .fab :global(svg.i) { width: 24px; height: 24px; stroke-width: 2.2; }
   .fab:active { scale: .95; }
   /* Rises above the snackbar instead of hiding under it. */
-  .fab.lift { translate: 0 -64px; transition: translate var(--dur-medium) var(--ease-decelerate), scale var(--dur-hover) var(--ease-hover); }
+  .fab.lift { translate: 0 -64px; transition: translate var(--dur-medium) var(--ease-decelerate), scale var(--dur-hover) var(--ease-hover), transform var(--dur-medium) var(--ease-decelerate), opacity var(--dur-medium) var(--ease-decelerate); }
+  /* Scrolled away: drops below the bar's edge, leaving accelerating and
+     returning decelerating. */
+  .fab.away { transform: translateY(96px) scale(.6); opacity: 0; pointer-events: none;
+    transition: translate var(--dur-medium-out) var(--ease-accelerate), scale var(--dur-hover) var(--ease-hover), transform var(--dur-medium-out) var(--ease-accelerate), opacity var(--dur-medium-out) var(--ease-accelerate); }
 
   .snack {
-    position: absolute; left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+    position: absolute; left: 12px; right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); z-index: 20;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     background: var(--inverse-surface); color: var(--on-inverse); border-radius: 12px; padding: 4px 4px 4px 16px; min-height: 52px;
     font-size: var(--p-fs-m); line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,.25);
@@ -190,7 +230,7 @@
 
   .tabbar {
     flex-shrink: 0; display: flex; justify-content: space-around; align-items: flex-start;
-    padding: 10px 8px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
     background: var(--surface); border-top: 1px solid var(--border);
   }
   .tb { transition: color var(--dur-medium) var(--ease-standard); display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; font: inherit; font-size: var(--p-fs-xs); font-weight: 600; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }

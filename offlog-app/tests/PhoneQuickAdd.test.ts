@@ -63,6 +63,7 @@ describe('phone Quick add', () => {
     getAllTags.mockReset().mockResolvedValue(['errand', 'gym']);
     getTagColorOverrides.mockReset().mockResolvedValue({});
     toast.set(null);
+    localStorage.removeItem('offlog_quickadd_last_project');
     vi.mocked(showError).mockClear();
     vi.mocked(reloadTasks).mockReset().mockResolvedValue(undefined);
   });
@@ -325,9 +326,9 @@ describe('phone Quick add', () => {
     it('title and Add share one row; the chips, with ?, sit right under it', async () => {
       const { getByLabelText } = render(QuickAddSheet);
       const input = getByLabelText('Task title');
-      const compose = input.parentElement!;
-      expect(compose.classList.contains('compose')).toBe(true);
-      expect([...compose.children]).toEqual([input, getByLabelText('Add')]);
+      const compose = input.closest('.compose')!;
+      expect([...compose.children]).toEqual([input.parentElement, getByLabelText('Add')]);
+      expect(input.parentElement!.classList.contains('field')).toBe(true);
       const chips = compose.nextElementSibling!;
       expect(chips.classList.contains('p-chips')).toBe(true);
       expect(chips.contains(getByLabelText('Quick add syntax help'))).toBe(true);
@@ -402,6 +403,98 @@ describe('phone Quick add', () => {
     });
   });
 
+  describe('defaults to the last project added to', () => {
+    it('remembers the project of a successful add', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      await type(getByLabelText, 'Squats @fitness');
+      await fireEvent.click(getByLabelText('Add'));
+      await waitFor(() => expect(createTask).toHaveBeenCalled());
+      await waitFor(() => expect(localStorage.getItem('offlog_quickadd_last_project')).toBe('project:f'));
+    });
+
+    it('uses it when nothing else names a project, unhighlighted', async () => {
+      localStorage.setItem('offlog_quickadd_last_project', 'project:f');
+      const { getByLabelText } = render(QuickAddSheet);
+      expect(getByLabelText('Project: Fitness Tracker').classList.contains('on')).toBe(false);
+      await type(getByLabelText, 'Stretch');
+      await fireEvent.click(getByLabelText('Add'));
+      await waitFor(() => expect(createTask).toHaveBeenCalledWith('project:f', 'space:h', 'col:f1', 'Stretch', expect.anything()));
+    });
+
+    it('an opening project context still wins; a deleted one falls back to the first', async () => {
+      localStorage.setItem('offlog_quickadd_last_project', 'project:f');
+      const a = render(QuickAddSheet, { props: { projectId: 'project:q' } });
+      expect(a.getByLabelText('Project: Q4 Sprint')).toBeTruthy();
+      a.unmount();
+      localStorage.setItem('offlog_quickadd_last_project', 'project:gone');
+      const b = render(QuickAddSheet);
+      expect(b.getByLabelText('Project: Q4 Sprint')).toBeTruthy();
+    });
+
+    it('a failed add does not change it', async () => {
+      createTask.mockRejectedValue(new Error('boom'));
+      const { getByLabelText } = render(QuickAddSheet);
+      await type(getByLabelText, 'Squats @fitness');
+      await fireEvent.click(getByLabelText('Add'));
+      await waitFor(() => expect(showError).toHaveBeenCalled());
+      expect(localStorage.getItem('offlog_quickadd_last_project')).toBeNull();
+    });
+  });
+
+  describe('parse feedback', () => {
+    const chipLabels = () => [...document.querySelectorAll('.p-chips .p-chip')].map(c => c.getAttribute('aria-label')!.split(':')[0]);
+    const marks = () => [...document.querySelectorAll('.mirror mark')].map(m => m.textContent);
+
+    it('the mirror draws the typed text with recognised tokens marked', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      await type(getByLabelText, 'Call dentist tomorrow 11:59pm #health');
+      expect(marks()).toEqual(['tomorrow', '11:59pm', '#health']);
+      expect(document.querySelector('.mirror')!.textContent).toBe('Call dentist tomorrow 11:59pm #health ');
+      await type(getByLabelText, '"Call dentist tomorrow"');
+      expect(marks()).toEqual([]);
+    });
+
+    it('set chips come first, Reminder right after Date, ? last', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      expect(chipLabels()).toEqual(['Due', 'Reminder', 'Project', 'Priority', 'Tags', 'Quick add syntax help']);
+      await type(getByLabelText, 'Stretch #gym !low');
+      expect(chipLabels()).toEqual(['Priority', 'Tags', 'Due', 'Reminder', 'Project', 'Quick add syntax help']);
+      await type(getByLabelText, 'Stretch #gym tomorrow 11:59pm');
+      expect(chipLabels()).toEqual(['Due', 'Reminder', 'Tags', 'Project', 'Priority', 'Quick add syntax help']);
+    });
+
+    it('tapping a recognised word offers to keep it as text, which escapes it in place', async () => {
+      const { getByLabelText, queryByLabelText, getByRole } = render(QuickAddSheet);
+      const input = await type(getByLabelText, 'Friday team lunch #food');
+      expect(getByLabelText(/^Due: (?!No date)/)).toBeTruthy();
+      input.setSelectionRange(3, 3);
+      await fireEvent.click(input);
+      const keep = getByRole('button', { name: 'Keep “Friday” as text' });
+      // Typing elsewhere withdraws the offer.
+      await fireEvent.input(input, { target: { value: 'Friday team lunch #food ' } });
+      expect(queryByLabelText('Keep “Friday” as text')).toBeNull();
+      input.setSelectionRange(6, 6);
+      await fireEvent.click(input);
+      await fireEvent.click(getByRole('button', { name: 'Keep “Friday” as text' }));
+      expect(keep.isConnected).toBe(false);
+      expect(input.value).toBe('\\Friday team lunch #food ');
+      expect(getByLabelText('Due: No date')).toBeTruthy();
+      expect(marks()).toEqual(['#food']);
+      await fireEvent.click(getByLabelText('Add'));
+      await waitFor(() => expect(createTask).toHaveBeenCalledWith('project:q', 'space:w', 'col:q1', 'Friday team lunch', {
+        priority: undefined, due_date: null, reminder_at: null, tags: ['food'],
+      }));
+    });
+
+    it('a tap on plain text offers nothing', async () => {
+      const { getByLabelText, queryByRole } = render(QuickAddSheet);
+      const input = await type(getByLabelText, 'Lunch friday');
+      input.setSelectionRange(2, 2);
+      await fireEvent.click(input);
+      expect(queryByRole('button', { name: /^Keep/ })).toBeNull();
+    });
+  });
+
   it('a failed create surfaces an error and keeps the text', async () => {
     createTask.mockRejectedValue(new Error('boom'));
     const created = vi.fn();
@@ -411,5 +504,24 @@ describe('phone Quick add', () => {
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to create task. Please try again.'));
     expect(created).not.toHaveBeenCalled();
     expect(input.value).toBe('Will fail');
+  });
+
+  // Last: the measured keyboard height is module state that outlives a sheet.
+  it('a panel takes the last keyboard height, so the title row does not move', async () => {
+    const tall = window.innerHeight;
+    const setHeight = (h: number) => { Object.defineProperty(window, 'innerHeight', { value: h, configurable: true }); window.dispatchEvent(new Event('resize')); };
+    try {
+      const { getByLabelText } = render(QuickAddSheet);
+      await fireEvent.click(getByLabelText('Priority: not set'));
+      expect((document.querySelector('.pick') as HTMLElement).style.height).toBe('270px');
+      await fireEvent.click(getByLabelText('Priority: not set'));
+      setHeight(tall - 60);
+      setHeight(tall - 340);
+      setHeight(tall);
+      await fireEvent.click(getByLabelText('Due: No date'));
+      expect((document.querySelector('.pick') as HTMLElement).style.height).toBe('330px');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
+    }
   });
 });

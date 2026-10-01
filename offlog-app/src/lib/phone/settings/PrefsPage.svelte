@@ -279,6 +279,7 @@
     }
   }
   let storageInfo = '';
+  let storageUsed = '';
   let storagePercent = 0;
   let storageAvailable = true;
   async function loadStorage() {
@@ -286,6 +287,7 @@
       if (navigator.storage?.estimate) {
         const { usage = 0, quota = 0 } = await navigator.storage.estimate();
         ({ info: storageInfo, percent: storagePercent } = formatStorageEstimate(usage, quota));
+        storageUsed = `${(usage / 1048576).toFixed(1)} MB`;
         storageAvailable = true;
       } else { storageInfo = 'Not available'; storageAvailable = false; }
     } catch {
@@ -487,25 +489,25 @@
 
 <div class="pset" use:rowTaps>
   {#if page === 'appearance'}
-    <AppearanceSettings
+    <AppearanceSettings phone
       {themeMode} {selectThemeMode} {weekStartsMonday} {setWeekStart}
       {timeFormat24h} {setTimeFormat} {highContrast} {toggleHighContrast}
       {reduceMotion} {toggleReduceMotion} {hapticsEnabled} {toggleHaptics}
     />
   {:else if page === 'notifications'}
-    <NotificationSettings
+    <NotificationSettings phone
       {isAndroid} {isTauri} {notificationsEnabled} {toggleNotificationsEnabled}
       {defaultReminderTime} {saveDefaultReminderTime} {quietHours} {saveQuietHours}
     />
   {:else if page === 'data'}
-    <DataSettings {backupUsage}
+    <DataSettings phone {storageUsed} {backupUsage}
       {storageAvailable} {storagePercent} {storageInfo} {breakdown}
       {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
       bind:backupScope {backupScopeOptions} {doBackup} {doExportCSV}
       {importStatus} {handleImport} {importBusy}
     />
   {:else if page === 'security'}
-    <SecuritySettings
+    <SecuritySettings phone
       {appLockEnabled} bind:showPinForm {openPinForm}
       bind:newPin bind:confirmPin bind:pinHint {pinError} {pinSaving} {savePin}
       bind:pinGateMode {onPinGateVerified}

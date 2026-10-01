@@ -262,7 +262,7 @@ export function sheetOut(node: Element, { from = 0 }: { from?: number } = {}) {
   return { duration: d(OUT(sheetDur(span))), easing: easeAccelerate, css: (t: number) => `transform: translateY(${from + (1 - t) * span}px)` };
 }
 
-// ── Phone in-screen axis (board status, agenda month) ───────────────────────
+// ── Phone in-screen axis (agenda month) ─────────────────────────────────────
 // The new content slides in from the side it came from (dir 1 = forward, in
 // from the right) while the old one is replaced at once. Movement within the
 // screen, so the standard curve. The fade finishes in the first third:
@@ -270,6 +270,29 @@ export function sheetOut(node: Element, { from = 0 }: { from?: number } = {}) {
 // flash.
 export function axisIn(_node: Element, { dir }: { dir: number }) {
   return { duration: d(DUR.medium), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * dir * 40}px); opacity: ${Math.min(1, t * 3)}` };
+}
+
+// ── Phone board status pager ─────────────────────────────────────────────────
+// The leaving and arriving panes move as one pair, side by side, so no frame
+// is empty: the old one goes out toward the side of travel (dir 1 = forward,
+// out to the left) while the new one follows it in. `from` is where a drag
+// left them (px); `gap` is the space between the pane and the screen edge,
+// so the old pane fully clears the screen. Both share one duration and
+// curve (like a screen push), scaled to the travel still to go.
+type Pane = { dir: number; from?: number; gap?: number };
+function paneMotion(node: Element, from: number, gap: number) {
+  const span = (node as HTMLElement).offsetWidth + gap;
+  const rest = span > 0 ? Math.max(0, span - Math.abs(from)) / span : 1;
+  return { span, duration: d(Math.max(DUR.small, Math.round(DUR.large * rest))) };
+}
+export function paneIn(node: Element, { dir, from = 0, gap = 0 }: Pane) {
+  const { span, duration } = paneMotion(node, from, gap);
+  const start = dir * span + from;
+  return { duration, easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * start}px)` };
+}
+export function paneOut(node: Element, { dir, from = 0, gap = 0 }: Pane) {
+  const { span, duration } = paneMotion(node, from, gap);
+  return { duration, easing: easeStandard, css: (t: number, u: number) => `transform: translateX(${t * from - u * dir * span}px)` };
 }
 
 // ── Phone list rows leaving and coming back ──────────────────────────────────

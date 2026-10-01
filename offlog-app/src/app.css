@@ -56,6 +56,9 @@
 
   /* meaning */
   --accent: #575fca;
+  /* Accent TEXT on an accent tint (selected pills, "Today"): the plain accent
+     misses 4.5:1 on its own 14% tint. */
+  --accent-ink: #4c54bd;
   /* The phone Home's hero band and what sits on it. Dark mode deepens it
      rather than using the lighter dark --accent, which glares as a fill. */
   --hero: #575fca;
@@ -177,6 +180,7 @@ body.dark {
   --muted: #a3a9b7;
   --faint: #8b93a5;
   --accent: #8590e5;
+  --accent-ink: #9aa3ee;
   --hero: #373d81;
   --on-hero: #eff0fc;
   --inverse-surface: #353b49;
@@ -249,6 +253,10 @@ body {
      is a single layer, so those cannot take a translucent tint on top. */
   --hover-on-surface: color-mix(in srgb, var(--text) var(--state-hover), var(--surface));
   --hover-on-col:     color-mix(in srgb, var(--text) var(--state-hover), var(--col-bg));
+
+  /* An unticked check circle/box: 3:1 against the card is the floor for a
+     control boundary (WCAG 1.4.11); --faint at 60% fell short in both themes. */
+  --check-ring: color-mix(in srgb, var(--faint) 75%, transparent);
 }
 
 html, body { margin: 0; padding: 0; height: 100%; color: var(--text); background: var(--bg); }

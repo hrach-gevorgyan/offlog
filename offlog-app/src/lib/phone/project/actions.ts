@@ -35,9 +35,8 @@ export function isList(p: ProjectDoc): boolean {
   return p.default_view === 'list' || p.default_view === 'table';
 }
 
-// Returns the new value; not kept when storage is unavailable.
-export function toggleView(p: ProjectDoc): boolean {
-  const list = !isList(p);
+// Returns the value set; not kept when storage is unavailable.
+export function setView(p: ProjectDoc, list: boolean): boolean {
   try { localStorage.setItem(viewKey(p._id), list ? 'list' : 'board'); } catch { /* not kept */ }
   return list;
 }

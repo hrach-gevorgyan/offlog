@@ -29,7 +29,7 @@
   }
 </script>
 
-<div class="p-sec">Steps{#if items.length}<span class="p-n">{doneCount} of {items.length}</span>{/if}</div>
+<div class="p-sec" role="heading" aria-level="2">Steps{#if items.length}<span class="p-n">{doneCount} of {items.length}</span>{/if}</div>
 <div class="p-group">
   {#each items as s, i}
     <div class="step" class:done={s.done}>
@@ -53,7 +53,7 @@
   .tog:active { background: var(--col-bg); }
   .lbl { min-width: 0; overflow-wrap: anywhere; }
   .done .lbl { color: var(--faint); text-decoration: line-through; }
-  .chk { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; position: relative; box-sizing: border-box; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); }
+  .chk { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; position: relative; box-sizing: border-box; border: 2px solid var(--check-ring); }
   /* The fill and tick pop in (decelerate) and leave faster (accelerate). */
   .chk { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
   .chk::after { content: ''; position: absolute; left: 5px; top: 1.5px; width: 4.5px; height: 9px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0; transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate); }

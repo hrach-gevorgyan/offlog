@@ -1,25 +1,34 @@
 <script lang="ts">
+  // A task row in a cross-project list. Tap opens the task; hold (or
+  // right-click) asks the parent for the card menu when `menu` is set.
   import { soften } from '../tagColors';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import type { TaskDoc } from '../types';
-  import { projects, spaces, showError } from '../store';
-  import { updateTask } from '../db';
+  import { projects, spaces } from '../store';
+  import { hapticDragStart } from '../haptics';
   import { duePill } from './format';
   import { I } from './icons';
-  import { showToast } from './nav';
-  import { snapshot, restore } from './project/actions';
-  import { markLeaving, markReturning } from './rowMotion';
+  import { toggleDone, canFinish } from './project/actions';
 
   export let task: TaskDoc & { project_name?: string };
+  // The date the surrounding section stands for; a pill repeating it is hidden.
+  export let sectionDate: string | null = null;
+  export let menu = false;
+  // Search text to mark in the title.
+  export let highlight = '';
 
-  const dispatch = createEventDispatcher<{ open: TaskDoc; changed: void }>();
+  const dispatch = createEventDispatcher<{ open: TaskDoc; changed: void; menu: TaskDoc }>();
 
   $: project = $projects.find(p => p._id === task.project_id);
   $: space = $spaces.find(s => s._id === task.space_id);
-  $: lastCol = project?.columns.at(-1)?.id;
-  $: done = !!lastCol && task.column_id === lastCol;
-  $: pill = duePill(task.due_date, done);
+  $: done = !!project && task.column_id === project.columns.at(-1)?.id;
+  $: pill = task.due_date === sectionDate ? null : duePill(task.due_date, done);
   $: steps = task.checklist ?? [];
+  $: hit = split(task.title, highlight.trim());
+  function split(t: string, q: string): [string, string, string] | null {
+    const i = q ? t.toLowerCase().indexOf(q.toLowerCase()) : -1;
+    return i < 0 ? null : [t.slice(0, i), t.slice(i, i + q.length), t.slice(i + q.length)];
+  }
   let busy = false;
   // The check fills on the tap, before the write lands; a fresh task from
   // the list (or a failed write) puts it back to the real state.
@@ -28,35 +37,47 @@
   $: settle(task);
   function settle(_t: TaskDoc) { pending = null; }
 
-  // Finishing moves the task to its project's last status; un-finishing
-  // sends it back to the first. There is no done flag.
-  async function toggleDone() {
+  // The project list's path, so haptic, toast, Undo and errors match it.
+  async function finish() {
     if (!project || busy) return;
-    const target = done ? project.columns[0]?.id : lastCol;
-    if (!target) return;
     busy = true;
+    pending = !done;
     try {
-      // Finishing a repeating task also moves its date, reminder and steps,
-      // so Undo puts all of them back, not just the status.
-      const before = snapshot(task), id = task._id, title = task.title;
-      pending = !done;
-      markLeaving(id);
-      await updateTask(id, { column_id: target });
-      dispatch('changed');
-      if (!done) showToast(`Done: ${title}`, async () => { markReturning(id); await restore([[id, before]]); dispatch('changed'); });
-    } catch {
-      pending = null;
-      showError('Could not update this task. Please try again.');
+      if (await toggleDone(task, project)) dispatch('changed');
+      else pending = null;
     } finally {
       busy = false;
     }
   }
+
+  // Long press: a held pointer that hasn't moved opens the menu, and the
+  // click that follows the release is swallowed so it doesn't also open the task.
+  const HOLD_MS = 480;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let held = false, sx = 0, sy = 0;
+  function down(e: PointerEvent) {
+    if (!menu) return;
+    held = false; sx = e.clientX; sy = e.clientY;
+    clearTimeout(timer);
+    timer = setTimeout(() => { held = true; hapticDragStart(); dispatch('menu', task); }, HOLD_MS);
+  }
+  function move(e: PointerEvent) { if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 8) clearTimeout(timer); }
+  function cancel() { clearTimeout(timer); }
+  function click() { if (held) { held = false; return; } dispatch('open', task); }
+  function context(e: MouseEvent) {
+    if (!menu) return;
+    e.preventDefault();
+    if (held) return; // the hold already opened it
+    clearTimeout(timer);
+    dispatch('menu', task);
+  }
+  onDestroy(() => clearTimeout(timer));
 </script>
 
 <div class="card" class:done class:hi={task.priority === 3}>
-  <button class="chk" class:on={shown} on:click={toggleDone} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>
-  <button class="g" on:click={() => dispatch('open', task)}>
-    <span class="t">{task.title}{#if task.priority === 3}<span class="p-sr">, high priority</span>{/if}</span>
+  {#if project && canFinish(project)}<button class="chk" class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>{/if}
+  <button class="g" on:click={click} on:pointerdown={down} on:pointermove={move} on:pointerup={cancel} on:pointercancel={cancel} on:pointerleave={cancel} on:contextmenu={context}>
+    <span class="t">{#if hit}{hit[0]}<mark>{hit[1]}</mark>{hit[2]}{:else}{task.title}{/if}{#if task.priority === 3}<span class="p-sr">, high priority</span>{/if}</span>
     <span class="s">
       {#if space}<span class="dot" style="background:{soften(space.color)}"></span>{/if}
       {task.project_name ?? project?.name ?? ''}
@@ -73,6 +94,7 @@
     background: var(--surface); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 8px;
     box-shadow: var(--p-shadow);
     transition: transform var(--dur-hover) var(--ease-hover);
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
   }
   .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .card:active { transform: scale(.98); }
@@ -82,11 +104,12 @@
   .s { font-size: var(--p-fs-s); color: var(--faint); margin-top: 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .ic :global(svg) { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; vertical-align: -2px; }
+  mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: inherit; border-radius: 3px; }
   .done .t { color: var(--faint); text-decoration: line-through; }
   .done { opacity: .75; }
   .chk {
     width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; position: relative;
-    border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent);
+    border: 2px solid var(--check-ring);
   }
   .chk::before { content: ''; position: absolute; inset: -11px; }
   .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -101,6 +124,6 @@
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .pill { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
-  .pill.today { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .pill.today { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
   .pill.late { background: var(--overdue-bg); color: var(--overdue-ink); }
 </style>

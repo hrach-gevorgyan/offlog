@@ -9,7 +9,7 @@
   } from '../../db';
   import { showError } from '../../store';
   import { confirmAction } from '../../confirm';
-  import { getSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, isTauri as isTauriCheck, invokeTauri, otherHostsDetected } from '../../../config';
+  import { getSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, shouldAskDeviceNameForSync, markDeviceNameAskedForSync, isTauri as isTauriCheck, invokeTauri, otherHostsDetected } from '../../../config';
   import { fmtLastSynced, timeAgo } from '../../utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, staleHostAlert, type DiscoveredHost } from '../../discovery';
   import TopBar from '../TopBar.svelte';
@@ -40,7 +40,7 @@
   onDestroy(() => stopScan());
 
   $: status =
-    !syncEnabled ? { text: 'Sync is off', tone: 'off' } :
+    !syncEnabled ? { text: 'Off · everything stays on this device', tone: 'off' } :
     !syncUrl ? { text: 'Not connected yet', tone: 'off' } :
     syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'ok' } :
     syncStatus === 'offline' ? { text: 'Offline — resumes on your network', tone: 'off' } :
@@ -49,10 +49,13 @@
     { text: 'Waiting for the first sync', tone: 'ok' };
   $: canSync = syncEnabled && !!syncUrl;
 
+  // The first time Sync goes on, the device name is asked for: it labels
+  // this device's edits on the others.
   function toggleSyncEnabled() {
     syncEnabled = !syncEnabled;
     setSyncEnabled(syncEnabled);
     if (syncEnabled) startSync().catch(() => {}); else cancelSync();
+    if (syncEnabled && shouldAskDeviceNameForSync()) { markDeviceNameAskedForSync(); openRename(); }
   }
 
   // ── Devices ──
@@ -253,13 +256,6 @@
 
 <TopBar title="Sync" />
 
-<div class="p-group card">
-  <span class="p-dot {$staleHostAlert ? 'error' : status.tone}"></span>
-  <span class="line" role="status">{status.text}</span>
-  {#if canSync}
-    <button class="p-tbtn" on:click={runSyncNow} disabled={$syncing || syncStatus === 'syncing'}>Sync now</button>
-  {/if}
-</div>
 
 {#if $staleHostAlert}
   <p class="warn" role="status">Paired computer not found. “{$staleHostAlert.name}” is on this network — connect again.</p>
@@ -278,11 +274,17 @@
   </div>
 {/if}
 
+<!-- One row carries both the switch and the state: the state is its subtitle. -->
 <div class="p-group">
   <button class="p-row" role="switch" aria-checked={syncEnabled} on:click={toggleSyncEnabled}>
-    <span class="p-k"><span>Sync</span></span>
+    <span class="p-k"><span>Sync</span><span class="p-sub state" role="status"><span class="p-dot {$staleHostAlert ? 'error' : status.tone}"></span>{status.text}</span></span>
     <span class="p-sw" class:on={syncEnabled}></span>
   </button>
+  {#if canSync}
+    <button class="p-row" on:click={runSyncNow} disabled={$syncing || syncStatus === 'syncing'}>
+      <span class="p-k"><span>Sync now</span></span>
+    </button>
+  {/if}
   {#if syncEnabled}
     {#if isAndroid || isTauri}
       <button class="p-row" on:click={openConnect}>
@@ -307,7 +309,7 @@
 {/if}
 
 {#if syncEnabled && deviceLastSeen.length}
-  <div class="p-sec">Devices</div>
+  <div class="p-sec" role="heading" aria-level="2">Devices</div>
   <div class="p-group">
     {#each deviceLastSeen as d (d.device)}
       <div class="p-row dev">
@@ -439,12 +441,10 @@
 </div>
 
 <style>
-  .card { margin-top: 6px; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 6px 6px 6px 16px; }
-  .card .p-dot { width: 10px; height: 10px; background: var(--faint); }
-  .card .p-dot.ok { background: var(--success); }
-  .card .p-dot.error { background: var(--danger); }
-  .line { flex: 1; min-width: 0; font-size: var(--p-fs-l); font-weight: 600; padding: 8px 0; }
-  .card .p-tbtn { flex-shrink: 0; }
+  .state { display: flex; align-items: center; gap: 6px; }
+  .state .p-dot { background: var(--faint); }
+  .state .p-dot.ok { background: var(--success); }
+  .state .p-dot.error { background: var(--danger); }
   .chev { display: flex; color: var(--faint); }
   .p-row > .p-k + .chev { margin-left: auto; }
   .p-v + .chev { margin-left: -6px; }

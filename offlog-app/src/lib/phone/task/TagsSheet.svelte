@@ -61,7 +61,7 @@
   </div>
 {/if}
 
-<input class="p-fld" bind:value={input} on:keydown={onKey} placeholder="New tag, then Enter" autocomplete="off" enterkeyhint="done" aria-label="Add a tag" />
+<input class="p-fld" bind:value={input} on:keydown={onKey} placeholder="Find or add a tag" autocomplete="off" enterkeyhint="done" aria-label="Find or add a tag" />
 
 {#if ours.length || others.length}
   {#if ours.length}

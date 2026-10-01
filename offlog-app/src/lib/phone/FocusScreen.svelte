@@ -152,7 +152,7 @@
 
 {#if loaded && room > 0}
   {#if suggested.length || rest.length}
-    <div class="p-sec">Suggested <span class="p-n">{room - selected.length} to pick</span></div>
+    <div class="p-sec" role="heading" aria-level="2">Suggested <span class="p-n">{room - selected.length} to pick</span></div>
     <div class="rows">
       {#each suggested as s (s.task._id)}
         {@const on = selected.includes(s.task._id ?? '')}
@@ -170,7 +170,7 @@
     {/if}
     {#if rest.length}
       {#if showAll}
-        <div class="p-sec">Other open tasks <span class="p-n">{rest.length}</span></div>
+        <div class="p-sec" role="heading" aria-level="2">Other open tasks <span class="p-n">{rest.length}</span></div>
         <div class="rows">
           {#each rest as t (t._id)}
             {@const on = selected.includes(t._id ?? '')}
@@ -206,8 +206,8 @@
   .lrow:active { background: var(--col-bg); }
   .lrow .t { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
   .pj { font-size: var(--p-fs-s); color: var(--faint); font-weight: 400; margin-top: 1px; }
-  .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); flex-shrink: 0; position: relative; box-sizing: border-box; }
-  .lrow.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+  .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--check-ring); flex-shrink: 0; position: relative; box-sizing: border-box; }
+  .lrow.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }
   .lrow.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
   /* The fill and tick pop in (decelerate) and leave faster (accelerate). */
   .box { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
@@ -215,7 +215,7 @@
   .lrow.picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .lrow.picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .why { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--col-bg); color: var(--faint); }
-  .why.pinned { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .why.pinned { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
   .why.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
   .why.due_soon { background: var(--due-soon-bg); color: var(--due-soon-ink); }
   .go { margin-top: 14px; }

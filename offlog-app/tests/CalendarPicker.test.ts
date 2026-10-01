@@ -206,4 +206,14 @@ describe('CalendarPicker open/close', () => {
     const { container } = renderPicker({ value: '', placeholder: 'No due date' });
     expect(trigger(container).textContent!.trim()).toBe('No due date');
   });
+
+  it('labels the date with the desktop format, or the one passed in', () => {
+    expect(trigger(renderPicker({ value: '2026-03-15' }).container).textContent!.trim()).toBe('Mar 15, 2026');
+    cleanup();
+    const fmt = vi.fn((ymd: string) => `<${ymd}>`);
+    const { container } = renderPicker({ value: '2026-03-15T09:30', withTime: true, formatDate: fmt, bare: true });
+    expect(trigger(container).textContent!.trim()).toBe('<2026-03-15>, 09:30');
+    expect(trigger(container).classList.contains('bare')).toBe(true);
+    expect(container.querySelector('.cal-trigger svg')).toBeNull();
+  });
 });

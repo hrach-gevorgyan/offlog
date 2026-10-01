@@ -9,7 +9,7 @@
   import { onDestroy } from 'svelte';
   import { I } from './icons';
   import { applyFilter, activeCount, EMPTY, type Filter, type Sort } from './project/filter';
-  import { isList, toggleView } from './project/actions';
+  import { isList, setView } from './project/actions';
   import TopBar from './TopBar.svelte';
   import Board from './project/Board.svelte';
   import ListPane from './project/ListPane.svelte';
@@ -28,6 +28,7 @@
   // Set by the toggle; until then the device's kept choice.
   let listView: boolean | null = null;
   $: list = !!project && (listView ?? isList(project));
+  function pickView(v: boolean) { if (project && v !== list) listView = setView(project, v); }
   $: open = mine.filter(t => t.column_id !== project?.columns.at(-1)?.id).length;
 
   // Kept on the stack entry, so coming back finds the same status, filter,
@@ -40,7 +41,9 @@
   $: shown = applyFilter(mine, filter);
   $: nFilters = activeCount(filter);
   // The + button adds to the status on show (the first one in List).
-  $: if (project) addContext.set({ projectId: id, columnId: list ? null : project.columns[ci]?.id ?? null });
+  // Never the last status: a task added there would be born finished, so +
+  // on the Done pane adds to the default (first) status instead.
+  $: if (project) addContext.set({ projectId: id, columnId: list || (ci === project.columns.length - 1 && project.columns.length > 1) ? null : project.columns[ci]?.id ?? null });
   onDestroy(() => addContext.set(null));
 
   // Card decorations, refreshed on any change: links and blockers can be
@@ -79,9 +82,12 @@
 
 {#if project}
   <div class="scr">
-    <TopBar title={project.name} sub="{space?.name ?? ''} · {open} open{project.pinned ? ' · pinned' : ''}">
+    <TopBar wrap title={project.name} sub="{space?.name ?? ''} · {open} open{project.pinned ? ' · pinned' : ''}">
       <span slot="sub-lead" class="p-dot" style="background:{space ? soften(space.color) : 'var(--faint)'}"></span>
-      <button class="ib" on:click={() => { if (project) listView = toggleView(project); }} aria-label={list ? 'Show as board' : 'Show as list'}>{@html list ? I.board : I.list}</button>
+      <span slot="sub-end" class="p-seg view" style="--n:2;--i:{list ? 1 : 0}" role="group" aria-label="View">
+        <button class:on={!list} aria-pressed={!list} on:click={() => pickView(false)}>Board</button>
+        <button class:on={list} aria-pressed={list} on:click={() => pickView(true)}>List</button>
+      </span>
       <button class="ib" class:on={nFilters > 0} on:click={() => openSheet('filter')} aria-label={nFilters ? `Filter, ${nFilters} on` : 'Filter'}>{@html I.filter}</button>
       <button class="ib" on:click={() => openSheet('more')} aria-label="More">{@html I.more}</button>
     </TopBar>
@@ -105,7 +111,7 @@
     {#if sheet === 'filter'}
       <FilterSheet {project} tasks={mine} {filter} {list} {customFields} on:apply={e => (filter = e.detail)} on:close={() => (sheet = null)} />
     {:else if sheet === 'more'}
-      <ProjectMenuSheet {project} on:close={() => (sheet = null)} />
+      <ProjectMenuSheet {project} tasks={mine} on:close={() => (sheet = null)} />
     {:else if sheet === 'card' && menuTask}
       <CardMenuSheet task={menuTask} {project} tasks={mine} {shown} on:close={() => (sheet = null)} />
     {/if}
@@ -119,5 +125,10 @@
   .scr { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px 96px; scrollbar-width: none; }
   .scr::-webkit-scrollbar { display: none; }
   .fbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: -6px 0 12px; }
-  .fbar .p-pill { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .fbar .p-pill { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
+  /* Sits on the meta line without making it taller; each half still has a
+     44px tap area. */
+  .p-seg.view { flex-shrink: 0; margin: -8px 0 -8px auto; padding: 2px; }
+  .p-seg.view button { position: relative; flex: none; width: 56px; min-height: 30px; padding: 0; }
+  .p-seg.view button::before { content: ''; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
 </style>

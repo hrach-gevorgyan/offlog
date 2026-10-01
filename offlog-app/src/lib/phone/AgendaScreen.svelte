@@ -11,6 +11,7 @@
   import { agendaDay, monthGrid, endOfWeek } from './agenda/month';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
+  import TaskMenu from './TaskMenu.svelte';
   import { axisIn, collapseIn, collapseOut } from '../motion';
   import { leaves, returns } from './rowMotion';
 
@@ -50,10 +51,11 @@
 
   $: tomorrow = (() => { const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() + 1); return localDateStr(d); })();
   $: weekEnd = endOfWeek(mondayFirst, new Date(today + 'T12:00:00'));
+  // `date`: the one day a group stands for, so its rows drop the repeated pill.
   $: groups = [
     { label: 'Late', late: true, tasks: all.filter(t => t.due_date! < today) },
-    { label: 'Today', tasks: all.filter(t => t.due_date === today) },
-    { label: 'Tomorrow', tasks: all.filter(t => t.due_date === tomorrow) },
+    { label: 'Today', date: today, tasks: all.filter(t => t.due_date === today) },
+    { label: 'Tomorrow', date: tomorrow, tasks: all.filter(t => t.due_date === tomorrow) },
     { label: 'This week', tasks: all.filter(t => t.due_date! > tomorrow && t.due_date! <= weekEnd) },
     { label: 'Later', tasks: all.filter(t => t.due_date! > tomorrow && t.due_date! > weekEnd) },
   ].map(g => ({ ...g, tasks: g.tasks.sort(byDue) })).filter(g => g.tasks.length);
@@ -84,6 +86,10 @@
     selected = offset === 0 ? today : localDateStr(new Date(grid.anchor.getFullYear(), grid.anchor.getMonth() + n, 1, 12));
   }
   function thisMonth() { monthDir = -Math.sign(offset); offset = 0; selected = today; }
+
+  // The card menu; {#key} bumped on every open (Sheet rule).
+  let menuTask: Row | null = null, menuSession = 0;
+  function openMenu(t: Row) { menuTask = t; menuSession++; }
 
   $: agendaDay.set(mode === 'month' ? selected : null);
   onDestroy(() => agendaDay.set(null));
@@ -127,15 +133,16 @@
         on:click={() => (selected = d.iso)}
       >
         {d.day}
-        <span class="dots">{#each n.slice(0, 3) as t (t._id)}<i class:late={d.iso < today}></i>{/each}</span>
+        <!-- Up to three dots; past that a count, so three and six differ. -->
+        <span class="dots" class:late={d.iso < today}>{#if n.length > 3}<b>{n.length}</b>{:else}{#each n as t (t._id)}<i></i>{/each}{/if}</span>
       </button>
     {/each}
     </div>
     {/key}
   </div>
-  <div class="p-sec">{selected === today ? 'Today' : shortDate(selected)} <span class="p-n">{dayTasks.length}</span></div>
+  <div class="p-sec" role="heading" aria-level="2">{selected === today ? 'Today' : shortDate(selected)} <span class="p-n">{dayTasks.length}</span></div>
   {#each dayTasks as t (t._id)}
-    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} /></div>
+    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} sectionDate={selected} menu on:open={() => actions.openTask(t)} on:changed={load} on:menu={() => openMenu(t)} /></div>
   {:else}
     <div class="none">
       <p class="p-empty">Nothing due.</p>
@@ -149,13 +156,17 @@
        included, so the group collapses as one. -->
   {#each groups as g (g.label)}
     <div in:collapseIn={{ on: g.tasks.some(t => returns(t._id)) }} out:collapseOut={{ on: g.tasks.some(t => leaves(t._id)) }}>
-      <div class="p-sec" class:late={g.late}>{g.label} <span class="p-n">{g.tasks.length}</span></div>
+      <div class="p-sec" role="heading" aria-level="2" class:late={g.late}>{g.label} <span class="p-n">{g.tasks.length}</span></div>
       {#each g.tasks as t (t._id)}
-        <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} /></div>
+        <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} sectionDate={g.date ?? null} menu on:open={() => actions.openTask(t)} on:changed={load} on:menu={() => openMenu(t)} /></div>
       {/each}
     </div>
   {/each}
 {/if}
+
+{#key menuSession}
+  {#if menuTask}<TaskMenu task={menuTask} on:close={() => (menuTask = null)} />{/if}
+{/key}
 
 <style>
   .mhead { display: flex; align-items: center; margin: 0 0 6px 4px; }
@@ -177,10 +188,11 @@
   .month button.out { color: var(--faint); opacity: .45; }
   .month button.today { color: var(--accent); font-weight: 700; }
   .month button.sel { background: var(--accent); color: var(--on-accent); }
-  .dots { display: flex; gap: 2px; height: 5px; }
-  .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: .7; }
-  .dots i.late { background: var(--overdue-ink); opacity: 1; }
-  .month button.sel .dots i { background: var(--on-accent); }
+  .dots { display: flex; align-items: center; gap: 2px; height: 9px; color: var(--accent); }
+  .dots.late { color: var(--overdue-ink); }
+  .dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .dots b { font-size: 9px; font-weight: 700; line-height: 1; }
+  .month button.sel .dots { color: var(--on-accent); }
   .none { display: flex; flex-direction: column; align-items: center; padding: 0 0 12px; }
   .none .p-empty { padding-bottom: 6px; }
 </style>

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { invokeTauri, getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../src/config';
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
@@ -279,5 +279,48 @@ describe('invokeTauri() off Tauri', () => {
   it('does not throw synchronously', () => {
     // a thrown TypeError would escape the caller's .catch entirely
     expect(() => invokeTauri('get_sync_info').catch(() => {})).not.toThrow();
+  });
+});
+
+describe('week start and clock: device locale until the user chooses', () => {
+  const fakeLocale = (info: object) => vi.spyOn(Intl, 'Locale').mockImplementation(function () { return info; } as unknown as typeof Intl.Locale);
+  const fakeClock = (hourCycle: string | undefined) => vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+    function () { return { resolvedOptions: () => ({ locale: 'en-US', hourCycle }) }; } as unknown as typeof Intl.DateTimeFormat);
+  beforeEach(() => { localStorage.clear(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('week start follows the locale (getWeekInfo or weekInfo), Monday when unknown', async () => {
+    const { getWeekStartsMonday } = await import('../src/config');
+    fakeLocale({ getWeekInfo: () => ({ firstDay: 7 }) });
+    expect(getWeekStartsMonday()).toBe(false);
+    vi.restoreAllMocks();
+    fakeLocale({ weekInfo: { firstDay: 1 } });
+    expect(getWeekStartsMonday()).toBe(true);
+    vi.restoreAllMocks();
+    fakeLocale({});
+    expect(getWeekStartsMonday()).toBe(true);
+  });
+
+  it('an explicit week start always wins over the locale', async () => {
+    const { getWeekStartsMonday, setWeekStartsMonday } = await import('../src/config');
+    fakeLocale({ getWeekInfo: () => ({ firstDay: 7 }) });
+    setWeekStartsMonday(true);
+    expect(getWeekStartsMonday()).toBe(true);
+  });
+
+  it('the clock follows the locale hour cycle, 24h when unknown; an explicit choice wins', async () => {
+    const { getTimeFormat24h, setTimeFormat24h } = await import('../src/config');
+    fakeClock('h12');
+    expect(getTimeFormat24h()).toBe(false);
+    vi.restoreAllMocks();
+    fakeClock('h23');
+    expect(getTimeFormat24h()).toBe(true);
+    vi.restoreAllMocks();
+    fakeClock(undefined);
+    expect(getTimeFormat24h()).toBe(true);
+    vi.restoreAllMocks();
+    fakeClock('h12');
+    setTimeFormat24h(true);
+    expect(getTimeFormat24h()).toBe(true);
   });
 });

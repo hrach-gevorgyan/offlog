@@ -13,8 +13,9 @@
   const ERR = 'Could not save the repeat. Please try again.';
   const UNIT: Record<Rec, string> = { daily: 'days', weekly: 'weeks', monthly: 'months' };
   const OPTIONS = [
-    { value: '', label: 'Never' },
+    { value: '', label: 'No repeat' },
     { value: 'daily', label: 'Daily' },
+    { value: 'weekdays', label: 'Weekdays' },
     { value: 'weekly', label: 'Weekly' },
     { value: 'monthly', label: 'Monthly' },
   ];
@@ -22,6 +23,13 @@
   $: rec = (task.recurrence ?? null) as Rec | null;
   $: every = task.recurrenceInterval ?? 1;
   $: weekdays = !!task.recurrenceWeekdaysOnly;
+  // Weekdays is daily with weekdays-only set, so picking Daily clears that
+  // flag and the switch under Daily stays the same setting.
+  $: current = rec === 'daily' && weekdays ? 'weekdays' : rec ?? '';
+  function pick(v: string) {
+    if (v === 'weekdays') save(rule('daily', every, true), ERR);
+    else save(rule((v || null) as Rec | null, every, false), ERR);
+  }
   // The same recurrence maths a real completion uses.
   $: next = task.due_date && rec ? advanceDate(task.due_date, rec, every, rec === 'daily' && weekdays) : null;
 
@@ -40,7 +48,7 @@
 </script>
 
 {#if !task.due_date}<p class="p-say">Set a due date to make this repeat.</p>{/if}
-<Pick options={OPTIONS} current={rec ?? ''} disabled={!task.due_date} on:pick={e => save(rule((e.detail || null) as Rec | null, every, weekdays), ERR)} />
+<Pick options={OPTIONS} {current} disabled={!task.due_date} on:pick={e => pick(e.detail)} />
 
 {#if rec}
   <div class="p-group">

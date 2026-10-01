@@ -75,11 +75,16 @@ export function back() {
   if (!closeTop()) get(stack).at(-1)?.requestClose?.();
 }
 
+// Bumped when the current tab is tapped again while already at its root;
+// the shell scrolls that screen back to the top.
+export const reselect = writable(0);
+
 // A tab switch starts the new tab at its root; tapping the current tab
-// returns it to its root. Either way the old stack's history entries are
-// unwound in one synchronous step.
+// returns it to its root, or to its top when it is already there. Either way
+// the old stack's history entries are unwound in one synchronous step.
 export function switchTab(t: Tab) {
   const same = get(tab) === t;
+  if (same && get(stack).length === 1) reselect.update(n => n + 1);
   closeAll(); // screens above the root and any sheet still open
   tab.set(t);
   stack.set([{ k: t }]);
@@ -87,7 +92,7 @@ export function switchTab(t: Tab) {
 }
 
 // Hardware back with no history left: a non-Home tab goes Home before the
-// app is allowed to exit (Material's navigation-bar convention).
+// app goes to the background (Material's navigation-bar convention).
 export function backAtRoot(): boolean {
   if (get(tab) === 'home') return false;
   switchTab('home');
@@ -96,15 +101,16 @@ export function backAtRoot(): boolean {
 
 // A snackbar above the navigation bar. Reversible actions act at once and
 // offer Undo here instead of asking first.
-export interface Toast { id: number; text: string; undo?: () => void | Promise<void> }
+// `action` is a labelled button other than Undo (e.g. a settings fix).
+export interface Toast { id: number; text: string; undo?: () => void | Promise<void>; action?: { label: string; run: () => void } }
 export const toast = writable<Toast | null>(null);
 let toastSeq = 0, toastTimer: ReturnType<typeof setTimeout> | undefined;
-export function showToast(text: string, undo?: Toast['undo']) {
+export function showToast(text: string, undo?: Toast['undo'], action?: Toast['action']) {
   clearTimeout(toastTimer);
-  const t = { id: ++toastSeq, text, undo };
+  const t = { id: ++toastSeq, text, undo, action };
   toast.set(t);
-  // Longer when it carries Undo, so there is time to reach the button.
-  toastTimer = setTimeout(() => toast.update(c => (c?.id === t.id ? null : c)), undo ? 6000 : 4000);
+  // Longer when it carries a button, so there is time to reach it.
+  toastTimer = setTimeout(() => toast.update(c => (c?.id === t.id ? null : c)), undo || action ? 6000 : 4000);
 }
 
 // Where the + button should add: a project screen sets this to its project

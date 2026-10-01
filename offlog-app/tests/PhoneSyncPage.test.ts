@@ -6,6 +6,7 @@ const m = vi.hoisted(() => ({
   url: 'http://pc.local:5984/offlog',
   enabled: true,
   name: 'Pixel',
+  askName: false,
   syncState: { status: 'idle', lastSynced: null as string | null, error: null as string | null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
 }));
 const setSyncEnabled = vi.fn((v: boolean) => { m.enabled = v; });
@@ -17,6 +18,8 @@ vi.mock('../src/config', async () => {
     isSyncEnabled: () => m.enabled,
     setSyncEnabled: (...a: unknown[]) => setSyncEnabled(...(a as [boolean])),
     getDeviceName: () => m.name,
+    shouldAskDeviceNameForSync: () => m.askName,
+    markDeviceNameAskedForSync: () => { m.askName = false; },
     setDeviceName: (...a: unknown[]) => setDeviceName(...(a as [string])),
     isTauri: () => false, invokeTauri: vi.fn(), getTimeFormat24h: () => true,
     otherHostsDetected: w([]),
@@ -84,6 +87,7 @@ beforeEach(async () => {
   m.url = 'http://pc.local:5984/offlog';
   m.enabled = true;
   m.name = 'Pixel';
+  m.askName = false;
   Object.assign(m.syncState, { status: 'idle', lastSynced: null, error: null, conflictCount: 0 });
   syncNow.mockResolvedValue(undefined);
   startSync.mockResolvedValue(undefined);
@@ -106,7 +110,7 @@ describe('phone Sync page', () => {
     const { getByRole, getByText, container } = render(SettingsPage, { page: 'sync' });
     expect(getByRole('heading', { name: 'Sync' })).toBeTruthy();
     expect(getByText(/^Synced /)).toBeTruthy();
-    expect(container.querySelector('.card .p-dot.ok')).toBeTruthy();
+    expect(container.querySelector('[role=switch] .state .p-dot.ok')).toBeTruthy(); // state and switch are one row
     expect(getByRole('switch').getAttribute('aria-checked')).toBe('true');
     await waitFor(() => getByText('Office PC'));
     expect(getByText('2h ago')).toBeTruthy();
@@ -123,12 +127,30 @@ describe('phone Sync page', () => {
     expect(setSyncEnabled).toHaveBeenLastCalledWith(false);
     expect(cancelSync).toHaveBeenCalledTimes(1);
     expect(getByRole('switch').getAttribute('aria-checked')).toBe('false');
-    expect(getByText('Sync is off')).toBeTruthy();
+    expect(getByText('Off · everything stays on this device')).toBeTruthy();
     expect(queryByText('This device')).toBeNull();
     expect(queryByText('Sync now')).toBeNull();
     await fireEvent.click(getByRole('switch'));
     expect(setSyncEnabled).toHaveBeenLastCalledWith(true);
     expect(startSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('turning Sync on for the first time asks for the device name, once', async () => {
+    m.enabled = false;
+    m.askName = true;
+    const { getByRole } = render(SettingsPage, { page: 'sync' });
+    expect(document.querySelector('.psheet')).toBeNull();
+    await fireEvent.click(getByRole('switch'));
+    await waitFor(() => expect((getByRole('textbox') as HTMLInputElement).value).toBe('Pixel'));
+    expect(m.askName).toBe(false);
+  });
+
+  it('turning Sync on again does not ask for the name', async () => {
+    m.enabled = false;
+    const { getByRole } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByRole('switch'));
+    expect(startSync).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.psheet')).toBeNull();
   });
 
   it('Sync now syncs and confirms; a failure surfaces showError', async () => {

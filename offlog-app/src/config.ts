@@ -221,6 +221,18 @@ export function setDeviceName(name: string) {
   localStorage.setItem(DEVICE_NAME_KEY, trimmed || defaultDeviceName());
 }
 
+// Turning Sync on asks for this device's name once, ever (the name only
+// labels synced edits, so nothing asks for it before then).
+const SYNC_NAME_ASKED_KEY = 'offlog_sync_name_asked';
+
+export function shouldAskDeviceNameForSync(): boolean {
+  return localStorage.getItem(SYNC_NAME_ASKED_KEY) !== '1';
+}
+
+export function markDeviceNameAskedForSync() {
+  localStorage.setItem(SYNC_NAME_ASKED_KEY, '1');
+}
+
 // The display name is user-editable, so it can't identify a device on its
 // own — renaming it would make old and new log entries look like two
 // separate devices. This id is generated once, persisted, and never changes
@@ -352,24 +364,48 @@ export function setAutoUpdateCheckEnabled(enabled: boolean) {
 // different zones.
 const WEEK_STARTS_MONDAY_KEY = 'offlog_week_starts_monday';
 
+// Unset, both defaults follow the device locale; an explicit choice in
+// Settings -> Appearance always wins. Only Sunday and Monday exist as
+// choices, so any other first day (Saturday) maps to Monday.
+// Intl.Locale's weekInfo is a getter in some engines and getWeekInfo() in
+// others; without either, Monday.
+export function localeWeekStartsMonday(): boolean {
+  try {
+    const loc = new Intl.Locale(new Intl.DateTimeFormat().resolvedOptions().locale) as Intl.Locale & {
+      weekInfo?: { firstDay: number }; getWeekInfo?: () => { firstDay: number };
+    };
+    const info = loc.getWeekInfo?.() ?? loc.weekInfo;
+    return info ? info.firstDay !== 7 : true;
+  } catch {
+    return true;
+  }
+}
+
 export function getWeekStartsMonday(): boolean {
-  // Defaults to Monday, overridable per-device in Settings -> Appearance.
   const stored = localStorage.getItem(WEEK_STARTS_MONDAY_KEY);
-  return stored === null ? true : stored === 'true';
+  return stored === null ? localeWeekStartsMonday() : stored === 'true';
 }
 
 export function setWeekStartsMonday(monday: boolean) {
   localStorage.setItem(WEEK_STARTS_MONDAY_KEY, String(monday));
 }
 
-// Same per-device override pattern as WEEK_STARTS_MONDAY_KEY above.
-// Defaults to 24h display rather than following the browser/OS locale
-// (unlike most locale-driven formatting elsewhere in the app) — 12h AM/PM is the override, not the default.
+// Same per-device override pattern as WEEK_STARTS_MONDAY_KEY above,
+// defaulting to the locale's clock; 24h when the locale gives no answer.
 const TIME_FORMAT_24H_KEY = 'offlog_time_format_24h';
+
+export function localeTimeFormat24h(): boolean {
+  try {
+    const hc = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hourCycle;
+    return hc ? hc === 'h23' || hc === 'h24' : true;
+  } catch {
+    return true;
+  }
+}
 
 export function getTimeFormat24h(): boolean {
   const stored = localStorage.getItem(TIME_FORMAT_24H_KEY);
-  return stored === null ? true : stored === 'true';
+  return stored === null ? localeTimeFormat24h() : stored === 'true';
 }
 
 export function setTimeFormat24h(is24h: boolean) {

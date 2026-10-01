@@ -106,7 +106,7 @@
   .done { opacity: .75; }
   .chk {
     width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; position: relative; margin-top: 1px;
-    border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent);
+    border: 2px solid var(--check-ring);
   }
   .chk::before { content: ''; position: absolute; inset: -11px; }
   .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }

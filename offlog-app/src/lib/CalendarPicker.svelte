@@ -15,6 +15,12 @@
   export let withTime = false;
   export let disabled = false;
   export let placeholder = 'Select date…';
+  // Phone screens pass their own date wording ('YYYY-MM-DD' in); without it
+  // the label keeps the desktop's "Oct 4, 2026".
+  export let formatDate: ((ymd: string) => string) | null = null;
+  // No box and no icon: the trigger reads as a row's value, right-aligned,
+  // in the size and colour the parent gives it.
+  export let bare = false;
 
   const dispatch = createEventDispatcher<{ change: string }>();
 
@@ -116,18 +122,19 @@
   const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DOW = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
+  $: dateText = !selected ? '' : formatDate ? formatDate(fmtDate(selected)) : selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   $: displayLabel = !selected ? placeholder
-    : withTime ? `${selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${fmtTime(new Date(`1970-01-01T${timeVal}`))}`
-    : selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    : withTime ? `${dateText}, ${fmtTime(new Date(`1970-01-01T${timeVal}`))}`
+    : dateText;
 </script>
 
 <svelte:window on:keydown={onWindowKeydown} />
 
 <div class="cal-field" bind:this={wrapEl}>
-  <button type="button" class="cal-trigger" class:has-value={!!value} class:open bind:this={triggerEl} on:click={toggle} {disabled} aria-haspopup="dialog" aria-expanded={open}>
-    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <button type="button" class="cal-trigger" class:has-value={!!value} class:open class:bare bind:this={triggerEl} on:click={toggle} {disabled} aria-haspopup="dialog" aria-expanded={open}>
+    {#if !bare}<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6.5" x2="14" y2="6.5"/><line x1="5.5" y1="1.5" x2="5.5" y2="4.5"/><line x1="10.5" y1="1.5" x2="10.5" y2="4.5"/>
-    </svg>
+    </svg>{/if}
     <span>{displayLabel}</span>
   </button>
 
@@ -181,6 +188,8 @@
   .cal-trigger.has-value { color: var(--text); }
   .cal-trigger.open, .cal-trigger:hover { border-color: var(--accent); }
   .cal-trigger:disabled { opacity: .55; cursor: default; }
+  .cal-trigger.bare { justify-content: flex-end; border: 0; background: none; padding: 6px 0; min-height: 44px; font: inherit; }
+  .cal-trigger.bare span { text-align: right; }
 
   /* position:fixed with JS-measured top/left (see positionPopover());
      absolute positioning would be clipped by scrollable ancestors. */

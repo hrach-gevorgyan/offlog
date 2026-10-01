@@ -28,7 +28,12 @@
     .map(f => ({ f, values: [...new Set(tasks.map(t => t.custom_values?.[f.id]).filter(v => v !== undefined && v !== null && v !== '').map(String))].sort() }))
     .filter(x => x.values.length);
   $: n = applyFilter(tasks, draft).length;
-  $: dirty = activeCount(draft) > 0 || (!list && !!draft.search);
+  $: chosen = activeCount(draft) > 0;
+  $: dirty = chosen || (!list && !!draft.search);
+  // What each chip would show if picked, the rest of the draft kept; a chip
+  // that would show nothing is dimmed but still tappable.
+  $: count = (patch: Partial<Filter>) => applyFilter(tasks, { ...draft, ...patch }).length;
+  $: fieldCount = (id: string, v: string) => count({ fields: [...draft.fields.filter(f => f.fieldId !== id), { fieldId: id, value: v }] });
 
   const pick = <K extends 'col' | 'tag'>(k: K, v: string) => { draft = { ...draft, [k]: draft[k] === v ? '' : v }; };
   const pickPrio = (v: number) => { draft = { ...draft, prio: draft.prio === v ? 0 : v }; };
@@ -63,14 +68,16 @@
   <div class="p-lab">Status</div>
   <div class="p-cpick">
     {#each project.columns as c (c.id)}
-      <button class="p-chip" class:on={draft.col === c.id} aria-pressed={draft.col === c.id} on:click={() => pick('col', c.id)}>{c.name}</button>
+      {@const k = count({ col: c.id })}
+      <button class="p-chip" class:on={draft.col === c.id} class:none={!k} aria-pressed={draft.col === c.id} on:click={() => pick('col', c.id)}>{c.name}<i>{k}</i></button>
     {/each}
   </div>
 
   <div class="p-lab">Priority</div>
   <div class="p-cpick">
     {#each PRIOS as v}
-      <button class="p-chip" class:on={draft.prio === v} aria-pressed={draft.prio === v} on:click={() => pickPrio(v)}>{PRIORITY_LABEL[v]}</button>
+      {@const k = count({ prio: v })}
+      <button class="p-chip" class:on={draft.prio === v} class:none={!k} aria-pressed={draft.prio === v} on:click={() => pickPrio(v)}>{PRIORITY_LABEL[v]}<i>{k}</i></button>
     {/each}
   </div>
 
@@ -78,7 +85,8 @@
     <div class="p-lab">Tags</div>
     <div class="p-cpick">
       {#each tags as g}
-        <button class="p-chip" class:on={draft.tag === g} aria-pressed={draft.tag === g} on:click={() => pick('tag', g)}>#{g}</button>
+        {@const k = count({ tag: g })}
+        <button class="p-chip" class:on={draft.tag === g} class:none={!k} aria-pressed={draft.tag === g} on:click={() => pick('tag', g)}>#{g}<i>{k}</i></button>
       {/each}
     </div>
   {/if}
@@ -87,20 +95,25 @@
     <div class="p-lab">{f.name}</div>
     <div class="p-cpick">
       {#each values as v}
-        <button class="p-chip" class:on={fieldValue(f.id) === v} aria-pressed={fieldValue(f.id) === v} on:click={() => pickField(f.id, v)}>{v}</button>
+        {@const k = fieldCount(f.id, v)}
+        <button class="p-chip" class:on={fieldValue(f.id) === v} class:none={!k} aria-pressed={fieldValue(f.id) === v} on:click={() => pickField(f.id, v)}>{v}<i>{k}</i></button>
       {/each}
     </div>
   {/each}
 
   {#if draft.search}<p class="p-say">Also matching “{draft.search}”.</p>{/if}
 
-  <button class="p-go" on:click={() => apply(draft)}>Show {n} {n === 1 ? 'task' : 'tasks'}</button>
-  {#if dirty}<button class="p-row center" on:click={() => apply({ ...EMPTY, search: list ? draft.search : '' })}>Clear</button>{/if}
+  {#if chosen}
+    <div class="p-lab save-lab">Save this filter</div>
+    <div class="save">
+      <input class="p-fld" bind:value={name} placeholder="Name this filter" aria-label="Filter name" on:keydown={e => e.key === 'Enter' && save()} />
+      <button class="p-tbtn" disabled={!name.trim()} on:click={save}>Save</button>
+    </div>
+  {/if}
 
-  <div class="p-lab save-lab">Save this filter</div>
-  <div class="save">
-    <input class="p-fld" bind:value={name} placeholder="Name this filter" aria-label="Filter name" on:keydown={e => e.key === 'Enter' && save()} />
-    <button class="p-tbtn" disabled={!name.trim()} on:click={save}>Save</button>
+  <div class="foot">
+    <button class="p-go" on:click={() => apply(draft)}>Show {n} {n === 1 ? 'task' : 'tasks'}</button>
+    {#if dirty}<button class="p-tbtn" on:click={() => apply({ ...EMPTY, search: list ? draft.search : '' })}>Clear</button>{/if}
   </div>
 </Sheet>
 
@@ -109,7 +122,16 @@
   .del { width: 44px; height: 44px; margin-left: -6px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; color: var(--faint); cursor: pointer; border-radius: 50%; }
   .del:active { background: var(--col-bg); }
   .del :global(svg.i) { width: 15px; height: 15px; }
-  .center { justify-content: center; font-weight: 600; color: var(--accent); }
+  .p-chip i { font-style: normal; font-size: var(--p-fs-xs); opacity: .7; }
+  .p-chip.none:not(.on) { opacity: .5; }
+  /* Stays at the sheet's bottom edge while the choices scroll. As the last
+     child it stands in for the sheet's own bottom padding. */
+  .foot {
+    position: sticky; z-index: 1; bottom: calc(-16px - env(safe-area-inset-bottom, 0px));
+    display: flex; align-items: center; gap: 8px; background: var(--bg);
+    margin: 14px 0 calc(-16px - env(safe-area-inset-bottom, 0px)); padding: 10px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .foot .p-go { flex: 1; }
   .save-lab { margin-top: 18px; }
   .save { display: flex; gap: 8px; align-items: flex-start; }
   .save .p-fld { flex: 1; }

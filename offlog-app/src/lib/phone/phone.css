@@ -14,6 +14,9 @@
   /* One elevation for every card, group, tile and field. */
   --p-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
 }
+/* Dark cards sit only ~1.2:1 off the page and a shadow can't show on dark,
+   so they take a faint hairline instead. */
+body.dark .phone-shell, body.dark .psheet { --p-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 7%, transparent), 0 1px 2px rgba(0,0,0,.3); }
 
 .phone-shell svg.i, .psheet svg.i { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 
@@ -60,7 +63,7 @@
   box-shadow: var(--p-shadow);
   transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
 }
-.phone-shell .p-chip.on, .psheet .p-chip.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+.phone-shell .p-chip.on, .psheet .p-chip.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }
 .phone-shell .p-chip svg.i, .psheet .p-chip svg.i { width: 16px; height: 16px; }
 
 /* Segmented control. The selected background is one sliding indicator, not
@@ -80,13 +83,13 @@
 
 /* Date / status pills. */
 .phone-shell .p-pill, .psheet .p-pill { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
-.phone-shell .p-pill.today, .psheet .p-pill.today { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.phone-shell .p-pill.today, .psheet .p-pill.today { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
 .phone-shell .p-pill.late, .psheet .p-pill.late { background: var(--overdue-bg); color: var(--overdue-ink); }
 
 /* Icon button and text button. */
 .phone-shell .p-ib, .psheet .p-ib { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted); flex-shrink: 0; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
 .phone-shell .p-ib:active, .psheet .p-ib:active { background: var(--col-bg); }
-.phone-shell .p-ib.on, .psheet .p-ib.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.phone-shell .p-ib.on, .psheet .p-ib.on { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
 .phone-shell .p-tbtn, .psheet .p-tbtn { font: inherit; color: var(--accent); font-weight: 600; font-size: var(--p-fs-m); padding: 8px 10px; border-radius: 10px; background: none; border: 0; cursor: pointer; transition: background var(--dur-hover) var(--ease-hover); }
 .phone-shell .p-tbtn:active, .psheet .p-tbtn:active { background: var(--col-bg); }
 .phone-shell .p-tbtn.danger, .psheet .p-tbtn.danger { color: var(--danger); }
@@ -108,6 +111,9 @@
 .phone-shell .p-chip, .psheet .p-chip, .phone-shell .p-tbtn, .psheet .p-tbtn { position: relative; }
 .phone-shell .p-chip::before, .psheet .p-chip::before { content: ''; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
 .phone-shell .p-tbtn, .psheet .p-tbtn { min-height: 44px; }
+/* Icon buttons: a 48px touch target around the 44px visual. */
+.phone-shell .p-ib, .psheet .p-ib { position: relative; }
+.phone-shell .p-ib::before, .psheet .p-ib::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
 .phone-shell .p-seg button, .psheet .p-seg button { min-height: 38px; }
 
 /* Pressed feedback for everything tappable that has no hover on touch. */

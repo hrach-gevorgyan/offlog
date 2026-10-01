@@ -94,9 +94,31 @@ describe('phone Agenda', () => {
     getAllTasksDue.mockResolvedValue(rows());
     await get(toast)!.undo!();
     expect(updateTask).toHaveBeenLastCalledWith('task:Now', expect.objectContaining({ column_id: 'col:todo' }));
+    feed!(); // the Undo write comes back through the change feed
     await waitFor(() => expect(leaving(row)).toBe(false));
     expect(getByLabelText('Finish: Now').closest('.card')!.parentElement).toBe(row);
     expect(getByLabelText('Finish: Now').classList.contains('on')).toBe(false);
+  });
+
+  it('a group for one day drops that pill from its rows; Late and Later keep theirs', async () => {
+    const { findByText, container } = render(AgendaScreen);
+    await findByText('Now');
+    const pills = [...container.querySelectorAll('.pill')].map(p => p.textContent);
+    expect(pills).toEqual(['2 days late', shortDate(day(40))]);
+  });
+
+  it('Month: up to three dots for a day, a count past that', async () => {
+    localStorage.setItem('offlog_agenda_view', 'month');
+    getAllTasksDue.mockResolvedValue([
+      ...['a', 'b', 'c'].map(x => task(`task:${x}`, day(1))),
+      ...['d', 'e', 'f', 'g', 'h'].map(x => task(`task:${x}`, day(2))),
+    ]);
+    const { findByLabelText } = render(AgendaScreen);
+    const three = await findByLabelText(`${shortDate(day(1))}, 3 due`);
+    expect(three.querySelectorAll('.dots i').length).toBe(3);
+    const five = await findByLabelText(`${shortDate(day(2))}, 5 due`);
+    expect(five.querySelectorAll('.dots i').length).toBe(0);
+    expect(five.querySelector('.dots b')?.textContent).toBe('5');
   });
 
   it('refreshes from the change feed', async () => {
@@ -120,7 +142,7 @@ describe('phone Agenda', () => {
     expect(getByText('Now')).toBeTruthy();
 
     const lateCell = getByLabelText(`${shortDate(day(-2))}, 1 due`);
-    expect(lateCell.querySelector('i.late')).toBeTruthy();
+    expect(lateCell.querySelector('.dots.late i')).toBeTruthy();
 
     await fireEvent.click(getByLabelText(`${shortDate(day(1))}, 1 due`));
     expect(getByText('Next')).toBeTruthy();

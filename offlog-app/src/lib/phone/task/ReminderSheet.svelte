@@ -6,6 +6,7 @@
   import { fmtTime } from '../../utils';
   import { isoToLocalInput, dateFromToday, dueDateToReminderInput } from '../../carddetail/helpers';
   import { I } from '../icons';
+  import { dateLabel, laterToday } from './when';
 
   export let task: TaskDoc;
   export let save: (changes: Partial<TaskDoc>, err: string) => Promise<boolean>;
@@ -19,11 +20,14 @@
 
   // Presets in the past are left out; "now" is read once per open.
   const nowLocal = isoToLocalInput(new Date().toISOString());
+  const later = laterToday();
   const PRESETS = [
+    ...(later ? [{ at: later, label: `Later today at ${timeLabel(later.slice(11))}` }] : []),
     { at: `${dateFromToday(0)}T${defTime}`, label: `Today at ${timeLabel(defTime)}` },
     { at: `${dateFromToday(0)}T18:00`, label: `Today at ${timeLabel('18:00')}` },
     { at: `${dateFromToday(1)}T${defTime}`, label: `Tomorrow at ${timeLabel(defTime)}` },
-  ].filter((p, i, all) => p.at > nowLocal && all.findIndex(q => q.at === p.at) === i);
+  ].filter((p, i, all) => p.at > nowLocal && all.findIndex(q => q.at === p.at) === i)
+    .sort((a, b) => (a.at < b.at ? -1 : 1));
 
   function setAt(v: string) {
     save({ reminder_at: v ? new Date(v).toISOString() : null }, ERR);
@@ -63,7 +67,7 @@
 <div class="p-group cal">
   <div class="p-row" role="group" aria-label="Date & time">
     <span class="p-k"><span>Date &amp; time</span></span>
-    <span class="pick"><CalendarPicker value={local} withTime disabled={onDue} on:change={e => setAt(e.detail)} /></span>
+    <span class="pick"><CalendarPicker value={local} withTime bare placeholder="—" formatDate={dateLabel} disabled={onDue} on:change={e => setAt(e.detail)} /></span>
   </div>
   {#if task.reminder_at}
     <button class="p-row danger" on:click={() => save({ reminder_at: null, remindOnDue: false }, ERR)}>
@@ -87,6 +91,6 @@
 
 <style>
   .cal { overflow: visible; }
-  .cal div.p-row { cursor: default; }
-  .pick { margin-left: auto; width: 190px; flex-shrink: 0; }
+  .cal div.p-row { cursor: default; padding-top: 4px; padding-bottom: 4px; }
+  .pick { margin-left: auto; flex: 1; min-width: 0; font-size: var(--p-fs-m); font-weight: 500; }
 </style>

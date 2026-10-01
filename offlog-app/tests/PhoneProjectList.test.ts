@@ -195,6 +195,41 @@ describe('phone Project screen — list', () => {
     expect(r.container.querySelector('.bulkbar')).toBeNull();
   });
 
+  it('holding a row enters Select mode with that row picked; a tap still opens it', async () => {
+    const open = vi.spyOn(actions, 'openTask').mockImplementation(() => {});
+    const r = list();
+    await fireEvent.click(r.getByText('a', { selector: '.rows .t' }));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ _id: 'task:a' }));
+    vi.useFakeTimers();
+    await fireEvent.pointerDown(r.getByText('b', { selector: '.rows .t' }), { clientX: 10, clientY: 10 });
+    vi.advanceTimersByTime(500);
+    vi.useRealTimers();
+    await waitFor(() => expect(bar(r.container)).toBe('1 selected'));
+    expect(get(modalOpen)).toBe(true);
+    const b = r.getByRole('checkbox', { name: 'b' });
+    expect(b.getAttribute('aria-checked')).toBe('true');
+    // The click that ends the hold does not unpick it; the next tap does.
+    await fireEvent.click(b);
+    expect(b.getAttribute('aria-checked')).toBe('true');
+    await fireEvent.pointerDown(b);
+    await fireEvent.click(b);
+    expect(b.getAttribute('aria-checked')).toBe('false');
+    expect(open).toHaveBeenCalledTimes(1);
+    await fireEvent.click(r.getByLabelText('Exit selection'));
+    await waitFor(() => expect(get(modalOpen)).toBe(false));
+  });
+
+  it('a row that moves while held stays a scroll, not a selection', async () => {
+    const r = list();
+    vi.useFakeTimers();
+    const row = r.getByText('b', { selector: '.rows .t' });
+    await fireEvent.pointerDown(row, { clientX: 10, clientY: 10 });
+    await fireEvent.pointerMove(row, { clientX: 10, clientY: 40 });
+    vi.advanceTimersByTime(500);
+    vi.useRealTimers();
+    expect(r.container.querySelector('.bulkbar')).toBeNull();
+  });
+
   it('Android back leaves Select mode, not the project', async () => {
     push({ k: 'project', id: 'project:p' });
     const r = list();

@@ -24,7 +24,54 @@
   export let importStatus: string;
   export let handleImport: () => void;
   export let importBusy: boolean;
+  // The phone page: actions first, then the automatic switch with one status
+  // line, then a single line of counts. storageUsed is the used size alone.
+  export let phone = false;
+  export let storageUsed = '';
+  $: statsLine = breakdown ? [
+    storageUsed,
+    `${breakdown.activeTasks} task${breakdown.activeTasks === 1 ? '' : 's'}`,
+    `${breakdown.deletedTasks} in bin`,
+    `${breakdown.logEntries} history`,
+    breakdown.attachmentCount ? `${breakdown.attachmentCount} file${breakdown.attachmentCount === 1 ? '' : 's'}` : '',
+  ].filter(Boolean).join(' · ') : '';
 </script>
+
+{#if phone}
+              <div class="setting-group">
+                <div class="setting-row">
+                  <div class="project-export-select">
+                    <CustomSelect options={backupScopeOptions} bind:value={backupScope} />
+                  </div>
+                  <button class="export-btn" on:click={doBackup}>Back up</button>
+                </div>
+                <div class="setting-row">
+                  <span class="storage-info">{importStatus || 'From a backup file'}</span>
+                  <button class="export-btn" on:click={handleImport} disabled={importBusy}>Restore</button>
+                </div>
+                <div class="setting-row">
+                  <span class="storage-info">Spreadsheet, one way</span>
+                  <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
+                </div>
+              </div>
+
+              {#if isNativePlatform() || isTauriCheck()}
+              <div class="setting-group">
+                <div class="setting-row">
+                  <span class="setting-label">Back up automatically</span>
+                  <button class="toggle-btn" class:on={autoBackupEnabled} on:click={toggleAutoBackup} aria-label="Back up automatically" role="switch" aria-checked={autoBackupEnabled}>
+                    <span class="toggle-knob"></span>
+                  </button>
+                </div>
+                <p class="setting-hint compact-hint">{lastAutoBackupAt ? `Last saved ${fmtLastSynced(lastAutoBackupAt)}` : 'Daily'} · on this device</p>
+              </div>
+              {/if}
+
+              {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
+                <p class="setting-hint setting-hint-warn">Storage is {(storagePercent * 100).toFixed(0)}% full. Run Maintenance in Advanced or free up space.</p>
+              {/if}
+              {#if statsLine}<p class="setting-hint stats-line">{statsLine}</p>{/if}
+{:else}
 
               <div class="setting-group">
                 <div class="setting-section-title">Storage</div>
@@ -109,4 +156,4 @@
                   <button class="export-btn" on:click={handleImport} disabled={importBusy}>Choose backup file</button>
                 </div>
               </div>
-
+{/if}
