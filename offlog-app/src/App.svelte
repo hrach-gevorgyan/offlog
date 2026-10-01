@@ -793,7 +793,10 @@
     /* Its own token rather than --sidebar-bg: theme.ts pairs this colour
        with the native icon style, so the two have to move together. */
     background: var(--statusbar-fill);
-    z-index: 10000;
+    /* Above page content (its popovers top out at 220), below every modal
+       scrim (300 and up) -- otherwise a dialog dims the screen but leaves
+       a bright band under the clock. */
+    z-index: 299;
   }
 
   .layout {
