@@ -93,15 +93,28 @@
     } catch { dupHint = ''; }
   }
 
-  function openPanel(k: PanelKind) { panelSession++; panel = k; }
+  // A panel and the keyboard never share the screen: the WebView shrinks
+  // by the keyboard's height (adjustResize), which left a panel no room.
+  // Opening a panel drops the keyboard; leaving one by a pick, Done or a
+  // tap on the title brings it back. Switching panels keeps it down.
+  function openPanel(k: PanelKind) { input?.blur(); showHelp = false; panelSession++; panel = k; }
   function closePanel() { panelRef?.close(); }
+  function onChip(k: PanelKind) {
+    if (panel === k) toTitle();
+    else if (panel) { afterPanel = () => openPanel(k); closePanel(); }
+    else openPanel(k);
+  }
+  // Focus inside the tap's own handler: Android raises the keyboard only
+  // for a focus() made during a user gesture.
+  function toTitle() { input?.focus(); closePanel(); }
+  function onTitleFocus() { if (panel) closePanel(); }
   async function onPanelClosed() {
     panel = null;
     const next = afterPanel;
     afterPanel = null;
     if (next) { next(); return; }
     await tick();
-    input?.focus();
+    if (!panel) input?.focus();
   }
   // The panel's history layer sits above the sheet's, so it goes first.
   function closeSheet() {
@@ -109,10 +122,10 @@
     else sheet?.close();
   }
 
-  function pickDue(v: string) { pickedDue = v || null; closePanel(); }
-  function pickPriority(v: string) { pickedPriority = v ? (Number(v) as 1 | 2 | 3) : null; closePanel(); }
-  function pickProject(id: string) { pickedProject = id; closePanel(); }
-  function pickReminder(v: string) { pickedReminder = v || null; closePanel(); }
+  function pickDue(v: string) { pickedDue = v || null; toTitle(); }
+  function pickPriority(v: string) { pickedPriority = v ? (Number(v) as 1 | 2 | 3) : null; toTitle(); }
+  function pickProject(id: string) { pickedProject = id; toTitle(); }
+  function pickReminder(v: string) { pickedReminder = v || null; toTitle(); }
   function toggleTag(t: string) {
     if (tags.includes(t)) {
       if (addedTags.includes(t)) addedTags = addedTags.filter(x => x !== t);
@@ -121,12 +134,9 @@
     else addedTags = [...addedTags, t];
   }
 
-  // Tapping a chip or a panel row keeps the title field focused, so the
-  // keyboard stays put. The calendar and the tag field take focus as usual.
-  function keepFocus(e: MouseEvent) {
-    const t = e.target as Element;
-    if (document.activeElement === input && t.closest('button') && !t.closest('.cal-field')) e.preventDefault();
-  }
+  // Add and ? leave the title focused, so the keyboard does not drop and
+  // rise again under the finger.
+  const holdFocus = (e: MouseEvent) => e.preventDefault();
 
   // Escape and the scrim close an open panel before the sheet: both are
   // caught in the capture phase, ahead of the sheet's own handlers.
@@ -147,7 +157,8 @@
     window.addEventListener('keydown', onKeyCapture, true);
     window.addEventListener('click', onClickCapture, true);
     await tick();
-    input?.focus();
+    // A chip tapped before this tick already took the keyboard down.
+    if (!panel) input?.focus();
   });
   onDestroy(() => {
     clearTimeout(dupTimer);
@@ -196,93 +207,104 @@
 </script>
 
 <Sheet bind:this={sheet} label="Add a task" on:close>
-  <div class="top">
-    <input
-      bind:this={input} bind:value={text} class="qa" placeholder="What needs doing?"
-      autocomplete="off" enterkeyhint="done" aria-label="Task title" on:keydown={onKey}
-    />
-    <button class="p-ib help" class:on={showHelp} on:click={() => (showHelp = !showHelp)} aria-label="Quick add syntax help" aria-expanded={showHelp}>?</button>
-  </div>
-
-  {#if showHelp}
-    <div class="helpbox" role="note">
-      <p>Type it in plain text. These are picked out for you:</p>
-      <dl>
-        <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>
-        <dt>Time</dt><dd><code>at 5pm</code>, <code>17:30</code> sets a reminder</dd>
-        <dt>Priority</dt><dd><code>!high</code>, <code>!low</code>, <code>!!</code>, <code>!!!</code></dd>
-        <dt>Tag</dt><dd><code>#errand</code>, repeat for more</dd>
-        <dt>Project</dt><dd><code>@fitness</code> matches a project by name</dd>
-        <dt>Escape</dt><dd><code>\#</code> <code>\@</code> <code>\!</code> keep one character; wrap the whole title in <code>"quotes"</code> to turn parsing off</dd>
-      </dl>
+  <!-- One column capped at the sheet's own room: the compose row and chips
+       stay put; only the help or the panel below them scrolls. -->
+  <div class="qa-root">
+    <div class="compose">
+      <input
+        bind:this={input} bind:value={text} class="qa" placeholder="What needs doing?"
+        autocomplete="off" enterkeyhint="done" aria-label="Task title" on:keydown={onKey} on:focus={onTitleFocus}
+      />
+      <button class="send" on:mousedown={holdFocus} on:click={add} disabled={!parsed.title || !project || saving} aria-label="Add">{@html I.up}</button>
     </div>
-  {/if}
 
-  {#if parsed.raw}
-    <div class="p-chips"><span class="p-chip">Quoted, parsing off</span></div>
-  {/if}
+    <div class="p-chips chips">
+      <button class="p-chip" class:on={!!due} aria-expanded={panel === 'due'} on:click={() => onChip('due')} aria-label="Due: {dueText(due)}">{@html I.today}{due ? dueText(due) : 'Date'}</button>
+      <button class="p-chip" class:on={projectSet} aria-expanded={panel === 'project'} on:click={() => onChip('project')} aria-label="Project: {project?.name ?? 'none'}">
+        {#if space}<span class="p-dot" style="background:{soften(space.color)}"></span>{/if}{project?.name ?? 'No project'}
+      </button>
+      <button class="p-chip" class:on={!!priority} aria-expanded={panel === 'priority'} on:click={() => onChip('priority')} aria-label="Priority: {priority ? PRIORITY_LABEL[priority] : 'not set'}">{@html I.flag}{priority ? PRIORITY_LABEL[priority] : 'Priority'}</button>
+      <button class="p-chip" class:on={tags.length > 0} aria-expanded={panel === 'tags'} on:click={() => onChip('tags')} aria-label="Tags: {tags.length ? tags.join(', ') : 'none'}">{@html I.tag}{tagText}</button>
+      <button class="p-chip" class:on={!!reminder} aria-expanded={panel === 'reminder'} on:click={() => onChip('reminder')} aria-label="Reminder: {reminder ? reminderText(reminder) : 'none'}">{@html I.bell}{#if reminder}{reminderText(reminder)}{/if}</button>
+      <button class="p-chip help" class:on={showHelp} on:mousedown={holdFocus} on:click={() => (showHelp = !showHelp)} aria-label="Quick add syntax help" aria-expanded={showHelp}>?</button>
+    </div>
 
-  <div class="pick" role="presentation" bind:this={panelEl} on:mousedown={keepFocus}>
-    {#if panel}
-      {#key panelSession}
-        <Panel bind:this={panelRef} title={PANEL_TITLE[panel]} on:close={onPanelClosed}>
-          {#if panel === 'due'}
-            <DuePanel value={due} on:pick={e => pickDue(e.detail)} />
-          {:else if panel === 'priority'}
-            <Pick options={PRIORITIES} current={priority ? String(priority) : ''} on:pick={e => pickPriority(e.detail)} />
-          {:else if panel === 'project'}
-            <ProjectPanel current={targetId} on:pick={e => pickProject(e.detail)} />
-          {:else if panel === 'tags'}
-            <TagsPanel selected={tags} on:toggle={e => toggleTag(e.detail)} on:add={e => toggleTag(e.detail)} />
-          {:else}
-            <ReminderPanel value={reminder} on:pick={e => pickReminder(e.detail)} on:set={e => (pickedReminder = e.detail || null)} />
-          {/if}
-        </Panel>
-      {/key}
-    {:else}
-      <div class="p-chips chips">
-        <button class="p-chip" class:on={!!due} on:click={() => openPanel('due')} aria-label="Due: {dueText(due)}">{@html I.today}{due ? dueText(due) : 'Date'}</button>
-        <button class="p-chip" class:on={projectSet} on:click={() => openPanel('project')} aria-label="Project: {project?.name ?? 'none'}">
-          {#if space}<span class="p-dot" style="background:{soften(space.color)}"></span>{/if}{project?.name ?? 'No project'}
-        </button>
-        <button class="p-chip" class:on={!!priority} on:click={() => openPanel('priority')} aria-label="Priority: {priority ? PRIORITY_LABEL[priority] : 'not set'}">{@html I.flag}{priority ? PRIORITY_LABEL[priority] : 'Priority'}</button>
-        <button class="p-chip" class:on={tags.length > 0} on:click={() => openPanel('tags')} aria-label="Tags: {tags.length ? tags.join(', ') : 'none'}">{@html I.tag}{tagText}</button>
-        <button class="p-chip" class:on={!!reminder} on:click={() => openPanel('reminder')} aria-label="Reminder: {reminder ? reminderText(reminder) : 'none'}">{@html I.bell}{#if reminder}{reminderText(reminder)}{/if}</button>
+    {#if parsed.raw || !project}
+      <p class="note">{#if !project}Create a project first{:else}Quoted, parsing off{/if}</p>
+    {/if}
+    {#if dupHint}<p class="warn">{dupHint}</p>{/if}
+
+    {#if showHelp}
+      <div class="helpbox" role="note">
+        <p>Type it in plain text. These are picked out for you:</p>
+        <dl>
+          <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>
+          <dt>Time</dt><dd><code>at 5pm</code>, <code>17:30</code> sets a reminder</dd>
+          <dt>Priority</dt><dd><code>!high</code>, <code>!low</code>, <code>!!</code>, <code>!!!</code></dd>
+          <dt>Tag</dt><dd><code>#errand</code>, repeat for more</dd>
+          <dt>Project</dt><dd><code>@fitness</code> matches a project by name</dd>
+          <dt>Escape</dt><dd><code>\#</code> <code>\@</code> <code>\!</code> keep one character; wrap the whole title in <code>"quotes"</code> to turn parsing off</dd>
+        </dl>
       </div>
     {/if}
-  </div>
 
-  {#if dupHint}<p class="warn">{dupHint}</p>{/if}
-
-  <div class="foot">
-    {#if !project}<span>Create a project first</span>{/if}
-    <button class="send" on:click={add} disabled={!parsed.title || !project || saving} aria-label="Add">{@html I.up}</button>
+    {#if panel}
+      <div class="pick" bind:this={panelEl}>
+        {#key panelSession}
+          <Panel bind:this={panelRef} title={PANEL_TITLE[panel]} on:close={onPanelClosed} on:done={toTitle}>
+            {#if panel === 'due'}
+              <DuePanel value={due} on:pick={e => pickDue(e.detail)} />
+            {:else if panel === 'priority'}
+              <Pick options={PRIORITIES} current={priority ? String(priority) : ''} on:pick={e => pickPriority(e.detail)} />
+            {:else if panel === 'project'}
+              <ProjectPanel current={targetId} on:pick={e => pickProject(e.detail)} />
+            {:else if panel === 'tags'}
+              <TagsPanel selected={tags} on:toggle={e => toggleTag(e.detail)} on:add={e => toggleTag(e.detail)} />
+            {:else}
+              <ReminderPanel value={reminder} on:pick={e => pickReminder(e.detail)} on:set={e => (pickedReminder = e.detail || null)} />
+            {/if}
+          </Panel>
+        {/key}
+      </div>
+    {/if}
   </div>
 </Sheet>
 
 <style>
-  .top { display: flex; align-items: flex-start; gap: 4px; }
-  .qa { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: var(--p-fs-xl); padding: 10px 4px 12px; }
+  /* Sheet.svelte: max-height 88dvh, a 27px handle zone, 16px + safe-area
+     bottom padding. The WebView resizes with the keyboard (adjustResize),
+     so dvh is the room actually left above it. */
+  .qa-root {
+    display: flex; flex-direction: column;
+    max-height: calc(88dvh - 27px - 16px - env(safe-area-inset-bottom, 0px));
+  }
+  .compose, .chips, .note, .warn { flex: none; }
+  .compose { display: flex; align-items: center; gap: 8px; }
+  .qa { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: var(--p-fs-xl); padding: 10px 4px; }
   .qa::placeholder { color: var(--faint); }
-  .help { font-weight: 700; font-size: var(--p-fs-m); }
-  .helpbox { background: var(--surface); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; font-size: var(--p-fs-s); color: var(--muted); }
-  .helpbox p { margin: 0 0 8px; }
-  .helpbox dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; margin: 0; }
-  .helpbox dt { color: var(--faint); font-size: var(--p-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-  .helpbox dd { margin: 0; color: var(--text); }
-  .helpbox code { font-family: var(--mono); font-size: var(--p-fs-xs); background: var(--col-bg); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
-  /* A scrolling row clips overflow on both axes; padding keeps the chips'
-     44px tap extension inside it. */
-  .p-chips { padding: 7px 0; margin: -5px 0 -3px; }
-  .chips .p-chip { min-height: 36px; }
-  .chips .p-chip::before { top: -4px; bottom: -4px; }
-  .warn { font-size: var(--p-fs-s); color: var(--overdue-ink); margin: 8px 4px 0; }
-  .foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }
-  .foot span { font-size: var(--p-fs-s); color: var(--faint); min-width: 0; margin-right: auto; }
   .send {
     width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; flex-shrink: 0;
     background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;
   }
   .send:not(:disabled):active { filter: brightness(.94); }
   .send:disabled { opacity: .4; cursor: default; }
+  /* A scrolling row clips overflow on both axes; padding keeps the chips'
+     44px tap extension inside it. */
+  .p-chips { padding: 7px 0; margin: 2px 0 -3px; }
+  .chips .p-chip { min-height: 36px; flex-shrink: 0; }
+  .chips .p-chip::before { top: -4px; bottom: -4px; }
+  .chips .p-chip[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .help { min-width: 44px; justify-content: center; font-weight: 700; }
+  .note, .warn { font-size: var(--p-fs-s); margin: 6px 4px 0; }
+  .note { color: var(--faint); }
+  .warn { color: var(--overdue-ink); }
+  /* Shrinkable: they give way before the compose row or the chips do. */
+  .helpbox, .pick { flex: 0 1 auto; min-height: 0; margin-top: 10px; }
+  .helpbox { overflow-y: auto; overscroll-behavior: contain; background: var(--surface); border-radius: 12px; padding: 10px 12px; font-size: var(--p-fs-s); color: var(--muted); }
+  .helpbox p { margin: 0 0 8px; }
+  .helpbox dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; margin: 0; }
+  .helpbox dt { color: var(--faint); font-size: var(--p-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .helpbox dd { margin: 0; color: var(--text); }
+  .helpbox code { font-family: var(--mono); font-size: var(--p-fs-xs); background: var(--col-bg); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
+  .pick { display: flex; flex-direction: column; }
 </style>

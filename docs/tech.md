@@ -649,6 +649,10 @@ same UI.
   focusin/focusout, so moving between fields keeps it right). On the phone,
   delete-undo goes through the shell's snackbar and `showError` toasts drop
   in at the top (`pointer-events: none`, so the top bar stays usable).
+  In quick add a picker panel and the keyboard never share the screen:
+  opening a panel blurs the title; a pick, Done, or a tap on the title
+  refocuses it inside that tap (Android only raises the keyboard for a focus
+  made during a user gesture) and closes the panel.
 - **Notification icons** must be white silhouettes with transparency, or
   Android substitutes a generic triangle.
 - **Home-screen widget** (`OffologWidgetProvider.java`,

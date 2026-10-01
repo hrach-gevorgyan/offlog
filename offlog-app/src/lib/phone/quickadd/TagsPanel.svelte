@@ -31,6 +31,8 @@
   }
 </script>
 
+<!-- The field leads: while it holds the keyboard it stays right under the chips. -->
+<input class="p-fld" bind:value={input} on:keydown={onKey} placeholder="New tag" autocomplete="off" enterkeyhint="done" aria-label="New tag" />
 {#if all.length}
   <div class="p-cpick">
     {#each all as t (t)}
@@ -41,7 +43,6 @@
     {/each}
   </div>
 {/if}
-<input class="p-fld" bind:value={input} on:keydown={onKey} placeholder="New tag" autocomplete="off" enterkeyhint="done" aria-label="New tag" />
 
 <style>
   .tg { min-height: 44px; display: inline-flex; align-items: center; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
@@ -50,6 +51,5 @@
   .tg:active .p-tag { background: var(--col-bg); }
   .ck { display: flex; }
   .ck :global(svg.i) { width: 14px; height: 14px; }
-  .p-cpick { margin-bottom: 6px; }
-  .p-fld { margin-bottom: 4px; }
+  .p-fld { margin-bottom: 6px; }
 </style>

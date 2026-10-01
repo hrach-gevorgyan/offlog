@@ -251,11 +251,12 @@ describe('phone Quick add', () => {
   });
 
   it('back and Escape close an open panel before the sheet', async () => {
-    const { getByLabelText, queryByLabelText, findByLabelText } = render(QuickAddSheet);
+    const { getByLabelText, getByRole, queryByRole, findByLabelText } = render(QuickAddSheet);
     const input = await type(getByLabelText, 'Stay');
     await fireEvent.click(getByLabelText('Priority: not set'));
-    expect(queryByLabelText('Priority: not set')).toBeNull();
+    expect(getByRole('group', { name: 'Priority' })).toBeTruthy();
     history.back();
+    await waitFor(() => expect(queryByRole('group', { name: 'Priority' })).toBeNull());
     await findByLabelText('Priority: not set');
     expect(sheetClosing()).toBe(false);
     await fireEvent.click(getByLabelText('Due: No date'));
@@ -277,11 +278,13 @@ describe('phone Quick add', () => {
   });
 
   it('Enter adds with a panel still open, then closes the panel and the sheet', async () => {
-    const { getByLabelText, getByRole, findByLabelText } = render(QuickAddSheet);
+    const { getByLabelText, getByRole, queryByRole, findByLabelText } = render(QuickAddSheet);
     const input = await type(getByLabelText, 'Quick one');
     await fireEvent.click(getByLabelText('Priority: not set'));
     await fireEvent.click(getByRole('button', { name: 'Medium' }));
+    await waitFor(() => expect(queryByRole('group', { name: 'Priority' })).toBeNull());
     await fireEvent.click(await findByLabelText('Priority: Medium'));
+    expect(getByRole('group', { name: 'Priority' })).toBeTruthy();
     await fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(createTask).toHaveBeenCalledWith('project:q', 'space:w', 'col:q1', 'Quick one', {
       priority: 2, due_date: null, reminder_at: null, tags: undefined,
@@ -314,6 +317,89 @@ describe('phone Quick add', () => {
     expect((getByLabelText('Add') as HTMLButtonElement).disabled).toBe(true);
     await fireEvent.click(getByLabelText('Quick add syntax help'));
     expect(getByText(/turn parsing off/)).toBeTruthy();
+  });
+
+  describe('keyboard-up layout', () => {
+    const panelOpen = (name: string) => !!document.querySelector(`.pick [role="group"][aria-label="${name}"]`);
+
+    it('title and Add share one row; the chips, with ?, sit right under it', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      const input = getByLabelText('Task title');
+      const compose = input.parentElement!;
+      expect(compose.classList.contains('compose')).toBe(true);
+      expect([...compose.children]).toEqual([input, getByLabelText('Add')]);
+      const chips = compose.nextElementSibling!;
+      expect(chips.classList.contains('p-chips')).toBe(true);
+      expect(chips.contains(getByLabelText('Quick add syntax help'))).toBe(true);
+      expect(chips.lastElementChild).toBe(getByLabelText('Quick add syntax help'));
+      // Nothing below the chips until there is something to show.
+      expect(chips.nextElementSibling).toBeNull();
+      expect(document.querySelector('.foot')).toBeNull();
+    });
+
+    it('a panel drops the keyboard and keeps the chips; a pick brings the title back', async () => {
+      const { getByLabelText, getByRole } = render(QuickAddSheet);
+      const input = await type(getByLabelText, 'Pay rent');
+      await waitFor(() => expect(document.activeElement).toBe(input));
+      const chip = getByLabelText('Due: No date');
+      await fireEvent.click(chip);
+      expect(document.activeElement).not.toBe(input);
+      expect(panelOpen('Date')).toBe(true);
+      expect(chip.getAttribute('aria-expanded')).toBe('true');
+      expect(getByLabelText('Priority: not set').getAttribute('aria-expanded')).toBe('false');
+      // The panel follows the chips, inside the same column.
+      expect(document.querySelector('.qa-root > .pick')).toBeTruthy();
+      await fireEvent.click(getByRole('button', { name: /^Tomorrow/ }));
+      expect(document.activeElement).toBe(input);
+      await waitFor(() => expect(panelOpen('Date')).toBe(false));
+    });
+
+    it('tapping the title closes the panel', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      const input = getByLabelText('Task title') as HTMLInputElement;
+      await fireEvent.click(getByLabelText('Project: Q4 Sprint'));
+      expect(panelOpen('Project')).toBe(true);
+      input.focus();
+      await waitFor(() => expect(panelOpen('Project')).toBe(false));
+      expect(sheetClosing()).toBe(false);
+    });
+
+    it('the open chip closes its panel; another chip switches without the keyboard', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      const input = getByLabelText('Task title');
+      await fireEvent.click(getByLabelText('Priority: not set'));
+      await fireEvent.click(getByLabelText('Reminder: none'));
+      await waitFor(() => expect(panelOpen('Reminder')).toBe(true));
+      expect(panelOpen('Priority')).toBe(false);
+      expect(document.activeElement).not.toBe(input);
+      await fireEvent.click(getByLabelText('Reminder: none'));
+      expect(document.activeElement).toBe(input);
+      await waitFor(() => expect(panelOpen('Reminder')).toBe(false));
+      expect(sheetClosing()).toBe(false);
+    });
+
+    it('tags stay open while toggling; Done returns to the title', async () => {
+      const { getByLabelText, getByRole, findByRole } = render(QuickAddSheet);
+      const input = getByLabelText('Task title');
+      await fireEvent.click(getByLabelText('Tags: none'));
+      await fireEvent.click(await findByRole('button', { name: '#gym' }));
+      await new Promise(r => setTimeout(r, 30));
+      expect(panelOpen('Tags')).toBe(true);
+      expect(document.activeElement).not.toBe(input);
+      await fireEvent.click(getByRole('button', { name: 'Done' }));
+      expect(document.activeElement).toBe(input);
+      await waitFor(() => expect(panelOpen('Tags')).toBe(false));
+    });
+
+    it('Add and ? keep the title focused on press', async () => {
+      const { getByLabelText } = render(QuickAddSheet);
+      await type(getByLabelText, 'x');
+      for (const l of ['Add', 'Quick add syntax help']) {
+        const ev = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        getByLabelText(l).dispatchEvent(ev);
+        expect(ev.defaultPrevented).toBe(true);
+      }
+    });
   });
 
   it('a failed create surfaces an error and keeps the text', async () => {
