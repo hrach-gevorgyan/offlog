@@ -133,6 +133,11 @@
     };
   });
 
+  // The day's three places: committed tasks, then this pick, then empty ones.
+  $: lockedN = active ? locked.length : 0;
+  $: pool = [...suggested.map(x => x.task), ...rest];
+  $: picks = selected.map(id => pool.find(t => t._id === id)).filter((t): t is Row => !!t);
+
   $: sub = active ? `${doneN} of ${locked.length} done` : 'Pick up to three for today';
 </script>
 
@@ -153,14 +158,25 @@
 
 {#if loaded && room > 0}
   {#if suggested.length || rest.length}
-    <div class="p-sec" role="heading" aria-level="2">Suggested <span class="p-n">{room - selected.length} to pick</span></div>
+    <div class="slots">
+      {#each Array(MAX) as _, i}
+        {#if i < lockedN}
+          <div class="slot full">{locked[i].title}</div>
+        {:else if picks[i - lockedN]}
+          {@const t = picks[i - lockedN]}
+          <button class="slot pend" on:click={() => toggle(t._id ?? '')} aria-label="Take {t.title} out of this pick">{t.title}</button>
+        {:else}
+          <div class="slot" aria-label="Empty place {i + 1}">{i + 1}</div>
+        {/if}
+      {/each}
+    </div>
+    <div class="p-sec" role="heading" aria-level="2">Suggested</div>
     <div class="rows">
       {#each suggested as s (s.task._id)}
         {@const on = selected.includes(s.task._id ?? '')}
         <button class="lrow" class:picked={on} aria-pressed={on} on:click={() => toggle(s.task._id ?? '')}>
-          <span class="box"></span>
-          <span class="t">{s.task.title}<span class="pj">{s.task.project_name ?? ''}</span></span>
-          <span class="why {s.reason}">{why(s)}</span>
+          <span class="t">{s.task.title}<span class="pj">{s.task.project_name ?? ''} · <span class="why {s.reason}">{why(s)}</span></span></span>
+          <span class="add">{on ? 'Added' : '+ Add'}</span>
         </button>
       {/each}
     </div>
@@ -176,8 +192,8 @@
           {#each rest as t (t._id)}
             {@const on = selected.includes(t._id ?? '')}
             <button class="lrow" class:picked={on} aria-pressed={on} on:click={() => toggle(t._id ?? '')}>
-              <span class="box"></span>
               <span class="t">{t.title}<span class="pj">{t.project_name ?? ''}</span></span>
+              <span class="add">{on ? 'Added' : '+ Add'}</span>
             </button>
           {/each}
         </div>
@@ -207,18 +223,24 @@
   .lrow:active { background: var(--col-bg); }
   .lrow .t { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
   .pj { font-size: var(--p-fs-s); color: var(--faint); font-weight: 400; margin-top: 1px; }
-  .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--check-ring); flex-shrink: 0; position: relative; box-sizing: border-box; }
   .lrow.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }
   .lrow.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
-  /* The fill and tick pop in (decelerate) and leave faster (accelerate). */
-  .box { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
-  .box::after { content: ''; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0; transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate); }
-  .lrow.picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
-  .lrow.picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
-  .why { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--col-bg); color: var(--faint); }
-  .why.pinned { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
-  .why.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
-  .why.due_soon { background: var(--due-soon-bg); color: var(--due-soon-ink); }
+  .why { font-weight: 600; color: var(--faint); }
+  .why.pinned { color: var(--accent-ink); }
+  .why.overdue { color: var(--overdue-ink); }
+  .why.due_soon { color: var(--due-soon-ink); }
+  .add { flex-shrink: 0; font-size: var(--p-fs-s); font-weight: 700; color: var(--accent-ink); }
+  .picked .add { color: var(--faint); }
+  /* Three places for the day, filled left to right. */
+  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 18px; }
+  .slot {
+    min-height: 68px; border-radius: 14px; box-sizing: border-box; padding: 8px 10px; display: flex; align-items: center; justify-content: center; text-align: center;
+    border: 2px dashed var(--check-ring); color: var(--faint); font: inherit; font-size: var(--p-fs-s); font-weight: 700; overflow-wrap: anywhere;
+    background: none; transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate);
+  }
+  .slot.full { border: 0; background: var(--accent); color: var(--on-accent); }
+  .slot.pend { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); cursor: pointer; }
+  .slot.full, .slot.pend { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; padding-top: 12px; }
   .go { margin-top: 14px; }
   .more { display: block; margin: 10px auto 0; min-height: 44px; }
 </style>

@@ -44,6 +44,8 @@ const pool = [
 const byId = Object.fromEntries(pool.map(t => [t._id, t]));
 const lockIds = () => JSON.parse(localStorage.getItem(KEY) ?? 'null')?.taskIds ?? null;
 
+const emptySlots = (c: HTMLElement) => c.querySelectorAll('.slot:not(.full):not(.pend)').length;
+
 describe('phone Focus', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -62,13 +64,14 @@ describe('phone Focus', () => {
 
   it('no lock: suggests three with a why label, then commits the picked ones', async () => {
     const { findByText, getByText, getAllByText, queryByText, container } = render(FocusScreen);
-    await findByText('3 to pick');
+    await waitFor(() => expect(emptySlots(container)).toBe(3));
     expect(queryByText('Reset')).toBeNull();
     expect([...container.querySelectorAll('.why')].map(x => x.textContent)).toEqual(['Pinned', 'Late', 'Due soon']);
-    expect(getByText('3 to pick')).toBeTruthy();
     await fireEvent.click(getByText('Taxes'));
     await fireEvent.click(getByText('Dentist'));
-    expect(getByText('1 to pick')).toBeTruthy();
+    // The picks fill the day's places in order; one stays empty.
+    expect([...container.querySelectorAll('.slot.pend')].map(x => x.textContent)).toEqual(['Taxes', 'Dentist']);
+    expect(emptySlots(container)).toBe(1);
     await fireEvent.click(getByText("Let's focus on 2 tasks"));
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ date: TODAY, taskIds: ['task:Taxes', 'task:Dentist'] });
     await findByText('0 of 2 done');
@@ -88,9 +91,10 @@ describe('phone Focus', () => {
 
   it('a lock with room left can take more, appended', async () => {
     localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report'] }));
-    const { findByText, getByText } = render(FocusScreen);
+    const { findByText, getByText, container } = render(FocusScreen);
     await findByText('0 of 1 done');
-    expect(getByText('2 to pick')).toBeTruthy();
+    await waitFor(() => expect(emptySlots(container)).toBe(2));
+    expect(container.querySelector('.slot.full')?.textContent).toBe('Report');
     await fireEvent.click(getByText('Plants'));
     await fireEvent.click(getByText('Add 1 to focus'));
     expect(lockIds()).toEqual(['task:Report', 'task:Plants']);
@@ -153,20 +157,20 @@ describe('phone Focus', () => {
   it('a lock whose tasks were all deleted or archived counts as no lock', async () => {
     getTaskById.mockImplementation(async (id: string) => (id === 'task:Gone' ? { ...task('task:Gone'), deleted: true } : id === 'task:Arch' ? { ...task('task:Arch'), archived: true } : null));
     localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Gone', 'task:Arch', 'task:Missing'] }));
-    const { findByText, queryByText } = render(FocusScreen);
+    const { findByText, queryByText, container } = render(FocusScreen);
     await findByText('Pick up to three for today');
     expect(queryByText(/of 0 done/)).toBeNull();
     expect(queryByText('Reset')).toBeNull();
-    expect(await findByText('3 to pick')).toBeTruthy();
+    await waitFor(() => expect(emptySlots(container)).toBe(3));
   });
 
   it('when every locked task is done it says so, and finishing works from the card', async () => {
     getTaskById.mockImplementation(async (id: string) => ({ ...byId[id], column_id: 'col:done' }));
     localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report', 'task:Socks', 'task:Dentist'] }));
-    const { findByText, queryByText, getByLabelText } = render(FocusScreen);
+    const { findByText, queryByText, getByLabelText, container } = render(FocusScreen);
     await findByText('3 of 3 done');
     expect(queryByText('All done for today.')).toBeTruthy();
-    expect(queryByText(/d to pick/)).toBeNull();
+    expect(container.querySelector('.slots')).toBeNull();
     updateTask.mockReset().mockResolvedValue(undefined);
     await fireEvent.click(getByLabelText('Mark not done: Report'));
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:Report', { column_id: 'col:todo' }));
