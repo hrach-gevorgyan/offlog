@@ -39,10 +39,17 @@
 // every open and fold it into the {#key} expression alongside whatever the
 // key would otherwise be (e.g. a task id).
 
+import { writable } from 'svelte/store';
+
 type CloseFn = () => void;
 interface Entry { close: CloseFn; id: number; request?: CloseFn }
 
 const stack: Entry[] = [];
+// How many layers are open, for anything that must react to "nothing is
+// open" (the phone hands Back to the system then). Re-synced after every
+// change to `stack` below.
+export const openLayers = writable(0);
+const sync = () => openLayers.set(stack.length);
 let listening = false;
 let nextId = 1;
 
@@ -77,6 +84,7 @@ function onPopState(e: PopStateEvent) {
     const entry = stack.pop();
     entry?.close();
   }
+  sync();
 }
 
 function ensureListening() {
@@ -90,6 +98,7 @@ export function closeOnBack(close: CloseFn): CloseFn {
   const id = nextId++;
   const entry: Entry = { close, id };
   stack.push(entry);
+  sync();
   history.pushState({ offlogLayer: true, offlogId: id }, '');
   // Guarded against firing twice for the same layer: every overlay can
   // reach requestClose() from more than one path (Escape, a scrim click,
@@ -119,6 +128,7 @@ export function closeOnBack(close: CloseFn): CloseFn {
         const e = stack.pop();
         e?.close();
       }
+      sync();
     }, 400);
   };
   return entry.request;
@@ -139,6 +149,7 @@ export function closeThrough(request: CloseFn): boolean {
     const i = stack.indexOf(target);
     if (i === -1) return;
     while (stack.length > i) stack.pop()?.close();
+    sync();
   }, 400);
   return true;
 }
@@ -151,6 +162,7 @@ export function dropLayer(request: CloseFn): void {
   if (idx === -1 || idx === stack.length - 1) return;
   dropped.set(stack[idx].id, stack[idx - 1]?.id);
   stack.splice(idx, 1);
+  sync();
 }
 export function isTopLayer(request: CloseFn): boolean {
   return stack.at(-1)?.request === request;
@@ -183,6 +195,7 @@ export function closeTop(): boolean {
 // extra back press to unwind past it, which is fine, it's inert either way.
 export function discardTop(): void {
   stack.pop();
+  sync();
 }
 
 // Closes every tracked overlay at once — needed by entry points that jump
@@ -206,6 +219,7 @@ export function closeAll(): number {
   if (stack.length === 0) return 0;
   const n = stack.length;
   const entries = stack.splice(0, stack.length);
+  sync();
   for (let i = entries.length - 1; i >= 0; i--) entries[i].close();
   history.go(-n);
   return n;

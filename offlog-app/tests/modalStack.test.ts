@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { closeOnBack, discardTop, dropLayer } from '../src/lib/modalStack';
+import { get } from 'svelte/store';
+import { closeOnBack, closeAll, discardTop, dropLayer, openLayers } from '../src/lib/modalStack';
 
 // modalStack.ts is pure JS with no Svelte/DOM dependency beyond
 // window.history/popstate (see its own header comment) — a real target
@@ -22,6 +23,22 @@ import { closeOnBack, discardTop, dropLayer } from '../src/lib/modalStack';
 // synchronous in jsdom even though back() isn't), so tests capture it
 // there rather than constructing it by hand.
 describe('modalStack', () => {
+  it('openLayers follows the stack through open, back, discard and closeAll', () => {
+    closeAll();
+    expect(get(openLayers)).toBe(0);
+    closeOnBack(vi.fn());
+    const s1 = history.state;
+    closeOnBack(vi.fn());
+    expect(get(openLayers)).toBe(2);
+    window.dispatchEvent(new PopStateEvent('popstate', { state: s1 }));
+    expect(get(openLayers)).toBe(1);
+    closeOnBack(vi.fn());
+    discardTop();
+    expect(get(openLayers)).toBe(1);
+    closeAll();
+    expect(get(openLayers)).toBe(0);
+  });
+
   it('closes the top layer (LIFO) on back, leaving lower layers untouched', () => {
     const closeA = vi.fn();
     const closeB = vi.fn();

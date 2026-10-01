@@ -12,7 +12,8 @@
     "test": "vitest run",
     "version:check": "node scripts/version.js check",
     "version:set": "node scripts/version.js set",
-    "bench": "vitest bench"
+    "bench": "vitest bench",
+    "postinstall": "node scripts/patch-capacitor-app.js"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",

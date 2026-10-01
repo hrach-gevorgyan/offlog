@@ -24,7 +24,7 @@
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
   import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
-  import { closeOnBack, closeAll } from './lib/modalStack';
+  import { closeOnBack, closeAll, openLayers } from './lib/modalStack';
   import AppLock from './lib/AppLock.svelte';
   import UpdateModal from './lib/UpdateModal.svelte';
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
@@ -279,12 +279,25 @@
     if (!window.Capacitor?.isNativePlatform?.()) return;
     const { App: CapApp } = await import('@capacitor/app');
     CapApp.addListener('backButton', ({ canGoBack }) => {
-      if (canGoBack) window.history.back();
+      // Our own layer count as well as canGoBack: Chrome marks history
+      // entries pushed without a user gesture (a sheet opened from the
+      // widget or a notification) as skippable, and canGoBack ignores them.
+      if (canGoBack || get(openLayers) > 0) window.history.back();
       else if (sidebarOpen) closeSidebar();
       else if (get(isPhone) && backAtRoot()) return;
       else CapApp.minimizeApp();
     });
+    backHandler = (enabled: boolean) => { CapApp.toggleBackButtonHandler({ enabled }).catch(() => {}); };
   }
+
+  // Phone on Home with nothing open: Back would only background the app, so
+  // hand it to the system instead. Android then plays its predictive-back
+  // preview (swipe and see the home screen), which it cannot do while the
+  // app's own handler is claiming the gesture. Anything open, another tab, or
+  // the lock screen takes it back.
+  let backHandler: ((enabled: boolean) => void) | null = null;
+  $: releaseBack = $isPhone && $phoneTab === 'home' && $openLayers === 0 && !locked;
+  $: backHandler?.(!releaseBack);
 
   // The home-screen widget (OffologWidgetProvider) opens MainActivity
   // with a com.offlog.app://<host>[?query] VIEW intent, depending on

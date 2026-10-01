@@ -70,7 +70,14 @@ flowchart LR
   pops screens and overlays in one LIFO order; back at a non-Home tab root
   goes Home, and back at Home's root sends the app to the background
   (`CapApp.minimizeApp()`, never `exitApp()`, which would make the next open
-  a cold start). Re-tapping the current tab at its root scrolls it to the
+  a cold start). With nothing open on Home, App.svelte hands Back to the
+  system (`toggleBackButtonHandler`, driven by `modalStack`'s `openLayers`)
+  so Android 16 plays its predictive-back preview; the manifest sets
+  `enableOnBackInvokedCallback`. The plugin flips that switch off the UI
+  thread, which leaves Android's own callback on top: `scripts/patch-capacitor-app.js`
+  (postinstall) wraps it in `runOnUiThread` until upstream does. The back
+  handler also trusts `openLayers` over `canGoBack`: Chrome hides history
+  entries pushed without a gesture (a sheet opened from the widget) from it. Re-tapping the current tab at its root scrolls it to the
   top; the + steps aside on a long downward scroll (`fabScroll.ts`).
   Week start and 12/24h follow the device locale (`Intl`) until chosen in
   Appearance. Screens: Home, Today/Late/Pinned, Search,
