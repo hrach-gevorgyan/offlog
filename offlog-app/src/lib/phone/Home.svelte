@@ -78,13 +78,13 @@
       const end = heroH - 64, span = 40;
       const lin = Math.min(1, Math.max(0, (y - (end - span)) / span));
       t = lin * lin * (3 - 2 * lin); // smoothstep: the muddy middle of the mix passes quickly
-      // At rest the bar is see-through (the band behind it is the same colour),
-      // so the logo mark is never sliced by it; it fills in over the first
-      // 24px of scroll, before anything but the band can pass under it.
-      fill = Math.min(1, y / 24);
+      // The bar stays see-through while only the band is under it (same
+      // colour), so the mark scrolls under it whole. It fills in just before
+      // the tiles, which overlap the band's edge, can reach it.
+      fill = Math.min(1, Math.max(0, (y - (heroH - 150)) / 24));
       // Inside the band the mark scrolls with it; easing it back down a third
       // of the way makes it move slower than the page (depth).
-      markY = prefersReducedMotion() ? 0 : y * .35;
+      markY = prefersReducedMotion() ? 0 : y * .4;
       setStatusBarOnHero(t < .5);
     });
   }
@@ -103,7 +103,7 @@
     <div class="hero" bind:clientHeight={heroH}>
       {#if markShown}
         <div class="markwrap" aria-hidden="true" in:markIn>
-          <svg class="mark" viewBox="0 0 1024 1024" style="transform:translateY({markY}px)">
+          <svg class="mark" viewBox="0 0 1024 1024" style="transform:translateY({markY}px);opacity:{0.1 * (1 - fill)}">
             {#each MARK_PATHS as d}<path {d} />{/each}
           </svg>
         </div>
@@ -204,7 +204,8 @@
   /* Up under the (see-through) top bar and off to the right, clear of the
      count and the progress dashes. */
   .markwrap { position: absolute; right: -92px; top: -36px; width: 252px; height: 252px; pointer-events: none; }
-  .mark { width: 100%; height: 100%; color: var(--on-hero); fill: currentColor; opacity: .1; }
+  /* Opacity is set inline: 10%, fading out as the band leaves. */
+  .mark { width: 100%; height: 100%; color: var(--on-hero); fill: currentColor; }
 
   .hero {
     position: relative; overflow: hidden;

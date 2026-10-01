@@ -216,6 +216,9 @@ body.dark.high-contrast {
 /* Set by theme.ts setStatusBarOnHero() while the phone Home's hero is under
    the status bar; after the theme blocks so it wins in both themes. */
 body.statusbar-hero { --statusbar-fill: var(--hero); }
+/* The strip's height is a fractional inset; a pixel of the same colour below
+   it covers the rounding seam against the band. */
+body.statusbar-hero .status-bar-fill { box-shadow: 0 1px 0 var(--hero); }
 
 /* ── State layers ───────────────────────────────────────────────────────────
    A hover or pressed tint is the element's OWN ink at low alpha, composited
