@@ -6,7 +6,7 @@
   import { spaces, projects, showError } from '../store';
   import { loadFocusLock } from '../focusLock';
   import { prefersReducedMotion, setStatusBarOnHero } from '../theme';
-  import { push, actions, appEmpty } from './nav';
+  import { push, actions } from './nav';
   import { greeting, shortDate } from './format';
   import { localDateStr } from '../utils';
   import { I } from './icons';
@@ -40,11 +40,8 @@
   function onVisible() { if (!document.hidden) { todayStr = localDateStr(new Date()); load(); } }
   onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
 
-  // A fresh install: nothing to count yet, so Home invites the first task
-  // instead of showing zeros.
+  // A fresh install: the band invites the first task; everything else stays.
   $: firstRun = !!data && data.totalTasks === 0;
-  $: appEmpty.set(firstRun);
-  onDestroy(() => appEmpty.set(false));
   $: left = data?.todayOpenCount ?? 0;
   $: doneToday = data?.todayDoneCount ?? 0;
   $: total = left + doneToday;
@@ -100,7 +97,6 @@
         <button class="hbody" on:click={() => actions.quickAdd()}>
           <span class="hi">{greeting()} <span>· {shortDate(todayStr)}</span></span>
           <span class="none">Add your first task</span>
-          <span class="meta">Tap here or + to start</span>
         </button>
       {:else}
       <button class="hbody" on:click={() => push({ k: 'today' })} aria-label={total ? `Open Today: ${left} left, ${doneToday} of ${total} done${late ? `, ${late} late` : ''}` : `Open Today: nothing due${late ? `, ${late} late` : ''}`}>
@@ -117,7 +113,6 @@
       {/if}
     </div>
 
-    {#if !firstRun}
     <div class="tiles">
       <button class="tile" on:click={() => push({ k: 'late' })}>
         <span class="top"><span class="ic">{@html I.late}</span><b class:late={late > 0} class:quiet={!late}>{late}</b></span><span class="lbl">Late</span>
@@ -129,17 +124,13 @@
         <span class="top"><span class="ic">{@html I.pin}</span><b class:quiet={!pinned}>{pinned}</b></span><span class="lbl">Pinned</span>
       </button>
     </div>
-    {:else}
-    <div class="tiles-gap"></div>
-    {/if}
 
     {#each sortedSpaces as s (s._id)}
       {@const ps = $projects.filter(p => p.space_id === s._id).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || a.position - b.position)}
       <div class="p-sec sec">
         <span>{s.name}</span>
-        <button class="secadd" on:click={() => newProject(s._id)} aria-label="New project in {s.name}">{@html I.plus}</button>
+        {#if ps.length}<button class="secadd" on:click={() => newProject(s._id)} aria-label="New project in {s.name}">{@html I.plus}</button>{/if}
       </div>
-      {#if ps.length}
       <div class="p-group">
         {#each ps as p (p._id)}
           {@const st = data?.byProject[p._id]}
@@ -151,8 +142,12 @@
             {#if st?.open}<span class="p-n">{st.open}</span>{/if}
           </button>
         {/each}
+        {#if !ps.length}
+          <button class="p-row acc add" on:click={() => newProject(s._id)}>
+            <span class="plus">{@html I.plus}</span><span class="lbl">New project</span>
+          </button>
+        {/if}
       </div>
-      {/if}
     {/each}
     {#if data?.completedLast7Days}
       <p class="stat">{data.completedLast7Days} finished this past week{data.busiestProjectName ? ` · busiest: ${data.busiestProjectName}` : ''}</p>
@@ -213,7 +208,6 @@
   .track i { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--on-hero) 24%, transparent); transition: background var(--dur-medium) var(--ease-standard); }
   .track i.on { background: var(--on-hero); }
 
-  .tiles-gap { height: 8px; margin-top: -40px; }
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -54px 0 18px; position: relative; z-index: 2; }
   .tile { background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
   .tile:active { transform: scale(.98); }
@@ -228,6 +222,9 @@
   .secadd { width: 44px; height: 44px; margin: -6px -10px -6px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--accent); }
   .secadd:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .secadd :global(svg) { width: 20px; height: 20px; }
+  .p-row.add { font-size: var(--p-fs-m); min-height: 48px; }
+  .plus { display: flex; width: 8px; justify-content: center; }
+  .plus :global(svg) { width: 18px; height: 18px; }
   .p-row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .late-n { color: var(--overdue-ink); font-size: var(--p-fs-xs); font-weight: 600; }
   .stat { font-size: var(--p-fs-s); color: var(--faint); text-align: center; margin: 4px 0 0; }

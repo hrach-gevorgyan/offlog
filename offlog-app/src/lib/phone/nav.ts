@@ -46,10 +46,6 @@ export const actions = {
 let queuedAdd: { due: string | null } | null = null;
 export function takeQueuedAdd() { const q = queuedAdd; queuedAdd = null; return q; }
 
-// No tasks at all yet (a fresh install): Home shows a first-run state and
-// the + button says what it adds.
-export const appEmpty = writable(false);
-
 export const TABS: Tab[] = ['home', 'today', 'agenda', 'search'];
 export const tab = writable<Tab>('home');
 export const stack = writable<Entry[]>([{ k: 'home' }]);
