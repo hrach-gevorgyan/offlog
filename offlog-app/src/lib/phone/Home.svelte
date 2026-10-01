@@ -130,9 +130,9 @@
           <span class="none">Add your first task</span>
         </button>
       {:else}
-      <button class="hbody" on:click={() => push({ k: 'today' })} aria-label={total ? `Open Today: ${left} left, ${doneToday} of ${total} done${late ? `, ${late} late` : ''}` : `Open Today: nothing due${late ? `, ${late} late` : ''}`}>
+      <button class="hbody" class:pending={!data} on:click={() => push({ k: 'today' })} aria-label={total ? `Open Today: ${left} left, ${doneToday} of ${total} done${late ? `, ${late} late` : ''}` : `Open Today: nothing due${late ? `, ${late} late` : ''}`}>
         <span class="hi">{greeting()} <span>· {shortDate(todayStr)}</span></span>
-        {#if total}
+        {#if total || !data}
           <span class="count"><b>{left}</b><span>left today</span></span>
           <span class="meta">{doneToday} of {total} done{#if late}{' · '}<span class="l">{late} late</span>{/if}</span>
           <span class="track">{#each Array(dashN) as _, i}<i class:on={i < dashOn}></i>{/each}</span>
@@ -144,7 +144,7 @@
       {/if}
     </div>
 
-    <div class="tiles">
+    <div class="tiles" class:pending={!data}>
       <button class="tile" on:click={() => push({ k: 'late' })}>
         <span class="top"><span class="ic">{@html I.late}</span><b class:late={late > 0} class:quiet={!late}>{late}</b></span><span class="lbl">Late</span>
       </button>
@@ -247,6 +247,9 @@
   .track i.on { background: var(--on-hero); }
 
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -54px 0 18px; position: relative; z-index: 2; }
+  /* Before the first load the numbers would read as a real "nothing due /
+     0 late" for a frame; the usual layout holds the space instead. */
+  .hbody.pending > :not(.hi), .tiles.pending b { visibility: hidden; }
   .tile { background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 10px 12px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; transition: transform var(--dur-hover) var(--ease-hover); }
   .tile:active { transform: scale(.98); }
   .top { display: flex; justify-content: space-between; align-items: center; }

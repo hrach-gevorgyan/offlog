@@ -87,12 +87,16 @@ function stripVisible(): boolean {
   const el = document.querySelector<HTMLElement>('.status-bar-fill');
   return !el || el.offsetHeight > 0;
 }
+// The native icon switch lands ~100ms after the call, so the strip's colour
+// waits for it: switching the CSS first leaves white icons on a light strip
+// (or dark on hero) for a few frames on every Home <-> screen transition.
 function syncHero(): void {
   const on = wanted && !suppressed && stripVisible();
   if (on === onHero) return;
   onHero = on;
-  document.body.classList.toggle('statusbar-hero', on);
-  syncAndroidStatusBar(isEffectivelyDark() || on);
+  const apply = () => { if (onHero === on) document.body.classList.toggle('statusbar-hero', on); };
+  const native = syncAndroidStatusBar(isEffectivelyDark() || on);
+  if (native) native.then(apply); else apply();
 }
 
 // The strip behind Android's transparent status bar is CSS
@@ -101,11 +105,13 @@ function syncHero(): void {
 // for a dark background" and Style.Light the reverse -- so the mapping is
 // inverted from what the names suggest. Getting it wrong makes the icons
 // the same colour as the strip and they disappear entirely.
-function syncAndroidStatusBar(dark: boolean): void {
-  if (!window.Capacitor?.isNativePlatform?.()) return;
-  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-    StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => {});
-  }).catch(() => {});
+// Resolves once the native style has been applied (never rejects); null off
+// Android.
+function syncAndroidStatusBar(dark: boolean): Promise<void> | null {
+  if (!window.Capacitor?.isNativePlatform?.()) return null;
+  return import('@capacitor/status-bar').then(({ StatusBar, Style }) =>
+    StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => {}),
+  ).catch(() => {});
 }
 
 // Browser/PWA chrome equivalent of the strip above: mobile browsers paint

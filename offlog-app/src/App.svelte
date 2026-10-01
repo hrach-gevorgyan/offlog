@@ -30,7 +30,7 @@
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
   import PhoneApp from './lib/phone/PhoneApp.svelte';
   import { isPhone, actions as phoneActions, backAtRoot, switchTab, navigate, showToast, tab as phoneTab } from './lib/phone/nav';
-  import { setStatusBarSuppressed } from './lib/theme';
+  import { setStatusBarSuppressed, setStatusBarOnHero } from './lib/theme';
   import { fly } from 'svelte/transition';
   import { snackIn, snackOut } from './lib/motion';
   // On the phone errors drop in from the top, clear of the + button and
@@ -502,6 +502,11 @@
   // The lock screen covers Home's hero, so the status bar must not stay
   // indigo with light icons behind it.
   $: setStatusBarSuppressed(locked);
+  // The phone loading screen is --hero (it continues the splash), so the
+  // status icons go light with it; Home claims the hero itself once mounted.
+  let heroWhileLoading = false;
+  $: if ($isPhone && !ready && !heroWhileLoading) { heroWhileLoading = true; setStatusBarOnHero(true); }
+  $: if (ready && heroWhileLoading) { heroWhileLoading = false; setStatusBarOnHero(false); }
   // Toasts sit above the phone's navigation bar rather than on top of it.
   $: document.body.classList.toggle('phone', $isPhone);
 
@@ -908,6 +913,10 @@
     height: 100dvh; color: var(--faint);
     font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
   }
+  /* On the phone it continues the launch splash (same --hero colour, see
+     android colors.xml splashBg) until Home's hero takes over. */
+  :global(body.phone) .loading { background: var(--hero); color: transparent; }
+  :global(body.phone) .loading > * { display: none; }
 
   .crash-recovery {
     display: flex; flex-direction: column; align-items: center; justify-content: center;

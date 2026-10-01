@@ -81,7 +81,7 @@
               {:else}
                 <div class="setting-group">
                   <div class="setting-section-title">Manual server connection (advanced)</div>
-                  <p class="setting-hint">Turn on Sync (in the Sync tab) to configure this.</p>
+                  <p class="setting-hint">Turn on Sync to configure this.</p>
                 </div>
               {/if}
 

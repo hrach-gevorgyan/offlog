@@ -65,6 +65,7 @@
 
 {#if ours.length || others.length}
   {#if ours.length}
+    {#if others.length}<div class="p-lab">In this project</div>{/if}
     <div class="p-group">
       {#each ours as t (t)}
         <button class="p-row" on:click={() => add(t)}><span class="p-dot" style:background={color(t)}></span><span class="p-k"><span>#{t}</span></span></button>

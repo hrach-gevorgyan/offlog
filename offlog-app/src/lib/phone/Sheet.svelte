@@ -52,18 +52,25 @@
   // The keyboard resizes the window in one step while the keyboard itself
   // slides, so a bottom-anchored sheet would jump. Put it back where it was
   // (no transition), then let it glide to its new place in step with the
-  // keyboard.
+  // keyboard. Newer WebViews fire a burst of resizes for one keyboard move
+  // (a bogus intermediate height, then the real one, within a frame), so the
+  // offset is measured from the height before the burst, not the last event.
   let kbOff = 0, kbJump = false;
   onMount(() => {
     const vv = window.visualViewport;
-    let lastH = vv?.height ?? window.innerHeight;
+    let lastH = vv?.height ?? window.innerHeight, baseH = lastH, burst = false;
     const onResize = () => {
-      const h = vv?.height ?? window.innerHeight, d = lastH - h;
+      const h = vv?.height ?? window.innerHeight;
+      if (!burst) baseH = lastH;
       lastH = h;
-      if (Math.abs(d) < 80 || dragging || prefersReducedMotion()) return;
+      const d = baseH - h;
+      if (dragging || prefersReducedMotion()) return;
+      if (Math.abs(d) < 80) { if (burst) kbOff = 0; return; }
       kbJump = true;
       kbOff = d;
-      requestAnimationFrame(() => requestAnimationFrame(() => { kbJump = false; kbOff = 0; }));
+      if (burst) return;
+      burst = true;
+      requestAnimationFrame(() => requestAnimationFrame(() => { burst = false; kbJump = false; kbOff = 0; }));
     };
     (vv ?? window).addEventListener('resize', onResize);
     return () => (vv ?? window).removeEventListener('resize', onResize);

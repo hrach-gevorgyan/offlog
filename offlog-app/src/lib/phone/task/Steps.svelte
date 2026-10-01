@@ -39,7 +39,10 @@
       <button class="x" on:click={() => remove(i)} aria-label="Remove step: {s.text}">{@html I.x}</button>
     </div>
   {/each}
-  <input class="add" class:first={!items.length} bind:value={draft} on:keydown={onKey} on:blur={add} placeholder="Add a step" enterkeyhint="done" aria-label="Add a step" />
+  <div class="addrow" class:first={!items.length}>
+    <span class="plus" aria-hidden="true">{@html I.plus}</span>
+    <input class="add" bind:value={draft} on:keydown={onKey} on:blur={add} placeholder="Add a step" enterkeyhint="done" aria-label="Add a step" />
+  </div>
 </div>
 {#if dupes.length}<p class="p-say warn">Repeated step{dupes.length > 1 ? 's' : ''}: {dupes.join(', ')}</p>{/if}
 
@@ -59,8 +62,12 @@
   .x { transition: background var(--dur-hover) var(--ease-hover); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--faint); border-radius: 50%; flex-shrink: 0; background: none; border: 0; padding: 0; cursor: pointer; }
   .x :global(svg.i) { width: 16px; height: 16px; }
   .x:active { background: var(--col-bg); }
-  .add { width: 100%; box-sizing: border-box; border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); outline: none; font: inherit; font-size: var(--p-fs-l); padding: 13px 14px 13px 48px; }
-  .add.first { border-top: 0; }
+  /* The + sits where a step's check circle does, so typed text lines up with the step labels. */
+  .addrow { position: relative; border-top: 1px solid var(--border); }
+  .addrow.first { border-top: 0; }
+  .plus { position: absolute; left: 16px; top: 50%; width: 20px; height: 20px; margin-top: -10px; display: flex; align-items: center; justify-content: center; color: var(--faint); pointer-events: none; }
+  .plus :global(svg.i) { width: 18px; height: 18px; }
+  .add { width: 100%; box-sizing: border-box; border: 0; background: none; color: var(--text); outline: none; font: inherit; font-size: var(--p-fs-l); padding: 13px 14px 13px 48px; }
   .add::placeholder { color: var(--faint); }
   .add:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
   .warn { color: var(--overdue-ink); margin-top: -6px; }

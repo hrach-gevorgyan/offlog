@@ -128,6 +128,6 @@
   .entry .p-v { font-size: 13.5px; padding-top: 2px; }
   .static { cursor: default; }
   .p-row.static:active { background: none; }
-  .src { font-size: 11px; font-weight: 700; background: var(--col-bg); border-radius: 6px; padding: 1px 6px; }
+  .src { font-size: 11px; font-weight: 700; background: var(--col-bg); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
   .more { display: block; margin: 0 auto; min-height: 44px; }
 </style>

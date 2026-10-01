@@ -265,9 +265,11 @@ export function sheetOut(node: Element, { from = 0 }: { from?: number } = {}) {
 // ── Phone in-screen axis (board status, agenda month) ───────────────────────
 // The new content slides in from the side it came from (dir 1 = forward, in
 // from the right) while the old one is replaced at once. Movement within the
-// screen, so the standard curve.
+// screen, so the standard curve. The fade finishes in the first third:
+// with the old content already gone, a full-length fade reads as a blank
+// flash.
 export function axisIn(_node: Element, { dir }: { dir: number }) {
-  return { duration: d(DUR.medium), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * dir * 40}px); opacity: ${t}` };
+  return { duration: d(DUR.medium), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * dir * 40}px); opacity: ${Math.min(1, t * 3)}` };
 }
 
 // ── Phone list rows leaving and coming back ──────────────────────────────────

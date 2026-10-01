@@ -50,12 +50,14 @@ describe('theme — native status bar', () => {
     nativeOn();
     setMode('light');
     setStatusBarOnHero(true);
-    expect(document.body.classList.contains('statusbar-hero')).toBe(true);
+    // The strip follows only once the native icons have switched.
+    expect(document.body.classList.contains('statusbar-hero')).toBe(false);
     await vi.waitFor(() => expect(setStyle).toHaveBeenCalledWith({ style: 'DARK' }));
+    await vi.waitFor(() => expect(document.body.classList.contains('statusbar-hero')).toBe(true));
     setStyle.mockClear();
     setStatusBarOnHero(false);
-    expect(document.body.classList.contains('statusbar-hero')).toBe(false);
     await vi.waitFor(() => expect(setStyle).toHaveBeenCalledWith({ style: 'LIGHT' }));
+    await vi.waitFor(() => expect(document.body.classList.contains('statusbar-hero')).toBe(false));
   });
 
   it('no hero tint where the strip has no height (older WebViews), so the clock stays dark on light', async () => {
