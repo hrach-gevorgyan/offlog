@@ -113,4 +113,25 @@ describe('phone Home', () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it('band lines fade out before they reach the see-through top bar, and are whole at rest', async () => {
+    // jsdom has no layout: give the band and its lines their real offsets.
+    const tops: Record<string, number> = { hero: 0, hbody: 74, hi: 0, count: 33, meta: 94, track: 129 };
+    const spy = vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (this: HTMLElement) {
+      return tops[this.classList[0]] ?? 0;
+    });
+    const { container } = render(Home);
+    await waitFor(() => expect(container.querySelector('.hbody .count')).not.toBeNull());
+    const scr = container.querySelector('.scr') as HTMLElement;
+    const op = (c: string) => (container.querySelector('.hbody .' + c) as HTMLElement).style.opacity || '1';
+    const scrollTo = async (y: number) => { scr.scrollTop = y; await fireEvent.scroll(scr); await new Promise(r => setTimeout(r, 40)); };
+    await scrollTo(0);
+    expect(op('hi')).toBe('1');
+    await scrollTo(15); // greeting at 59: halfway through its fade
+    expect(Number(op('hi'))).toBeCloseTo(0.5, 1);
+    expect(op('count')).toBe('1');
+    await scrollTo(40); // greeting at 34, under the title: gone
+    expect(op('hi')).toBe('0');
+    spy.mockRestore();
+  });
 });

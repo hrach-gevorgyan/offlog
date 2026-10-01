@@ -70,6 +70,21 @@
   // (an intro does not run on the initial render).
   let markShown = false;
   onMount(() => { markShown = true; });
+  // The bar is see-through over the band, so the band's lines would slide
+  // under the "Offlog" title. Each line fades out over the 30px before it
+  // reaches the title (a large title collapsing); at rest the first line sits
+  // 74px down, fully visible.
+  let heroEl: HTMLElement;
+  function fadeHeroLines(y: number) {
+    const body = heroEl?.querySelector<HTMLElement>('.hbody');
+    if (!body) return;
+    for (const line of Array.from(body.children) as HTMLElement[]) {
+      const top = heroEl.offsetTop + body.offsetTop + line.offsetTop - y;
+      const o = Math.min(1, Math.max(0, (top - 44) / 30));
+      line.style.opacity = o < 1 ? String(o) : '';
+    }
+  }
+
   function onScroll(e: Event) {
     const y = (e.currentTarget as HTMLElement).scrollTop;
     if (raf) return;
@@ -85,6 +100,7 @@
       // Inside the band the mark scrolls with it; easing it back down a third
       // of the way makes it move slower than the page (depth).
       markY = prefersReducedMotion() ? 0 : y * .4;
+      fadeHeroLines(y);
       setStatusBarOnHero(t < .5);
     });
   }
@@ -100,7 +116,7 @@
   </div>
 
   <div class="scr" on:scroll={onScroll}>
-    <div class="hero" bind:clientHeight={heroH}>
+    <div class="hero" bind:clientHeight={heroH} bind:this={heroEl}>
       {#if markShown}
         <div class="markwrap" aria-hidden="true" in:markIn>
           <svg class="mark" viewBox="0 0 1024 1024" style="transform:translateY({markY}px);opacity:{0.1 * (1 - fill)}">
