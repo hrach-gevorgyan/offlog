@@ -3,6 +3,7 @@
   import type { Tab } from './nav';
   import { screenIn, pillIn } from '../motion';
   import { I } from './icons';
+  import './phone.css';
   import { modalOpen } from '../store';
   import Home from './Home.svelte';
   import TaskListScreen from './TaskListScreen.svelte';

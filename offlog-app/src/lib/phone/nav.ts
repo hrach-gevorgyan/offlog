@@ -25,7 +25,11 @@ export type Tab = 'home' | 'today' | 'agenda' | 'search';
 export type Screen =
   | { k: Tab }
   | { k: 'late' | 'pinned' | 'focus' }
-  | { k: 'project'; id: string };
+  | { k: 'project'; id: string }
+  | { k: 'task'; id: string }
+  | { k: 'statuses'; id: string }
+  | { k: 'settings' }
+  | { k: 'set'; page: string };
 type Entry = Screen & { requestClose?: () => void };
 
 // Things only App.svelte can do (it owns QuickAdd, CardDetail and the
