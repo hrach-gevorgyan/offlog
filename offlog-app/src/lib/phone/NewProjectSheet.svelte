@@ -8,6 +8,7 @@
   import { projects, spaces, showError } from '../store';
   import { soften } from '../tagColors';
   import Sheet from './Sheet.svelte';
+  import { I } from './icons';
 
   export let spaceId: string;
 
@@ -22,6 +23,15 @@
   let created: ProjectDoc | null = null;
 
   $: sortedSpaces = [...$spaces].sort((a, b) => a.position - b.position);
+
+  // Statuses: one row that opens a short list — the default set, or the same
+  // statuses as an existing project (named by what they contain).
+  const DEFAULT_NAMES = 'Idea · Task · In Process · Completed';
+  let picking = false;
+  $: source = $projects.find(p => p._id === template) ?? null;
+  $: sources = [...$projects].sort((a, b) => a.name.localeCompare(b.name));
+  const colorOf = (spaceId: string) => { const c = $spaces.find(x => x._id === spaceId)?.color; return c ? soften(c) : 'var(--faint)'; };
+  function choose(id: string) { template = id; if (!id) copyTasks = false; picking = false; }
 
   let seq = 0;
   async function checkDup(value: string) {
@@ -72,22 +82,43 @@
   </div>
 
   <div class="p-lab">Statuses</div>
-  <div class="p-cpick">
-    <button class="p-chip" class:on={!template} aria-pressed={!template} on:click={() => (template = '')}>Idea, Task, In Process, Completed</button>
-    {#each $projects as p (p._id)}
-      <button class="p-chip" class:on={template === p._id} aria-pressed={template === p._id} on:click={() => (template = p._id)}>Copy {p.name}</button>
-    {/each}
-  </div>
-  {#if template}
-    <button class="p-row sw" role="switch" aria-checked={copyTasks} on:click={() => (copyTasks = !copyTasks)}>
-      <span class="p-k"><span>Also copy its open tasks</span></span><span class="p-sw" class:on={copyTasks}></span>
+  <div class="p-group">
+    <button class="p-row" aria-expanded={picking} on:click={() => (picking = !picking)}>
+      <span class="p-k">
+        <span>{source ? `Same as ${source.name}` : 'Default'}</span>
+        <span class="p-sub">{source ? source.columns.map(c => c.name).join(' · ') : DEFAULT_NAMES}</span>
+      </span>
+      <span class="chev" class:open={picking}>{@html I.chev}</span>
     </button>
-  {/if}
+    {#if picking}
+      <div class="list">
+        <button class="p-row" aria-pressed={!template} on:click={() => choose('')}>
+          <span class="p-k"><span>Default</span><span class="p-sub">{DEFAULT_NAMES}</span></span>
+          {#if !template}<span class="p-tick">{@html I.check}</span>{/if}
+        </button>
+        {#each sources as p (p._id)}
+          <button class="p-row" aria-pressed={template === p._id} on:click={() => choose(p._id)}>
+            <span class="p-dot" style="background:{colorOf(p.space_id)}"></span>
+            <span class="p-k"><span>Same as {p.name}</span><span class="p-sub">{p.columns.map(c => c.name).join(' · ')}</span></span>
+            {#if template === p._id}<span class="p-tick">{@html I.check}</span>{/if}
+          </button>
+        {/each}
+      </div>
+    {/if}
+    {#if template && !picking}
+      <button class="p-row" role="switch" aria-checked={copyTasks} on:click={() => (copyTasks = !copyTasks)}>
+        <span class="p-k"><span>Also copy its open tasks</span></span><span class="p-sw" class:on={copyTasks}></span>
+      </button>
+    {/if}
+  </div>
 
   <button class="p-go" disabled={!name.trim() || busy} on:click={create}>Create</button>
 </Sheet>
 
 <style>
   .hint { font-size: var(--p-fs-s); color: var(--faint); margin: -8px 4px 12px; }
-  .sw { padding: 6px 4px 14px; min-height: 44px; }
+  .chev { display: flex; color: var(--faint); transition: transform var(--dur-small) var(--ease-standard); }
+  .chev.open { transform: rotate(90deg); }
+  .list { max-height: 40dvh; overflow-y: auto; border-top: 1px solid var(--border); }
+  .p-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

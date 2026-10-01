@@ -68,7 +68,9 @@ describe('phone NewProjectSheet', () => {
   it('copies another project’s statuses, and its open tasks when asked', async () => {
     const r = setup();
     await fireEvent.input(r.getByLabelText('Project name'), { target: { value: 'Flat' } });
-    await fireEvent.click(r.getByText('Copy House'));
+    await fireEvent.click(r.getByText('Default')); // opens the statuses list
+    await fireEvent.click(r.getByText('Same as House'));
+    expect(r.getByText('Same as House')).toBeTruthy(); // the row now names the source
     await fireEvent.click(r.getByRole('switch', { name: 'Also copy its open tasks' }));
     await fireEvent.click(r.getByText('Create'));
     expect(createProjectFromTemplate).toHaveBeenCalledWith('space:w', 'Flat', 'project:house', true);

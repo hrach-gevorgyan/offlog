@@ -186,7 +186,7 @@
   .ibtn:active { background: color-mix(in srgb, currentColor 12%, transparent); }
 
   /* Above the bar so the bar can never cut it; pointer-events off. */
-  .mark { position: absolute; z-index: 7; right: -86px; top: -58px; width: 300px; height: 300px; color: var(--on-hero); fill: currentColor; pointer-events: none; }
+  .mark { position: absolute; z-index: 7; right: -36px; top: 58px; width: 176px; height: 176px; color: var(--on-hero); fill: currentColor; pointer-events: none; }
 
   .hero {
     margin: 0 -16px; padding: 64px 20px 84px; background: var(--hero); color: var(--on-hero);
