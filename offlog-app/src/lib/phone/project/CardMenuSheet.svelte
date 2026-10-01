@@ -13,20 +13,24 @@
 
   export let task: TaskDoc;
   export let project: ProjectDoc;
-  // The project's tasks as currently shown; positions are computed against these.
+  // Every task in the project, filtered-out ones included: positions are
+  // computed against these, so a move never lands before a hidden card.
   export let tasks: TaskDoc[];
+  // The tasks on show; Move up/down step past the visible neighbour.
+  export let shown: TaskDoc[] = tasks;
 
   const dispatch = createEventDispatcher<{ close: void }>();
   let sheet: Sheet;
   let view: 'main' | 'status' = 'main';
 
   $: col = columnTasks(tasks, task.column_id);
-  $: upPos = stepPosition(col, task, -1);
-  $: downPos = stepPosition(col, task, 1);
+  $: seen = columnTasks(shown, task.column_id);
+  $: upPos = stepPosition(col, task, -1, seen);
+  $: downPos = stepPosition(col, task, 1, seen);
 
   // Reversible changes go through at once and offer Undo.
   async function run(fn: () => Promise<unknown>, fail: string, done?: string, undo?: () => Promise<void>) {
-    sheet.close();
+    sheet?.close();
     try {
       await fn();
       await reloadTasks();
@@ -45,7 +49,7 @@
   const step = (position: number) => run(() => updateTask(task._id, { position }), 'Could not move this task. Please try again.');
   // Appended to the end of the target status, as a drop onto a desktop column does.
   function toStatus(colId: string) {
-    if (colId === task.column_id) { sheet.close(); return; }
+    if (colId === task.column_id) { sheet?.close(); return; }
     const position = computeDropPosition(columnTasks(tasks, colId), null);
     const id = task._id, before = snapshot(task);
     run(() => updateTask(id, { column_id: colId, position }), 'Could not move this task. Please try again.',

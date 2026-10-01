@@ -7,7 +7,7 @@
   import { getArchivedTasksForProject, unarchiveTask, archiveProject, unarchiveProject, deleteProject } from '../../db';
   import { activeProjectId, projects, reloadTasks, showError } from '../../store';
   import { push, back, showToast } from '../nav';
-  import { patchProject, isList, toggleView } from './actions';
+  import { patchProject } from './actions';
   import Sheet from '../Sheet.svelte';
 
   export let project: ProjectDoc;
@@ -16,6 +16,7 @@
   let sheet: Sheet;
   let view: 'main' | 'archived' | 'delete' = 'main';
   let after: (() => void) | null = null;
+  let gone = false;
   let archived: TaskDoc[] = [];
   let busy = false;
 
@@ -25,8 +26,14 @@
   }
   onMount(loadArchived);
 
-  function then(fn: () => void) { after = fn; sheet.close(); }
-  function closed() { dispatch('close'); after?.(); }
+  // Android back during an await may already have closed the sheet; then
+  // there is no history entry left to wait for.
+  function then(fn: () => void) {
+    if (gone) { fn(); return; }
+    after = fn;
+    sheet?.close();
+  }
+  function closed() { gone = true; dispatch('close'); after?.(); }
 
   async function restore(t: TaskDoc) {
     try {
@@ -40,7 +47,7 @@
 
   async function pin() {
     const { _id, pinned } = project;
-    sheet.close();
+    sheet?.close();
     const fail = 'Could not update this project. Please try again.';
     if (await patchProject(_id, { pinned: !pinned }, fail))
       showToast(pinned ? 'Project unpinned' : 'Project pinned', async () => { await patchProject(_id, { pinned: !!pinned }, fail); });
@@ -92,7 +99,6 @@
   {#if view === 'main'}
     <div class="p-group">
       <button class="p-row" on:click={() => then(() => push({ k: 'statuses', id: project._id }))}>Edit statuses</button>
-      <button class="p-row" on:click={() => toggleView(project)}>Opens as<span class="p-v">{isList(project) ? 'List' : 'Board'}</span></button>
       <button class="p-row" on:click={() => view = 'archived'}>Archived tasks<span class="p-v">{archived.length}</span></button>
       <button class="p-row" on:click={pin}>{project.pinned ? 'Unpin project' : 'Pin project'}</button>
       <button class="p-row" disabled={busy} on:click={archive}>Archive project</button>
@@ -109,10 +115,10 @@
         {/each}
       </div>
     {:else}
-      <p class="p-empty">No archived tasks in this project.</p>
+      <p class="p-empty">No archived tasks.</p>
     {/if}
   {:else}
-    <p class="p-say">“{project.name}” and all its tasks are deleted. This can’t be undone. Archiving keeps them instead.</p>
+    <p class="p-say">Deletes the project and its tasks. Can’t be undone.</p>
     <button class="p-go danger" disabled={busy} on:click={remove}>Delete project</button>
     <button class="p-row cancel" on:click={() => view = 'main'}>Cancel</button>
   {/if}

@@ -55,6 +55,7 @@ vi.mock('../src/lib/store', async () => {
 import ProjectScreen from '../src/lib/phone/ProjectScreen.svelte';
 import { projects, projectTasks, activeProjectId, showError, reloadTasks } from '../src/lib/store';
 import { actions, stack, switchTab, push, toast } from '../src/lib/phone/nav';
+import { toggleDone } from '../src/lib/phone/project/actions';
 
 const project: ProjectDoc = {
   _id: 'project:p', type: 'project', space_id: 'space:h', name: 'House', position: 0, default_view: 'kanban',
@@ -85,7 +86,9 @@ window.matchMedia = ((q: string) => ({
   addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false,
 })) as unknown as typeof window.matchMedia;
 
-const titles = (c: HTMLElement) => [...c.querySelectorAll('.card .t')].map(e => e.textContent?.trim());
+// A title as seen: the screen-reader-only priority note left out.
+const seen = (e: Element) => [...e.childNodes].filter(n => !(n as Element).classList?.contains('p-sr')).map(n => n.textContent).join('').trim();
+const titles = (c: HTMLElement) => [...c.querySelectorAll('.card .t')].map(seen);
 
 beforeEach(async () => {
   // A closed sheet's history.back() lands as an async popstate; let it
@@ -97,6 +100,7 @@ beforeEach(async () => {
     f.mockReset().mockResolvedValue(undefined);
   getArchivedTasksForProject.mockReset().mockResolvedValue([]);
   activeProjectId.set('');
+  localStorage.removeItem('offlog_phone_view_project:p');
   switchTab('home');
 });
 afterEach(cleanup);
@@ -108,6 +112,7 @@ describe('phone Project screen — board', () => {
     expect(getByRole('tab', { name: 'To do 3' }).getAttribute('aria-selected')).toBe('true');
     expect(getByRole('tab', { name: 'Doing 1' })).toBeTruthy();
     expect(titles(container)).toEqual(['a', 'b', 'c']);
+    expect(container.querySelector('.card.hi .p-sr')?.textContent).toBe(', high priority');
     expect(getByText('Home · 4 open')).toBeTruthy();
     await waitFor(() => expect(getByText('Blocked')).toBeTruthy());
   });
@@ -152,18 +157,55 @@ describe('phone Project screen — board', () => {
     updateTask.mockRejectedValue(new Error('boom'));
     const { getByLabelText } = setup();
     await fireEvent.click(getByLabelText('Finish: a'));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this task. Please try again.'));
   });
 
-  it('the view toggle persists default_view, and reverts with an error when the write fails', async () => {
-    const { getByLabelText, findByLabelText } = setup();
-    await fireEvent.click(getByLabelText('Show as list'));
-    expect(updateProject).toHaveBeenCalledWith('project:p', { default_view: 'list' });
-    expect(await findByLabelText('Search tasks')).toBeTruthy();
-    updateProject.mockRejectedValue(new Error('boom'));
-    await fireEvent.click(getByLabelText('Show as board'));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
-    expect(get(projects)[0].default_view).toBe('list');
+  it('a one-status project has no finish checkbox', () => {
+    const r = setup({ columns: [{ id: 'col:todo', name: 'To do' }] });
+    expect(titles(r.container)).toEqual(['a', 'b', 'c']);
+    expect(r.container.querySelector('.chk')).toBeNull();
+  });
+
+  it('finishing does nothing in a one-status project', async () => {
+    await toggleDone(tasks[0], { ...project, columns: [{ id: 'col:todo', name: 'To do' }] });
+    expect(updateTask).not.toHaveBeenCalled();
+    expect(get(toast)).toBeNull();
+  });
+
+  it('Board or List is kept on this device, never written to the synced project', async () => {
+    const r = setup();
+    await fireEvent.click(r.getByLabelText('Show as list'));
+    expect(await r.findByLabelText('Search tasks')).toBeTruthy();
+    expect(localStorage.getItem('offlog_phone_view_project:p')).toBe('list');
+    expect(updateProject).not.toHaveBeenCalled();
+    cleanup();
+    // The desktop's default_view no longer decides once this device chose.
+    const again = setup({ default_view: 'kanban' });
+    expect(again.getByLabelText('Search tasks')).toBeTruthy();
+    await fireEvent.click(again.getByLabelText('Show as board'));
+    expect(localStorage.getItem('offlog_phone_view_project:p')).toBe('board');
+    expect(again.queryByLabelText('Search tasks')).toBeNull();
+  });
+
+  it('without a choice on this device, the first open follows default_view', () => {
+    const r = setup({ default_view: 'list' });
+    expect(r.getByLabelText('Search tasks')).toBeTruthy();
+  });
+
+  it('status and filter survive leaving the screen and coming back', async () => {
+    push({ k: 'project', id: 'project:p' });
+    const r = setup();
+    await fireEvent.click(r.getByRole('tab', { name: 'Doing 1' }));
+    await fireEvent.click(r.getByLabelText('Filter'));
+    await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
+    await fireEvent.click(r.getByText('Medium', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(r.getByText('Show 3 tasks'));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    cleanup();
+    const back = render(ProjectScreen, { id: 'project:p' });
+    expect(back.getByRole('tab', { name: 'Doing 1' }).getAttribute('aria-selected')).toBe('true');
+    expect(back.getByLabelText('Filter, 1 on')).toBeTruthy();
+    expect(titles(back.container)).toEqual(['d']);
   });
 });
 
@@ -180,6 +222,37 @@ describe('phone Project screen — card menu', () => {
     vi.advanceTimersByTime(500);
     vi.useRealTimers();
     await waitFor(() => expect(r.getByRole('dialog', { name: 'b' })).toBeTruthy());
+  });
+
+  it('Move to status appends after every card there, filtered-out ones included', async () => {
+    const r = setup();
+    await fireEvent.click(r.getByLabelText('Filter'));
+    await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
+    await fireEvent.click(r.getByText('High', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(r.getByText('Show 1 task'));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    await openMenu(r, 'c');
+    await fireEvent.click(r.getByText('Move to status…'));
+    await fireEvent.click(r.getByText('Doing', { selector: '.psheet .p-row' }));
+    // d, hidden by the filter, sits at 500 in Doing.
+    await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:c', { column_id: 'col:doing', position: 1524 }));
+  });
+
+  it('Move up steps past the visible neighbour without jumping a hidden card', async () => {
+    const r = setup({}, [
+      task('task:x', { position: 500 }),
+      task('task:a', { position: 1024, priority: 3 }),
+      task('task:c', { position: 3072, priority: 3 }),
+    ]);
+    await fireEvent.click(r.getByLabelText('Filter'));
+    await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
+    await fireEvent.click(r.getByText('High', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(r.getByText('Show 2 tasks'));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    await openMenu(r, 'c');
+    await fireEvent.click(r.getByText('Move up'));
+    // Between hidden x (500) and a (1024), not before x.
+    await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:c', { position: 762 }));
   });
 
   it('Move to status appends to the end of the target status', async () => {
@@ -202,21 +275,40 @@ describe('phone Project screen — card menu', () => {
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:b', { position: 4096 }));
   });
 
-  it('Pin, Archive and Delete write and reload; failures surface errors', async () => {
+  it('Pin, Archive and Delete write and reload; Undo puts them back; failures surface errors', async () => {
     const r = setup();
     await openMenu(r, 'a');
     await fireEvent.click(r.getByText('Pin'));
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:a', { pinned: true }));
+    await waitFor(() => expect(get(toast)?.text).toBe('Pinned'));
+    await get(toast)!.undo!();
+    expect(updateTask).toHaveBeenLastCalledWith('task:a', { pinned: false });
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     await openMenu(r, 'a');
     await fireEvent.click(r.getByText('Archive'));
     await waitFor(() => expect(archiveTask).toHaveBeenCalledWith('task:a'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived'));
+    await get(toast)!.undo!();
+    expect(updateTask).toHaveBeenLastCalledWith('task:a', { archived: false, archivedWithProject: false });
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     deleteTask.mockRejectedValue(new Error('boom'));
     await openMenu(r, 'a');
     await fireEvent.click(r.getByText('Delete'));
     await waitFor(() => expect(deleteTask).toHaveBeenCalledWith('task:a'));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete this task. Please try again.'));
+  });
+
+  it('Duplicate duplicates the task; a failure surfaces an error', async () => {
+    const r = setup();
+    await openMenu(r, 'b');
+    await fireEvent.click(r.getByText('Duplicate'));
+    await waitFor(() => expect(duplicateTask).toHaveBeenCalledWith('task:b'));
+    expect(reloadTasks).toHaveBeenCalled();
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    duplicateTask.mockRejectedValue(new Error('boom'));
+    await openMenu(r, 'b');
+    await fireEvent.click(r.getByText('Duplicate'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not duplicate this task. Please try again.'));
   });
 });
 
@@ -232,6 +324,18 @@ describe('phone Project screen — filter', () => {
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     await fireEvent.click(r.getByText('Clear'));
     expect(titles(r.container)).toEqual(['a', 'b', 'c']);
+  });
+
+  it("the sheet's Clear keeps List's search text", async () => {
+    const r = setup({ default_view: 'list' });
+    await fireEvent.input(r.getByLabelText('Search tasks'), { target: { value: 'a' } });
+    await fireEvent.click(r.getByLabelText('Filter'));
+    await waitFor(() => r.getByRole('dialog', { name: 'Filter' }));
+    await fireEvent.click(r.getByText('High', { selector: '.psheet .p-chip' }));
+    await fireEvent.click(r.getByText('Clear', { selector: '.psheet .p-row' }));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    expect((r.getByLabelText('Search tasks') as HTMLInputElement).value).toBe('a');
+    expect([...r.container.querySelectorAll('.rows .t')].map(seen)).toEqual(['a']);
   });
 
   it('saves a filter under the desktop key and applies it later', async () => {
@@ -270,6 +374,15 @@ describe('phone Project screen — project menu', () => {
     await fireEvent.click(r.getByText('Pin project'));
     await waitFor(() => expect(updateProject).toHaveBeenCalledWith('project:p', { pinned: true }));
     await waitFor(() => expect(get(toast)?.text).toBe('Project pinned'));
+    await get(toast)!.undo!();
+    expect(updateProject).toHaveBeenLastCalledWith('project:p', { pinned: false });
+    expect(get(projects)[0].pinned).toBe(false);
+  });
+
+  it('has no Opens as row; Board or List lives on the top bar', async () => {
+    const r = setup();
+    await openMore(r);
+    expect(r.queryByText('Opens as')).toBeNull();
   });
 
   it('Archived tasks lists them with Restore', async () => {
@@ -294,15 +407,21 @@ describe('phone Project screen — project menu', () => {
     expect(unarchiveProject).toHaveBeenCalledWith('project:p');
   });
 
-  it('Delete project asks first, then deletes; a failure surfaces an error', async () => {
+  it('Delete project asks first, then deletes and leaves the screen; a failure surfaces an error', async () => {
+    push({ k: 'project', id: 'project:p' });
     deleteProject.mockRejectedValueOnce(new Error('boom'));
     const r = setup();
     await openMore(r);
     await fireEvent.click(r.getByText('Delete project'));
     expect(deleteProject).not.toHaveBeenCalled();
+    expect(r.getByText('Deletes the project and its tasks. Can’t be undone.')).toBeTruthy();
     await fireEvent.click(r.getByText('Delete project', { selector: '.p-go' }));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete this project. Please try again.'));
+    expect(get(stack).map(s => s.k)).toEqual(['home', 'project']);
     await fireEvent.click(r.getByText('Delete project', { selector: '.p-go' }));
     await waitFor(() => expect(deleteProject).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home']));
+    expect(get(activeProjectId)).toBe('');
+    expect(get(projects)).toEqual([]);
   });
 });

@@ -7,6 +7,10 @@ import { computeDropPosition } from '../../db';
 export interface Filter { search: string; col: string; prio: number; tag: string; fields: CustomFieldFilter[] }
 export const EMPTY: Filter = { search: '', col: '', prio: 0, tag: '', fields: [] };
 
+// How List orders its rows.
+export const SORTS = ['Status', 'Due', 'Priority', 'Title'] as const;
+export type Sort = typeof SORTS[number];
+
 export function applyFilter(tasks: TaskDoc[], f: Filter): TaskDoc[] {
   return filterTasks(tasks, f.search, f.col, f.prio, f.tag, f.fields);
 }
@@ -54,15 +58,20 @@ export function columnTasks(tasks: TaskDoc[], colId: string): TaskDoc[] {
     .sort((a, b) => (!!b.pinned !== !!a.pinned ? (b.pinned ? 1 : -1) : a.position - b.position));
 }
 
-// The position that moves `task` one place up or down among the cards
-// sharing its pinned state, or null when it is already at that end. Pinned
-// and unpinned cards are ordered separately, so their positions never
-// neighbour each other.
-export function stepPosition(col: TaskDoc[], task: TaskDoc, dir: -1 | 1): number | null {
-  const group = col.filter(t => !!t.pinned === !!task.pinned);
-  const i = group.findIndex(t => t._id === task._id);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= group.length) return null;
-  const others = group.filter(t => t._id !== task._id);
-  return computeDropPosition(others, j);
+// The position that moves `task` one place up or down past its visible
+// neighbour among the cards sharing its pinned state, or null when it is
+// already at that end. `col` is the whole status, filtered-out cards
+// included, so the new position never lands on the wrong side of a hidden
+// card; `visible` is what the user sees. Pinned and unpinned cards are
+// ordered separately, so their positions never neighbour each other.
+export function stepPosition(col: TaskDoc[], task: TaskDoc, dir: -1 | 1, visible: TaskDoc[] = col): number | null {
+  const same = (t: TaskDoc) => !!t.pinned === !!task.pinned;
+  const seen = visible.filter(same);
+  const i = seen.findIndex(t => t._id === task._id);
+  const next = i < 0 ? undefined : seen[i + dir];
+  if (!next) return null;
+  const others = col.filter(t => same(t) && t._id !== task._id);
+  const k = others.findIndex(t => t._id === next._id);
+  if (k < 0) return null;
+  return computeDropPosition(others, dir < 0 ? k : k + 1);
 }

@@ -5,7 +5,7 @@
   import type { ProjectDoc, TaskDoc } from '../../types';
   import { resolveTagColor, soften } from '../../tagColors';
   import { hapticDragStart } from '../../haptics';
-  import { toggleDone } from './actions';
+  import { toggleDone, canFinish } from './actions';
   import { duePill } from '../format';
   import { I } from '../icons';
 
@@ -53,9 +53,9 @@
 </script>
 
 <div class="card" class:done class:hi={task.priority === 3}>
-  <button class="chk" class:on={done} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>
+  {#if canFinish(project)}<button class="chk" class:on={done} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>{/if}
   <button class="g" on:click={click} on:pointerdown={down} on:pointermove={move} on:pointerup={cancel} on:pointercancel={cancel} on:pointerleave={cancel} on:contextmenu={context}>
-    <span class="t">{#if task.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{task.title}</span>
+    <span class="t">{#if task.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{task.title}{#if task.priority === 3}<span class="p-sr">, high priority</span>{/if}</span>
     {#if pill || steps.length || task.tags.length || blocked || related || files || task.recurrence}
       <span class="meta">
         {#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{/if}
@@ -63,7 +63,7 @@
         {#if steps.length}<span class="prog"><i><b style="width:{stepsDone / steps.length * 100}%"></b></i>{stepsDone}/{steps.length}</span>{/if}
         {#each task.tags as tag}
           {@const c = soften(resolveTagColor(tag, tagColors))}
-          <span class="tag" style="background:color-mix(in srgb, {c} 16%, transparent)"><i style="background:{c}"></i>#{tag}</span>
+          <span class="p-tag" style="--tag:{c}">#{tag}</span>
         {/each}
         {#if blocked}<span class="mk blk">{@html I.block}Blocked</span>{/if}
         {#if related}<span class="mk" title="Has related tasks">{@html I.link}</span>{/if}
@@ -80,19 +80,17 @@
     box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
     -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
   }
-  .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--danger); }
+  .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .card:active { transform: scale(.99); }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
   .g { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .t { font-size: 15.5px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
   .pin { color: var(--accent); display: inline-flex; vertical-align: -2px; margin-right: 4px; }
-  .pin :global(svg.i) { width: 14px; height: 14px; }
+  .pin :global(svg.i) { width: 13px; height: 13px; }
   .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
   .prog { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); }
   .prog i { width: 34px; height: 4px; border-radius: 2px; background: var(--col-bg); display: block; overflow: hidden; }
   .prog b { display: block; height: 100%; background: var(--success); }
-  .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; color: var(--muted); white-space: nowrap; }
-  .tag i { width: 6px; height: 6px; border-radius: 50%; }
   .mk { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--faint); }
   .mk :global(svg.i) { width: 13px; height: 13px; }
   .mk.blk { color: var(--overdue-ink); }

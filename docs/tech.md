@@ -80,6 +80,15 @@ flowchart LR
   are `phone/Sheet.svelte` (a `closeOnBack` consumer: mount behind `{#key}`),
   at z-index 650 so `ConfirmDialog` (700) shows above them. Shared phone
   styles are `phone/phone.css`, all scoped under `.phone-shell`/`.psheet`.
+  Only the top screen is mounted; a screen keeps state it wants back (board
+  status, filters, sort, search query, Agenda month) on its stack entry via
+  `nav.memo()`. Board/List is a per-device choice in localStorage
+  (`offlog_phone_view_<projectId>`, first open follows `default_view`); the
+  phone never writes the synced `default_view`. Reversible actions (finish,
+  move, archive, delete, Focus reset) act at once with Undo; confirms are kept
+  for deleting a project, deleting for good, emptying the bin and clearing
+  history. Widget and notification jumps use `nav.navigate()`, which waits
+  for `closeAll()`'s history jump before pushing.
 - **store.ts** — the only reactive state layer. Holds spaces, projects,
   tasks and the active selection; reloads on any database change.
 - **db.ts** — all reads and writes, the changelog, the undo buffer, and

@@ -78,7 +78,7 @@ describe('phone NewProjectSheet', () => {
     findProjectsByName.mockResolvedValue([house]);
     const r = setup();
     await fireEvent.input(r.getByLabelText('Project name'), { target: { value: 'house' } });
-    await waitFor(() => expect(r.getByText('A project named “house” already exists in Home.')).toBeTruthy());
+    await waitFor(() => expect(r.getByText('“house” already exists in Home.')).toBeTruthy());
     expect((r.getByText('Create') as HTMLButtonElement).disabled).toBe(false);
   });
 

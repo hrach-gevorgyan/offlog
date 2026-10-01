@@ -12,6 +12,8 @@
   export let tasks: TaskDoc[];
   export let filter: Filter;
   export let customFields: CustomFieldDef[] = [];
+  // List keeps its search in its own field, which Clear leaves alone.
+  export let list = false;
 
   const dispatch = createEventDispatcher<{ apply: Filter; close: void }>();
   let sheet: Sheet;
@@ -26,7 +28,7 @@
     .map(f => ({ f, values: [...new Set(tasks.map(t => t.custom_values?.[f.id]).filter(v => v !== undefined && v !== null && v !== '').map(String))].sort() }))
     .filter(x => x.values.length);
   $: n = applyFilter(tasks, draft).length;
-  $: dirty = activeCount(draft) > 0 || !!draft.search;
+  $: dirty = activeCount(draft) > 0 || (!list && !!draft.search);
 
   const pick = <K extends 'col' | 'tag'>(k: K, v: string) => { draft = { ...draft, [k]: draft[k] === v ? '' : v }; };
   const pickPrio = (v: number) => { draft = { ...draft, prio: draft.prio === v ? 0 : v }; };
@@ -90,10 +92,10 @@
     </div>
   {/each}
 
-  {#if draft.search}<p class="p-say">Also matching “{draft.search}” from the search field.</p>{/if}
+  {#if draft.search}<p class="p-say">Also matching “{draft.search}”.</p>{/if}
 
   <button class="p-go" on:click={() => apply(draft)}>Show {n} {n === 1 ? 'task' : 'tasks'}</button>
-  {#if dirty}<button class="p-row center" on:click={() => apply({ ...EMPTY })}>Clear</button>{/if}
+  {#if dirty}<button class="p-row center" on:click={() => apply({ ...EMPTY, search: list ? draft.search : '' })}>Clear</button>{/if}
 
   <div class="p-lab save-lab">Save this filter</div>
   <div class="save">
@@ -104,7 +106,7 @@
 
 <style>
   .saved { display: inline-flex; align-items: center; }
-  .del { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; color: var(--faint); cursor: pointer; border-radius: 50%; }
+  .del { width: 44px; height: 44px; margin-left: -6px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; color: var(--faint); cursor: pointer; border-radius: 50%; }
   .del :global(svg.i) { width: 15px; height: 15px; }
   .center { justify-content: center; font-weight: 600; color: var(--accent); }
   .save-lab { margin-top: 18px; }

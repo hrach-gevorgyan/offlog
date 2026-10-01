@@ -2,9 +2,10 @@
   // Edit a project's statuses: rename in place, reorder, archive a status's
   // tasks, remove one, add one. Done is positional, so any change to which
   // status is last says what it does to done-ness.
+  import { onDestroy } from 'svelte';
   import { activeProjectId, activeSpaceId, projects, projectTasks, reloadTasks, showError } from '../store';
   import { renameColumn, reorderColumns, removeColumn, addColumn, archiveColumnTasks } from '../db';
-  import type { Column } from '../types';
+  import type { Column, ProjectDoc } from '../types';
   import { showToast } from './nav';
   import { I } from './icons';
   import { adopt, restore } from './project/actions';
@@ -18,9 +19,13 @@
   $: mine = $activeProjectId === id ? $projectTasks : [];
   $: count = (cid: string) => mine.filter(t => t.column_id === cid).length;
 
+  // Typed names not yet saved: leaving the screen (Android back with the
+  // field focused) fires no change event, so these are saved on the way out.
+  let drafts: Record<string, string> = {};
   async function rename(c: Column, e: Event) {
     const input = e.currentTarget as HTMLInputElement;
     const name = input.value.trim();
+    delete drafts[c.id];
     if (!project || name === c.name) return;
     if (!name) { input.value = c.name; return; }
     try {
@@ -30,6 +35,16 @@
       showError('Could not rename this status. Please try again.');
     }
   }
+
+  onDestroy(() => {
+    const p = project;
+    if (!p) return;
+    for (const [cid, raw] of Object.entries(drafts)) {
+      const name = raw.trim(), c = p.columns.find(x => x.id === cid);
+      if (!c || !name || name === c.name) continue;
+      renameColumn(p._id, cid, name).then(adopt, () => showError('Could not rename this status. Please try again.'));
+    }
+  });
 
   async function move(i: number, d: -1 | 1) {
     if (!project) return;
@@ -88,14 +103,24 @@
   async function add() {
     const name = newName.trim();
     if (!project || !name) return;
+    const pid = project._id;
+    let added: ProjectDoc;
     try {
-      // A new status goes before the last one, so the done status stays
-      // last and no finished task silently becomes unfinished.
-      const added = await addColumn(project._id, name), cols = added.columns;
-      adopt(cols.length > 2 ? await reorderColumns(project._id, [...cols.slice(0, -2), cols[cols.length - 1], cols[cols.length - 2]]) : added);
-      newName = '';
+      added = await addColumn(pid, name);
     } catch {
       showError('Could not add a status. Please try again.');
+      return;
+    }
+    adopt(added);
+    newName = '';
+    // A new status goes before the last one, so the done status stays
+    // last and no finished task silently becomes unfinished.
+    const cols = added.columns;
+    if (cols.length < 2) return;
+    try {
+      adopt(await reorderColumns(pid, [...cols.slice(0, -2), cols[cols.length - 1], cols[cols.length - 2]]));
+    } catch {
+      showError('Added, but it is last, so its tasks count as done. Move it up.');
     }
   }
 
@@ -113,8 +138,8 @@
   <div class="p-group">
     {#each project.columns as c (c.id)}
       <div class="p-row st">
-        <input class="name" value={c.name} aria-label="Status name" enterkeyhint="done"
-          on:change={e => rename(c, e)} on:keydown={e => e.key === 'Enter' && e.currentTarget.blur()} />
+        <input class="name" value={c.name} aria-label="Name of {c.name}" enterkeyhint="done"
+          on:input={e => (drafts[c.id] = e.currentTarget.value)} on:change={e => rename(c, e)} on:keydown={e => e.key === 'Enter' && e.currentTarget.blur()} />
         <span class="n">{count(c.id)}</span>
         <button class="p-ib" aria-label="More for {c.name}" on:click={() => openMenu(c)}>{@html I.more}</button>
       </div>
@@ -124,7 +149,6 @@
       <button class="p-tbtn" disabled={!newName.trim()} on:click={add}>Add</button>
     </div>
   </div>
-  <p class="p-say">New statuses are added last, so their tasks count as done until you move them up.</p>
 
   {#if menu}
     {@const c = mc ?? menu}

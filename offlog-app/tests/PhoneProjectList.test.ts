@@ -97,30 +97,78 @@ beforeEach(async () => {
     f.mockReset().mockResolvedValue(undefined);
   getArchivedTasksForProject.mockReset().mockResolvedValue([]);
   activeProjectId.set('');
+  localStorage.removeItem('offlog_phone_view_project:p');
   switchTab('home');
 });
 afterEach(cleanup);
 
 describe('phone Project screen — list', () => {
-  const list = () => setup({ default_view: 'list' });
-  const rowTitles = (c: HTMLElement) => [...c.querySelectorAll('.rows .t')].map(e => e.textContent?.trim());
+  const list = (p: Partial<ProjectDoc> = {}, ts: TaskDoc[] = tasks) => setup({ default_view: 'list', ...p }, ts);
+  // A title as seen: the screen-reader-only priority note left out.
+  const seen = (e: Element) => [...e.childNodes].filter(n => !(n as Element).classList?.contains('p-sr')).map(n => n.textContent).join('').trim();
+  const rowTitles = (c: HTMLElement) => [...c.querySelectorAll('.rows .t')].map(seen);
+  const bar = (c: HTMLElement) => c.querySelector('.bulkbar b')?.textContent;
+  async function sortBy(r: ReturnType<typeof setup>, from: string, to: string) {
+    await fireEvent.click(r.getByText(`Sort: ${from}`));
+    await waitFor(() => r.getByRole('dialog', { name: 'Sort by' }));
+    await fireEvent.click(r.getByText(to, { selector: '.psheet .p-row span' }));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+  }
 
-  it('shows dense rows; search narrows them; the sort chip cycles', async () => {
+  it('sorted by Status, rows sit under status headings with no status label of their own', () => {
     const r = list();
+    expect([...r.container.querySelectorAll('.gh')].map(e => e.textContent)).toEqual(['To do3', 'Doing1']);
     expect(rowTitles(r.container)).toEqual(['a', 'b', 'c', 'd']);
+    expect(r.container.querySelectorAll('.rows .st')).toHaveLength(0);
+    expect(r.container.querySelector('.row.hi .p-sr')?.textContent).toBe(', high priority');
+  });
+
+  it('the sort chip opens a sheet with a tick on the current sort; other sorts show the status on each row', async () => {
+    const r = list();
     await fireEvent.click(r.getByText('Sort: Status'));
-    await fireEvent.click(r.getByText('Sort: Due'));
+    await waitFor(() => r.getByRole('dialog', { name: 'Sort by' }));
+    expect(r.getByRole('button', { name: 'Status', pressed: true })).toBeTruthy();
+    await fireEvent.click(r.getByText('Due', { selector: '.psheet .p-row span' }));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    expect(r.getByText('Sort: Due')).toBeTruthy();
     expect(rowTitles(r.container)).toEqual(['c', 'a', 'b', 'd']);
+    expect([...r.container.querySelectorAll('.rows .st')].map(e => e.textContent)).toEqual(['To do', 'To do', 'To do', 'Doing']);
     await fireEvent.input(r.getByLabelText('Search tasks'), { target: { value: 'd' } });
     expect(rowTitles(r.container)).toEqual(['d']);
   });
 
-  it('Pinned first lifts pinned rows and is remembered on this device', async () => {
+  it('sort and search survive leaving the screen and coming back', async () => {
+    push({ k: 'project', id: 'project:p' });
+    const r = list();
+    await sortBy(r, 'Status', 'Title');
+    await fireEvent.input(r.getByLabelText('Search tasks'), { target: { value: 'b' } });
+    cleanup();
+    const back = render(ProjectScreen, { id: 'project:p' });
+    expect(back.getByText('Sort: Title')).toBeTruthy();
+    expect((back.getByLabelText('Search tasks') as HTMLInputElement).value).toBe('b');
+    expect(rowTitles(back.container)).toEqual(['b']);
+  });
+
+  it('Pinned first lifts pinned rows within their status, shows the pin, and is remembered on this device', async () => {
     localStorage.removeItem('offlog_list_pinned_first');
-    const r = setup({ default_view: 'list' }, [...tasks.slice(0, 3), task('task:d', { column_id: 'col:doing', pinned: true })]);
+    const r = list({}, [tasks[0], tasks[1], task('task:c', { position: 3072, pinned: true }), tasks[3]]);
+    expect(rowTitles(r.container)).toEqual(['a', 'b', 'c', 'd']);
     await fireEvent.click(r.getByText('Pinned first'));
-    expect(rowTitles(r.container)[0]).toBe('●d');
+    expect(rowTitles(r.container)).toEqual(['c', 'a', 'b', 'd']);
+    expect(r.container.querySelector('.rows .t .pin svg')).toBeTruthy();
     expect(localStorage.getItem('offlog_list_pinned_first')).toBe('true');
+    await fireEvent.click(r.getByText('Pinned first'));
+  });
+
+  it('the row checkbox finishes a task; a one-status project has none', async () => {
+    const r = list();
+    await fireEvent.click(r.getByLabelText('Finish: b'));
+    expect(updateTask).toHaveBeenCalledWith('task:b', { column_id: 'col:done' });
+    await waitFor(() => expect(get(toast)?.text).toBe('Done: b'));
+    cleanup();
+    const one = list({ columns: [{ id: 'col:todo', name: 'To do' }] }, tasks.slice(0, 3));
+    expect(rowTitles(one.container)).toEqual(['a', 'b', 'c']);
+    expect(one.container.querySelector('.chk')).toBeNull();
   });
 
   it('Select mode: rows toggle, the bar moves every selected task, and Undo restores them', async () => {
@@ -129,7 +177,7 @@ describe('phone Project screen — list', () => {
     expect(get(modalOpen)).toBe(true);
     await fireEvent.click(r.getByRole('checkbox', { name: 'a' }));
     await fireEvent.click(r.getByRole('checkbox', { name: 'c' }));
-    expect(r.getByText('2 selected')).toBeTruthy();
+    expect(bar(r.container)).toBe('2 selected');
     await fireEvent.click(r.getByText('Status', { selector: '.bulkbar button' }));
     await waitFor(() => r.getByRole('dialog', { name: 'Move 2 to' }));
     await fireEvent.click(r.getByText('Done', { selector: '.psheet .p-row' }));
@@ -137,12 +185,26 @@ describe('phone Project screen — list', () => {
     expect(updateTask).toHaveBeenCalledWith('task:a', { column_id: 'col:done' });
     expect(updateTask).toHaveBeenCalledWith('task:c', { column_id: 'col:done' });
     expect(reloadTasks).toHaveBeenCalled();
-    await waitFor(() => expect(r.getByText('0 selected')).toBeTruthy());
+    await waitFor(() => expect(bar(r.container)).toBe('0 selected'));
     expect(get(toast)?.text).toBe('Updated 2 tasks');
     await get(toast)!.undo!();
     expect(updateTask).toHaveBeenCalledWith('task:a', expect.objectContaining({ column_id: 'col:todo' }));
-    await fireEvent.click(r.getByText('Done selecting'));
+    await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
+    await fireEvent.click(r.getByLabelText('Exit selection'));
+    await waitFor(() => expect(get(modalOpen)).toBe(false));
+    expect(r.container.querySelector('.bulkbar')).toBeNull();
+  });
+
+  it('Android back leaves Select mode, not the project', async () => {
+    push({ k: 'project', id: 'project:p' });
+    const r = list();
+    await fireEvent.click(r.getByText('Select'));
+    await fireEvent.click(r.getByRole('checkbox', { name: 'a' }));
+    history.back();
+    await waitFor(() => expect(r.container.querySelector('.bulkbar')).toBeNull());
     expect(get(modalOpen)).toBe(false);
+    expect(get(stack).map(s => s.k)).toEqual(['home', 'project']);
+    expect(r.getByLabelText('Finish: a')).toBeTruthy();
   });
 
   it('bulk priority and tag write each task; a failure surfaces an error', async () => {
@@ -156,12 +218,12 @@ describe('phone Project screen — list', () => {
     await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(4));
     expect(updateTask).toHaveBeenCalledWith('task:b', { tags: ['tiles', 'big-job'] });
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
-    expect(r.getByText('4 selected')).toBeTruthy();
+    expect(bar(r.container)).toBe('4 selected');
     updateTask.mockRejectedValue(new Error('boom'));
     await fireEvent.click(r.getByText('Priority', { selector: '.bulkbar button' }));
     await waitFor(() => r.getByRole('dialog', { name: 'Priority for 4' }));
     await fireEvent.click(r.getByText('High', { selector: '.psheet .p-row' }));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update some tasks. Please try again.'));
     expect(updateTask).toHaveBeenLastCalledWith('task:a', { priority: 3 });
   });
 });

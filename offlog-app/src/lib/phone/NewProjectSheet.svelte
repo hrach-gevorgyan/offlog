@@ -31,7 +31,7 @@
       const matches = await findProjectsByName(n);
       if (mine !== seq) return;
       const where = [...new Set(matches.map(p => $spaces.find(s => s._id === p.space_id)?.name ?? 'another space'))];
-      dupHint = matches.length ? `A project named “${n}” already exists in ${where.join(', ')}.` : '';
+      dupHint = matches.length ? `“${n}” already exists in ${where.join(', ')}.` : '';
     } catch { dupHint = ''; }
   }
   $: checkDup(name);
@@ -45,7 +45,7 @@
       // In the store at once, so the screen the parent opens finds it.
       projects.update(ps => (ps.some(p => p._id === doc._id) ? ps : [...ps, doc]));
       created = doc;
-      sheet.close();
+      sheet?.close();
     } catch {
       showError('Could not create the project. Please try again.');
       busy = false;
@@ -60,7 +60,7 @@
 
 <Sheet bind:this={sheet} title="New project" on:close={closed}>
   <input class="p-fld" bind:value={name} placeholder="Project name" aria-label="Project name" autocomplete="off" enterkeyhint="done" on:keydown={e => e.key === 'Enter' && create()} />
-  {#if dupHint}<p class="warn">{dupHint}</p>{/if}
+  {#if dupHint}<p class="hint">{dupHint}</p>{/if}
 
   <div class="p-lab">Space</div>
   <div class="p-cpick">
@@ -88,6 +88,6 @@
 </Sheet>
 
 <style>
-  .warn { font-size: 13px; color: var(--overdue-ink); margin: -8px 4px 12px; }
+  .hint { font-size: 13px; color: var(--faint); margin: -8px 4px 12px; }
   .sw { padding: 6px 4px 14px; min-height: 44px; }
 </style>

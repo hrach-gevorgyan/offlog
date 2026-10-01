@@ -5,10 +5,10 @@
   import type { CustomFieldDef, TaskDoc } from '../types';
   import { PRIORITY_LABEL } from '../constants';
   import { soften } from '../tagColors';
-  import { actions, addContext } from './nav';
+  import { actions, addContext, memo } from './nav';
   import { onDestroy } from 'svelte';
   import { I } from './icons';
-  import { applyFilter, activeCount, EMPTY, type Filter } from './project/filter';
+  import { applyFilter, activeCount, EMPTY, type Filter, type Sort } from './project/filter';
   import { isList, toggleView } from './project/actions';
   import TopBar from './TopBar.svelte';
   import Board from './project/Board.svelte';
@@ -25,13 +25,20 @@
   // claims it (including when a lower project screen is uncovered).
   $: if (project && $activeProjectId !== id) { activeSpaceId.set(project.space_id); activeProjectId.set(id); }
   $: mine = $activeProjectId === id ? $projectTasks : [];
-  $: list = !!project && isList(project);
+  // Set by the toggle; until then the device's kept choice.
+  let listView: boolean | null = null;
+  $: list = !!project && (listView ?? isList(project));
   $: open = mine.filter(t => t.column_id !== project?.columns.at(-1)?.id).length;
 
-  let filter: Filter = { ...EMPTY };
+  // Kept on the stack entry, so coming back finds the same status, filter,
+  // sort and search.
+  const m = memo<{ ci: number; filter: Filter; sort: Sort }>({ ci: 0, filter: { ...EMPTY }, sort: 'Status' });
+  let filter: Filter = m.filter, ci = m.ci, sort: Sort = m.sort;
+  $: m.filter = filter;
+  $: m.ci = ci;
+  $: m.sort = sort;
   $: shown = applyFilter(mine, filter);
   $: nFilters = activeCount(filter);
-  let ci = 0;
   // The + button adds to the status on show (the first one in List).
   $: if (project) addContext.set({ projectId: id, columnId: list ? null : project.columns[ci]?.id ?? null });
   onDestroy(() => addContext.set(null));
@@ -74,7 +81,7 @@
   <div class="scr">
     <TopBar title={project.name} sub="{space?.name ?? ''} · {open} open{project.pinned ? ' · pinned' : ''}">
       <span slot="sub-lead" class="p-dot" style="background:{space ? soften(space.color) : 'var(--faint)'}"></span>
-      <button class="ib" on:click={() => project && toggleView(project)} aria-label={list ? 'Show as board' : 'Show as list'}>{@html list ? I.board : I.list}</button>
+      <button class="ib" on:click={() => { if (project) listView = toggleView(project); }} aria-label={list ? 'Show as board' : 'Show as list'}>{@html list ? I.board : I.list}</button>
       <button class="ib" class:on={nFilters > 0} on:click={() => openSheet('filter')} aria-label={nFilters ? `Filter, ${nFilters} on` : 'Filter'}>{@html I.filter}</button>
       <button class="ib" on:click={() => openSheet('more')} aria-label="More">{@html I.more}</button>
     </TopBar>
@@ -87,7 +94,7 @@
     {/if}
 
     {#if list}
-      <ListPane {project} tasks={shown} bind:search={filter.search} filtered={nFilters > 0 || !!filter.search} on:open={e => actions.openTask(e.detail)} />
+      <ListPane {project} tasks={shown} bind:search={filter.search} bind:sort filtered={nFilters > 0 || !!filter.search} on:open={e => actions.openTask(e.detail)} />
     {:else}
       <Board {project} tasks={shown} bind:ci {blockedIds} {relatedIds} {tagColors}
         on:open={e => actions.openTask(e.detail)} on:menu={e => openSheet('card', e.detail)} />
@@ -96,11 +103,11 @@
 
   {#key session}
     {#if sheet === 'filter'}
-      <FilterSheet {project} tasks={mine} {filter} {customFields} on:apply={e => (filter = e.detail)} on:close={() => (sheet = null)} />
+      <FilterSheet {project} tasks={mine} {filter} {list} {customFields} on:apply={e => (filter = e.detail)} on:close={() => (sheet = null)} />
     {:else if sheet === 'more'}
       <ProjectMenuSheet {project} on:close={() => (sheet = null)} />
     {:else if sheet === 'card' && menuTask}
-      <CardMenuSheet task={menuTask} {project} tasks={shown} on:close={() => (sheet = null)} />
+      <CardMenuSheet task={menuTask} {project} tasks={mine} {shown} on:close={() => (sheet = null)} />
     {/if}
   {/key}
 {:else}

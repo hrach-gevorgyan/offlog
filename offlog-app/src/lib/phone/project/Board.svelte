@@ -67,27 +67,27 @@
       </div>
     {/key}
   {/if}
+  {#if cols.length > 1}
+    <div class="dots" aria-hidden="true">{#each cols as c, i (c.id)}<i class:on={i === ci}></i>{/each}</div>
+  {/if}
 </div>
 
-{#if cols.length > 1}
-  <div class="dots" aria-hidden="true">{#each cols as c, i (c.id)}<i class:on={i === ci}></i>{/each}</div>
-{/if}
-
 <style>
-  .pills { display: flex; gap: 6px; margin: 0 -16px 12px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: none; }
+  .pills { display: flex; gap: 6px; margin: 0 -16px 8px; padding: 4px 16px; overflow-x: auto; scrollbar-width: none; }
   .pills::-webkit-scrollbar { display: none; }
   .pills button {
-    flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 13px; min-height: 38px; border-radius: 999px; border: 0; cursor: pointer;
+    position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 13px; min-height: 36px; border-radius: 999px; border: 0; cursor: pointer;
     font: inherit; font-size: 14px; font-weight: 600; background: var(--surface); color: var(--muted);
     box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
     transition: background var(--dur-small) var(--ease-standard), color var(--dur-small) var(--ease-standard);
   }
-  .pills button.on { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+  .pills button::before { content: ''; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; }
+  .pills button.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); box-shadow: none; }
   .pills i { font-style: normal; font-size: 12px; opacity: .75; }
   .body { min-height: 45vh; }
   .empty { text-align: center; color: var(--faint); padding: 28px 0 8px; font-size: 14.5px; }
   .empty p { margin: 0 0 6px; }
-  .dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 0; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 12px 0 0; }
   .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width var(--dur-small) var(--ease-standard); }
   .dots i.on { background: var(--accent); width: 16px; }
 </style>

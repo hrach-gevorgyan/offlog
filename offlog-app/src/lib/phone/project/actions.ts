@@ -21,11 +21,25 @@ export async function patchProject(id: string, changes: Partial<ProjectDoc>, fai
   }
 }
 
-// 'table' is a legacy value read as List.
-export const isList = (p: ProjectDoc) => p.default_view === 'list' || p.default_view === 'table';
+// Board or List is kept per device: the desktop writes default_view on
+// every switch without ever reading it, so following the synced value would
+// let the PC change how the phone opens a project. default_view only
+// decides the first open here ('table' is a legacy value read as List).
+const viewKey = (id: string) => `offlog_phone_view_${id}`;
+export function isList(p: ProjectDoc): boolean {
+  try {
+    const v = localStorage.getItem(viewKey(p._id));
+    if (v) return v === 'list';
+  } catch { /* storage unavailable: fall back to the project */ }
+  return p.default_view === 'list' || p.default_view === 'table';
+}
 
-export const toggleView = (p: ProjectDoc) =>
-  patchProject(p._id, { default_view: isList(p) ? 'kanban' : 'list' }, 'Could not switch the view. Please try again.');
+// Returns the new value; not kept when storage is unavailable.
+export function toggleView(p: ProjectDoc): boolean {
+  const list = !isList(p);
+  try { localStorage.setItem(viewKey(p._id), list ? 'list' : 'board'); } catch { /* not kept */ }
+  return list;
+}
 
 // Replaces the project in the store with what a column write returned.
 export function adopt(doc: ProjectDoc) {
@@ -38,8 +52,10 @@ export const snapshot = (t: TaskDoc): Partial<TaskDoc> =>
   ({ column_id: t.column_id, position: t.position, due_date: t.due_date, reminder_at: t.reminder_at, checklist: t.checklist });
 
 // Finishing moves a task to its project's last status, un-finishing to the
-// first.
+// first. A one-status project has nothing to move between.
+export const canFinish = (p: ProjectDoc) => p.columns.length > 1;
 export async function toggleDone(task: TaskDoc, project: ProjectDoc): Promise<void> {
+  if (!canFinish(project)) return;
   const last = project.columns.at(-1)?.id;
   const done = task.column_id === last;
   const target = done ? project.columns[0]?.id : last;

@@ -45,11 +45,11 @@
     } catch {
       showError('Could not update some tasks. Please try again.');
       await reloadTasks().catch(() => {});
-      sheet.close();
+      sheet?.close();
       return;
     }
     dispatch('done', { clear });
-    sheet.close();
+    sheet?.close();
     showToast(`Updated ${done.length} ${done.length === 1 ? 'task' : 'tasks'}`, () => restore(done));
   }
   const toStatus = (id: string) => apply(() => ({ column_id: id }), t => ({ column_id: t.column_id, due_date: t.due_date, reminder_at: t.reminder_at, checklist: t.checklist }), true);
