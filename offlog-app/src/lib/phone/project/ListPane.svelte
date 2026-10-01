@@ -51,7 +51,7 @@
     ? project.columns
       .map(c => ({ id: c.id, name: c.name, rows: tasks.filter(t => t.column_id === c.id).sort((a, b) => pinCmp(pinnedFirst, a, b) || cmp(sort, a, b)) }))
       .filter(g => g.rows.length)
-    : [{ id: '', name: '', rows: [...tasks].sort((a, b) => pinCmp(pinnedFirst, a, b) || cmp(sort, a, b)) }];
+    : [{ id: '', name: '', rows: [...tasks].sort((a, b) => pinCmp(pinnedFirst, a, b) || cmp(sort, a, b)) }].filter(g => g.rows.length);
   $: rows = groups.flatMap(g => g.rows);
   const statusOf = (t: TaskDoc) => project.columns[colIdx[t.column_id]]?.name ?? '';
 

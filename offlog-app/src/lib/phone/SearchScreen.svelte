@@ -11,6 +11,8 @@
   const m = memo({ q: '', limit: 40 });
   let q = m.q, limit = m.limit;
   $: m.q = q;
+  let lastQ = m.q;
+  $: if (q !== lastQ) { lastQ = q; limit = 40; }
   $: m.limit = limit;
   let results: Awaited<ReturnType<typeof searchAllTasks>> = [];
   let seq = 0;

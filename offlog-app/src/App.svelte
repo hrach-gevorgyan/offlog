@@ -31,6 +31,12 @@
   import PhoneApp from './lib/phone/PhoneApp.svelte';
   import { isPhone, actions as phoneActions, backAtRoot, switchTab, navigate, showToast, tab as phoneTab } from './lib/phone/nav';
   import { setStatusBarSuppressed } from './lib/theme';
+  import { fly } from 'svelte/transition';
+  import { snackIn, snackOut } from './lib/motion';
+  // On the phone errors drop in from the top, clear of the + button and
+  // the navigation bar.
+  const phoneErrIn = { y: -16, get duration() { return snackIn.duration; }, easing: snackIn.easing };
+  const phoneErrOut = { y: -16, get duration() { return snackOut.duration; }, easing: snackOut.easing };
 
   // The version an already-dismissed banner shouldn't reappear for until
   // a *different* update is found — background checks re-run every ~6h
@@ -759,7 +765,11 @@
 {/if}
 
 {#if $errorToast}
-  <div class="error-toast" role="alert" in:toastIn out:toastOut>{$errorToast}</div>
+  {#if $isPhone}
+    <div class="error-toast" role="alert" in:fly={phoneErrIn} out:fly={phoneErrOut}>{$errorToast}</div>
+  {:else}
+    <div class="error-toast" role="alert" in:toastIn out:toastOut>{$errorToast}</div>
+  {/if}
 {/if}
 
 {#if undoToasts.length}
@@ -977,7 +987,7 @@
   :global(body.phone) .toast-stack { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   :global(body.phone) .error-toast {
     left: 12px; right: 12px; transform: none; white-space: normal; border-radius: 12px; padding: 14px 16px;
-    bottom: calc(144px + env(safe-area-inset-bottom, 0px));
+    bottom: auto; top: calc(12px + env(safe-area-inset-top, 0px));
   }
 
   /* ── Undo toast ── */

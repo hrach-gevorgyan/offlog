@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { waitFor } from '@testing-library/svelte';
-import { tab, stack, arrival, push, back, switchTab, backAtRoot, memo, navigate, showToast, toast } from '../src/lib/phone/nav';
+import { tab, stack, arrival, push, back, switchTab, backAtRoot, memo, navigate, showToast, toast, actions, takeQueuedAdd } from '../src/lib/phone/nav';
+import { closeOnBack } from '../src/lib/modalStack';
 import { duePill, greeting, shortDate } from '../src/lib/phone/format';
 
 describe('phone navigation', () => {
@@ -63,6 +64,31 @@ describe('phone navigation', () => {
     // and the pushed screen survives the late popstate
     await new Promise(r => setTimeout(r, 50));
     expect(get(stack).map(s => s.k)).toEqual(['home', 'focus']);
+  });
+
+  it('the back arrow closes a layer above the screen first (e.g. select mode)', async () => {
+    push({ k: 'project', id: 'project:s' });
+    let layerOpen = true;
+    closeOnBack(() => { layerOpen = false; });
+    back();
+    await waitFor(() => expect(layerOpen).toBe(false));
+    await new Promise(r => setTimeout(r, 450)); // past modalStack's fallback window
+    expect(get(stack).map(s => s.k)).toEqual(['home', 'project']);
+  });
+
+  it('a quick add asked for before the shell mounts is queued, once', () => {
+    actions.quickAdd('2026-10-02');
+    expect(takeQueuedAdd()).toEqual({ due: '2026-10-02' });
+    expect(takeQueuedAdd()).toBeNull();
+  });
+
+  it('a second jump during the wait replaces the first and still survives the popstate', async () => {
+    push({ k: 'late' });
+    navigate('home', { k: 'focus' });
+    navigate('home', { k: 'pinned' });
+    await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home', 'pinned']));
+    await new Promise(r => setTimeout(r, 450));
+    expect(get(stack).map(s => s.k)).toEqual(['home', 'pinned']);
   });
 
   it('navigate with nothing open pushes at once', () => {

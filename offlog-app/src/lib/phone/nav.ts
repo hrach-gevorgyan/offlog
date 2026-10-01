@@ -5,7 +5,7 @@
 // the same LIFO order as overlays and the {#key} remount rule in
 // modalStack.ts does not apply to screens.
 import { writable, readable, get } from 'svelte/store';
-import { closeOnBack, closeAll } from '../modalStack';
+import { closeOnBack, closeAll, closeTop } from '../modalStack';
 import type { TaskDoc } from '../types';
 
 // Same breakpoint as the desktop layout's own mobile rules (App.svelte,
@@ -36,10 +36,15 @@ type Entry = Screen & { requestClose?: () => void };
 // Things only App.svelte can do (it owns QuickAdd, CardDetail and the
 // Sidebar-hosted Settings); App fills these in when it mounts the shell.
 export const actions = {
-  quickAdd: (_due: string | null = null) => {},
+  // Until the shell has mounted (a widget tap on a cold start), a quick add
+  // is queued and the shell opens it on mount.
+  quickAdd: (due: string | null = null) => { queuedAdd = { due }; },
   openTask: (_task: TaskDoc) => {},
   openSettings: () => {},
 };
+
+let queuedAdd: { due: string | null } | null = null;
+export function takeQueuedAdd() { const q = queuedAdd; queuedAdd = null; return q; }
 
 export const TABS: Tab[] = ['home', 'today', 'agenda', 'search'];
 export const tab = writable<Tab>('home');
@@ -60,7 +65,7 @@ export function push(screen: Screen) {
 // On-screen back arrow: goes through history so hardware back and the arrow
 // share one path (see modalStack.ts on why requestClose is the only door).
 export function back() {
-  get(stack).at(-1)?.requestClose?.();
+  if (!closeTop()) get(stack).at(-1)?.requestClose?.();
 }
 
 // A tab switch starts the new tab at its root; tapping the current tab
@@ -112,15 +117,26 @@ export function memo<T extends object>(init: T): T {
 // Jump somewhere from outside the stacks (widget, notification): unwind
 // every open layer (screens and sheets), then push once that history jump
 // has landed — pushing straight away lets the late popstate pop it again.
+let pendingNav: (() => void) | null = null;
 export function navigate(t: Tab, screen?: Screen, then?: () => void) {
-  const closed = closeAll();
+  // A second jump before the first one's popstate lands reuses that wait
+  // instead of pushing early.
+  const waiting = !!pendingNav;
+  const closed = closeAll() + (waiting ? 1 : 0);
   tab.set(t);
   stack.set([{ k: t }]);
   arrival.set('none');
   const go = () => { if (screen) push(screen); then?.(); };
   if (!closed) { go(); return; }
+  if (waiting) { pendingNav = go; return; }
+  pendingNav = go;
   let done = false;
-  const once = () => { if (done) return; done = true; window.removeEventListener('popstate', once); go(); };
+  const once = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener('popstate', once);
+    const run = pendingNav; pendingNav = null; run?.();
+  };
   window.addEventListener('popstate', once);
   setTimeout(once, 400);
 }

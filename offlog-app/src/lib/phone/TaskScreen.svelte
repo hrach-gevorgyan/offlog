@@ -188,14 +188,20 @@
   // Notes save on blur, on leaving the screen, and after a long pause in
   // typing. Each save is a history entry, so not after every short pause.
   $: queueNote(body);
+  // noteDirty: the user typed. A remote edit that arrived while the note was
+  // only focused must not be overwritten by the stale local text.
+  let noteDirty = false;
   function queueNote(text: string) {
     if (!task || text === (task.body ?? '')) return;
+    noteDirty = true;
     clearTimeout(noteTimer);
     noteTimer = setTimeout(flushNote, 3000);
   }
   function flushNote() {
     clearTimeout(noteTimer);
     noteTimer = undefined;
+    if (!noteDirty) return;
+    noteDirty = false;
     if (task && body !== (task.body ?? '')) save({ body }, 'Could not save the note. Please try again.');
   }
 
@@ -289,6 +295,9 @@
       } catch { noteHint = ''; }
     }, 350);
   }
+
+  function onHide() { if (document.hidden) flushNote(); }
+  onMount(() => { document.addEventListener('visibilitychange', onHide); return () => document.removeEventListener('visibilitychange', onHide); });
 
   onDestroy(() => {
     unsub?.();

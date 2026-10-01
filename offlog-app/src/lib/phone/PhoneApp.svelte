@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext } from './nav';
+  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd } from './nav';
   import type { Tab } from './nav';
   import { screenIn, pillIn, snackIn, snackOut } from '../motion';
   import { fly } from 'svelte/transition';
@@ -43,16 +43,23 @@
     const check = () => {
       const h = vv?.height ?? window.innerHeight, w = window.innerWidth;
       if (w !== width) { width = w; tallest = h; }
-      tallest = Math.max(tallest, h);
-      kb = tallest - h > 150;
+      // Only while typing and not pinch-zoomed: a shorter window (split
+      // screen, a docked dev panel) is not the keyboard.
+      const el = document.activeElement as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if (!typing) tallest = Math.max(tallest, h);
+      kb = typing && (vv?.scale ?? 1) <= 1 && tallest - h > 150;
     };
     check();
     (vv ?? window).addEventListener('resize', check);
-    return () => (vv ?? window).removeEventListener('resize', check);
+    document.addEventListener('focusout', check);
+    return () => { (vv ?? window).removeEventListener('resize', check); document.removeEventListener('focusout', check); };
   });
 
   onMount(() => {
     actions.quickAdd = openAdd;
+    const queued = takeQueuedAdd();
+    if (queued) openAdd(queued.due);
     actions.openSettings = () => push({ k: 'settings' });
     actions.openTask = (task) => push({ k: 'task', id: task._id });
   });

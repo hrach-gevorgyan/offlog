@@ -40,7 +40,7 @@
 // key would otherwise be (e.g. a task id).
 
 type CloseFn = () => void;
-interface Entry { close: CloseFn; id: number }
+interface Entry { close: CloseFn; id: number; request?: CloseFn }
 
 const stack: Entry[] = [];
 let listening = false;
@@ -96,7 +96,7 @@ export function closeOnBack(close: CloseFn): CloseFn {
   // that only ever had one entry pushed for this layer, over-navigating
   // into whatever was underneath it.
   let requested = false;
-  return () => {
+  entry.request = () => {
     if (requested) return;
     requested = true;
     history.back();
@@ -117,6 +117,17 @@ export function closeOnBack(close: CloseFn): CloseFn {
       }
     }, 400);
   };
+  return entry.request;
+}
+
+// An on-screen back arrow: closes the topmost layer, whichever it is (a
+// screen's own sub-mode can sit above it), through that layer's own
+// requestClose so the history entry and the stack stay in step.
+export function closeTop(): boolean {
+  const top = stack.at(-1);
+  if (!top?.request) return false;
+  top.request();
+  return true;
 }
 
 // For an overlay that's being immediately replaced by another one opening
