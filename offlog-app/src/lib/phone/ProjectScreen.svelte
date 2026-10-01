@@ -146,9 +146,9 @@
   /* Not positioned: the list's bulk bar anchors to the screen, not this scroller. */
   .scr { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px 96px; scrollbar-width: none; }
   .scr::-webkit-scrollbar { display: none; }
-  /* The slanted edge needs clear air before the status pills or it reads as
-     touching them. */
-  .band { margin: 0 -16px 24px; padding: 0 16px 22px; background: var(--band); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), 0 100%); }
+  /* The slanted edge needs clear air on both sides: under the Board | List
+     switch (where it rises) and before the status pills. */
+  .band { margin: 0 -16px 24px; padding: 0 16px 38px; background: var(--band); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), 0 100%); }
   .band :global(.sub) { margin-bottom: 0; }
   :global(body.dark) .band { background: color-mix(in srgb, var(--band) 62%, var(--bg)); }
   /* Ink on the band: TopBar and the view toggle read these tokens. */
