@@ -220,3 +220,24 @@ Then Phase 3 builds screen by screen, desktop first, then the phone.
   in step 5.
 - Which features are rarely used and can move behind a menu? (Time Travel,
   custom fields, Trash, sync status…) An owner-usage pass is needed.
+
+## Signature round (1–2 Oct 2026)
+
+Phone only. After a research-backed UX pass (seven area reviews against Material 3, Apple HIG, NN/g, WCAG and comparable apps), the owner judged signature-detail proposals one at a time from emulator videos and pictures.
+
+| Proposal | Decision |
+|---|---|
+| Loop tick: the finish circle draws itself closed (one stroke of the logo loop), then fills | **Built** |
+| Priority shown by tinting the finish circle (Medium amber, High red; Low is plain) | **Built** (replaces the red side bar) |
+| Project header on a band in its space colour, Home's straight slant, generous gap below | **Built** |
+| Empty screens: logo line, short title, one sentence | **Built** |
+| Today's late row as a white card with a red count | **Built** |
+| Focus as three places filled by "+ Add" picks | **Built** |
+| "All to today" on the Late screen | **Built** |
+| Day loops replacing Home's progress dashes | Rejected: keep the dashes |
+| Day seal / stamp-card month | Rejected |
+| A second typeface for numbers and dates | Rejected: Hanken Grotesk only |
+| Curved, rounded or wave band edges | Rejected: straight slant |
+| Denser task cards | Rejected: keep cards on cross-project lists |
+
+Prepared for the owner, not built: a living hero (season and evening tint), dotted row lines, a squircle + button, facts-under-the-title task screen, a Settings header card.
