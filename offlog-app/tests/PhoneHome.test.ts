@@ -21,7 +21,7 @@ vi.mock('../src/lib/store', async () => {
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
 
 import Home from '../src/lib/phone/Home.svelte';
-import { stack, switchTab, actions } from '../src/lib/phone/nav';
+import { stack, switchTab, actions, appEmpty } from '../src/lib/phone/nav';
 import { showError, spaces, projects } from '../src/lib/store';
 import type { Writable } from 'svelte/store';
 
@@ -83,7 +83,7 @@ describe('phone Home', () => {
     expect(container.querySelector('.p-group .p-n')).toBeNull(); // no "0" badge
   });
 
-  it('Unsorted is listed last; an empty space offers New project, a full one a + by its name', async () => {
+  it('spaces with projects first, Unsorted last; every space has a + by its name and no New project rows', async () => {
     const sp = spaces as unknown as Writable<unknown[]>, pr = projects as unknown as Writable<unknown[]>;
     const keepS = get(sp), keepP = get(pr);
     sp.set([
@@ -92,11 +92,24 @@ describe('phone Home', () => {
       { _id: 'space:p', name: 'Personal', color: '#10b981', position: 2 },
     ]);
     pr.set([{ _id: 'project:q', space_id: 'space:w', name: 'Q4 Sprint', position: 0, columns: [] }]);
-    const { container, getAllByText, getByLabelText } = render(Home);
+    const { container, queryAllByText, getByLabelText } = render(Home);
     const names = [...container.querySelectorAll('.p-sec > span:first-child')].map(e => e.textContent);
     expect(names).toEqual(['Work', 'Personal', 'Unsorted']);
-    expect(getAllByText('New project')).toHaveLength(2); // Personal and Unsorted are empty
-    expect(getByLabelText('New project in Work')).toBeTruthy();
+    expect(queryAllByText('New project')).toHaveLength(0);
+    for (const n of ['Work', 'Personal', 'Unsorted']) expect(getByLabelText(`New project in ${n}`)).toBeTruthy();
     sp.set(keepS); pr.set(keepP);
+  });
+
+  it('a fresh install invites the first task: no tiles, the band opens quick add, + is labelled', async () => {
+    getDashboardData.mockResolvedValue({ ...data, totalTasks: 0, todayOpenCount: 0, todayDoneCount: 0, completedLast7Days: 0,
+      byProject: { 'project:q': { total: 0, open: 0, pinned: 0, overdue: 0, lastColId: 'col:done' } } });
+    const spy = vi.spyOn(actions, 'quickAdd').mockImplementation(() => {});
+    const { getByText, container } = render(Home);
+    await waitFor(() => expect(getByText('Add your first task')).toBeTruthy());
+    expect(container.querySelector('.tiles')).toBeNull();
+    expect(get(appEmpty)).toBe(true);
+    await fireEvent.click(getByText('Add your first task'));
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

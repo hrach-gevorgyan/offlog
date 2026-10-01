@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd } from './nav';
+  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd, appEmpty } from './nav';
   import type { Tab } from './nav';
   import { screenIn, pillIn, snackIn, snackOut } from '../motion';
   import { fly } from 'svelte/transition';
@@ -106,7 +106,7 @@
     {/key}
   </div>
 
-  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" class:lift={!!$toast} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" class:lift={!!$toast} class:wide={$appEmpty} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}{#if $appEmpty}<span>Task</span>{/if}</button>{/if}
 
   {#if qa}
     {#key qaSession}
@@ -160,6 +160,8 @@
     transition: transform var(--dur-medium) var(--ease-standard);
   }
   .fab :global(svg.i) { width: 24px; height: 24px; stroke-width: 2.2; }
+  /* Labelled while the app is empty, so a first-time user knows what + adds. */
+  .fab.wide { width: auto; padding: 0 20px 0 16px; gap: 8px; border-radius: 28px; font: inherit; font-size: var(--p-fs-l); font-weight: 700; }
   .fab:active { transform: scale(.95); }
   /* Rises above the snackbar instead of hiding under it. */
   .fab.lift { transform: translateY(-64px); }
