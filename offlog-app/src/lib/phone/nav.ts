@@ -92,3 +92,7 @@ export function showToast(text: string, undo?: Toast['undo']) {
   toast.set(t);
   toastTimer = setTimeout(() => toast.update(c => (c?.id === t.id ? null : c)), 4000);
 }
+
+// Where the + button should add: a project screen sets this to its project
+// and the status on show, so a new task lands where the user is looking.
+export const addContext = writable<{ projectId: string; columnId: string | null } | null>(null);

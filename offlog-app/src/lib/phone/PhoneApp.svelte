@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { tab, stack, arrival, switchTab, actions, TABS, toast } from './nav';
+  import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
+  import { tab, stack, arrival, switchTab, actions, TABS, toast, addContext } from './nav';
   import type { Tab } from './nav';
   import { screenIn, pillIn, snackIn, snackOut } from '../motion';
   import { fly } from 'svelte/transition';
@@ -10,19 +12,32 @@
   import TaskListScreen from './TaskListScreen.svelte';
   import SearchScreen from './SearchScreen.svelte';
   import ProjectScreen from './ProjectScreen.svelte';
-  import TopBar from './TopBar.svelte';
-  import AgendaView from '../AgendaView.svelte';
-  import FocusView from '../FocusView.svelte';
+  import AgendaScreen from './AgendaScreen.svelte';
+  import FocusScreen from './FocusScreen.svelte';
+  import QuickAddSheet from './QuickAddSheet.svelte';
+  import { agendaDay } from './agenda/month';
 
   $: top = $stack[$stack.length - 1];
   $: key = `${$tab}:${$stack.length}:${top.k}:${'id' in top ? top.id : ''}`;
+  // Quick add opens here as a sheet; it adds where the user is looking: the
+  // project and status on screen, or the day picked in Agenda's month.
+  let qa: { projectId: string | null; columnId: string | null; dueDate: string | null } | null = null;
+  let qaSession = 0;
+  function openAdd(due: string | null = null) {
+    const ctx = get(addContext), cur = get(stack).at(-1);
+    const inProject = cur?.k === 'project' ? ctx : null;
+    qa = { projectId: inProject?.projectId ?? null, columnId: inProject?.columnId ?? null, dueDate: due ?? (cur?.k === 'agenda' ? get(agendaDay) : null) };
+    qaSession++;
+  }
+  onMount(() => { actions.quickAdd = openAdd; });
+
   const LABEL: Record<Tab, string> = { home: 'Home', today: 'Today', agenda: 'Agenda', search: 'Search' };
 </script>
 
 <div class="phone-shell">
   <div class="screens">
     {#key key}
-      <div class="screen" class:flush={top.k === 'home'} class:board={top.k === 'project'} class:reuse={top.k === 'agenda' || top.k === 'focus'} in:screenIn={{ kind: $arrival }}>
+      <div class="screen" class:flush={top.k === 'home'} class:board={top.k === 'project'} in:screenIn={{ kind: $arrival }}>
         {#if top.k === 'home'}
           <Home />
         {:else if top.k === 'today' || top.k === 'late' || top.k === 'pinned'}
@@ -32,17 +47,21 @@
         {:else if top.k === 'project'}
           <ProjectScreen id={top.id} />
         {:else if top.k === 'agenda'}
-          <div class="pad"><TopBar title="Agenda" root /></div>
-          <AgendaView on:search={() => switchTab('search')} on:addTask={e => actions.quickAdd(e.detail)} />
+          <AgendaScreen />
         {:else if top.k === 'focus'}
-          <div class="pad"><TopBar title="Focus" /></div>
-          <FocusView on:search={() => switchTab('search')} />
+          <FocusScreen />
         {/if}
       </div>
     {/key}
   </div>
 
   {#if !$modalOpen}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+
+  {#if qa}
+    {#key qaSession}
+      <QuickAddSheet projectId={qa.projectId} columnId={qa.columnId} dueDate={qa.dueDate} on:close={() => (qa = null)} />
+    {/key}
+  {/if}
 
   {#if $toast}
     {#key $toast.id}
@@ -75,11 +94,7 @@
   .screen { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px 96px; background: var(--bg); scrollbar-width: none; }
   .screen::-webkit-scrollbar { display: none; }
   .screen.flush { padding: 0; overflow: hidden; }
-  .screen.board, .screen.reuse { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-  .pad { padding: 0 16px; flex-shrink: 0; }
-  /* Reused desktop views bring their own header; on the phone the top bar
-     above replaces its menu button, title and command-palette button. */
-  .reuse :global(.hamburger), .reuse :global(.palette-btn), .reuse :global(.fc-title), .reuse :global(.agenda-title) { display: none !important; }
+  .screen.board { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 
   .fab {
     position: absolute; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 10;
