@@ -65,7 +65,7 @@
 <style>
   .every { cursor: default; }
   .every input {
-    margin-left: auto; width: 64px; box-sizing: border-box; text-align: center; font: inherit; font-size: 16px;
+    margin-left: auto; width: 64px; box-sizing: border-box; text-align: center; font: inherit; font-size: var(--p-fs-l);
     border: 0; border-radius: 8px; padding: 6px 8px; background: var(--col-bg); color: var(--text);
   }
   .every input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

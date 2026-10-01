@@ -135,9 +135,10 @@
 <style>
   .file { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; min-height: 56px; }
   .file + .file { border-top: 1px solid var(--border); }
-  .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; font: inherit; font-size: 15px; color: var(--text); background: none; border: 0; padding: 4px 0; text-align: left; cursor: pointer; }
-  .th { width: 40px; height: 40px; border-radius: 8px; background: var(--col-bg); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 10px; font-weight: 700; flex-shrink: 0; object-fit: cover; }
+  .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; padding: 4px 0; text-align: left; cursor: pointer; border-radius: 8px; }
+  .open:active { background: var(--col-bg); }
+  .th { width: 40px; height: 40px; border-radius: 8px; background: var(--col-bg); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: var(--p-fs-xs); font-weight: 700; flex-shrink: 0; object-fit: cover; }
   .p-ib :global(svg.i) { width: 18px; height: 18px; }
   .err { color: var(--danger); margin-top: 10px; }
-  .note { text-align: center; margin-top: 10px; font-size: 13px; color: var(--faint); }
+  .note { text-align: center; margin-top: 10px; font-size: var(--p-fs-s); color: var(--faint); }
 </style>

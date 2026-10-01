@@ -176,14 +176,14 @@
 {/if}
 
 <style>
-  .sfield { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; color: var(--faint); box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06); }
-  .sfield input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 16px; color: var(--text); }
+  .sfield { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; color: var(--faint); box-shadow: var(--p-shadow); }
+  .sfield input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: var(--p-fs-l); color: var(--text); }
   .chips { margin-bottom: 10px; }
   .gh { display: flex; gap: 6px; margin-top: 14px; }
   .gh span { font-weight: 600; opacity: .8; }
-  .rows { background: var(--surface); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06); overflow: hidden; }
+  .rows { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); overflow: hidden; }
   .rows + .rows { margin-top: 10px; }
-  .row { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 14px; min-height: 48px; font: inherit; font-size: 15px; color: var(--text); background: none; border: 0; text-align: left; transition: background var(--dur-hover) var(--ease-hover); }
+  .row { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 14px; min-height: 48px; font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; text-align: left; transition: background var(--dur-hover) var(--ease-hover); }
   button.row { cursor: pointer; }
   .row + .row { border-top: 1px solid var(--border); }
   .row.hi::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
@@ -196,25 +196,27 @@
   .rep { color: var(--faint); margin-left: 5px; display: inline-flex; vertical-align: -2px; }
   .rep :global(svg.i) { width: 13px; height: 13px; }
   .done .t { color: var(--faint); text-decoration: line-through; }
-  .st { font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+  .st { font-size: var(--p-fs-xs); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
   .chk, .box { width: 22px; height: 22px; flex-shrink: 0; position: relative; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); background: none; padding: 0; cursor: pointer; }
   .chk { border-radius: 50%; }
   .chk::before { content: ''; position: absolute; inset: -11px; }
   .box { border-radius: 7px; }
+  .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); }
   .chk.on::after, .picked .box::after {
     content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
   }
-  .row.picked { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+  .row.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+  .row.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
   /* The tab bar under the screen already clears the gesture area. */
   .bulkbar {
     position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 11;
     display: flex; align-items: center; gap: 2px; padding: 0 6px 0 2px; border-radius: 16px;
     background: var(--inverse-surface); color: var(--on-inverse); box-shadow: 0 8px 24px rgba(0,0,0,.25);
   }
-  .bulkbar b { font-size: 15px; margin-right: auto; padding-left: 2px; white-space: nowrap; }
-  .bulkbar button { font: inherit; font-size: 13.5px; font-weight: 600; color: inherit; background: none; border: 0; padding: 0 9px; min-height: 44px; border-radius: 10px; cursor: pointer; }
+  .bulkbar b { font-size: var(--p-fs-m); margin-right: auto; padding-left: 2px; white-space: nowrap; }
+  .bulkbar button { font: inherit; font-size: var(--p-fs-s); font-weight: 600; color: inherit; background: none; border: 0; padding: 0 9px; min-height: 44px; border-radius: 10px; cursor: pointer; }
   .bulkbar .x { width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
   .bulkbar .x :global(svg.i) { width: 18px; height: 18px; }
   .bulkbar button:disabled { opacity: .45; cursor: default; }

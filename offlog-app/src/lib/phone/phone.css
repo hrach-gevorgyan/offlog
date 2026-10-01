@@ -2,18 +2,31 @@
    is scoped under .phone-shell or .psheet so nothing here reaches the
    desktop layout. Components add their own scoped rules on top. */
 
+/* Type scale: every phone font-size uses one of these. The only other
+   sizes are deliberate display numbers (Home hero count, Home tiles). */
+.phone-shell, .psheet {
+  --p-fs-xs: 12px;  /* labels, pills, counts, meta */
+  --p-fs-s: 13px;   /* secondary text, chips, segmented control */
+  --p-fs-m: 15px;   /* compact body, list rows, text buttons */
+  --p-fs-l: 16px;   /* body rows, card titles, inputs */
+  --p-fs-xl: 17px;  /* sheet titles */
+  --p-fs-t: 22px;   /* screen titles */
+  /* One elevation for every card, group, tile and field. */
+  --p-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+}
+
 .phone-shell svg.i, .psheet svg.i { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 
 /* Section label: uppercase, with an optional count badge. */
-.phone-shell .p-sec, .psheet .p-sec { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 18px 4px 8px; display: flex; gap: 8px; align-items: center; }
+.phone-shell .p-sec, .psheet .p-sec { font-size: var(--p-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 18px 4px 8px; display: flex; gap: 8px; align-items: center; }
 .phone-shell .p-sec.late { color: var(--overdue-ink); }
-.phone-shell .p-n, .psheet .p-n { background: var(--col-bg); color: var(--muted); border-radius: 999px; padding: 0 7px; font-size: 12px; letter-spacing: 0; font-weight: 700; }
+.phone-shell .p-n, .psheet .p-n { background: var(--col-bg); color: var(--muted); border-radius: 999px; padding: 0 7px; font-size: var(--p-fs-xs); letter-spacing: 0; font-weight: 700; }
 
 /* A grouped panel of rows. */
-.phone-shell .p-group, .psheet .p-group { background: var(--surface); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06); overflow: hidden; margin-bottom: 14px; }
+.phone-shell .p-group, .psheet .p-group { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); overflow: hidden; margin-bottom: 14px; }
 .phone-shell .p-row, .psheet .p-row {
   width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; min-height: 52px;
-  font: inherit; font-size: 16px; color: var(--text); background: none; border: 0; text-align: left; cursor: pointer;
+  font: inherit; font-size: var(--p-fs-l); color: var(--text); background: none; border: 0; text-align: left; cursor: pointer;
   transition: background var(--dur-hover) var(--ease-hover);
 }
 .phone-shell .p-row + .p-row, .psheet .p-row + .p-row { border-top: 1px solid var(--border); }
@@ -21,8 +34,8 @@
 .phone-shell .p-row:disabled, .psheet .p-row:disabled { opacity: .45; cursor: default; }
 .phone-shell .p-row .p-k, .psheet .p-row .p-k { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .phone-shell .p-row .p-k > span:first-child, .psheet .p-row .p-k > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.phone-shell .p-sub, .psheet .p-sub { font-size: 13px; color: var(--faint); margin-top: 1px; white-space: normal; }
-.phone-shell .p-v, .psheet .p-v { margin-left: auto; color: var(--faint); font-size: 15px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.phone-shell .p-sub, .psheet .p-sub { font-size: var(--p-fs-s); color: var(--faint); margin-top: 1px; white-space: normal; }
+.phone-shell .p-v, .psheet .p-v { margin-left: auto; color: var(--faint); font-size: var(--p-fs-m); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .phone-shell .p-v.set, .psheet .p-v.set { color: var(--text); font-weight: 500; }
 .phone-shell .p-ico, .psheet .p-ico { width: 22px; display: flex; align-items: center; justify-content: center; color: var(--faint); flex-shrink: 0; }
 .phone-shell .p-row.acc, .psheet .p-row.acc { color: var(--accent); font-weight: 600; }
@@ -42,40 +55,40 @@
 .phone-shell .p-chips::-webkit-scrollbar, .psheet .p-chips::-webkit-scrollbar { display: none; }
 .phone-shell .p-cpick, .psheet .p-cpick { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; }
 .phone-shell .p-chip, .psheet .p-chip {
-  flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13.5px; font-weight: 600;
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: var(--p-fs-s); font-weight: 600;
   padding: 7px 12px; border-radius: 10px; border: 0; cursor: pointer; background: var(--surface); color: var(--muted);
-  box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+  box-shadow: var(--p-shadow);
 }
 .phone-shell .p-chip.on, .psheet .p-chip.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 .phone-shell .p-chip svg.i, .psheet .p-chip svg.i { width: 16px; height: 16px; }
 
 /* Segmented control. */
 .phone-shell .p-seg, .psheet .p-seg { display: flex; background: var(--col-bg); border-radius: 12px; padding: 3px; gap: 2px; margin: 0 0 14px; }
-.phone-shell .p-seg button, .psheet .p-seg button { flex: 1; padding: 7px 0; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); background: none; border: 0; cursor: pointer; }
-.phone-shell .p-seg button.on, .psheet .p-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.phone-shell .p-seg button, .psheet .p-seg button { flex: 1; padding: 7px 0; border-radius: 9px; font: inherit; font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); background: none; border: 0; cursor: pointer; }
+.phone-shell .p-seg button.on, .psheet .p-seg button.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 
 /* Date / status pills. */
-.phone-shell .p-pill, .psheet .p-pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
+.phone-shell .p-pill, .psheet .p-pill { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
 .phone-shell .p-pill.today, .psheet .p-pill.today { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 .phone-shell .p-pill.late, .psheet .p-pill.late { background: var(--overdue-bg); color: var(--overdue-ink); }
 
 /* Icon button and text button. */
 .phone-shell .p-ib, .psheet .p-ib { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted); flex-shrink: 0; }
 .phone-shell .p-ib:active, .psheet .p-ib:active { background: var(--col-bg); }
-.phone-shell .p-ib.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.phone-shell .p-tbtn, .psheet .p-tbtn { font: inherit; color: var(--accent); font-weight: 600; font-size: 15px; padding: 8px 10px; border-radius: 10px; background: none; border: 0; cursor: pointer; }
+.phone-shell .p-ib.on, .psheet .p-ib.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.phone-shell .p-tbtn, .psheet .p-tbtn { font: inherit; color: var(--accent); font-weight: 600; font-size: var(--p-fs-m); padding: 8px 10px; border-radius: 10px; background: none; border: 0; cursor: pointer; }
 .phone-shell .p-tbtn:active, .psheet .p-tbtn:active { background: var(--col-bg); }
 .phone-shell .p-tbtn.danger, .psheet .p-tbtn.danger { color: var(--danger); }
 
 /* Primary full-width button and text field (mostly in sheets). */
-.phone-shell .p-go, .psheet .p-go { width: 100%; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 12px; padding: 13px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.phone-shell .p-go, .psheet .p-go { width: 100%; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 12px; padding: 13px; font: inherit; font-size: var(--p-fs-l); font-weight: 700; cursor: pointer; }
 .phone-shell .p-go:disabled, .psheet .p-go:disabled { opacity: .4; cursor: default; }
 .phone-shell .p-go.danger, .psheet .p-go.danger { background: var(--danger); }
-.phone-shell .p-fld, .psheet .p-fld { width: 100%; box-sizing: border-box; border: 0; outline: none; background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: 16px; margin: 0 0 14px; }
+.phone-shell .p-fld, .psheet .p-fld { width: 100%; box-sizing: border-box; border: 0; outline: none; background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: var(--p-fs-l); margin: 0 0 14px; }
 .phone-shell .p-fld:focus, .psheet .p-fld:focus { box-shadow: 0 0 0 2px var(--accent); }
-.phone-shell .p-lab, .psheet .p-lab { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 4px 4px 8px; }
-.phone-shell .p-say, .psheet .p-say { font-size: 14.5px; color: var(--muted); margin: 0 4px 14px; line-height: 1.5; }
-.phone-shell .p-empty, .psheet .p-empty { text-align: center; color: var(--faint); padding: 28px 0; font-size: 14.5px; margin: 0; }
+.phone-shell .p-lab, .psheet .p-lab { font-size: var(--p-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 4px 4px 8px; }
+.phone-shell .p-say, .psheet .p-say { font-size: var(--p-fs-m); color: var(--muted); margin: 0 4px 14px; line-height: 1.5; }
+.phone-shell .p-empty, .psheet .p-empty { text-align: center; color: var(--faint); padding: 28px 0; font-size: var(--p-fs-m); margin: 0; }
 .phone-shell .p-dot, .psheet .p-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 
 /* Tap areas reach 44px without making the chip look bigger: an invisible
@@ -88,7 +101,7 @@
 
 /* Pressed feedback for everything tappable that has no hover on touch. */
 .phone-shell .p-chip:active, .psheet .p-chip:active,
-.phone-shell .p-seg button:active, .psheet .p-seg button:active { background: var(--col-bg); }
+.phone-shell .p-seg button:not(.on):active, .psheet .p-seg button:not(.on):active { background: var(--col-bg); }
 .phone-shell .p-go:active, .psheet .p-go:active { filter: brightness(.94); }
 .phone-shell .p-tbtn:disabled, .psheet .p-tbtn:disabled { opacity: .45; cursor: default; }
 .phone-shell .p-tbtn:disabled:active, .psheet .p-tbtn:disabled:active { background: none; }
@@ -96,7 +109,7 @@
 /* One tag chip everywhere: a soft tint of the tag's (softened) colour.
    Set --tag on the element: style="--tag:{soften(color)}". */
 .phone-shell .p-tag, .psheet .p-tag {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; line-height: 1.5;
+  display: inline-flex; align-items: center; gap: 5px; font-size: var(--p-fs-xs); font-weight: 600; line-height: 1.5;
   padding: 1px 8px; border-radius: 999px; white-space: nowrap; color: var(--text);
   background: color-mix(in srgb, var(--tag, var(--faint)) 18%, transparent);
 }

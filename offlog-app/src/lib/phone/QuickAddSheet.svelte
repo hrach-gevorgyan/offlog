@@ -185,25 +185,26 @@
 
 <style>
   .top { display: flex; align-items: flex-start; gap: 4px; }
-  .qa { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: 18px; padding: 10px 4px 12px; }
+  .qa { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: var(--p-fs-xl); padding: 10px 4px 12px; }
   .qa::placeholder { color: var(--faint); }
-  .help { font-weight: 700; font-size: 15px; }
-  .helpbox { background: var(--surface); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .help { font-weight: 700; font-size: var(--p-fs-m); }
+  .helpbox { background: var(--surface); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; font-size: var(--p-fs-s); color: var(--muted); }
   .helpbox p { margin: 0 0 8px; }
   .helpbox dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; margin: 0; }
-  .helpbox dt { color: var(--faint); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .helpbox dt { color: var(--faint); font-size: var(--p-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   .helpbox dd { margin: 0; color: var(--text); }
-  .helpbox code { font-family: var(--mono); font-size: 12px; background: var(--col-bg); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
+  .helpbox code { font-family: var(--mono); font-size: var(--p-fs-xs); background: var(--col-bg); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
   /* A scrolling row clips overflow on both axes; padding keeps the chips'
      44px tap extension inside it. */
   .p-chips { padding: 7px 0; margin: -5px 0 -3px; }
   .plist { margin: 10px 0 0; max-height: 40dvh; overflow-y: auto; }
-  .warn { font-size: 12.5px; color: var(--overdue-ink); margin: 8px 4px 0; }
+  .warn { font-size: var(--p-fs-s); color: var(--overdue-ink); margin: 8px 4px 0; }
   .foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }
-  .foot span { font-size: 13px; color: var(--faint); min-width: 0; margin-right: auto; }
+  .foot span { font-size: var(--p-fs-s); color: var(--faint); min-width: 0; margin-right: auto; }
   .send {
     width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; flex-shrink: 0;
     background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;
   }
+  .send:not(:disabled):active { filter: brightness(.94); }
   .send:disabled { opacity: .4; cursor: default; }
 </style>

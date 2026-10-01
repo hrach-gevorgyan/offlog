@@ -54,7 +54,7 @@
   .fields .p-row { cursor: default; }
   .val {
     margin-left: auto; width: 52%; min-width: 0; box-sizing: border-box; text-align: right;
-    font: inherit; font-size: 16px; color: var(--text); background: none; border: 0; padding: 6px 2px;
+    font: inherit; font-size: var(--p-fs-l); color: var(--text); background: none; border: 0; padding: 6px 2px;
   }
   .val::placeholder { color: var(--faint); }
   .val:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 6px; }

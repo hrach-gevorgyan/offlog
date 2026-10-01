@@ -107,11 +107,11 @@
 <style>
   .saved { display: inline-flex; align-items: center; }
   .del { width: 44px; height: 44px; margin-left: -6px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; color: var(--faint); cursor: pointer; border-radius: 50%; }
+  .del:active { background: var(--col-bg); }
   .del :global(svg.i) { width: 15px; height: 15px; }
   .center { justify-content: center; font-weight: 600; color: var(--accent); }
   .save-lab { margin-top: 18px; }
   .save { display: flex; gap: 8px; align-items: flex-start; }
   .save .p-fld { flex: 1; }
   .save .p-tbtn { margin-top: 4px; }
-  .save .p-tbtn:disabled { opacity: .4; }
 </style>

@@ -85,7 +85,8 @@
 
 <style>
   .rm { min-height: 44px; display: inline-flex; align-items: center; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
-  .rm .p-tag { font-size: 14px; padding: 4px 6px 4px 10px; }
+  .rm .p-tag { font-size: var(--p-fs-s); padding: 4px 6px 4px 10px; }
+  .rm:active .p-tag { background: color-mix(in srgb, var(--tag, var(--faint)) 30%, transparent); }
   .x { display: flex; opacity: .6; }
   .x :global(svg.i) { width: 14px; height: 14px; }
 </style>

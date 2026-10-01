@@ -177,9 +177,8 @@
 
 <style>
   .st { gap: 8px; padding-top: 4px; padding-bottom: 4px; cursor: default; }
-  .name { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: 16px; color: var(--text); padding: 8px 0; }
+  .name { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: var(--p-fs-l); color: var(--text); padding: 8px 0; }
   .name:focus-visible { box-shadow: 0 2px 0 var(--accent); }
-  .n { font-size: 13px; color: var(--faint); min-width: 20px; text-align: right; }
-  .p-tbtn:disabled { opacity: .4; }
+  .n { font-size: var(--p-fs-s); color: var(--faint); min-width: 20px; text-align: right; }
   .cancel { justify-content: center; font-weight: 600; margin-top: 4px; }
 </style>

@@ -146,16 +146,16 @@
 
 <style>
   .mhead { display: flex; align-items: center; margin: 0 0 6px 4px; }
-  .ml { flex: 1; font-weight: 700; font-size: 16px; }
+  .ml { flex: 1; font-weight: 700; font-size: var(--p-fs-l); }
   .month {
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px 6px; margin-bottom: 6px;
-    background: var(--surface); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+    background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow);
   }
-  .wd { font-size: 12px; font-weight: 700; color: var(--faint); text-align: center; padding: 2px 0 4px; }
+  .wd { font-size: var(--p-fs-xs); font-weight: 700; color: var(--faint); text-align: center; padding: 2px 0 4px; }
   .month button {
     height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     border-radius: 10px; border: 0; background: none; padding: 0; cursor: pointer;
-    font: inherit; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text);
+    font: inherit; font-size: var(--p-fs-m); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text);
     transition: background var(--dur-hover) var(--ease-hover);
   }
   .month button:active { background: var(--col-bg); }

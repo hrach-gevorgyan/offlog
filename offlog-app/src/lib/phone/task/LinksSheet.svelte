@@ -102,10 +102,11 @@
 <style>
   .item { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 16px; min-height: 52px; }
   .item + .item { border-top: 1px solid var(--border); }
-  .open { flex: 1; min-width: 0; display: flex; font: inherit; font-size: 16px; color: var(--text); background: none; border: 0; padding: 8px 0; text-align: left; cursor: pointer; }
+  .open { flex: 1; min-width: 0; display: flex; font: inherit; font-size: var(--p-fs-l); color: var(--text); background: none; border: 0; padding: 8px 0; text-align: left; cursor: pointer; border-radius: 8px; }
+  .open:active { background: var(--col-bg); }
   .gone { flex: 1; color: var(--faint); }
   .struck { text-decoration: line-through; color: var(--faint); }
-  .state { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--overdue-bg); color: var(--overdue-ink); white-space: nowrap; }
+  .state { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--overdue-bg); color: var(--overdue-ink); white-space: nowrap; }
   .state.done { background: var(--col-bg); color: var(--muted); }
   .p-ib :global(svg.i) { width: 18px; height: 18px; }
 </style>

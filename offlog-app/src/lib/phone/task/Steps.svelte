@@ -46,7 +46,8 @@
 <style>
   .step { display: flex; align-items: center; padding: 0 6px 0 0; }
   .step + .step { border-top: 1px solid var(--border); }
-  .tog { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; padding: 12px 0 12px 16px; min-height: 48px; font: inherit; font-size: 15.5px; color: var(--text); background: none; border: 0; text-align: left; cursor: pointer; }
+  .tog { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; padding: 12px 0 12px 16px; min-height: 48px; font: inherit; font-size: var(--p-fs-l); color: var(--text); background: none; border: 0; text-align: left; cursor: pointer; }
+  .tog:active { background: var(--col-bg); }
   .lbl { min-width: 0; overflow-wrap: anywhere; }
   .done .lbl { color: var(--faint); text-decoration: line-through; }
   .chk { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; position: relative; box-sizing: border-box; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); }
@@ -55,7 +56,7 @@
   .x { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--faint); border-radius: 50%; flex-shrink: 0; background: none; border: 0; padding: 0; cursor: pointer; }
   .x :global(svg.i) { width: 16px; height: 16px; }
   .x:active { background: var(--col-bg); }
-  .add { width: 100%; box-sizing: border-box; border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); outline: none; font: inherit; font-size: 15.5px; padding: 13px 14px 13px 48px; }
+  .add { width: 100%; box-sizing: border-box; border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); outline: none; font: inherit; font-size: var(--p-fs-l); padding: 13px 14px 13px 48px; }
   .add.first { border-top: 0; }
   .add::placeholder { color: var(--faint); }
   .add:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }

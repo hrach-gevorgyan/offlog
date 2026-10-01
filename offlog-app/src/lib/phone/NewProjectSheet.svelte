@@ -88,6 +88,6 @@
 </Sheet>
 
 <style>
-  .hint { font-size: 13px; color: var(--faint); margin: -8px 4px 12px; }
+  .hint { font-size: var(--p-fs-s); color: var(--faint); margin: -8px 4px 12px; }
   .sw { padding: 6px 4px 14px; min-height: 44px; }
 </style>

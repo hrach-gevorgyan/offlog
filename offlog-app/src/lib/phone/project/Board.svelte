@@ -77,15 +77,16 @@
   .pills::-webkit-scrollbar { display: none; }
   .pills button {
     position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 13px; min-height: 36px; border-radius: 999px; border: 0; cursor: pointer;
-    font: inherit; font-size: 14px; font-weight: 600; background: var(--surface); color: var(--muted);
-    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+    font: inherit; font-size: var(--p-fs-s); font-weight: 600; background: var(--surface); color: var(--muted);
+    box-shadow: var(--p-shadow);
     transition: background var(--dur-small) var(--ease-standard), color var(--dur-small) var(--ease-standard);
   }
   .pills button::before { content: ''; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; }
   .pills button.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); box-shadow: none; }
-  .pills i { font-style: normal; font-size: 12px; opacity: .75; }
+  .pills button:not(.on):active { background: var(--col-bg); }
+  .pills i { font-style: normal; font-size: var(--p-fs-xs); opacity: .75; }
   .body { min-height: 45vh; }
-  .empty { text-align: center; color: var(--faint); padding: 28px 0 8px; font-size: 14.5px; }
+  .empty { text-align: center; color: var(--faint); padding: 28px 0 8px; font-size: var(--p-fs-m); }
   .empty p { margin: 0 0 6px; }
   .dots { display: flex; justify-content: center; gap: 6px; margin: 12px 0 0; }
   .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width var(--dur-small) var(--ease-standard); }

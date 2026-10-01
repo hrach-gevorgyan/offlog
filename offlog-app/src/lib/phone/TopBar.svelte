@@ -20,7 +20,7 @@
 
 <style>
   .bar { display: flex; align-items: center; gap: 4px; min-height: 64px; }
-  h1 { flex: 1; min-width: 0; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  h1 { flex: 1; min-width: 0; margin: 0; font-size: var(--p-fs-t); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   h1.root { margin-left: 2px; }
   .acts { display: flex; gap: 2px; flex-shrink: 0; }
   .ib, .acts :global(.ib) {
@@ -30,6 +30,6 @@
   .back { margin-left: -10px; color: var(--text); }
   .back :global(svg) { width: 24px; height: 24px; }
   .ib:active, .acts :global(.ib:active) { background: var(--col-bg); }
-  .acts :global(.ib.on) { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-  .sub { font-size: 14px; color: var(--faint); margin: -6px 2px 16px; display: flex; align-items: center; gap: 6px; }
+  .acts :global(.ib.on) { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+  .sub { font-size: var(--p-fs-s); color: var(--faint); margin: -6px 2px 16px; display: flex; align-items: center; gap: 6px; }
 </style>

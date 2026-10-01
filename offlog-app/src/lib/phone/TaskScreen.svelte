@@ -504,12 +504,12 @@
 {/if}
 
 <style>
-  .crumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--faint); margin: 0 2px 8px; flex-wrap: wrap; }
+  .crumb { display: flex; align-items: center; gap: 6px; font-size: var(--p-fs-s); color: var(--faint); margin: 0 2px 8px; flex-wrap: wrap; }
   .crumb .p-pill { margin-left: 4px; }
   .ttl { display: flex; gap: 12px; align-items: flex-start; margin: 0 2px 16px; }
   .ttl textarea {
     flex: 1; min-width: 0; border: 0; background: none; color: var(--text); resize: none; overflow: hidden;
-    font: inherit; font-size: 24px; font-weight: 700; letter-spacing: -.015em; line-height: 1.22; padding: 0;
+    font: inherit; font-size: var(--p-fs-t); font-weight: 700; letter-spacing: -.015em; line-height: 1.22; padding: 0;
   }
   .ttl textarea:focus-visible { outline: none; box-shadow: 0 2px 0 var(--accent); }
   .ttl textarea::placeholder { color: var(--faint); }
@@ -518,6 +518,7 @@
     background: none; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent);
   }
   .chk::before { content: ''; position: absolute; inset: -10px; }
+  .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); }
   .chk.on::after {
     content: ''; position: absolute; left: 7.5px; top: 3.5px; width: 6px; height: 11px;
@@ -526,12 +527,12 @@
   .tbar { display: contents; }
   .tbar :global(h1) { clip-path: inset(50%); }
   .hint { color: var(--faint); margin-top: -10px; }
-  .p-v .p-pill { font-size: 13px; }
+  .p-v .p-pill { font-size: var(--p-fs-s); }
   .tags { min-width: 0; flex-shrink: 1; gap: 4px; }
-  .more-tags { font-size: 13px; color: var(--muted); }
+  .more-tags { font-size: var(--p-fs-s); color: var(--muted); }
   .blk { color: var(--overdue-ink); font-weight: 600; }
   .note { margin-bottom: 14px; }
-  .note :global(.md-editor) { background: var(--surface); border-radius: 14px; min-height: 96px; }
-  .note :global(.cm-content) { font-size: 15px; padding: 12px 14px; }
-  .count { text-align: right; font-size: 12.5px; color: var(--faint); margin-top: -8px; }
+  .note :global(.md-editor) { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); min-height: 96px; }
+  .note :global(.cm-content) { font-size: var(--p-fs-m); padding: 12px 14px; }
+  .count { text-align: right; font-size: var(--p-fs-xs); color: var(--faint); margin-top: -8px; }
 </style>

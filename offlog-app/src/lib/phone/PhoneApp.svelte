@@ -159,7 +159,7 @@
     position: absolute; left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 20;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     background: var(--inverse-surface); color: var(--on-inverse); border-radius: 12px; padding: 4px 4px 4px 16px; min-height: 52px;
-    font-size: 14px; line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    font-size: var(--p-fs-m); line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,.25);
   }
   .msg { min-width: 0; padding: 8px 0; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .snack button { font: inherit; font-weight: 700; color: var(--inverse-accent); background: none; border: 0; min-height: 44px; padding: 0 14px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
@@ -172,7 +172,8 @@
     padding: 10px 8px calc(12px + env(safe-area-inset-bottom, 0px));
     background: var(--surface); border-top: 1px solid var(--border);
   }
-  .tb { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+  .tb { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; font: inherit; font-size: var(--p-fs-xs); font-weight: 600; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+  .tb:active .pill { background: var(--col-bg); }
   .tb.on { color: var(--text); }
   .pill { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 32px; border-radius: 16px; }
   .pill :global(svg.i) { position: relative; width: 22px; height: 22px; }

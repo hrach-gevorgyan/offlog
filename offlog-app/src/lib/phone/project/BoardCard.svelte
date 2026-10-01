@@ -77,21 +77,21 @@
   .card {
     position: relative; overflow: hidden; display: flex; align-items: flex-start; gap: 12px;
     background: var(--surface); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 8px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+    box-shadow: var(--p-shadow);
     -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
   }
   .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .card:active { transform: scale(.99); }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
   .g { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .t { font-size: 15.5px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+  .t { font-size: var(--p-fs-l); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
   .pin { color: var(--accent); display: inline-flex; vertical-align: -2px; margin-right: 4px; }
   .pin :global(svg.i) { width: 13px; height: 13px; }
   .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
-  .prog { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); }
+  .prog { display: inline-flex; align-items: center; gap: 6px; font-size: var(--p-fs-xs); color: var(--faint); }
   .prog i { width: 34px; height: 4px; border-radius: 2px; background: var(--col-bg); display: block; overflow: hidden; }
   .prog b { display: block; height: 100%; background: var(--success); }
-  .mk { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--faint); }
+  .mk { display: inline-flex; align-items: center; gap: 3px; font-size: var(--p-fs-xs); font-weight: 600; color: var(--faint); }
   .mk :global(svg.i) { width: 13px; height: 13px; }
   .mk.blk { color: var(--overdue-ink); }
   .done .t { color: var(--faint); text-decoration: line-through; }
@@ -101,6 +101,7 @@
     border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent);
   }
   .chk::before { content: ''; position: absolute; inset: -11px; }
+  .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); }
   .chk.on::after {
     content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;

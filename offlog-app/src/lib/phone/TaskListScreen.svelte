@@ -55,13 +55,13 @@
 <TopBar title={TITLE[kind]} {sub} {root} />
 {#each sections as s}
   {#if s.label && s.tasks.length}
-    <div class="sec" class:late={s.late}>{s.label} <span class="n">{s.tasks.length}</span></div>
+    <div class="p-sec" class:late={s.late}>{s.label} <span class="p-n">{s.tasks.length}</span></div>
   {/if}
   {#each s.tasks as t (t._id)}
     <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} />
   {:else}
     {#if !s.late && loaded}
-      <div class="empty">
+      <div class="p-empty list-empty">
         <p>{EMPTY[kind]}</p>
         {#if kind !== 'pinned'}<button class="p-tbtn" on:click={() => actions.quickAdd()}>Add a task</button>{/if}
       </div>
@@ -70,9 +70,6 @@
 {/each}
 
 <style>
-  .sec { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 18px 4px 8px; display: flex; gap: 8px; align-items: center; }
-  .sec.late { color: var(--overdue-ink); }
-  .n { background: var(--col-bg); color: var(--muted); border-radius: 999px; padding: 0 7px; font-size: 12px; letter-spacing: 0; }
-  .empty { text-align: center; color: var(--faint); padding: 28px 0 8px; font-size: 14.5px; }
-  .empty p { margin: 0 0 4px; }
+  .p-empty.list-empty { padding-bottom: 8px; }
+  .list-empty p { margin: 0 0 4px; }
 </style>

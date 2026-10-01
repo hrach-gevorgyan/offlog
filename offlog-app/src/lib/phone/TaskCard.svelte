@@ -61,14 +61,14 @@
   .card {
     position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px;
     background: var(--surface); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 8px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
+    box-shadow: var(--p-shadow);
   }
   .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .card:active { transform: scale(.99); }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
   .g { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .t { font-size: 15.5px; font-weight: 600; line-height: 1.3; }
-  .s { font-size: 12.5px; color: var(--faint); margin-top: 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .t { font-size: var(--p-fs-l); font-weight: 600; line-height: 1.3; }
+  .s { font-size: var(--p-fs-s); color: var(--faint); margin-top: 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .ic :global(svg) { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; vertical-align: -2px; }
   .done .t { color: var(--faint); text-decoration: line-through; }
@@ -78,12 +78,13 @@
     border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent);
   }
   .chk::before { content: ''; position: absolute; inset: -11px; }
+  .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); }
   .chk.on::after {
     content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
   }
-  .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
+  .pill { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
   .pill.today { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
   .pill.late { background: var(--overdue-bg); color: var(--overdue-ink); }
 </style>

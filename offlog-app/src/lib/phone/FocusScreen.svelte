@@ -196,21 +196,22 @@
   .lk { display: flex; align-items: center; gap: 2px; }
   .lk .c { flex: 1; min-width: 0; }
   .lk .p-ib { margin-bottom: 8px; }
-  .rows { background: var(--surface); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06); overflow: hidden; }
+  .rows { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); overflow: hidden; }
   .lrow {
     width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 14px; min-height: 52px;
-    font: inherit; font-size: 15px; color: var(--text); background: none; border: 0; text-align: left; cursor: pointer;
+    font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; text-align: left; cursor: pointer;
     transition: background var(--dur-hover) var(--ease-hover);
   }
   .lrow + .lrow { border-top: 1px solid var(--border); }
   .lrow:active { background: var(--col-bg); }
   .lrow .t { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
-  .pj { font-size: 12.5px; color: var(--faint); font-weight: 400; margin-top: 1px; }
+  .pj { font-size: var(--p-fs-s); color: var(--faint); font-weight: 400; margin-top: 1px; }
   .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); flex-shrink: 0; position: relative; box-sizing: border-box; }
-  .lrow.picked { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+  .lrow.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+  .lrow.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
   .lrow.picked .box { background: var(--accent); border-color: var(--accent); }
   .lrow.picked .box::after { content: ''; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-  .why { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--col-bg); color: var(--faint); }
+  .why { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--col-bg); color: var(--faint); }
   .why.pinned { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
   .why.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
   .why.due_soon { background: var(--due-soon-bg); color: var(--due-soon-ink); }
