@@ -17,6 +17,7 @@
   import QuickAddSheet from './QuickAddSheet.svelte';
   import { agendaDay } from './agenda/month';
   import SettingsScreen from './settings/SettingsScreen.svelte';
+  import TaskScreen from './TaskScreen.svelte';
   import SettingsPage from './settings/SettingsPage.svelte';
 
   $: top = $stack[$stack.length - 1];
@@ -34,6 +35,7 @@
   onMount(() => {
     actions.quickAdd = openAdd;
     actions.openSettings = () => push({ k: 'settings' });
+    actions.openTask = (task) => push({ k: 'task', id: task._id });
   });
 
   const LABEL: Record<Tab, string> = { home: 'Home', today: 'Today', agenda: 'Agenda', search: 'Search' };
@@ -55,6 +57,8 @@
           <AgendaScreen />
         {:else if top.k === 'focus'}
           <FocusScreen />
+        {:else if top.k === 'task'}
+          <TaskScreen id={top.id} />
         {:else if top.k === 'settings'}
           <SettingsScreen />
         {:else if top.k === 'set'}
@@ -64,7 +68,7 @@
     {/key}
   </div>
 
-  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set'}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task'}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}

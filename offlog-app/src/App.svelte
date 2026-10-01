@@ -215,6 +215,7 @@
   }
 
   async function openFromNotification(taskId: string) {
+    if (get(isPhone)) { push({ k: 'task', id: taskId }); pendingOpenTaskId.set(null); return; }
     const task = await getTaskById(taskId);
     const proj = task ? $projects.find(p => p._id === task.project_id) ?? null : null;
     if (task && proj) {
