@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { tab, stack, arrival, switchTab, actions, TABS } from './nav';
+  import { tab, stack, arrival, switchTab, actions, TABS, toast } from './nav';
   import type { Tab } from './nav';
-  import { screenIn, pillIn } from '../motion';
+  import { screenIn, pillIn, snackIn, snackOut } from '../motion';
+  import { fly } from 'svelte/transition';
   import { I } from './icons';
   import './phone.css';
   import { modalOpen } from '../store';
@@ -43,6 +44,15 @@
 
   {#if !$modalOpen}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
+  {#if $toast}
+    {#key $toast.id}
+      <div class="snack" role="status" in:fly={snackIn} out:fly={snackOut}>
+        <span>{$toast.text}</span>
+        {#if $toast.undo}<button on:click={() => { const u = $toast?.undo; toast.set(null); u?.(); }}>Undo</button>{/if}
+      </div>
+    {/key}
+  {/if}
+
   <nav class="tabbar" aria-label="Main">
     {#each TABS as t}
       <button class="tb" class:on={$tab === t} aria-current={$tab === t ? 'page' : undefined} on:click={() => switchTab(t)}>
@@ -80,6 +90,15 @@
   }
   .fab :global(svg.i) { width: 24px; height: 24px; stroke-width: 2.2; }
   .fab:active { transform: scale(.95); }
+
+  .snack {
+    position: absolute; left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--text); color: var(--bg); border-radius: 12px; padding: 12px 8px 12px 16px;
+    font-size: 14.5px; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  }
+  .snack span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .snack button { font: inherit; font-weight: 700; color: color-mix(in srgb, var(--accent) 55%, var(--bg)); background: none; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
 
   .tabbar {
     flex-shrink: 0; display: flex; justify-content: space-around; align-items: flex-start;

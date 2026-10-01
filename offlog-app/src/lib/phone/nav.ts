@@ -80,3 +80,15 @@ export function backAtRoot(): boolean {
   switchTab('home');
   return true;
 }
+
+// A snackbar above the navigation bar. Reversible actions act at once and
+// offer Undo here instead of asking first.
+export interface Toast { id: number; text: string; undo?: () => void | Promise<void> }
+export const toast = writable<Toast | null>(null);
+let toastSeq = 0, toastTimer: ReturnType<typeof setTimeout> | undefined;
+export function showToast(text: string, undo?: Toast['undo']) {
+  clearTimeout(toastTimer);
+  const t = { id: ++toastSeq, text, undo };
+  toast.set(t);
+  toastTimer = setTimeout(() => toast.update(c => (c?.id === t.id ? null : c)), 4000);
+}

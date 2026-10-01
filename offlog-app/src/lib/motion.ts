@@ -226,3 +226,7 @@ export function screenIn(_node: Element, { kind }: { kind: 'push' | 'pop' | 'tab
 export function pillIn(_node: Element) {
   return { duration: d(DUR.medium), easing: easeStandard, css: (t: number) => `clip-path: inset(0 ${(1 - t) * 50}% round 16px)` };
 }
+
+// Phone snackbar: spans the width (no centring offset), so a plain rise.
+export const snackIn = { y: 16, get duration() { return d(DUR.medium); }, easing: easeDecelerate };
+export const snackOut = { y: 16, get duration() { return d(OUT(DUR.medium)); }, easing: easeAccelerate };

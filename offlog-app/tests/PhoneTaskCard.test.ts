@@ -10,6 +10,8 @@ vi.mock('../src/lib/store', async () => {
 });
 
 import TaskCard from '../src/lib/phone/TaskCard.svelte';
+import { toast } from '../src/lib/phone/nav';
+import { get } from 'svelte/store';
 import { projects, showError } from '../src/lib/store';
 import type { Writable } from 'svelte/store';
 
@@ -37,6 +39,14 @@ describe('phone TaskCard', () => {
     await fireEvent.click(getByLabelText('Finish: Order tiles'));
     expect(updateTask).toHaveBeenCalledWith('task:t', { column_id: 'col:done' });
     await waitFor(() => expect(changed).toHaveBeenCalled());
+  });
+
+  it('finishing offers Undo, which moves the task back to where it was', async () => {
+    const { getByLabelText } = render(TaskCard, { task: task() });
+    await fireEvent.click(getByLabelText('Finish: Order tiles'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Done: Order tiles'));
+    await get(toast)!.undo!();
+    expect(updateTask).toHaveBeenLastCalledWith('task:t', { column_id: 'col:doing' });
   });
 
   it('un-finishing a done task sends it back to the first status', async () => {

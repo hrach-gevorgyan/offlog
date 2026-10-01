@@ -6,6 +6,7 @@
   import { updateTask } from '../db';
   import { duePill } from './format';
   import { I } from './icons';
+  import { showToast } from './nav';
 
   export let task: TaskDoc & { project_name?: string };
 
@@ -27,8 +28,13 @@
     if (!target) return;
     busy = true;
     try {
-      await updateTask(task._id, { column_id: target });
+      const prev = task.column_id, id = task._id, title = task.title;
+      await updateTask(id, { column_id: target });
       dispatch('changed');
+      if (!done) showToast(`Done: ${title}`, async () => {
+        try { await updateTask(id, { column_id: prev }); dispatch('changed'); }
+        catch { showError('Could not undo. Please try again.'); }
+      });
     } catch {
       showError('Could not update this task. Please try again.');
     } finally {
