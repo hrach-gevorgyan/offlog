@@ -6,7 +6,7 @@
   import type { ProjectDoc, TaskDoc } from '../../types';
   import { getArchivedTasksForProject, unarchiveTask, archiveProject, unarchiveProject, deleteProject } from '../../db';
   import { activeProjectId, projects, reloadTasks, showError } from '../../store';
-  import { push, back, showToast } from '../nav';
+  import { push, popScreen, showToast } from '../nav';
   import { patchProject } from './actions';
   import Sheet from '../Sheet.svelte';
 
@@ -58,7 +58,7 @@
   function leave(id: string) {
     activeProjectId.set('');
     projects.update(ps => ps.filter(p => p._id !== id));
-    back();
+    popScreen();
   }
   // Archiving can be undone, so it acts at once; deleting asks first.
   async function archive() {

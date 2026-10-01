@@ -120,6 +120,36 @@ export function closeOnBack(close: CloseFn): CloseFn {
   return entry.request;
 }
 
+// Close the layer that owns `request` and every layer above it, in one
+// history jump. For "leave this screen" after an action (archive, delete)
+// while a sub-mode such as select is still open above it.
+export function closeThrough(request: CloseFn): boolean {
+  const idx = stack.findIndex(e => e.request === request);
+  if (idx === -1) return false;
+  const n = stack.length - idx;
+  const target = stack[idx];
+  history.go(-n);
+  // Same fallback as requestClose: if the popstate never arrives, close
+  // directly so nothing stays stuck open.
+  setTimeout(() => {
+    const i = stack.indexOf(target);
+    if (i === -1) return;
+    while (stack.length > i) stack.pop()?.close();
+  }, 400);
+  return true;
+}
+
+// The owner of a layer is going away while other layers sit above it (its
+// screen was covered by a pushed one): forget the entry without navigating.
+// Its history slot stays as an inert entry, as with discardTop.
+export function dropLayer(request: CloseFn): void {
+  const idx = stack.findIndex(e => e.request === request);
+  if (idx !== -1 && idx !== stack.length - 1) stack.splice(idx, 1);
+}
+export function isTopLayer(request: CloseFn): boolean {
+  return stack.at(-1)?.request === request;
+}
+
 // An on-screen back arrow: closes the topmost layer, whichever it is (a
 // screen's own sub-mode can sit above it), through that layer's own
 // requestClose so the history entry and the stack stay in step.

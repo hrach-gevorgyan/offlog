@@ -73,7 +73,8 @@ flowchart LR
   and menu sheets) and Statuses, Task (full screen, every field saved as it
   changes, pickers in bottom sheets), Agenda (list/month), Focus, Settings
   (pushed pages that reuse `settings/*`, plus Recycle bin, History, Archived
-  projects). Quick add is a bottom sheet that adds where the user is (the
+  projects, and Organize — spaces, tags and fields in `phone/settings/organize/`
+  instead of the desktop manager overlays). Quick add is a bottom sheet that adds where the user is (the
   project and status on show via `nav.addContext`, or Agenda's chosen day).
   `nav.actions` routes task opening, quick add and Settings into the shell;
   `nav.showToast` is the Undo snackbar for reversible actions. Bottom sheets
@@ -637,9 +638,12 @@ same UI.
   (theme.ts) sets `body.statusbar-hero` (strip = `--hero`) and light icons in
   the same step; scrolling the hero away or leaving Home turns it off.
 - **Phone shell and the keyboard**: the WebView resizes (`adjustResize`), so
-  PhoneApp hides the navigation bar and + button while the visual viewport is
-  more than 150px shorter than its tallest height at this width. App's undo
-  and error toasts move above the navigation bar under `body.phone`.
+  PhoneApp hides the navigation bar and + button while a text field is
+  focused, the page is not pinch-zoomed, and the visual viewport is more than
+  150px shorter than its tallest height at this width (re-checked on
+  focusin/focusout, so moving between fields keeps it right). On the phone,
+  delete-undo goes through the shell's snackbar and `showError` toasts drop
+  in at the top (`pointer-events: none`, so the top bar stays usable).
 - **Notification icons** must be white silhouettes with transparency, or
   Android substitutes a generic triangle.
 - **Home-screen widget** (`OffologWidgetProvider.java`,

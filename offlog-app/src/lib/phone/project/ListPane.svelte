@@ -5,7 +5,7 @@
   import { fly } from 'svelte/transition';
   import type { ProjectDoc, TaskDoc } from '../../types';
   import { modalOpen } from '../../store';
-  import { closeOnBack } from '../../modalStack';
+  import { closeOnBack, isTopLayer, dropLayer } from '../../modalStack';
   import { popIn, popOut } from '../../motion';
   import { duePill } from '../format';
   import { I } from '../icons';
@@ -79,11 +79,14 @@
     modalOpen.set(prevModal);
   }
   function exitSelecting() { leaveSelect?.(); }
+  // Unmounted while selecting: if select mode is the top layer, pop it; if a
+  // pushed screen now sits above it, just forget the entry — navigating back
+  // would close that new screen instead.
   onDestroy(() => {
     if (!selecting) return;
     const leave = leaveSelect;
     endSelecting();
-    leave?.();
+    if (leave && isTopLayer(leave)) leave(); else if (leave) dropLayer(leave);
   });
   function toggle(id: string) {
     const next = new Set(selected);

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { waitFor } from '@testing-library/svelte';
-import { tab, stack, arrival, push, back, switchTab, backAtRoot, memo, navigate, showToast, toast, actions, takeQueuedAdd } from '../src/lib/phone/nav';
+import { tab, stack, arrival, push, back, switchTab, backAtRoot, memo, navigate, showToast, toast, actions, takeQueuedAdd, popScreen } from '../src/lib/phone/nav';
 import { closeOnBack } from '../src/lib/modalStack';
 import { duePill, greeting, shortDate } from '../src/lib/phone/format';
 
@@ -74,6 +74,15 @@ describe('phone navigation', () => {
     await waitFor(() => expect(layerOpen).toBe(false));
     await new Promise(r => setTimeout(r, 450)); // past modalStack's fallback window
     expect(get(stack).map(s => s.k)).toEqual(['home', 'project']);
+  });
+
+  it('popScreen leaves the screen and closes a layer above it in one step', async () => {
+    push({ k: 'project', id: 'project:p' });
+    let layerOpen = true;
+    closeOnBack(() => { layerOpen = false; });
+    popScreen();
+    await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home']));
+    expect(layerOpen).toBe(false);
   });
 
   it('a quick add asked for before the shell mounts is queued, once', () => {

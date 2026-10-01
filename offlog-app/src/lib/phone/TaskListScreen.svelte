@@ -17,7 +17,7 @@
   let sections: { label: string; late?: boolean; tasks: Row[] }[] = [];
   let count = 0;
   let loaded = false;
-  const today = localDateStr(new Date());
+  let today = localDateStr(new Date());
   const byDue = (a: Row, b: Row) => (a.due_date ?? '9').localeCompare(b.due_date ?? '9') || b.priority - a.priority;
 
   async function load() {
@@ -45,6 +45,8 @@
 
   let unsub: (() => void) | undefined;
   onMount(() => { load(); unsub = subscribe(load); });
+  function onVisible() { if (!document.hidden) { today = localDateStr(new Date()); load(); } }
+  onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
   onDestroy(() => unsub?.());
 
   const TITLE = { today: 'Today', late: 'Late', pinned: 'Pinned' };

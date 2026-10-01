@@ -202,7 +202,9 @@
     noteTimer = undefined;
     if (!noteDirty) return;
     noteDirty = false;
-    if (task && body !== (task.body ?? '')) save({ body }, 'Could not save the note. Please try again.');
+    if (task && body !== (task.body ?? '')) {
+      save({ body }, 'Could not save the note. Please try again.').then(ok => { if (!ok) noteDirty = true; });
+    }
   }
 
   function setSteps(next: { text: string; done: boolean }[]) {
@@ -296,7 +298,7 @@
     }, 350);
   }
 
-  function onHide() { if (document.hidden) flushNote(); }
+  function onHide() { if (!document.hidden) return; flushNote(); if (titleFocused) commitTitle(); }
   onMount(() => { document.addEventListener('visibilitychange', onHide); return () => document.removeEventListener('visibilitychange', onHide); });
 
   onDestroy(() => {

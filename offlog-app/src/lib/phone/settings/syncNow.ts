@@ -17,7 +17,7 @@ export async function runSyncNow() {
       syncNow().then(() => true),
       new Promise<false>(r => { timer = setTimeout(() => r(false), CAP_MS); }),
     ]);
-    if (done) showToast('Synced');
+    showToast(done ? 'Synced' : 'Still syncing in the background');
   } catch {
     showError('Could not sync. Please try again.');
   } finally {

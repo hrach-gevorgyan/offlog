@@ -8,7 +8,6 @@
   import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
   import NotificationSettings from '../../settings/NotificationSettings.svelte';
   import SyncSettings from '../../settings/SyncSettings.svelte';
-  import OrganizeSettings from '../../settings/OrganizeSettings.svelte';
   import DataSettings from '../../settings/DataSettings.svelte';
   import SecuritySettings from '../../settings/SecuritySettings.svelte';
   import AdvancedSettings from '../../settings/AdvancedSettings.svelte';
@@ -36,7 +35,7 @@
   import { scrimIn, scrimOut, dialogIn, dialogOut } from '../../motion';
   import TopBar from '../TopBar.svelte';
   import Sheet from '../Sheet.svelte';
-  import { back, push } from '../nav';
+  import { back } from '../nav';
   import { closeOnBack, closeAll } from '../../modalStack';
   import { runSyncNow, syncing } from './syncNow';
   import { rowTaps } from './rowTaps';
@@ -45,7 +44,7 @@
 
   const TITLE: Record<string, string> = {
     appearance: 'Appearance', notifications: 'Notifications', sync: 'Sync & devices',
-    organize: 'Organize', data: 'Backup & restore', security: 'App lock', advanced: 'Advanced',
+    data: 'Backup & restore', security: 'App lock', advanced: 'Advanced',
   };
 
   // ── Appearance ──
@@ -478,59 +477,6 @@
   }
   $: if (page === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
-  // ── Organize ──
-  // Each manager calls closeOnBack(), so it mounts behind a {#key} bumped per
-  // open, and its lazy import is guarded against re-entry and failure.
-  let SpaceManagerComp: typeof import('../../SpaceManager.svelte').default | null = null;
-  let showSpaceManager = false, spaceManagerActive = false, spaceManagerSession = 0;
-  async function openSpaceManager() {
-    if (spaceManagerActive) return;
-    spaceManagerActive = true;
-    try {
-      if (!SpaceManagerComp) SpaceManagerComp = (await import('../../SpaceManager.svelte')).default;
-      spaceManagerSession++;
-      showSpaceManager = true;
-    } catch {
-      spaceManagerActive = false;
-      showError('Failed to open Spaces. Please try again.');
-    }
-  }
-  function onSpaceManagerClosed() { showSpaceManager = false; spaceManagerActive = false; }
-
-  let TagManagerComp: typeof import('../../TagManager.svelte').default | null = null;
-  let showTagManager = false, tagManagerActive = false, tagManagerSession = 0;
-  async function openTagManager() {
-    if (tagManagerActive) return;
-    tagManagerActive = true;
-    try {
-      if (!TagManagerComp) TagManagerComp = (await import('../../TagManager.svelte')).default;
-      tagManagerSession++;
-      showTagManager = true;
-    } catch {
-      tagManagerActive = false;
-      showError('Failed to open Tags. Please try again.');
-    }
-  }
-  function onTagManagerClosed() { showTagManager = false; tagManagerActive = false; }
-
-  let CustomFieldManagerComp: typeof import('../../CustomFieldManager.svelte').default | null = null;
-  let showCustomFieldManager = false, customFieldManagerActive = false, customFieldManagerSession = 0;
-  async function openCustomFieldManager() {
-    if (customFieldManagerActive) return;
-    customFieldManagerActive = true;
-    try {
-      if (!CustomFieldManagerComp) CustomFieldManagerComp = (await import('../../CustomFieldManager.svelte')).default;
-      customFieldManagerSession++;
-      showCustomFieldManager = true;
-    } catch {
-      customFieldManagerActive = false;
-      showError('Failed to open Custom Fields. Please try again.');
-    }
-  }
-  function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
-
-  const openArchivedProjectsManager = () => push({ k: 'set', page: 'archived' });
-
   // ── Backup & storage ──
   let breakdown: StorageBreakdown | null = null;
   // Kept backups live outside IndexedDB, so the storage estimate misses them.
@@ -766,8 +712,6 @@
     {#if syncEnabled && syncUrl}
       <button class="export-btn" on:click={runSyncNow} disabled={$syncing}>{$syncing ? 'Syncing…' : 'Sync now'}</button>
     {/if}
-  {:else if page === 'organize'}
-    <OrganizeSettings {openSpaceManager} {openTagManager} {openCustomFieldManager} {openArchivedProjectsManager} />
   {:else if page === 'data'}
     <DataSettings {backupUsage}
       {storageAvailable} {storagePercent} {storageInfo} {breakdown}
@@ -991,16 +935,6 @@
     <label class="ack"><input type="checkbox" bind:checked={recoveryCodeSavedAck} /> I've saved this code somewhere safe</label>
     <button class="p-go" on:click={finishRecovery} disabled={!recoveryCodeSavedAck}>Continue</button>
   </div>
-{/if}
-
-{#if showSpaceManager && SpaceManagerComp}
-  {#key spaceManagerSession}<svelte:component this={SpaceManagerComp} on:close={onSpaceManagerClosed} />{/key}
-{/if}
-{#if showTagManager && TagManagerComp}
-  {#key tagManagerSession}<svelte:component this={TagManagerComp} on:close={onTagManagerClosed} />{/key}
-{/if}
-{#if showCustomFieldManager && CustomFieldManagerComp}
-  {#key customFieldManagerSession}<svelte:component this={CustomFieldManagerComp} on:close={onCustomFieldManagerClosed} />{/key}
 {/if}
 
 <style>

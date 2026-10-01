@@ -142,7 +142,8 @@ The phone snackbar spans the width (left/right insets, no centring), so it uses
 `snackIn`/`snackOut` with `fly` — 16px rise, 200/150ms. Phone bottom sheets
 (`phone/Sheet.svelte`) fly up 400px at 280ms decelerate and leave at 0.75x on
 accelerate; dragging the handle follows the finger with no transition and
-dismisses past 90px.
+dismisses past 90px. On the phone, `showError` toasts fly down 16px from the
+top with the same timings (`snackIn`/`snackOut` with a negative `y`).
 
 Reflow within a stack (`animate:flip`) is legal only on a keyed `{#each}` and
 only when two or more items are realistically on screen at once. Today they are

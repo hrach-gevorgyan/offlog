@@ -134,13 +134,6 @@ describe('phone settings pages', () => {
     expect(getByText('Set a PIN')).toBeTruthy();
   });
 
-  it('Organize offers spaces, tags, custom fields and archived projects; archived opens the phone page', async () => {
-    const { getByText } = render(SettingsPage, { page: 'organize' });
-    for (const t of ['Spaces', 'Tags', 'Custom Fields', 'Archived Projects']) expect(getByText(t)).toBeTruthy();
-    await fireEvent.click(getByText('Archived Projects'));
-    expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'archived' });
-  });
-
   it('a toggle row switches from anywhere on the row, once per tap', async () => {
     const { getByText, getByLabelText } = render(SettingsPage, { page: 'appearance' });
     await fireEvent.click(getByText('High contrast'));

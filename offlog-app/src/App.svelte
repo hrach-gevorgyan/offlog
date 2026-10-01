@@ -988,6 +988,7 @@
   :global(body.phone) .error-toast {
     left: 12px; right: 12px; transform: none; white-space: normal; border-radius: 12px; padding: 14px 16px;
     bottom: auto; top: calc(12px + env(safe-area-inset-top, 0px));
+    pointer-events: none;
   }
 
   /* ── Undo toast ── */

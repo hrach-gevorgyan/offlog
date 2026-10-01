@@ -28,6 +28,7 @@
   let qa: { projectId: string | null; columnId: string | null; dueDate: string | null } | null = null;
   let qaSession = 0;
   function openAdd(due: string | null = null) {
+    if (qa) return; // already open (Ctrl+N twice)
     const ctx = get(addContext), cur = get(stack).at(-1);
     const inProject = cur?.k === 'project' ? ctx : null;
     qa = { projectId: inProject?.projectId ?? null, columnId: inProject?.columnId ?? null, dueDate: due ?? (cur?.k === 'agenda' ? get(agendaDay) : null) };
@@ -42,18 +43,24 @@
     let tallest = 0, width = 0;
     const check = () => {
       const h = vv?.height ?? window.innerHeight, w = window.innerWidth;
-      if (w !== width) { width = w; tallest = h; }
+      // A rotation with the keyboard up must not take the keyboard height as
+      // the new baseline; keep the current state until typing stops.
+      if (w !== width) { width = w; tallest = 0; }
       // Only while typing and not pinch-zoomed: a shorter window (split
       // screen, a docked dev panel) is not the keyboard.
       const el = document.activeElement as HTMLElement | null;
       const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
       if (!typing) tallest = Math.max(tallest, h);
+      if (!tallest) return;
       kb = typing && (vv?.scale ?? 1) <= 1 && tallest - h > 150;
     };
     check();
     (vv ?? window).addEventListener('resize', check);
-    document.addEventListener('focusout', check);
-    return () => { (vv ?? window).removeEventListener('resize', check); document.removeEventListener('focusout', check); };
+    // During focusout the next field is not focused yet; check once it is.
+    const later = () => setTimeout(check, 0);
+    document.addEventListener('focusout', later);
+    document.addEventListener('focusin', check);
+    return () => { (vv ?? window).removeEventListener('resize', check); document.removeEventListener('focusout', later); document.removeEventListener('focusin', check); };
   });
 
   onMount(() => {

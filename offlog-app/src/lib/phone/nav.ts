@@ -5,7 +5,7 @@
 // the same LIFO order as overlays and the {#key} remount rule in
 // modalStack.ts does not apply to screens.
 import { writable, readable, get } from 'svelte/store';
-import { closeOnBack, closeAll, closeTop } from '../modalStack';
+import { closeOnBack, closeAll, closeTop, closeThrough } from '../modalStack';
 import type { TaskDoc } from '../types';
 
 // Same breakpoint as the desktop layout's own mobile rules (App.svelte,
@@ -64,6 +64,13 @@ export function push(screen: Screen) {
 
 // On-screen back arrow: goes through history so hardware back and the arrow
 // share one path (see modalStack.ts on why requestClose is the only door).
+// Leave the screen on top after an action (archive, delete), closing any
+// sub-mode or sheet still open above it in the same step.
+export function popScreen() {
+  const req = get(stack).at(-1)?.requestClose;
+  if (req && !closeThrough(req)) req();
+}
+
 export function back() {
   if (!closeTop()) get(stack).at(-1)?.requestClose?.();
 }
@@ -73,7 +80,7 @@ export function back() {
 // unwound in one synchronous step.
 export function switchTab(t: Tab) {
   const same = get(tab) === t;
-  if (get(stack).length > 1) closeAll();
+  closeAll(); // screens above the root and any sheet still open
   tab.set(t);
   stack.set([{ k: t }]);
   arrival.set(same ? 'none' : 'tab');

@@ -4,6 +4,7 @@
   import TrashPage from './TrashPage.svelte';
   import HistoryPage from './HistoryPage.svelte';
   import ArchivedPage from './ArchivedPage.svelte';
+  import OrganizePage from './organize/OrganizePage.svelte';
 
   export let page: string;
 </script>
@@ -14,6 +15,8 @@
   <HistoryPage />
 {:else if page === 'archived'}
   <ArchivedPage />
+{:else if page === 'organize'}
+  <OrganizePage />
 {:else}
   <PrefsPage {page} />
 {/if}
