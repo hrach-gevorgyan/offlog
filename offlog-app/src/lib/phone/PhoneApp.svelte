@@ -18,6 +18,7 @@
   import { agendaDay } from './agenda/month';
   import SettingsScreen from './settings/SettingsScreen.svelte';
   import TaskScreen from './TaskScreen.svelte';
+  import StatusesScreen from './StatusesScreen.svelte';
   import SettingsPage from './settings/SettingsPage.svelte';
 
   $: top = $stack[$stack.length - 1];
@@ -59,6 +60,8 @@
           <FocusScreen />
         {:else if top.k === 'task'}
           <TaskScreen id={top.id} />
+        {:else if top.k === 'statuses'}
+          <StatusesScreen id={top.id} />
         {:else if top.k === 'settings'}
           <SettingsScreen />
         {:else if top.k === 'set'}
@@ -68,7 +71,7 @@
     {/key}
   </div>
 
-  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task'}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { soften } from '../tagColors';
+  import NewProjectSheet from './NewProjectSheet.svelte';
   import { onMount, onDestroy } from 'svelte';
   import { getDashboardData, getTaskById, subscribe } from '../db';
   import { spaces, projects, showError } from '../store';
@@ -26,6 +27,10 @@
       showError('Could not load Home. Pull down or reopen to try again.');
     }
   }
+
+  // New project sheet: {#key} bumped on every open (Sheet.svelte rule).
+  let newIn: string | null = null, newSession = 0;
+  function newProject(spaceId: string) { newIn = spaceId; newSession++; }
 
   let unsub: (() => void) | undefined;
   onMount(() => { load(); unsub = subscribe(load); });
@@ -97,26 +102,33 @@
 
     {#each sortedSpaces as s (s._id)}
       {@const ps = $projects.filter(p => p.space_id === s._id).sort((a, b) => a.position - b.position)}
-      {#if ps.length}
-        <div class="sec">{s.name}</div>
-        <div class="group">
-          {#each ps as p (p._id)}
-            {@const st = data?.byProject[p._id]}
-            <button class="row" on:click={() => push({ k: 'project', id: p._id })}>
-              <span class="dot" style="background:{soften(s.color)}"></span>
-              <span class="lbl">{p.name}</span>
-              {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
-              <span class="badge">{st ? st.open : ''}</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
+      <div class="sec">{s.name}</div>
+      <div class="group">
+        {#each ps as p (p._id)}
+          {@const st = data?.byProject[p._id]}
+          <button class="row" on:click={() => push({ k: 'project', id: p._id })}>
+            <span class="dot" style="background:{soften(s.color)}"></span>
+            <span class="lbl">{p.name}</span>
+            {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
+            <span class="badge">{st ? st.open : ''}</span>
+          </button>
+        {/each}
+        <button class="row add" on:click={() => newProject(s._id)}>
+          <span class="plus">{@html I.plus}</span><span class="lbl">New project</span>
+        </button>
+      </div>
     {/each}
     {#if data?.completedLast7Days}
       <p class="stat">{data.completedLast7Days} finished this past week{data.busiestProjectName ? ` · busiest: ${data.busiestProjectName}` : ''}</p>
     {/if}
   </div>
 </div>
+
+{#if newIn}
+  {#key newSession}
+    <NewProjectSheet spaceId={newIn} on:created={e => push({ k: 'project', id: e.detail._id })} on:close={() => (newIn = null)} />
+  {/key}
+{/if}
 
 <style>
   .home { position: absolute; inset: 0; overflow: hidden; }
@@ -176,6 +188,9 @@
   .row + .row { border-top: 1px solid var(--border); }
   .row:active { background: var(--col-bg); }
   .row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.add { color: var(--accent); font-weight: 600; font-size: 15px; min-height: 48px; }
+  .plus { display: flex; width: 8px; justify-content: center; }
+  .plus :global(svg) { width: 18px; height: 18px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .badge { background: var(--col-bg); color: var(--muted); border-radius: 999px; padding: 1px 9px; font-size: 12.5px; font-weight: 600; }
   .late-n { color: var(--overdue-ink); font-size: 12.5px; font-weight: 600; }
