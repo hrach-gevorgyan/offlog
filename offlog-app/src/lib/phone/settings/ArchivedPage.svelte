@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from '../Empty.svelte';
   // Archived projects as a phone page: ArchivedProjectsManager's behaviour.
   import { onMount } from 'svelte';
   import { getProjects, getArchivedProjects, archiveProject, unarchiveProject, deleteProject, subscribe } from '../../db';
@@ -94,7 +95,7 @@
 <TopBar title="Archived projects" />
 
 {#if loaded}
-  {#if archived.length === 0}<p class="p-empty">No archived projects.</p>{/if}
+  {#if archived.length === 0}<Empty title="No archived projects" text="Archived projects rest here, out of the way." />{/if}
   {#if archived.length || active.length}
     <div class="p-group">
       {#each archived as p (p._id)}

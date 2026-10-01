@@ -120,7 +120,7 @@ describe('phone Recycle bin', () => {
   it('shows the empty state', async () => {
     getAllDeletedTasks.mockResolvedValue([]);
     const { getByText, queryByText } = render(SettingsPage, { page: 'trash' });
-    await waitFor(() => getByText('Nothing here. Deleted tasks stay for 3 months.'));
+    await waitFor(() => getByText('Deleted tasks stay here for 3 months.'));
     expect(queryByText('Empty')).toBeNull();
   });
 });

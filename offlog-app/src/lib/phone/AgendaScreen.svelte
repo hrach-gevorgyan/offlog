@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from './Empty.svelte';
   import { onMount, onDestroy } from 'svelte';
   import type { TaskDoc } from '../types';
   import { getAllTasksDue, subscribe } from '../db';
@@ -150,7 +151,7 @@
     </div>
   {/each}
 {:else if loaded && !all.length}
-  <p class="p-empty">No tasks with a due date.</p>
+  <Empty title="Nothing scheduled" text="Tasks with a date show up here." />
 {:else}
   <!-- Finishing a group's only task takes the whole group with it, heading
        included, so the group collapses as one. -->

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from './Empty.svelte';
   import { onMount } from 'svelte';
   import { searchAllTasks, subscribe } from '../db';
   import type { TaskSearchMatch } from '../db';
@@ -69,7 +70,7 @@
 </label>
 
 {#if !ql}
-  <p class="p-empty">Type to search every task and project.</p>
+  <Empty title="Search everything" text="Tasks, notes, steps, tags and projects." />
 {:else}
   {#if matchedProjects.length}
     <div class="p-sec" role="heading" aria-level="2">Projects</div>
@@ -93,7 +94,7 @@
     {/each}
     {#if results.length > limit}<button class="p-tbtn more" on:click={() => (limit += 40)}>Show {Math.min(40, results.length - limit)} more</button>{/if}
   {:else if !matchedProjects.length}
-    <p class="p-empty">No matches.<br /><span class="note">Archived projects aren't searched.</span></p>
+    <Empty title="No matches" text="Archived projects aren't searched." />
   {/if}
 {/if}
 
@@ -110,6 +111,5 @@
   .why.snip { color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: inherit; border-radius: 3px; }
   .clr { margin: -8px -6px -8px 0; flex-shrink: 0; }
-  .note { font-size: var(--p-fs-s); }
   .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

@@ -101,12 +101,12 @@ describe('phone Archived projects', () => {
   it('empty: says so and still offers the archive action; none when nothing is left to archive', async () => {
     getArchivedProjects.mockResolvedValue([]);
     const { getByText, queryByText, unmount } = render(SettingsPage, { page: 'archived' });
-    await waitFor(() => getByText('No archived projects.'));
+    await waitFor(() => getByText('No archived projects'));
     expect(getByText('Archive a project')).toBeTruthy();
     unmount();
     getProjects.mockResolvedValue([]);
     const r = render(SettingsPage, { page: 'archived' });
-    await waitFor(() => r.getByText('No archived projects.'));
+    await waitFor(() => r.getByText('No archived projects'));
     expect(r.queryByText('Archive a project')).toBeNull();
     expect(queryByText('Archive…')).toBeNull();
   });

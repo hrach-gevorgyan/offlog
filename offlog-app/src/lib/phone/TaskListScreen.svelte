@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from './Empty.svelte';
   import { onMount, onDestroy } from 'svelte';
   import type { TaskDoc } from '../types';
   import { getAllTasksDue, getDashboardData, subscribe, updateTask } from '../db';
@@ -58,7 +59,11 @@
   onDestroy(() => unsub?.());
 
   const TITLE = { today: 'Today', late: 'Late', pinned: 'Pinned' };
-  const EMPTY = { today: 'Nothing due today.', late: 'Nothing late.', pinned: 'Hold a task, or tap the pin on its page, to pin it.' };
+  const EMPTY = {
+    today: { title: 'Nothing due today', text: 'A clear day. Plan ahead in Agenda, or add something.' },
+    late: { title: 'Nothing late', text: "You're on time with everything." },
+    pinned: { title: 'Nothing pinned', text: 'Hold a task, or tap the pin on its page, to pin it.' },
+  };
   // The card menu; {#key} bumped on every open (Sheet rule).
   let menuTask: Row | null = null, menuSession = 0;
   function openMenu(t: Row) { menuTask = t; menuSession++; }
@@ -107,10 +112,9 @@
     <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} sectionDate={s.date ?? null} menu on:open={() => actions.openTask(t)} on:changed={load} on:menu={() => openMenu(t)} /></div>
   {:else}
     {#if loaded}
-      <div class="p-empty list-empty">
-        <p>{EMPTY[kind]}</p>
+      <Empty title={EMPTY[kind].title} text={EMPTY[kind].text}>
         {#if kind !== 'pinned'}<button class="p-tbtn" on:click={() => actions.quickAdd()}>Add a task</button>{/if}
-      </div>
+      </Empty>
     {/if}
   {/each}
 {/each}
@@ -120,8 +124,6 @@
 {/key}
 
 <style>
-  .p-empty.list-empty { padding-bottom: 8px; }
-  .list-empty p { margin: 0 0 4px; }
   .late-row {
     display: flex; align-items: center; width: 100%; gap: 6px; margin: 0 0 10px; padding: 10px 12px 10px 14px;
     background: var(--overdue-bg); color: var(--overdue-ink); border: 0; border-radius: 12px;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from '../Empty.svelte';
   // The Recycle bin as a phone page: TrashView's behaviour, phone layout.
   import { onMount } from 'svelte';
   import { getAllDeletedTasks, undoDelete, deleteForever, emptyTrash, subscribe } from '../../db';
@@ -105,7 +106,7 @@
 
 {#if loaded && items.length === 0}
   <!-- maintenance.ts TASK_RETENTION_MONTHS -->
-  <p class="p-empty">Nothing here. Deleted tasks stay for 3 months.</p>
+  <Empty title="Recycle bin is empty" text="Deleted tasks stay here for 3 months." />
 {:else if items.length}
   <div class="p-group">
     {#each items as t (t._id)}

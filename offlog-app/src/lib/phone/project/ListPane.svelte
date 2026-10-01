@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from '../Empty.svelte';
   import { PRIORITY_COLOR, PRIORITY_LABEL } from '../../constants';
   // Dense rows with a search field, a sort, Pinned first and Select. In
   // Select mode a floating bar changes status, priority or tags in bulk.
@@ -194,7 +195,7 @@
     {/each}
   </div>
 {:else}
-  <p class="p-empty">{filtered ? 'No tasks match.' : 'No tasks yet.'}</p>
+  {#if filtered}<Empty title="Nothing matches" text="Try another filter or search." />{:else}<Empty title="No tasks yet" text="Tap + to add the first one." />{/if}
 {/each}
 
 {#if selecting}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from './Empty.svelte';
   import { onMount } from 'svelte';
   import type { TaskDoc } from '../types';
   import { getOpenTasksForFocusPicker, getTaskById, subscribe } from '../db';
@@ -185,7 +186,7 @@
       {/if}
     {/if}
   {:else if !active}
-    <p class="p-empty">No open tasks to pick from.</p>
+    <Empty title="Nothing to pick" text="Add a few tasks first, then choose up to three." />
   {/if}
 {/if}
 

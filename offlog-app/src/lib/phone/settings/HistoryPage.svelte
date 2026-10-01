@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from '../Empty.svelte';
   // History (desktop: Time Travel) as a phone page: every logged change,
   // grouped by local day, newest first.
   import { onMount } from 'svelte';
@@ -98,7 +99,7 @@
 </TopBar>
 
 {#if loaded && groups.length === 0}
-  <p class="p-empty">Nothing logged yet.</p>
+  <Empty title="Nothing logged yet" text="Every change will show here." />
 {:else if groups.length}
   {#each groups as g (g.key)}
     <div class="p-sec" role="heading" aria-level="2">{g.label}</div>
