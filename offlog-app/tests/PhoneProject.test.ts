@@ -56,6 +56,7 @@ import ProjectScreen from '../src/lib/phone/ProjectScreen.svelte';
 import { projects, projectTasks, activeProjectId, showError, reloadTasks } from '../src/lib/store';
 import { actions, stack, switchTab, push, toast } from '../src/lib/phone/nav';
 import { toggleDone } from '../src/lib/phone/project/actions';
+import { leaves, returns } from '../src/lib/phone/rowMotion';
 
 const project: ProjectDoc = {
   _id: 'project:p', type: 'project', space_id: 'space:h', name: 'House', position: 0, default_view: 'kanban',
@@ -158,6 +159,15 @@ describe('phone Project screen — board', () => {
     const { getByLabelText } = setup();
     await fireEvent.click(getByLabelText('Finish: a'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this task. Please try again.'));
+    // The check filled on the tap; it empties again.
+    await waitFor(() => expect(getByLabelText('Finish: a').classList.contains('on')).toBe(false));
+  });
+
+  it('finishing marks the card to collapse out of its status; Undo marks it to grow back', async () => {
+    await toggleDone(tasks[0], project);
+    expect(leaves('task:a')).toBe(true);
+    await get(toast)!.undo!();
+    expect(returns('task:a')).toBe(true);
   });
 
   it('a one-status project has no finish checkbox', () => {

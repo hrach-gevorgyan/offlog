@@ -13,6 +13,8 @@
   import { showToast } from './nav';
   import { soften } from '../tagColors';
   import Sheet from './Sheet.svelte';
+  import { fade, slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import Pick from './task/Pick.svelte';
   import Panel from './quickadd/Panel.svelte';
   import DuePanel from './quickadd/DuePanel.svelte';
@@ -235,7 +237,7 @@
     {#if dupHint}<p class="warn">{dupHint}</p>{/if}
 
     {#if showHelp}
-      <div class="helpbox" role="note">
+      <div class="helpbox" role="note" in:slide={revealIn} out:slide={revealOut}>
         <p>Type it in plain text. These are picked out for you:</p>
         <dl>
           <dt>Date</dt><dd><code>tomorrow</code>, <code>friday</code>, <code>next fri</code>, <code>in 3 days</code>, <code>aug 3</code></dd>
@@ -249,7 +251,7 @@
     {/if}
 
     {#if panel}
-      <div class="pick" bind:this={panelEl}>
+      <div class="pick" bind:this={panelEl} in:fade={revealIn}>
         {#key panelSession}
           <Panel bind:this={panelRef} title={PANEL_TITLE[panel]} on:close={onPanelClosed} on:done={toTitle}>
             {#if panel === 'due'}

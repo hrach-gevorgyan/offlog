@@ -191,7 +191,7 @@
 
 <style>
   .bar { display: flex; gap: 5px; margin: 0 2px 14px; }
-  .bar i { flex: 1; height: 5px; border-radius: 3px; background: var(--col-bg); transition: background var(--dur-small) var(--ease-standard); }
+  .bar i { flex: 1; height: 5px; border-radius: 3px; background: var(--col-bg); transition: background var(--dur-medium) var(--ease-standard); }
   .bar i.on { background: var(--accent); }
   .lk { display: flex; align-items: center; gap: 2px; }
   .lk .c { flex: 1; min-width: 0; }
@@ -209,8 +209,11 @@
   .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); flex-shrink: 0; position: relative; box-sizing: border-box; }
   .lrow.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
   .lrow.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
-  .lrow.picked .box { background: var(--accent); border-color: var(--accent); }
-  .lrow.picked .box::after { content: ''; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  /* The fill and tick pop in (decelerate) and leave faster (accelerate). */
+  .box { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
+  .box::after { content: ''; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0; transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate); }
+  .lrow.picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
+  .lrow.picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .why { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--col-bg); color: var(--faint); }
   .why.pinned { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
   .why.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }

@@ -229,7 +229,7 @@
   .track i.on { background: var(--on-hero); }
 
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -54px 0 18px; position: relative; z-index: 2; }
-  .tile { background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .tile { background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; transition: transform var(--dur-hover) var(--ease-hover); }
   .tile:active { transform: scale(.98); }
   .top { display: flex; justify-content: space-between; align-items: center; }
   .ic { display: flex; color: var(--faint); }
@@ -239,7 +239,7 @@
   .tile .lbl { font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); }
 
   .sec { justify-content: space-between; min-height: 32px; margin-bottom: 4px; }
-  .secadd { width: 44px; height: 44px; margin: -6px -10px -6px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--accent); }
+  .secadd { width: 44px; height: 44px; margin: -6px -10px -6px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--accent); transition: background var(--dur-hover) var(--ease-hover); }
   .secadd:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .secadd :global(svg) { width: 20px; height: 20px; }
   .p-row.add { font-size: var(--p-fs-m); min-height: 48px; }

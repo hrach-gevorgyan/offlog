@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd } from './nav';
   import type { Tab } from './nav';
-  import { screenIn, pillIn, snackIn, snackOut } from '../motion';
+  import { screenIn, screenOut, pillIn, snackIn, snackOut, snackSwapIn, snackSwapOut } from '../motion';
   import { fly } from 'svelte/transition';
   import { I } from './icons';
   import './phone.css';
@@ -74,13 +74,18 @@
     actions.openTask = (task) => push({ k: 'task', id: task._id });
   });
 
+  // A toast replacing one still on screen crossfades in place instead of
+  // rising again; read by both snackbars' transitions when they start.
+  let lastToast: number | null = null, swap = false;
+  $: { const id = $toast?.id ?? null; swap = lastToast !== null && id !== null; lastToast = id; }
+
   const LABEL: Record<Tab, string> = { home: 'Home', today: 'Today', agenda: 'Agenda', search: 'Search' };
 </script>
 
 <div class="phone-shell" class:kb>
   <div class="screens">
     {#key key}
-      <div class="screen" class:flush={top.k === 'home'} class:board={top.k === 'project'} in:screenIn={{ kind: $arrival }}>
+      <div class="screen" class:flush={top.k === 'home'} class:board={top.k === 'project'} in:screenIn={{ kind: $arrival }} out:screenOut={{ kind: $arrival }}>
         {#if top.k === 'home'}
           <Home />
         {:else if top.k === 'today' || top.k === 'late' || top.k === 'pinned'}
@@ -114,14 +119,14 @@
     {/key}
   {/if}
 
-  {#if $toast}
-    {#key $toast.id}
-      <div class="snack" in:fly={snackIn} out:fly={snackOut}>
-        <span class="msg">{$toast.text}</span>
-        {#if $toast.undo}<button on:click={() => { const u = $toast?.undo; toast.set(null); u?.(); }}>Undo</button>{/if}
-      </div>
-    {/key}
-  {/if}
+  <!-- A keyed each, not {#if}{#key}: a key block inside an {#if} drops its
+       outro when the {#if} closes, so the snackbar would vanish on timeout. -->
+  {#each $toast ? [$toast] : [] as t (t.id)}
+    <div class="snack" in:fly={swap ? snackSwapIn : snackIn} out:fly={swap ? snackSwapOut : snackOut}>
+      <span class="msg">{t.text}</span>
+      {#if t.undo}<button on:click={() => { const u = t.undo; toast.set(null); u?.(); }}>Undo</button>{/if}
+    </div>
+  {/each}
 
   <!-- Always mounted and only its text changes: a live region inserted
        already filled is often not announced. -->
@@ -157,12 +162,15 @@
     width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
     background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 12px rgba(0,0,0,.18);
-    transition: transform var(--dur-medium) var(--ease-standard);
+    /* translate rides with the snackbar (its timings: rises decelerating,
+       drops accelerating); scale is the press. Separate properties, so a
+       press is never slowed to the lift's pace. */
+    transition: translate var(--dur-medium-out) var(--ease-accelerate), scale var(--dur-hover) var(--ease-hover);
   }
   .fab :global(svg.i) { width: 24px; height: 24px; stroke-width: 2.2; }
-  .fab:active { transform: scale(.95); }
+  .fab:active { scale: .95; }
   /* Rises above the snackbar instead of hiding under it. */
-  .fab.lift { transform: translateY(-64px); }
+  .fab.lift { translate: 0 -64px; transition: translate var(--dur-medium) var(--ease-decelerate), scale var(--dur-hover) var(--ease-hover); }
   .kb .fab, .kb .tabbar { display: none; }
 
   .snack {
@@ -172,7 +180,7 @@
     font-size: var(--p-fs-m); line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,.25);
   }
   .msg { min-width: 0; padding: 8px 0; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .snack button { font: inherit; font-weight: 700; color: var(--inverse-accent); background: none; border: 0; min-height: 44px; padding: 0 14px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+  .snack button { transition: background var(--dur-hover) var(--ease-hover); font: inherit; font-weight: 700; color: var(--inverse-accent); background: none; border: 0; min-height: 44px; padding: 0 14px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
   .snack button:active { background: color-mix(in srgb, var(--on-inverse) 12%, transparent); }
 
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -182,10 +190,10 @@
     padding: 10px 8px calc(12px + env(safe-area-inset-bottom, 0px));
     background: var(--surface); border-top: 1px solid var(--border);
   }
-  .tb { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; font: inherit; font-size: var(--p-fs-xs); font-weight: 600; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+  .tb { transition: color var(--dur-medium) var(--ease-standard); display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; font: inherit; font-size: var(--p-fs-xs); font-weight: 600; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
   .tb:active .pill { background: var(--col-bg); }
   .tb.on { color: var(--text); }
-  .pill { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 32px; border-radius: 16px; }
+  .pill { transition: background var(--dur-hover) var(--ease-hover), color var(--dur-medium) var(--ease-standard); position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 32px; border-radius: 16px; }
   .pill :global(svg.i) { position: relative; width: 22px; height: 22px; }
   .tb.on .pill { color: var(--accent); }
   .pillbg { position: absolute; inset: 0; border-radius: 16px; background: color-mix(in srgb, var(--accent) 22%, transparent); }

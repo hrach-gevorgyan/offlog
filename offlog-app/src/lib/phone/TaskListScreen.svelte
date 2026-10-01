@@ -8,6 +8,8 @@
   import { shortDate } from './format';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
+  import { collapseIn, collapseOut } from '../motion';
+  import { leaves, returns } from './rowMotion';
 
   // today: a tab root (also pushed from Home's hero); late/pinned: pushed from Home's tiles.
   export let kind: 'today' | 'late' | 'pinned';
@@ -57,10 +59,11 @@
 <TopBar title={TITLE[kind]} {sub} {root} />
 {#each sections as s}
   {#if s.label && s.tasks.length}
-    <div class="p-sec" class:late={s.late}>{s.label} <span class="p-n">{s.tasks.length}</span></div>
+    <!-- Its last task finishing takes the heading along with the row. -->
+    <div out:collapseOut={{ on: true }}><div class="p-sec" class:late={s.late}>{s.label} <span class="p-n">{s.tasks.length}</span></div></div>
   {/if}
   {#each s.tasks as t (t._id)}
-    <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} />
+    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} /></div>
   {:else}
     {#if !s.late && loaded}
       <div class="p-empty list-empty">

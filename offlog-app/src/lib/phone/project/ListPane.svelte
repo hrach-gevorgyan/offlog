@@ -6,7 +6,8 @@
   import type { ProjectDoc, TaskDoc } from '../../types';
   import { modalOpen } from '../../store';
   import { closeOnBack, isTopLayer, dropLayer } from '../../modalStack';
-  import { popIn, popOut } from '../../motion';
+  import { popIn, popOut, collapseIn, collapseOut } from '../../motion';
+  import { leaves, returns } from '../rowMotion';
   import { duePill } from '../format';
   import { I } from '../icons';
   import { toggleDone, canFinish } from './actions';
@@ -54,6 +55,16 @@
     : [{ id: '', name: '', rows: [...tasks].sort((a, b) => pinCmp(pinnedFirst, a, b) || cmp(sort, a, b)) }].filter(g => g.rows.length);
   $: rows = groups.flatMap(g => g.rows);
   const statusOf = (t: TaskDoc) => project.columns[colIdx[t.column_id]]?.name ?? '';
+
+  // The check fills on the tap, before the write lands.
+  let pend: Record<string, boolean> = {};
+  async function finish(t: TaskDoc) {
+    pend = { ...pend, [t._id]: t.column_id !== lastCol };
+    await toggleDone(t, project);
+    const next = { ...pend };
+    delete next[t._id];
+    pend = next;
+  }
 
   // Select mode hides the Add button (modalOpen) so the bar has the bottom
   // edge, and owns a history entry so Android back leaves Select mode
@@ -125,6 +136,7 @@
     {#each g.rows as t (t._id)}
       {@const done = t.column_id === lastCol}
       {@const pill = duePill(t.due_date, done)}
+      <div class="rw" in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}>
       {#if selecting}
         <button class="row" class:done class:hi={t.priority === 3} class:picked={selected.has(t._id)} role="checkbox" aria-checked={selected.has(t._id)} aria-label={t.title} on:click={() => toggle(t._id)}>
           <span class="box"></span>
@@ -136,7 +148,7 @@
         </button>
       {:else}
         <div class="row" class:done class:hi={t.priority === 3}>
-          {#if finishable}<button class="chk" class:on={done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => toggleDone(t, project)}></button>{/if}
+          {#if finishable}<button class="chk" class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}></button>{/if}
           <button class="open" on:click={() => dispatch('open', t)}>
             <span class="main">
               <span class="t">{#if t.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{t.title}{#if t.priority === 3}<span class="p-sr">, high priority</span>{/if}{#if t.recurrence}<span class="rep" title="Repeats {t.recurrence}">{@html I.repeat}</span>{/if}</span>
@@ -146,6 +158,7 @@
           </button>
         </div>
       {/if}
+      </div>
     {/each}
   </div>
 {:else}
@@ -188,7 +201,7 @@
   .rows + .rows { margin-top: 10px; }
   .row { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 14px; min-height: 48px; font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; text-align: left; transition: background var(--dur-hover) var(--ease-hover); }
   button.row { cursor: pointer; }
-  .row + .row { border-top: 1px solid var(--border); }
+  .rw + .rw .row { border-top: 1px solid var(--border); }
   .row.hi::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .row:active, .open:active { background: var(--col-bg); }
   .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; align-self: stretch; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
@@ -205,11 +218,16 @@
   .chk::before { content: ''; position: absolute; inset: -11px; }
   .box { border-radius: 7px; }
   .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); }
-  .chk.on::after, .picked .box::after {
+  /* The fill and tick pop in (decelerate) and leave faster (accelerate);
+     the base rule holds the leaving values. */
+  .chk, .box { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
+  .chk::after, .box::after {
     content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;
-    border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
+    border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0;
+    transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
+  .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
+  .chk.on::after, .picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .row.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
   .row.picked:active { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
   /* The tab bar under the screen already clears the gesture area. */

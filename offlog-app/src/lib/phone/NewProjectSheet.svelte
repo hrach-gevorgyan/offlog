@@ -8,6 +8,8 @@
   import { projects, spaces, showError } from '../store';
   import { soften } from '../tagColors';
   import Sheet from './Sheet.svelte';
+  import { slide } from 'svelte/transition';
+  import { revealIn, revealOut } from '../motion';
   import { I } from './icons';
 
   export let spaceId: string;
@@ -91,7 +93,7 @@
       <span class="chev" class:open={picking}>{@html I.chev}</span>
     </button>
     {#if picking}
-      <div class="list">
+      <div class="list" in:slide={revealIn} out:slide={revealOut}>
         <button class="p-row" aria-pressed={!template} on:click={() => choose('')}>
           <span class="p-k"><span>Default</span><span class="p-sub">{DEFAULT_NAMES}</span></span>
           {#if !template}<span class="p-tick">{@html I.check}</span>{/if}

@@ -33,7 +33,7 @@ import { prefersReducedMotion } from './theme';
 function d(base: number): number { return prefersReducedMotion() ? 0 : base; }
 
 // Mirrors --dur-* in app.css.
-const DUR = { hover: 100, small: 150, medium: 200, large: 300 } as const;
+const DUR = { hover: 160, small: 150, medium: 200, large: 300 } as const;
 // Exits are consistently quicker than their matching entrance.
 const OUT = (ms: number) => Math.round(ms * 0.75);
 
@@ -211,14 +211,26 @@ export const viewIn = { get duration() { return d(DUR.small); }, get delay() { r
 export const viewOut = { get duration() { return d(90); }, easing: easeAccelerate };
 
 // ── Phone screens (phone/PhoneApp.svelte) ────────────────────────────────────
-// Material's shared axis: a pushed screen slides in from the right edge; going
-// back, the screen underneath returns from the left, starting partly faded.
-// A tab switch is a fade through. The outgoing screen is removed at once, so
-// only the arrival animates and nothing overlaps.
-export function screenIn(_node: Element, { kind }: { kind: 'push' | 'pop' | 'tab' | 'none' }) {
-  if (kind === 'push') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * 100}%)` };
+// Material's shared axis. Both screens move as one pair, so they share the
+// pair's duration and curve rather than taking 0.75x on the way out: a push
+// slides the new screen in from the right edge over the old one, which drifts
+// 24% left and dims; going back reverses it, the leaving screen on top. A tab
+// switch fades through: the old screen is gone before the new one appears.
+// Both are mounted for the overlap; .screen is absolutely positioned, so they
+// stack without a grid.
+// The edge shadow belongs to whichever screen is sliding over the other.
+const EDGE = 'box-shadow: -8px 0 24px rgba(0,0,0,.14)';
+type Arrival = { kind: 'push' | 'pop' | 'tab' | 'none' };
+export function screenIn(_node: Element, { kind }: Arrival) {
+  if (kind === 'push') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * 100}%); ${EDGE}` };
   if (kind === 'pop') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * -24}%); opacity: ${0.4 + 0.6 * t}` };
-  if (kind === 'tab') return { duration: d(DUR.medium), easing: easeDecelerate, css: (t: number) => `opacity: ${t}; transform: scale(${0.98 + 0.02 * t})` };
+  if (kind === 'tab') return { duration: d(DUR.small), delay: d(90), easing: easeDecelerate, css: (t: number) => `opacity: ${t}; transform: scale(${0.98 + 0.02 * t})` };
+  return { duration: 0 };
+}
+export function screenOut(_node: Element, { kind }: Arrival) {
+  if (kind === 'push') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * -24}%); opacity: ${0.4 + 0.6 * t}` };
+  if (kind === 'pop') return { duration: d(DUR.large), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * 100}%); z-index: 1; ${EDGE}` };
+  if (kind === 'tab') return { duration: d(90), easing: easeAccelerate, css: (t: number) => `opacity: ${t}` };
   return { duration: 0 };
 }
 
@@ -228,12 +240,57 @@ export function pillIn(_node: Element) {
 }
 
 // Phone snackbar: spans the width (no centring offset), so a plain rise.
+// One replacing another does not rise again from the edge: the old one fades
+// where it is and the new one settles over it with a short lift.
 export const snackIn = { y: 16, get duration() { return d(DUR.medium); }, easing: easeDecelerate };
 export const snackOut = { y: 16, get duration() { return d(OUT(DUR.medium)); }, easing: easeAccelerate };
+export const snackSwapIn = { y: 6, get duration() { return d(DUR.small); }, easing: easeDecelerate };
+export const snackSwapOut = { y: 0, get duration() { return d(OUT(DUR.small)); }, easing: easeAccelerate };
 
-// Phone bottom sheet: rises from the bottom edge (large travel), leaves faster.
-export const sheetIn = { y: 400, get duration() { return d(DUR.large); }, easing: easeDecelerate };
-export const sheetOut = { y: 400, get duration() { return d(OUT(DUR.large)); }, easing: easeAccelerate };
+// Phone bottom sheet: travels its own height (+40 clears the shadow) and,
+// like an edge panel, never fades -- an opaque slab dissolving over the scrim
+// is a flash. Duration follows the travel, bounded so a short sheet still
+// reads as an arrival and a tall one does not drag.
+// `from` is where a drag left it: the exit continues from there.
+const sheetDur = (travel: number) => Math.min(400, Math.max(DUR.medium, panelDur(travel)));
+export function sheetIn(node: Element) {
+  const h = (node as HTMLElement).offsetHeight + 40;
+  return { duration: d(sheetDur(h)), easing: easeDecelerate, css: (t: number) => `transform: translateY(${(1 - t) * h}px)` };
+}
+export function sheetOut(node: Element, { from = 0 }: { from?: number } = {}) {
+  const span = Math.max(0, (node as HTMLElement).offsetHeight + 40 - from);
+  return { duration: d(OUT(sheetDur(span))), easing: easeAccelerate, css: (t: number) => `transform: translateY(${from + (1 - t) * span}px)` };
+}
+
+// ── Phone in-screen axis (board status, agenda month) ───────────────────────
+// The new content slides in from the side it came from (dir 1 = forward, in
+// from the right) while the old one is replaced at once. Movement within the
+// screen, so the standard curve.
+export function axisIn(_node: Element, { dir }: { dir: number }) {
+  return { duration: d(DUR.medium), easing: easeStandard, css: (t: number) => `transform: translateX(${(1 - t) * dir * 40}px); opacity: ${t}` };
+}
+
+// ── Phone list rows leaving and coming back ──────────────────────────────────
+// A task the user just finished collapses out of its list instead of
+// vanishing; Undo grows it back. Put on a wrapper inside the list's keyed
+// {#each} (local transitions only run there), and pass `on` from
+// phone/rowMotion.ts so a filter or a sync still removes rows at once.
+// The collapse waits for the check's own fill (--dur-small) to be seen.
+// The children's outer margins are counted: overflow:hidden stops them
+// collapsing through the wrapper, so its box grows by that much.
+function rowHeight(node: Element): number {
+  const margin = (el: Element | null, side: 'marginTop' | 'marginBottom') => (el ? parseFloat(getComputedStyle(el)[side]) || 0 : 0);
+  return (node as HTMLElement).offsetHeight + margin(node.firstElementChild, 'marginTop') + margin(node.lastElementChild, 'marginBottom');
+}
+const rowCss = (h: number) => (t: number) => `overflow: hidden; height: ${t * h}px; opacity: ${Math.max(0, 2 * t - 1)}`;
+export function collapseOut(node: Element, { on }: { on: boolean }) {
+  if (!on) return { duration: 0 };
+  return { delay: d(DUR.small), duration: d(OUT(DUR.medium)), easing: easeAccelerate, css: rowCss(rowHeight(node)) };
+}
+export function collapseIn(node: Element, { on }: { on: boolean }) {
+  if (!on) return { duration: 0 };
+  return { duration: d(DUR.medium), easing: easeDecelerate, css: rowCss(rowHeight(node)) };
+}
 
 // The phone Home's logo mark settles into the band once, on open: it rises
 // in from below-left with a quarter-turn and grows to size, decelerating.

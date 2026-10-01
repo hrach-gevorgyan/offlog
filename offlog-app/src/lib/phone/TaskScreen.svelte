@@ -525,11 +525,15 @@
   }
   .chk::before { content: ''; position: absolute; inset: -10px; }
   .chk:not(.on):active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .chk.on { background: var(--accent); border-color: var(--accent); }
-  .chk.on::after {
+  /* The fill and tick pop in (decelerate) and leave faster (accelerate). */
+  .chk { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
+  .chk::after {
     content: ''; position: absolute; left: 7.5px; top: 3.5px; width: 6px; height: 11px;
-    border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
+    border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0;
+    transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
+  .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
+  .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .tbar { display: contents; }
   .tbar :global(h1) { clip-path: inset(50%); }
   .hint { color: var(--faint); margin-top: -10px; }

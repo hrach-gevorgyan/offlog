@@ -8,7 +8,7 @@
   // or dispatching through the ✕/scrim; never by flipping the parent's
   // flag directly, or the history entry is left behind.
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { fly, fade } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
   import { closeOnBack } from '../modalStack';
   import { scrimIn, scrimOut, sheetIn, sheetOut } from '../motion';
   import { get } from 'svelte/store';
@@ -29,7 +29,11 @@
   export function close() { if (open) requestClose(); }
 
   let panel: HTMLDivElement;
+  // While a finger holds the handle the sheet follows it 1:1 (no
+  // transition). Let go short of the threshold and it glides back up; past
+  // it, the exit carries on from where the finger left it (sheetOut's from).
   let dragY = 0, startY: number | null = null;
+  $: dragging = startY !== null;
   function down(e: PointerEvent) { startY = e.clientY; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); }
   function move(e: PointerEvent) { if (startY !== null) dragY = Math.max(0, e.clientY - startY); }
   function up() {
@@ -59,11 +63,11 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="psheet-scrim" on:click={requestClose} in:fade={scrimIn} out:fade={scrimOut}></div>
   <div
-    class="psheet" role="dialog" aria-modal="true" aria-label={label} tabindex="-1" bind:this={panel}
+    class="psheet" class:dragging role="dialog" aria-modal="true" aria-label={label} tabindex="-1" bind:this={panel}
     style:transform={dragY ? `translateY(${dragY}px)` : null}
     use:trapFocus
-    in:fly={sheetIn}
-    out:fly={sheetOut}
+    in:sheetIn
+    out:sheetOut={{ from: dragY }}
     on:outroend={() => dispatch('close')}
   >
     <div class="grab-zone" on:pointerdown={down} on:pointermove={move} on:pointerup={up} on:pointercancel={up} role="presentation">
@@ -83,7 +87,9 @@
     background: var(--bg); color: var(--text); border-radius: 22px 22px 0 0;
     box-shadow: 0 -10px 30px rgba(0,0,0,.2);
     padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    transition: transform var(--dur-medium) var(--ease-standard);
   }
+  .psheet.dragging { transition: none; }
   /* The handle and title stay put while a tall sheet scrolls. */
   .grab-zone { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 10px 0 12px; touch-action: none; cursor: grab; }
   .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); margin: 0 auto; }

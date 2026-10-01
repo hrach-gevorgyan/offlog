@@ -70,7 +70,8 @@ describe('phone NewProjectSheet', () => {
     await fireEvent.input(r.getByLabelText('Project name'), { target: { value: 'Flat' } });
     await fireEvent.click(r.getByText('Default')); // opens the statuses list
     await fireEvent.click(r.getByText('Same as House'));
-    expect(r.getByText('Same as House')).toBeTruthy(); // the row now names the source
+    // The row now names the source (the list may still be sliding shut).
+    expect(document.querySelector('.p-row[aria-expanded]')?.textContent).toContain('Same as House');
     await fireEvent.click(r.getByRole('switch', { name: 'Also copy its open tasks' }));
     await fireEvent.click(r.getByText('Create'));
     expect(createProjectFromTemplate).toHaveBeenCalledWith('space:w', 'Flat', 'project:house', true);

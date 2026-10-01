@@ -12,12 +12,12 @@ vi.mock('../src/lib/db', () => ({
 }));
 vi.mock('../src/lib/store', async () => {
   const { writable: w } = await import('svelte/store');
-  return { showError: vi.fn(), projects: w([]), spaces: w([]) };
+  return { showError: vi.fn(), reloadTasks: vi.fn(), projects: w([]), spaces: w([]) };
 });
 vi.mock('../src/config', async (orig) => ({ ...(await orig<object>()), getWeekStartsMonday: () => true }));
 
 import AgendaScreen from '../src/lib/phone/AgendaScreen.svelte';
-import { actions, stack } from '../src/lib/phone/nav';
+import { actions, stack, toast } from '../src/lib/phone/nav';
 import { agendaDay } from '../src/lib/phone/agenda/month';
 import { monthGrid, endOfWeek } from '../src/lib/phone/agenda/month';
 import { shortDate } from '../src/lib/phone/format';
@@ -75,6 +75,28 @@ describe('phone Agenda', () => {
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ _id: 'task:Now' }));
     await fireEvent.click(getByLabelText('Finish: Now'));
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:Now', { column_id: 'col:done' }));
+  });
+
+  it('a finished task collapses out of its group, and Undo brings the same row back', async () => {
+    const { getByLabelText, findByText } = render(AgendaScreen);
+    await findByText('Now');
+    const row = getByLabelText('Finish: Now').closest('.card')!.parentElement!;
+    getAllTasksDue.mockResolvedValue(rows().filter(t => t._id !== 'task:Now'));
+    await fireEvent.click(getByLabelText('Finish: Now'));
+    // The check fills before the write is back.
+    expect(getByLabelText('Finish: Now').classList.contains('on')).toBe(true);
+    // Gone from the data, but collapsing rather than cut: Svelte holds an
+    // outroing element inert until its transition ends. Today had only this
+    // task, so the whole group (heading too) is what collapses.
+    const leaving = (n: HTMLElement | null) => { for (; n; n = n.parentElement) if (n.inert) return true; return false; };
+    await waitFor(() => expect(leaving(row)).toBe(true));
+    expect(row.isConnected).toBe(true);
+    getAllTasksDue.mockResolvedValue(rows());
+    await get(toast)!.undo!();
+    expect(updateTask).toHaveBeenLastCalledWith('task:Now', expect.objectContaining({ column_id: 'col:todo' }));
+    await waitFor(() => expect(leaving(row)).toBe(false));
+    expect(getByLabelText('Finish: Now').closest('.card')!.parentElement).toBe(row);
+    expect(getByLabelText('Finish: Now').classList.contains('on')).toBe(false);
   });
 
   it('refreshes from the change feed', async () => {

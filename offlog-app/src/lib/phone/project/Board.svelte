@@ -2,9 +2,10 @@
   // One status at a time: pills on top, that status's cards, page dots.
   // A sideways swipe over the cards steps to the next or previous status.
   import { createEventDispatcher, tick } from 'svelte';
-  import { fly } from 'svelte/transition';
   import type { ProjectDoc, TaskDoc } from '../../types';
-  import { revealIn } from '../../motion';
+  import { axisIn, collapseIn, collapseOut } from '../../motion';
+  import { prefersReducedMotion } from '../../theme';
+  import { leaves, returns } from '../rowMotion';
   import { actions } from '../nav';
   import { columnTasks } from './filter';
   import BoardCard from './BoardCard.svelte';
@@ -31,7 +32,7 @@
     dir = i > ci ? 1 : -1;
     ci = i;
     await tick();
-    pills?.querySelector('.on')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
+    pills?.querySelector('.on')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }
 
   // Horizontal, quick and long enough to be a swipe rather than a scroll.
@@ -54,10 +55,12 @@
 <div class="body" on:touchstart|passive={touchStart} on:touchend={touchEnd} role="tabpanel" tabindex="-1" aria-label={col?.name}>
   {#if col}
     {#key col.id}
-      <div in:fly={{ x: dir * 32, duration: revealIn.duration, easing: revealIn.easing }}>
+      <div in:axisIn={{ dir }}>
         {#each shown as t (t._id)}
-          <BoardCard task={t} {project} {tagColors} blocked={blockedIds.has(t._id)} related={relatedIds.has(t._id)}
-            on:open={() => dispatch('open', t)} on:menu={() => dispatch('menu', t)} />
+          <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}>
+            <BoardCard task={t} {project} {tagColors} blocked={blockedIds.has(t._id)} related={relatedIds.has(t._id)}
+              on:open={() => dispatch('open', t)} on:menu={() => dispatch('menu', t)} />
+          </div>
         {:else}
           <div class="empty">
             <p>Nothing in {col.name}.</p>
@@ -79,7 +82,7 @@
     position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 13px; min-height: 36px; border-radius: 999px; border: 0; cursor: pointer;
     font: inherit; font-size: var(--p-fs-s); font-weight: 600; background: var(--surface); color: var(--muted);
     box-shadow: var(--p-shadow);
-    transition: background var(--dur-small) var(--ease-standard), color var(--dur-small) var(--ease-standard);
+    transition: background var(--dur-small) var(--ease-standard), color var(--dur-small) var(--ease-standard), box-shadow var(--dur-small) var(--ease-standard);
   }
   .pills button::before { content: ''; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; }
   .pills button.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); box-shadow: none; }
@@ -89,6 +92,6 @@
   .empty { text-align: center; color: var(--faint); padding: 28px 0 8px; font-size: var(--p-fs-m); }
   .empty p { margin: 0 0 6px; }
   .dots { display: flex; justify-content: center; gap: 6px; margin: 12px 0 0; }
-  .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width var(--dur-small) var(--ease-standard); }
+  .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width var(--dur-medium) var(--ease-standard), background var(--dur-medium) var(--ease-standard); }
   .dots i.on { background: var(--accent); width: 16px; }
 </style>

@@ -46,14 +46,17 @@
 <style>
   .step { display: flex; align-items: center; padding: 0 6px 0 0; }
   .step + .step { border-top: 1px solid var(--border); }
-  .tog { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; padding: 12px 0 12px 16px; min-height: 48px; font: inherit; font-size: var(--p-fs-l); color: var(--text); background: none; border: 0; text-align: left; cursor: pointer; }
+  .tog { transition: background var(--dur-hover) var(--ease-hover); flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; padding: 12px 0 12px 16px; min-height: 48px; font: inherit; font-size: var(--p-fs-l); color: var(--text); background: none; border: 0; text-align: left; cursor: pointer; }
   .tog:active { background: var(--col-bg); }
   .lbl { min-width: 0; overflow-wrap: anywhere; }
   .done .lbl { color: var(--faint); text-decoration: line-through; }
   .chk { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; position: relative; box-sizing: border-box; border: 2px solid color-mix(in srgb, var(--faint) 60%, transparent); }
-  .chk.on { background: var(--accent); border-color: var(--accent); }
-  .chk.on::after { content: ''; position: absolute; left: 5px; top: 1.5px; width: 4.5px; height: 9px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-  .x { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--faint); border-radius: 50%; flex-shrink: 0; background: none; border: 0; padding: 0; cursor: pointer; }
+  /* The fill and tick pop in (decelerate) and leave faster (accelerate). */
+  .chk { transition: background var(--dur-small-out) var(--ease-accelerate), border-color var(--dur-small-out) var(--ease-accelerate); }
+  .chk::after { content: ''; position: absolute; left: 5px; top: 1.5px; width: 4.5px; height: 9px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0; transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate); }
+  .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
+  .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
+  .x { transition: background var(--dur-hover) var(--ease-hover); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--faint); border-radius: 50%; flex-shrink: 0; background: none; border: 0; padding: 0; cursor: pointer; }
   .x :global(svg.i) { width: 16px; height: 16px; }
   .x:active { background: var(--col-bg); }
   .add { width: 100%; box-sizing: border-box; border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); outline: none; font: inherit; font-size: var(--p-fs-l); padding: 13px 14px 13px 48px; }

@@ -4,6 +4,7 @@ import { projects, reloadTasks, showError } from '../../store';
 import { hapticToggle } from '../../haptics';
 import { showToast } from '../nav';
 import type { ProjectDoc, TaskDoc } from '../../types';
+import { markLeaving, markReturning } from '../rowMotion';
 
 // Project writes shown at once: the store is patched before the write
 // and put back if the write fails.
@@ -52,24 +53,27 @@ export const snapshot = (t: TaskDoc): Partial<TaskDoc> =>
   ({ column_id: t.column_id, position: t.position, due_date: t.due_date, reminder_at: t.reminder_at, checklist: t.checklist });
 
 // Finishing moves a task to its project's last status, un-finishing to the
-// first. A one-status project has nothing to move between.
+// first. A one-status project has nothing to move between. Resolves false
+// when nothing was written.
 export const canFinish = (p: ProjectDoc) => p.columns.length > 1;
-export async function toggleDone(task: TaskDoc, project: ProjectDoc): Promise<void> {
-  if (!canFinish(project)) return;
+export async function toggleDone(task: TaskDoc, project: ProjectDoc): Promise<boolean> {
+  if (!canFinish(project)) return false;
   const last = project.columns.at(-1)?.id;
   const done = task.column_id === last;
   const target = done ? project.columns[0]?.id : last;
-  if (!target) return;
+  if (!target) return false;
   const before = snapshot(task);
+  markLeaving(task._id);
   try {
     await updateTask(task._id, { column_id: target });
     hapticToggle();
     await reloadTasks();
   } catch {
     showError('Could not update this task. Please try again.');
-    return;
+    return false;
   }
-  showToast(`${done ? 'Not done' : 'Done'}: ${task.title}`, () => restore([[task._id, before]]));
+  showToast(`${done ? 'Not done' : 'Done'}: ${task.title}`, () => { markReturning(task._id); return restore([[task._id, before]]); });
+  return true;
 }
 
 // Writes each task's earlier values back; the Undo behind every bulk or

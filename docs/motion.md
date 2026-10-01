@@ -138,12 +138,7 @@ travel at 300ms, for the bottom-docked Quick Add bar. `bannerIn`/`bannerOut`
 are the left-docked update banner — **do not reuse `toastIn` there**, it bakes
 in a centring translate the banner does not have.
 
-The phone snackbar spans the width (left/right insets, no centring), so it uses
-`snackIn`/`snackOut` with `fly` — 16px rise, 200/150ms. Phone bottom sheets
-(`phone/Sheet.svelte`) fly up 400px at 280ms decelerate and leave at 0.75x on
-accelerate; dragging the handle follows the finger with no transition and
-dismisses past 90px. On the phone, `showError` toasts fly down 16px from the
-top with the same timings (`snackIn`/`snackOut` with a negative `y`).
+The phone snackbar and bottom sheets are covered under *Phone* below.
 
 Reflow within a stack (`animate:flip`) is legal only on a keyed `{#each}` and
 only when two or more items are realistically on screen at once. Today they are
@@ -171,15 +166,30 @@ runs four `onMount` DB loads, on the app's most frequent navigation, and the
 search button and view toggle blink for no reason. Key the title, or the body —
 not the header that contains controls whose state did not change.
 
-### Phone screens (`phone/PhoneApp.svelte`)
-Material's *shared axis*, with only the arrival animating: `screenIn` takes the
-way the screen arrived (`arrival` in `phone/nav.ts`). A pushed screen slides in
-from the right edge (300ms, standard); going back, the screen underneath
-returns from −24% while fading up from 0.4; a tab switch fades through
-(200ms, decelerate, scale .98→1). The outgoing screen is removed at once — no
-`out:` — so two screens are never on screen together and no grid stacking is
-needed. The navigation bar's pill grows from its centre (`pillIn`) only on a
-real tab switch, never on a re-render.
+### Phone (`src/lib/phone/`)
+Material 3 motion, from the same presets and tokens as everything else. One
+row per family; a new phone animation joins one of these or does not exist.
+
+| family | preset / token | rule it follows |
+|---|---|---|
+| Screen push / back | `screenIn` + `screenOut`, `{ kind: $arrival }`, 300ms standard | Shared axis X. Both screens move as one pair, so the exit is *not* 0.75x here: push slides the new screen in from the right edge (with an edge shadow) while the old drifts to −24% and dims to 0.4; back is the mirror, the leaving screen on top (`z-index: 1` in its frames). Both stay mounted for the overlap; `.screen` is `position: absolute; inset: 0`, so they stack without a grid. No frame shows empty background. |
+| Tab switch | `screenIn`/`screenOut` `kind: 'tab'` | Fade through, the desktop `viewIn`/`viewOut` timings: old out in 90ms accelerate, new in 150ms decelerate after a 90ms hold, scale .98→1. |
+| Nav bar indicator | `pillIn` (200ms standard); label/icon colour `--dur-medium --ease-standard` | Grows from its centre only on a real tab switch (`$arrival === 'tab'`), never on a re-render. |
+| Bottom sheet | `sheetIn` / `sheetOut({ from })`, scrim `scrimIn`/`scrimOut` | Travels its own height + 40px (shadow), never fades (an opaque slab dissolving over the scrim flashes). Duration from travel like an edge panel, bounded 200–400ms; out is 0.75x on accelerate. |
+| Sheet drag | `.psheet` `transition: transform --dur-medium --ease-standard`, `.psheet.dragging { transition: none }` | Follows the finger 1:1 while held. Let go short of 90px: glides back. Past it: the exit starts from the dragged offset (`from: dragY`), no jump back to the top. |
+| Snackbar | `snackIn`/`snackOut` (16px rise, 200/150ms); `snackSwapIn`/`snackSwapOut` when one replaces another | A keyed `{#each}`, not `{#if}{#key}` — a key block inside an `{#if}` loses its outro when the `{#if}` closes. A replacement does not rise from the edge again: the old fades in place (113ms), the new settles with a 6px lift (150ms). `showError` toasts drop 16px from the top with the snack timings. |
+| FAB lift | `translate` `--dur-medium --ease-decelerate` up, `--dur-medium-out --ease-accelerate` down | Moves with the snackbar's own timings. Lift is `translate`, press is `scale` — separate properties, so a press is never slowed to the lift's pace. |
+| Status switch (Board), month change (Agenda) | `axisIn({ dir })` — 40px + fade, 200ms standard | Content enters from the side of travel (forward = from the right); the old content is replaced at once. The container clips (`.month` has `overflow: hidden`). |
+| Page dots | `width`, `background` at `--dur-medium --ease-standard` | Same duration as the status slide they mirror. |
+| Status pills, chips, switches | `--dur-small --ease-standard` (pills, `.p-sw`); `--dur-hover --ease-hover` (chips: background, colour, box-shadow) | A selection tint is a state change, not travel. |
+| Segmented control | `.p-seg::before`, `transform` at `--dur-medium --ease-standard` | One indicator slides between segments. Set `--n` (count) and `--i` (selected index) on every `.p-seg`. |
+| Checkboxes (cards, rows, steps, Focus, task screen) | base rule `--dur-small-out --ease-accelerate`, `.on` rule `--dur-small --ease-decelerate` | Fill and tick pop in (tick scale .4→1 with opacity), leave faster. Cards and list rows fill on the tap, before the write lands; a failed write or the next data puts it back. |
+| Finished task leaving a list | `collapseOut` / `collapseIn` with `{ on }` from `phone/rowMotion.ts` | Height + fade collapse after a `--dur-small` hold (the check's fill is seen first); Undo grows it back. On a wrapper inside the list's keyed `{#each}`; only rows marked by a finish/undo animate, so filters, search and sync still remove rows at once. A group (Agenda) or heading (Today) that empties with it collapses as one. |
+| Disclosure (quick-add help, new project's statuses) | `slide` with `revealIn`/`revealOut` | Opens in place. |
+| Quick-add panel | `fade` with `revealIn` | It replaces the keyboard, so the layout already jumps; a fade hides the swap, travel would fight it. |
+| Press feedback | `:active` — `scale(.98)` on cards and tiles, a `--col-bg` tint on rows and buttons — at `--dur-hover --ease-hover` | Touch has no hover. Every tappable has one. |
+| Progress segments (Home track, Focus bar) | `background` at `--dur-medium --ease-standard` | |
+| Board pills scrolling into view | `scrollIntoView({ behavior })`, `'auto'` under Reduce Motion | Smooth scrolling is motion the tokens cannot reach. |
 
 Home's logo mark sits inside the band (clipped by its diagonal) and enters
 once per Home mount with `markIn` — a 1.1s decelerating drift and quarter-turn,

@@ -11,6 +11,8 @@
   import { agendaDay, monthGrid, endOfWeek } from './agenda/month';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
+  import { axisIn, collapseIn, collapseOut } from '../motion';
+  import { leaves, returns } from './rowMotion';
 
   type Row = TaskDoc & { project_name?: string };
 
@@ -74,11 +76,14 @@
   const WD_SUN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const weekdays = mondayFirst ? WD_MON : WD_SUN;
 
+  // The new month slides in from the side it lies on.
+  let monthDir = 0;
   function shiftMonth(n: number) {
+    monthDir = Math.sign(n);
     offset += n;
     selected = offset === 0 ? today : localDateStr(new Date(grid.anchor.getFullYear(), grid.anchor.getMonth() + n, 1, 12));
   }
-  function thisMonth() { offset = 0; selected = today; }
+  function thisMonth() { monthDir = -Math.sign(offset); offset = 0; selected = today; }
 
   $: agendaDay.set(mode === 'month' ? selected : null);
   onDestroy(() => agendaDay.set(null));
@@ -98,7 +103,7 @@
 
 <TopBar title="Agenda" root />
 
-<div class="p-seg" role="tablist" aria-label="Agenda view">
+<div class="p-seg" role="tablist" aria-label="Agenda view" style="--n:2;--i:{mode === 'list' ? 0 : 1}">
   <button role="tab" aria-selected={mode === 'list'} class:on={mode === 'list'} on:click={() => setMode('list')}>List</button>
   <button role="tab" aria-selected={mode === 'month'} class:on={mode === 'month'} on:click={() => setMode('month')}>Month</button>
 </div>
@@ -111,7 +116,9 @@
     <button class="p-ib" on:click={() => shiftMonth(1)} aria-label="Next month">{@html I.chev}</button>
   </div>
   <div class="month">
-    {#each weekdays as w, i (i)}<span class="wd">{w}</span>{/each}
+    <div class="wds">{#each weekdays as w, i (i)}<span class="wd">{w}</span>{/each}</div>
+    {#key offset}
+    <div class="days" in:axisIn={{ dir: monthDir }}>
     {#each grid.days as d (d.iso)}
       {@const n = byDate[d.iso] ?? []}
       <button
@@ -123,10 +130,12 @@
         <span class="dots">{#each n.slice(0, 3) as t (t._id)}<i class:late={d.iso < today}></i>{/each}</span>
       </button>
     {/each}
+    </div>
+    {/key}
   </div>
   <div class="p-sec">{selected === today ? 'Today' : shortDate(selected)} <span class="p-n">{dayTasks.length}</span></div>
   {#each dayTasks as t (t._id)}
-    <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} />
+    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} /></div>
   {:else}
     <div class="none">
       <p class="p-empty">Nothing due.</p>
@@ -136,11 +145,15 @@
 {:else if loaded && !all.length}
   <p class="p-empty">No tasks with a due date.</p>
 {:else}
+  <!-- Finishing a group's only task takes the whole group with it, heading
+       included, so the group collapses as one. -->
   {#each groups as g (g.label)}
-    <div class="p-sec" class:late={g.late}>{g.label} <span class="p-n">{g.tasks.length}</span></div>
-    {#each g.tasks as t (t._id)}
-      <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} />
-    {/each}
+    <div in:collapseIn={{ on: g.tasks.some(t => returns(t._id)) }} out:collapseOut={{ on: g.tasks.some(t => leaves(t._id)) }}>
+      <div class="p-sec" class:late={g.late}>{g.label} <span class="p-n">{g.tasks.length}</span></div>
+      {#each g.tasks as t (t._id)}
+        <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} /></div>
+      {/each}
+    </div>
   {/each}
 {/if}
 
@@ -148,15 +161,17 @@
   .mhead { display: flex; align-items: center; margin: 0 0 6px 4px; }
   .ml { flex: 1; font-weight: 700; font-size: var(--p-fs-l); }
   .month {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px 6px; margin-bottom: 6px;
+    padding: 8px 6px; margin-bottom: 6px; overflow: hidden;
     background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow);
   }
+  .wds, .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .wds { margin-bottom: 2px; }
   .wd { font-size: var(--p-fs-xs); font-weight: 700; color: var(--faint); text-align: center; padding: 2px 0 4px; }
   .month button {
     height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     border-radius: 10px; border: 0; background: none; padding: 0; cursor: pointer;
     font: inherit; font-size: var(--p-fs-m); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text);
-    transition: background var(--dur-hover) var(--ease-hover);
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .month button:active { background: var(--col-bg); }
   .month button.out { color: var(--faint); opacity: .45; }

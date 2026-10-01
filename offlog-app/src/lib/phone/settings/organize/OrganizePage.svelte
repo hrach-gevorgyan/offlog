@@ -51,7 +51,7 @@
 
 <TopBar title="Organize" />
 
-<div class="p-seg" role="tablist" aria-label="Organize">
+<div class="p-seg" role="tablist" aria-label="Organize" style="--n:3;--i:{['spaces', 'tags', 'fields'].indexOf(tab)}">
   {#each [['spaces', 'Spaces'], ['tags', 'Tags'], ['fields', 'Fields']] as [k, label] (k)}
     <button role="tab" aria-selected={tab === k} class:on={tab === k} on:click={() => (tab = k as TabKey)}>{label}</button>
   {/each}

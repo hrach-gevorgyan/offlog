@@ -58,14 +58,25 @@
   flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: var(--p-fs-s); font-weight: 600;
   padding: 7px 12px; border-radius: 10px; border: 0; cursor: pointer; background: var(--surface); color: var(--muted);
   box-shadow: var(--p-shadow);
+  transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover), box-shadow var(--dur-hover) var(--ease-hover);
 }
 .phone-shell .p-chip.on, .psheet .p-chip.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 .phone-shell .p-chip svg.i, .psheet .p-chip svg.i { width: 16px; height: 16px; }
 
-/* Segmented control. */
-.phone-shell .p-seg, .psheet .p-seg { display: flex; background: var(--col-bg); border-radius: 12px; padding: 3px; gap: 2px; margin: 0 0 14px; }
-.phone-shell .p-seg button, .psheet .p-seg button { flex: 1; padding: 7px 0; border-radius: 9px; font: inherit; font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); background: none; border: 0; cursor: pointer; }
-.phone-shell .p-seg button.on, .psheet .p-seg button.on { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+/* Segmented control. The selected background is one sliding indicator, not
+   a per-button fill: set --n (segment count) and --i (selected index) on the
+   .p-seg element. Its step is its own width plus the 2px gap. */
+.phone-shell .p-seg, .psheet .p-seg { position: relative; isolation: isolate; display: flex; background: var(--col-bg); border-radius: 12px; padding: 3px; gap: 2px; margin: 0 0 14px; }
+.phone-shell .p-seg::before, .psheet .p-seg::before {
+  content: ''; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; border-radius: 9px;
+  width: calc((100% - 6px - (var(--n, 1) - 1) * 2px) / var(--n, 1));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  transform: translateX(calc(var(--i, 0) * (100% + 2px)));
+  transition: transform var(--dur-medium) var(--ease-standard);
+}
+.phone-shell .p-seg button, .psheet .p-seg button { flex: 1; padding: 7px 0; border-radius: 9px; font: inherit; font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); background: none; border: 0; cursor: pointer;
+  transition: color var(--dur-medium) var(--ease-standard), background var(--dur-hover) var(--ease-hover); }
+.phone-shell .p-seg button.on, .psheet .p-seg button.on { color: var(--accent); }
 
 /* Date / status pills. */
 .phone-shell .p-pill, .psheet .p-pill { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }
@@ -73,15 +84,15 @@
 .phone-shell .p-pill.late, .psheet .p-pill.late { background: var(--overdue-bg); color: var(--overdue-ink); }
 
 /* Icon button and text button. */
-.phone-shell .p-ib, .psheet .p-ib { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted); flex-shrink: 0; }
+.phone-shell .p-ib, .psheet .p-ib { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted); flex-shrink: 0; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
 .phone-shell .p-ib:active, .psheet .p-ib:active { background: var(--col-bg); }
 .phone-shell .p-ib.on, .psheet .p-ib.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
-.phone-shell .p-tbtn, .psheet .p-tbtn { font: inherit; color: var(--accent); font-weight: 600; font-size: var(--p-fs-m); padding: 8px 10px; border-radius: 10px; background: none; border: 0; cursor: pointer; }
+.phone-shell .p-tbtn, .psheet .p-tbtn { font: inherit; color: var(--accent); font-weight: 600; font-size: var(--p-fs-m); padding: 8px 10px; border-radius: 10px; background: none; border: 0; cursor: pointer; transition: background var(--dur-hover) var(--ease-hover); }
 .phone-shell .p-tbtn:active, .psheet .p-tbtn:active { background: var(--col-bg); }
 .phone-shell .p-tbtn.danger, .psheet .p-tbtn.danger { color: var(--danger); }
 
 /* Primary full-width button and text field (mostly in sheets). */
-.phone-shell .p-go, .psheet .p-go { width: 100%; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 12px; padding: 13px; font: inherit; font-size: var(--p-fs-l); font-weight: 700; cursor: pointer; }
+.phone-shell .p-go, .psheet .p-go { width: 100%; background: var(--accent); color: var(--on-accent); border: 0; border-radius: 12px; padding: 13px; font: inherit; font-size: var(--p-fs-l); font-weight: 700; cursor: pointer; transition: filter var(--dur-hover) var(--ease-hover), opacity var(--dur-hover) var(--ease-hover); }
 .phone-shell .p-go:disabled, .psheet .p-go:disabled { opacity: .4; cursor: default; }
 .phone-shell .p-go.danger, .psheet .p-go.danger { background: var(--danger); }
 .phone-shell .p-fld, .psheet .p-fld { width: 100%; box-sizing: border-box; border: 0; outline: none; background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: var(--p-fs-l); margin: 0 0 14px; }

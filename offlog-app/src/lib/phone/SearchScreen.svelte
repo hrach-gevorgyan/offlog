@@ -7,6 +7,8 @@
   import { soften } from '../tagColors';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
+  import { collapseIn, collapseOut } from '../motion';
+  import { leaves, returns } from './rowMotion';
 
   const m = memo({ q: '', limit: 40 });
   let q = m.q, limit = m.limit;
@@ -57,8 +59,10 @@
   {#if results.length}
     <div class="p-sec">Tasks</div>
     {#each results.slice(0, limit) as t (t._id)}
-      {#if WHERE[t.matchedIn]}<div class="why">Matched in {WHERE[t.matchedIn]}</div>{/if}
-      <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={() => run(q)} />
+      <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}>
+        {#if WHERE[t.matchedIn]}<div class="why">Matched in {WHERE[t.matchedIn]}</div>{/if}
+        <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={() => run(q)} />
+      </div>
     {/each}
     {#if results.length > limit}<button class="p-tbtn more" on:click={() => (limit += 40)}>Show {Math.min(40, results.length - limit)} more</button>{/if}
   {:else if !matchedProjects.length}

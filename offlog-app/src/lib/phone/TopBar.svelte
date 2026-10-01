@@ -26,6 +26,7 @@
   .ib, .acts :global(.ib) {
     width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted);
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .back { margin-left: -10px; color: var(--text); }
   .back :global(svg) { width: 24px; height: 24px; }
