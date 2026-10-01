@@ -65,7 +65,7 @@
   // The top bar sits over the hero in the hero's colour, then turns into the
   // regular page-coloured bar across the last 40px before the hero's lowest
   // point passes under it. --t follows the finger; nothing here is timed.
-  let heroH = 0, t = 0, markY = 0, raf = 0;
+  let heroH = 0, t = 0, fill = 0, markY = 0, raf = 0;
   // Mounted after Home, so its entrance plays even on the app's first frame
   // (an intro does not run on the initial render).
   let markShown = false;
@@ -78,6 +78,10 @@
       const end = heroH - 64, span = 40;
       const lin = Math.min(1, Math.max(0, (y - (end - span)) / span));
       t = lin * lin * (3 - 2 * lin); // smoothstep: the muddy middle of the mix passes quickly
+      // At rest the bar is see-through (the band behind it is the same colour),
+      // so the logo mark is never sliced by it; it fills in over the first
+      // 24px of scroll, before anything but the band can pass under it.
+      fill = Math.min(1, y / 24);
       // Inside the band the mark scrolls with it; easing it back down a third
       // of the way makes it move slower than the page (depth).
       markY = prefersReducedMotion() ? 0 : y * .35;
@@ -87,7 +91,7 @@
 </script>
 
 <div class="home">
-  <div class="appbar" style="--t:{t}">
+  <div class="appbar" style="--t:{t};--fill:{fill}">
     <span class="bt">
       <b><span class="on-hero">Offlog</span><span class="on-page" aria-hidden="true">Offlog</span></b>
       <small>{firstRun ? 'No tasks yet' : total ? `${left} left · ${doneToday} of ${total} done` : 'Nothing due today'}</small>
@@ -181,7 +185,7 @@
   .appbar {
     position: absolute; top: 0; left: 0; right: 0; z-index: 6; height: 64px;
     display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px;
-    background: color-mix(in srgb, var(--bg) calc(var(--t) * 100%), var(--hero));
+    background: color-mix(in srgb, var(--bg) calc(var(--t) * 100%), color-mix(in srgb, var(--hero) calc(var(--fill) * 100%), transparent));
     color: color-mix(in srgb, var(--text) calc(var(--t) * 100%), var(--on-hero));
     box-shadow: 0 1px 0 color-mix(in srgb, var(--border) calc(var(--t) * 100%), transparent);
   }
@@ -197,7 +201,9 @@
   .ibtn:active { background: color-mix(in srgb, currentColor 12%, transparent); }
 
   /* Inside the band, so its diagonal clips it; starts below the top bar. */
-  .markwrap { position: absolute; right: -72px; top: 64px; width: 280px; height: 280px; pointer-events: none; }
+  /* Up under the (see-through) top bar and off to the right, clear of the
+     count and the progress dashes. */
+  .markwrap { position: absolute; right: -92px; top: -36px; width: 252px; height: 252px; pointer-events: none; }
   .mark { width: 100%; height: 100%; color: var(--on-hero); fill: currentColor; opacity: .1; }
 
   .hero {
@@ -217,7 +223,7 @@
   .meta { font-size: var(--p-fs-m); opacity: .9; margin: 10px 0 12px; }
   .none { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 4px; }
   .meta .l { font-weight: 700; }
-  .track { display: flex; gap: 5px; max-width: 260px; }
+  .track { display: flex; gap: 5px; max-width: 190px; }
   .track i { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--on-hero) 24%, transparent); transition: background var(--dur-medium) var(--ease-standard); }
   .track i.on { background: var(--on-hero); }
 
