@@ -22,7 +22,8 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 
 import Home from '../src/lib/phone/Home.svelte';
 import { stack, switchTab, actions } from '../src/lib/phone/nav';
-import { showError } from '../src/lib/store';
+import { showError, spaces, projects } from '../src/lib/store';
+import type { Writable } from 'svelte/store';
 
 const data = {
   byProject: { 'project:q': { total: 9, open: 6, pinned: 2, overdue: 3, lastColId: 'col:done' } },
@@ -67,5 +68,35 @@ describe('phone Home', () => {
     getDashboardData.mockRejectedValue(new Error('boom'));
     render(Home);
     await waitFor(() => expect(showError).toHaveBeenCalled());
+  });
+
+  it('an empty day: plain words instead of zeros, no empty bar, quiet focus count, no 0 badges', async () => {
+    getDashboardData.mockResolvedValue({ ...data, todayOpenCount: 0, todayDoneCount: 0, completedLast7Days: 0,
+      byProject: { 'project:q': { total: 0, open: 0, pinned: 0, overdue: 0, lastColId: 'col:done' } } });
+    const { getByText, queryByText, getByLabelText, container } = render(Home);
+    await waitFor(() => expect(getByLabelText('Open Today: nothing due')).toBeTruthy());
+    expect(container.querySelector('.hero')?.textContent).toContain('Nothing due today');
+    expect(container.querySelector('.count')).toBeNull();
+    expect(container.querySelector('.track')).toBeNull();
+    expect(getByText('0/3')).toBeTruthy();
+    expect(queryByText('Pick')).toBeNull();
+    expect(container.querySelector('.p-group .p-n')).toBeNull(); // no "0" badge
+  });
+
+  it('Unsorted is listed last; an empty space offers New project, a full one a + by its name', async () => {
+    const sp = spaces as unknown as Writable<unknown[]>, pr = projects as unknown as Writable<unknown[]>;
+    const keepS = get(sp), keepP = get(pr);
+    sp.set([
+      { _id: 'space:unsorted', name: 'Unsorted', color: '#6b7280', position: 0 },
+      { _id: 'space:w', name: 'Work', color: '#3b82f6', position: 1 },
+      { _id: 'space:p', name: 'Personal', color: '#10b981', position: 2 },
+    ]);
+    pr.set([{ _id: 'project:q', space_id: 'space:w', name: 'Q4 Sprint', position: 0, columns: [] }]);
+    const { container, getAllByText, getByLabelText } = render(Home);
+    const names = [...container.querySelectorAll('.p-sec > span:first-child')].map(e => e.textContent);
+    expect(names).toEqual(['Work', 'Personal', 'Unsorted']);
+    expect(getAllByText('New project')).toHaveLength(2); // Personal and Unsorted are empty
+    expect(getByLabelText('New project in Work')).toBeTruthy();
+    sp.set(keepS); pr.set(keepP);
   });
 });

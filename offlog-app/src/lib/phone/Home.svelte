@@ -48,7 +48,10 @@
   // One dash per task due today, capped so a heavy day still fits one line.
   $: dashN = Math.max(1, Math.min(total, 12));
   $: dashOn = Math.round(doneToday * dashN / Math.max(total, 1));
-  $: sortedSpaces = [...$spaces].sort((a, b) => a.position - b.position);
+  // Unsorted is the catch-all, so it sits last on Home whatever its stored
+  // position (the stored order is left alone).
+  const UNSORTED = 'space:unsorted';
+  $: sortedSpaces = [...$spaces].sort((a, b) => Number(a._id === UNSORTED) - Number(b._id === UNSORTED) || a.position - b.position);
   let todayStr = localDateStr(new Date());
 
   // The top bar sits over the hero in the hero's colour, then turns into the
@@ -73,7 +76,7 @@
   <div class="appbar" style="--t:{t}">
     <span class="bt">
       <b><span class="on-hero">Offlog</span><span class="on-page" aria-hidden="true">Offlog</span></b>
-      <small>{left} left · {doneToday} of {total} done</small>
+      <small>{total ? `${left} left · ${doneToday} of ${total} done` : 'Nothing due today'}</small>
     </span>
     <button class="ibtn" on:click={() => actions.openSettings()} aria-label="Settings">{@html I.gear}</button>
   </div>
@@ -83,11 +86,16 @@
 
   <div class="scr" on:scroll={onScroll}>
     <div class="hero" bind:clientHeight={heroH}>
-      <button class="hbody" on:click={() => push({ k: 'today' })} aria-label="Open Today: {left} left, {doneToday} of {total} done{late ? `, ${late} late` : ''}">
+      <button class="hbody" on:click={() => push({ k: 'today' })} aria-label={total ? `Open Today: ${left} left, ${doneToday} of ${total} done${late ? `, ${late} late` : ''}` : `Open Today: nothing due${late ? `, ${late} late` : ''}`}>
         <span class="hi">{greeting()} <span>· {shortDate(todayStr)}</span></span>
-        <span class="count"><b>{left}</b><span>left today</span></span>
-        <span class="meta">{doneToday} of {total} done{#if late}{' · '}<span class="l">{late} late</span>{/if}</span>
-        <span class="track">{#each Array(dashN) as _, i}<i class:on={i < dashOn}></i>{/each}</span>
+        {#if total}
+          <span class="count"><b>{left}</b><span>left today</span></span>
+          <span class="meta">{doneToday} of {total} done{#if late}{' · '}<span class="l">{late} late</span>{/if}</span>
+          <span class="track">{#each Array(dashN) as _, i}<i class:on={i < dashOn}></i>{/each}</span>
+        {:else}
+          <span class="none">Nothing due today</span>
+          {#if late}<span class="meta"><span class="l">{late} late</span></span>{/if}
+        {/if}
       </button>
     </div>
 
@@ -96,7 +104,7 @@
         <span class="top"><span class="ic">{@html I.late}</span><b class:late={late > 0}>{late}</b></span><span class="lbl">Late</span>
       </button>
       <button class="tile" on:click={() => push({ k: 'focus' })}>
-        <span class="top"><span class="ic">{@html I.focus}</span><b>{focus.total ? `${focus.done}/${focus.total}` : 'Pick'}</b></span><span class="lbl">Focus</span>
+        <span class="top"><span class="ic">{@html I.focus}</span><b class:quiet={!focus.total}>{focus.done}/{focus.total || 3}</b></span><span class="lbl">Focus</span>
       </button>
       <button class="tile" on:click={() => push({ k: 'pinned' })}>
         <span class="top"><span class="ic">{@html I.pin}</span><b>{pinned}</b></span><span class="lbl">Pinned</span>
@@ -105,7 +113,10 @@
 
     {#each sortedSpaces as s (s._id)}
       {@const ps = $projects.filter(p => p.space_id === s._id).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || a.position - b.position)}
-      <div class="p-sec">{s.name}</div>
+      <div class="p-sec sec">
+        <span>{s.name}</span>
+        {#if ps.length}<button class="secadd" on:click={() => newProject(s._id)} aria-label="New project in {s.name}">{@html I.plus}</button>{/if}
+      </div>
       <div class="p-group">
         {#each ps as p (p._id)}
           {@const st = data?.byProject[p._id]}
@@ -114,7 +125,7 @@
             <span class="lbl">{p.name}</span>
             {#if p.pinned}<span class="pin" aria-label="Pinned">{@html I.pin}</span>{/if}
             {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
-            {#if st}<span class="p-n">{st.open}</span>{/if}
+            {#if st?.open}<span class="p-n">{st.open}</span>{/if}
           </button>
         {/each}
         {#if !ps.length}
@@ -124,13 +135,6 @@
         {/if}
       </div>
     {/each}
-    {#if sortedSpaces.length}
-      <div class="p-group">
-        <button class="p-row acc add" on:click={() => newProject(sortedSpaces[0]._id)}>
-          <span class="plus">{@html I.plus}</span><span class="lbl">New project</span>
-        </button>
-      </div>
-    {/if}
     {#if data?.completedLast7Days}
       <p class="stat">{data.completedLast7Days} finished this past week{data.busiestProjectName ? ` · busiest: ${data.busiestProjectName}` : ''}</p>
     {/if}
@@ -184,6 +188,7 @@
   .count b { font-size: 56px; font-weight: 800; letter-spacing: -.04em; line-height: .9; }
   .count span { font-size: var(--p-fs-xl); font-weight: 600; }
   .meta { font-size: var(--p-fs-m); opacity: .9; margin: 10px 0 12px; }
+  .none { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 4px; }
   .meta .l { font-weight: 700; }
   .track { display: flex; gap: 5px; max-width: 260px; }
   .track i { flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--on-hero) 24%, transparent); transition: background var(--dur-medium) var(--ease-standard); }
@@ -196,8 +201,13 @@
   .ic { display: flex; color: var(--faint); }
   .tile b { font-size: 20px; font-weight: 700; }
   .tile b.late { color: var(--overdue-ink); }
+  .tile b.quiet { color: var(--faint); }
   .tile .lbl { font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); }
 
+  .sec { justify-content: space-between; min-height: 32px; margin-bottom: 4px; }
+  .secadd { width: 44px; height: 44px; margin: -6px -10px -6px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--accent); }
+  .secadd:active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .secadd :global(svg) { width: 20px; height: 20px; }
   .p-row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .p-row.add { font-size: var(--p-fs-m); min-height: 48px; }
   .plus { display: flex; width: 8px; justify-content: center; }
