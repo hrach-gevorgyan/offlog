@@ -301,3 +301,11 @@ export function markIn(_node: Element) {
     css: (t: number) => { const u = 1 - t; return `opacity: ${t}; transform: translate(${u * -36}px, ${u * 44}px) rotate(${u * -16}deg) scale(${0.84 + 0.16 * t})`; },
   };
 }
+
+// The soft keyboard: Android resizes the window in one step (adjustResize)
+// while the keyboard itself slides for about 250ms. Things anchored to the
+// bottom follow it instead of jumping: the navigation bar and + button rise
+// back in as it goes down, and bottom sheets glide (a CSS transition on
+// --dur-large / --ease-standard, see phone/Sheet.svelte).
+export const keyboardBarIn = { y: 48, get duration() { return d(DUR.large); }, easing: easeDecelerate };
+export const keyboardFabIn = { start: 0.6, get duration() { return d(DUR.medium); }, easing: easeDecelerate };

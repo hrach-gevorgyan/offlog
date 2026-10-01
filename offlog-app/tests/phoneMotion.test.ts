@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { sheetIn, sheetOut, collapseIn, collapseOut, axisIn, screenIn, screenOut } from '../src/lib/motion';
 import { markLeaving, markReturning, leaves, returns } from '../src/lib/phone/rowMotion';
 import Sheet from '../src/lib/phone/Sheet.svelte';
@@ -90,5 +91,33 @@ describe('phone Sheet drag', () => {
     // put underneath, so the exit has no jump back to the top.
     await waitFor(() => expect(sheet().inert).toBe(true));
     expect(sheet().style.transform).toBe('translateY(200px)');
+  });
+});
+
+describe('phone Sheet and the soft keyboard', () => {
+  const sheet = () => document.querySelector('.psheet') as HTMLElement;
+  const resizeTo = (h: number) => { Object.defineProperty(window, 'innerHeight', { value: h, configurable: true }); window.dispatchEvent(new Event('resize')); };
+
+  it('keyboard up: snaps back to where it was, then glides to its new place', async () => {
+    resizeTo(800);
+    render(Sheet, { props: { title: 'New task' } });
+    resizeTo(500); // the window shrinks by the keyboard's height in one step
+    await tick();
+    expect(sheet().classList.contains('kbjump')).toBe(true);
+    expect(sheet().style.transform).toBe('translateY(300px)');
+    await waitFor(() => expect(sheet().style.transform).toBe(''));
+    expect(sheet().classList.contains('kbjump')).toBe(false);
+  });
+
+  it('keyboard down: starts from above and glides down; small resizes are ignored', async () => {
+    resizeTo(500);
+    render(Sheet, { props: { title: 'New task' } });
+    resizeTo(800);
+    await tick();
+    expect(sheet().style.transform).toBe('translateY(-300px)');
+    await waitFor(() => expect(sheet().style.transform).toBe(''));
+    resizeTo(760); // browser chrome, not a keyboard
+    await tick();
+    expect(sheet().style.transform).toBe('');
   });
 });

@@ -3,8 +3,8 @@
   import { get } from 'svelte/store';
   import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext, takeQueuedAdd } from './nav';
   import type { Tab } from './nav';
-  import { screenIn, screenOut, pillIn, snackIn, snackOut, snackSwapIn, snackSwapOut } from '../motion';
-  import { fly } from 'svelte/transition';
+  import { keyboardBarIn, keyboardFabIn, screenIn, screenOut, pillIn, snackIn, snackOut, snackSwapIn, snackSwapOut } from '../motion';
+  import { fly, scale } from 'svelte/transition';
   import { I } from './icons';
   import './phone.css';
   import { modalOpen } from '../store';
@@ -111,7 +111,7 @@
     {/key}
   </div>
 
-  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" class:lift={!!$toast} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !kb && !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" in:scale={keyboardFabIn} class:lift={!!$toast} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}
@@ -132,7 +132,10 @@
        already filled is often not announced. -->
   <div class="sr" role="status" aria-live="polite">{$toast?.text ?? ''}</div>
 
-  <nav class="tabbar" aria-label="Main">
+  <!-- Out of the layout while the keyboard is up (it covers this space);
+       rises back in as the keyboard goes down. -->
+  {#if !kb}
+  <nav class="tabbar" aria-label="Main" in:fly={keyboardBarIn}>
     {#each TABS as t}
       <button class="tb" class:on={$tab === t} aria-current={$tab === t ? 'page' : undefined} on:click={() => switchTab(t)}>
         <span class="pill">
@@ -145,6 +148,7 @@
       </button>
     {/each}
   </nav>
+  {/if}
 </div>
 
 <style>
@@ -171,7 +175,6 @@
   .fab:active { scale: .95; }
   /* Rises above the snackbar instead of hiding under it. */
   .fab.lift { translate: 0 -64px; transition: translate var(--dur-medium) var(--ease-decelerate), scale var(--dur-hover) var(--ease-hover); }
-  .kb .fab, .kb .tabbar { display: none; }
 
   .snack {
     position: absolute; left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 20;

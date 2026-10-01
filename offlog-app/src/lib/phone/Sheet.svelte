@@ -15,6 +15,7 @@
   import { confirmRequest } from '../confirm';
   import { trapFocus } from '../focusTrap';
   import { modalOpen } from '../store';
+  import { prefersReducedMotion } from '../theme';
   import './phone.css';
 
   export let title = '';
@@ -48,6 +49,26 @@
     requestClose();
   }
 
+  // The keyboard resizes the window in one step while the keyboard itself
+  // slides, so a bottom-anchored sheet would jump. Put it back where it was
+  // (no transition), then let it glide to its new place in step with the
+  // keyboard.
+  let kbOff = 0, kbJump = false;
+  onMount(() => {
+    const vv = window.visualViewport;
+    let lastH = vv?.height ?? window.innerHeight;
+    const onResize = () => {
+      const h = vv?.height ?? window.innerHeight, d = lastH - h;
+      lastH = h;
+      if (Math.abs(d) < 80 || dragging || prefersReducedMotion()) return;
+      kbJump = true;
+      kbOff = d;
+      requestAnimationFrame(() => requestAnimationFrame(() => { kbJump = false; kbOff = 0; }));
+    };
+    (vv ?? window).addEventListener('resize', onResize);
+    return () => (vv ?? window).removeEventListener('resize', onResize);
+  });
+
   let prevModal = false, opener: HTMLElement | null = null;
   onMount(() => {
     opener = document.activeElement as HTMLElement | null;
@@ -63,8 +84,8 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="psheet-scrim" on:click={requestClose} in:fade={scrimIn} out:fade={scrimOut}></div>
   <div
-    class="psheet" class:dragging role="dialog" aria-modal="true" aria-label={label} tabindex="-1" bind:this={panel}
-    style:transform={dragY ? `translateY(${dragY}px)` : null}
+    class="psheet" class:dragging class:kbjump={kbJump} role="dialog" aria-modal="true" aria-label={label} tabindex="-1" bind:this={panel}
+    style:transform={dragY || kbOff ? `translateY(${dragY + kbOff}px)` : null}
     use:trapFocus
     in:sheetIn
     out:sheetOut={{ from: dragY }}
@@ -89,7 +110,7 @@
     padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
     transition: transform var(--dur-medium) var(--ease-standard);
   }
-  .psheet.dragging { transition: none; }
+  .psheet.dragging, .psheet.kbjump { transition: none; }
   /* The handle and title stay put while a tall sheet scrolls. */
   .grab-zone { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 10px 0 12px; touch-action: none; cursor: grab; }
   .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); margin: 0 auto; }
