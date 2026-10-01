@@ -5,7 +5,7 @@
   import { projects, showError } from '../store';
   import { PRIORITY_LABEL } from '../constants';
   import { today, loadFocusLock, saveFocusLock, type FocusLock } from '../focusLock';
-  import { actions } from './nav';
+  import { actions, showToast } from './nav';
   import { rankPicker, type Reason } from './focus/rank';
   import { I } from './icons';
   import TopBar from './TopBar.svelte';
@@ -25,6 +25,15 @@
   let showAll = false;
   let loaded = false;
 
+  // One tie-break per task for the life of the screen, so the suggestions
+  // hold still while the user is picking from them.
+  const seeds = new Map<string, number>();
+  const seed = (t: TaskDoc) => {
+    let r = seeds.get(t._id ?? '');
+    if (r === undefined) { r = Math.random(); seeds.set(t._id ?? '', r); }
+    return r;
+  };
+
   async function refresh() {
     try {
       lock = loadFocusLock();
@@ -34,7 +43,7 @@
       } else locked = [];
       if (locked.length < MAX) {
         const ids = new Set(locked.map(t => t._id));
-        const r = rankPicker((await getOpenTasksForFocusPicker()).filter(t => !ids.has(t._id)), today(), MAX - locked.length);
+        const r = rankPicker((await getOpenTasksForFocusPicker()).filter(t => !ids.has(t._id)), today(), MAX - locked.length, seed);
         suggested = r.suggested;
         rest = r.rest;
         selected = selected.filter(id => [...suggested.map(s => s.task), ...rest].some(t => t._id === id));
@@ -56,8 +65,11 @@
   $: room = MAX - (active ? locked.length : 0);
 
   function save(ids: string[]) {
+    return write(ids.length ? { date: today(), taskIds: ids } : null);
+  }
+  function write(l: FocusLock | null) {
     try {
-      saveFocusLock(ids.length ? { date: today(), taskIds: ids } : null);
+      saveFocusLock(l);
     } catch {
       showError('Could not save your focus. Please try again.');
       return false;
@@ -79,14 +91,23 @@
     await refresh();
   }
 
-  async function drop(id: string) {
-    if (!save(locked.map(t => t._id!).filter(x => x !== id))) return;
+  // Dropping and resetting act at once; Undo puts the previous lock back.
+  function undoTo(prev: FocusLock | null) {
+    return async () => { if (write(prev)) await refresh(); };
+  }
+
+  async function drop(t: TaskDoc) {
+    const prev = lock;
+    if (!save(locked.map(x => x._id!).filter(x => x !== t._id))) return;
+    showToast('Removed from focus', undoTo(prev));
     await refresh();
   }
 
   async function reset() {
+    const prev = lock;
     if (!save([])) return;
     selected = [];
+    showToast('Focus reset', undoTo(prev));
     await refresh();
   }
 
@@ -111,7 +132,7 @@
     };
   });
 
-  $: sub = active ? `${doneN} of ${locked.length} done · the rest can wait` : 'Pick up to three things for today';
+  $: sub = active ? `${doneN} of ${locked.length} done` : 'Pick up to three for today';
 </script>
 
 <TopBar title="Focus" {sub}>
@@ -120,11 +141,11 @@
 
 {#if active}
   <div class="bar" aria-hidden="true">{#each locked as t (t._id)}<i class:on={isDone(t)}></i>{/each}</div>
-  {#if allDone}<p class="p-say">All {locked.length} done. Nicely done. Come back tomorrow, or reset to pick more.</p>{/if}
+  {#if allDone}<p class="p-say">All done for today.</p>{/if}
   {#each locked as t (t._id)}
     <div class="lk">
       <div class="c"><TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={refresh} /></div>
-      <button class="p-ib" on:click={() => drop(t._id ?? '')} aria-label="Remove from focus: {t.title}">{@html I.x}</button>
+      <button class="p-ib" on:click={() => drop(t)} aria-label="Remove from focus: {t.title}">{@html I.x}</button>
     </div>
   {/each}
 {/if}

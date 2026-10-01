@@ -5,11 +5,12 @@ import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 const getOpenTasksForFocusPicker = vi.fn();
 const getTaskById = vi.fn();
 const updateTask = vi.fn();
+let feed: (() => void) | null = null;
 vi.mock('../src/lib/db', () => ({
   getOpenTasksForFocusPicker: (...a: unknown[]) => getOpenTasksForFocusPicker(...a),
   getTaskById: (...a: unknown[]) => getTaskById(...a),
   updateTask: (...a: unknown[]) => updateTask(...a),
-  subscribe: () => () => {},
+  subscribe: (cb: () => void) => { feed = cb; return () => { feed = null; }; },
 }));
 vi.mock('../src/lib/store', async () => {
   const { writable: w } = await import('svelte/store');
@@ -20,7 +21,8 @@ import FocusScreen from '../src/lib/phone/FocusScreen.svelte';
 import { rankPicker } from '../src/lib/phone/focus/rank';
 import { projects, showError } from '../src/lib/store';
 import { localDateStr } from '../src/lib/utils';
-import type { Writable } from 'svelte/store';
+import { get, type Writable } from 'svelte/store';
+import { toast } from '../src/lib/phone/nav';
 
 const KEY = 'offlog_focus_lock';
 const TODAY = localDateStr(new Date());
@@ -45,6 +47,7 @@ const lockIds = () => JSON.parse(localStorage.getItem(KEY) ?? 'null')?.taskIds ?
 describe('phone Focus', () => {
   beforeEach(() => {
     localStorage.clear();
+    toast.set(null);
     (projects as Writable<ProjectDoc[]>).set([project]);
     getOpenTasksForFocusPicker.mockReset().mockResolvedValue(pool);
     getTaskById.mockReset().mockImplementation(async (id: string) => byId[id] ?? null);
@@ -68,7 +71,7 @@ describe('phone Focus', () => {
     expect(getByText('1 to pick')).toBeTruthy();
     await fireEvent.click(getByText("Let's focus on 2 tasks"));
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ date: TODAY, taskIds: ['task:Taxes', 'task:Dentist'] });
-    await findByText('0 of 2 done · the rest can wait');
+    await findByText('0 of 2 done');
     expect(getAllByText('Reset')).toHaveLength(1);
     expect(container.querySelectorAll('.bar i')).toHaveLength(2);
   });
@@ -86,7 +89,7 @@ describe('phone Focus', () => {
   it('a lock with room left can take more, appended', async () => {
     localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report'] }));
     const { findByText, getByText } = render(FocusScreen);
-    await findByText('0 of 1 done · the rest can wait');
+    await findByText('0 of 1 done');
     expect(getByText('2 to pick')).toBeTruthy();
     await fireEvent.click(getByText('Plants'));
     await fireEvent.click(getByText('Add 1 to focus'));
@@ -100,22 +103,58 @@ describe('phone Focus', () => {
     await waitFor(() => expect(lockIds()).toEqual(['task:Socks']));
     await fireEvent.click(getByLabelText('Remove from focus: Socks'));
     await waitFor(() => expect(localStorage.getItem(KEY)).toBeNull());
-    await findByText('Pick up to three things for today');
+    await findByText('Pick up to three for today');
+    expect(get(toast)?.text).toBe('Removed from focus');
+    await get(toast)!.undo!();
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ date: TODAY, taskIds: ['task:Socks'] });
+    expect(await findByLabelText('Remove from focus: Socks')).toBeTruthy();
   });
 
-  it('Reset clears the lock', async () => {
-    localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report'] }));
+  it('Reset clears the lock at once; Undo restores it', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report', 'task:Socks'] }));
     const { findByText } = render(FocusScreen);
     await fireEvent.click(await findByText('Reset'));
     expect(localStorage.getItem(KEY)).toBeNull();
-    await findByText('Pick up to three things for today');
+    await findByText('Pick up to three for today');
+    expect(get(toast)?.text).toBe('Focus reset');
+    await get(toast)!.undo!();
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ date: TODAY, taskIds: ['task:Report', 'task:Socks'] });
+    await findByText('0 of 2 done');
+  });
+
+  it('a failed Undo surfaces an error', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report'] }));
+    const { findByText } = render(FocusScreen);
+    await fireEvent.click(await findByText('Reset'));
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('full'); });
+    await get(toast)!.undo!();
+    spy.mockRestore();
+    expect(showError).toHaveBeenCalledWith('Could not save your focus. Please try again.');
+  });
+
+  it('suggestions keep their order across refreshes while picking', async () => {
+    const ties = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map(n => task('task:' + n));
+    getOpenTasksForFocusPicker.mockResolvedValue(ties);
+    let i = 0;
+    const seq = [0.9, 0.1, 0.5, 0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.05, 0.95, 0.15, 0.85, 0.25, 0.75, 0.35];
+    const rnd = vi.spyOn(Math, 'random').mockImplementation(() => seq[i++ % seq.length]);
+    const { findAllByRole, container } = render(FocusScreen);
+    await findAllByRole('button');
+    await waitFor(() => expect(container.querySelectorAll('.lrow')).toHaveLength(3));
+    const order = () => [...container.querySelectorAll('.lrow .t')].map(x => x.firstChild!.textContent);
+    const before = order();
+    for (let n = 0; n < 3; n++) { feed!(); await new Promise(r => setTimeout(r, 0)); }
+    await waitFor(() => expect(getOpenTasksForFocusPicker).toHaveBeenCalledTimes(4));
+    await new Promise(r => setTimeout(r, 0));
+    rnd.mockRestore();
+    expect(order()).toEqual(before);
   });
 
   it('a lock whose tasks were all deleted or archived counts as no lock', async () => {
     getTaskById.mockImplementation(async (id: string) => (id === 'task:Gone' ? { ...task('task:Gone'), deleted: true } : id === 'task:Arch' ? { ...task('task:Arch'), archived: true } : null));
     localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Gone', 'task:Arch', 'task:Missing'] }));
     const { findByText, queryByText } = render(FocusScreen);
-    await findByText('Pick up to three things for today');
+    await findByText('Pick up to three for today');
     expect(queryByText(/of 0 done/)).toBeNull();
     expect(queryByText('Reset')).toBeNull();
     expect(await findByText('3 to pick')).toBeTruthy();
@@ -125,8 +164,8 @@ describe('phone Focus', () => {
     getTaskById.mockImplementation(async (id: string) => ({ ...byId[id], column_id: 'col:done' }));
     localStorage.setItem(KEY, JSON.stringify({ date: TODAY, taskIds: ['task:Report', 'task:Socks', 'task:Dentist'] }));
     const { findByText, queryByText, getByLabelText } = render(FocusScreen);
-    await findByText('3 of 3 done · the rest can wait');
-    expect(queryByText(/All 3 done/)).toBeTruthy();
+    await findByText('3 of 3 done');
+    expect(queryByText('All done for today.')).toBeTruthy();
     expect(queryByText(/d to pick/)).toBeNull();
     updateTask.mockReset().mockResolvedValue(undefined);
     await fireEvent.click(getByLabelText('Mark not done: Report'));
@@ -136,7 +175,7 @@ describe('phone Focus', () => {
   it('a stale lock from another day is ignored', async () => {
     localStorage.setItem(KEY, JSON.stringify({ date: '2000-01-01', taskIds: ['task:Report'] }));
     const { findByText } = render(FocusScreen);
-    await findByText('Pick up to three things for today');
+    await findByText('Pick up to three for today');
   });
 
   it('failures surface errors', async () => {

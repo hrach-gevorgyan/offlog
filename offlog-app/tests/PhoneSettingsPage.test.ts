@@ -12,6 +12,9 @@ const m = vi.hoisted(() => ({
 const setSyncUrl = vi.fn((u: string) => { m.storedUrl = u; });
 const setSyncCredentials = vi.fn();
 const setThemeMode = vi.fn();
+const setHighContrast = vi.fn();
+const setAppLockPin = vi.fn();
+const syncNow = vi.fn();
 vi.mock('../src/config', async () => {
   const { writable: w } = await import('svelte/store');
   return {
@@ -28,7 +31,7 @@ vi.mock('../src/config', async () => {
     getNotificationsEnabled: () => true, setNotificationsEnabled: vi.fn(),
     getAutoUpdateCheckEnabled: () => true, setAutoUpdateCheckEnabled: vi.fn(),
     isTauri: () => false, invokeTauri: vi.fn(),
-    isAppLockEnabled: () => false, setAppLockPin: vi.fn(), clearAppLockPin: vi.fn(),
+    isAppLockEnabled: () => false, setAppLockPin: (...a: unknown[]) => setAppLockPin(...a), clearAppLockPin: vi.fn(),
     getAppLockTimeoutMinutes: () => 5, setAppLockTimeoutMinutes: vi.fn(),
     getAppLockHint: () => '', isNativePlatform: () => false,
     isAppLockBiometricEnabled: () => false, setAppLockBiometricEnabled: vi.fn(),
@@ -44,7 +47,7 @@ const resolveConflict = vi.fn();
 vi.mock('../src/lib/db', () => ({
   default: { allDocs: vi.fn().mockResolvedValue({ rows: [] }) },
   syncState: m.syncState,
-  syncNow: vi.fn(), startSync: vi.fn().mockResolvedValue(undefined), cancelSync: vi.fn(),
+  syncNow: (...a: unknown[]) => syncNow(...a), startSync: vi.fn().mockResolvedValue(undefined), cancelSync: vi.fn(),
   importJSON: vi.fn(), analyzeImport: vi.fn(),
   exportProjectDocs: vi.fn(), exportTasksCSV: vi.fn(),
   getConflicts: (...a: unknown[]) => getConflicts(...a),
@@ -61,7 +64,7 @@ vi.mock('../src/lib/store', async () => {
 });
 vi.mock('../src/lib/discovery', async () => {
   const { writable: w } = await import('svelte/store');
-  return { discoveredHosts: w([]), isScanning: w(false), scanForHosts: vi.fn(), stopScan: vi.fn(), pairWithHost: vi.fn() };
+  return { discoveredHosts: w([]), isScanning: w(false), scanForHosts: vi.fn(), stopScan: vi.fn(), pairWithHost: vi.fn(), staleHostAlert: w(null) };
 });
 vi.mock('../src/lib/notifications', async () => {
   const { writable: w } = await import('svelte/store');
@@ -80,7 +83,7 @@ vi.mock('../src/lib/autoBackup', () => ({
 }));
 vi.mock('../src/lib/theme', () => ({
   getThemeMode: () => 'system', setThemeMode: (...a: unknown[]) => setThemeMode(...a),
-  getHighContrast: () => false, setHighContrast: vi.fn(),
+  getHighContrast: () => false, setHighContrast: (...a: unknown[]) => setHighContrast(...a),
   getReduceMotion: () => false, setReduceMotion: vi.fn(),
   prefersReducedMotion: () => true,
 }));
@@ -90,11 +93,22 @@ vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confi
 import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
 import { showError } from '../src/lib/store';
 import * as nav from '../src/lib/phone/nav';
+import { staleHostAlert } from '../src/lib/discovery';
+import { get, type Writable } from 'svelte/store';
+
+const settle = (ms = 30) => new Promise(r => setTimeout(r, ms));
 
 const reload = vi.fn();
 
-beforeEach(() => {
+beforeEach(async () => {
+  // A previous test's history.back() lands as an async popstate.
+  await settle();
+  nav.switchTab('home');
+  await settle();
   vi.clearAllMocks();
+  nav.toast.set(null);
+  syncNow.mockResolvedValue(undefined);
+  (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set(null);
   m.storedUrl = 'http://old.local:5984/offlog';
   m.storedCreds = { user: 'olduser', pass: 'oldpass' };
   m.syncState.conflictCount = 0;
@@ -120,9 +134,67 @@ describe('phone settings pages', () => {
     expect(getByText('Set a PIN')).toBeTruthy();
   });
 
-  it('Organize offers spaces, tags, custom fields and archived projects', () => {
+  it('Organize offers spaces, tags, custom fields and archived projects; archived opens the phone page', async () => {
     const { getByText } = render(SettingsPage, { page: 'organize' });
     for (const t of ['Spaces', 'Tags', 'Custom Fields', 'Archived Projects']) expect(getByText(t)).toBeTruthy();
+    await fireEvent.click(getByText('Archived Projects'));
+    expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'archived' });
+  });
+
+  it('a toggle row switches from anywhere on the row, once per tap', async () => {
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'appearance' });
+    await fireEvent.click(getByText('High contrast'));
+    expect(setHighContrast).toHaveBeenCalledTimes(1);
+    expect(setHighContrast).toHaveBeenLastCalledWith(true);
+    expect(getByLabelText('Toggle high contrast').getAttribute('aria-checked')).toBe('true');
+    await fireEvent.click(getByLabelText('Toggle high contrast'));
+    expect(setHighContrast).toHaveBeenCalledTimes(2);
+    expect(setHighContrast).toHaveBeenLastCalledWith(false);
+    // A hint below the row is not part of it.
+    await fireEvent.click(getByText(/Raises border and text contrast/));
+    expect(setHighContrast).toHaveBeenCalledTimes(2);
+  });
+
+  it('App lock: back cannot lose the one-time recovery code; Continue is the way out', async () => {
+    setAppLockPin.mockResolvedValue({ recoveryCode: 'ABCD-EFGH-1234' });
+    nav.push({ k: 'set', page: 'security' });
+    const { getByText, container, queryByText, getByRole } = render(SettingsPage, { page: 'security' });
+    await fireEvent.click(getByText('Set a PIN'));
+    const [pin, again] = container.querySelectorAll('input[type="password"]');
+    await fireEvent.input(pin, { target: { value: '1234' } });
+    await fireEvent.input(again, { target: { value: '1234' } });
+    await fireEvent.click(getByText('Save PIN'));
+    await waitFor(() => getByText('ABCD-EFGH-1234'));
+    expect(setAppLockPin).toHaveBeenCalledWith('1234', '');
+
+    history.back();
+    await settle(60);
+    expect(getByText('ABCD-EFGH-1234')).toBeTruthy();
+    expect(get(nav.stack)).toHaveLength(2);
+    history.back();
+    await settle(60);
+    expect(getByText('ABCD-EFGH-1234')).toBeTruthy();
+    expect(get(nav.stack)).toHaveLength(2);
+
+    await fireEvent.click(getByRole('checkbox'));
+    await fireEvent.click(getByText('Continue'));
+    await waitFor(() => expect(queryByText('ABCD-EFGH-1234')).toBeNull());
+    expect(get(nav.stack)).toHaveLength(2);
+    // The next back is the page's own again.
+    history.back();
+    await waitFor(() => expect(get(nav.stack)).toHaveLength(1));
+  });
+
+  it('Sync: Sync now syncs and confirms, a failure surfaces showError; a stale paired host is shown', async () => {
+    (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set({ uuid: 'u', name: 'Old PC' });
+    const { getByText } = render(SettingsPage, { page: 'sync' });
+    expect(getByText(/“Old PC” is on this network/)).toBeTruthy();
+    await fireEvent.click(getByText('Sync now'));
+    await waitFor(() => expect(get(nav.toast)?.text).toBe('Synced'));
+    expect(syncNow).toHaveBeenCalledWith();
+    syncNow.mockRejectedValueOnce(new Error('x'));
+    await fireEvent.click(getByText('Sync now'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not sync. Please try again.'));
   });
 
   it('an unknown page says so', () => {
@@ -148,13 +220,18 @@ describe('phone settings pages', () => {
     await waitFor(() => expect(resolveConflict).toHaveBeenCalledWith('task:a', 'other', '3-b'));
   });
 
-  it('Advanced: Save & restart sync writes the changed server and reloads', async () => {
+  it('Advanced: Save & restart sync writes the changed server, unwinds history, then reloads', async () => {
+    nav.push({ k: 'settings' });
+    nav.push({ k: 'set', page: 'advanced' });
+    let depthAtReload = -1;
+    reload.mockImplementationOnce(() => { depthAtReload = get(nav.stack).length; });
     const { container, getByText } = render(SettingsPage, { page: 'advanced' });
     const url = container.querySelector('input[placeholder^="http://192.168"]') as HTMLInputElement;
     await waitFor(() => expect(url.value).toBe('http://old.local:5984/offlog'));
     await fireEvent.input(url, { target: { value: 'http://new.local:5984/offlog' } });
     await fireEvent.click(getByText('Save & restart sync'));
     await waitFor(() => expect(reload).toHaveBeenCalled());
+    expect(depthAtReload).toBe(1);
     expect(setSyncUrl).toHaveBeenCalledWith('http://new.local:5984/offlog');
     expect(setSyncCredentials).toHaveBeenCalledWith('olduser', 'oldpass');
   });

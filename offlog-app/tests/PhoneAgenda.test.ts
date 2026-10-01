@@ -17,7 +17,7 @@ vi.mock('../src/lib/store', async () => {
 vi.mock('../src/config', async (orig) => ({ ...(await orig<object>()), getWeekStartsMonday: () => true }));
 
 import AgendaScreen from '../src/lib/phone/AgendaScreen.svelte';
-import { actions } from '../src/lib/phone/nav';
+import { actions, stack } from '../src/lib/phone/nav';
 import { agendaDay } from '../src/lib/phone/agenda/month';
 import { monthGrid, endOfWeek } from '../src/lib/phone/agenda/month';
 import { shortDate } from '../src/lib/phone/format';
@@ -43,6 +43,7 @@ const rows = () => [
 describe('phone Agenda', () => {
   beforeEach(() => {
     localStorage.clear();
+    stack.set([{ k: 'agenda' }]);
     (projects as Writable<ProjectDoc[]>).set([project]);
     getAllTasksDue.mockReset().mockResolvedValue(rows());
     updateTask.mockReset().mockResolvedValue(undefined);
@@ -102,20 +103,42 @@ describe('phone Agenda', () => {
     await fireEvent.click(getByLabelText(`${shortDate(day(1))}, 1 due`));
     expect(getByText('Next')).toBeTruthy();
     expect(get(agendaDay)).toBe(day(1));
-    await fireEvent.click(getByText(`Add a task on ${shortDate(day(1))}`));
-    expect(add).toHaveBeenCalledWith(day(1));
+    expect(container.querySelector('.none')).toBeNull();
+    const empty = [...container.querySelectorAll('.month button')].find(b => b.getAttribute('aria-label')!.endsWith(', 0 due'))!;
+    await fireEvent.click(empty);
+    expect(getByText('Nothing due.')).toBeTruthy();
+    await fireEvent.click(getByText('Add a task'));
+    expect(add).toHaveBeenCalledWith(get(agendaDay));
+    expect(get(agendaDay)).not.toBe(day(1));
   });
 
   it('Month: an empty day says so; next month selects its first day; Today returns', async () => {
     localStorage.setItem('offlog_agenda_view', 'month');
     getAllTasksDue.mockResolvedValue([]);
     const { getByText, getByLabelText, container } = render(AgendaScreen);
-    await waitFor(() => getByText('Nothing due. Tap + to add a task on this day.'));
+    await waitFor(() => getByText('Nothing due.'));
     await fireEvent.click(getByLabelText('Next month'));
     const d = new Date(); const first = localDateStr(new Date(d.getFullYear(), d.getMonth() + 1, 1, 12));
     expect(container.querySelector('.month button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(first)}, 0 due`);
     await fireEvent.click(getByText('Today'));
     expect(container.querySelector('.month button.sel.today')).toBeTruthy();
+  });
+
+  it('Month: the month and day survive the screen being rebuilt', async () => {
+    localStorage.setItem('offlog_agenda_view', 'month');
+    const first = render(AgendaScreen);
+    await first.findByText('Now');
+    await fireEvent.click(first.getByLabelText('Next month'));
+    await fireEvent.click(first.getByLabelText('Next month'));
+    const d = new Date();
+    const pick = localDateStr(new Date(d.getFullYear(), d.getMonth() + 2, 10, 12));
+    await fireEvent.click(first.getByLabelText(`${shortDate(pick)}, 0 due`));
+    first.unmount();
+    const again = render(AgendaScreen);
+    await waitFor(() => expect(getAllTasksDue).toHaveBeenCalledTimes(2));
+    expect(again.container.querySelector('.month button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(pick)}, 0 due`);
+    expect(again.container.querySelector('.ml')?.textContent).toBe(new Date(d.getFullYear(), d.getMonth() + 2, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+    expect(get(agendaDay)).toBe(pick);
   });
 
   it('leaving Agenda clears the shared day', async () => {

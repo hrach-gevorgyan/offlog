@@ -19,9 +19,11 @@ export function scoreAndReason(t: TaskDoc, today: string): { s: number; reason: 
 }
 
 // `suggested` keeps pick order; `rest` is everything else, best bucket first.
-// Equal scores are shuffled with `rand` so no task is always first by accident.
-export function rankPicker<T extends TaskDoc>(tasks: T[], today: string, max: number, rand: () => number = Math.random) {
-  const scored = tasks.map(t => ({ t, ...scoreAndReason(t, today), r: rand() }));
+// Equal scores are shuffled with `rand` so no task is always first by accident;
+// pass a per-task value that stays fixed across calls, or the order jumps on
+// every refresh.
+export function rankPicker<T extends TaskDoc>(tasks: T[], today: string, max: number, rand: (t: T) => number = () => Math.random()) {
+  const scored = tasks.map(t => ({ t, ...scoreAndReason(t, today), r: rand(t) }));
   const buckets: Record<Reason, typeof scored> = { pinned: [], overdue: [], due_soon: [], priority: [] };
   scored.forEach(x => buckets[x.reason].push(x));
   REASON_ORDER.forEach(k => buckets[k].sort((a, b) => b.s - a.s || b.r - a.r));

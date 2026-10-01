@@ -4,13 +4,19 @@ import { get } from 'svelte/store';
 
 const getAllDeletedTasks = vi.fn();
 const getArchivedProjects = vi.fn();
+const syncNow = vi.fn();
 const syncState = vi.hoisted(() => ({ status: 'idle', lastSynced: null as string | null, error: null as string | null, conflictCount: 0, listeners: new Set<() => void>() }));
 vi.mock('../src/lib/db', () => ({
   syncState,
   getAllDeletedTasks: (...a: unknown[]) => getAllDeletedTasks(...a),
   getArchivedProjects: (...a: unknown[]) => getArchivedProjects(...a),
   subscribe: vi.fn().mockReturnValue(() => {}),
+  syncNow: (...a: unknown[]) => syncNow(...a),
 }));
+vi.mock('../src/lib/discovery', async () => {
+  const { writable: w } = await import('svelte/store');
+  return { staleHostAlert: w(null) };
+});
 vi.mock('../src/lib/store', () => ({ showError: vi.fn() }));
 let syncOn = true;
 vi.mock('../src/config', () => ({
@@ -25,7 +31,9 @@ vi.mock('../src/config', () => ({
 vi.mock('../src/lib/theme', () => ({ getThemeMode: () => 'dark' }));
 
 import SettingsScreen from '../src/lib/phone/settings/SettingsScreen.svelte';
-import { stack, switchTab } from '../src/lib/phone/nav';
+import { stack, switchTab, toast } from '../src/lib/phone/nav';
+import { staleHostAlert } from '../src/lib/discovery';
+import type { Writable } from 'svelte/store';
 import { showError } from '../src/lib/store';
 
 const rowValue = (label: HTMLElement) => label.closest('button')!.querySelector('.p-v')?.textContent ?? '';
@@ -37,6 +45,9 @@ beforeEach(() => {
   Object.assign(syncState, { status: 'idle', lastSynced: null, error: null, conflictCount: 0 });
   getAllDeletedTasks.mockResolvedValue([{ _id: 'task:a' }, { _id: 'task:b' }, { _id: 'task:c' }]);
   getArchivedProjects.mockResolvedValue([{ _id: 'project:o' }]);
+  syncNow.mockResolvedValue(undefined);
+  toast.set(null);
+  (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set(null);
 });
 afterEach(cleanup);
 
@@ -80,11 +91,30 @@ describe('phone Settings home', () => {
     expect(get(stack).at(-1)).toMatchObject({ k: 'set', page: 'sync' });
   });
 
-  it('says when sync is off', () => {
+  it('says when sync is off, with no Sync now', () => {
     syncOn = false;
-    const { getByText } = render(SettingsScreen);
+    const { getByText, queryByText } = render(SettingsScreen);
     expect(getByText('Sync is off')).toBeTruthy();
     expect(getByText('Everything stays on this device')).toBeTruthy();
+    expect(queryByText('Sync now')).toBeNull();
+  });
+
+  it('Sync now runs a sync and confirms; a failure surfaces showError', async () => {
+    const { getByText } = render(SettingsScreen);
+    await fireEvent.click(getByText('Sync now'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Synced'));
+    expect(syncNow).toHaveBeenCalledWith();
+    expect(get(stack)).toHaveLength(1);
+    syncNow.mockRejectedValueOnce(new Error('x'));
+    await fireEvent.click(getByText('Sync now'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not sync. Please try again.'));
+  });
+
+  it('a stale paired host shows on the card', async () => {
+    (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set({ uuid: 'u', name: 'Old PC' });
+    const { getByText, container } = render(SettingsScreen);
+    expect(getByText('Paired computer not found — pair again')).toBeTruthy();
+    expect(container.querySelector('.synccard .p-dot.error')).toBeTruthy();
   });
 
   it('a failed count load surfaces showError', async () => {

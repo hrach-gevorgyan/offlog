@@ -44,10 +44,11 @@ afterEach(cleanup);
 
 describe('phone Recycle bin', () => {
   it('lists deleted tasks with their project', async () => {
-    const { getByText } = render(SettingsPage, { page: 'trash' });
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'trash' });
     await waitFor(() => getByText('Buy paint'));
     expect(getByText(/House ·/)).toBeTruthy();
-    expect(getByText(/2 deleted/)).toBeTruthy();
+    expect(getByText('Kept for 3 months')).toBeTruthy();
+    expect(getByLabelText('Restore Buy paint')).toBeTruthy();
   });
 
   it('Restore undeletes that task, reloads, and confirms with a toast', async () => {
@@ -119,7 +120,7 @@ describe('phone Recycle bin', () => {
   it('shows the empty state', async () => {
     getAllDeletedTasks.mockResolvedValue([]);
     const { getByText, queryByText } = render(SettingsPage, { page: 'trash' });
-    await waitFor(() => getByText(/The Recycle bin is empty/));
+    await waitFor(() => getByText('Empty.'));
     expect(queryByText('Empty')).toBeNull();
   });
 });

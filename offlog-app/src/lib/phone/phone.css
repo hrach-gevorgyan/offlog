@@ -36,7 +36,9 @@
 .phone-shell .p-sw.on::after, .psheet .p-sw.on::after { transform: translateX(16px); }
 
 /* Chips: a horizontally scrolling row (.p-chips) or a wrapping picker (.p-cpick). */
-.phone-shell .p-chips, .psheet .p-chips { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 4px; }
+/* A horizontal scroller clips vertically too, so it pads by the chips' 7px tap
+   extension and gives the space back with negative margins. */
+.phone-shell .p-chips, .psheet .p-chips { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding: 9px 0 11px; margin: -7px 0; }
 .phone-shell .p-chips::-webkit-scrollbar, .psheet .p-chips::-webkit-scrollbar { display: none; }
 .phone-shell .p-cpick, .psheet .p-cpick { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; }
 .phone-shell .p-chip, .psheet .p-chip {

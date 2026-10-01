@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import type { TaskDoc } from '../types';
   import { projects, spaces, reloadTasks, showError } from '../store';
-  import { createTask, findTasksByTitleInProject, ensureFreshTagColor, deleteTask } from '../db';
+  import { createTask, findTasksByTitleInProject, ensureFreshTagColor } from '../db';
   import { parseQuickAdd } from '../nlpParse';
   import { PRIORITY_LABEL } from '../constants';
   import { fmtTime, localDateStr } from '../utils';
@@ -39,9 +39,8 @@
   $: space = $spaces.find(s => s._id === project?.space_id);
   $: due = parsed.due_date ?? manualDue;
   $: priority = parsed.priority ?? manualPriority;
-  $: footer = project
-    ? `Adds to ${project.name}${due ? ' · due ' + dueText(due).toLowerCase() : ''}${priority === 3 ? ' · high' : priority === 1 ? ' · low' : ''}`
-    : 'Create a project first';
+  // Highlighted only once the project was chosen, by hand or by @mention.
+  $: projectSet = (manualChoice && !!chosenProject) || !!parsed.projectId;
 
   const todayIso = () => localDateStr(new Date());
   const plusDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return localDateStr(d); };
@@ -111,11 +110,10 @@
       await reloadTasks();
       text = '';
       dispatch('created', doc);
-      sheet.close();
-      showToast(`Added to ${p.name}`, async () => {
-        try { await deleteTask(doc._id!); await reloadTasks(); }
-        catch { showError('Could not undo. Please try again.'); }
-      });
+      sheet?.close();
+      // No Undo here: deleteTask would raise its own undo toast and leave
+      // the task in the Recycle bin.
+      showToast(`Added to ${p.name}`);
     } catch {
       showError('Failed to create task. Please try again.');
     } finally {
@@ -152,7 +150,7 @@
   {/if}
   <div class="p-chips">
     <button class="p-chip" class:on={!!due} on:click={cycleDue} aria-label="Due: {dueText(due)}">{@html I.today}{dueText(due)}</button>
-    <button class="p-chip on" on:click={() => (pickProject = !pickProject)} aria-expanded={pickProject} aria-label="Project: {project?.name ?? 'none'}">
+    <button class="p-chip" class:on={projectSet} on:click={() => (pickProject = !pickProject)} aria-expanded={pickProject} aria-label="Project: {project?.name ?? 'none'}">
       {#if space}<span class="p-dot" style="background:{soften(space.color)}"></span>{/if}{project?.name ?? 'No project'}
     </button>
     <button class="p-chip" class:on={!!priority} on:click={cyclePriority} aria-label="Priority: {priority ? PRIORITY_LABEL[priority] : 'not set'}">{@html I.flag}{priority ? PRIORITY_LABEL[priority] : 'Priority'}</button>
@@ -180,7 +178,7 @@
   {#if dupHint}<p class="warn">{dupHint}</p>{/if}
 
   <div class="foot">
-    <span>{footer}</span>
+    {#if !project}<span>Create a project first</span>{/if}
     <button class="send" on:click={add} disabled={!parsed.title || !project || saving} aria-label="Add">{@html I.up}</button>
   </div>
 </Sheet>
@@ -196,11 +194,13 @@
   .helpbox dt { color: var(--faint); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   .helpbox dd { margin: 0; color: var(--text); }
   .helpbox code { font-family: var(--mono); font-size: 12px; background: var(--col-bg); padding: 1px 5px; border-radius: 4px; color: var(--accent); }
-  .p-chips .p-chip { min-height: 36px; }
+  /* A scrolling row clips overflow on both axes; padding keeps the chips'
+     44px tap extension inside it. */
+  .p-chips { padding: 7px 0; margin: -5px 0 -3px; }
   .plist { margin: 10px 0 0; max-height: 40dvh; overflow-y: auto; }
   .warn { font-size: 12.5px; color: var(--overdue-ink); margin: 8px 4px 0; }
-  .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
-  .foot span { font-size: 13px; color: var(--faint); min-width: 0; }
+  .foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+  .foot span { font-size: 13px; color: var(--faint); min-width: 0; margin-right: auto; }
   .send {
     width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; flex-shrink: 0;
     background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;

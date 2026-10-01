@@ -13,22 +13,27 @@
   const PAGE_SIZE = 150;
   let limit = PAGE_SIZE;
   let logs: LogDoc[] = [];
-  let loading = true;
+  let loading = false;
+  let loaded = false;
   let hasMore = false;
 
-  // subscribe() fires on every write app-wide; overlapping reloads are skipped.
+  // subscribe() fires on every write app-wide: a change that lands mid-load
+  // queues one follow-up load instead of starting another or being lost.
+  let again = false;
   async function load() {
-    if (loading && logs.length > 0) return;
+    if (loading) { again = true; return; }
     loading = true;
     try {
       const fetched = await getRecentLogs(limit);
       hasMore = fetched.length === limit;
       logs = fetched;
+      loaded = true;
     } catch {
       showError('Failed to load history.');
     } finally {
       loading = false;
     }
+    if (again) { again = false; await load(); }
   }
   function loadMore() { limit += PAGE_SIZE; load(); }
   onMount(() => {
@@ -89,13 +94,11 @@
   {#if logs.length}<button class="p-tbtn danger" on:click={clearAll}>Clear all</button>{/if}
 </TopBar>
 
-{#if loading && logs.length === 0}
-  <p class="p-empty">Loading…</p>
-{:else if groups.length === 0}
-  <p class="p-empty">Nothing logged yet. Once you create or edit a task, it shows up here.</p>
-{:else}
+{#if loaded && groups.length === 0}
+  <p class="p-empty">Nothing logged yet.</p>
+{:else if groups.length}
   {#each groups as g (g.key)}
-    <div class="day">{g.label}</div>
+    <div class="p-sec">{g.label}</div>
     <div class="p-group">
       {#each g.entries as log (log._id)}
         {@const isTask = entityLabel(log) === 'task'}
@@ -115,12 +118,11 @@
     </div>
   {/each}
   {#if hasMore}
-    <button class="p-tbtn more" on:click={loadMore} disabled={loading}>{loading ? 'Loading…' : 'Load more'}</button>
+    <button class="p-tbtn more" on:click={loadMore} disabled={loading}>Load more</button>
   {/if}
 {/if}
 
 <style>
-  .day { font-size: 13px; color: var(--faint); font-weight: 600; margin: 14px 4px 6px; }
   .p-row.entry .p-k > .desc { white-space: normal; overflow-wrap: anywhere; }
   .entry { align-items: flex-start; }
   .entry .p-v { font-size: 13.5px; padding-top: 2px; }

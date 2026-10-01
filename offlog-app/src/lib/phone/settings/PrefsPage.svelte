@@ -27,7 +27,7 @@
   import { projects as projectsStore, showError } from '../../store';
   import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../../../config';
   import { fmtLastSynced, localDateStr } from '../../utils';
-  import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, type DiscoveredHost } from '../../discovery';
+  import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, staleHostAlert, type DiscoveredHost } from '../../discovery';
   import { checkExactAlarmPermission, rescheduleAll } from '../../notifications';
   import { updateState, showUpdateModal, checkForUpdate } from '../../updateChecker';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from '../../theme';
@@ -36,7 +36,10 @@
   import { scrimIn, scrimOut, dialogIn, dialogOut } from '../../motion';
   import TopBar from '../TopBar.svelte';
   import Sheet from '../Sheet.svelte';
-  import { back } from '../nav';
+  import { back, push } from '../nav';
+  import { closeOnBack, closeAll } from '../../modalStack';
+  import { runSyncNow, syncing } from './syncNow';
+  import { rowTaps } from './rowTaps';
 
   export let page: string;
 
@@ -108,6 +111,26 @@
     } catch { /* the code is still on screen */ }
   }
 
+  // Back must not take the page (and the one-time code) away: while the code
+  // is up, a back press only re-arms this entry. Continue is the one way out.
+  let recoveryClose: (() => void) | null = null;
+  let recoveryDone = false, destroyed = false;
+  function guardRecovery() {
+    recoveryDone = false;
+    recoveryClose = closeOnBack(() => {
+      recoveryClose = null;
+      if (recoveryDone) { newRecoveryCode = null; return; }
+      // Deferred: closeAll() (a widget jump) also lands here, and pushing
+      // before its history.go() resolves would desync history.
+      setTimeout(() => { if (!destroyed && newRecoveryCode) guardRecovery(); }, 0);
+    });
+  }
+  function finishRecovery() {
+    recoveryDone = true;
+    if (recoveryClose) recoveryClose(); else newRecoveryCode = null;
+  }
+  onDestroy(() => { destroyed = true; });
+
   let privacyScreenEnabled = isPrivacyScreenEnabled();
   function togglePrivacyScreen() {
     privacyScreenEnabled = !privacyScreenEnabled;
@@ -174,7 +197,7 @@
       appLockEnabled = true;
       showPinForm = false;
       syncPrivacyScreen();
-      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; recoveryCopied = false; }
+      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; recoveryCopied = false; guardRecovery(); }
     } catch {
       pinError = 'Could not save PIN. Please try again.';
     } finally {
@@ -506,21 +529,7 @@
   }
   function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
 
-  let ArchivedProjectsManagerComp: typeof import('../../ArchivedProjectsManager.svelte').default | null = null;
-  let showArchivedProjectsManager = false, archivedProjectsManagerActive = false, archivedProjectsManagerSession = 0;
-  async function openArchivedProjectsManager() {
-    if (archivedProjectsManagerActive) return;
-    archivedProjectsManagerActive = true;
-    try {
-      if (!ArchivedProjectsManagerComp) ArchivedProjectsManagerComp = (await import('../../ArchivedProjectsManager.svelte')).default;
-      archivedProjectsManagerSession++;
-      showArchivedProjectsManager = true;
-    } catch {
-      archivedProjectsManagerActive = false;
-      showError('Failed to open Archived Projects. Please try again.');
-    }
-  }
-  function onArchivedProjectsManagerClosed() { showArchivedProjectsManager = false; archivedProjectsManagerActive = false; }
+  const openArchivedProjectsManager = () => push({ k: 'set', page: 'archived' });
 
   // ── Backup & storage ──
   let breakdown: StorageBreakdown | null = null;
@@ -718,13 +727,22 @@
       showError('Could not save sync credentials securely. Please try again.');
       return;
     }
+    // Unwind the pushed screens first, or the first back after the reload
+    // lands on a stale history entry and does nothing.
+    if (closeAll()) {
+      await new Promise<void>(r => {
+        const done = () => { window.removeEventListener('popstate', done); r(); };
+        window.addEventListener('popstate', done);
+        setTimeout(done, 300);
+      });
+    }
     location.reload();
   }
 </script>
 
 <TopBar title={TITLE[page] ?? 'Settings'} />
 
-<div class="pset">
+<div class="pset" use:rowTaps>
   {#if page === 'appearance'}
     <AppearanceSettings
       {themeMode} {selectThemeMode} {weekStartsMonday} {setWeekStart}
@@ -742,6 +760,12 @@
       bind:showConnectModal bind:showConflictsModal
       bind:deviceName {saveDeviceName} {deviceLastSeen} {conflictCount} {conflictList}
     />
+    {#if $staleHostAlert}
+      <p class="warn" role="status">Paired computer not found — “{$staleHostAlert.name}” is on this network. Pair again under Connect a device.</p>
+    {/if}
+    {#if syncEnabled && syncUrl}
+      <button class="export-btn" on:click={runSyncNow} disabled={$syncing}>{$syncing ? 'Syncing…' : 'Sync now'}</button>
+    {/if}
   {:else if page === 'organize'}
     <OrganizeSettings {openSpaceManager} {openTagManager} {openCustomFieldManager} {openArchivedProjectsManager} />
   {:else if page === 'data'}
@@ -965,7 +989,7 @@
     <div class="rcode">{newRecoveryCode}</div>
     <button class="p-tbtn wide" on:click={copyRecoveryCode}>{recoveryCopied ? 'Copied' : 'Copy'}</button>
     <label class="ack"><input type="checkbox" bind:checked={recoveryCodeSavedAck} /> I've saved this code somewhere safe</label>
-    <button class="p-go" on:click={() => newRecoveryCode = null} disabled={!recoveryCodeSavedAck}>Continue</button>
+    <button class="p-go" on:click={finishRecovery} disabled={!recoveryCodeSavedAck}>Continue</button>
   </div>
 {/if}
 
@@ -977,9 +1001,6 @@
 {/if}
 {#if showCustomFieldManager && CustomFieldManagerComp}
   {#key customFieldManagerSession}<svelte:component this={CustomFieldManagerComp} on:close={onCustomFieldManagerClosed} />{/key}
-{/if}
-{#if showArchivedProjectsManager && ArchivedProjectsManagerComp}
-  {#key archivedProjectsManagerSession}<svelte:component this={ArchivedProjectsManagerComp} on:close={onArchivedProjectsManagerClosed} />{/key}
 {/if}
 
 <style>
@@ -995,13 +1016,15 @@
   .pset :global(.reveal-wrap) { display: flex; flex-direction: column; gap: 14px; }
   .pset :global(.setting-section-title) { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
   .pset :global(.setting-row) { display: flex; align-items: center; gap: 12px; min-height: 44px; flex-wrap: wrap; }
+  .pset :global(.setting-row:has(> .toggle-btn)) { cursor: pointer; margin: 0 -16px; padding: 0 16px; min-height: 52px; transition: background var(--dur-hover) var(--ease-hover); }
+  .pset :global(.setting-row:has(> .toggle-btn):active) { background: var(--col-bg); }
   .pset :global(.setting-label) { flex: 1; min-width: 0; font-size: 16px; color: var(--text); }
   .pset :global(.setting-value) { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pset :global(.setting-hint) { margin: 0; font-size: 13.5px; color: var(--faint); line-height: 1.5; }
   .pset :global(.setting-hint.compact-hint) { margin-top: -6px; }
   .pset :global(.setting-hint-error) { color: var(--danger); }
   .pset :global(.setting-hint-warn) { color: var(--due-soon-ink); background: var(--due-soon-bg); padding: 10px 12px; border-radius: 10px; font-weight: 500; }
-  .pset :global(.success-hint) { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); padding: 10px 12px; border-radius: 10px; font-weight: 600; }
+  .pset :global(.success-hint) { color: var(--text); background: color-mix(in srgb, var(--success) 14%, transparent); padding: 10px 12px; border-radius: 10px; font-weight: 600; }
   .pset :global(.storage-info) { flex: 1; min-width: 0; font-size: 14px; color: var(--muted); }
   .pset :global(.device-name-row) { display: inline-flex; align-items: center; gap: 6px; }
   .pset :global(.this-device-tag) { font-size: 12px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); padding: 3px 7px; border-radius: 999px; }
@@ -1020,7 +1043,7 @@
   .pset :global(.field-label input:disabled) { opacity: .5; }
 
   .pset :global(.theme-segment) { display: flex; background: var(--col-bg); border-radius: 12px; padding: 3px; gap: 2px; flex-shrink: 0; }
-  .pset :global(.theme-seg-btn) { min-height: 38px; padding: 0 14px; border-radius: 9px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .pset :global(.theme-seg-btn) { min-height: 44px; padding: 0 14px; border-radius: 9px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
   .pset :global(.theme-seg-btn.active) { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
 
   .pset :global(.toggle-btn) {
@@ -1062,7 +1085,7 @@
   .sh { display: flex; flex-direction: column; gap: 10px; padding-bottom: 4px; }
   .sh .p-say, .sh .p-fld, .sh .p-group { margin-bottom: 0; }
   .wide { width: 100%; min-height: 44px; }
-  .ok { margin: 0; color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); padding: 12px 14px; border-radius: 12px; font-weight: 600; }
+  .ok { margin: 0; color: var(--text); background: color-mix(in srgb, var(--success) 14%, transparent); padding: 12px 14px; border-radius: 12px; font-weight: 600; }
   .warn { margin: 0; color: var(--due-soon-ink); background: var(--due-soon-bg); padding: 12px 14px; border-radius: 12px; font-size: 14.5px; }
   .code { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: .2em; text-align: center; color: var(--text); }
   .crow { display: flex; align-items: center; gap: 10px; }

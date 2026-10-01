@@ -8,6 +8,8 @@
   import TopBar from '../TopBar.svelte';
   import { push } from '../nav';
   import { I } from '../icons';
+  import { staleHostAlert } from '../../discovery';
+  import { runSyncNow, syncing } from './syncNow';
 
   // Read at mount: this screen remounts each time a settings page pops back to it.
   const theme = getThemeMode();
@@ -36,6 +38,8 @@
     status === 'syncing' ? { title: 'Syncing…', sub: lastSynced ? `Last synced ${fmtLastSynced(lastSynced)}` : 'First sync', tone: 'ok' } :
     status === 'offline' ? { title: 'Offline', sub: 'Resumes when you are back on your network', tone: 'off' } :
     { title: 'Sync is on', sub: lastSynced ? `Last synced ${fmtLastSynced(lastSynced)}` : 'Waiting for the first sync', tone: 'ok' };
+
+  $: canSync = syncOn && !!syncUrl;
 
   let trashCount: number | null = null;
   let archivedCount: number | null = null;
@@ -87,14 +91,23 @@
 
 <TopBar title="Settings" />
 
-<button class="p-group p-row synccard" on:click={() => go('sync')}>
-  <span class="p-dot {sync.tone}"></span>
-  <span class="p-k">
-    <b>{sync.title}</b>
-    <span class="p-sub">{sync.sub}{#if conflicts > 0} · <span class="conf">{conflicts} conflict{conflicts === 1 ? '' : 's'}</span>{/if}</span>
-  </span>
-  <span class="chev">{@html I.chev}</span>
-</button>
+<div class="p-group synccard">
+  <button class="p-row" on:click={() => go('sync')}>
+    <span class="p-dot {$staleHostAlert ? 'error' : sync.tone}"></span>
+    <span class="p-k">
+      <b>{sync.title}</b>
+      {#if $staleHostAlert}
+        <span class="p-sub conf">Paired computer not found — pair again</span>
+      {:else}
+        <span class="p-sub">{sync.sub}{#if conflicts > 0} · <span class="conf">{conflicts} conflict{conflicts === 1 ? '' : 's'}</span>{/if}</span>
+      {/if}
+    </span>
+    {#if !canSync}<span class="chev">{@html I.chev}</span>{/if}
+  </button>
+  {#if canSync}
+    <button class="p-tbtn now" on:click={runSyncNow} disabled={$syncing || status === 'syncing'}>Sync now</button>
+  {/if}
+</div>
 
 {#each groups as rows}
   <div class="p-group">
@@ -112,7 +125,9 @@
 <p class="foot">Offlog{version ? ` ${version}` : ''} · local-first, no account</p>
 
 <style>
-  .synccard { margin-top: 6px; }
+  .synccard { margin-top: 6px; display: flex; align-items: center; padding-right: 6px; }
+  .synccard .p-row { flex: 1; min-width: 0; }
+  .now { flex-shrink: 0; }
   .synccard b { font-size: 15.5px; }
   .synccard .p-dot { width: 10px; height: 10px; background: var(--faint); }
   .synccard .p-dot.ok { background: var(--success); }

@@ -9,6 +9,7 @@
   import Sheet from '../Sheet.svelte';
   import { showToast } from '../nav';
   import { soften } from '../../tagColors';
+  import { I } from '../icons';
 
   let active: ProjectDoc[] = [];
   let archived: ProjectDoc[] = [];
@@ -34,15 +35,34 @@
   let pickerSession = 0;
   function openPicker() { pickerSession++; pickerOpen = true; }
 
-  async function doArchive(p: ProjectDoc, close: () => void) {
-    close();
-    if (!(await confirmAction(`Archive project "${p.name}"? It'll be hidden until restored here.`, { confirmLabel: 'Archive' }))) return;
+  // Archive runs after the sheet has finished closing: its history entry
+  // must be popped before anything else opens or the two race.
+  let afterClose: (() => void) | null = null;
+  function pick(p: ProjectDoc, close: () => void) { afterClose = () => doArchive(p); close(); }
+  function onPickerClosed() {
+    pickerOpen = false;
+    const fn = afterClose;
+    afterClose = null;
+    fn?.();
+  }
+
+  // Reversible, so it acts at once and offers Undo.
+  async function doArchive(p: ProjectDoc) {
     try {
       await archiveProject(p._id!);
       // An archived project left as the active one blanks the board.
       if ($activeProjectId === p._id) activeProjectId.set('');
       await load();
       await reloadTasks();
+      showToast(`Archived: ${p.name}`, async () => {
+        try {
+          await unarchiveProject(p._id!);
+          await load();
+          await reloadTasks();
+        } catch {
+          showError('Could not undo. Please try again.');
+        }
+      });
     } catch {
       showError('Failed to archive project. Please try again.');
     }
@@ -71,15 +91,13 @@
   }
 </script>
 
-<TopBar title="Archived projects" sub="Archiving hides a project and its open tasks — nothing is deleted.">
+<TopBar title="Archived projects">
   {#if active.length}<button class="p-tbtn" on:click={openPicker}>Archive…</button>{/if}
 </TopBar>
 
-{#if !loaded}
-  <p class="p-empty">Loading…</p>
-{:else if archived.length === 0}
+{#if loaded && archived.length === 0}
   <p class="p-empty">No archived projects.</p>
-{:else}
+{:else if archived.length}
   <div class="p-group">
     {#each archived as p (p._id)}
       {@const s = spaceOf(p)}
@@ -88,8 +106,8 @@
           <span>{p.name}</span>
           {#if s}<span class="p-sub"><span class="p-dot" style:background={soften(s.color)}></span> {s.name}</span>{/if}
         </span>
-        <button class="p-tbtn" on:click={() => doRestore(p)}>Restore</button>
-        <button class="p-tbtn danger" on:click={() => doDelete(p)}>Delete</button>
+        <button class="p-tbtn" on:click={() => doRestore(p)} aria-label="Restore {p.name}">Restore</button>
+        <button class="p-ib del" on:click={() => doDelete(p)} aria-label="Delete {p.name}">{@html I.trash}</button>
       </div>
     {/each}
   </div>
@@ -97,10 +115,10 @@
 
 {#if pickerOpen}
   {#key pickerSession}
-    <Sheet title="Archive a project" on:close={() => pickerOpen = false} let:close>
+    <Sheet title="Archive a project" on:close={onPickerClosed} let:close>
       <div class="p-group">
         {#each active as p (p._id)}
-          <button class="p-row" on:click={() => doArchive(p, close)}><span class="p-k"><span>{p.name}</span></span></button>
+          <button class="p-row" on:click={() => pick(p, close)}><span class="p-k"><span>{p.name}</span></span></button>
         {/each}
       </div>
     </Sheet>
@@ -110,4 +128,6 @@
 <style>
   .item { cursor: default; gap: 2px; padding-right: 6px; }
   .p-row.item:active { background: none; }
+  .del { color: var(--faint); }
+  .del:active { color: var(--danger); }
 </style>

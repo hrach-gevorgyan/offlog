@@ -58,9 +58,12 @@ describe('phone Quick add', () => {
 
   it('parses date, priority, tags and @project, and creates in that project\'s first status', async () => {
     const created = vi.fn();
-    const { getByLabelText, getByText } = render(QuickAddSheet, { events: { created } } as any);
+    const { getByLabelText, queryByText } = render(QuickAddSheet, { events: { created } } as any);
     const input = await type(getByLabelText, 'Log workout tomorrow !high #gym #legs @fitness');
-    expect(getByText('Adds to Fitness Tracker · due tomorrow · high')).toBeTruthy();
+    expect(getByLabelText('Project: Fitness Tracker').classList.contains('on')).toBe(true);
+    expect(getByLabelText('Due: Tomorrow').classList.contains('on')).toBe(true);
+    expect(getByLabelText('Priority: High').classList.contains('on')).toBe(true);
+    expect(queryByText(/Adds to/)).toBeNull();
     await fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(createTask).toHaveBeenCalled());
     expect(ensureFreshTagColor.mock.calls).toEqual([['gym', ['legs']], ['legs', ['gym']]]);
@@ -72,16 +75,14 @@ describe('phone Quick add', () => {
     expect(reloadTasks).toHaveBeenCalled();
   });
 
-  it('confirms with a toast whose Undo soft-deletes the new task', async () => {
+  it('confirms with a plain toast: no Undo, never a delete', async () => {
     const { getByLabelText } = render(QuickAddSheet);
+    expect(getByLabelText('Project: Q4 Sprint').classList.contains('on')).toBe(false);
     await type(getByLabelText, 'Undo me');
     await fireEvent.click(getByLabelText('Add'));
     await waitFor(() => expect(get(toast)?.text).toBe('Added to Q4 Sprint'));
-    await get(toast)!.undo!();
-    expect(deleteTask).toHaveBeenCalledWith('task:new');
-    deleteTask.mockRejectedValue(new Error('x'));
-    await get(toast)!.undo!();
-    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
+    expect(get(toast)!.undo).toBeUndefined();
+    expect(deleteTask).not.toHaveBeenCalled();
   });
 
   it('defaults to the first project with createTask\'s own defaults', async () => {
@@ -119,6 +120,7 @@ describe('phone Quick add', () => {
     await type(getByLabelText, 'Squats @fitness');
     await fireEvent.click(getByLabelText('Project: Fitness Tracker'));
     await fireEvent.click(getByText('Q4 Sprint'));
+    expect(getByLabelText('Project: Q4 Sprint').classList.contains('on')).toBe(true);
     await fireEvent.click(getByLabelText('Due: No date'));
     await fireEvent.click(getByLabelText('Priority: not set'));
     await fireEvent.click(getByLabelText('Add'));

@@ -4,11 +4,12 @@ import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 const getRecentLogs = vi.fn();
 const getTaskById = vi.fn();
 const clearLogs = vi.fn();
+let feed: (() => void) | null = null;
 vi.mock('../src/lib/db', () => ({
   getRecentLogs: (...a: unknown[]) => getRecentLogs(...a),
   getTaskById: (...a: unknown[]) => getTaskById(...a),
   clearLogs: (...a: unknown[]) => clearLogs(...a),
-  subscribe: vi.fn().mockReturnValue(() => {}),
+  subscribe: (cb: () => void) => { feed = cb; return () => { feed = null; }; },
 }));
 const showError = vi.fn();
 vi.mock('../src/lib/store', () => ({ showError: (...a: unknown[]) => showError(...a) }));
@@ -40,6 +41,18 @@ describe('phone History', () => {
     expect(getByText('Pixel')).toBeTruthy();
     expect(getAllByText('PC')).toHaveLength(1);
     expect(getRecentLogs).toHaveBeenCalledWith(150);
+  });
+
+  it('a change that lands mid-load queues exactly one follow-up load', async () => {
+    let release!: (v: unknown) => void;
+    getRecentLogs.mockReturnValueOnce(new Promise(r => { release = r; }));
+    const { getByText, container } = render(SettingsPage, { page: 'history' });
+    feed!(); feed!();
+    expect(getRecentLogs).toHaveBeenCalledTimes(1);
+    release([logs[1]]);
+    await waitFor(() => getByText('Today'));
+    expect(getRecentLogs).toHaveBeenCalledTimes(2);
+    expect(container.querySelectorAll('.p-sec')).toHaveLength(2);
   });
 
   it('a task entry opens the task; a project entry is not a button', async () => {

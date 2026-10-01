@@ -97,17 +97,15 @@
   }
 </script>
 
-<TopBar title="Recycle bin" sub={loaded ? `${items.length} deleted · removed for good after 3 months` : ''}>
+<TopBar title="Recycle bin" sub={items.length ? 'Kept for 3 months' : ''}>
   {#if items.length}
     <button class="p-tbtn danger" on:click={emptyAll} disabled={busy}>Empty</button>
   {/if}
 </TopBar>
 
-{#if !loaded}
-  <p class="p-empty">Loading…</p>
-{:else if items.length === 0}
-  <p class="p-empty">The Recycle bin is empty. Deleted tasks show up here and can be restored.</p>
-{:else}
+{#if loaded && items.length === 0}
+  <p class="p-empty">Empty.</p>
+{:else if items.length}
   <div class="p-group">
     {#each items as t (t._id)}
       <div class="p-row item">
@@ -115,7 +113,7 @@
           <span class="title">{t.title}</span>
           <span class="p-sub">{t.project_name ? `${t.project_name} · ` : ''}{timeAgo(t.updated_at)}</span>
         </span>
-        <button class="p-tbtn" on:click={() => restore(t)} disabled={busy}>Restore</button>
+        <button class="p-tbtn" on:click={() => restore(t)} disabled={busy} aria-label="Restore {t.title}">Restore</button>
         <button class="p-ib del" on:click={() => removeForever(t)} disabled={busy} aria-label="Delete “{t.title}” for good">{@html I.trash}</button>
       </div>
     {/each}

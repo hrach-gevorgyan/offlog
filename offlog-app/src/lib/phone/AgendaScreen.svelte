@@ -5,7 +5,7 @@
   import { showError } from '../store';
   import { localDateStr } from '../utils';
   import { getWeekStartsMonday } from '../../config';
-  import { actions } from './nav';
+  import { actions, memo } from './nav';
   import { shortDate } from './format';
   import { I } from './icons';
   import { agendaDay, monthGrid, endOfWeek } from './agenda/month';
@@ -61,8 +61,12 @@
     return acc;
   }, {});
 
-  let offset = 0;
-  let selected = today;
+  // Month and day survive opening a task and coming back.
+  const m = memo({ offset: 0, selected: today });
+  let offset = m.offset;
+  let selected = m.selected;
+  $: m.offset = offset;
+  $: m.selected = selected;
   $: grid = monthGrid(offset, mondayFirst, new Date(today + 'T12:00:00'));
   $: monthLabel = grid.anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   $: dayTasks = (byDate[selected] ?? []).slice().sort(byDue);
@@ -92,7 +96,7 @@
   });
 </script>
 
-<TopBar title="Agenda" root sub={loaded ? `${all.length} task${all.length === 1 ? '' : 's'} with a due date` : ''} />
+<TopBar title="Agenda" root />
 
 <div class="p-seg" role="tablist" aria-label="Agenda view">
   <button role="tab" aria-selected={mode === 'list'} class:on={mode === 'list'} on:click={() => setMode('list')}>List</button>
@@ -124,13 +128,11 @@
   {#each dayTasks as t (t._id)}
     <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={load} />
   {:else}
-    <p class="p-empty">Nothing due. Tap + to add a task on this day.</p>
+    <div class="none">
+      <p class="p-empty">Nothing due.</p>
+      <button class="p-tbtn" on:click={() => actions.quickAdd(selected)}>Add a task</button>
+    </div>
   {/each}
-  <div class="p-group">
-    <button class="p-row acc" on:click={() => actions.quickAdd(selected)}>
-      <span class="p-ico">{@html I.plus}</span>Add a task on {selected === today ? 'today' : shortDate(selected)}
-    </button>
-  </div>
 {:else if loaded && !all.length}
   <p class="p-empty">No tasks with a due date.</p>
 {:else}
@@ -149,7 +151,7 @@
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 8px 6px; margin-bottom: 6px;
     background: var(--surface); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
   }
-  .wd { font-size: 11px; font-weight: 700; color: var(--faint); text-align: center; padding: 2px 0 4px; }
+  .wd { font-size: 12px; font-weight: 700; color: var(--faint); text-align: center; padding: 2px 0 4px; }
   .month button {
     height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     border-radius: 10px; border: 0; background: none; padding: 0; cursor: pointer;
@@ -164,5 +166,6 @@
   .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: .7; }
   .dots i.late { background: var(--overdue-ink); opacity: 1; }
   .month button.sel .dots i { background: var(--on-accent); }
-  .p-group { margin-top: 6px; }
+  .none { display: flex; flex-direction: column; align-items: center; padding: 0 0 12px; }
+  .none .p-empty { padding-bottom: 6px; }
 </style>

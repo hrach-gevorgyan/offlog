@@ -29,12 +29,23 @@ const confirmAction = vi.fn();
 vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confirmAction(...a) }));
 
 import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
+import { toast } from '../src/lib/phone/nav';
 import { showError, activeProjectId, reloadTasks } from '../src/lib/store';
 
 const old = { _id: 'project:old', name: 'Old Sprint', space_id: 'space:w', archived: true, position: 0, columns: [] };
 const live = { _id: 'project:live', name: 'Live Sprint', space_id: 'space:w', position: 1, columns: [] };
 
-beforeEach(() => {
+// Sheets finish closing only once their outro ends; with reduced motion
+// transitions take no time, so the close lands at once.
+window.matchMedia = ((q: string) => ({
+  matches: q.includes('reduce'), media: q, onchange: null,
+  addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false,
+})) as unknown as typeof window.matchMedia;
+
+beforeEach(async () => {
+  // A closed sheet's history.back() lands as an async popstate; let it
+  // settle so it cannot pop the next test's sheet.
+  await new Promise(r => setTimeout(r, 20));
   vi.clearAllMocks();
   getProjects.mockResolvedValue([live]);
   getArchivedProjects.mockResolvedValue([old]);
@@ -42,40 +53,58 @@ beforeEach(() => {
   unarchiveProject.mockResolvedValue(undefined);
   deleteProject.mockResolvedValue(undefined);
   activeProjectId.set('project:live');
+  toast.set(null);
 });
 afterEach(cleanup);
 
 describe('phone Archived projects', () => {
   it('Restore unarchives the project and reloads', async () => {
-    const { getByText } = render(SettingsPage, { page: 'archived' });
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));
     expect(getByText('Work')).toBeTruthy();
-    await fireEvent.click(getByText('Restore'));
+    await fireEvent.click(getByLabelText('Restore Old Sprint'));
     await waitFor(() => expect(unarchiveProject).toHaveBeenCalledWith('project:old'));
     expect(reloadTasks).toHaveBeenCalled();
   });
 
   it('Delete asks first; a failure surfaces showError', async () => {
-    const { getByText } = render(SettingsPage, { page: 'archived' });
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));
     confirmAction.mockResolvedValueOnce(false);
-    await fireEvent.click(getByText('Delete'));
+    await fireEvent.click(getByLabelText('Delete Old Sprint'));
     await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
     expect(deleteProject).not.toHaveBeenCalled();
     confirmAction.mockResolvedValueOnce(true);
     deleteProject.mockRejectedValueOnce(new Error('x'));
-    await fireEvent.click(getByText('Delete'));
+    await fireEvent.click(getByLabelText('Delete Old Sprint'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to delete project. Please try again.'));
     expect(deleteProject).toHaveBeenCalledWith('project:old');
   });
 
-  it('Archive… picks an active project and archives it, clearing it as the open project', async () => {
-    confirmAction.mockResolvedValue(true);
+  it('Archive… archives without asking once the sheet has closed, clears the open project, and offers Undo', async () => {
     const { getByText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));
     await fireEvent.click(getByText('Archive…'));
     await fireEvent.click(getByText('Live Sprint'));
     await waitFor(() => expect(archiveProject).toHaveBeenCalledWith('project:live'));
+    expect(confirmAction).not.toHaveBeenCalled();
+    expect(document.querySelector('.psheet')).toBeNull();
     await waitFor(() => expect(get(activeProjectId)).toBe(''));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived: Live Sprint'));
+    await get(toast)!.undo!();
+    expect(unarchiveProject).toHaveBeenCalledWith('project:live');
+    unarchiveProject.mockRejectedValueOnce(new Error('x'));
+    await get(toast)!.undo!();
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
+  });
+
+  it('a failed archive surfaces showError', async () => {
+    archiveProject.mockRejectedValueOnce(new Error('x'));
+    const { getByText } = render(SettingsPage, { page: 'archived' });
+    await waitFor(() => getByText('Old Sprint'));
+    await fireEvent.click(getByText('Archive…'));
+    await fireEvent.click(getByText('Live Sprint'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to archive project. Please try again.'));
+    expect(get(toast)).toBeNull();
   });
 });
