@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PRIORITY_COLOR, PRIORITY_LABEL } from '../constants';
   // A task row in a cross-project list. Tap opens the task; hold (or
   // right-click) asks the parent for the card menu when `menu` is set.
   import { soften } from '../tagColors';
@@ -74,10 +75,10 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
-<div class="card" class:done class:hi={task.priority === 3}>
-  {#if project && canFinish(project)}<button class="chk" class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>{/if}
+<div class="card" class:done>
+  {#if project && canFinish(project)}<button class="chk" class:prio={!!task.priority} style:--prio={PRIORITY_COLOR[task.priority ?? 0] ?? null} class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>{/if}
   <button class="g" on:click={click} on:pointerdown={down} on:pointermove={move} on:pointerup={cancel} on:pointercancel={cancel} on:pointerleave={cancel} on:contextmenu={context}>
-    <span class="t">{#if hit}{hit[0]}<mark>{hit[1]}</mark>{hit[2]}{:else}{task.title}{/if}{#if task.priority === 3}<span class="p-sr">, high priority</span>{/if}</span>
+    <span class="t">{#if hit}{hit[0]}<mark>{hit[1]}</mark>{hit[2]}{:else}{task.title}{/if}{#if task.priority}<span class="p-sr">, {PRIORITY_LABEL[task.priority].toLowerCase()} priority</span>{/if}</span>
     <span class="s">
       {#if space}<span class="dot" style="background:{soften(space.color)}"></span>{/if}
       {task.project_name ?? project?.name ?? ''}
@@ -96,7 +97,6 @@
     transition: transform var(--dur-hover) var(--ease-hover);
     -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
   }
-  .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .card:active { transform: scale(.98); }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
   .g { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -121,6 +121,10 @@
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0;
     transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
+  /* Priority tints the ring (Todoist-style): shape and position say "this
+     task", colour says how much; darkened toward --text so amber and green
+     still clear 3:1 on a white card. */
+  .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .pill { font-size: var(--p-fs-xs); font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--col-bg); color: var(--muted); white-space: nowrap; }

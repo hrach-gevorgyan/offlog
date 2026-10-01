@@ -15,9 +15,11 @@ async function fire(fn: (mod: typeof import('@capacitor/haptics')) => Promise<vo
   }
 }
 
-// Checkbox/pin/checklist-item toggles — a small, light tap.
+// Checkbox/pin/checklist-item toggles — a crisp click. On Android the
+// plugin's impact(Light) is a 50ms waveform and selectionChanged() 100ms,
+// both a buzz; a 15ms one-shot is close to the system's own click.
 export function hapticToggle() {
-  fire(({ Haptics, ImpactStyle }) => Haptics.impact({ style: ImpactStyle.Light }));
+  fire(({ Haptics }) => Haptics.vibrate({ duration: 15 }));
 }
 
 // Drag pickup — confirms the drag actually started.

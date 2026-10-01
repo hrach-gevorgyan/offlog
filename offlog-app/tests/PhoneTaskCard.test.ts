@@ -152,6 +152,6 @@ describe('phone TaskCard', () => {
   it('marks the search text in the title', () => {
     const { container } = render(TaskCard, { task: task(), highlight: 'TIL' });
     expect(container.querySelector('mark')?.textContent).toBe('til');
-    expect(container.querySelector('.t')?.textContent).toBe('Order tiles');
+    expect(container.querySelector('.t')?.textContent).toBe('Order tiles, medium priority');
   });
 });

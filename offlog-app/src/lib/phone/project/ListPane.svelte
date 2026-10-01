@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PRIORITY_COLOR, PRIORITY_LABEL } from '../../constants';
   // Dense rows with a search field, a sort, Pinned first and Select. In
   // Select mode a floating bar changes status, priority or tags in bulk.
   import { createEventDispatcher, onDestroy } from 'svelte';
@@ -168,7 +169,7 @@
       {@const pill = duePill(t.due_date, done)}
       <div class="rw" in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}>
       {#if selecting}
-        <button class="row" class:done class:hi={t.priority === 3} class:picked={selected.has(t._id)} role="checkbox" aria-checked={selected.has(t._id)} aria-label={t.title} on:pointerdown={() => (held = false)} on:click={() => pickRow(t._id)}>
+        <button class="row" class:done class:picked={selected.has(t._id)} role="checkbox" aria-checked={selected.has(t._id)} aria-label={t.title} on:pointerdown={() => (held = false)} on:click={() => pickRow(t._id)}>
           <span class="box"></span>
           <span class="main">
             <span class="t">{t.title}</span>
@@ -177,12 +178,12 @@
           {#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{/if}
         </button>
       {:else}
-        <div class="row" class:done class:hi={t.priority === 3}>
-          {#if finishable}<button class="chk" class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}></button>{/if}
+        <div class="row" class:done>
+          {#if finishable}<button class="chk" class:prio={!!t.priority} style:--prio={PRIORITY_COLOR[t.priority ?? 0] ?? null} class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}></button>{/if}
           <button class="open" on:click={() => openRow(t)} on:pointerdown={e => holdDown(e, t._id)} on:pointermove={holdMove}
             on:pointerup={holdCancel} on:pointercancel={holdCancel} on:pointerleave={holdCancel} on:contextmenu={e => context(e, t._id)}>
             <span class="main">
-              <span class="t">{#if t.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{t.title}{#if t.priority === 3}<span class="p-sr">, high priority</span>{/if}{#if t.recurrence}<span class="rep" title="Repeats {t.recurrence}">{@html I.repeat}</span>{/if}</span>
+              <span class="t">{#if t.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{t.title}{#if t.priority}<span class="p-sr">, {PRIORITY_LABEL[t.priority].toLowerCase()} priority</span>{/if}{#if t.recurrence}<span class="rep" title="Repeats {t.recurrence}">{@html I.repeat}</span>{/if}</span>
               {#if !g.name}<span class="st">{statusOf(t)}</span>{/if}
             </span>
             {#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{/if}
@@ -233,7 +234,6 @@
   .row { position: relative; width: 100%; display: flex; align-items: center; gap: 12px; padding: 0 14px; min-height: 48px; font: inherit; font-size: var(--p-fs-m); color: var(--text); background: none; border: 0; text-align: left; transition: background var(--dur-hover) var(--ease-hover); -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
   button.row { cursor: pointer; }
   .rw + .rw .row { border-top: 1px solid var(--border); }
-  .row.hi::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .row:active, .open:active { background: var(--col-bg); }
   .open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; align-self: stretch; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
   .main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 6px 0; }
@@ -257,6 +257,10 @@
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0;
     transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
+  /* Priority tints the ring (Todoist-style): shape and position say "this
+     task", colour says how much; darkened toward --text so amber and green
+     still clear 3:1 on a white card. */
+  .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after, .picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   .row.picked { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }

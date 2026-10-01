@@ -61,6 +61,33 @@ describe('phone task lists', () => {
     expect(get(stack).at(-1)?.k).toBe('late');
   });
 
+  it('Late: All to today moves every late task to today; Undo puts each date back', async () => {
+    const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });
+    await findByText('Old');
+    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(2));
+    expect(updateTask).toHaveBeenCalledWith('task:Old', { due_date: day(0) });
+    expect(updateTask).toHaveBeenCalledWith('task:Older', { due_date: day(0) });
+    const t = get(toast);
+    expect(t?.text).toBe('Moved 2 to today');
+    updateTask.mockClear();
+    await t!.undo!();
+    expect(updateTask).toHaveBeenCalledWith('task:Old', { due_date: day(-3), reminder_at: null });
+    expect(updateTask).toHaveBeenCalledWith('task:Older', { due_date: day(-9), reminder_at: null });
+  });
+
+  it('Late: a reminder that follows the due date moves with it; a failure surfaces an error', async () => {
+    getAllTasksDue.mockResolvedValue([task('task:Old', day(-3), { remindOnDue: true } as Partial<TaskDoc>)]);
+    const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });
+    await findByText('Old');
+    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await waitFor(() => expect(updateTask).toHaveBeenCalled());
+    expect(updateTask.mock.calls[0][1]).toMatchObject({ due_date: day(0), reminder_at: expect.any(String) });
+    updateTask.mockRejectedValueOnce(new Error('x'));
+    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await waitFor(() => expect(showError).toHaveBeenCalled());
+  });
+
   it('Today: no late row when nothing is late', async () => {
     getAllTasksDue.mockResolvedValue([task('task:Now', day(0))]);
     const { findByText, queryByLabelText } = render(TaskListScreen, { kind: 'today' });

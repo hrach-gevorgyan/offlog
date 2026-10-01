@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { TaskDoc } from '../types';
-  import { getAllTasksDue, getDashboardData, subscribe } from '../db';
+  import { getAllTasksDue, getDashboardData, subscribe, updateTask } from '../db';
+  import { dueDateToReminderInput } from '../carddetail/helpers';
   import { showError } from '../store';
   import { localDateStr } from '../utils';
-  import { actions, push } from './nav';
+  import { actions, push, showToast } from './nav';
   import { I } from './icons';
   import { shortDate } from './format';
   import TopBar from './TopBar.svelte';
@@ -62,10 +63,36 @@
   let menuTask: Row | null = null, menuSession = 0;
   function openMenu(t: Row) { menuTask = t; menuSession++; }
 
+  // Late: every late task to today in one go, as the due sheet would set it
+  // (a reminder that follows the due date moves with it). Undo puts back each
+  // task's own date and reminder.
+  let moving = false;
+  async function moveAllToToday() {
+    const rows = sections[0]?.tasks ?? [];
+    if (!rows.length || moving) return;
+    moving = true;
+    const before = rows.map(t => ({ id: t._id, due_date: t.due_date, reminder_at: t.reminder_at }));
+    const remind = new Date(dueDateToReminderInput(today)).toISOString();
+    try {
+      for (const t of rows) await updateTask(t._id, t.remindOnDue ? { due_date: today, reminder_at: remind } : { due_date: today });
+      showToast(`Moved ${rows.length} to today`, async () => {
+        try { for (const b of before) await updateTask(b.id, { due_date: b.due_date, reminder_at: b.reminder_at }); }
+        catch { showError('Could not undo the move. Please try again.'); }
+      });
+    } catch {
+      showError('Could not move these tasks. Please try again.');
+    } finally {
+      moving = false;
+      load();
+    }
+  }
+
   $: sub = kind === 'today' ? `${shortDate(today)} · ${count} due` : kind === 'late' ? `${count} past their date` : `${count} pinned`;
 </script>
 
-<TopBar title={TITLE[kind]} {sub} {root} />
+<TopBar title={TITLE[kind]} {sub} {root}>
+  {#if kind === 'late' && count}<button class="p-tbtn" on:click={moveAllToToday} disabled={moving}>All to today</button>{/if}
+</TopBar>
 {#if kind === 'today' && lateCount}
   <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Late: {lateCount} late {lateCount === 1 ? 'task' : 'tasks'}">
     <span class="lbl">{lateCount} late</span>{@html I.chev}

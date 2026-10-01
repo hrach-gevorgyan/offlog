@@ -116,7 +116,9 @@ describe('phone Project screen — board', () => {
     expect(getByRole('tab', { name: 'To do 3' }).getAttribute('aria-selected')).toBe('true');
     expect(getByRole('tab', { name: 'Doing 1' })).toBeTruthy();
     expect(titles(container)).toEqual(['a', 'b', 'c']);
-    expect(container.querySelector('.card.hi .p-sr')?.textContent).toBe(', high priority');
+    expect([...container.querySelectorAll('.card .p-sr')].map(e => e.textContent)).toContain(', high priority');
+    // Priority tints the finish ring instead of a colour-only side bar.
+    expect(container.querySelector('.chk.prio')?.getAttribute('style')).toContain('--prio');
     expect(getByText('Home · 4 open')).toBeTruthy();
     await waitFor(() => expect(getByText('Blocked')).toBeTruthy());
   });

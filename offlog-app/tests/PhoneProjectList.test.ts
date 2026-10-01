@@ -120,7 +120,8 @@ describe('phone Project screen — list', () => {
     expect([...r.container.querySelectorAll('.gh')].map(e => e.textContent)).toEqual(['To do3', 'Doing1']);
     expect(rowTitles(r.container)).toEqual(['a', 'b', 'c', 'd']);
     expect(r.container.querySelectorAll('.rows .st')).toHaveLength(0);
-    expect(r.container.querySelector('.row.hi .p-sr')?.textContent).toBe(', high priority');
+    expect([...r.container.querySelectorAll('.row .p-sr')].map(e => e.textContent)).toContain(', high priority');
+    expect(r.container.querySelector('.chk.prio')).toBeTruthy();
   });
 
   it('the sort chip opens a sheet with a tick on the current sort; other sorts show the status on each row', async () => {
