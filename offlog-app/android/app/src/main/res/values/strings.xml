@@ -4,8 +4,9 @@
     <string name="title_activity_main">Offlog</string>
     <!-- Shown in the widget picker. Describe only the three buttons that
          exist; the widget renders no data. -->
-    <string name="widget_offlog_description">One-tap Focus, Quick Add and Dashboard</string>
+    <string name="widget_name">Quick actions</string>
+    <string name="widget_offlog_description">One tap to Focus, Quick Add or Home</string>
     <string name="widget_action_focus">Focus</string>
     <string name="widget_action_quickadd">Quick Add</string>
-    <string name="widget_action_dashboard">Dashboard</string>
+    <string name="widget_action_home">Home</string>
 </resources>

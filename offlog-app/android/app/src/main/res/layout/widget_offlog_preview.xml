@@ -1,82 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget-picker preview only. A copy of widget_offlog.xml with ONLY the
-     root changed from match_parent to a fixed size: the picker measures a
-     match_parent root against minWidth/minHeight (110x110dp), squishing the
-     card into a canvas too narrow for the Focus pill's text.
-     Keep the inner content in sync with widget_offlog.xml by hand.
-     Size this close to the card's natural ~173x149dp content. The card is
-     wrap_content, so a bigger frame only adds dead space around it, and the
-     picker scales the whole frame to a thumbnail — extra space makes the
-     card render smaller, not bigger. -->
+<!-- Picker preview: a fixed-size copy of widget_offlog.xml's content (no
+     ids or click targets). The picker measures a match_parent root against
+     minWidth/minHeight (110x110dp), too small for the content, so this root
+     is the 2x2 size instead. Keep in sync with widget_offlog.xml by hand. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_preview_root"
-    android:layout_width="185dp"
-    android:layout_height="155dp">
+    android:layout_width="164dp"
+    android:layout_height="162dp">
 
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="140dp"
-        android:layout_gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:background="@drawable/widget_background"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="18dp">
+        android:padding="12dp">
 
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
             android:orientation="horizontal"
             android:gravity="center"
-            android:background="@drawable/widget_pill_bg"
-            android:paddingStart="30dp"
-            android:paddingEnd="30dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp">
+            android:background="@drawable/widget_pill_bg">
             <ImageView
-                android:layout_width="19dp"
-                android:layout_height="19dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:src="@drawable/ic_widget_focus"
-                android:layout_marginEnd="8dp" />
+                android:layout_marginEnd="10dp" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/widget_action_focus"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:textColor="@color/colorWidgetText"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="18sp" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
             android:orientation="horizontal"
             android:layout_marginTop="10dp">
 
             <FrameLayout
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_marginEnd="12dp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
                 android:background="@drawable/widget_button_bg">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center"
-                    android:text="+"
-                    android:textColor="@color/colorWidgetText"
-                    android:textSize="21sp"
-                    android:textStyle="bold" />
+                    android:src="@drawable/ic_widget_add" />
             </FrameLayout>
 
             <FrameLayout
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:background="@drawable/widget_button_bg">
                 <ImageView
-                    android:layout_width="19dp"
-                    android:layout_height="19dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_widget_grid" />
+                    android:src="@drawable/ic_widget_home" />
             </FrameLayout>
         </LinearLayout>
     </LinearLayout>

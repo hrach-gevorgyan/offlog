@@ -640,8 +640,12 @@ same UI.
   `.status-bar-fill` strip of `env(safe-area-inset-top)` sits behind it.
   Needs `viewport-fit=cover`.
   While the phone Home's hero is under the bar, `setStatusBarOnHero(true)`
-  (theme.ts) sets `body.statusbar-hero` (strip = `--hero`) and light icons in
-  the same step; scrolling the hero away or leaving Home turns it off.
+  (theme.ts) asks for light icons and sets `body.statusbar-hero` (strip =
+  `--hero`) once the native call resolves, so the strip never changes ahead
+  of the icons; scrolling the hero away or leaving Home turns it off. The
+  phone loading screen is `--hero` too, continuing the launch splash
+  (`splashBg` in android colors.xml). The strip sits below every modal
+  scrim (z-index 299), so dialogs and sheets dim it with the page.
 - **Phone shell and the keyboard**: the WebView resizes (`adjustResize`), so
   PhoneApp hides the navigation bar and + button while a text field is
   focused, the page is not pinch-zoomed, and the visual viewport is more than
@@ -656,8 +660,11 @@ same UI.
 - **Notification icons** must be white silhouettes with transparency, or
   Android substitutes a generic triangle.
 - **Home-screen widget** (`OffologWidgetProvider.java`,
-  `res/xml/offlog_widget_info.xml`): one widget with Dashboard, Focus and
-  Quick Add shortcuts. `updatePeriodMillis="0"` means `onUpdate()` only
+  `res/xml/offlog_widget_info.xml`): one widget, "Quick actions", with Focus,
+  Quick Add and Home shortcuts. Its colours (`colorWidget*` in
+  `values[-night]/colors.xml`) are app.css tokens and follow the system
+  light/dark setting; the corner radius is the launcher's own on Android 12+.
+  `updatePeriodMillis="0"` means `onUpdate()` only
   runs when an instance is placed — a widget already on the home screen
   keeps stale PendingIntents until it is removed and re-added, or the
   device reboots.

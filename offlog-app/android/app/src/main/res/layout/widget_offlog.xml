@@ -1,92 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The outer root must stay transparent and match_parent, with the
-     background/padding/content on an INNER wrap_content card. The
-     launcher, not this XML, decides how much grid space the widget gets
-     (minWidth/minHeight are only a minimum), so painting
-     @drawable/widget_background on the root makes the card stretch to fill
-     whatever it was granted. -->
+<!-- The card fills the cell the launcher grants (2x2), like the system's
+     own widgets. The two round buttons share the row by weight, so their
+     corners (32dp on a 64dp height) make circles at the 2x2 width and
+     stadiums if a launcher grants a wider cell. Keep
+     widget_offlog_preview.xml's content in sync by hand. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="140dp"
-        android:layout_gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:background="@drawable/widget_background"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="18dp">
+        android:padding="12dp">
 
         <LinearLayout
             android:id="@+id/btn_focus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
             android:orientation="horizontal"
             android:gravity="center"
             android:background="@drawable/widget_pill_bg"
-            android:paddingStart="30dp"
-            android:paddingEnd="30dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp"
             android:contentDescription="@string/widget_action_focus">
             <ImageView
-                android:layout_width="19dp"
-                android:layout_height="19dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:src="@drawable/ic_widget_focus"
-                android:layout_marginEnd="8dp" />
+                android:layout_marginEnd="10dp" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/widget_action_focus"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:textColor="@color/colorWidgetText"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="18sp" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
             android:orientation="horizontal"
             android:layout_marginTop="10dp">
 
-            <!-- textColor/fillColor on this button and btn_dashboard's icon
-                 use colorWidgetText, not a hardcoded white — both sit on
-                 colorWidgetSurface, which is light in light mode, so a
-                 fixed white glyph is nearly invisible there. btn_focus's
-                 pill text above stays hardcoded white on purpose — it sits
-                 on colorWidgetAccent, which is dark/saturated in both
-                 themes. -->
             <FrameLayout
                 android:id="@+id/btn_quickadd"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_marginEnd="12dp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="10dp"
                 android:background="@drawable/widget_button_bg"
                 android:contentDescription="@string/widget_action_quickadd">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center"
-                    android:text="+"
-                    android:textColor="@color/colorWidgetText"
-                    android:textSize="21sp"
-                    android:textStyle="bold" />
+                    android:src="@drawable/ic_widget_add" />
             </FrameLayout>
 
             <FrameLayout
                 android:id="@+id/btn_dashboard"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:background="@drawable/widget_button_bg"
-                android:contentDescription="@string/widget_action_dashboard">
+                android:contentDescription="@string/widget_action_home">
                 <ImageView
-                    android:layout_width="19dp"
-                    android:layout_height="19dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_widget_grid" />
+                    android:src="@drawable/ic_widget_home" />
             </FrameLayout>
         </LinearLayout>
     </LinearLayout>

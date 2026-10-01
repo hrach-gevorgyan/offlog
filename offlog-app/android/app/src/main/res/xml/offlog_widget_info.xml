@@ -3,7 +3,7 @@
      cells), not the picker preview. Never grow them to fix how the preview
      looks — that grows the placed widget to 3x3.
      Fix the preview through previewLayout instead: it points at a
-     dedicated @layout/widget_offlog_preview with its own fixed 200x170dp
+     dedicated @layout/widget_offlog_preview with its own fixed-size
      root. Reusing @layout/widget_offlog there fails because its root is
      match_parent, which the picker measures against minWidth/minHeight and
      squishes into a canvas too narrow for the Focus pill's text.

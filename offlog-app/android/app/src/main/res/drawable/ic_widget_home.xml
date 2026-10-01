@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's Home tab icon (phone/icons.ts "home"), stroked in the text colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:pathData="M4,11 L12,4.5 L20,11 L20,19 A1.5,1.5 0 0 1 18.5,20.5 L14,20.5 L14,15 L10,15 L10,20.5 L5.5,20.5 A1.5,1.5 0 0 1 4,19 Z"
+        android:strokeColor="@color/colorWidgetText"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>

@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- B48 — dark-mode override for the widget palette (see values/colors.xml
-         for the light default and the full explanation). Same values the
-         widget used unconditionally before this split. -->
-    <color name="colorWidgetBg">#101218</color>      <!-- app.css sidebar-bg, dark -->
-    <color name="colorWidgetSurface">#242934</color> <!-- app.css surface, dark -->
+    <color name="splashBg">#373d81</color>  <!-- app.css hero token, dark -->
+    <!-- Dark set of the widget palette; values/colors.xml has the light set. -->
+    <color name="colorWidgetBg">#242934</color>      <!-- app.css surface, dark -->
+    <color name="colorWidgetSurface">#323846</color>
     <color name="colorWidgetAccent">#8590E5</color>  <!-- app.css accent, dark -->
     <color name="colorWidgetText">#F3F4F6</color>    <!-- app.css text, dark -->
     <color name="colorWidgetMuted">#A3A9B7</color>   <!-- app.css muted, dark -->

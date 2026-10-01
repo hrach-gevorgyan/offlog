@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Accent-filled pill for the primary "Focus" action; the two secondary
-     circles use the neutral surface color instead. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/colorWidgetAccent" />
-    <corners android:radius="24dp" />
+    <solid android:color="@color/colorWidgetSurface" />
+    <corners android:radius="32dp" />
 </shape>
