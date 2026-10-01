@@ -90,11 +90,15 @@
   function fadeHeroLines(y: number) {
     const body = heroEl?.querySelector<HTMLElement>('.hbody');
     if (!body) return;
-    for (const line of Array.from(body.children) as HTMLElement[]) {
-      const top = heroEl.offsetTop + body.offsetTop + line.offsetTop - y;
-      const o = Math.min(1, Math.max(0, (top - 44) / 30));
+    // All reads before any write: interleaving them forces a layout per line
+    // on every scroll frame.
+    const lines = Array.from(body.children) as HTMLElement[];
+    const base = heroEl.offsetTop + body.offsetTop - y;
+    const tops = lines.map(l => base + l.offsetTop);
+    lines.forEach((line, i) => {
+      const o = Math.min(1, Math.max(0, (tops[i] - 44) / 30));
       line.style.opacity = o < 1 ? String(o) : '';
-    }
+    });
   }
 
   function onScroll(e: Event) {
