@@ -7,6 +7,7 @@
   import { duePill } from './format';
   import { I } from './icons';
   import { showToast } from './nav';
+  import { snapshot, restore } from './project/actions';
 
   export let task: TaskDoc & { project_name?: string };
 
@@ -28,13 +29,12 @@
     if (!target) return;
     busy = true;
     try {
-      const prev = task.column_id, id = task._id, title = task.title;
+      // Finishing a repeating task also moves its date, reminder and steps,
+      // so Undo puts all of them back, not just the status.
+      const before = snapshot(task), id = task._id, title = task.title;
       await updateTask(id, { column_id: target });
       dispatch('changed');
-      if (!done) showToast(`Done: ${title}`, async () => {
-        try { await updateTask(id, { column_id: prev }); dispatch('changed'); }
-        catch { showError('Could not undo. Please try again.'); }
-      });
+      if (!done) showToast(`Done: ${title}`, async () => { await restore([[id, before]]); dispatch('changed'); });
     } catch {
       showError('Could not update this task. Please try again.');
     } finally {

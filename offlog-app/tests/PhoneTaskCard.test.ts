@@ -46,7 +46,8 @@ describe('phone TaskCard', () => {
     await fireEvent.click(getByLabelText('Finish: Order tiles'));
     await waitFor(() => expect(get(toast)?.text).toBe('Done: Order tiles'));
     await get(toast)!.undo!();
-    expect(updateTask).toHaveBeenLastCalledWith('task:t', { column_id: 'col:doing' });
+    // The whole snapshot comes back: a repeating task's date and steps too.
+    expect(updateTask).toHaveBeenLastCalledWith('task:t', expect.objectContaining({ column_id: 'col:doing', due_date: null }));
   });
 
   it('un-finishing a done task sends it back to the first status', async () => {

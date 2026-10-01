@@ -35,7 +35,10 @@
   let unsub: (() => void) | undefined;
   onMount(() => { load(); unsub = subscribe(load); });
   onMount(() => setStatusBarOnHero(true));
-  onDestroy(() => { unsub?.(); setStatusBarOnHero(false); });
+  onDestroy(() => { unsub?.(); if (raf) cancelAnimationFrame(raf); setStatusBarOnHero(false); });
+  // Coming back to the app the next morning shows the new day.
+  function onVisible() { if (!document.hidden) { todayStr = localDateStr(new Date()); load(); } }
+  onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
 
   $: left = data?.todayOpenCount ?? 0;
   $: doneToday = data?.todayDoneCount ?? 0;
@@ -46,7 +49,7 @@
   $: dashN = Math.max(1, Math.min(total, 12));
   $: dashOn = Math.round(doneToday * dashN / Math.max(total, 1));
   $: sortedSpaces = [...$spaces].sort((a, b) => a.position - b.position);
-  const todayStr = localDateStr(new Date());
+  let todayStr = localDateStr(new Date());
 
   // The top bar sits over the hero in the hero's colour, then turns into the
   // regular page-coloured bar across the last 40px before the hero's lowest
@@ -101,7 +104,7 @@
     </div>
 
     {#each sortedSpaces as s (s._id)}
-      {@const ps = $projects.filter(p => p.space_id === s._id).sort((a, b) => a.position - b.position)}
+      {@const ps = $projects.filter(p => p.space_id === s._id).sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || a.position - b.position)}
       <div class="sec">{s.name}</div>
       <div class="group">
         {#each ps as p (p._id)}
@@ -109,6 +112,7 @@
           <button class="row" on:click={() => push({ k: 'project', id: p._id })}>
             <span class="dot" style="background:{soften(s.color)}"></span>
             <span class="lbl">{p.name}</span>
+            {#if p.pinned}<span class="pin" aria-label="Pinned">{@html I.pin}</span>{/if}
             {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
             {#if st}<span class="badge">{st.open}</span>{/if}
           </button>
@@ -171,8 +175,10 @@
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 64px), 0 100%);
   }
   .hbody { display: flex; flex-direction: column; width: 100%; color: inherit; margin-top: 10px; }
-  .hi { font-size: 15px; opacity: .9; margin: 0 0 10px; font-weight: 500; }
-  .hi span { opacity: .85; font-weight: 400; }
+  .hi { font-size: 15px; margin: 0 0 10px; font-weight: 500; }
+  .hi span { opacity: .88; font-weight: 400; }
+  .pin { display: flex; color: var(--faint); }
+  .pin :global(svg) { width: 14px; height: 14px; }
   .count { display: flex; align-items: baseline; gap: 10px; }
   .count b { font-size: 56px; font-weight: 800; letter-spacing: -.04em; line-height: .9; }
   .count span { font-size: 18px; font-weight: 600; }

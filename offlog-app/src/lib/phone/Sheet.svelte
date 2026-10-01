@@ -24,7 +24,9 @@
   let open = true;
   // The parent unmounts this on `close`; the outro runs first.
   const requestClose = closeOnBack(() => { open = false; });
-  export function close() { requestClose(); }
+  // Safe after the sheet already went (Android back during an await): a
+  // second history.back() would pop the screen underneath.
+  export function close() { if (open) requestClose(); }
 
   let panel: HTMLDivElement;
   let dragY = 0, startY: number | null = null;

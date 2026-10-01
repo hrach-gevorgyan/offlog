@@ -29,7 +29,8 @@
   import UpdateModal from './lib/UpdateModal.svelte';
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
   import PhoneApp from './lib/phone/PhoneApp.svelte';
-  import { isPhone, actions as phoneActions, backAtRoot, switchTab, push, showToast } from './lib/phone/nav';
+  import { isPhone, actions as phoneActions, backAtRoot, switchTab, navigate, showToast, tab as phoneTab } from './lib/phone/nav';
+  import { setStatusBarSuppressed } from './lib/theme';
 
   // The version an already-dismissed banner shouldn't reappear for until
   // a *different* update is found — background checks re-run every ~6h
@@ -223,7 +224,7 @@
   }
 
   async function openFromNotification(taskId: string) {
-    if (get(isPhone)) { push({ k: 'task', id: taskId }); pendingOpenTaskId.set(null); return; }
+    if (get(isPhone)) { navigate(get(phoneTab), { k: 'task', id: taskId }); pendingOpenTaskId.set(null); return; }
     const task = await getTaskById(taskId);
     const proj = task ? $projects.find(p => p._id === task.project_id) ?? null : null;
     if (task && proj) {
@@ -244,12 +245,14 @@
   }
 
   function onKeydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openQuickAdd(); return; }
+    // On the phone layout (a phone or tablet with a keyboard) the shortcuts
+    // go to the phone's own Search tab and quick-add sheet.
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); if (get(isPhone)) switchTab('search'); else openSearch(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); if (get(isPhone)) phoneActions.quickAdd(); else openQuickAdd(); return; }
     // Don't hijack "?" while the user is typing in a field.
     const el = e.target as HTMLElement;
     const typing = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;
-    if (e.key === '?' && !typing) { e.preventDefault(); showShortcuts = true; return; }
+    if (e.key === '?' && !typing && !get(isPhone)) { e.preventDefault(); showShortcuts = true; return; }
     if (e.key === 'Escape' && showShortcuts) { closeShortcuts(); return; }
     if (e.key === 'Escape' && sidebarOpen) { closeSidebar(); return; }
   }
@@ -302,9 +305,9 @@
     // closes whatever overlay (Quick Add, most commonly) might already be
     // open on a warm start instead of leaving it rendered on top of the
     // new view. No-ops if nothing's open (cold start, the common case).
+    if (get(isPhone)) return handlePhoneWidgetUrl(host, url);
     closeAll();
     if (host === 'quickadd') { openQuickAdd(); return false; } // an overlay, not a view change
-    if (get(isPhone)) return handlePhoneWidgetUrl(host, url);
     if (host === 'agenda') { showDashboard = false; showAgenda = true; return true; }
     if (host === 'focus') { showDashboard = false; showAgenda = false; showFocus = true; return true; }
     if (host === 'dashboard') { showAgenda = false; showFocus = false; showDashboard = true; return true; }
@@ -321,12 +324,13 @@
   // The phone shell navigates through its own tab stacks instead of the
   // desktop view booleans.
   function handlePhoneWidgetUrl(host: string, url: string): boolean {
-    if (host === 'agenda') { switchTab('agenda'); return true; }
-    if (host === 'focus') { switchTab('home'); push({ k: 'focus' }); return true; }
-    if (host === 'dashboard') { switchTab('home'); return true; }
+    if (host === 'quickadd') { navigate(get(phoneTab), undefined, () => phoneActions.quickAdd()); return false; }
+    if (host === 'agenda') { navigate('agenda'); return true; }
+    if (host === 'focus') { navigate('home', { k: 'focus' }); return true; }
+    if (host === 'dashboard') { navigate('home'); return true; }
     if (host === 'project') {
       const id = new URL(url).searchParams.get('id');
-      if (id && get(projects).some(p => p._id === id)) { switchTab('home'); push({ k: 'project', id }); return true; }
+      if (id && get(projects).some(p => p._id === id)) { navigate('home', { k: 'project', id }); return true; }
     }
     return false;
   }
@@ -489,13 +493,9 @@
 
   function retryInit() { location.reload(); }
 
-  phoneActions.quickAdd = (due = null) => openQuickAdd(due);
-  phoneActions.openSettings = () => sidebarRef?.openSettings();
-  phoneActions.openTask = (task) => {
-    const proj = get(projects).find(p => p._id === task.project_id);
-    if (proj) openSearchDetail(task, proj);
-    else showError('Could not open this task right now.');
-  };
+  // The lock screen covers Home's hero, so the status bar must not stay
+  // indigo with light icons behind it.
+  $: setStatusBarSuppressed(locked);
   // Toasts sit above the phone's navigation bar rather than on top of it.
   $: document.body.classList.toggle('phone', $isPhone);
 
@@ -689,7 +689,7 @@
 {/if}
 
 <ConfirmDialog />
-{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; sidebarRef?.openSettings('sync'); }} />{/if}
+{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; if (get(isPhone)) navigate('home', { k: 'set', page: 'sync' }); else sidebarRef?.openSettings('sync'); }} />{/if}
 
 {#if isTauri()}
   <UpdateModal />
@@ -977,7 +977,7 @@
   :global(body.phone) .toast-stack { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   :global(body.phone) .error-toast {
     left: 12px; right: 12px; transform: none; white-space: normal; border-radius: 12px; padding: 14px 16px;
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(144px + env(safe-area-inset-bottom, 0px));
   }
 
   /* ── Undo toast ── */

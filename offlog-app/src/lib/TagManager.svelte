@@ -145,7 +145,7 @@
               <button
                 class="swatch"
                 class:swatch-active={overrides[tag] === c}
-                style="background:{c}"
+                style="background:{soften(c)}"
                 title={c}
                 aria-label="Set tag {tag} color to {c}"
                 on:click={() => pickColor(tag, c)}

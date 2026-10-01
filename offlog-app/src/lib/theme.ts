@@ -74,8 +74,13 @@ export function applyTheme(): void {
 // showing, the strip takes the hero colour (body.statusbar-hero in app.css)
 // and the OS icons go light. Switched in one step with the icon style for the
 // same lockstep reason as the theme itself: never animate one without the other.
-let onHero = false;
-export function setStatusBarOnHero(on: boolean): void {
+let onHero = false, wanted = false, suppressed = false;
+export function setStatusBarOnHero(on: boolean): void { wanted = on; syncHero(); }
+// While something opaque covers the app (the lock screen), the hero tint
+// would leave light icons on a light strip.
+export function setStatusBarSuppressed(on: boolean): void { suppressed = on; syncHero(); }
+function syncHero(): void {
+  const on = wanted && !suppressed;
   if (on === onHero) return;
   onHero = on;
   document.body.classList.toggle('statusbar-hero', on);

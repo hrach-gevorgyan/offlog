@@ -71,7 +71,7 @@
      lightness per theme, so it needs a text color that doesn't swap
      either. Used by DeadlinesView.svelte's success-colored badge. */
   --ink-fixed-dark: #181a20;
-  --danger: #ca473e;
+  --danger: #bd4138;
   --success: #5abe73;
   --due-soon-bg: #faf3d4;
   --due-soon-ink: #884826;

@@ -153,10 +153,13 @@ export function discardTop(): void {
 // arriving while a previous `history.go()` is still pending can have its
 // navigation coalesced away, leaving `stack` unpopped and a later closeAll()
 // reading a stale `stack.length`.
-export function closeAll(): void {
-  if (stack.length === 0) return;
+// Returns how many layers it closed, so a caller can wait for the
+// compensating popstate before pushing anything new.
+export function closeAll(): number {
+  if (stack.length === 0) return 0;
   const n = stack.length;
   const entries = stack.splice(0, stack.length);
   for (let i = entries.length - 1; i >= 0; i--) entries[i].close();
   history.go(-n);
+  return n;
 }

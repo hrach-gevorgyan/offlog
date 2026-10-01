@@ -2,13 +2,16 @@
   import { searchAllTasks } from '../db';
   import type { TaskSearchMatch } from '../db';
   import { projects, spaces, showError } from '../store';
-  import { push, actions } from './nav';
+  import { push, actions, memo } from './nav';
   import { I } from './icons';
   import { soften } from '../tagColors';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
 
-  let q = '';
+  const m = memo({ q: '', limit: 40 });
+  let q = m.q, limit = m.limit;
+  $: m.q = q;
+  $: m.limit = limit;
   let results: Awaited<ReturnType<typeof searchAllTasks>> = [];
   let seq = 0;
 
@@ -19,7 +22,7 @@
     if (!query.trim()) { results = []; return; }
     try {
       const r = await searchAllTasks(query.trim());
-      if (my === seq) results = r.slice(0, 40);
+      if (my === seq) results = r;
     } catch {
       showError('Search failed. Please try again.');
     }
@@ -51,10 +54,11 @@
   {/if}
   {#if results.length}
     <div class="sec">Tasks</div>
-    {#each results as t (t._id)}
+    {#each results.slice(0, limit) as t (t._id)}
       {#if WHERE[t.matchedIn]}<div class="why">Matched in {WHERE[t.matchedIn]}</div>{/if}
       <TaskCard task={t} on:open={() => actions.openTask(t)} on:changed={() => run(q)} />
     {/each}
+    {#if results.length > limit}<button class="p-tbtn more" on:click={() => (limit += 40)}>Show {Math.min(40, results.length - limit)} more</button>{/if}
   {:else if !matchedProjects.length}
     <p class="empty">No matches.</p>
   {/if}
@@ -66,6 +70,7 @@
   .field:focus-within { box-shadow: 0 0 0 2px var(--accent); }
   .empty { text-align: center; color: var(--faint); padding: 28px 0; font-size: 14.5px; margin: 0; }
   .sec { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 18px 4px 8px; }
+  .more { display: block; margin: 4px auto 0; }
   .why { font-size: 12px; color: var(--accent); font-weight: 600; margin: 0 4px 4px; }
   .group { background: var(--surface); border-radius: 14px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08); }
   .row { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; min-height: 52px; font: inherit; font-size: 16px; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }

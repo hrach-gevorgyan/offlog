@@ -12,8 +12,9 @@ import type { TaskDoc } from '../types';
 // Sidebar.svelte): a landscape phone is still a phone.
 export const PHONE_QUERY = '(max-width: 768px), (max-height: 500px) and (orientation: landscape)';
 
+// Never in the desktop app: a narrow Tauri window keeps the desktop layout.
 export const isPhone = readable(false, set => {
-  if (typeof window === 'undefined' || !window.matchMedia) return;
+  if (typeof window === 'undefined' || !window.matchMedia || window.__TAURI_INTERNALS__) return;
   const mq = window.matchMedia(PHONE_QUERY);
   set(mq.matches);
   const on = (e: MediaQueryListEvent) => set(e.matches);
@@ -97,3 +98,29 @@ export function showToast(text: string, undo?: Toast['undo']) {
 // Where the + button should add: a project screen sets this to its project
 // and the status on show, so a new task lands where the user is looking.
 export const addContext = writable<{ projectId: string; columnId: string | null } | null>(null);
+
+// State a screen wants back when the user returns to it (a board's status,
+// filters, a search query). Only the top screen is mounted, so the screen
+// below is rebuilt on back; it reads what it left here on its stack entry.
+export function memo<T extends object>(init: T): T {
+  const top = get(stack).at(-1) as (Entry & { mem?: object }) | undefined;
+  if (!top) return init;
+  top.mem ??= { ...init };
+  return top.mem as T;
+}
+
+// Jump somewhere from outside the stacks (widget, notification): unwind
+// every open layer (screens and sheets), then push once that history jump
+// has landed — pushing straight away lets the late popstate pop it again.
+export function navigate(t: Tab, screen?: Screen, then?: () => void) {
+  const closed = closeAll();
+  tab.set(t);
+  stack.set([{ k: t }]);
+  arrival.set('none');
+  const go = () => { if (screen) push(screen); then?.(); };
+  if (!closed) { go(); return; }
+  let done = false;
+  const once = () => { if (done) return; done = true; window.removeEventListener('popstate', once); go(); };
+  window.addEventListener('popstate', once);
+  setTimeout(once, 400);
+}

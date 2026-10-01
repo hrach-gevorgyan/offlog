@@ -212,7 +212,7 @@
       <div class="row new-row">
         <label class="swatch-wrap" title="Pick a color">
           <input type="color" bind:value={newColor} />
-          <span class="swatch" style="background:{newColor}"></span>
+          <span class="swatch" style="background:{soften(newColor)}"></span>
         </label>
         <div class="icon-picker-wrap">
           <button type="button" class="icon-btn" title="Change icon" aria-label="Change icon" on:click={() => toggleIconPicker('new')}>

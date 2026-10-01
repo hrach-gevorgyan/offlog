@@ -549,7 +549,7 @@ native theming. Derived tints use
 | `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent |
 | `--on-hero` | `#FFFFFF` | `#EFF0FC` | ink and the muted mark on `--hero` |
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
-| `--danger` | `#CA473E` | `#E77F7C` | destructive actions |
+| `--danger` | `#BD4138` | `#E77F7C` | destructive actions |
 | `--success` | `#5ABE73` | `#74D791` | done, sync ok |
 | `--due-soon-bg` / `--due-soon-ink` | `#FAF3D4` / `#884826` | `#372F1A` / `#EFC365` | due today/tomorrow chips |
 | `--overdue-bg` / `--overdue-ink` | `#F8E4E4` / `#AB3730` | `#351A21` / `#EA7F8C` | late chips and counts |

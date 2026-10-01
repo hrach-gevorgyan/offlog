@@ -61,6 +61,10 @@ export function resolveTagColor(tag: string, overrides: Record<string, string>):
 // saturated (same hue and lightness) so the app's colours read calm rather
 // than loud. Applied at render time so stored data, seed detection and
 // tag-colour balancing all keep working on the original hex values.
+// Uses CSS relative colour syntax (Chromium 119+). An older Android WebView
+// would drop the whole declaration and the dot or tint would vanish, so there
+// the stored colour is used as is.
+const RELATIVE = typeof CSS !== 'undefined' && !!CSS.supports?.('color', 'oklch(from red l c h)');
 export function soften(color: string): string {
-  return `oklch(from ${color} l calc(c * 0.8) h)`;
+  return RELATIVE ? `oklch(from ${color} l calc(c * 0.8) h)` : color;
 }
