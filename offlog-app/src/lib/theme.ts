@@ -79,8 +79,16 @@ export function setStatusBarOnHero(on: boolean): void { wanted = on; syncHero();
 // While something opaque covers the app (the lock screen), the hero tint
 // would leave light icons on a light strip.
 export function setStatusBarSuppressed(on: boolean): void { suppressed = on; syncHero(); }
+// Older Android WebViews (before Chrome 140) report no top inset, so the
+// strip is 0px tall and the status area keeps the system's light colour;
+// switching to light icons there would make the clock vanish. Only tint when
+// the strip actually has height.
+function stripVisible(): boolean {
+  const el = document.querySelector<HTMLElement>('.status-bar-fill');
+  return !el || el.offsetHeight > 0;
+}
 function syncHero(): void {
-  const on = wanted && !suppressed;
+  const on = wanted && !suppressed && stripVisible();
   if (on === onHero) return;
   onHero = on;
   document.body.classList.toggle('statusbar-hero', on);

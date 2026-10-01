@@ -58,6 +58,22 @@ describe('theme — native status bar', () => {
     await vi.waitFor(() => expect(setStyle).toHaveBeenCalledWith({ style: 'LIGHT' }));
   });
 
+  it('no hero tint where the strip has no height (older WebViews), so the clock stays dark on light', async () => {
+    const { setStatusBarOnHero } = await import('../src/lib/theme');
+    nativeOn();
+    setMode('light');
+    setStatusBarOnHero(false);
+    const strip = document.createElement('div');
+    strip.className = 'status-bar-fill'; // jsdom: offsetHeight 0, like an inset-less WebView
+    document.body.appendChild(strip);
+    setStyle.mockClear();
+    setStatusBarOnHero(true);
+    expect(document.body.classList.contains('statusbar-hero')).toBe(false);
+    await new Promise(r => setTimeout(r, 10));
+    expect(setStyle).not.toHaveBeenCalledWith({ style: 'DARK' });
+    strip.remove();
+  });
+
   it('does not touch the native status bar off Android', async () => {
     const { applyTheme } = await import('../src/lib/theme');
     nativeOff();
