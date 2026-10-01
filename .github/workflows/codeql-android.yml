@@ -93,7 +93,7 @@ jobs:
         working-directory: offlog-app
         run: npx cap sync android
 
-      - uses: github/codeql-action/init@88585263c0627ee42c0e1c5143a112c8d6f4aa18  # v4.38.2
+      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           languages: java-kotlin
           build-mode: manual
