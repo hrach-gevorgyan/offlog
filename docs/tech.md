@@ -68,8 +68,18 @@ flowchart LR
   instead: four tabs (Home, Today, Agenda, Search), each a stack of screens.
   Every pushed screen owns one `modalStack` history entry, so Android back
   pops screens and overlays in one LIFO order; back at a non-Home tab root
-  goes Home before the app exits. The shell asks App for what App owns
-  (QuickAdd, CardDetail, the Sidebar-hosted Settings) through `nav.actions`.
+  goes Home before the app exits. Screens: Home, Today/Late/Pinned, Search,
+  Project (board by status with swipe, list with select + bulk bar, filter
+  and menu sheets) and Statuses, Task (full screen, every field saved as it
+  changes, pickers in bottom sheets), Agenda (list/month), Focus, Settings
+  (pushed pages that reuse `settings/*`, plus Recycle bin, History, Archived
+  projects). Quick add is a bottom sheet that adds where the user is (the
+  project and status on show via `nav.addContext`, or Agenda's chosen day).
+  `nav.actions` routes task opening, quick add and Settings into the shell;
+  `nav.showToast` is the Undo snackbar for reversible actions. Bottom sheets
+  are `phone/Sheet.svelte` (a `closeOnBack` consumer: mount behind `{#key}`),
+  at z-index 650 so `ConfirmDialog` (700) shows above them. Shared phone
+  styles are `phone/phone.css`, all scoped under `.phone-shell`/`.psheet`.
 - **store.ts** — the only reactive state layer. Holds spaces, projects,
   tasks and the active selection; reloads on any database change.
 - **db.ts** — all reads and writes, the changelog, the undo buffer, and

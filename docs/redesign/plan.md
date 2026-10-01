@@ -57,13 +57,13 @@ The prototype is being built into the app on `redesign/full`, one committed phas
 | phase | scope | state |
 |---|---|---|
 | 1 | Shell: four tabs with their own screen stacks, Android back, transitions, `+` button. Home (hero, scroll-linked bar, tiles, projects), Today / Late / Pinned lists, Search. Project, Agenda and Focus reuse the desktop views; opening a task uses the existing task dialog; Settings uses the existing panel. | done 1 Oct 2026 |
-| 2 | Project screen: status pills with swipe, list with select/bulk bar, filter sheet, card long-press menu, project menu (statuses, view, archive, pin, delete), New project. | next |
-| 3 | Full-screen task screen with rows and bottom-sheet pickers (status, due, priority, tags, reminder, repeat, blocked by, related, attachments, fields, note preview, steps). | |
-| 4 | Quick add as a bottom sheet (chips, duplicate warning, project/day context). | |
-| 5 | Agenda (list/month) and Focus in the phone style. | |
-| 6 | Settings as pushed phone pages; Trash, History, Organize, Archived projects. | |
+| 2 | Project screen: status pills with swipe, list with select/bulk bar, filter sheet, card long-press menu, project menu (statuses, view, archive, pin, delete), New project. | done 1 Oct 2026 |
+| 3 | Full-screen task screen with rows and bottom-sheet pickers (status, due, priority, tags, reminder, repeat, blocked by, related, attachments, fields, note preview, steps). | done 1 Oct 2026 |
+| 4 | Quick add as a bottom sheet (chips, duplicate warning, project/day context). | done 1 Oct 2026 |
+| 5 | Agenda (list/month) and Focus in the phone style. | done 1 Oct 2026 |
+| 6 | Settings as pushed phone pages; Trash, History, Organize, Archived projects. | done 1 Oct 2026 |
 
-**Known gaps after phase 1:** the status bar stays page-coloured above the indigo hero (its colour is paired with the native icon style in `theme.ts`); there is no user name, so the hero greets without one.
+Also on 1 Oct 2026: the palette was muted (chroma ×0.8; user space/tag colours via `soften()` at render time), the status bar takes the hero colour while Home's hero is under it, and reversible actions show an Undo snackbar. The hero greets without a name (the app stores none).
 
 ## 0. Brief
 

@@ -138,6 +138,12 @@ travel at 300ms, for the bottom-docked Quick Add bar. `bannerIn`/`bannerOut`
 are the left-docked update banner — **do not reuse `toastIn` there**, it bakes
 in a centring translate the banner does not have.
 
+The phone snackbar spans the width (left/right insets, no centring), so it uses
+`snackIn`/`snackOut` with `fly` — 16px rise, 200/150ms. Phone bottom sheets
+(`phone/Sheet.svelte`) fly up 400px at 280ms decelerate and leave at 0.75x on
+accelerate; dragging the handle follows the finger with no transition and
+dismisses past 90px.
+
 Reflow within a stack (`animate:flip`) is legal only on a keyed `{#each}` and
 only when two or more items are realistically on screen at once. Today they are
 not; do not add it speculatively.
