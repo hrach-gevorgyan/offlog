@@ -1276,6 +1276,20 @@ describe('restoring from Recycle', () => {
 describe('archive round-trip', () => {
   beforeEach(seedSpace);
 
+  it('a finished task left in an archived project is not reported as a problem', async () => {
+    // archiveProject() deliberately leaves last-status tasks alone; the
+    // integrity check must agree, or every archived project with finished
+    // work shows up as "active tasks inside an archived project".
+    const project = await createProject('space:unsorted', 'Wrapped up');
+    const done = await createTask(project._id, 'space:unsorted', project.columns.at(-1)!.id, 'Finished');
+    const open = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Open');
+    await archiveProject(project._id);
+    expect((await db.get<any>(done._id!)).archived).toBeFalsy();
+    const flagged = (await checkIntegrity()).issues.filter(i => i.type === 'unarchived_in_archived').map(i => i.docId);
+    expect(flagged).not.toContain(done._id);
+    expect(flagged).not.toContain(open._id); // archived by the cascade
+  });
+
   it('restores exactly the tasks archiving hid, and leaves deliberate ones alone', async () => {
     // Archiving cascaded onto open tasks; un-archiving flipped only the
     // project's own flag, so the project came back EMPTY -- while the UI

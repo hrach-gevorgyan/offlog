@@ -277,6 +277,9 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
   const taskIds = new Set(tasks.map(t => t._id));
   const fieldIds = new Set((await getCustomFieldDefs()).map(f => f.id));
   const archivedProjectIds = new Set(projects.filter(p => p.archived).map(p => p._id));
+  // archiveProject() leaves finished tasks (last status) as they are, so
+  // only an unfinished task in an archived project is out of place.
+  const lastColOf = new Map(projects.map(p => [p._id, p.columns.at(-1)?.id]));
 
   for (const p of projects) {
     if (!spaceIds.has(p.space_id)) {
@@ -317,7 +320,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
 
     // archiveProject() cascades archived onto its tasks, but an import or a
     // sync merge can land a task into an archived project without it.
-    if (!t.archived && archivedProjectIds.has(t.project_id)) {
+    if (!t.archived && archivedProjectIds.has(t.project_id) && t.column_id !== lastColOf.get(t.project_id)) {
       issues.push({ type: 'unarchived_in_archived', docId: t._id!, description: `Task "${t.title}" is active inside an archived project` });
     }
 
