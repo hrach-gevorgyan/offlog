@@ -554,11 +554,13 @@ native theming. Derived tints use
 | `--due-soon-bg` / `--due-soon-ink` | `#FAF3D4` / `#884826` | `#372F1A` / `#EFC365` | due today/tomorrow chips |
 | `--overdue-bg` / `--overdue-ink` | `#F8E4E4` / `#AB3730` | `#351A21` / `#EA7F8C` | late chips and counts |
 
+| `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — track carries the theme swap |
+| `--inverse-surface` / `--on-inverse` / `--inverse-accent` | `#2B313D` / `#F3F4F6` / `#A9B0F0` | `#353B49` / `#F3F4F6` / `#A9B0F0` | phone snackbar and bulk-select bar; a raised grey in dark mode, never a near-white slab |
+
 The saturated colours are deliberately muted (OKLCH chroma ×0.8, same hue and
 lightness, every text pair still AA). User-picked space and tag colours are
 stored as picked and muted at render time by `soften()` in `tagColors.ts`, so
-seed detection and tag-colour balancing still see the original hex.
-| `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — track carries the theme swap |
+seed detection and tag-colour balancing still see the original hex. `soften()` uses CSS relative colour syntax (`oklch(from …)`, Chromium 119+); an older WebView drops the declaration and the dot or tint goes blank.
 
 Changing `--accent` also means updating Android's `colors.xml` and
 `capacitor.config.ts`'s `iconColor`. `index.html`'s `<meta theme-color>` is
@@ -622,6 +624,13 @@ same UI.
   embraces it instead: content draws behind a transparent bar, and a
   `.status-bar-fill` strip of `env(safe-area-inset-top)` sits behind it.
   Needs `viewport-fit=cover`.
+  While the phone Home's hero is under the bar, `setStatusBarOnHero(true)`
+  (theme.ts) sets `body.statusbar-hero` (strip = `--hero`) and light icons in
+  the same step; scrolling the hero away or leaving Home turns it off.
+- **Phone shell and the keyboard**: the WebView resizes (`adjustResize`), so
+  PhoneApp hides the navigation bar and + button while the visual viewport is
+  more than 150px shorter than its tallest height at this width. App's undo
+  and error toasts move above the navigation bar under `body.phone`.
 - **Notification icons** must be white silhouettes with transparency, or
   Android substitutes a generic triangle.
 - **Home-screen widget** (`OffologWidgetProvider.java`,
