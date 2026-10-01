@@ -228,7 +228,9 @@
     margin: 0 -16px; padding: 64px 20px 84px; background: var(--hero); color: var(--on-hero);
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 64px), 0 100%);
   }
-  .hbody { position: relative; display: flex; flex-direction: column; width: 100%; color: inherit; margin-top: 10px; }
+  /* stretch is spelled out: older WebViews give buttons align-items:
+     flex-start, which collapses the tile rows and the progress track. */
+  .hbody { position: relative; display: flex; flex-direction: column; align-items: stretch; width: 100%; color: inherit; margin-top: 10px; }
   .hbody:active { opacity: .85; }
   .hi { font-size: var(--p-fs-m); margin: 0 0 10px; font-weight: 500; }
   .hi span { opacity: .88; font-weight: 400; }
@@ -245,7 +247,7 @@
   .track i.on { background: var(--on-hero); }
 
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -54px 0 18px; position: relative; z-index: 2; }
-  .tile { background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; transition: transform var(--dur-hover) var(--ease-hover); }
+  .tile { background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 10px 12px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; transition: transform var(--dur-hover) var(--ease-hover); }
   .tile:active { transform: scale(.98); }
   .top { display: flex; justify-content: space-between; align-items: center; }
   .ic { display: flex; color: var(--faint); }

@@ -94,8 +94,9 @@ export async function init() {
   // Test builds only (`npm run build:demo`): fill a fresh install with the
   // demo workspace once. A normal build compiles this branch out.
   if (import.meta.env.VITE_DEMO_DATA === '1' && !localStorage.getItem('offlog_demo_seeded')) {
-    localStorage.setItem('offlog_demo_seeded', '1');
-    try { await (await import('./demoSeed')).seedDemo(); } catch { /* a partial demo is still usable */ }
+    // Marked only once it has run, so a first launch killed mid-seed tries again.
+    try { await (await import('./demoSeed')).seedDemo(); localStorage.setItem('offlog_demo_seeded', '1'); }
+    catch (e) { console.error('demo seed failed', (e as Error)?.message); }
   }
   // Must resolve before startSync() -- the Tauri app's own embedded
   // sidecar port is only knowable async (see config.ts's
