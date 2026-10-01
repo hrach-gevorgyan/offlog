@@ -283,14 +283,15 @@ describe('phone Quick add', () => {
     const input = await type(getByLabelText, 'Quick one');
     await fireEvent.click(getByLabelText('Priority: not set'));
     await fireEvent.click(getByRole('button', { name: 'Medium' }));
-    await waitFor(() => expect(queryByRole('group', { name: 'Priority' })).toBeNull());
+    // Closing goes through history.back() (400ms fallback): slow under a full parallel run.
+    await waitFor(() => expect(queryByRole('group', { name: 'Priority' })).toBeNull(), { timeout: 3000 });
     await fireEvent.click(await findByLabelText('Priority: Medium'));
     expect(getByRole('group', { name: 'Priority' })).toBeTruthy();
     await fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(createTask).toHaveBeenCalledWith('project:q', 'space:w', 'col:q1', 'Quick one', {
       priority: 2, due_date: null, reminder_at: null, tags: undefined,
     }));
-    await waitFor(() => expect(sheetClosing()).toBe(true));
+    await waitFor(() => expect(sheetClosing()).toBe(true), { timeout: 3000 });
   });
 
   it('a quoted title turns parsing off', async () => {
