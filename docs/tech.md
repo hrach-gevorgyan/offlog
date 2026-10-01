@@ -213,7 +213,7 @@ src/
     CalendarPicker.svelte       Themed date picker
     TimePicker.svelte           Themed time picker
     ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
-    NamePrompt.svelte           First-run quick preferences + sync offer (the device name is asked when Sync is first turned on)
+    NamePrompt.svelte           First-run device name (desktop; the phone asks when Sync is on) + quick preferences + sync offer
     UpdateModal.svelte          Desktop update available/downloading/failed
     AppLock.svelte              PIN lock screen; Escape must not dismiss it
     ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
