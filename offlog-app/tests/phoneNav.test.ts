@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { waitFor } from '@testing-library/svelte';
-import { tab, stack, arrival, push, back, switchTab, backAtRoot } from '../src/lib/phone/nav';
+import { tab, stack, arrival, push, back, switchTab, backAtRoot, memo, navigate, showToast, toast } from '../src/lib/phone/nav';
 import { duePill, greeting, shortDate } from '../src/lib/phone/format';
 
 describe('phone navigation', () => {
@@ -43,6 +43,44 @@ describe('phone navigation', () => {
     expect(backAtRoot()).toBe(true);
     expect(get(tab)).toBe('home');
     expect(backAtRoot()).toBe(false);
+  });
+
+  it('memo keeps a screen state on its stack entry across a rebuild', () => {
+    push({ k: 'project', id: 'project:m' });
+    const a = memo({ ci: 0 });
+    a.ci = 2;
+    expect(memo({ ci: 0 }).ci).toBe(2); // the rebuilt screen reads it back
+    push({ k: 'task', id: 'task:x' });
+    expect(memo({ ci: 0 }).ci).toBe(0); // another entry has its own
+  });
+
+  it('navigate from deep in a stack waits for the unwind before pushing', async () => {
+    push({ k: 'late' });
+    push({ k: 'project', id: 'project:n' });
+    navigate('home', { k: 'focus' });
+    expect(get(stack).map(s => s.k)).toEqual(['home']); // not pushed yet
+    await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home', 'focus']));
+    // and the pushed screen survives the late popstate
+    await new Promise(r => setTimeout(r, 50));
+    expect(get(stack).map(s => s.k)).toEqual(['home', 'focus']);
+  });
+
+  it('navigate with nothing open pushes at once', () => {
+    navigate('agenda', { k: 'focus' });
+    expect(get(tab)).toBe('agenda');
+    expect(get(stack).map(s => s.k)).toEqual(['agenda', 'focus']);
+  });
+
+  it('a newer snackbar is not cleared by the older timer', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    showToast('one');
+    await vi.advanceTimersByTimeAsync(3000);
+    showToast('two', () => {});
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(get(toast)?.text).toBe('two');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(get(toast)).toBeNull();
+    vi.useRealTimers();
   });
 });
 
