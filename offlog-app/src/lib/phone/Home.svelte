@@ -11,6 +11,7 @@
   import { localDateStr } from '../utils';
   import { I } from './icons';
   import { MARK_PATHS } from './mark';
+  import { markIn } from '../motion';
 
   type Data = Awaited<ReturnType<typeof getDashboardData>>;
   let data: Data | null = null;
@@ -65,6 +66,10 @@
   // regular page-coloured bar across the last 40px before the hero's lowest
   // point passes under it. --t follows the finger; nothing here is timed.
   let heroH = 0, t = 0, markY = 0, raf = 0;
+  // Mounted after Home, so its entrance plays even on the app's first frame
+  // (an intro does not run on the initial render).
+  let markShown = false;
+  onMount(() => { markShown = true; });
   function onScroll(e: Event) {
     const y = (e.currentTarget as HTMLElement).scrollTop;
     if (raf) return;
@@ -73,7 +78,9 @@
       const end = heroH - 64, span = 40;
       const lin = Math.min(1, Math.max(0, (y - (end - span)) / span));
       t = lin * lin * (3 - 2 * lin); // smoothstep: the muddy middle of the mix passes quickly
-      markY = prefersReducedMotion() ? y : y * .65; // the mark drifts slower than the page: depth
+      // Inside the band the mark scrolls with it; easing it back down a third
+      // of the way makes it move slower than the page (depth).
+      markY = prefersReducedMotion() ? 0 : y * .35;
       setStatusBarOnHero(t < .5);
     });
   }
@@ -87,12 +94,16 @@
     </span>
     <button class="ibtn" on:click={() => actions.openSettings()} aria-label="Settings">{@html I.gear}</button>
   </div>
-  <svg class="mark" viewBox="0 0 1024 1024" aria-hidden="true" style="transform:translateY({-markY}px);opacity:{(1 - t) * .1};visibility:{t >= 1 ? 'hidden' : 'visible'}">
-    {#each MARK_PATHS as d}<path {d} />{/each}
-  </svg>
 
   <div class="scr" on:scroll={onScroll}>
     <div class="hero" bind:clientHeight={heroH}>
+      {#if markShown}
+        <div class="markwrap" aria-hidden="true" in:markIn>
+          <svg class="mark" viewBox="0 0 1024 1024" style="transform:translateY({markY}px)">
+            {#each MARK_PATHS as d}<path {d} />{/each}
+          </svg>
+        </div>
+      {/if}
       {#if firstRun}
         <button class="hbody" on:click={() => actions.quickAdd()}>
           <span class="hi">{greeting()} <span>· {shortDate(todayStr)}</span></span>
@@ -185,14 +196,16 @@
   .ibtn { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: inherit; }
   .ibtn:active { background: color-mix(in srgb, currentColor 12%, transparent); }
 
-  /* Above the bar so the bar can never cut it; pointer-events off. */
-  .mark { position: absolute; z-index: 7; right: -36px; top: 58px; width: 176px; height: 176px; color: var(--on-hero); fill: currentColor; pointer-events: none; }
+  /* Inside the band, so its diagonal clips it; starts below the top bar. */
+  .markwrap { position: absolute; right: -72px; top: 64px; width: 280px; height: 280px; pointer-events: none; }
+  .mark { width: 100%; height: 100%; color: var(--on-hero); fill: currentColor; opacity: .1; }
 
   .hero {
+    position: relative; overflow: hidden;
     margin: 0 -16px; padding: 64px 20px 84px; background: var(--hero); color: var(--on-hero);
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 64px), 0 100%);
   }
-  .hbody { display: flex; flex-direction: column; width: 100%; color: inherit; margin-top: 10px; }
+  .hbody { position: relative; display: flex; flex-direction: column; width: 100%; color: inherit; margin-top: 10px; }
   .hbody:active { opacity: .85; }
   .hi { font-size: var(--p-fs-m); margin: 0 0 10px; font-weight: 500; }
   .hi span { opacity: .88; font-weight: 400; }

@@ -234,3 +234,13 @@ export const snackOut = { y: 16, get duration() { return d(OUT(DUR.medium)); }, 
 // Phone bottom sheet: rises from the bottom edge (large travel), leaves faster.
 export const sheetIn = { y: 400, get duration() { return d(DUR.large); }, easing: easeDecelerate };
 export const sheetOut = { y: 400, get duration() { return d(OUT(DUR.large)); }, easing: easeAccelerate };
+
+// The phone Home's logo mark settles into the band once, on open: a slow
+// drift and quarter-turn in, decelerating. Decorative and long on purpose;
+// Reduce Motion skips it like everything else.
+export function markIn(_node: Element) {
+  return {
+    duration: d(1100), easing: easeDecelerate,
+    css: (t: number) => `opacity: ${t}; transform: translate(${(1 - t) * 28}px, ${(1 - t) * -20}px) rotate(${(1 - t) * 10}deg)`,
+  };
+}

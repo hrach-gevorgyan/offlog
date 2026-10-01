@@ -181,6 +181,11 @@ returns from −24% while fading up from 0.4; a tab switch fades through
 needed. The navigation bar's pill grows from its centre (`pillIn`) only on a
 real tab switch, never on a re-render.
 
+Home's logo mark sits inside the band (clipped by its diagonal) and enters
+once per Home mount with `markIn` — a 1.1s decelerating drift and quarter-turn,
+the one deliberately long animation, decorative only. It then scrolls at a
+third less than the page.
+
 Home's top bar is **scroll-linked, not timed**: `--t` (0..1, smoothstepped
 across the hero's last 40px) mixes the bar from `--hero` to `--bg`, and two
 copies of the title crossfade so it never passes through grey. It follows the

@@ -440,6 +440,11 @@ tag's asset. Two consequences, both normal:
 - **`scripts/seed-demo.js`** — a hand-authored, deterministic dataset (one
   persona, 4 spaces, 13 projects) for reproducible screenshots. Use its
   `WIPE_EXISTING: true`.
+- **`npm run build:demo`** — a test build (`.env.demo`, `VITE_DEMO_DATA=1`)
+  whose fresh install fills itself with the same demo workspace
+  (`src/lib/demoSeed.ts`, once per install). Debug APKs for phone testing are
+  built from it. A normal `npm run build` compiles the branch out — no demo
+  code ships.
 - **`scripts/seed-full.js`** — the big one: every writable feature at
   volume, to **exact** counts (10 spaces, 30 projects, 500 tasks, and a
   fixed number of checklists, custom values, reminders, links and so on).

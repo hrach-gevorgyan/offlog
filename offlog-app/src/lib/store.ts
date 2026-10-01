@@ -91,6 +91,12 @@ export async function init() {
   // awaits initIndexes() internally — so the two can run concurrently here
   // instead of the seed check waiting on index creation first.
   await Promise.all([initIndexes(), seedIfEmpty()]);
+  // Test builds only (`npm run build:demo`): fill a fresh install with the
+  // demo workspace once. A normal build compiles this branch out.
+  if (import.meta.env.VITE_DEMO_DATA === '1' && !localStorage.getItem('offlog_demo_seeded')) {
+    localStorage.setItem('offlog_demo_seeded', '1');
+    try { await (await import('./demoSeed')).seedDemo(); } catch { /* a partial demo is still usable */ }
+  }
   // Must resolve before startSync() -- the Tauri app's own embedded
   // sidecar port is only knowable async (see config.ts's
   // initTauriSyncDefaults()), and startSync() needs the real URL in
