@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { tab, stack, arrival, switchTab, actions, TABS, toast, addContext } from './nav';
+  import { tab, stack, arrival, switchTab, push, actions, TABS, toast, addContext } from './nav';
   import type { Tab } from './nav';
   import { screenIn, pillIn, snackIn, snackOut } from '../motion';
   import { fly } from 'svelte/transition';
@@ -16,9 +16,11 @@
   import FocusScreen from './FocusScreen.svelte';
   import QuickAddSheet from './QuickAddSheet.svelte';
   import { agendaDay } from './agenda/month';
+  import SettingsScreen from './settings/SettingsScreen.svelte';
+  import SettingsPage from './settings/SettingsPage.svelte';
 
   $: top = $stack[$stack.length - 1];
-  $: key = `${$tab}:${$stack.length}:${top.k}:${'id' in top ? top.id : ''}`;
+  $: key = `${$tab}:${$stack.length}:${top.k}:${'id' in top ? top.id : 'page' in top ? top.page : ''}`;
   // Quick add opens here as a sheet; it adds where the user is looking: the
   // project and status on screen, or the day picked in Agenda's month.
   let qa: { projectId: string | null; columnId: string | null; dueDate: string | null } | null = null;
@@ -29,7 +31,10 @@
     qa = { projectId: inProject?.projectId ?? null, columnId: inProject?.columnId ?? null, dueDate: due ?? (cur?.k === 'agenda' ? get(agendaDay) : null) };
     qaSession++;
   }
-  onMount(() => { actions.quickAdd = openAdd; });
+  onMount(() => {
+    actions.quickAdd = openAdd;
+    actions.openSettings = () => push({ k: 'settings' });
+  });
 
   const LABEL: Record<Tab, string> = { home: 'Home', today: 'Today', agenda: 'Agenda', search: 'Search' };
 </script>
@@ -50,12 +55,16 @@
           <AgendaScreen />
         {:else if top.k === 'focus'}
           <FocusScreen />
+        {:else if top.k === 'settings'}
+          <SettingsScreen />
+        {:else if top.k === 'set'}
+          <SettingsPage page={top.page} />
         {/if}
       </div>
     {/key}
   </div>
 
-  {#if !$modalOpen}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set'}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}

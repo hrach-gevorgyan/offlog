@@ -62,9 +62,10 @@
 {/if}
 
 <style>
-  .psheet-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 900; }
+  /* Below ConfirmDialog (700) so a confirm raised from inside a sheet shows on top. */
+  .psheet-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 650; }
   .psheet {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 901; outline: none;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 651; outline: none;
     max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain;
     background: var(--bg); color: var(--text); border-radius: 22px 22px 0 0;
     box-shadow: 0 -10px 30px rgba(0,0,0,.2);
