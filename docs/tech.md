@@ -681,6 +681,12 @@ same UI.
   phone loading screen is `--hero` too, continuing the launch splash
   (`splashBg` in android colors.xml). The strip sits below every modal
   scrim (z-index 299), so dialogs and sheets dim it with the page.
+  A project screen's header sits on a band in its space's colour (Home's
+  diagonal edge; dark mode mixes it 62% toward `--bg`; ink is light unless
+  the colour's luminance is high) and tints the strip the same way through
+  `claimStatusBar()`. Claims stack: the newest live one wins and releasing it
+  hands the strip back, so a screen whose outro ends after the next screen
+  claimed cannot undo that claim. Home's hero is one such claim.
 - **Phone shell and the keyboard**: the WebView resizes (`adjustResize`), so
   PhoneApp hides the navigation bar and + button while a text field is
   focused, the page is not pinch-zoomed, and the visual viewport is more than

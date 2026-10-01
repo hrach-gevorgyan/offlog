@@ -70,12 +70,32 @@ export function applyTheme(): void {
   syncBrowserThemeColor(dark);
 }
 
-// The phone Home's indigo hero runs up under the status bar, so while it is
-// showing, the strip takes the hero colour (body.statusbar-hero in app.css)
-// and the OS icons go light. Switched in one step with the icon style for the
-// same lockstep reason as the theme itself: never animate one without the other.
-let onHero = false, wanted = false, suppressed = false;
-export function setStatusBarOnHero(on: boolean): void { wanted = on; syncHero(); }
+// A coloured band running up under the status bar (the phone Home's hero, a
+// project's band) gives the strip its colour (body.statusbar-hero /
+// .statusbar-band in app.css) and, on a dark band, light OS icons. Screens
+// claim the strip; the most recent live claim wins and releasing it hands the
+// strip back to the one below, so a screen that leaves after the next one has
+// claimed (an outro still running) can't undo it. Switched in one step with
+// the icon style for the same lockstep reason as the theme itself.
+export interface StripTint { fill?: string; lightIcons: boolean }
+interface Claim { tint: StripTint | null }
+const claims: Claim[] = [];
+const hero: Claim = { tint: null };
+let applied = 'off', onHero = false, suppressed = false;
+export function setStatusBarOnHero(on: boolean): void {
+  if (!claims.includes(hero)) { if (!on) return; claims.push(hero); }
+  hero.tint = on ? { lightIcons: true } : null;
+  syncHero();
+}
+export function claimStatusBar(tint: StripTint | null): { set(t: StripTint | null): void; release(): void } {
+  const c: Claim = { tint };
+  claims.push(c);
+  syncHero();
+  return {
+    set(t) { c.tint = t; syncHero(); },
+    release() { const i = claims.indexOf(c); if (i >= 0) claims.splice(i, 1); syncHero(); },
+  };
+}
 // While something opaque covers the app (the lock screen), the hero tint
 // would leave light icons on a light strip.
 export function setStatusBarSuppressed(on: boolean): void { suppressed = on; syncHero(); }
@@ -91,11 +111,21 @@ function stripVisible(): boolean {
 // waits for it: switching the CSS first leaves white icons on a light strip
 // (or dark on hero) for a few frames on every Home <-> screen transition.
 function syncHero(): void {
-  const on = wanted && !suppressed && stripVisible();
-  if (on === onHero) return;
-  onHero = on;
-  const apply = () => { if (onHero === on) document.body.classList.toggle('statusbar-hero', on); };
-  const native = syncAndroidStatusBar(isEffectivelyDark() || on);
+  const top = claims.at(-1)?.tint ?? null;
+  const on = !!top && !suppressed && stripVisible();
+  const key = on ? `${top!.fill ?? 'hero'}|${top!.lightIcons}` : 'off';
+  if (key === applied) return;
+  applied = key;
+  onHero = on && top!.lightIcons;
+  const fill = on ? top!.fill : undefined;
+  const apply = () => {
+    if (applied !== key) return;
+    const b = document.body;
+    b.classList.toggle('statusbar-hero', on);
+    b.classList.toggle('statusbar-band', !!fill);
+    if (fill) b.style.setProperty('--statusbar-band', fill); else b.style.removeProperty('--statusbar-band');
+  };
+  const native = syncAndroidStatusBar(isEffectivelyDark() || onHero);
   if (native) native.then(apply); else apply();
 }
 

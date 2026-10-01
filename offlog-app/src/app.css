@@ -222,7 +222,11 @@ body.dark.high-contrast {
 body.statusbar-hero { --statusbar-fill: var(--hero); }
 /* The strip's height is a fractional inset; a pixel of the same colour below
    it covers the rounding seam against the band. */
-body.statusbar-hero .status-bar-fill { box-shadow: 0 1px 0 var(--hero); }
+body.statusbar-hero .status-bar-fill { box-shadow: 0 1px 0 var(--statusbar-fill); }
+/* A project band (theme.ts claimStatusBar) in its own colour; dark mode
+   deepens it the same way the project screen's band is deepened. */
+body.statusbar-band { --statusbar-fill: var(--statusbar-band); }
+body.dark.statusbar-band { --statusbar-fill: color-mix(in srgb, var(--statusbar-band) 62%, var(--bg)); }
 
 /* ── State layers ───────────────────────────────────────────────────────────
    A hover or pressed tint is the element's OWN ink at low alpha, composited

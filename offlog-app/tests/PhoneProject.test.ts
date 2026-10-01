@@ -202,6 +202,14 @@ describe('phone Project screen — board', () => {
     expect(container.querySelector('.dots')).toBeNull();
   });
 
+  it('the header sits on a band in the space colour, with light ink on a dark colour', () => {
+    const { container } = setup();
+    const band = container.querySelector('.band') as HTMLElement;
+    expect(band.style.getPropertyValue('--band')).toContain('#3b82f6');
+    expect(band.classList.contains('light')).toBe(true);
+    expect(band.querySelector('h1')?.textContent).toBe('House');
+  });
+
   it('the title may wrap to two lines', () => {
     const { container } = setup();
     expect(container.querySelector('h1')?.classList.contains('wrap')).toBe(true);
