@@ -19,7 +19,7 @@
 {#if sub}<p class="sub"><slot name="sub-lead" />{sub}</p>{/if}
 
 <style>
-  .bar { display: flex; align-items: center; gap: 4px; min-height: 60px; }
+  .bar { display: flex; align-items: center; gap: 4px; min-height: 64px; }
   h1 { flex: 1; min-width: 0; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   h1.root { margin-left: 2px; }
   .acts { display: flex; gap: 2px; flex-shrink: 0; }

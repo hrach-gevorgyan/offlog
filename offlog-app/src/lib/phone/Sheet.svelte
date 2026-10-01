@@ -10,8 +10,10 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { closeOnBack } from '../modalStack';
-  import { scrimIn, scrimOut, easeDecelerate, easeAccelerate } from '../motion';
-  import { prefersReducedMotion } from '../theme';
+  import { scrimIn, scrimOut, sheetIn, sheetOut } from '../motion';
+  import { get } from 'svelte/store';
+  import { confirmRequest } from '../confirm';
+  import { trapFocus } from '../focusTrap';
   import { modalOpen } from '../store';
   import './phone.css';
 
@@ -33,12 +35,20 @@
     startY = null;
     if (dragY > 90) requestClose(); else dragY = 0;
   }
-  function onKey(e: KeyboardEvent) { if (e.key === 'Escape') { e.stopPropagation(); requestClose(); } }
+  // A confirm raised from inside the sheet owns Escape while it is open.
+  function onKey(e: KeyboardEvent) {
+    if (e.key !== 'Escape' || e.defaultPrevented || get(confirmRequest)) return;
+    e.stopPropagation();
+    requestClose();
+  }
 
-  const dur = () => (prefersReducedMotion() ? 0 : 280);
-  let prevModal = false;
-  onMount(() => { prevModal = $modalOpen; modalOpen.set(true); panel?.focus(); });
-  onDestroy(() => modalOpen.set(prevModal));
+  let prevModal = false, opener: HTMLElement | null = null;
+  onMount(() => {
+    opener = document.activeElement as HTMLElement | null;
+    prevModal = $modalOpen; modalOpen.set(true); panel?.focus();
+  });
+  // Focus goes back to whatever opened the sheet, if it is still there.
+  onDestroy(() => { modalOpen.set(prevModal); if (opener?.isConnected) opener.focus(); });
 </script>
 
 <svelte:window on:keydown={onKey} />
@@ -49,8 +59,9 @@
   <div
     class="psheet" role="dialog" aria-modal="true" aria-label={label} tabindex="-1" bind:this={panel}
     style:transform={dragY ? `translateY(${dragY}px)` : null}
-    in:fly={{ y: 400, duration: dur(), easing: easeDecelerate }}
-    out:fly={{ y: 400, duration: Math.round(dur() * 0.75), easing: easeAccelerate }}
+    use:trapFocus
+    in:fly={sheetIn}
+    out:fly={sheetOut}
     on:outroend={() => dispatch('close')}
   >
     <div class="grab-zone" on:pointerdown={down} on:pointermove={move} on:pointerup={up} on:pointercancel={up} role="presentation">
@@ -71,7 +82,8 @@
     box-shadow: 0 -10px 30px rgba(0,0,0,.2);
     padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
   }
-  .grab-zone { padding: 10px 0 12px; touch-action: none; cursor: grab; }
+  /* The handle and title stay put while a tall sheet scrolls. */
+  .grab-zone { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 10px 0 12px; touch-action: none; cursor: grab; }
   .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); margin: 0 auto; }
-  h3 { margin: 0 4px 12px; font-size: 17px; font-weight: 700; }
+  h3 { position: sticky; top: 27px; z-index: 1; background: var(--bg); margin: 0 -4px 8px; padding: 0 8px 4px; font-size: 17px; font-weight: 700; }
 </style>

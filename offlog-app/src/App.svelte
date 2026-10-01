@@ -29,7 +29,7 @@
   import UpdateModal from './lib/UpdateModal.svelte';
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
   import PhoneApp from './lib/phone/PhoneApp.svelte';
-  import { isPhone, actions as phoneActions, backAtRoot, switchTab, push } from './lib/phone/nav';
+  import { isPhone, actions as phoneActions, backAtRoot, switchTab, push, showToast } from './lib/phone/nav';
 
   // The version an already-dismissed banner shouldn't reappear for until
   // a *different* update is found — background checks re-run every ~6h
@@ -195,6 +195,14 @@
     const buf = await getRecentlyDeleted(1);
     if (!buf.length) return;
     const task = buf[0];
+    // The phone shows it in its own snackbar, above the navigation bar.
+    if (get(isPhone)) {
+      const id = task._id!;
+      showToast(`Deleted: ${task.title}`, async () => {
+        try { await undoDelete(id); await reloadTasks(); } catch { showError('Failed to undo. Please try again.'); }
+      });
+      return;
+    }
     if (undoToasts.find(t => t.id === task._id)) return;
     const timer = setTimeout(() => {
       undoToasts = undoToasts.filter(t => t.id !== task._id);
@@ -751,7 +759,7 @@
 {/if}
 
 {#if $errorToast}
-  <div class="error-toast" in:toastIn out:toastOut>{$errorToast}</div>
+  <div class="error-toast" role="alert" in:toastIn out:toastOut>{$errorToast}</div>
 {/if}
 
 {#if undoToasts.length}
@@ -967,7 +975,10 @@
   }
 
   :global(body.phone) .toast-stack { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  :global(body.phone) .error-toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  :global(body.phone) .error-toast {
+    left: 12px; right: 12px; transform: none; white-space: normal; border-radius: 12px; padding: 14px 16px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
 
   /* ── Undo toast ── */
   .toast-stack {

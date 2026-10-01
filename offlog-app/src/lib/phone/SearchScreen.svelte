@@ -4,6 +4,7 @@
   import { projects, spaces, showError } from '../store';
   import { push, actions } from './nav';
   import { I } from './icons';
+  import { soften } from '../tagColors';
   import TopBar from './TopBar.svelte';
   import TaskCard from './TaskCard.svelte';
 
@@ -26,7 +27,7 @@
   $: run(q);
   $: ql = q.trim().toLowerCase();
   $: matchedProjects = ql ? $projects.filter(p => p.name.toLowerCase().includes(ql)) : [];
-  const colorOf = (spaceId: string) => $spaces.find(s => s._id === spaceId)?.color ?? 'var(--faint)';
+  const colorOf = (spaceId: string) => { const c = $spaces.find(s => s._id === spaceId)?.color; return c ? soften(c) : 'var(--faint)'; };
 </script>
 
 <TopBar title="Search" root />

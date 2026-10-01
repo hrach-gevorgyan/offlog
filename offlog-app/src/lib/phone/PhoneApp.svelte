@@ -33,6 +33,24 @@
     qa = { projectId: inProject?.projectId ?? null, columnId: inProject?.columnId ?? null, dueDate: due ?? (cur?.k === 'agenda' ? get(agendaDay) : null) };
     qaSession++;
   }
+  // With the soft keyboard up, the nav bar and + button would eat the little
+  // height left; hide them. The WebView resizes (adjustResize), so a large
+  // drop from the tallest height seen at this width means the keyboard.
+  let kb = false;
+  onMount(() => {
+    const vv = window.visualViewport;
+    let tallest = 0, width = 0;
+    const check = () => {
+      const h = vv?.height ?? window.innerHeight, w = window.innerWidth;
+      if (w !== width) { width = w; tallest = h; }
+      tallest = Math.max(tallest, h);
+      kb = tallest - h > 150;
+    };
+    check();
+    (vv ?? window).addEventListener('resize', check);
+    return () => (vv ?? window).removeEventListener('resize', check);
+  });
+
   onMount(() => {
     actions.quickAdd = openAdd;
     actions.openSettings = () => push({ k: 'settings' });
@@ -42,7 +60,7 @@
   const LABEL: Record<Tab, string> = { home: 'Home', today: 'Today', agenda: 'Agenda', search: 'Search' };
 </script>
 
-<div class="phone-shell">
+<div class="phone-shell" class:kb>
   <div class="screens">
     {#key key}
       <div class="screen" class:flush={top.k === 'home'} class:board={top.k === 'project'} in:screenIn={{ kind: $arrival }}>
@@ -71,7 +89,7 @@
     {/key}
   </div>
 
-  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
+  {#if !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" class:lift={!!$toast} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}
@@ -81,12 +99,16 @@
 
   {#if $toast}
     {#key $toast.id}
-      <div class="snack" role="status" in:fly={snackIn} out:fly={snackOut}>
-        <span>{$toast.text}</span>
+      <div class="snack" in:fly={snackIn} out:fly={snackOut}>
+        <span class="msg">{$toast.text}</span>
         {#if $toast.undo}<button on:click={() => { const u = $toast?.undo; toast.set(null); u?.(); }}>Undo</button>{/if}
       </div>
     {/key}
   {/if}
+
+  <!-- Always mounted and only its text changes: a live region inserted
+       already filled is often not announced. -->
+  <div class="sr" role="status" aria-live="polite">{$toast?.text ?? ''}</div>
 
   <nav class="tabbar" aria-label="Main">
     {#each TABS as t}
@@ -116,20 +138,26 @@
     position: absolute; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 10;
     width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
     background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 40%, transparent);
-    transition: transform var(--dur-hover) var(--ease-hover);
+    box-shadow: 0 4px 12px rgba(0,0,0,.18);
+    transition: transform var(--dur-medium) var(--ease-standard);
   }
   .fab :global(svg.i) { width: 24px; height: 24px; stroke-width: 2.2; }
   .fab:active { transform: scale(.95); }
+  /* Rises above the snackbar instead of hiding under it. */
+  .fab.lift { transform: translateY(-64px); }
+  .kb .fab, .kb .tabbar { display: none; }
 
   .snack {
     position: absolute; left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 20;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    background: var(--text); color: var(--bg); border-radius: 12px; padding: 12px 8px 12px 16px;
-    font-size: 14.5px; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    background: var(--inverse-surface); color: var(--on-inverse); border-radius: 12px; padding: 4px 4px 4px 16px; min-height: 52px;
+    font-size: 14px; line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,.25);
   }
-  .snack span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .snack button { font: inherit; font-weight: 700; color: color-mix(in srgb, var(--accent) 55%, var(--bg)); background: none; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+  .msg { min-width: 0; padding: 8px 0; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .snack button { font: inherit; font-weight: 700; color: var(--inverse-accent); background: none; border: 0; min-height: 44px; padding: 0 14px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+  .snack button:active { background: color-mix(in srgb, var(--on-inverse) 12%, transparent); }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   .tabbar {
     flex-shrink: 0; display: flex; justify-content: space-around; align-items: flex-start;

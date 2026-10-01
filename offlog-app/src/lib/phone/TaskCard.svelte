@@ -46,7 +46,7 @@
 <div class="card" class:done class:hi={task.priority === 3}>
   <button class="chk" class:on={done} on:click={toggleDone} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}></button>
   <button class="g" on:click={() => dispatch('open', task)}>
-    <span class="t">{task.title}</span>
+    <span class="t">{task.title}{#if task.priority === 3}<span class="p-sr">, high priority</span>{/if}</span>
     <span class="s">
       {#if space}<span class="dot" style="background:{soften(space.color)}"></span>{/if}
       {task.project_name ?? project?.name ?? ''}
@@ -63,7 +63,7 @@
     background: var(--surface); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 8px;
     box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08);
   }
-  .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--danger); }
+  .card.hi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
   .card:active { transform: scale(.99); }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
   .g { flex: 1; min-width: 0; display: flex; flex-direction: column; }

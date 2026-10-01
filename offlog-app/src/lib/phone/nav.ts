@@ -90,7 +90,8 @@ export function showToast(text: string, undo?: Toast['undo']) {
   clearTimeout(toastTimer);
   const t = { id: ++toastSeq, text, undo };
   toast.set(t);
-  toastTimer = setTimeout(() => toast.update(c => (c?.id === t.id ? null : c)), 4000);
+  // Longer when it carries Undo, so there is time to reach the button.
+  toastTimer = setTimeout(() => toast.update(c => (c?.id === t.id ? null : c)), undo ? 6000 : 4000);
 }
 
 // Where the + button should add: a project screen sets this to its project

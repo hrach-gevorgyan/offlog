@@ -57,7 +57,7 @@
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = 0;
-      const end = heroH - 60, span = 40;
+      const end = heroH - 64, span = 40;
       const lin = Math.min(1, Math.max(0, (y - (end - span)) / span));
       t = lin * lin * (3 - 2 * lin); // smoothstep: the muddy middle of the mix passes quickly
       markY = prefersReducedMotion() ? y : y * .65; // the mark drifts slower than the page: depth
@@ -93,7 +93,7 @@
         <span class="top"><span class="ic">{@html I.late}</span><b class:late={late > 0}>{late}</b></span><span class="lbl">Late</span>
       </button>
       <button class="tile" on:click={() => push({ k: 'focus' })}>
-        <span class="top"><span class="ic">{@html I.focus}</span><b>{focus.done}/{focus.total}</b></span><span class="lbl">Focus</span>
+        <span class="top"><span class="ic">{@html I.focus}</span><b>{focus.total ? `${focus.done}/${focus.total}` : 'Pick'}</b></span><span class="lbl">Focus</span>
       </button>
       <button class="tile" on:click={() => push({ k: 'pinned' })}>
         <span class="top"><span class="ic">{@html I.pin}</span><b>{pinned}</b></span><span class="lbl">Pinned</span>
@@ -110,14 +110,23 @@
             <span class="dot" style="background:{soften(s.color)}"></span>
             <span class="lbl">{p.name}</span>
             {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
-            <span class="badge">{st ? st.open : ''}</span>
+            {#if st}<span class="badge">{st.open}</span>{/if}
           </button>
         {/each}
-        <button class="row add" on:click={() => newProject(s._id)}>
+        {#if !ps.length}
+          <button class="row add" on:click={() => newProject(s._id)}>
+            <span class="plus">{@html I.plus}</span><span class="lbl">New project</span>
+          </button>
+        {/if}
+      </div>
+    {/each}
+    {#if sortedSpaces.length}
+      <div class="group">
+        <button class="row add" on:click={() => newProject(sortedSpaces[0]._id)}>
           <span class="plus">{@html I.plus}</span><span class="lbl">New project</span>
         </button>
       </div>
-    {/each}
+    {/if}
     {#if data?.completedLast7Days}
       <p class="stat">{data.completedLast7Days} finished this past week{data.busiestProjectName ? ` · busiest: ${data.busiestProjectName}` : ''}</p>
     {/if}
@@ -137,7 +146,7 @@
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
 
   .appbar {
-    position: absolute; top: 0; left: 0; right: 0; z-index: 6; height: 60px;
+    position: absolute; top: 0; left: 0; right: 0; z-index: 6; height: 64px;
     display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px;
     background: color-mix(in srgb, var(--bg) calc(var(--t) * 100%), var(--hero));
     color: color-mix(in srgb, var(--text) calc(var(--t) * 100%), var(--on-hero));
@@ -163,7 +172,7 @@
   }
   .hbody { display: flex; flex-direction: column; width: 100%; color: inherit; margin-top: 10px; }
   .hi { font-size: 15px; opacity: .9; margin: 0 0 10px; font-weight: 500; }
-  .hi span { opacity: .75; font-weight: 400; }
+  .hi span { opacity: .85; font-weight: 400; }
   .count { display: flex; align-items: baseline; gap: 10px; }
   .count b { font-size: 56px; font-weight: 800; letter-spacing: -.04em; line-height: .9; }
   .count span { font-size: 18px; font-weight: 600; }

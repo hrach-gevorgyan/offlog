@@ -230,3 +230,7 @@ export function pillIn(_node: Element) {
 // Phone snackbar: spans the width (no centring offset), so a plain rise.
 export const snackIn = { y: 16, get duration() { return d(DUR.medium); }, easing: easeDecelerate };
 export const snackOut = { y: 16, get duration() { return d(OUT(DUR.medium)); }, easing: easeAccelerate };
+
+// Phone bottom sheet: rises from the bottom edge (large travel), leaves faster.
+export const sheetIn = { y: 400, get duration() { return d(DUR.large); }, easing: easeDecelerate };
+export const sheetOut = { y: 400, get duration() { return d(OUT(DUR.large)); }, easing: easeAccelerate };

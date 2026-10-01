@@ -60,6 +60,11 @@
      rather than using the lighter dark --accent, which glares as a fill. */
   --hero: #575fca;
   --on-hero: #ffffff;
+  /* Snackbars and the bulk-select bar: an inverted surface. Dark mode keeps
+     it a raised grey rather than a near-white slab. */
+  --inverse-surface: #2b313d;
+  --on-inverse: #f3f4f6;
+  --inverse-accent: #a9b0f0;
   --on-accent: #ffffff; /* text/icon color for anything sitting on --accent — see body.dark override */
   /* Fixed (not overridden in body.dark) — --success is bright in BOTH
      themes, unlike --accent/--overdue-ink/--faint which swap light↔dark
@@ -174,6 +179,9 @@ body.dark {
   --accent: #8590e5;
   --hero: #373d81;
   --on-hero: #eff0fc;
+  --inverse-surface: #353b49;
+  --on-inverse: #f3f4f6;
+  --inverse-accent: #a9b0f0;
   --on-accent: #181a20; /* dark accent is light — needs dark text, not white (was hardcoded #fff before, 2.98:1) */
   --danger: #e77f7c;
   --success: #74d791;
