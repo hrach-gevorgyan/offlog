@@ -2,12 +2,11 @@
   // The phone host for the desktop settings children (src/lib/settings/*).
   // It carries SettingsPanel's state and handlers for one category at a time,
   // so every setting keeps its exact behaviour; only the chrome is phone.
-  // Multi-step flows (pairing, conflicts, maintenance, restore preview) open
-  // as bottom sheets instead of SettingsPanel's mini-modals.
+  // Multi-step flows (maintenance, restore preview) open as bottom sheets
+  // instead of SettingsPanel's mini-modals. Sync has its own page.
   import { onMount, onDestroy } from 'svelte';
   import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
   import NotificationSettings from '../../settings/NotificationSettings.svelte';
-  import SyncSettings from '../../settings/SyncSettings.svelte';
   import DataSettings from '../../settings/DataSettings.svelte';
   import SecuritySettings from '../../settings/SecuritySettings.svelte';
   import AdvancedSettings from '../../settings/AdvancedSettings.svelte';
@@ -15,18 +14,14 @@
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt, getAutoBackupUsage } from '../../autoBackup';
   import db, {
     syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
-    getConflicts, resolveConflict, type ConflictInfo, type ConflictVersion,
-    getCustomFieldDefs,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
-    startSync, cancelSync, getDeviceLastSeen,
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
     wipeAndReseed, type ImportedDoc,
   } from '../../db';
   import { confirmAction } from '../../confirm';
   import { projects as projectsStore, showError } from '../../store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../../../config';
+  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, isSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../../../config';
   import { fmtLastSynced, localDateStr } from '../../utils';
-  import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, staleHostAlert, type DiscoveredHost } from '../../discovery';
   import { checkExactAlarmPermission, rescheduleAll } from '../../notifications';
   import { updateState, showUpdateModal, checkForUpdate } from '../../updateChecker';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from '../../theme';
@@ -37,13 +32,12 @@
   import Sheet from '../Sheet.svelte';
   import { back } from '../nav';
   import { closeOnBack, closeAll } from '../../modalStack';
-  import { runSyncNow, syncing } from './syncNow';
   import { rowTaps } from './rowTaps';
 
   export let page: string;
 
   const TITLE: Record<string, string> = {
-    appearance: 'Appearance', notifications: 'Notifications', sync: 'Sync & devices',
+    appearance: 'Appearance', notifications: 'Notifications',
     data: 'Backup & restore', security: 'App lock', advanced: 'Advanced',
   };
 
@@ -221,7 +215,7 @@
   }
   function onLockTimeoutChange(v: string) { setAppLockTimeoutMinutes(Number(v)); }
 
-  // ── Sync ──
+  // ── Sync server (Advanced) ──
   let syncUrl = getSyncUrl();
   let credentialUser = '';
   let credentialPass = '';
@@ -230,140 +224,20 @@
       ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
     } catch { /* left empty */ }
   });
-  let deviceName = getDeviceName();
-  let syncEnabled = isSyncEnabled();
-
-  $: connectionStatus =
-    !syncEnabled ? { text: 'Sync is paused.', tone: 'muted' } :
-    !syncUrl ? (isAndroid
-      ? { text: 'Not connected to another device yet — tap "Connect a device" below.', tone: 'muted' }
-      : { text: 'Not connected to another device yet — open Advanced to connect one.', tone: 'muted' }) :
-    syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'muted' } :
-    syncStatus === 'offline' ? { text: 'Offline — will resume automatically when back on your network.', tone: 'muted' } :
-    syncStatus === 'error' ? { text: syncError || 'Sync error.', tone: 'warn' } :
-    lastSynced ? { text: `Connected — last synced ${fmtLastSynced(lastSynced)}`, tone: 'ok' } :
-    { text: 'Connected — waiting for first sync…', tone: 'muted' };
-
-  function toggleSyncEnabled() {
-    syncEnabled = !syncEnabled;
-    setSyncEnabled(syncEnabled);
-    if (syncEnabled) startSync().catch(() => {}); else cancelSync();
-  }
+  const syncEnabled = isSyncEnabled();
 
   const isTauri = isTauriCheck();
   let isTauriDebug = false;
   if (isTauri) invokeTauri<boolean>('is_debug_build').then((v) => { isTauriDebug = v; }).catch(() => {});
 
-  // SyncSettings / AdvancedSettings only ever set these to true; the sheets
-  // below clear them once their outro has played.
-  let showConnectModal = false;
-  let showConflictsModal = false;
+  // AdvancedSettings only ever sets this to true; the sheet clears it once
+  // its outro has played.
   let showMaintenanceModal = false;
   // Sheet calls closeOnBack() at setup, so each real open needs a fresh {#key}.
-  let connectSession = 0, conflictsSession = 0, maintSession = 0, importSession = 0;
-  let wasConnect = false, wasConflicts = false, wasMaint = false, wasImport = false;
-  $: { if (showConnectModal && !wasConnect) connectSession++; wasConnect = showConnectModal; }
-  $: { if (showConflictsModal && !wasConflicts) conflictsSession++; wasConflicts = showConflictsModal; }
+  let maintSession = 0, importSession = 0;
+  let wasMaint = false, wasImport = false;
   $: { if (showMaintenanceModal && !wasMaint) maintSession++; wasMaint = showMaintenanceModal; }
   $: { if (importPreview && !wasImport) importSession++; wasImport = !!importPreview; }
-
-  let selectedHost: DiscoveredHost | null = null;
-  let pairingCode = '';
-  let pairingBusy = false;
-  let pairingError = '';
-  // "Incorrect or expired code" never says which, so repeated failures nudge
-  // toward the fix generically.
-  let pairingFailCount = 0;
-  let pairSuccessName: string | null = null;
-  let scanAttempted = false;
-  function startDeviceScan() {
-    selectedHost = null;
-    pairingError = '';
-    pairSuccessName = null;
-    scanAttempted = true;
-    scanForHosts();
-  }
-  $: scanFoundNothing = scanAttempted && !$isScanning && $discoveredHosts.length === 0;
-
-  async function submitPairingCode() {
-    if (!selectedHost) return;
-    pairingBusy = true;
-    pairingError = '';
-    try {
-      const pairedName = selectedHost.name;
-      await pairWithHost(selectedHost, pairingCode);
-      syncUrl = getSyncUrl();
-      // Without this the Advanced form keeps its old credentials, and a later
-      // "Save & restart sync" overwrites the just-paired ones.
-      ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
-      selectedHost = null;
-      pairingCode = '';
-      pairSuccessName = pairedName;
-      pairingFailCount = 0;
-    } catch (e) {
-      pairingFailCount++;
-      pairingError = e instanceof Error ? e.message : 'Failed to pair.';
-      if (pairingFailCount >= 3) pairingError += ' Double-check the code on the PC screen, or generate a new one there.';
-    } finally {
-      pairingBusy = false;
-    }
-  }
-
-  // PC side: the phone drives the handshake, so the PC learns of success from
-  // the "pairing-succeeded" event and, for the name, by polling for a device
-  // that wasn't seen before the code was generated.
-  let pcPairingCode = '';
-  let pcPairingBusy = false;
-  let pcPairedDeviceName: string | null = null;
-  let pcJustPaired = false;
-  let pcPollTimer: ReturnType<typeof setInterval> | null = null;
-  function stopPcPairPoll() { if (pcPollTimer) { clearInterval(pcPollTimer); pcPollTimer = null; } }
-  // Mirrors pairing.rs's CODE_TTL (5 min) so a dead code is shown as expired.
-  let pcPairingExpired = false;
-  let pcPairingExpiryTimer: ReturnType<typeof setTimeout> | null = null;
-  function clearPcPairingExpiryTimer() { if (pcPairingExpiryTimer) { clearTimeout(pcPairingExpiryTimer); pcPairingExpiryTimer = null; } }
-  async function startPcPairPoll() {
-    stopPcPairPoll();
-    let before: Set<string>;
-    try {
-      before = new Set((await getDeviceLastSeen()).map(d => d.device));
-    } catch {
-      showError('Failed to check for a connected device.');
-      return;
-    }
-    pcPollTimer = setInterval(async () => {
-      try {
-        const now = await getDeviceLastSeen();
-        const found = now.find(d => !before.has(d.device));
-        if (found) { pcPairedDeviceName = found.device; stopPcPairPoll(); clearPcPairingExpiryTimer(); }
-      } catch { /* next tick retries */ }
-    }, 3000);
-  }
-  async function generatePcPairingCode() {
-    pcPairingBusy = true;
-    pcPairedDeviceName = null;
-    pcJustPaired = false;
-    pcPairingExpired = false;
-    clearPcPairingExpiryTimer();
-    try {
-      pcPairingCode = await invokeTauri<string>('generate_pairing_code');
-      pcPairingExpiryTimer = setTimeout(() => { pcPairingExpired = true; stopPcPairPoll(); }, 5 * 60 * 1000);
-      startPcPairPoll();
-    } catch {
-      showError('Failed to generate a pairing code.');
-    } finally {
-      pcPairingBusy = false;
-    }
-  }
-  let unlistenPairing: (() => void) | null = null;
-  if (isTauri) {
-    import('@tauri-apps/api/event').then(({ listen }) => listen('pairing-succeeded', () => {
-      pcJustPaired = true;
-      clearPcPairingExpiryTimer();
-    })).then(u => { unlistenPairing = u; }).catch(() => {});
-  }
-  $: if (!showConnectModal) { stopPcPairPoll(); clearPcPairingExpiryTimer(); pcPairedDeviceName = null; pcJustPaired = false; pairSuccessName = null; scanAttempted = false; }
-  onDestroy(() => { stopPcPairPoll(); clearPcPairingExpiryTimer(); unlistenPairing?.(); });
 
   // Debug builds only (the Rust command refuses otherwise). wipeAndReseed()
   // clears the local PouchDB and the sync pushes its tombstones out before
@@ -383,99 +257,14 @@
     }
   }
 
-  function saveDeviceName() { setDeviceName(deviceName); deviceName = getDeviceName(); }
-
-  let deviceLastSeen: { device: string; lastSeen: string }[] = [];
-  let deviceLastSeenLoaded = false;
-  async function loadDeviceLastSeen() {
-    deviceLastSeenLoaded = true; // before the await: an empty result must not retrigger this
-    try {
-      deviceLastSeen = await getDeviceLastSeen();
-    } catch {
-      showError('Failed to load recent devices.');
-    }
-  }
-
-  let syncStatus = syncState.status;
-  let lastSynced = syncState.lastSynced;
   let syncError = syncState.error;
   let lastErrorAt = syncState.lastErrorAt;
-  let conflictCount = syncState.conflictCount;
   function onSyncChange() {
-    syncStatus = syncState.status;
-    lastSynced = syncState.lastSynced;
     syncError = syncState.error;
     lastErrorAt = syncState.lastErrorAt;
-    conflictCount = syncState.conflictCount;
   }
   syncState.listeners.add(onSyncChange);
   onDestroy(() => syncState.listeners.delete(onSyncChange));
-  onDestroy(() => stopScan());
-
-  let conflictList: ConflictInfo[] = [];
-  let loadingConflicts = false;
-  // Remembers which count was last attempted: without it a failing
-  // getConflicts() re-fires the reactive load forever.
-  let conflictsAttemptedFor = -1;
-  let conflictFieldNames: Record<string, string> = {};
-  async function loadConflicts() {
-    loadingConflicts = true;
-    try {
-      conflictList = await getConflicts();
-      const defs = await getCustomFieldDefs();
-      conflictFieldNames = Object.fromEntries(defs.map(d => [d.id, d.name]));
-    } catch {
-      showError('Failed to load sync conflicts.');
-    } finally { loadingConflicts = false; }
-  }
-  async function resolve(c: ConflictInfo, v: ConflictVersion) {
-    const losing = c.versions.length - 1;
-    const ok = await confirmAction(
-      `Keep this version of "${c.label}"? The other ${losing === 1 ? 'version' : `${losing} versions`} will be discarded permanently.`,
-      { confirmLabel: 'Keep this one', danger: true },
-    );
-    if (!ok) return;
-    try {
-      await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev);
-      await loadConflicts();
-    } catch {
-      showError('Failed to resolve conflict. Please try again.');
-    }
-  }
-
-  function fmtConflictValue(field: string, v: unknown): string {
-    if (v === undefined || v === null || v === '') return '—';
-    if (field === 'columns' && Array.isArray(v)) return v.map(c => (c as { name?: string })?.name ?? '?').join(' → ') || '—';
-    if (field === 'checklist' && Array.isArray(v)) {
-      if (!v.length) return '—';
-      const done = v.filter(i => (i as { done?: boolean })?.done).length;
-      const texts = v.map(i => (i as { text?: string })?.text ?? '').filter(Boolean);
-      return `${v.length} item${v.length === 1 ? '' : 's'}, ${done} done — ${texts.join(', ')}`;
-    }
-    if (field === 'custom_values' && typeof v === 'object') {
-      const pairs = Object.entries(v as Record<string, unknown>).map(([id, val]) => `${conflictFieldNames[id] ?? 'deleted field'}: ${val ?? '—'}`);
-      return pairs.length ? pairs.join(', ') : '—';
-    }
-    if ((field === 'related' || field === 'blocked_by') && Array.isArray(v)) return v.length ? `${v.length} task${v.length === 1 ? '' : 's'}` : '—';
-    if (Array.isArray(v)) return v.length ? v.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(', ') : '—';
-    if (typeof v === 'object') return JSON.stringify(v);
-    const str = String(v);
-    return str.length > 120 ? str.slice(0, 120) + '…' : str;
-  }
-  const CONFLICT_FIELD_LABELS: Record<string, string> = {
-    title: 'Title', name: 'Name', body: 'Notes', priority: 'Priority',
-    due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags',
-    column_id: 'Status', checklist: 'Checklist', custom_values: 'Custom fields',
-    related: 'Related', blocked_by: 'Blocked by', pinned: 'Pinned',
-    archived: 'Archived', deleted: 'In trash', position: 'Order',
-    columns: 'Statuses', color: 'Colour', icon: 'Icon', default_view: 'Default view',
-  };
-  const conflictFieldLabel = (f: string) => CONFLICT_FIELD_LABELS[f] ?? f;
-  $: if (page === 'sync' && conflictCount > 0 && conflictCount !== conflictsAttemptedFor && !loadingConflicts) {
-    conflictsAttemptedFor = conflictCount;
-    loadConflicts();
-  }
-  $: if (page === 'sync' && !deviceLastSeenLoaded) loadDeviceLastSeen();
 
   // ── Backup & storage ──
   let breakdown: StorageBreakdown | null = null;
@@ -630,17 +419,12 @@
       const { remainingIssues } = await runMaintenanceSteps(
         (step) => setMaintStep(step.key, { status: step.status, note: step.note }),
         {
-          // Repair rewrites docs with no undo, so it asks first and names what it found.
-          confirmRepair: (issues) => {
+          // Repair rewrites docs with no undo, so the sheet asks first and
+          // names what it found.
+          confirmRepair: (issues) => new Promise<boolean>(res => {
             maintFoundIssues = issues;
-            const lines = summarizeIssues(issues)
-              .map(g => `• ${g.text}${g.manual ? ' (needs your review — not fixed automatically)' : ''}`)
-              .join('\n');
-            return confirmAction(
-              `Found ${issues.length} problem${issues.length === 1 ? '' : 's'}:\n\n${lines}\n\nRepair the ones that can be fixed safely? This rewrites those items and cannot be undone.`,
-              { confirmLabel: 'Repair', cancelLabel: 'Skip' },
-            );
-          },
+            maintDecide = res;
+          }),
           isCancelled: () => maintCancelled,
         },
       );
@@ -654,7 +438,20 @@
       maintCancelled = false;
     }
   }
-  $: maintProgress = Math.round((maintSteps.filter(s => s.status === 'done' || s.status === 'skipped' || s.status === 'error').length / (maintSteps.length || 1)) * 100);
+  // Set while the run waits on Repair / Skip in the sheet.
+  let maintDecide: ((repair: boolean) => void) | null = null;
+  function decideRepair(repair: boolean) {
+    const fn = maintDecide;
+    maintDecide = null;
+    fn?.(repair);
+  }
+  // Closing the sheet mid-question skips the repair (it cannot be undone).
+  function onMaintClosed() { showMaintenanceModal = false; decideRepair(false); }
+  onDestroy(() => decideRepair(false));
+  const MAINT_LABEL: Record<string, string> = {
+    check: 'Check data', repair: 'Repair', history: 'Clear old history',
+    trash: 'Clear old Recycle items', compact: 'Free up space',
+  };
 
   // Only the server address and credentials are buffered; everything else
   // applies on tap. Reload only when they actually changed — with App Lock on,
@@ -700,18 +497,6 @@
       {isAndroid} {isTauri} {notificationsEnabled} {toggleNotificationsEnabled}
       {defaultReminderTime} {saveDefaultReminderTime} {quietHours} {saveQuietHours}
     />
-  {:else if page === 'sync'}
-    <SyncSettings
-      {isAndroid} {isTauri} {syncEnabled} {toggleSyncEnabled} {connectionStatus}
-      bind:showConnectModal bind:showConflictsModal
-      bind:deviceName {saveDeviceName} {deviceLastSeen} {conflictCount} {conflictList}
-    />
-    {#if $staleHostAlert}
-      <p class="warn" role="status">Paired computer not found — “{$staleHostAlert.name}” is on this network. Pair again under Connect a device.</p>
-    {/if}
-    {#if syncEnabled && syncUrl}
-      <button class="export-btn" on:click={runSyncNow} disabled={$syncing}>{$syncing ? 'Syncing…' : 'Sync now'}</button>
-    {/if}
   {:else if page === 'data'}
     <DataSettings {backupUsage}
       {storageAvailable} {storagePercent} {storageInfo} {breakdown}
@@ -743,153 +528,54 @@
   {/if}
 </div>
 
-<!-- Sheets sit below ConfirmDialog (z 700) so a confirm raised from inside
-     one (Keep this version, Repair) shows on top of it. -->
-<div class="under">
-  {#if showConnectModal}
-    {#key connectSession}
-      <Sheet title="Connect a device" on:close={() => showConnectModal = false} let:close>
-        <div class="sh">
-          {#if isAndroid}
-            {#if pairSuccessName}
-              <p class="ok">✓ Connected to "{pairSuccessName}" — syncing now.</p>
-              <button class="p-go" on:click={close}>Done</button>
-            {:else if !selectedHost}
-              <button class="p-go" on:click={startDeviceScan} disabled={$isScanning}>
-                {$isScanning ? 'Looking for your computer…' : 'Find my computer'}
-              </button>
-              {#if $discoveredHosts.length}
-                <div class="p-group">
-                  {#each $discoveredHosts as host (host.uuid)}
-                    <button class="p-row" on:click={() => { selectedHost = host; stopScan(); }}>
-                      <span class="p-k"><span>{host.name}</span></span><span class="p-v set">Connect</span>
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-              {#if scanFoundNothing}
-                <p class="warn">No computer found. Make sure Sync is turned on there and both devices are on the same Wi-Fi network, then try again.</p>
-              {/if}
-            {:else}
-              <p class="p-say">Enter the code shown on the "{selectedHost.name}" screen.</p>
-              <input class="p-fld" bind:value={pairingCode} placeholder="123456" inputmode="numeric" maxlength="6" disabled={pairingBusy} aria-label="Pairing code" />
-              {#if pairingError}<p class="warn">{pairingError}</p>{/if}
-              <button class="p-go" on:click={submitPairingCode} disabled={pairingBusy || pairingCode.trim().length !== 6}>
-                {pairingBusy ? 'Connecting…' : 'Connect'}
-              </button>
-              <button class="p-tbtn wide" on:click={() => { selectedHost = null; pairingCode = ''; pairingError = ''; pairingFailCount = 0; }} disabled={pairingBusy}>Cancel</button>
-            {/if}
-          {:else if isTauri}
-            {#if pcPairedDeviceName}
-              <p class="ok">✓ Connected to "{pcPairedDeviceName}" — syncing now.</p>
-              <button class="p-go" on:click={close}>Done</button>
-            {:else if pcJustPaired}
-              <p class="ok">✓ A device just connected — syncing now.</p>
-              <button class="p-go" on:click={close}>Done</button>
-            {:else}
-              {#if pcPairingCode && pcPairingExpired}
-                <p class="warn">This code has expired. Generate a new one below.</p>
-              {:else if pcPairingCode}
-                <p class="p-say">Enter this code on your phone (Settings → Sync → Find my computer):</p>
-                <p class="code">{pcPairingCode}</p>
-                <p class="p-say">Valid for 5 minutes, one-time use — this updates automatically once your phone connects.</p>
-              {:else}
-                <p class="p-say">Generates a one-time code to enter on your phone (Settings → Sync → "Find my computer"), so it can connect to this PC.</p>
-              {/if}
-              <button class="p-go" on:click={generatePcPairingCode} disabled={pcPairingBusy}>
-                {pcPairingBusy ? 'Generating…' : pcPairingCode ? 'Generate a new code' : 'Generate a code'}
-              </button>
-            {/if}
-          {/if}
-        </div>
-      </Sheet>
-    {/key}
-  {/if}
-
-  {#if showConflictsModal}
-    {#key conflictsSession}
-      <Sheet title="Resolve conflicts" on:close={() => showConflictsModal = false}>
-        <div class="sh">
-          <div class="crow">
-            <span class="cmeta">
-              {#if loadingConflicts}Loading…
-              {:else if conflictList.length}{conflictList.length} item{conflictList.length === 1 ? '' : 's'} with unresolved edits
-              {:else}{conflictCount} conflict{conflictCount === 1 ? '' : 's'} detected{/if}
-            </span>
-            <button class="p-tbtn" on:click={loadConflicts} disabled={loadingConflicts}>Refresh</button>
-          </div>
-          {#each conflictList as c (c.docId)}
-            <div class="p-group conflict">
-              <div class="ctitle">{c.label} <span class="ctype">({c.type})</span></div>
-              <div class="cnote">
-                {#if c.differing.length}
-                  Differs in {c.differing.map(conflictFieldLabel).join(', ')} — keeping one discards the other{c.versions.length > 2 ? 's' : ''}.
-                {:else}
-                  Same content on every device — keep either.
-                {/if}
-              </div>
-              {#each c.versions as v (v.rev || 'current')}
-                <div class="cver">
-                  <div class="crow">
-                    <span class="cmeta">
-                      {v.doc.source ?? 'Unknown device'}{v.doc.source === deviceName ? ' (this device)' : ''}{v.isCurrent ? ' · shown now' : ''}{v.isNewest ? ' · newest' : ''}
-                      — updated {fmtLastSynced(String(v.doc.updated_at ?? v.doc.created_at ?? ''))}
-                    </span>
-                    <button class="p-tbtn" on:click={() => resolve(c, v)}>Keep this</button>
-                  </div>
-                  {#each c.differing as f}
-                    <div class="cfield"><span class="cfname">{conflictFieldLabel(f)}</span><span>{fmtConflictValue(f, v.doc[f])}</span></div>
-                  {/each}
-                </div>
-              {/each}
-            </div>
-          {/each}
-        </div>
-      </Sheet>
-    {/key}
-  {/if}
-
   {#if showMaintenanceModal}
     {#key maintSession}
-      <Sheet title="Maintenance" on:close={() => showMaintenanceModal = false}>
+      <Sheet title="Maintenance" on:close={onMaintClosed}>
         <div class="sh">
-          <p class="p-say">
-            Runs a full check in order: looks for problems with your data, repairs what it safely can,
-            clears old activity history (6+ months) and old Recycle items (3+ months), then frees up
-            the space they were using.
-          </p>
-          <div class="track"><div class="fill" style:width="{maintProgress}%"></div></div>
+          <p class="p-say">Checks for problems and clears old history.</p>
           <div class="p-group">
             {#each maintSteps as step (step.key)}
               <div class="p-row step" class:running={step.status === 'running'}>
                 <span class="sicon {step.status}">
                   {#if step.status === 'done'}✓{:else if step.status === 'skipped'}–{:else if step.status === 'error'}✕{:else if step.status === 'running'}•{/if}
                 </span>
-                <span class="p-k"><span>{step.label}</span>{#if step.note}<span class="p-sub">{step.note}</span>{/if}</span>
+                <span class="p-k"><span>{MAINT_LABEL[step.key] ?? step.label}</span>{#if step.note}<span class="p-sub">{step.note}</span>{/if}</span>
               </div>
             {/each}
           </div>
-          {#if maintFoundIssues.length > 0}
-            <p class="p-lab">What the check found</p>
-            <div class="issues">
+          {#if maintDecide}
+            <div class="decide" role="group" aria-label="Repair">
+              <b>Found {maintFoundIssues.length} problem{maintFoundIssues.length === 1 ? '' : 's'}</b>
               {#each summarizeIssues(maintFoundIssues) as group}
-                <div>{group.text}{group.manual ? ' — needs your review' : ''}</div>
+                <span>{group.text}{group.manual ? ' · needs your review' : ''}</span>
               {/each}
+              <span class="p-sub">Repair can't be undone.</span>
             </div>
-          {/if}
-          {#if maintRemainingIssues.length > 0}
-            <p class="p-lab">Needs manual review — not safe to fix automatically</p>
-            <div class="issues">
-              {#each maintRemainingIssues.slice(0, 8) as issue}<div>{issue.description}</div>{/each}
-            </div>
-          {/if}
-          <button class="p-go" on:click={runMaintenance} disabled={maintRunning}>
-            {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run again' : 'Run maintenance'}
-          </button>
-          {#if maintRunning}
-            <button class="p-tbtn wide" on:click={() => maintCancelled = true} disabled={maintCancelled}>
-              {maintCancelled ? 'Stopping after this step…' : 'Cancel'}
+            <button class="p-go" on:click={() => decideRepair(true)}>Repair</button>
+            <button class="p-tbtn wide" on:click={() => decideRepair(false)}>Skip</button>
+          {:else}
+            {#if maintFoundIssues.length > 0}
+              <p class="p-lab">Found</p>
+              <div class="issues">
+                {#each summarizeIssues(maintFoundIssues) as group}
+                  <div>{group.text}{group.manual ? ' · needs your review' : ''}</div>
+                {/each}
+              </div>
+            {/if}
+            {#if maintRemainingIssues.length > 0}
+              <p class="p-lab">Needs your review</p>
+              <div class="issues">
+                {#each maintRemainingIssues.slice(0, 8) as issue}<div>{issue.description}</div>{/each}
+              </div>
+            {/if}
+            <button class="p-go" on:click={runMaintenance} disabled={maintRunning}>
+              {maintRunning ? 'Running…' : maintSteps.some(s => s.status === 'done') ? 'Run again' : 'Run'}
             </button>
+            {#if maintRunning}
+              <button class="p-tbtn wide" on:click={() => maintCancelled = true} disabled={maintCancelled}>
+                {maintCancelled ? 'Stopping after this step…' : 'Cancel'}
+              </button>
+            {/if}
           {/if}
         </div>
       </Sheet>
@@ -917,7 +603,6 @@
       </Sheet>
     {/key}
   {/if}
-</div>
 
 {#if newRecoveryCode}
   <!-- Dismissable only through the acknowledgement below: no scrim click,
@@ -958,10 +643,7 @@
   .pset :global(.setting-hint.compact-hint) { margin-top: -6px; }
   .pset :global(.setting-hint-error) { color: var(--danger); }
   .pset :global(.setting-hint-warn) { color: var(--due-soon-ink); background: var(--due-soon-bg); padding: 10px 12px; border-radius: 10px; font-weight: 500; }
-  .pset :global(.success-hint) { color: var(--text); background: color-mix(in srgb, var(--success) 14%, transparent); padding: 10px 12px; border-radius: 10px; font-weight: 600; }
   .pset :global(.storage-info) { flex: 1; min-width: 0; font-size: 14px; color: var(--muted); }
-  .pset :global(.device-name-row) { display: inline-flex; align-items: center; gap: 6px; }
-  .pset :global(.this-device-tag) { font-size: 12px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); padding: 3px 7px; border-radius: 999px; }
   .pset :global(.storage-summary) { display: flex; flex-direction: column; gap: 2px; }
   .pset :global(.storage-headline) { font-size: 16px; color: var(--text); font-weight: 500; }
   .pset :global(.storage-headline-warn) { color: var(--danger); }
@@ -1008,32 +690,13 @@
   .pset :global(.link-row:active) { background: var(--col-bg); }
   .pset :global(.link-row-title) { flex: 1; font-size: 16px; font-weight: 600; }
   .pset :global(.link-row svg) { flex-shrink: 0; opacity: .5; }
-  .pset :global(.nav-badge) {
-    font-size: 12px; font-weight: 700; background: var(--due-soon-bg); color: var(--due-soon-ink);
-    display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
-  }
   .save { margin-top: 4px; }
 
-  .under :global(.psheet-scrim) { z-index: 650; }
-  .under :global(div.psheet) { z-index: 651; }
   .sh { display: flex; flex-direction: column; gap: 10px; padding-bottom: 4px; }
   .sh .p-say, .sh .p-fld, .sh .p-group { margin-bottom: 0; }
   .wide { width: 100%; min-height: 44px; }
-  .ok { margin: 0; color: var(--text); background: color-mix(in srgb, var(--success) 14%, transparent); padding: 12px 14px; border-radius: 12px; font-weight: 600; }
-  .warn { margin: 0; color: var(--due-soon-ink); background: var(--due-soon-bg); padding: 12px 14px; border-radius: 12px; font-size: 14.5px; }
-  .code { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: .2em; text-align: center; color: var(--text); }
-  .crow { display: flex; align-items: center; gap: 10px; }
-  .cmeta { flex: 1; min-width: 0; font-size: 13.5px; color: var(--muted); }
-  .conflict { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
-  .ctitle { font-weight: 600; font-size: 15px; }
-  .ctype { font-weight: 400; color: var(--faint); }
-  .cnote { font-size: 13px; color: var(--muted); }
-  .cver { border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 3px; }
-  .cfield { display: flex; gap: 8px; font-size: 13px; line-height: 1.45; }
-  .cfname { color: var(--faint); min-width: 6rem; flex-shrink: 0; }
-  .cfield span:last-child { word-break: break-word; }
-  .track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
-  .fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width var(--dur-small) var(--ease-standard); }
+  .decide { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: var(--p-shadow); font-size: var(--p-fs-m); color: var(--muted); }
+  .decide b { color: var(--text); }
   .step { cursor: default; }
   .step.running { background: color-mix(in srgb, var(--accent) 8%, transparent); }
   .sicon {

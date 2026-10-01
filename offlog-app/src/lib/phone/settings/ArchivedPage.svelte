@@ -91,26 +91,30 @@
   }
 </script>
 
-<TopBar title="Archived projects">
-  {#if active.length}<button class="p-tbtn" on:click={openPicker}>Archive…</button>{/if}
-</TopBar>
+<TopBar title="Archived projects" />
 
-{#if loaded && archived.length === 0}
-  <p class="p-empty">No archived projects.</p>
-{:else if archived.length}
-  <div class="p-group">
-    {#each archived as p (p._id)}
-      {@const s = spaceOf(p)}
-      <div class="p-row item">
-        <span class="p-k">
-          <span>{p.name}</span>
-          {#if s}<span class="p-sub"><span class="p-dot" style:background={soften(s.color)}></span> {s.name}</span>{/if}
-        </span>
-        <button class="p-tbtn" on:click={() => doRestore(p)} aria-label="Restore {p.name}">Restore</button>
-        <button class="p-ib del" on:click={() => doDelete(p)} aria-label="Delete {p.name}">{@html I.trash}</button>
-      </div>
-    {/each}
-  </div>
+{#if loaded}
+  {#if archived.length === 0}<p class="p-empty">No archived projects.</p>{/if}
+  {#if archived.length || active.length}
+    <div class="p-group">
+      {#each archived as p (p._id)}
+        {@const s = spaceOf(p)}
+        <div class="p-row item">
+          <span class="p-k">
+            <span class="name">{p.name}</span>
+            {#if s}<span class="p-sub sp"><span class="p-dot" style:background={soften(s.color)}></span>{s.name}</span>{/if}
+          </span>
+          <button class="p-tbtn" on:click={() => doRestore(p)} aria-label="Restore {p.name}">Restore</button>
+          <button class="p-ib del" on:click={() => doDelete(p)} aria-label="Delete {p.name}">{@html I.trash}</button>
+        </div>
+      {/each}
+      {#if active.length}
+        <button class="p-row acc" on:click={openPicker}>
+          <span class="p-ico">{@html I.plus}</span>Archive a project
+        </button>
+      {/if}
+    </div>
+  {/if}
 {/if}
 
 {#if pickerOpen}
@@ -126,7 +130,11 @@
 {/if}
 
 <style>
-  .item { cursor: default; gap: 2px; padding-right: 6px; }
+  .item { cursor: default; gap: 4px; padding-right: 6px; }
+  /* Names wrap, never truncate. */
+  .p-row.item .p-k > .name { white-space: normal; overflow-wrap: anywhere; }
+  .sp { display: flex; align-items: center; gap: 6px; }
+  .p-row.acc .p-ico { color: var(--accent); }
   .p-row.item:active { background: none; }
   .del { color: var(--faint); }
   .del:active { color: var(--danger); }

@@ -65,7 +65,7 @@ describe('phone Settings home', () => {
   it('every row pushes its settings page', async () => {
     const { getByText } = render(SettingsScreen);
     const expected: [string, string][] = [
-      ['Appearance', 'appearance'], ['Notifications', 'notifications'], ['Sync & devices', 'sync'],
+      ['Appearance', 'appearance'], ['Notifications', 'notifications'],
       ['App lock', 'security'], ['Spaces, tags & fields', 'organize'], ['Archived projects', 'archived'],
       ['Backup & restore', 'data'], ['Recycle bin', 'trash'], ['History', 'history'], ['Advanced', 'advanced'],
     ];
@@ -73,6 +73,12 @@ describe('phone Settings home', () => {
       await fireEvent.click(getByText(label));
       expect(get(stack).at(-1)).toMatchObject({ k: 'set', page });
     }
+  });
+
+  it('the sync card is the only Sync entry; Advanced has the sliders icon', () => {
+    const { queryByText, getByText } = render(SettingsScreen);
+    expect(queryByText('Sync & devices')).toBeNull();
+    expect(getByText('Advanced').closest('button')!.querySelector('.p-ico circle[cx="16"][cy="7"]')).toBeTruthy();
   });
 
   it('the sync card shows real status and conflicts, and opens Sync', async () => {

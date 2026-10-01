@@ -35,10 +35,9 @@ export const I = {
   arch: svg('<rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5V19a1 1 0 001 1h12a1 1 0 001-1V8.5M10 12.5h4"/>'),
   trash: svg('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
   setSun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
-  setSync: svg('<path d="M20 9a8 8 0 00-14.5-3M4 15a8 8 0 0014.5 3M20 4v5h-5M4 20v-5h5"/>'),
   setLock: svg('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'),
   setBox: svg('<path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/>'),
   setDisk: svg('<path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/>'),
-  setWrench: svg('<path d="M14.5 5.5a4 4 0 005 5L13 17a2.8 2.8 0 01-4-4l6.5-6.5a4 4 0 01-1-1z"/>'),
   down: svg('<path d="M12 5v14M6 13l6 6 6-6"/>'),
+  sliders: svg('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
 };

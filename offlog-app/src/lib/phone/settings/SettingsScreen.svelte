@@ -33,10 +33,10 @@
 
   $: sync =
     !syncOn ? { title: 'Sync is off', sub: 'Everything stays on this device', tone: 'off' } :
-    !syncUrl ? { title: 'Sync is on', sub: 'Not connected to another device yet', tone: 'off' } :
+    !syncUrl ? { title: 'Sync is on', sub: 'Not connected yet', tone: 'off' } :
     status === 'error' ? { title: 'Sync error', sub: syncError || 'Something went wrong', tone: 'error' } :
     status === 'syncing' ? { title: 'Syncing…', sub: lastSynced ? `Last synced ${fmtLastSynced(lastSynced)}` : 'First sync', tone: 'ok' } :
-    status === 'offline' ? { title: 'Offline', sub: 'Resumes when you are back on your network', tone: 'off' } :
+    status === 'offline' ? { title: 'Offline', sub: 'Resumes on your network', tone: 'off' } :
     { title: 'Sync is on', sub: lastSynced ? `Last synced ${fmtLastSynced(lastSynced)}` : 'Waiting for the first sync', tone: 'ok' };
 
   $: canSync = syncOn && !!syncUrl;
@@ -73,7 +73,6 @@
     [
       { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme] },
       { page: 'notifications', icon: I.bell, label: 'Notifications', value: notifications ? 'On' : 'Off' },
-      { page: 'sync', icon: I.setSync, label: 'Sync & devices' },
       { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off' },
     ],
     [
@@ -84,7 +83,7 @@
     [
       { page: 'trash', icon: I.trash, label: 'Recycle bin', value: trashCount ? String(trashCount) : '' },
       { page: 'history', icon: I.clock, label: 'History' },
-      { page: 'advanced', icon: I.setWrench, label: 'Advanced' },
+      { page: 'advanced', icon: I.sliders, label: 'Advanced' },
     ],
   ] as Row[][];
 </script>

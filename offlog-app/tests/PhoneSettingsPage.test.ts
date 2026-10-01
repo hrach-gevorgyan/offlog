@@ -42,6 +42,7 @@ vi.mock('../src/config', async () => {
   };
 });
 
+const runMaintenanceSteps = vi.fn();
 const getConflicts = vi.fn();
 const resolveConflict = vi.fn();
 vi.mock('../src/lib/db', () => ({
@@ -56,7 +57,7 @@ vi.mock('../src/lib/db', () => ({
   getStorageBreakdown: vi.fn().mockResolvedValue(null),
   subscribe: vi.fn().mockReturnValue(() => {}),
   getDeviceLastSeen: vi.fn().mockResolvedValue([]),
-  runMaintenanceSteps: vi.fn(), wipeAndReseed: vi.fn(),
+  runMaintenanceSteps: (...a: unknown[]) => runMaintenanceSteps(...a), wipeAndReseed: vi.fn(),
 }));
 vi.mock('../src/lib/store', async () => {
   const { writable: w } = await import('svelte/store');
@@ -93,8 +94,7 @@ vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confi
 import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
 import { showError } from '../src/lib/store';
 import * as nav from '../src/lib/phone/nav';
-import { staleHostAlert } from '../src/lib/discovery';
-import { get, type Writable } from 'svelte/store';
+import { get } from 'svelte/store';
 
 const settle = (ms = 30) => new Promise(r => setTimeout(r, ms));
 
@@ -108,7 +108,6 @@ beforeEach(async () => {
   vi.clearAllMocks();
   nav.toast.set(null);
   syncNow.mockResolvedValue(undefined);
-  (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set(null);
   m.storedUrl = 'http://old.local:5984/offlog';
   m.storedCreds = { user: 'olduser', pass: 'oldpass' };
   m.syncState.conflictCount = 0;
@@ -178,39 +177,76 @@ describe('phone settings pages', () => {
     await waitFor(() => expect(get(nav.stack)).toHaveLength(1));
   });
 
-  it('Sync: Sync now syncs and confirms, a failure surfaces showError; a stale paired host is shown', async () => {
-    (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set({ uuid: 'u', name: 'Old PC' });
-    const { getByText } = render(SettingsPage, { page: 'sync' });
-    expect(getByText(/“Old PC” is on this network/)).toBeTruthy();
-    await fireEvent.click(getByText('Sync now'));
-    await waitFor(() => expect(get(nav.toast)?.text).toBe('Synced'));
-    expect(syncNow).toHaveBeenCalledWith();
-    syncNow.mockRejectedValueOnce(new Error('x'));
-    await fireEvent.click(getByText('Sync now'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not sync. Please try again.'));
-  });
-
   it('an unknown page says so', () => {
     const { getByText } = render(SettingsPage, { page: 'nope' });
     expect(getByText("This page doesn't exist.")).toBeTruthy();
   });
 
-  it('Sync: a conflict opens in a sheet and "Keep this" resolves it after confirming', async () => {
-    m.syncState.conflictCount = 1;
-    getConflicts.mockResolvedValue([{
-      docId: 'task:a', label: 'Buy paint', type: 'task', differing: ['title'],
-      versions: [
-        { rev: '', isCurrent: true, isNewest: false, doc: { source: 'Pixel', title: 'Buy paint', updated_at: new Date().toISOString() } },
-        { rev: '3-b', isCurrent: false, isNewest: true, doc: { source: 'PC', title: 'Buy paint now', updated_at: new Date().toISOString() } },
-      ],
-    }]);
-    const { getByText, getAllByText } = render(SettingsPage, { page: 'sync' });
-    await waitFor(() => getByText('Resolve conflicts'));
-    await fireEvent.click(getByText('Resolve conflicts'));
-    await waitFor(() => getByText('Buy paint now'));
-    confirmAction.mockResolvedValueOnce(true);
-    await fireEvent.click(getAllByText('Keep this')[1]);
-    await waitFor(() => expect(resolveConflict).toHaveBeenCalledWith('task:a', 'other', '3-b'));
+  // The run asks before repair inside the sheet, never through a dialog on top of it.
+  describe('Advanced: maintenance', () => {
+    const issues = [
+      { type: 'orphaned_task', docId: 'task:x', description: 'x' },
+      { type: 'no_columns', docId: 'project:y', description: 'Project Y has no statuses' },
+    ];
+    let answer: Promise<boolean> | null;
+    beforeEach(() => {
+      answer = null;
+      runMaintenanceSteps.mockImplementation(async (onStep: (r: unknown) => void, opts: { confirmRepair: (i: unknown[]) => Promise<boolean> }) => {
+        onStep({ key: 'check', status: 'running', note: '' });
+        onStep({ key: 'check', status: 'done', note: '2 issues found' });
+        answer = opts.confirmRepair(issues);
+        const ok = await answer;
+        onStep({ key: 'repair', status: ok ? 'done' : 'skipped', note: ok ? 'Fixed 1, 1 need manual review' : 'Skipped — not confirmed' });
+        return { remainingIssues: ok ? [issues[1]] : issues, cancelled: false };
+      });
+    });
+    async function openAndRun() {
+      nav.push({ k: 'set', page: 'advanced' });
+      const r = render(SettingsPage, { page: 'advanced' });
+      await fireEvent.click(r.getByText('Run maintenance'));
+      await fireEvent.click(r.getByText('Run'));
+      await waitFor(() => r.getByText('Found 2 problems'));
+      return r;
+    }
+
+    it('shows the problems in the sheet; Repair answers yes', async () => {
+      const { getByText, queryByText, getByRole } = await openAndRun();
+      expect(getByText('Check data')).toBeTruthy();
+      expect(getByText('1 task in a missing project')).toBeTruthy();
+      expect(getByText('1 project with no statuses · needs your review')).toBeTruthy();
+      expect(confirmAction).not.toHaveBeenCalled();
+      await fireEvent.click(getByRole('button', { name: 'Repair' }));
+      await expect(answer).resolves.toBe(true);
+      await waitFor(() => getByText('Fixed 1, 1 need manual review'));
+      expect(queryByText('Found 2 problems')).toBeNull();
+      expect(getByText('Project Y has no statuses')).toBeTruthy();
+      expect(getByText('Run again')).toBeTruthy();
+    });
+
+    it('Skip answers no', async () => {
+      const { getByText } = await openAndRun();
+      await fireEvent.click(getByText('Skip'));
+      await expect(answer).resolves.toBe(false);
+      await waitFor(() => getByText('Skipped — not confirmed'));
+    });
+
+    it('closing the sheet mid-question skips the repair', async () => {
+      await openAndRun();
+      history.back();
+      await expect(answer).resolves.toBe(false);
+    });
+
+    it('a failed run marks the step and surfaces showError', async () => {
+      runMaintenanceSteps.mockImplementationOnce(async (onStep: (r: unknown) => void) => {
+        onStep({ key: 'check', status: 'running', note: '' });
+        throw new Error('x');
+      });
+      const { getByText } = render(SettingsPage, { page: 'advanced' });
+      await fireEvent.click(getByText('Run maintenance'));
+      await fireEvent.click(getByText('Run'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Maintenance failed partway through. Please try again.'));
+      expect(getByText('Failed — please try again')).toBeTruthy();
+    });
   });
 
   it('Advanced: Save & restart sync writes the changed server, unwinds history, then reloads', async () => {

@@ -81,10 +81,10 @@ describe('phone Archived projects', () => {
     expect(deleteProject).toHaveBeenCalledWith('project:old');
   });
 
-  it('Archive… archives without asking once the sheet has closed, clears the open project, and offers Undo', async () => {
+  it('Archive a project archives without asking once the sheet has closed, clears the open project, and offers Undo', async () => {
     const { getByText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));
-    await fireEvent.click(getByText('Archive…'));
+    await fireEvent.click(getByText('Archive a project'));
     await fireEvent.click(getByText('Live Sprint'));
     await waitFor(() => expect(archiveProject).toHaveBeenCalledWith('project:live'));
     expect(confirmAction).not.toHaveBeenCalled();
@@ -98,11 +98,24 @@ describe('phone Archived projects', () => {
     expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
   });
 
+  it('empty: says so and still offers the archive action; none when nothing is left to archive', async () => {
+    getArchivedProjects.mockResolvedValue([]);
+    const { getByText, queryByText, unmount } = render(SettingsPage, { page: 'archived' });
+    await waitFor(() => getByText('No archived projects.'));
+    expect(getByText('Archive a project')).toBeTruthy();
+    unmount();
+    getProjects.mockResolvedValue([]);
+    const r = render(SettingsPage, { page: 'archived' });
+    await waitFor(() => r.getByText('No archived projects.'));
+    expect(r.queryByText('Archive a project')).toBeNull();
+    expect(queryByText('Archive…')).toBeNull();
+  });
+
   it('a failed archive surfaces showError', async () => {
     archiveProject.mockRejectedValueOnce(new Error('x'));
     const { getByText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));
-    await fireEvent.click(getByText('Archive…'));
+    await fireEvent.click(getByText('Archive a project'));
     await fireEvent.click(getByText('Live Sprint'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to archive project. Please try again.'));
     expect(get(toast)).toBeNull();

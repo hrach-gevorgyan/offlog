@@ -1,0 +1,220 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
+import { get, type Writable } from 'svelte/store';
+
+const m = vi.hoisted(() => ({
+  url: 'http://pc.local:5984/offlog',
+  enabled: true,
+  name: 'Pixel',
+  syncState: { status: 'idle', lastSynced: null as string | null, error: null as string | null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
+}));
+const setSyncEnabled = vi.fn((v: boolean) => { m.enabled = v; });
+const setDeviceName = vi.fn((n: string) => { m.name = n.trim() || 'Default'; });
+vi.mock('../src/config', async () => {
+  const { writable: w } = await import('svelte/store');
+  return {
+    getSyncUrl: () => m.url,
+    isSyncEnabled: () => m.enabled,
+    setSyncEnabled: (...a: unknown[]) => setSyncEnabled(...(a as [boolean])),
+    getDeviceName: () => m.name,
+    setDeviceName: (...a: unknown[]) => setDeviceName(...(a as [string])),
+    isTauri: () => false, invokeTauri: vi.fn(), getTimeFormat24h: () => true,
+    otherHostsDetected: w([]),
+  };
+});
+
+const syncNow = vi.fn();
+const startSync = vi.fn();
+const cancelSync = vi.fn();
+const getDeviceLastSeen = vi.fn();
+const getConflicts = vi.fn();
+const resolveConflict = vi.fn();
+vi.mock('../src/lib/db', () => ({
+  syncState: m.syncState,
+  syncNow: (...a: unknown[]) => syncNow(...a),
+  startSync: (...a: unknown[]) => startSync(...a),
+  cancelSync: (...a: unknown[]) => cancelSync(...a),
+  getDeviceLastSeen: (...a: unknown[]) => getDeviceLastSeen(...a),
+  getConflicts: (...a: unknown[]) => getConflicts(...a),
+  resolveConflict: (...a: unknown[]) => resolveConflict(...a),
+  getCustomFieldDefs: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../src/lib/store', async () => {
+  const { writable: w } = await import('svelte/store');
+  return { showError: vi.fn(), modalOpen: w(false) };
+});
+const pairWithHost = vi.fn();
+const scanForHosts = vi.fn();
+vi.mock('../src/lib/discovery', async () => {
+  const { writable: w } = await import('svelte/store');
+  return {
+    discoveredHosts: w([]), isScanning: w(false),
+    scanForHosts: (...a: unknown[]) => scanForHosts(...a), stopScan: vi.fn(),
+    pairWithHost: (...a: unknown[]) => pairWithHost(...a), staleHostAlert: w(null),
+  };
+});
+const confirmAction = vi.fn();
+vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confirmAction(...a), confirmRequest: { subscribe: (f: (v: null) => void) => { f(null); return () => {}; } } }));
+
+import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
+import { showError } from '../src/lib/store';
+import * as nav from '../src/lib/phone/nav';
+import { staleHostAlert, discoveredHosts } from '../src/lib/discovery';
+
+window.matchMedia = ((q: string) => ({
+  matches: q.includes('reduce'), media: q, onchange: null,
+  addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false,
+})) as unknown as typeof window.matchMedia;
+
+const settle = (ms = 30) => new Promise(r => setTimeout(r, ms));
+const conflict = {
+  docId: 'task:a', label: 'Buy paint', type: 'task', differing: ['title'],
+  versions: [
+    { rev: '', isCurrent: true, isNewest: false, doc: { source: 'Pixel', title: 'Buy paint', updated_at: new Date().toISOString() } },
+    { rev: '3-b', isCurrent: false, isNewest: true, doc: { source: 'PC', title: 'Buy paint now', updated_at: new Date().toISOString() } },
+  ],
+};
+
+beforeEach(async () => {
+  await settle();
+  nav.switchTab('home');
+  await settle();
+  vi.clearAllMocks();
+  nav.toast.set(null);
+  m.url = 'http://pc.local:5984/offlog';
+  m.enabled = true;
+  m.name = 'Pixel';
+  Object.assign(m.syncState, { status: 'idle', lastSynced: null, error: null, conflictCount: 0 });
+  syncNow.mockResolvedValue(undefined);
+  startSync.mockResolvedValue(undefined);
+  getDeviceLastSeen.mockResolvedValue([
+    { device: 'Pixel', lastSeen: new Date().toISOString() },
+    { device: 'Office PC', lastSeen: new Date(Date.now() - 2 * 3600e3).toISOString() },
+  ]);
+  getConflicts.mockResolvedValue([]);
+  resolveConflict.mockResolvedValue(undefined);
+  pairWithHost.mockResolvedValue(undefined);
+  (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set(null);
+  (discoveredHosts as Writable<unknown[]>).set([]);
+  delete (window as { Capacitor?: unknown }).Capacitor;
+});
+afterEach(() => { cleanup(); delete (window as { Capacitor?: unknown }).Capacitor; });
+
+describe('phone Sync page', () => {
+  it('shows status, rows and devices; this device is a sub label, not a badge', async () => {
+    m.syncState.lastSynced = new Date().toISOString();
+    const { getByRole, getByText, container } = render(SettingsPage, { page: 'sync' });
+    expect(getByRole('heading', { name: 'Sync' })).toBeTruthy();
+    expect(getByText(/^Synced /)).toBeTruthy();
+    expect(container.querySelector('.card .p-dot.ok')).toBeTruthy();
+    expect(getByRole('switch').getAttribute('aria-checked')).toBe('true');
+    await waitFor(() => getByText('Office PC'));
+    expect(getByText('2h ago')).toBeTruthy();
+    const pixelRow = [...container.querySelectorAll('.dev')].find(r => r.textContent!.includes('Pixel'))!;
+    expect(pixelRow.querySelector('.p-sub')!.textContent).toBe('This device');
+    const pcRow = [...container.querySelectorAll('.dev')].find(r => r.textContent!.includes('Office PC'))!;
+    expect(pcRow.querySelector('.p-sub')).toBeNull();
+    expect(getDeviceLastSeen).toHaveBeenCalledWith();
+  });
+
+  it('the switch turns sync off (cancelling it) and back on (starting it)', async () => {
+    const { getByRole, getByText, queryByText } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByRole('switch'));
+    expect(setSyncEnabled).toHaveBeenLastCalledWith(false);
+    expect(cancelSync).toHaveBeenCalledTimes(1);
+    expect(getByRole('switch').getAttribute('aria-checked')).toBe('false');
+    expect(getByText('Sync is off')).toBeTruthy();
+    expect(queryByText('This device')).toBeNull();
+    expect(queryByText('Sync now')).toBeNull();
+    await fireEvent.click(getByRole('switch'));
+    expect(setSyncEnabled).toHaveBeenLastCalledWith(true);
+    expect(startSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('Sync now syncs and confirms; a failure surfaces showError', async () => {
+    const { getByText } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByText('Sync now'));
+    await waitFor(() => expect(get(nav.toast)?.text).toBe('Synced'));
+    expect(syncNow).toHaveBeenCalledWith();
+    syncNow.mockRejectedValueOnce(new Error('x'));
+    await fireEvent.click(getByText('Sync now'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not sync. Please try again.'));
+  });
+
+  it('no server yet: says so, and offers no Sync now', () => {
+    m.url = '';
+    const { getByText, queryByText } = render(SettingsPage, { page: 'sync' });
+    expect(getByText('Not connected yet')).toBeTruthy();
+    expect(queryByText('Sync now')).toBeNull();
+  });
+
+  it('This device renames in a sheet', async () => {
+    const { getByText, getByRole } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByRole('button', { name: /^This device/ }));
+    const input = getByRole('textbox') as HTMLInputElement;
+    expect(input.value).toBe('Pixel');
+    await fireEvent.input(input, { target: { value: '  Work phone ' } });
+    await fireEvent.click(getByText('Save'));
+    expect(setDeviceName).toHaveBeenCalledWith('  Work phone ');
+    await waitFor(() => expect(document.querySelector('.psheet')).toBeNull());
+    expect(getByRole('button', { name: /^This device/ }).querySelector('.p-v')!.textContent).toBe('Work phone');
+  });
+
+  it('a failed device list load surfaces showError', async () => {
+    getDeviceLastSeen.mockRejectedValueOnce(new Error('x'));
+    render(SettingsPage, { page: 'sync' });
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to load recent devices.'));
+  });
+
+  it('a conflict opens in a sheet and "Keep this" resolves it after confirming', async () => {
+    m.syncState.conflictCount = 1;
+    getConflicts.mockResolvedValue([conflict]);
+    const { getByText, getAllByText } = render(SettingsPage, { page: 'sync' });
+    await waitFor(() => getByText('Conflicts'));
+    await fireEvent.click(getByText('Conflicts'));
+    await waitFor(() => getByText('Buy paint now'));
+    confirmAction.mockResolvedValueOnce(false);
+    await fireEvent.click(getAllByText('Keep this')[1]);
+    await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
+    expect(resolveConflict).not.toHaveBeenCalled();
+    confirmAction.mockResolvedValueOnce(true);
+    await fireEvent.click(getAllByText('Keep this')[1]);
+    await waitFor(() => expect(resolveConflict).toHaveBeenCalledWith('task:a', 'other', '3-b'));
+    resolveConflict.mockRejectedValueOnce(new Error('x'));
+    confirmAction.mockResolvedValueOnce(true);
+    await fireEvent.click(getAllByText('Keep this')[0]);
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to resolve conflict. Please try again.'));
+    expect(resolveConflict).toHaveBeenLastCalledWith('task:a', 'current', '');
+  });
+
+  it('Android: Connect a device finds the computer and pairs with the code', async () => {
+    (window as { Capacitor?: unknown }).Capacitor = { getPlatform: () => 'android' };
+    const host = { uuid: 'h1', name: 'Office PC', address: '10.0.0.2', port: 1 };
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByText('Connect a device'));
+    await fireEvent.click(getByText('Find my computer'));
+    expect(scanForHosts).toHaveBeenCalledTimes(1);
+    (discoveredHosts as Writable<unknown[]>).set([host]);
+    await waitFor(() => getByText('Connect'));
+    await fireEvent.click(getByText('Connect'));
+    await fireEvent.input(getByLabelText('Pairing code'), { target: { value: '123456' } });
+    m.url = 'http://10.0.0.2:1/offlog';
+    await fireEvent.click(getByText('Connect'));
+    await waitFor(() => getByText(/Connected to “Office PC”/));
+    expect(pairWithHost).toHaveBeenCalledWith(host, '123456');
+  });
+
+  it('a web build has no Connect row, only a short hint', () => {
+    const { queryByText, getByText } = render(SettingsPage, { page: 'sync' });
+    expect(queryByText('Connect a device')).toBeNull();
+    expect(getByText('Pair from the Android or PC app.')).toBeTruthy();
+  });
+
+  it('Own server opens Advanced; a stale paired host is shown', async () => {
+    (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set({ uuid: 'u', name: 'Old PC' });
+    const { getByText } = render(SettingsPage, { page: 'sync' });
+    expect(getByText(/“Old PC” is on this network/)).toBeTruthy();
+    await fireEvent.click(getByText('Own server'));
+    expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'advanced' });
+  });
+});
