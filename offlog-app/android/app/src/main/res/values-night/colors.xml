@@ -5,7 +5,7 @@
          widget used unconditionally before this split. -->
     <color name="colorWidgetBg">#101218</color>      <!-- app.css sidebar-bg, dark -->
     <color name="colorWidgetSurface">#242934</color> <!-- app.css surface, dark -->
-    <color name="colorWidgetAccent">#818CF8</color>  <!-- app.css accent, dark -->
+    <color name="colorWidgetAccent">#8590E5</color>  <!-- app.css accent, dark -->
     <color name="colorWidgetText">#F3F4F6</color>    <!-- app.css text, dark -->
     <color name="colorWidgetMuted">#A3A9B7</color>   <!-- app.css muted, dark -->
 </resources>

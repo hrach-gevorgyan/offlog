@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { soften } from './tagColors';
   import { onMount, createEventDispatcher } from 'svelte';
   import { getDashboardData, getStorageBreakdown, getTaskById, subscribe } from './db';
   import { reloadTasks, showError } from './store';
@@ -165,7 +166,7 @@
               >
                 <div class="proj-card-top">
                   {#if space}
-                    <span class="space-dot" style="background:{space.color}"></span>
+                    <span class="space-dot" style="background:{soften(space.color)}"></span>
                     <span class="space-name">{space.name}</span>
                   {/if}
                   <span class="task-count" title="{stats.total} task{stats.total === 1 ? '' : 's'}">{stats.total}</span>

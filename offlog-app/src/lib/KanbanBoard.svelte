@@ -12,7 +12,7 @@
   import PinStar from './PinStar.svelte';
   import { filterTasks, localDateStr, dueLabel, type CustomFieldFilter } from './utils';
   import { hapticToggle, hapticDragStart, hapticDragDrop } from './haptics';
-  import { resolveTagColor } from './tagColors';
+  import { resolveTagColor, soften } from './tagColors';
 
   export let project: ProjectDoc;
   export let tasks: TaskDoc[];
@@ -375,7 +375,7 @@
   // stays mounted.
   let tagColorOverrides: Record<string, string> = {};
   function tagColor(tag: string): string {
-    return resolveTagColor(tag, tagColorOverrides);
+    return soften(resolveTagColor(tag, tagColorOverrides));
   }
 
   function onTouchStart(e: TouchEvent, task: TaskDoc, el: HTMLElement) {

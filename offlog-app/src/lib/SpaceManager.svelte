@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { soften } from './tagColors';
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { panelIn, panelOut, panelScrimIn, panelScrimOut, popIn, popOut, exitMs } from './motion';
@@ -165,7 +166,7 @@
       <div class="row">
         <label class="swatch-wrap" title="Change color">
           <input type="color" value={s.color} on:change={(e) => setColor(s, (e.target as HTMLInputElement).value)} />
-          <span class="swatch" style="background:{s.color}"></span>
+          <span class="swatch" style="background:{soften(s.color)}"></span>
         </label>
 
         <div class="icon-picker-wrap">

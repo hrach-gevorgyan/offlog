@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { soften } from '../tagColors';
   import { createEventDispatcher } from 'svelte';
   import type { TaskDoc } from '../types';
   import { projects, spaces, showError } from '../store';
@@ -41,7 +42,7 @@
   <button class="g" on:click={() => dispatch('open', task)}>
     <span class="t">{task.title}</span>
     <span class="s">
-      {#if space}<span class="dot" style="background:{space.color}"></span>{/if}
+      {#if space}<span class="dot" style="background:{soften(space.color)}"></span>{/if}
       {task.project_name ?? project?.name ?? ''}
       {#if task.recurrence}<span class="ic">· {@html I.repeat}</span>{/if}
       {#if steps.length}<span>· {steps.filter(s => s.done).length}/{steps.length}</span>{/if}

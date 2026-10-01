@@ -7,7 +7,7 @@
   import { confirmAction } from './confirm';
   import { closeOnBack } from './modalStack';
   import { trapFocus } from './focusTrap';
-  import { TAG_PALETTE, resolveTagColor } from './tagColors';
+  import { TAG_PALETTE, resolveTagColor, soften } from './tagColors';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -119,7 +119,7 @@
         <div class="row">
           <button
             class="color-dot"
-            style="background:{resolveTagColor(tag, overrides)}"
+            style="background:{soften(resolveTagColor(tag, overrides))}"
             title="Change color for tag {tag}"
             aria-label="Change color for tag {tag}"
             on:click={() => openPicker = openPicker === tag ? null : tag}

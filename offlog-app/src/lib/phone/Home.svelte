@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { soften } from '../tagColors';
   import { onMount, onDestroy } from 'svelte';
   import { getDashboardData, getTaskById, subscribe } from '../db';
   import { spaces, projects, showError } from '../store';
@@ -102,7 +103,7 @@
           {#each ps as p (p._id)}
             {@const st = data?.byProject[p._id]}
             <button class="row" on:click={() => push({ k: 'project', id: p._id })}>
-              <span class="dot" style="background:{s.color}"></span>
+              <span class="dot" style="background:{soften(s.color)}"></span>
               <span class="lbl">{p.name}</span>
               {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
               <span class="badge">{st ? st.open : ''}</span>

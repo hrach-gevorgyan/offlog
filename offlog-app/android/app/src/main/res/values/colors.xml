@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#5457e0</color>
+    <color name="colorPrimary">#575fca</color>
     <color name="colorPrimaryDark">#181a20</color>
-    <color name="colorAccent">#5457e0</color>
+    <color name="colorAccent">#575fca</color>
 
     <!-- Widget palette, matched to app.css's tokens. This file is the
          LIGHT set; the dark set is values-night/colors.xml. A widget
@@ -21,7 +21,7 @@
          bigger in relative terms, so it looks fine while light mode reads
          as flat. -->
     <color name="colorWidgetSurface">#E6DCC8</color>
-    <color name="colorWidgetAccent">#5457E0</color>  <!-- app.css accent token, light -->
+    <color name="colorWidgetAccent">#575FCA</color>  <!-- app.css accent token, light -->
     <color name="colorWidgetText">#1F2937</color>    <!-- app.css text token, light -->
     <color name="colorWidgetMuted">#4B5563</color>   <!-- app.css muted token, light -->
 </resources>

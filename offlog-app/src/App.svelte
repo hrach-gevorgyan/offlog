@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { soften } from './lib/tagColors';
   import { onMount, tick } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { scrimIn, scrimOut, centredIn, centredOut, toastIn, toastOut, viewIn, viewOut } from './lib/motion';
@@ -581,7 +582,7 @@
           <div class="title-block">
             {#if activeSpace}
               <div class="breadcrumb">
-                <span class="bc-dot" style="background:{activeSpace.color}"></span>
+                <span class="bc-dot" style="background:{soften(activeSpace.color)}"></span>
                 {activeSpace.name}
               </div>
             {/if}

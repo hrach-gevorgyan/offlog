@@ -56,3 +56,11 @@ export function hashTagColor(tag: string): string {
 export function resolveTagColor(tag: string, overrides: Record<string, string>): string {
   return overrides[tag] ?? hashTagColor(tag);
 }
+
+// Stored space and tag colours stay as picked; they are drawn about 20% less
+// saturated (same hue and lightness) so the app's colours read calm rather
+// than loud. Applied at render time so stored data, seed detection and
+// tag-colour balancing all keep working on the original hex values.
+export function soften(color: string): string {
+  return `oklch(from ${color} l calc(c * 0.8) h)`;
+}

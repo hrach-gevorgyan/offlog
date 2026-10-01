@@ -534,13 +534,20 @@ native theming. Derived tints use
 | `--text` | `#1F2937` | `#F3F4F6` | primary ink |
 | `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
 | `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
-| `--accent` | `#5457E0` | `#818CF8` | indigo — buttons, active states |
+| `--accent` | `#575FCA` | `#8590E5` | indigo — buttons, active states |
 | `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
-| `--hero` | `#5457E0` | `#35388F` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent |
-| `--on-hero` | `#FFFFFF` | `#EEF0FF` | ink and the muted mark on `--hero` |
+| `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent |
+| `--on-hero` | `#FFFFFF` | `#EFF0FC` | ink and the muted mark on `--hero` |
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
-| `--danger` | `#DC2626` | `#F87171` | destructive actions |
-| `--success` | `#22C55E` | `#4ADE80` | done, sync ok |
+| `--danger` | `#CA473E` | `#E77F7C` | destructive actions |
+| `--success` | `#5ABE73` | `#74D791` | done, sync ok |
+| `--due-soon-bg` / `--due-soon-ink` | `#FAF3D4` / `#884826` | `#372F1A` / `#EFC365` | due today/tomorrow chips |
+| `--overdue-bg` / `--overdue-ink` | `#F8E4E4` / `#AB3730` | `#351A21` / `#EA7F8C` | late chips and counts |
+
+The saturated colours are deliberately muted (OKLCH chroma ×0.8, same hue and
+lightness, every text pair still AA). User-picked space and tag colours are
+stored as picked and muted at render time by `soften()` in `tagColors.ts`, so
+seed detection and tag-colour balancing still see the original hex.
 | `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — track carries the theme swap |
 
 Changing `--accent` also means updating Android's `colors.xml` and

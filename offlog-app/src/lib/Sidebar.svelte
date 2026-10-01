@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { soften } from './tagColors';
   import { spaces, projects, activeSpaceId, activeProjectId, showError, reloadTasks } from './store';
   import db, {
     createProject, createProjectFromTemplate, deleteProject, updateProject, syncState,
@@ -541,7 +542,7 @@
         <button
           class="space-icon-only"
           class:active={$activeSpaceId === space._id}
-          style="color:{space.color}; background:color-mix(in srgb, {space.color} 18%, transparent)"
+          style="color:{soften(space.color)}; background:color-mix(in srgb, {soften(space.color)} 18%, transparent)"
           title={space.name}
           aria-label={space.name}
           on:click={() => expandToSpace(space._id)}
@@ -564,7 +565,7 @@
                space-icon-only: that one needs more contrast against the
                bare rail, this one only has to distinguish spaces by
                color without adding visual noise to the tree. -->
-          <span class="space-icon" style="color:{space.color}; background:color-mix(in srgb, {space.color} 12%, transparent)">
+          <span class="space-icon" style="color:{soften(space.color)}; background:color-mix(in srgb, {soften(space.color)} 12%, transparent)">
             {@html getSpaceIconSvg(space)}
           </span>
           <span class="space-name">{space.name}</span>

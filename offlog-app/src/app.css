@@ -55,10 +55,10 @@
   --faint: #5f6674;
 
   /* meaning */
-  --accent: #5457e0;
+  --accent: #575fca;
   /* The phone Home's hero band and what sits on it. Dark mode deepens it
      rather than using the lighter dark --accent, which glares as a fill. */
-  --hero: #5457e0;
+  --hero: #575fca;
   --on-hero: #ffffff;
   --on-accent: #ffffff; /* text/icon color for anything sitting on --accent — see body.dark override */
   /* Fixed (not overridden in body.dark) — --success is bright in BOTH
@@ -66,12 +66,12 @@
      lightness per theme, so it needs a text color that doesn't swap
      either. Used by DeadlinesView.svelte's success-colored badge. */
   --ink-fixed-dark: #181a20;
-  --danger: #dc2626;
-  --success: #22c55e;
-  --due-soon-bg: #fef3c7;
-  --due-soon-ink: #92400e;
-  --overdue-bg: #fee2e2;
-  --overdue-ink: #b91c1c;
+  --danger: #ca473e;
+  --success: #5abe73;
+  --due-soon-bg: #faf3d4;
+  --due-soon-ink: #884826;
+  --overdue-bg: #f8e4e4;
+  --overdue-ink: #ab3730;
   /* Fixed (not overridden in body.dark) — the toggle-switch knob (ListView's
      .toggle-mini-knob, SettingsPanel's .toggle-knob) is white in both themes;
      the track (--border-strong/--accent) already carries the theme swap. */
@@ -171,16 +171,16 @@ body.dark {
   --text: #f3f4f6;
   --muted: #a3a9b7;
   --faint: #8b93a5;
-  --accent: #818cf8;
-  --hero: #35388f;
-  --on-hero: #eef0ff;
+  --accent: #8590e5;
+  --hero: #373d81;
+  --on-hero: #eff0fc;
   --on-accent: #181a20; /* dark accent is light — needs dark text, not white (was hardcoded #fff before, 2.98:1) */
-  --danger: #f87171;
-  --success: #4ade80;
-  --due-soon-bg: #3a2e10;
-  --due-soon-ink: #fbbf24;
-  --overdue-bg: #3a1620;
-  --overdue-ink: #fb7185;
+  --danger: #e77f7c;
+  --success: #74d791;
+  --due-soon-bg: #372f1a;
+  --due-soon-ink: #efc365;
+  --overdue-bg: #351a21;
+  --overdue-ink: #ea7f8c;
 }
 
 /* B11: high contrast — raises border/text contrast ratios only (not the

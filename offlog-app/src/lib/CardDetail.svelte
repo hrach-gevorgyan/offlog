@@ -5,7 +5,7 @@
   import type { TaskDoc, ProjectDoc, CustomFieldDef, TaskAttachment } from './types';
   import { updateTask, deleteTask, getAllTags, archiveTask, duplicateTask, skipRecurrence, getCustomFieldDefs, findTasksByTitleInProject, findSimilarNotes, getRelatedTasks, searchTasksForLinking, linkRelatedTask, unlinkRelatedTask, getBlockingTasks, linkBlockedBy, unlinkBlockedBy, isBlockerResolved, addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK, getTagColorOverrides, ensureFreshTagColor } from './db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, attachmentMimeType } from './attachments';
-  import { resolveTagColor } from './tagColors';
+  import { resolveTagColor, soften } from './tagColors';
   import { PRIORITY_COLOR } from './constants';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { confirmAction } from './confirm';
@@ -712,7 +712,7 @@
       <span class="field-label">Tags</span>
       <div class="tags-input-row">
         {#each tags as tag}
-          <span class="tag-chip" style="background:color-mix(in srgb, {resolveTagColor(tag, tagColorOverrides)} 45%, transparent)">
+          <span class="tag-chip" style="background:color-mix(in srgb, {soften(resolveTagColor(tag, tagColorOverrides))} 45%, transparent)">
             {tag}
             <button class="tag-remove" on:click={() => removeTag(tag)} aria-label="Remove tag {tag}">×</button>
           </span>
