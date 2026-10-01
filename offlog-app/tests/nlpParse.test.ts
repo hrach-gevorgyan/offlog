@@ -70,6 +70,19 @@ describe('parseQuickAdd() -- dates', () => {
   });
 });
 
+describe('parseQuickAdd() -- impossible dates', () => {
+  const oct1 = new Date(2026, 9, 1, 9, 0);
+  it('feb 29 without a year waits for the next leap year', () => {
+    expect(parseQuickAdd('Party feb 29', [], oct1).due_date).toBe('2028-02-29');
+  });
+  it('a day the month does not have is not a date at all', () => {
+    for (const t of ['Report sep 31', 'Report 2/30', 'Report 13/45', 'Report 2026-02-30']) {
+      const r = parseQuickAdd(t, [], oct1);
+      expect(r.due_date).toBeNull();
+    }
+  });
+});
+
 describe('parseQuickAdd() -- time / reminders', () => {
   it('parses "at 5pm" combined with a parsed date', () => {
     const r = parseQuickAdd('Call mom tomorrow at 5pm', [], NOW);
@@ -111,6 +124,17 @@ describe('parseQuickAdd() -- time / reminders', () => {
     const r = parseQuickAdd('Buy 5 apples', [], NOW);
     expect(r.reminder_at).toBeNull();
     expect(r.title).toBe('Buy 5 apples');
+  });
+});
+
+describe('parseQuickAdd() -- base day', () => {
+  it('a bare time lands on the day Quick add was opened for', () => {
+    const r = parseQuickAdd('Dentist 3pm', [], new Date(2026, 9, 1, 9, 0), new Date(2026, 9, 10, 12, 0));
+    expect(r.due_date).toBe('2026-10-10');
+    expect(r.reminder_at).toBe(new Date(2026, 9, 10, 15, 0).toISOString());
+  });
+  it('a typed date still beats the base day', () => {
+    expect(parseQuickAdd('Dentist tomorrow 3pm', [], new Date(2026, 9, 1, 9, 0), new Date(2026, 9, 10, 12, 0)).due_date).toBe('2026-10-02');
   });
 });
 

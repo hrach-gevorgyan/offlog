@@ -21,6 +21,9 @@
   // No box and no icon: the trigger reads as a row's value, right-aligned,
   // in the size and colour the parent gives it.
   export let bare = false;
+  // Spoken name for an empty bare picker, whose visible placeholder may be
+  // just a dash.
+  export let emptyLabel = 'No date';
 
   const dispatch = createEventDispatcher<{ change: string }>();
 
@@ -131,7 +134,7 @@
 <svelte:window on:keydown={onWindowKeydown} />
 
 <div class="cal-field" bind:this={wrapEl}>
-  <button type="button" class="cal-trigger" class:has-value={!!value} class:open class:bare bind:this={triggerEl} on:click={toggle} {disabled} aria-haspopup="dialog" aria-expanded={open}>
+  <button type="button" class="cal-trigger" class:has-value={!!value} class:open class:bare bind:this={triggerEl} on:click={toggle} {disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={bare && !selected ? emptyLabel : undefined}>
     {#if !bare}<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6.5" x2="14" y2="6.5"/><line x1="5.5" y1="1.5" x2="5.5" y2="4.5"/><line x1="10.5" y1="1.5" x2="10.5" y2="4.5"/>
     </svg>{/if}

@@ -290,15 +290,31 @@ describe('week start and clock: device locale until the user chooses', () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
   it('week start follows the locale (getWeekInfo or weekInfo), Monday when unknown', async () => {
-    const { getWeekStartsMonday } = await import('../src/config');
+    const { localeWeekStartsMonday } = await import('../src/config');
     fakeLocale({ getWeekInfo: () => ({ firstDay: 7 }) });
-    expect(getWeekStartsMonday()).toBe(false);
+    expect(localeWeekStartsMonday()).toBe(false);
     vi.restoreAllMocks();
     fakeLocale({ weekInfo: { firstDay: 1 } });
-    expect(getWeekStartsMonday()).toBe(true);
+    expect(localeWeekStartsMonday()).toBe(true);
     vi.restoreAllMocks();
     fakeLocale({});
-    expect(getWeekStartsMonday()).toBe(true);
+    expect(localeWeekStartsMonday()).toBe(true);
+  });
+
+  it('a new install takes the locale defaults; an existing one keeps Monday and 24h', async () => {
+    vi.resetModules();
+    localStorage.clear();
+    fakeLocale({ getWeekInfo: () => ({ firstDay: 7 }) });
+    fakeClock('h12');
+    let c = await import('../src/config');
+    expect(c.getWeekStartsMonday()).toBe(false);
+    expect(c.getTimeFormat24h()).toBe(false);
+    vi.resetModules();
+    localStorage.clear();
+    c = await import('../src/config');
+    c.markNamePromptShown();
+    expect(c.getWeekStartsMonday()).toBe(true);
+    expect(c.getTimeFormat24h()).toBe(true);
   });
 
   it('an explicit week start always wins over the locale', async () => {
@@ -309,18 +325,19 @@ describe('week start and clock: device locale until the user chooses', () => {
   });
 
   it('the clock follows the locale hour cycle, 24h when unknown; an explicit choice wins', async () => {
-    const { getTimeFormat24h, setTimeFormat24h } = await import('../src/config');
+    const { localeTimeFormat24h, getTimeFormat24h, setTimeFormat24h } = await import('../src/config');
     fakeClock('h12');
-    expect(getTimeFormat24h()).toBe(false);
+    expect(localeTimeFormat24h()).toBe(false);
     vi.restoreAllMocks();
     fakeClock('h23');
-    expect(getTimeFormat24h()).toBe(true);
+    expect(localeTimeFormat24h()).toBe(true);
     vi.restoreAllMocks();
     fakeClock(undefined);
-    expect(getTimeFormat24h()).toBe(true);
+    expect(localeTimeFormat24h()).toBe(true);
     vi.restoreAllMocks();
     fakeClock('h12');
     setTimeFormat24h(true);
     expect(getTimeFormat24h()).toBe(true);
   });
+
 });

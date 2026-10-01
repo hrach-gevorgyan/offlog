@@ -202,11 +202,12 @@ describe('phone Project screen — board', () => {
     expect(container.querySelector('.dots')).toBeNull();
   });
 
-  it('the header sits on a band in the space colour, with light ink on a dark colour', () => {
+  it('the header sits on a band in the space colour; ink is whichever contrasts more (dark on this mid blue)', () => {
     const { container } = setup();
     const band = container.querySelector('.band') as HTMLElement;
     expect(band.style.getPropertyValue('--band')).toContain('#3b82f6');
-    expect(band.classList.contains('light')).toBe(true);
+    // #3b82f6: white 3.7:1, page ink 4.1:1.
+    expect(band.classList.contains('light')).toBe(false);
     expect(band.querySelector('h1')?.textContent).toBe('House');
   });
 

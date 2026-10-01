@@ -11,7 +11,10 @@ if (!existsSync(file)) process.exit(0);
 
 const src = readFileSync(file, 'utf8');
 const from = /(\n\s*)this\.onBackPressedCallback\.setEnabled\(enabled\);\s*\n(\s*)call\.resolve\(\);/;
-if (src.includes('runOnUiThread(() -> {\n            this.onBackPressedCallback.setEnabled(enabled)')) process.exit(0);
+// Already on the UI thread (ours, or upstream's own fix in any formatting):
+// leave it alone rather than nest a second runOnUiThread.
+const method = src.slice(src.indexOf('toggleBackButtonHandler('), src.indexOf('getAppLanguage('));
+if (/runOnUiThread/.test(method)) process.exit(0);
 const m = src.match(from);
 if (!m) {
   console.warn('patch-capacitor-app: toggleBackButtonHandler changed upstream; check whether this patch is still needed.');

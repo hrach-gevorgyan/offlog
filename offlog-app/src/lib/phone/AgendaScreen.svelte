@@ -143,7 +143,7 @@
   </div>
   <div class="p-sec" role="heading" aria-level="2">{selected === today ? 'Today' : shortDate(selected)} <span class="p-n">{dayTasks.length}</span></div>
   {#each dayTasks as t (t._id)}
-    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} sectionDate={selected} menu on:open={() => actions.openTask(t)} on:changed={load} on:menu={() => openMenu(t)} /></div>
+    <div in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}><TaskCard task={t} sectionDate={selected >= today ? selected : null} menu on:open={() => actions.openTask(t)} on:changed={load} on:menu={() => openMenu(t)} /></div>
   {:else}
     <div class="none">
       <p class="p-empty">Nothing due.</p>

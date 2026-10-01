@@ -100,13 +100,23 @@ function take(w: Work, m: RegExpExecArray, kind: ParsedSpanKind) {
   blank(w, s, e, ' ');
 }
 
-// A month/day typed without a year means its next occurrence, never a
-// date already behind today.
-function upcoming(year: number | null, month: number, day: number, today: Date): Date {
-  const d = new Date(year ?? today.getFullYear(), month, day);
-  if (year !== null) return d;
+// A real calendar date, or null: new Date() silently rolls "Sep 31" into
+// Oct 1, so the parts are checked after building.
+function real(year: number, month: number, day: number): Date | null {
+  const d = new Date(year, month, day);
+  return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day ? d : null;
+}
+
+// A month/day typed without a year means its next real occurrence, never a
+// date already behind today ("Feb 29" waits for the next leap year).
+function upcoming(year: number | null, month: number, day: number, today: Date): Date | null {
+  if (year !== null) return real(year, month, day);
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  return d < start ? new Date(today.getFullYear() + 1, month, day) : d;
+  for (let y = today.getFullYear(); y <= today.getFullYear() + 8; y++) {
+    const d = real(y, month, day);
+    if (d && d >= start) return d;
+  }
+  return null;
 }
 
 // Tries each date pattern in order, first hit wins -- explicit dates before
@@ -116,8 +126,8 @@ function extractDate(w: Work, today: Date): Date | null {
   // ISO: 2026-07-25
   let m = find(w, /\b(\d{4})-(\d{2})-(\d{2})\b/);
   if (m) {
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    if (!isNaN(d.getTime())) { take(w, m, 'date'); return d; }
+    const d = real(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (d) { take(w, m, 'date'); return d; }
   }
 
   // Slash: 7/25 or 7/25/2026. Known ambiguity, accepted deliberately
@@ -129,7 +139,7 @@ function extractDate(w: Work, today: Date): Date | null {
   if (m) {
     const year = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : null;
     const d = upcoming(year, Number(m[1]) - 1, Number(m[2]), today);
-    if (!isNaN(d.getTime())) { take(w, m, 'date'); return d; }
+    if (d) { take(w, m, 'date'); return d; }
   }
 
   // "Jul 25", "July 25th", "July 25, 2026"
@@ -137,7 +147,7 @@ function extractDate(w: Work, today: Date): Date | null {
   m = find(w, new RegExp(`\\b(${monthNames})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`, 'i'));
   if (m) {
     const d = upcoming(m[3] ? Number(m[3]) : null, MONTH_ALIASES[m[1].toLowerCase()], Number(m[2]), today);
-    if (!isNaN(d.getTime())) { take(w, m, 'date'); return d; }
+    if (d) { take(w, m, 'date'); return d; }
   }
 
   // today / tonight
@@ -245,7 +255,9 @@ function extractProject(w: Work, projects: ProjectDoc[]): ProjectDoc | null {
   return null;
 }
 
-export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date = new Date()): ParsedQuickAdd {
+// baseDay: the day Quick add was opened for (an Agenda day), which a bare
+// time lands on instead of today.
+export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date = new Date(), baseDay?: Date): ParsedQuickAdd {
   const trimmed = input.trim();
 
   // Whole-title escape: wrap the entire text in double quotes to skip
@@ -272,7 +284,7 @@ export function parseQuickAdd(input: string, projects: ProjectDoc[], now: Date =
   let reminder_at: string | null = null;
   if (time) {
     // A bare time already past today means tomorrow; a typed date is kept.
-    let base = date ?? now;
+    let base = date ?? baseDay ?? now;
     let d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), time.hours, time.minutes);
     if (!date && d.getTime() <= now.getTime()) {
       base = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);

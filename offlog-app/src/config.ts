@@ -226,7 +226,11 @@ export function setDeviceName(name: string) {
 const SYNC_NAME_ASKED_KEY = 'offlog_sync_name_asked';
 
 export function shouldAskDeviceNameForSync(): boolean {
-  return localStorage.getItem(SYNC_NAME_ASKED_KEY) !== '1';
+  if (localStorage.getItem(SYNC_NAME_ASKED_KEY) === '1') return false;
+  // Someone who already chose a name (an older version asked at first run)
+  // is not asked again.
+  const stored = localStorage.getItem(DEVICE_NAME_KEY);
+  return !stored || stored === defaultDeviceName();
 }
 
 export function markDeviceNameAskedForSync() {
@@ -381,9 +385,24 @@ export function localeWeekStartsMonday(): boolean {
   }
 }
 
+// Installs that predate locale defaults keep what they always had (Monday,
+// 24h) instead of silently switching; decided once, the first time either
+// value is read. The locale is read once per session (Intl objects aren't free
+// and fmtTime() asks on every call).
+const DATE_DEFAULTS_KEY = 'offlog_date_defaults_settled';
+function settleDateDefaults() {
+  if (localStorage.getItem(DATE_DEFAULTS_KEY)) return;
+  localStorage.setItem(DATE_DEFAULTS_KEY, '1');
+  if (!hasShownNamePrompt()) return;
+  if (localStorage.getItem(WEEK_STARTS_MONDAY_KEY) === null) localStorage.setItem(WEEK_STARTS_MONDAY_KEY, 'true');
+  if (localStorage.getItem(TIME_FORMAT_24H_KEY) === null) localStorage.setItem(TIME_FORMAT_24H_KEY, 'true');
+}
+let localeMonday: boolean | undefined, locale24h: boolean | undefined;
+
 export function getWeekStartsMonday(): boolean {
+  settleDateDefaults();
   const stored = localStorage.getItem(WEEK_STARTS_MONDAY_KEY);
-  return stored === null ? localeWeekStartsMonday() : stored === 'true';
+  return stored === null ? (localeMonday ??= localeWeekStartsMonday()) : stored === 'true';
 }
 
 export function setWeekStartsMonday(monday: boolean) {
@@ -404,8 +423,9 @@ export function localeTimeFormat24h(): boolean {
 }
 
 export function getTimeFormat24h(): boolean {
+  settleDateDefaults();
   const stored = localStorage.getItem(TIME_FORMAT_24H_KEY);
-  return stored === null ? localeTimeFormat24h() : stored === 'true';
+  return stored === null ? (locale24h ??= localeTimeFormat24h()) : stored === 'true';
 }
 
 export function setTimeFormat24h(is24h: boolean) {

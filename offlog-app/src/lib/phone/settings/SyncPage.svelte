@@ -2,7 +2,7 @@
   // Settings → Sync on the phone: SyncSettings' behaviour (toggle, status,
   // pairing on Android and PC, device name, devices seen, conflicts) with
   // phone chrome. The server address itself lives in Advanced.
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import {
     syncState, startSync, cancelSync, getDeviceLastSeen,
     getConflicts, resolveConflict, getCustomFieldDefs, type ConflictInfo, type ConflictVersion,
@@ -71,6 +71,8 @@
 
   let showRename = false, renameSession = 0, nameDraft = '';
   function openRename() { nameDraft = deviceName; renameSession++; showRename = true; }
+  // Sync that is already on (paired from another device) asks here, once.
+  onMount(() => { if (syncEnabled && shouldAskDeviceNameForSync()) { markDeviceNameAskedForSync(); openRename(); } });
   function saveName(close: () => void) {
     setDeviceName(nameDraft);
     deviceName = getDeviceName();

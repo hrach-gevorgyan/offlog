@@ -149,6 +149,16 @@ describe('phone TaskCard', () => {
     } finally { vi.useRealTimers(); }
   });
 
+  it('only Medium and High tint the ring and are announced; Low is the default for every task', () => {
+    const low = render(TaskCard, { task: task({ priority: 1 }) });
+    expect(low.container.querySelector('.chk.prio')).toBeNull();
+    expect(low.container.querySelector('.p-sr')).toBeNull();
+    low.unmount();
+    const high = render(TaskCard, { task: task({ priority: 3 }) });
+    expect(high.container.querySelector('.chk.prio')).toBeTruthy();
+    expect(high.container.querySelector('.p-sr')?.textContent).toBe(', high priority');
+  });
+
   it('the finish circle carries the loop stroke that draws it closed', () => {
     const { container } = render(TaskCard, { task: task() });
     const path = container.querySelector('.chk > svg.p-loop path');

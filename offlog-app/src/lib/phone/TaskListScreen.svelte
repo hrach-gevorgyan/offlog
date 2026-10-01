@@ -76,16 +76,23 @@
     const rows = sections[0]?.tasks ?? [];
     if (!rows.length || moving) return;
     moving = true;
-    const before = rows.map(t => ({ id: t._id, due_date: t.due_date, reminder_at: t.reminder_at }));
     const remind = new Date(dueDateToReminderInput(today)).toISOString();
+    // Undo covers exactly the tasks that were written, so a failure part-way
+    // still offers it for the ones already moved.
+    const moved: { id: string; due_date: TaskDoc['due_date']; reminder_at: TaskDoc['reminder_at'] }[] = [];
+    const undo = async () => {
+      try { for (const b of moved) await updateTask(b.id, { due_date: b.due_date, reminder_at: b.reminder_at }); }
+      catch { showError('Could not undo the move. Please try again.'); }
+    };
     try {
-      for (const t of rows) await updateTask(t._id, t.remindOnDue ? { due_date: today, reminder_at: remind } : { due_date: today });
-      showToast(`Moved ${rows.length} to today`, async () => {
-        try { for (const b of before) await updateTask(b.id, { due_date: b.due_date, reminder_at: b.reminder_at }); }
-        catch { showError('Could not undo the move. Please try again.'); }
-      });
+      for (const t of rows) {
+        await updateTask(t._id, t.remindOnDue ? { due_date: today, reminder_at: remind } : { due_date: today });
+        moved.push({ id: t._id, due_date: t.due_date, reminder_at: t.reminder_at });
+      }
+      showToast(`Moved ${rows.length} to today`, undo);
     } catch {
-      showError('Could not move these tasks. Please try again.');
+      if (moved.length) showToast(`Moved ${moved.length} of ${rows.length} to today`, undo);
+      showError('Could not move every task. Please try again.');
     } finally {
       moving = false;
       load();

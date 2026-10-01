@@ -296,7 +296,10 @@
   // app's own handler is claiming the gesture. Anything open, another tab, or
   // the lock screen takes it back.
   let backHandler: ((enabled: boolean) => void) | null = null;
-  $: releaseBack = $isPhone && $phoneTab === 'home' && $openLayers === 0 && !locked;
+  // Only where predictive back exists (Android 13+): before that, a Back the
+  // app does not claim finishes the activity, so the next open is cold.
+  const predictiveBack = Number(/Android (\d+)/.exec(navigator.userAgent)?.[1] ?? 0) >= 13;
+  $: releaseBack = predictiveBack && $isPhone && $phoneTab === 'home' && $openLayers === 0 && !locked;
   $: backHandler?.(!releaseBack);
 
   // The home-screen widget (OffologWidgetProvider) opens MainActivity
@@ -520,8 +523,8 @@
   // The phone loading screen is --hero (it continues the splash), so the
   // status icons go light with it; Home claims the hero itself once mounted.
   let heroWhileLoading = false;
-  $: if ($isPhone && !ready && !heroWhileLoading) { heroWhileLoading = true; setStatusBarOnHero(true); }
-  $: if (ready && heroWhileLoading) { heroWhileLoading = false; setStatusBarOnHero(false); }
+  $: if ($isPhone && !ready && !initError && !heroWhileLoading) { heroWhileLoading = true; setStatusBarOnHero(true); }
+  $: if ((ready || initError) && heroWhileLoading) { heroWhileLoading = false; setStatusBarOnHero(false); }
   // Toasts sit above the phone's navigation bar rather than on top of it.
   $: document.body.classList.toggle('phone', $isPhone);
 
@@ -715,7 +718,7 @@
 {/if}
 
 <ConfirmDialog />
-{#if showNamePrompt}<NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; if (get(isPhone)) navigate('home', { k: 'set', page: 'sync' }); else sidebarRef?.openSettings('sync'); }} />{/if}
+{#if showNamePrompt}<NamePrompt askName={!$isPhone} on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; if (get(isPhone)) navigate('home', { k: 'set', page: 'sync' }); else sidebarRef?.openSettings('sync'); }} />{/if}
 
 {#if isTauri()}
   <UpdateModal />

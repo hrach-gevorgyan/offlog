@@ -340,7 +340,14 @@
   const move = (position: number) => save({ position }, 'Could not move this task. Please try again.');
   function afterClosing(close: () => void, fn: () => void) { afterClose = fn; close(); }
   function onSheetClosed() {
+    const k = sheet;
     sheet = null;
+    // Setting or clearing a value swaps its "+" chip for a row (or back), so
+    // the control that opened the sheet may be gone; focus its replacement.
+    setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      document.querySelector<HTMLElement>(`[data-kind="${k}"]`)?.focus();
+    });
     const fn = afterClose;
     afterClose = null;
     fn?.();
@@ -374,7 +381,8 @@
   let stuck = false;
   function watchTitle(node: HTMLElement) {
     if (typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver(([e]) => { stuck = !e.isIntersecting; },
+    // A fast fling can batch several entries; the newest is the current state.
+    const io = new IntersectionObserver(entries => { stuck = !entries[entries.length - 1].isIntersecting; },
       { root: node.closest('.screen'), rootMargin: '-64px 0px 0px 0px' });
     io.observe(node);
     return { destroy: () => io.disconnect() };
@@ -405,7 +413,7 @@
   </div>
 
   <div class="ttl" use:watchTitle>
-    {#if canFinish}<button class="chk" class:prio={!!task.priority} style:--prio={PRIORITY_COLOR[task.priority ?? 0] ?? null} class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
+    {#if canFinish}<button class="chk" class:prio={task.priority >= 2 && !!PRIORITY_COLOR[task.priority]} style:--prio={task.priority >= 2 ? PRIORITY_COLOR[task.priority] ?? null : null} class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
     <textarea rows="1" bind:value={title} use:autosize={title} aria-label="Title" placeholder="Task title"
       on:focus={() => titleFocused = true} on:blur={commitTitle} on:keydown={onTitleKey}></textarea>
   </div>
@@ -443,13 +451,13 @@
   {#if reminderText || repeatText}
     <div class="p-group">
       {#if reminderText}
-        <button class="p-row" on:click={() => openSheet('reminder')}>
+        <button class="p-row" data-kind="reminder" on:click={() => openSheet('reminder')}>
           <span class="p-ico">{@html I.bell}</span><span class="p-k"><span>Reminder</span></span>
           <span class="p-v set">{reminderText}</span>
         </button>
       {/if}
       {#if repeatText}
-        <button class="p-row" on:click={() => openSheet('repeat')}>
+        <button class="p-row" data-kind="repeat" on:click={() => openSheet('repeat')}>
           <span class="p-ico">{@html I.repeat}</span><span class="p-k"><span>Repeat</span></span>
           <span class="p-v set">{repeatText}</span>
         </button>
@@ -460,25 +468,25 @@
   {#if blocking.length || related.length || files || fieldsSet}
     <div class="p-group">
       {#if blocking.length}
-        <button class="p-row" on:click={() => openSheet('blocked')}>
+        <button class="p-row" data-kind="blocked" on:click={() => openSheet('blocked')}>
           <span class="p-ico">{@html I.block}</span><span class="p-k"><span>Blocked by</span></span>
           <span class="p-v set">{#if openBlockers}<span class="blk">{openBlockers} open</span>{:else}{blocking.length} done{/if}</span>
         </button>
       {/if}
       {#if related.length}
-        <button class="p-row" on:click={() => openSheet('related')}>
+        <button class="p-row" data-kind="related" on:click={() => openSheet('related')}>
           <span class="p-ico">{@html I.link}</span><span class="p-k"><span>Related</span></span>
           <span class="p-v set">{related.length}</span>
         </button>
       {/if}
       {#if files}
-        <button class="p-row" on:click={() => openSheet('files')}>
+        <button class="p-row" data-kind="files" on:click={() => openSheet('files')}>
           <span class="p-ico">{@html I.clip}</span><span class="p-k"><span>Attachments</span></span>
           <span class="p-v set">{files}</span>
         </button>
       {/if}
       {#if fieldsSet}
-        <button class="p-row" on:click={() => openSheet('fields')}>
+        <button class="p-row" data-kind="fields" on:click={() => openSheet('fields')}>
           <span class="p-ico">{@html I.field}</span><span class="p-k"><span>Fields</span></span>
           <span class="p-v set">{fieldsSet} set</span>
         </button>
@@ -488,12 +496,12 @@
 
   {#if !reminderText || !repeatText || !blocking.length || !related.length || !files || (fields.length && !fieldsSet)}
     <div class="p-cpick adds">
-      {#if !reminderText}<button class="p-chip" aria-label="Add reminder" on:click={() => openSheet('reminder')}>{@html I.plus}<span>Reminder</span></button>{/if}
-      {#if !repeatText}<button class="p-chip" aria-label="Add repeat" on:click={() => openSheet('repeat')}>{@html I.plus}<span>Repeat</span></button>{/if}
-      {#if !blocking.length}<button class="p-chip" aria-label="Add blocked by" on:click={() => openSheet('blocked')}>{@html I.plus}<span>Blocked by</span></button>{/if}
-      {#if !related.length}<button class="p-chip" aria-label="Add related" on:click={() => openSheet('related')}>{@html I.plus}<span>Related</span></button>{/if}
-      {#if !files}<button class="p-chip" aria-label="Add attachment" on:click={() => openSheet('files')}>{@html I.plus}<span>Attachment</span></button>{/if}
-      {#if fields.length && !fieldsSet}<button class="p-chip" aria-label="Add field" on:click={() => openSheet('fields')}>{@html I.plus}<span>Field</span></button>{/if}
+      {#if !reminderText}<button class="p-chip" data-kind="reminder" aria-label="Add reminder" on:click={() => openSheet('reminder')}>{@html I.plus}<span>Reminder</span></button>{/if}
+      {#if !repeatText}<button class="p-chip" data-kind="repeat" aria-label="Add repeat" on:click={() => openSheet('repeat')}>{@html I.plus}<span>Repeat</span></button>{/if}
+      {#if !blocking.length}<button class="p-chip" data-kind="blocked" aria-label="Add blocked by" on:click={() => openSheet('blocked')}>{@html I.plus}<span>Blocked by</span></button>{/if}
+      {#if !related.length}<button class="p-chip" data-kind="related" aria-label="Add related" on:click={() => openSheet('related')}>{@html I.plus}<span>Related</span></button>{/if}
+      {#if !files}<button class="p-chip" data-kind="files" aria-label="Add attachment" on:click={() => openSheet('files')}>{@html I.plus}<span>Attachment</span></button>{/if}
+      {#if fields.length && !fieldsSet}<button class="p-chip" data-kind="fields" aria-label="Add field" on:click={() => openSheet('fields')}>{@html I.plus}<span>Field</span></button>{/if}
     </div>
   {/if}
 
@@ -569,7 +577,7 @@
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg) scale(.4); opacity: 0;
     transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
-  .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
+  .chk.prio { border-color: color-mix(in srgb, var(--prio) 62%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   /* The fill and tick wait for the loop (phone.css .p-loop) to close. */

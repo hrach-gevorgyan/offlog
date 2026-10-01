@@ -100,7 +100,11 @@ export async function requestExactAlarmPermission(): Promise<void> {
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
     const res = await LocalNotifications.changeExactNotificationSetting();
+    const was = get(exactAlarmState);
     exactAlarmState.set(res.exact_alarm === 'granted' ? 'granted' : 'denied');
+    // Re-arm here: recheckGrants() on resume compares against the state just
+    // set, sees no change, and would leave existing alarms inexact.
+    if (get(exactAlarmState) !== was) await rescheduleAll();
   } catch {
     exactAlarmState.set('denied');
   }

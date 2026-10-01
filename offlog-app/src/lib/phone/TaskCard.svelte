@@ -76,9 +76,9 @@
 </script>
 
 <div class="card" class:done>
-  {#if project && canFinish(project)}<button class="chk" class:prio={!!task.priority} style:--prio={PRIORITY_COLOR[task.priority ?? 0] ?? null} class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
+  {#if project && canFinish(project)}<button class="chk" class:prio={task.priority >= 2 && !!PRIORITY_COLOR[task.priority]} style:--prio={task.priority >= 2 ? PRIORITY_COLOR[task.priority] ?? null : null} class:on={shown} on:click={finish} aria-label="{done ? 'Mark not done' : 'Finish'}: {task.title}" disabled={busy}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
   <button class="g" on:click={click} on:pointerdown={down} on:pointermove={move} on:pointerup={cancel} on:pointercancel={cancel} on:pointerleave={cancel} on:contextmenu={context}>
-    <span class="t">{#if hit}{hit[0]}<mark>{hit[1]}</mark>{hit[2]}{:else}{task.title}{/if}{#if task.priority}<span class="p-sr">, {PRIORITY_LABEL[task.priority].toLowerCase()} priority</span>{/if}</span>
+    <span class="t">{#if hit}{hit[0]}<mark>{hit[1]}</mark>{hit[2]}{:else}{task.title}{/if}{#if task.priority >= 2 && PRIORITY_LABEL[task.priority]}<span class="p-sr">, {PRIORITY_LABEL[task.priority].toLowerCase()} priority</span>{/if}</span>
     <span class="s">
       {#if space}<span class="dot" style="background:{soften(space.color)}"></span>{/if}
       {task.project_name ?? project?.name ?? ''}
@@ -122,9 +122,9 @@
     transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
   /* Priority tints the ring (Todoist-style): shape and position say "this
-     task", colour says how much; darkened toward --text so amber and green
-     still clear 3:1 on a white card. */
-  .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
+     task", colour says how much; darkened toward --text so amber still
+     clears 3:1 on a white card. */
+  .chk.prio { border-color: color-mix(in srgb, var(--prio) 62%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   /* The fill and tick wait for the loop (phone.css .p-loop) to close. */

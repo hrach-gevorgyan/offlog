@@ -11,6 +11,7 @@ const ln = vi.hoisted(() => ({
 vi.mock('@capacitor/local-notifications', () => ({
   LocalNotifications: {
     checkExactNotificationSetting: async () => ({ exact_alarm: ln.exact }),
+    changeExactNotificationSetting: async () => { ln.exact = 'granted'; return { exact_alarm: 'granted' }; },
     checkPermissions: async () => ({ display: 'granted' }),
     createChannel: async () => {},
     registerActionTypes: async () => {},
@@ -49,6 +50,16 @@ describe('native reminders and exact alarms', () => {
     const sent = ln.schedule.mock.calls[0][0].notifications;
     expect(sent).toHaveLength(1);
     expect(sent[0].isExactNotification).toBe(false);
+  });
+
+  it('granting from Make exact re-arms the reminders already set as exact', async () => {
+    ln.exact = 'denied';
+    const n = await load();
+    await n.rescheduleAll();
+    ln.schedule.mockClear();
+    await n.requestExactAlarmPermission();
+    expect(ln.schedule).toHaveBeenCalled();
+    expect(ln.schedule.mock.calls.at(-1)![0].notifications[0].isExactNotification).toBe(true);
   });
 
   it('with the grant: schedules exact', async () => {

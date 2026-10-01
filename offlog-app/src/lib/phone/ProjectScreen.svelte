@@ -32,7 +32,9 @@
     const n = parseInt(m[1], 16);
     const lin = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const L = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-    return L < 0.4;
+    // White ink wins over the page's dark ink (#1f2937, L≈0.019) exactly when
+    // (L + .05)² < 1.05 × 0.069, i.e. L < 0.22.
+    return L < 0.22;
   }
   $: band = space ? soften(space.color) : null;
   $: lightInk = !space || isDarkColour(space.color);
@@ -41,7 +43,15 @@
   onDestroy(() => strip.release());
   let bandEl: HTMLElement | undefined, scrolled = false;
   function onScroll(e: Event) { scrolled = (e.currentTarget as HTMLElement).scrollTop > (bandEl?.offsetHeight ?? 0) - 28; }
-  $: strip.set(band && !scrolled ? { fill: band, lightIcons: lightInk || isEffectivelyDark() } : null);
+  // Follows the theme as it changes (a System theme flips with the OS):
+  // dark mode deepens every band, so its icons are always light.
+  let dark = isEffectivelyDark();
+  onMount(() => {
+    const mo = new MutationObserver(() => { dark = document.body.classList.contains('dark'); });
+    mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => mo.disconnect();
+  });
+  $: strip.set(band && !scrolled ? { fill: band, lightIcons: lightInk || dark } : null);
   // $projectTasks follows the store's active project, so the screen on top
   // claims it (including when a lower project screen is uncovered).
   $: if (project && $activeProjectId !== id) { activeSpaceId.set(project.space_id); activeProjectId.set(id); }

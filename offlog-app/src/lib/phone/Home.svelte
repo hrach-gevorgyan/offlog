@@ -11,7 +11,7 @@
   import { getDashboardData, getTaskById, subscribe } from '../db';
   import { spaces, projects, showError } from '../store';
   import { loadFocusLock } from '../focusLock';
-  import { prefersReducedMotion, setStatusBarOnHero } from '../theme';
+  import { prefersReducedMotion, claimStatusBar } from '../theme';
   import { push, actions } from './nav';
   import { greeting, shortDate } from './format';
   import { localDateStr } from '../utils';
@@ -41,8 +41,12 @@
 
   let unsub: (() => void) | undefined;
   onMount(() => { load(); unsub = subscribe(load); });
-  onMount(() => setStatusBarOnHero(true));
-  onDestroy(() => { unsub?.(); if (raf) cancelAnimationFrame(raf); setStatusBarOnHero(false); });
+  // Its own claim, taken when Home appears: the screen it returns from may
+  // still be animating out with a claim of its own.
+  const HERO = { lightIcons: true };
+  let strip: ReturnType<typeof claimStatusBar> | undefined;
+  onMount(() => { strip = claimStatusBar(HERO); });
+  onDestroy(() => { unsub?.(); if (raf) cancelAnimationFrame(raf); strip?.release(); });
   // Coming back to the app the next morning shows the new day.
   function onVisible() { if (!document.hidden) { todayStr = localDateStr(new Date()); load(); } }
   onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
@@ -109,7 +113,7 @@
       // of the way makes it move slower than the page (depth).
       markY = prefersReducedMotion() ? 0 : y * .4;
       fadeHeroLines(y);
-      setStatusBarOnHero(t < .5);
+      strip?.set(t < .5 ? HERO : null);
     });
   }
 </script>

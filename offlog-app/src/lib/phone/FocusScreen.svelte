@@ -166,7 +166,7 @@
           {@const t = picks[i - lockedN]}
           <button class="slot pend" on:click={() => toggle(t._id ?? '')} aria-label="Take {t.title} out of this pick">{t.title}</button>
         {:else}
-          <div class="slot" aria-label="Empty place {i + 1}">{i + 1}</div>
+          <div class="slot"><span class="p-sr">Empty place </span>{i + 1}</div>
         {/if}
       {/each}
     </div>

@@ -52,9 +52,10 @@ function renderPrompt() {
   return { close, setupSync, ...utils };
 }
 
-// The flow opens on preferences; there is no device-name step.
+// Step 2 (preferences) is reached straight from step 1's Next.
 async function toPrefs(c: HTMLElement) {
-  await waitFor(() => { if (!title(c)!.includes('preferences')) throw new Error('did not open on preferences'); });
+  await fireEvent.click(btn(c, 'Next'));
+  await waitFor(() => { if (!title(c)!.includes('preferences')) throw new Error('did not reach step 2'); });
 }
 
 // Step 3 (sync) is only reachable through prefs' Done, and only when
@@ -72,28 +73,53 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe('NamePrompt first run', () => {
-  // The name only labels synced edits, so Sync asks for it, not first run.
-  it('opens on preferences and never asks for or writes a device name', async () => {
+describe('NamePrompt step 1', () => {
+  it('prefills the auto-generated device name', () => {
     const { container } = renderPrompt();
-    await toPrefs(container);
-    expect(input(container)).toBeNull();
-    expect(container.textContent).not.toContain('call this device');
-    await fireEvent.click(btn(container, 'Done'));
-    expect(setDeviceName).not.toHaveBeenCalled();
+    expect(input(container).value).toBe('PC');
   });
 
-  it('Escape leaves the flow, same as Done', async () => {
+  // Skip leaves the whole flow with nothing persisted — a device that never
+  // answered must not end up with a name it did not choose.
+  it('Skip closes without writing a device name', async () => {
     const { container, close } = renderPrompt();
-    await toPrefs(container);
+    await fireEvent.input(input(container), { target: { value: 'Laptop' } });
+    await fireEvent.click(btn(container, 'Skip'));
+
+    expect(setDeviceName).not.toHaveBeenCalled();
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+  });
+
+  it('Next saves the typed name and moves on', async () => {
+    const { container, close } = renderPrompt();
+    await fireEvent.input(input(container), { target: { value: 'Laptop' } });
+    await fireEvent.click(btn(container, 'Next'));
+
+    expect(setDeviceName).toHaveBeenCalledWith('Laptop');
+    expect(close).not.toHaveBeenCalled();
+    await waitFor(() => { if (!title(container)!.includes('preferences')) throw new Error('did not advance'); });
+  });
+
+  it('Enter does what Next does', async () => {
+    const { container } = renderPrompt();
+    await fireEvent.input(input(container), { target: { value: 'Laptop' } });
+    await fireEvent.keyDown(window, { key: 'Enter' });
+
+    expect(setDeviceName).toHaveBeenCalledWith('Laptop');
+  });
+
+  it('Escape leaves the flow, same as Skip', async () => {
+    const { container, close } = renderPrompt();
     await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(setDeviceName).not.toHaveBeenCalled();
     await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });
 
   it('scrim click leaves the flow without writing', async () => {
     const { container, close } = renderPrompt();
-    await toPrefs(container);
     await fireEvent.click(container.querySelector('.prompt-scrim')!);
+
     expect(setDeviceName).not.toHaveBeenCalled();
     await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
   });

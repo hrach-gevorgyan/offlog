@@ -53,7 +53,7 @@
   let addedTags: string[] = [];
   let removedTags: string[] = [];
 
-  $: parsed = parseQuickAdd(text, $projects);
+  $: parsed = parseQuickAdd(text, $projects, new Date(), dueDate ? new Date(dueDate + 'T12:00:00') : undefined);
   const exists = (id: string | null | undefined) => !!id && $projects.some(p => p._id === id);
   const remembered = lastProject();
   $: targetId = (exists(pickedProject) && pickedProject)
@@ -130,6 +130,8 @@
     const c = input.selectionStart;
     const s = c !== null && c === input.selectionEnd ? parsed.spans.find(x => c >= x.start && c <= x.end) : undefined;
     keep = s ? { span: s, word: text.slice(s.start, s.end) } : null;
+    // The offer sits at the start of the chip row; bring it into view.
+    if (keep && chipsEl) chipsEl.scrollLeft = 0;
   }
   async function keepAsText() {
     if (!keep) return;

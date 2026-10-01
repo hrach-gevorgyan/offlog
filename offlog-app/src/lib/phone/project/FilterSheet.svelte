@@ -123,7 +123,7 @@
   .del:active { background: var(--col-bg); }
   .del :global(svg.i) { width: 15px; height: 15px; }
   .p-chip i { font-style: normal; font-size: var(--p-fs-xs); opacity: .7; }
-  .p-chip.none:not(.on) { opacity: .5; }
+  .p-chip.none:not(.on) { color: var(--faint); }
   /* Stays at the sheet's bottom edge while the choices scroll. As the last
      child it stands in for the sheet's own bottom padding. */
   .foot {

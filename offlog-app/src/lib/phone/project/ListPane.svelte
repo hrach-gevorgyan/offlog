@@ -180,11 +180,11 @@
         </button>
       {:else}
         <div class="row" class:done>
-          {#if finishable}<button class="chk" class:prio={!!t.priority} style:--prio={PRIORITY_COLOR[t.priority ?? 0] ?? null} class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
+          {#if finishable}<button class="chk" class:prio={t.priority >= 2 && !!PRIORITY_COLOR[t.priority]} style:--prio={t.priority >= 2 ? PRIORITY_COLOR[t.priority] ?? null : null} class:on={pend[t._id] ?? done} aria-label="{done ? 'Mark not done' : 'Finish'}: {t.title}" on:click={() => finish(t)}><svg class="p-loop" viewBox="0 0 26 26" aria-hidden="true"><path pathLength="1" d="M13 1 A12 12 0 1 1 12.9 1 A12 12 0 0 1 19 2.6" /></svg></button>{/if}
           <button class="open" on:click={() => openRow(t)} on:pointerdown={e => holdDown(e, t._id)} on:pointermove={holdMove}
             on:pointerup={holdCancel} on:pointercancel={holdCancel} on:pointerleave={holdCancel} on:contextmenu={e => context(e, t._id)}>
             <span class="main">
-              <span class="t">{#if t.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{t.title}{#if t.priority}<span class="p-sr">, {PRIORITY_LABEL[t.priority].toLowerCase()} priority</span>{/if}{#if t.recurrence}<span class="rep" title="Repeats {t.recurrence}">{@html I.repeat}</span>{/if}</span>
+              <span class="t">{#if t.pinned}<span class="pin" aria-hidden="true">{@html I.pin}</span>{/if}{t.title}{#if t.priority >= 2 && PRIORITY_LABEL[t.priority]}<span class="p-sr">, {PRIORITY_LABEL[t.priority].toLowerCase()} priority</span>{/if}{#if t.recurrence}<span class="rep" title="Repeats {t.recurrence}">{@html I.repeat}</span>{/if}</span>
               {#if !g.name}<span class="st">{statusOf(t)}</span>{/if}
             </span>
             {#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{/if}
@@ -259,9 +259,9 @@
     transition: transform var(--dur-small-out) var(--ease-accelerate), opacity var(--dur-small-out) var(--ease-accelerate);
   }
   /* Priority tints the ring (Todoist-style): shape and position say "this
-     task", colour says how much; darkened toward --text so amber and green
-     still clear 3:1 on a white card. */
-  .chk.prio { border-color: color-mix(in srgb, var(--prio) 72%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
+     task", colour says how much; darkened toward --text so amber still
+     clears 3:1 on a white card. */
+  .chk.prio { border-color: color-mix(in srgb, var(--prio) 62%, var(--text)); background: color-mix(in srgb, var(--prio) 14%, transparent); }
   .chk.on, .picked .box { background: var(--accent); border-color: var(--accent); transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate); }
   .chk.on::after, .picked .box::after { transform: rotate(45deg) scale(1); opacity: 1; transition: transform var(--dur-small) var(--ease-decelerate), opacity var(--dur-small) var(--ease-decelerate); }
   /* The fill and tick wait for the loop (phone.css .p-loop) to close. */
