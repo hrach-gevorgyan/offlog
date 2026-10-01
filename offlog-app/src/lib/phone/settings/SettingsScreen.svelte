@@ -99,7 +99,7 @@
       {#if $staleHostAlert}
         <span class="p-sub conf">Paired computer not found — pair again</span>
       {:else}
-        <span class="p-sub">{sync.sub}{#if conflicts > 0} · <span class="conf">{conflicts} conflict{conflicts === 1 ? '' : 's'}</span>{/if}</span>
+        <span class="p-sub">{sync.sub}{#if conflicts > 0}{' · '}<span class="conf">{conflicts} conflict{conflicts === 1 ? '' : 's'}</span>{/if}</span>
       {/if}
     </span>
     {#if !canSync}<span class="chev">{@html I.chev}</span>{/if}

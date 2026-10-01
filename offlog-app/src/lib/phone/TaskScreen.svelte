@@ -373,7 +373,7 @@
   </div>
 
   <div class="crumb">
-    {#if space}<span class="p-dot" style:background={soften(space.color)}></span>{space.name} · {/if}{project?.name ?? ''}{#if task.archived}<span class="p-pill">Archived</span>{/if}
+    {#if space}<span class="p-dot" style:background={soften(space.color)}></span>{/if}<span>{space ? `${space.name} · ` : ''}{project?.name ?? ''}</span>{#if task.archived}<span class="p-pill">Archived</span>{/if}
   </div>
 
   <div class="ttl">
