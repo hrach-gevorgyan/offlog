@@ -65,6 +65,18 @@ The prototype is being built into the app on `redesign/full`, one committed phas
 
 Also on 1 Oct 2026: the palette was muted (chroma ×0.8; user space/tag colours via `soften()` at render time), the status bar takes the hero colour while Home's hero is under it, and reversible actions show an Undo snackbar. The hero greets without a name (the app stores none).
 
+### Overnight 1 Oct 2026: audit and polish
+
+Research (Material 3 specs, NN/g, Android a11y, Todoist/TickTick/Google Tasks patterns) became a 16-point checklist. Five parallel audits (feature parity, correctness, UX/visual, accessibility + project rules + tests, desktop regressions + Android) found about 150 items; three fix rounds followed, each re-audited for regressions. Highlights:
+- Muted palette: chroma ×0.8 on every saturated token (all text pairs still AA, `--danger` darkened for AA on `--bg`); user space/tag colours softened at render time with a fallback for old WebViews.
+- Reversible actions act at once with an Undo snackbar (finish, move, archive, delete, Focus reset); confirms kept only for irreversible ones.
+- Navigation: back closes the topmost layer first; widget and notification jumps wait for the history unwind; screens keep their state (board status, filters, sort, search, Agenda month) when you come back.
+- Organize (spaces, tags, fields) built as phone pages; Sync now and the stale-host warning on the phone.
+- One type scale, one card shadow, 44px tap areas, tonal selection, pressed states, shorter copy, purposeful empty states.
+- Keyboard hides the nav bar and +; the status bar takes the hero colour over Home (not behind the lock screen).
+
+Not done: drag-and-drop on the board (Move to status / Move up / Move down instead); predictive back at the Home root; the desktop's command palette and keyboard-shortcut sheet (desktop only by design).
+
 ## 0. Brief
 
 **Four words for the finished app:** premium, minimal, logical, focused.
