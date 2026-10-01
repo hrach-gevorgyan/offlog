@@ -61,8 +61,8 @@
 {/if}
 
 <div class="p-group cal">
-  <div class="p-row" role="group" aria-label="Pick a date and time">
-    <span class="p-k"><span>Pick a date and time</span></span>
+  <div class="p-row" role="group" aria-label="Date & time">
+    <span class="p-k"><span>Date &amp; time</span></span>
     <span class="pick"><CalendarPicker value={local} withTime disabled={onDue} on:change={e => setAt(e.detail)} /></span>
   </div>
   {#if task.reminder_at}

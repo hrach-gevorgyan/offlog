@@ -17,13 +17,14 @@ const db = vi.hoisted(() => ({
   linkRelatedTask: vi.fn(),
   linkBlockedBy: vi.fn(),
   getCustomFieldDefs: vi.fn(),
+  getTasksForProject: vi.fn(),
+  getAllTags: vi.fn(),
+  ensureFreshTagColor: vi.fn(),
 }));
 vi.mock('../src/lib/db', () => ({
   ...db,
   subscribe: vi.fn().mockReturnValue(() => {}),
   getTagColorOverrides: vi.fn().mockResolvedValue({}),
-  ensureFreshTagColor: vi.fn().mockResolvedValue(undefined),
-  getAllTags: vi.fn().mockResolvedValue([]),
   findTasksByTitleInProject: vi.fn().mockResolvedValue([]),
   findSimilarNotes: vi.fn().mockResolvedValue([]),
   isBlockerResolved: vi.fn().mockReturnValue(false),
@@ -34,6 +35,11 @@ vi.mock('../src/lib/db', () => ({
   getAttachmentBlob: vi.fn(),
   getLogsForTask: vi.fn().mockResolvedValue([]),
   ATTACHMENT_MAX_PER_TASK: 10,
+  computeDropPosition: (col: { position: number }[], i: number | null) => {
+    if (i === null) { const l = col.at(-1); return l ? l.position + 1024 : 1024; }
+    const before = i > 0 ? col[i - 1]?.position ?? null : null, after = col[i]?.position ?? null;
+    return before === null ? (after === null ? 1024 : after / 2) : after === null ? before + 1024 : (before + after) / 2;
+  },
 }));
 vi.mock('../src/lib/store', async () => {
   const { writable: w } = await import('svelte/store');
@@ -49,14 +55,13 @@ vi.mock('../src/lib/notifications', async () => {
   const { writable: w } = await import('svelte/store');
   return { requestPermission: vi.fn(), permissionState: w('granted') };
 });
-const confirmAction = vi.hoisted(() => vi.fn());
-vi.mock('../src/lib/confirm', () => ({ confirmAction }));
 
 import TaskScreen from '../src/lib/phone/TaskScreen.svelte';
 import { projects, showError } from '../src/lib/store';
 import { switchTab, push, stack, toast } from '../src/lib/phone/nav';
 import { dateFromToday } from '../src/lib/carddetail/helpers';
 import type { Writable } from 'svelte/store';
+import { EditorView } from '@codemirror/view';
 
 const project = {
   _id: 'project:p', type: 'project', space_id: 'space:s', name: 'House', position: 0, default_view: 'kanban',
@@ -106,9 +111,11 @@ describe('phone TaskScreen', () => {
     db.getBlockingTasks.mockResolvedValue([]);
     db.searchTasksForLinking.mockResolvedValue([]);
     db.getCustomFieldDefs.mockResolvedValue([]);
+    db.getTasksForProject.mockResolvedValue([]);
+    db.getAllTags.mockResolvedValue([]);
+    db.ensureFreshTagColor.mockResolvedValue(undefined);
     (projects as Writable<ProjectDoc[]>).set([project]);
     vi.mocked(showError).mockClear();
-    confirmAction.mockReset();
   });
   afterEach(cleanup);
 
@@ -207,25 +214,180 @@ describe('phone TaskScreen', () => {
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { pinned: true });
   });
 
-  it('deletes (soft) after confirming, then goes back', async () => {
+  it('deletes (soft) without asking, then goes back', async () => {
     push({ k: 'task', id: 'task:t' });
-    confirmAction.mockResolvedValue(true);
     db.deleteTask.mockResolvedValue(undefined);
     const { getByLabelText } = await open();
     await fireEvent.click(getByLabelText('More'));
     await fireEvent.click(sheetRow('Delete'));
     await waitFor(() => expect(db.deleteTask).toHaveBeenCalledWith('task:t'));
-    expect(confirmAction).toHaveBeenCalledWith('Delete this task?', { danger: true, confirmLabel: 'Delete' });
     await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home']));
   });
 
-  it('a cancelled delete writes nothing', async () => {
-    confirmAction.mockResolvedValue(false);
+  it('a failed delete says so and stays put', async () => {
+    push({ k: 'task', id: 'task:t' });
+    db.deleteTask.mockRejectedValue(new Error('boom'));
     const { getByLabelText } = await open();
     await fireEvent.click(getByLabelText('More'));
     await fireEvent.click(sheetRow('Delete'));
-    await waitFor(() => expect(confirmAction).toHaveBeenCalled());
-    expect(db.deleteTask).not.toHaveBeenCalled();
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete this task. Please try again.'));
+    expect(get(stack).at(-1)).toMatchObject({ k: 'task', id: 'task:t' });
+  });
+
+  it('archives, goes back, and Undo unarchives', async () => {
+    push({ k: 'task', id: 'task:t' });
+    db.archiveTask.mockResolvedValue(undefined);
+    db.unarchiveTask.mockResolvedValue(undefined);
+    const { getByLabelText } = await open();
+    await fireEvent.click(getByLabelText('More'));
+    await fireEvent.click(sheetRow('Archive'));
+    await waitFor(() => expect(db.archiveTask).toHaveBeenCalledWith('task:t'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived'));
+    await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home']));
+    await get(toast)!.undo!();
+    expect(db.unarchiveTask).toHaveBeenCalledWith('task:t');
+  });
+
+  it('a failed archive surfaces an error', async () => {
+    db.archiveTask.mockRejectedValue(new Error('boom'));
+    const { getByLabelText } = await open();
+    await fireEvent.click(getByLabelText('More'));
+    await fireEvent.click(sheetRow('Archive'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not archive this task. Please try again.'));
+  });
+
+  it('duplicates and opens the copy', async () => {
+    db.duplicateTask.mockResolvedValue(task({ _id: 'task:c' }));
+    const { getByLabelText } = await open();
+    await fireEvent.click(getByLabelText('More'));
+    await fireEvent.click(sheetRow('Duplicate'));
+    await waitFor(() => expect(db.duplicateTask).toHaveBeenCalledWith('task:t'));
+    await waitFor(() => expect(get(stack).at(-1)).toMatchObject({ k: 'task', id: 'task:c' }));
+  });
+
+  it('a failed duplicate surfaces an error', async () => {
+    db.duplicateTask.mockRejectedValue(new Error('boom'));
+    const { getByLabelText } = await open();
+    await fireEvent.click(getByLabelText('More'));
+    await fireEvent.click(sheetRow('Duplicate'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not duplicate this task. Please try again.'));
+  });
+
+  it('moves up and down within its status, among its pinned group', async () => {
+    const sib = (id: string, position: number, over: Partial<TaskDoc> = {}) => task({ _id: id, position, ...over });
+    db.getTasksForProject.mockResolvedValue([
+      sib('task:pin', 0, { pinned: true }), sib('task:a', 100), sib('task:t', 200), sib('task:b', 300), sib('task:x', 50, { column_id: 'col:todo' }),
+    ]);
+    const { getByLabelText } = await open(task({ position: 200 }));
+    await fireEvent.click(getByLabelText('More'));
+    await waitFor(() => sheetRow('Move up'));
+    await fireEvent.click(sheetRow('Move up'));
+    // Between the pinned card and task:a would cross groups; it lands before task:a only.
+    await waitFor(() => expect(db.updateTask).toHaveBeenCalledWith('task:t', { position: 50 }));
+
+    await waitFor(() => expect(document.querySelector('.psheet')).toBeNull());
+    await fireEvent.click(getByLabelText('More'));
+    await waitFor(() => sheetRow('Move down'));
+    expect(() => sheetRow('Move up')).toThrow();
+    await fireEvent.click(sheetRow('Move down'));
+    await waitFor(() => expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { position: 200 }));
+  });
+
+  it('skips a repeating task to its next date, with Undo', async () => {
+    db.skipRecurrence.mockResolvedValue(task({ due_date: '2026-10-08' }));
+    const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'weekly' }));
+    await fireEvent.click(getByText('Repeat'));
+    await fireEvent.click(sheetRow('Skip to the next one'));
+    await waitFor(() => expect(db.skipRecurrence).toHaveBeenCalledWith('task:t'));
+    await waitFor(() => expect(get(toast)?.text).toMatch(/^Next: /));
+    await get(toast)!.undo!();
+    expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { due_date: '2026-10-01', reminder_at: null, checklist: undefined });
+  });
+
+  it('a failed skip surfaces an error', async () => {
+    db.skipRecurrence.mockRejectedValue(new Error('boom'));
+    const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'weekly' }));
+    await fireEvent.click(getByText('Repeat'));
+    await fireEvent.click(sheetRow('Skip to the next one'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not skip to the next one. Please try again.'));
+  });
+
+  it('the Repeat sheet writes the picked rule', async () => {
+    const { getByText } = await open(task({ due_date: '2026-10-01' }));
+    await fireEvent.click(getByText('Repeat'));
+    await fireEvent.click(sheetRow('Weekly'));
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { recurrence: 'weekly', recurrenceInterval: 1, recurrenceWeekdaysOnly: undefined });
+    await waitFor(() => expect(getByText('Weekly', { selector: '.p-v' })).toBeTruthy());
+  });
+
+  it('adds a tag typed into the Tags sheet', async () => {
+    const { getByText } = await open();
+    await fireEvent.click(getByText('Tags'));
+    const input = document.querySelector('.psheet input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'Floor Plan' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { tags: ['floor-plan'] });
+    await waitFor(() => expect(db.ensureFreshTagColor).toHaveBeenCalledWith('floor-plan', []));
+  });
+
+  it('a failed tag write surfaces an error and rolls the tag back', async () => {
+    const { getByText, queryByText } = await open();
+    db.updateTask.mockRejectedValue(new Error('boom'));
+    // No reload arrives: the local rollback alone must undo the tag.
+    db.getTaskById.mockReturnValue(new Promise(() => {}));
+    await fireEvent.click(getByText('Tags'));
+    const input = document.querySelector('.psheet input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'paint' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the tags. Please try again.'));
+    await waitFor(() => expect(queryByText('#paint')).toBeNull());
+  });
+
+  it('shows two tags on the row, then a count', async () => {
+    const { getByText, queryByText } = await open(task({ tags: ['a', 'b', 'c', 'd'] }));
+    expect(getByText('#a')).toBeTruthy();
+    expect(getByText('#b')).toBeTruthy();
+    expect(queryByText('#c')).toBeNull();
+    expect(getByText('+2')).toBeTruthy();
+  });
+
+  it('two fast step toggles are both saved', async () => {
+    const steps = [{ text: 'Measure', done: false }, { text: 'Cut', done: false }];
+    const gates: (() => void)[] = [];
+    const { getByLabelText } = await open(task({ checklist: steps }));
+    db.updateTask.mockImplementation((_id: string, c: Partial<TaskDoc>) => new Promise(res => {
+      gates.push(() => { stored = { ...stored!, ...c }; res(stored); });
+    }));
+    await fireEvent.click(getByLabelText('Mark done: Measure'));
+    await fireEvent.click(getByLabelText('Mark done: Cut'));
+    expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { checklist: [{ text: 'Measure', done: true }, { text: 'Cut', done: true }] });
+    gates.forEach(g => g());
+    await waitFor(() => expect(stored!.checklist).toEqual([{ text: 'Measure', done: true }, { text: 'Cut', done: true }]));
+    expect(getByLabelText('Mark not done: Measure')).toBeTruthy();
+    expect(getByLabelText('Mark not done: Cut')).toBeTruthy();
+  });
+
+  it('a note typed and left before the idle save is saved on leaving', async () => {
+    const r = await open();
+    const ttl = r.getByLabelText('Title') as HTMLTextAreaElement;
+    await fireEvent.focus(ttl);
+    await fireEvent.input(ttl, { target: { value: 'Order grey tiles' } });
+    const cm = await waitFor(() => { const el = document.querySelector('.cm-editor'); if (!el) throw new Error('no editor'); return el as HTMLElement; });
+    const view = EditorView.findFromDOM(cm)!;
+    view.dispatch({ changes: { from: 0, insert: 'Grey, matte' } });
+    await new Promise(res => setTimeout(res, 50));
+    expect(db.updateTask).not.toHaveBeenCalled();
+    r.unmount();
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { body: 'Grey, matte' });
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { title: 'Order grey tiles' });
+  });
+
+  it('a project with one status has no finish checkbox', async () => {
+    (projects as Writable<ProjectDoc[]>).set([{ ...project, columns: [{ id: 'col:doing', name: 'Doing' }] }]);
+    const { queryByLabelText, getByLabelText } = await open();
+    expect(getByLabelText('Title')).toBeTruthy();
+    expect(queryByLabelText('Finish')).toBeNull();
+    expect(queryByLabelText('Mark not done')).toBeNull();
   });
 
   it('opens a related task as a new screen', async () => {

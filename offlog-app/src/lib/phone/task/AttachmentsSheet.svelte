@@ -94,6 +94,9 @@
     } finally { busy = false; }
   }
 
+  // The confirm button replaces the focused ✕, so focus moves onto it.
+  const focusNow = (node: HTMLElement) => node.focus();
+
   async function open(key: string, filename: string) {
     try { await openAttachmentFile(await getAttachmentBlob(task._id, key), filename); }
     catch { showError('Could not open that attachment.'); }
@@ -110,7 +113,7 @@
           <span class="p-k"><span>{a.filename}</span><span class="p-sub">{formatAttachmentSize(a.size)}</span></span>
         </button>
         {#if confirming === a.key}
-          <button class="p-tbtn danger" disabled={busy} on:click={() => remove(a.key)}>Remove</button>
+          <button class="p-tbtn danger" disabled={busy} on:click={() => remove(a.key)} use:focusNow aria-label="Remove {a.filename}">Remove</button>
         {:else}
           <button class="p-ib" disabled={busy} on:click={() => remove(a.key)} aria-label="Remove {a.filename}">{@html I.x}</button>
         {/if}
@@ -122,12 +125,12 @@
 {/if}
 
 <button class="p-go" disabled={busy || full} on:click={() => inputEl.click()}>
-  {busy ? 'Working…' : full ? `${ATTACHMENT_MAX_PER_TASK} files is the most a task can hold` : 'Add a file or photo'}
+  {busy ? 'Working…' : full ? 'Limit reached' : 'Add a file or photo'}
 </button>
 <!-- No `accept`: everything but HEIC/HEIF is allowed, and accept can't say "not". -->
 <input bind:this={inputEl} type="file" multiple hidden on:change={onPicked} />
-{#if error}<p class="p-say err">{error}</p>{/if}
-<p class="p-say note">Up to {ATTACHMENT_MAX_BYTES / (1024 * 1024)} MB each. Photos are shrunk to save space. Files sync with the task.</p>
+{#if error}<p class="p-say err" role="alert">{error}</p>{/if}
+<p class="p-say note">Up to {ATTACHMENT_MAX_BYTES / (1024 * 1024)} MB each</p>
 
 <style>
   .file { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; min-height: 56px; }

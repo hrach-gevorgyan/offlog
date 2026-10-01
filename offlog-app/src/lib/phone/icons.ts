@@ -40,4 +40,5 @@ export const I = {
   setBox: svg('<path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/>'),
   setDisk: svg('<path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/>'),
   setWrench: svg('<path d="M14.5 5.5a4 4 0 005 5L13 17a2.8 2.8 0 01-4-4l6.5-6.5a4 4 0 01-1-1z"/>'),
+  down: svg('<path d="M12 5v14M6 13l6 6 6-6"/>'),
 };

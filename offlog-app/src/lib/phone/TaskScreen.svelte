@@ -7,10 +7,9 @@
   import {
     getTaskById, updateTask, deleteTask, archiveTask, unarchiveTask, duplicateTask, skipRecurrence, subscribe,
     getCustomFieldDefs, getTagColorOverrides, findTasksByTitleInProject, findSimilarNotes,
-    getRelatedTasks, getBlockingTasks, isBlockerResolved,
+    getRelatedTasks, getBlockingTasks, isBlockerResolved, getTasksForProject,
   } from '../db';
   import { projects, spaces, reloadTasks, showError } from '../store';
-  import { confirmAction } from '../confirm';
   import { resolveTagColor, soften } from '../tagColors';
   import { PRIORITY_COLOR, PRIORITY_LABEL } from '../constants';
   import { fmtTime, localDateStr } from '../utils';
@@ -31,6 +30,7 @@
   import FieldsSheet from './task/FieldsSheet.svelte';
   import Steps from './task/Steps.svelte';
   import { dueDateToReminderInput } from '../carddetail/helpers';
+  import { columnTasks, stepPosition } from './project/filter';
 
   export let id: string;
 
@@ -60,9 +60,12 @@
     try {
       const [t, rel, blk] = await Promise.all([getTaskById(id), getRelatedTasks(id), getBlockingTasks(id)]);
       if (n !== loadSeq) return;
-      task = t && !t.deleted ? t : null;
       related = rel;
       blocking = blk;
+      // While a write is in flight the local task is ahead of the database;
+      // the reload that follows the last write brings them back in line.
+      if (pending) return;
+      task = t && !t.deleted ? t : null;
       if (task) {
         if (!titleFocused) title = task.title;
         if (!noteFocused && !noteTimer) body = task.body ?? '';
@@ -87,18 +90,36 @@
   });
 
   // ── Writes ────────────────────────────────────────────────────────────────
+  // Applied locally before the write, so a second quick edit (another step,
+  // another tag) builds on the first instead of on the stale doc. A failed
+  // write rolls back only the keys nothing has changed since.
+  let pending = 0;
   async function save(changes: Partial<TaskDoc>, err = 'Could not save this change. Please try again.'): Promise<boolean> {
     if (!task) return false;
+    const tid = task._id;
+    const prev: Partial<TaskDoc> = {};
+    for (const k of Object.keys(changes) as (keyof TaskDoc)[]) (prev as Record<string, unknown>)[k] = task[k];
+    task = { ...task, ...changes };
+    pending++;
     try {
-      await updateTask(task._id, changes);
-      task = { ...task, ...changes };
-      await reloadTasks();
-      load();
-      return true;
+      await updateTask(tid, changes);
     } catch {
+      pending--;
+      if (task?._id === tid) {
+        const undo: Partial<TaskDoc> = {};
+        for (const k of Object.keys(prev) as (keyof TaskDoc)[]) {
+          if (task[k] === changes[k]) (undo as Record<string, unknown>)[k] = prev[k];
+        }
+        task = { ...task, ...undo };
+      }
       showError(err);
+      load();
       return false;
     }
+    pending--;
+    try { await reloadTasks(); } catch { /* the write landed; lists catch up on the next change */ }
+    load();
+    return true;
   }
 
   // Applies `changes`, then offers Undo that writes back what they replaced.
@@ -164,12 +185,13 @@
     if (e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLTextAreaElement).blur(); }
   }
 
-  // Notes save shortly after typing stops, and on leaving the screen.
+  // Notes save on blur, on leaving the screen, and after a long pause in
+  // typing. Each save is a history entry, so not after every short pause.
   $: queueNote(body);
   function queueNote(text: string) {
     if (!task || text === (task.body ?? '')) return;
     clearTimeout(noteTimer);
-    noteTimer = setTimeout(flushNote, 700);
+    noteTimer = setTimeout(flushNote, 3000);
   }
   function flushNote() {
     clearTimeout(noteTimer);
@@ -227,11 +249,10 @@
     }
   }
 
-  // Soft delete; App shows its own Undo toast for it.
+  // Soft delete, no confirm: App shows its own Undo toast for it.
   async function remove() {
     if (!task) return;
     const tid = task._id;
-    if (!(await confirmAction('Delete this task?', { danger: true, confirmLabel: 'Delete' }))) return;
     try {
       await deleteTask(tid);
       await reloadTasks();
@@ -264,7 +285,7 @@
     noteHintTimer = setTimeout(async () => {
       try {
         const m = await findSimilarNotes(excludeId, text);
-        noteHint = m.length ? `Looks like the note on "${m[0].title}" (${Math.round(m[0].similarity * 100)}% the same words).` : '';
+        noteHint = m.length ? `Looks like the note on "${m[0].title}".` : '';
       } catch { noteHint = ''; }
     }, 350);
   }
@@ -272,8 +293,8 @@
   onDestroy(() => {
     unsub?.();
     clearTimeout(titleHintTimer); clearTimeout(noteHintTimer);
-    if (noteTimer) flushNote();
-    else if (titleFocused) commitTitle();
+    flushNote();
+    if (titleFocused) commitTitle();
   });
 
   // ── Sheets ────────────────────────────────────────────────────────────────
@@ -287,7 +308,21 @@
   // Runs once the open sheet has finished closing, so a follow-up (another
   // sheet, a pushed screen, a confirm) never races the sheet's history entry.
   let afterClose: (() => void) | null = null;
-  function openSheet(k: SheetKind) { sheet = k; sheetSession++; }
+  function openSheet(k: SheetKind) {
+    sheet = k; sheetSession++;
+    if (k === 'more') loadSiblings();
+  }
+
+  // Move up/down: within its status and its pinned group, as the board orders it.
+  let siblings: TaskDoc[] = [];
+  async function loadSiblings() {
+    if (!task) return;
+    try { siblings = await getTasksForProject(task.project_id); } catch { siblings = []; }
+  }
+  $: col = task ? columnTasks(siblings.map(t => (t._id === task!._id ? task! : t)), task.column_id) : [];
+  $: upPos = task ? stepPosition(col, task, -1) : null;
+  $: downPos = task ? stepPosition(col, task, 1) : null;
+  const move = (position: number) => save({ position }, 'Could not move this task. Please try again.');
   function afterClosing(close: () => void, fn: () => void) { afterClose = fn; close(); }
   function onSheetClosed() {
     sheet = null;
@@ -315,7 +350,8 @@
     : '';
   $: fieldsSet = fields.filter(f => { const v = task?.custom_values?.[f.id]; return v !== null && v !== undefined && v !== ''; }).length;
   $: steps = task?.checklist ?? [];
-  $: tagTint = (t: string) => `color-mix(in srgb, ${soften(resolveTagColor(t, colors))} 45%, transparent)`;
+  $: tagColor = (t: string) => soften(resolveTagColor(t, colors));
+  $: canFinish = (project?.columns.length ?? 0) > 1;
 
   function autosize(node: HTMLTextAreaElement, _value: string) {
     const fit = () => { node.style.height = 'auto'; node.style.height = node.scrollHeight + 'px'; };
@@ -324,21 +360,24 @@
   }
 </script>
 
+<!-- The heading is for screen readers; the title field below is what shows. -->
 {#if !task}
-  <TopBar title="" />
+  <div class="tbar"><TopBar title="Task" /></div>
   {#if loaded}<p class="p-empty">This task was deleted.</p>{/if}
 {:else}
-  <TopBar title="">
-    <button class="ib" class:on={task.pinned} aria-pressed={!!task.pinned} aria-label={task.pinned ? 'Unpin' : 'Pin'} on:click={togglePin}>{@html I.pin}</button>
-    <button class="ib" aria-label="More" on:click={() => openSheet('more')}>{@html I.more}</button>
-  </TopBar>
+  <div class="tbar">
+    <TopBar title="Task">
+      <button class="ib" class:on={task.pinned} aria-pressed={!!task.pinned} aria-label={task.pinned ? 'Unpin' : 'Pin'} on:click={togglePin}>{@html I.pin}</button>
+      <button class="ib" aria-label="More" on:click={() => openSheet('more')}>{@html I.more}</button>
+    </TopBar>
+  </div>
 
   <div class="crumb">
     {#if space}<span class="p-dot" style:background={soften(space.color)}></span>{space.name} · {/if}{project?.name ?? ''}{#if task.archived}<span class="p-pill">Archived</span>{/if}
   </div>
 
   <div class="ttl">
-    <button class="chk" class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}></button>
+    {#if canFinish}<button class="chk" class:on={done} aria-label={done ? 'Mark not done' : 'Finish'} on:click={toggleDone}></button>{/if}
     <textarea rows="1" bind:value={title} use:autosize={title} aria-label="Title" placeholder="Task title"
       on:focus={() => titleFocused = true} on:blur={commitTitle} on:keydown={onTitleKey}></textarea>
   </div>
@@ -355,12 +394,13 @@
     </button>
     <button class="p-row" on:click={() => openSheet('prio')}>
       <span class="p-ico">{@html I.flag}</span><span class="p-k"><span>Priority</span></span>
-      <span class="p-v set"><span class="p-dot" style:background={PRIORITY_COLOR[task.priority]}></span>{PRIORITY_LABEL[task.priority]}</span>
+      <span class="p-v set"><span class="p-dot" style:background={soften(PRIORITY_COLOR[task.priority])}></span>{PRIORITY_LABEL[task.priority]}</span>
     </button>
     <button class="p-row" on:click={() => openSheet('tags')}>
       <span class="p-ico">{@html I.tag}</span><span class="p-k"><span>Tags</span></span>
       <span class="p-v tags" class:set={task.tags.length > 0}>
-        {#each task.tags as t (t)}<span class="tag" style:background={tagTint(t)}>#{t}</span>{:else}None{/each}
+        {#each task.tags.slice(0, 2) as t (t)}<span class="p-tag" style="--tag:{tagColor(t)}">#{t}</span>{:else}None{/each}
+        {#if task.tags.length > 2}<span class="more-tags">+{task.tags.length - 2}</span>{/if}
       </span>
     </button>
   </div>
@@ -400,8 +440,8 @@
   </div>
 
   <div class="p-sec">Note</div>
-  <div class="note" on:focusin={() => noteFocused = true} on:focusout={() => { noteFocused = false; if (noteTimer) flushNote(); }} role="group" aria-label="Note">
-    <MarkdownEditor bind:value={body} placeholderText="Add a note… Markdown works: # heading, - list, **bold**" />
+  <div class="note" on:focusin={() => noteFocused = true} on:focusout={() => { noteFocused = false; flushNote(); }} role="group" aria-label="Note">
+    <MarkdownEditor bind:value={body} placeholderText="Add a note" />
   </div>
   {#if body.length > 500}<p class="p-say count">{body.length} characters</p>{/if}
   {#if noteHint}<p class="p-say hint">{noteHint}</p>{/if}
@@ -421,7 +461,7 @@
       {:else if sheet === 'due'}
         <DueSheet value={task.due_date} on:pick={e => { setDue(e.detail); close(); }} />
       {:else if sheet === 'prio'}
-        <Pick options={[3, 2, 1].map(p => ({ value: String(p), label: PRIORITY_LABEL[p], dot: PRIORITY_COLOR[p] }))} current={String(task.priority)}
+        <Pick options={[3, 2, 1].map(p => ({ value: String(p), label: PRIORITY_LABEL[p], dot: soften(PRIORITY_COLOR[p]) }))} current={String(task.priority)}
           on:pick={e => { save({ priority: Number(e.detail) as 1 | 2 | 3 }, 'Could not save the priority. Please try again.'); close(); }} />
       {:else if sheet === 'tags'}
         <TagsSheet {task} {colors} {save} on:colors={loadColors} />
@@ -441,6 +481,8 @@
       {:else if sheet === 'more'}
         <div class="p-group">
           <button class="p-row" on:click={() => afterClosing(close, () => openSheet('history'))}><span class="p-ico">{@html I.clock}</span><span class="p-k"><span>History</span></span></button>
+          {#if upPos !== null}<button class="p-row" on:click={() => { const p = upPos ?? 0; afterClosing(close, () => move(p)); }}><span class="p-ico">{@html I.up}</span><span class="p-k"><span>Move up</span></span></button>{/if}
+          {#if downPos !== null}<button class="p-row" on:click={() => { const p = downPos ?? 0; afterClosing(close, () => move(p)); }}><span class="p-ico">{@html I.down}</span><span class="p-k"><span>Move down</span></span></button>{/if}
           <button class="p-row" on:click={() => afterClosing(close, duplicate)}><span class="p-ico">{@html I.copy}</span><span class="p-k"><span>Duplicate</span></span></button>
           <button class="p-row" on:click={() => afterClosing(close, archive)}><span class="p-ico">{@html I.arch}</span><span class="p-k"><span>Archive</span></span></button>
         </div>
@@ -472,10 +514,12 @@
     content: ''; position: absolute; left: 7.5px; top: 3.5px; width: 6px; height: 11px;
     border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
   }
-  .hint { color: var(--overdue-ink); margin-top: -10px; }
+  .tbar { display: contents; }
+  .tbar :global(h1) { clip-path: inset(50%); }
+  .hint { color: var(--faint); margin-top: -10px; }
   .p-v .p-pill { font-size: 13px; }
-  .tags { min-width: 0; overflow: hidden; flex-shrink: 1; }
-  .tag { font-size: 13px; font-weight: 600; color: var(--text); padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+  .tags { min-width: 0; flex-shrink: 1; gap: 4px; }
+  .more-tags { font-size: 13px; color: var(--muted); }
   .blk { color: var(--overdue-ink); font-weight: 600; }
   .note { margin-bottom: 14px; }
   .note :global(.md-editor) { background: var(--surface); border-radius: 14px; min-height: 96px; }

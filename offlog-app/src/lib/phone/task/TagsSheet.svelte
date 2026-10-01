@@ -27,7 +27,7 @@
   $: ours = projectTags.filter(t => !tags.includes(t) && (!q || t.startsWith(q)));
   $: others = allTags.filter(t => !tags.includes(t) && !projectTags.includes(t) && (!q || t.startsWith(q)));
 
-  const tint = (t: string) => `color-mix(in srgb, ${soften(resolveTagColor(t, colors))} 45%, transparent)`;
+  const color = (t: string) => soften(resolveTagColor(t, colors));
 
   function set(next: string[]) { return save({ tags: next }, ERR); }
 
@@ -54,8 +54,8 @@
 {#if tags.length}
   <div class="p-cpick">
     {#each tags as t (t)}
-      <button class="p-chip tag" style:background={tint(t)} on:click={() => set(tags.filter(x => x !== t))} aria-label="Remove tag {t}">
-        #{t}<span class="x">{@html I.x}</span>
+      <button class="rm" on:click={() => set(tags.filter(x => x !== t))} aria-label="Remove tag {t}">
+        <span class="p-tag" style="--tag:{color(t)}">#{t}<span class="x">{@html I.x}</span></span>
       </button>
     {/each}
   </div>
@@ -64,16 +64,18 @@
 <input class="p-fld" bind:value={input} on:keydown={onKey} placeholder="New tag, then Enter" autocomplete="off" enterkeyhint="done" aria-label="Add a tag" />
 
 {#if ours.length || others.length}
-  <div class="p-group">
-    {#each ours as t (t)}
-      <button class="p-row" on:click={() => add(t)}><span class="p-dot" style:background={soften(resolveTagColor(t, colors))}></span><span class="p-k"><span>#{t}</span></span></button>
-    {/each}
-  </div>
+  {#if ours.length}
+    <div class="p-group">
+      {#each ours as t (t)}
+        <button class="p-row" on:click={() => add(t)}><span class="p-dot" style:background={color(t)}></span><span class="p-k"><span>#{t}</span></span></button>
+      {/each}
+    </div>
+  {/if}
   {#if others.length}
-    <div class="p-lab">Other tags</div>
+    {#if ours.length}<div class="p-lab">Other tags</div>{/if}
     <div class="p-group">
       {#each others as t (t)}
-        <button class="p-row" on:click={() => add(t)}><span class="p-dot" style:background={soften(resolveTagColor(t, colors))}></span><span class="p-k"><span>#{t}</span></span></button>
+        <button class="p-row" on:click={() => add(t)}><span class="p-dot" style:background={color(t)}></span><span class="p-k"><span>#{t}</span></span></button>
       {/each}
     </div>
   {/if}
@@ -82,7 +84,8 @@
 {/if}
 
 <style>
-  .tag { color: var(--text); box-shadow: none; }
+  .rm { min-height: 44px; display: inline-flex; align-items: center; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+  .rm .p-tag { font-size: 14px; padding: 4px 6px 4px 10px; }
   .x { display: flex; opacity: .6; }
   .x :global(svg.i) { width: 14px; height: 14px; }
 </style>
