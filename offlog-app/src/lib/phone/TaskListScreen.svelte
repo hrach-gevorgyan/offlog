@@ -100,7 +100,7 @@
 </TopBar>
 {#if kind === 'today' && lateCount}
   <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Late: {lateCount} late {lateCount === 1 ? 'task' : 'tasks'}">
-    <span class="lbl">{lateCount} late</span>{@html I.chev}
+    <span class="n" aria-hidden="true">{lateCount}</span><span class="lbl">Late tasks</span>{@html I.chev}
   </button>
 {/if}
 {#each sections as s}
@@ -124,13 +124,15 @@
 {/key}
 
 <style>
+  /* A card like the tasks below it; only the count carries the late colour. */
   .late-row {
-    display: flex; align-items: center; width: 100%; gap: 6px; margin: 0 0 10px; padding: 10px 12px 10px 14px;
-    background: var(--overdue-bg); color: var(--overdue-ink); border: 0; border-radius: 12px;
-    font: inherit; font-size: var(--p-fs-m); font-weight: 600; text-align: left; cursor: pointer;
+    display: flex; align-items: center; width: 100%; gap: 12px; margin: 0 0 10px; padding: 12px 12px 12px 14px;
+    background: var(--surface); color: var(--text); border: 0; border-radius: 14px; box-shadow: var(--p-shadow);
+    font: inherit; font-size: var(--p-fs-l); font-weight: 600; text-align: left; cursor: pointer;
     transition: transform var(--dur-hover) var(--ease-hover);
   }
+  .late-row .n { min-width: 26px; height: 26px; padding: 0 7px; box-sizing: border-box; border-radius: 13px; background: var(--danger); color: var(--on-accent); font-size: var(--p-fs-s); font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .late-row:active { transform: scale(.98); }
   .late-row .lbl { flex: 1; }
-  .late-row :global(svg) { width: 16px; height: 16px; }
+  .late-row :global(svg) { width: 16px; height: 16px; color: var(--faint); }
 </style>
