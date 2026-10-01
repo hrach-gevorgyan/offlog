@@ -188,7 +188,7 @@
 </Sheet>
 
 <style>
-  .hint { font-size: 13px; color: var(--due-soon-ink); margin: -8px 4px 12px; }
+  .hint { font-size: var(--p-fs-s); color: var(--due-soon-ink); margin: -8px 4px 12px; }
   .sw { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 0 12px; }
   .sw button, .custom { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
   .sw span { width: 30px; height: 30px; border-radius: 50%; display: block; }

@@ -28,7 +28,6 @@
   let qa: { projectId: string | null; columnId: string | null; dueDate: string | null } | null = null;
   let qaSession = 0;
   function openAdd(due: string | null = null) {
-    if (qa) return; // already open (Ctrl+N twice)
     const ctx = get(addContext), cur = get(stack).at(-1);
     const inProject = cur?.k === 'project' ? ctx : null;
     qa = { projectId: inProject?.projectId ?? null, columnId: inProject?.columnId ?? null, dueDate: due ?? (cur?.k === 'agenda' ? get(agendaDay) : null) };
@@ -40,12 +39,16 @@
   let kb = false;
   onMount(() => {
     const vv = window.visualViewport;
-    let tallest = 0, width = 0;
+    let tallest = 0, width = 0, lastH = 0;
     const check = () => {
       const h = vv?.height ?? window.innerHeight, w = window.innerWidth;
       // A rotation with the keyboard up must not take the keyboard height as
       // the new baseline; keep the current state until typing stops.
-      if (w !== width) { width = w; tallest = 0; }
+      if (w !== width) { width = w; tallest = kb ? 0 : h; }
+      // Rotated with the keyboard up: the first big growth is the keyboard
+      // going away, which gives the real baseline.
+      if (!tallest && h - lastH > 150) tallest = h;
+      lastH = h;
       // Only while typing and not pinch-zoomed: a shorter window (split
       // screen, a docked dev panel) is not the keyboard.
       const el = document.activeElement as HTMLElement | null;

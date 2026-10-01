@@ -254,7 +254,7 @@
     // On the phone layout (a phone or tablet with a keyboard) the shortcuts
     // go to the phone's own Search tab and quick-add sheet.
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); if (get(isPhone)) switchTab('search'); else openSearch(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); if (get(isPhone)) phoneActions.quickAdd(); else openQuickAdd(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); if (get(isPhone)) { if (!get(modalOpen)) phoneActions.quickAdd(); } else openQuickAdd(); return; }
     // Don't hijack "?" while the user is typing in a field.
     const el = e.target as HTMLElement;
     const typing = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;

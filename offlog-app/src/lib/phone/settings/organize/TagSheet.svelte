@@ -135,5 +135,5 @@
   .sw button { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; }
   .sw span { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .sw .on span { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
-  .auto span { font-size: 12px; font-weight: 700; color: var(--text); }
+  .auto span { font-size: var(--p-fs-xs); font-weight: 700; color: var(--text); }
 </style>

@@ -66,8 +66,12 @@ let nextId = 1;
 // survive a reload, so the two numbers stop meaning the same thing and panels
 // can refuse to open or get stuck after a refresh. Matching by identity is
 // correct regardless of whether browser depth and `stack.length` agree.
+// A dropped layer's id → the id of the entry that was below it.
+const dropped = new Map<number, number | undefined>();
+
 function onPopState(e: PopStateEvent) {
-  const landedId = (e.state as { offlogId?: number } | null)?.offlogId;
+  let landedId = (e.state as { offlogId?: number } | null)?.offlogId;
+  while (landedId !== undefined && dropped.has(landedId)) landedId = dropped.get(landedId);
   const idx = landedId === undefined ? -1 : stack.findIndex((entry) => entry.id === landedId);
   while (stack.length > idx + 1) {
     const entry = stack.pop();
@@ -144,7 +148,9 @@ export function closeThrough(request: CloseFn): boolean {
 // Its history slot stays as an inert entry, as with discardTop.
 export function dropLayer(request: CloseFn): void {
   const idx = stack.findIndex(e => e.request === request);
-  if (idx !== -1 && idx !== stack.length - 1) stack.splice(idx, 1);
+  if (idx === -1 || idx === stack.length - 1) return;
+  dropped.set(stack[idx].id, stack[idx - 1]?.id);
+  stack.splice(idx, 1);
 }
 export function isTopLayer(request: CloseFn): boolean {
   return stack.at(-1)?.request === request;

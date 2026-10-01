@@ -33,6 +33,17 @@ describe('ConfirmDialog result', () => {
     await expect(p).resolves.toBe(true);
   });
 
+  it('a dialog dismissed with back answers no, even after an earlier one was confirmed', async () => {
+    const { container } = render(ConfirmDialog);
+    const first = await ask(container);
+    await fireEvent.click(okBtn(container));
+    await expect(first.answer).resolves.toBe(true);
+    await waitFor(() => expect(get(confirmRequest)).toBeNull());
+    const second = await ask(container, { danger: true });
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null })); // Android back
+    await expect(second.answer).resolves.toBe(false);
+  });
+
   it('resolves false when the cancel button is pressed', async () => {
     const { container } = render(ConfirmDialog);
     const { answer: p } = await ask(container);

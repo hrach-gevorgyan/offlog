@@ -16,8 +16,13 @@
   let pendingResult = false;
 
   $: if ($confirmRequest && !popLayer) {
+    // Reset per dialog: a dismissal (back, closeAll) must answer "no", never
+    // the button pressed on a previous dialog.
+    pendingResult = false;
     popLayer = closeOnBack(() => {
-      $confirmRequest?.resolve(pendingResult);
+      const result = pendingResult;
+      pendingResult = false;
+      $confirmRequest?.resolve(result);
       confirmRequest.set(null);
       popLayer = null;
     });

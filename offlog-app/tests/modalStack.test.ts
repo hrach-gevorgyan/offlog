@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { closeOnBack, discardTop } from '../src/lib/modalStack';
+import { closeOnBack, discardTop, dropLayer } from '../src/lib/modalStack';
 
 // modalStack.ts is pure JS with no Svelte/DOM dependency beyond
 // window.history/popstate (see its own header comment) — a real target
@@ -55,6 +55,24 @@ describe('modalStack', () => {
     expect(closeB).toHaveBeenCalledOnce();
     expect(closeA).toHaveBeenCalledOnce();
     expect(closeB.mock.invocationCallOrder[0]).toBeLessThan(closeA.mock.invocationCallOrder[0]);
+  });
+
+  it('a dropped layer history slot counts as the entry below it, so back stops there', () => {
+    const closeScreen = vi.fn(), closeSel = vi.fn(), closeTop = vi.fn();
+    closeOnBack(closeScreen);
+    const screenState = history.state;
+    const sel = closeOnBack(closeSel);
+    const selState = history.state;
+    closeOnBack(closeTop);
+    dropLayer(sel); // its owner was unmounted under the top layer
+    // Back from the top layer lands on the dropped slot:
+    window.dispatchEvent(new PopStateEvent('popstate', { state: selState }));
+    expect(closeTop).toHaveBeenCalledOnce();
+    expect(closeScreen).not.toHaveBeenCalled(); // not skipped past
+    expect(closeSel).not.toHaveBeenCalled();
+    window.dispatchEvent(new PopStateEvent('popstate', { state: screenState }));
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    expect(closeScreen).toHaveBeenCalledOnce();
   });
 
   it('requestClose() (the returned function) is exactly history.back(), never a direct stack pop', () => {

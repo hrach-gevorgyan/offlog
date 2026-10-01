@@ -68,7 +68,7 @@
       task = t && !t.deleted ? t : null;
       if (task) {
         if (!titleFocused) title = task.title;
-        if (!noteFocused && !noteTimer) body = task.body ?? '';
+        if (!noteFocused && !noteTimer && !noteDirty) body = task.body ?? '';
       }
     } catch {
       showError('Could not load this task. Please try again.');
@@ -175,6 +175,10 @@
     saveUndoable({ pinned: !task.pinned }, task.pinned ? 'Unpinned' : 'Pinned');
   }
 
+  function saveTitle() {
+    if (!task || !title.trim()) return;
+    if (title !== task.title) save({ title }, 'Could not save the title. Please try again.');
+  }
   function commitTitle() {
     titleFocused = false;
     if (!task) return;
@@ -298,7 +302,7 @@
     }, 350);
   }
 
-  function onHide() { if (!document.hidden) return; flushNote(); if (titleFocused) commitTitle(); }
+  function onHide() { if (!document.hidden) return; flushNote(); if (titleFocused) saveTitle(); }
   onMount(() => { document.addEventListener('visibilitychange', onHide); return () => document.removeEventListener('visibilitychange', onHide); });
 
   onDestroy(() => {
