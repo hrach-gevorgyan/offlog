@@ -258,7 +258,8 @@ src/
       presets.ts                  Due and reminder shortcut lists, shared by quick add and the task screen
       settings/LockPage.svelte    App lock page: PIN forms in sheets, lock time as a picker row
       settings/RemindersPage.svelte  Reminders page: default time, quiet hours, a two-step set-up card while Android is in the way
-      settings/TimeSheet.svelte   The app's own time picker (hour grid, 5-minute steps), follows 12/24 h
+      settings/TimeSheet.svelte   The app's own time picker: hour and minute wheels (plus AM/PM in 12 h mode)
+      Wheel.svelte                One snap-scrolling wheel; arrow keys step it, tapping an item centres it
       mark.ts / icons.ts / format.ts  Logo paths, icon set, greeting and labels (shortDate)
       agenda/month.ts             Month grid maths
       focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)

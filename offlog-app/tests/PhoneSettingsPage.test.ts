@@ -433,10 +433,11 @@ describe('phone settings pages', () => {
   it('Reminders: the default time opens the time sheet, and Done saves the picked time', async () => {
     const { getByText, findByRole } = render(SettingsPage, { page: 'notifications' });
     await fireEvent.click(getByText('Default time'));
-    const hours = await findByRole('group', { name: 'Hour' });
-    await fireEvent.click([...hours.querySelectorAll('button')].find(b => b.textContent === '07')!);
-    const mins = await findByRole('group', { name: 'Minute' });
-    await fireEvent.click([...mins.querySelectorAll('button')].find(b => b.textContent === ':30')!);
+    const hours = await findByRole('spinbutton', { name: 'Hour' });
+    await fireEvent.keyDown(hours, { key: 'ArrowUp' });
+    await fireEvent.keyDown(hours, { key: 'ArrowUp' });
+    const mins = await findByRole('spinbutton', { name: 'Minute' });
+    await fireEvent.click([...mins.querySelectorAll('button')].find(b => b.textContent === '30')!);
     await fireEvent.click(getByText('Done'));
     expect(cfg.setDefaultReminderTime).toHaveBeenCalledWith('07:30');
   });

@@ -264,7 +264,7 @@ describe('phone Quick add', () => {
     await findByLabelText(/^Reminder: Tomorrow /);
     await fireEvent.click(getByLabelText('Add'));
     await waitFor(() => expect(createTask).toHaveBeenCalledWith('project:q', 'space:w', 'col:q1', 'Call bank', {
-      priority: undefined, due_date: null, reminder_at: new Date(`${tomorrow()}T09:00`).toISOString(), tags: undefined,
+      priority: undefined, due_date: null, reminder_at: new Date(`${tomorrow()}T10:00`).toISOString(), tags: undefined,
     }));
   });
 

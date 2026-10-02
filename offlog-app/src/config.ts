@@ -294,7 +294,7 @@ export function setSyncEnabled(enabled: boolean) {
 const DEFAULT_REMINDER_TIME_KEY = 'offlog_default_reminder_time';
 
 export function getDefaultReminderTime(): string {
-  return localStorage.getItem(DEFAULT_REMINDER_TIME_KEY) ?? '09:00';
+  return localStorage.getItem(DEFAULT_REMINDER_TIME_KEY) ?? '10:00';
 }
 
 export function setDefaultReminderTime(time: string) {
