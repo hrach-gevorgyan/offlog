@@ -152,7 +152,9 @@
   .band :global(.sub) { margin-bottom: 0; }
   :global(body.dark) .band { background: color-mix(in srgb, var(--band) 62%, var(--bg)); }
   /* Ink on the band: TopBar and the view toggle read these tokens. */
-  .band { --col-bg: color-mix(in srgb, var(--text) 9%, transparent); }
+  /* The page greys are tuned for --bg and vanish on a saturated band, so the
+     secondary text there is the band's own ink, softened. */
+  .band { --col-bg: color-mix(in srgb, var(--text) 9%, transparent); --muted: color-mix(in srgb, var(--text) 80%, transparent); --faint: color-mix(in srgb, var(--text) 74%, transparent); }
   .band.light, :global(body.dark) .band {
     --text: var(--on-hero); --muted: color-mix(in srgb, var(--on-hero) 88%, transparent); --faint: color-mix(in srgb, var(--on-hero) 82%, transparent);
     --col-bg: color-mix(in srgb, var(--on-hero) 18%, transparent); color: var(--text);
