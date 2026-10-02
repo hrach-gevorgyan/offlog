@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, fireEvent, waitFor, cleanup, screen } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 
@@ -86,6 +86,21 @@ async function open(t: TaskDoc | null = task()) {
   if (t) await waitFor(() => r.getByLabelText('Title'));
   return r;
 }
+// Rows show values, not labels; each names itself "Due: …", "Tags: …".
+const row = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}:`) });
+// Unset details wait behind one "Add …" row that opens a list.
+async function addDetail(label: string) {
+  await fireEvent.click(document.querySelector('[data-kind="add"]') as HTMLElement);
+  await fireEvent.click(await screen.findByRole('button', { name: label }));
+  await waitFor(() => expect(document.querySelector('.psheet h3')?.textContent).not.toBe('Add'));
+}
+const ADD: Record<string, string> = { Reminder: 'reminder', Repeat: 'repeat', 'Blocked by': 'blocked by', Related: 'related', Attachments: 'attachment', Fields: 'field' };
+// A set detail opens from its row, an unset one through Add.
+async function detail(name: string) {
+  const r = screen.queryByRole('button', { name: new RegExp(`^${name}:`) });
+  if (r) await fireEvent.click(r);
+  else await addDetail(`Add ${ADD[name]}`);
+}
 const sheetRow = (label: string) => {
   const dlg = document.querySelector('.psheet') as HTMLElement;
   const row = [...dlg.querySelectorAll('button')].find(b => b.textContent?.trim().startsWith(label));
@@ -125,7 +140,8 @@ describe('phone TaskScreen', () => {
     expect((getByLabelText('Title') as HTMLTextAreaElement).value).toBe('Order tiles');
     expect(getByText(/Home ·/).textContent).toContain('House');
     expect(getByText('Doing')).toBeTruthy();
-    expect(getByText('High')).toBeTruthy();
+    expect(getByText('High priority')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Doing', pressed: true })).toBeTruthy();
     expect(getByText('#tiles')).toBeTruthy();
   });
 
@@ -175,28 +191,27 @@ describe('phone TaskScreen', () => {
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { column_id: 'col:todo' });
   });
 
-  it('a status picked in its sheet is written', async () => {
-    const { getByText } = await open();
-    await fireEvent.click(getByText('Status'));
-    await fireEvent.click(sheetRow('To do'));
+  it('a status picked on the bar is written', async () => {
+    await open();
+    await fireEvent.click(screen.getByRole('button', { name: 'To do' }));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { column_id: 'col:todo' });
   });
 
   it('priority and due date sheets write their pick', async () => {
     const { getByText } = await open();
-    await fireEvent.click(getByText('Priority'));
+    await detail('Priority');
     await fireEvent.click(sheetRow('High'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { priority: 3 });
 
     await waitFor(() => expect(document.querySelector('.psheet')).toBeNull());
-    await fireEvent.click(getByText('Due'));
+    await detail('Due');
     await fireEvent.click(sheetRow('Tomorrow'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { due_date: dateFromToday(1) });
   });
 
   it('clearing the due date of a repeating task also clears the repeat', async () => {
     const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'weekly' }));
-    await fireEvent.click(getByText('Due'));
+    await detail('Due');
     await fireEvent.click(sheetRow('No date'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { due_date: null, recurrence: null });
   });
@@ -320,7 +335,7 @@ describe('phone TaskScreen', () => {
   it('skips a repeating task to its next date, with Undo', async () => {
     db.skipRecurrence.mockResolvedValue(task({ due_date: '2026-10-08' }));
     const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'weekly' }));
-    await fireEvent.click(getByText('Repeat'));
+    await detail('Repeat');
     await fireEvent.click(sheetRow('Skip to the next one'));
     await waitFor(() => expect(db.skipRecurrence).toHaveBeenCalledWith('task:t'));
     await waitFor(() => expect(get(toast)?.text).toMatch(/^Next: /));
@@ -331,22 +346,22 @@ describe('phone TaskScreen', () => {
   it('a failed skip surfaces an error', async () => {
     db.skipRecurrence.mockRejectedValue(new Error('boom'));
     const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'weekly' }));
-    await fireEvent.click(getByText('Repeat'));
+    await detail('Repeat');
     await fireEvent.click(sheetRow('Skip to the next one'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not skip to the next one. Please try again.'));
   });
 
   it('the Repeat sheet writes the picked rule', async () => {
     const { getByText } = await open(task({ due_date: '2026-10-01' }));
-    await fireEvent.click(getByText('Repeat'));
+    await detail('Repeat');
     await fireEvent.click(sheetRow('Weekly'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { recurrence: 'weekly', recurrenceInterval: 1, recurrenceWeekdaysOnly: undefined });
-    await waitFor(() => expect(getByText('Weekly', { selector: '.p-v' })).toBeTruthy());
+    await waitFor(() => expect(row('Repeat')).toBeTruthy());
   });
 
   it('adds a tag typed into the Tags sheet', async () => {
     const { getByText } = await open();
-    await fireEvent.click(getByText('Tags'));
+    await detail('Tags');
     const input = document.querySelector('.psheet input') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'Floor Plan' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -362,7 +377,7 @@ describe('phone TaskScreen', () => {
     db.updateTask.mockRejectedValue(new Error('boom'));
     // No reload arrives: the local rollback alone must undo the tag.
     db.getTaskById.mockReturnValue(new Promise(() => {}));
-    await fireEvent.click(getByText('Tags'));
+    await detail('Tags');
     const input = document.querySelector('.psheet input') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'paint' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -370,11 +385,11 @@ describe('phone TaskScreen', () => {
     await waitFor(() => expect(queryByText('#paint')).toBeNull());
   });
 
-  it('shows two tags on the row, then a count', async () => {
-    const { getByText, queryByText } = await open(task({ tags: ['a', 'b', 'c', 'd'] }));
+  it('shows three tags on the row, then a count', async () => {
+    const { getByText, queryByText } = await open(task({ tags: ['a', 'b', 'c', 'd', 'e'] }));
     expect(getByText('#a')).toBeTruthy();
-    expect(getByText('#b')).toBeTruthy();
-    expect(queryByText('#c')).toBeNull();
+    expect(getByText('#c')).toBeTruthy();
+    expect(queryByText('#d')).toBeNull();
     expect(getByText('+2')).toBeTruthy();
   });
 
@@ -421,7 +436,7 @@ describe('phone TaskScreen', () => {
     const other = task({ _id: 'task:o', title: 'Buy grout' });
     db.getRelatedTasks.mockResolvedValue([other]);
     const { getByText } = await open();
-    await fireEvent.click(getByText('Related'));
+    await detail('Related');
     await fireEvent.click(sheetRow('Buy grout'));
     await waitFor(() => expect(get(stack).at(-1)).toMatchObject({ k: 'task', id: 'task:o' }));
   });
@@ -431,7 +446,7 @@ describe('phone TaskScreen', () => {
     db.searchTasksForLinking.mockResolvedValue([other]);
     db.linkBlockedBy.mockResolvedValue(undefined);
     const { getByText } = await open();
-    await fireEvent.click(getByText('Blocked by'));
+    await detail('Blocked by');
     const find = document.querySelector('.psheet input') as HTMLInputElement;
     await fireEvent.input(find, { target: { value: 'quo' } });
     await waitFor(() => sheetRow('Get quotes'));
@@ -444,7 +459,7 @@ describe('phone TaskScreen', () => {
     db.searchTasksForLinking.mockResolvedValue([task({ _id: 'task:b', title: 'Get quotes' })]);
     db.linkBlockedBy.mockRejectedValue(new Error('circular dependency'));
     const { getByText } = await open();
-    await fireEvent.click(getByText('Blocked by'));
+    await detail('Blocked by');
     await fireEvent.input(document.querySelector('.psheet input')!, { target: { value: 'quo' } });
     await waitFor(() => sheetRow('Get quotes'));
     await fireEvent.click(sheetRow('Get quotes'));
@@ -459,28 +474,36 @@ describe('phone TaskScreen', () => {
     expect(get(toast)?.text ?? '').not.toBe('Done: Order tiles');
   });
 
-  it('shows unset optional fields as + chips, and a set one as its row', async () => {
-    const { getByLabelText, queryByLabelText, getByText, container } = await open();
-    for (const l of ['Add reminder', 'Add repeat', 'Add blocked by', 'Add related', 'Add attachment']) expect(getByLabelText(l)).toBeTruthy();
-    // No custom fields defined: no Field chip.
-    expect(queryByLabelText('Add field')).toBeNull();
-    expect(container.querySelectorAll('.p-row').length).toBe(4);
-    expect(getByText('Due').closest('button')!.querySelector('.p-v')!.textContent!.trim()).toBe('—');
-    expect(getByText('Tags').closest('button')!.querySelector('.p-v')!.textContent!.trim()).toBe('—');
+  it('unset details wait behind one Add row; empty Due and Tags invite adding', async () => {
+    const { container } = await open();
+    expect(document.querySelector('[data-kind="add"]')!.textContent!.trim()).toBe('Add reminder, repeat, links…');
+    expect(row('Due').textContent).toContain('Add due date');
+    expect(row('Tags').textContent).toContain('Add tags');
+    expect(container.querySelectorAll('.vals .p-row').length).toBe(4);
+    await fireEvent.click(document.querySelector('[data-kind="add"]') as HTMLElement);
+    const listed = [...document.querySelectorAll('.psheet .p-row')].map(r => r.getAttribute('aria-label'));
+    // No custom fields defined: no Field entry.
+    expect(listed).toEqual(['Add reminder', 'Add repeat', 'Add blocked by', 'Add related', 'Add attachment']);
   });
 
-  it('a cleared reminder turns its row back into a chip', async () => {
-    const { getByText, queryByLabelText, findByLabelText } = await open(task({ reminder_at: new Date(2030, 0, 2, 9, 0).toISOString() }));
-    expect(queryByLabelText('Add reminder')).toBeNull();
-    await fireEvent.click(getByText('Reminder'));
+  it('the Add row names only what is still unset', async () => {
+    await open(task({ due_date: '2026-10-01', recurrence: 'weekly', reminder_at: new Date(2030, 0, 2, 9, 0).toISOString() }));
+    expect(document.querySelector('[data-kind="add"]')!.textContent!.trim()).toBe('Add links, attachment');
+  });
+
+  it('a cleared reminder leaves its row and goes back under Add', async () => {
+    await open(task({ reminder_at: new Date(2030, 0, 2, 9, 0).toISOString() }));
+    expect(document.querySelector('[data-kind="add"]')!.textContent).not.toContain('reminder');
+    await detail('Reminder');
     await fireEvent.click(sheetRow('No reminder'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { reminder_at: null, remindOnDue: false });
-    expect(await findByLabelText('Add reminder')).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('[data-kind="add"]')!.textContent).toContain('reminder'));
+    expect(screen.queryByRole('button', { name: /^Reminder:/ })).toBeNull();
   });
 
-  it('a chip opens the same sheet as its row', async () => {
-    const { getByLabelText } = await open(task({ due_date: '2026-10-01' }));
-    await fireEvent.click(getByLabelText('Add repeat'));
+  it('an Add entry opens the same sheet as its row', async () => {
+    await open(task({ due_date: '2026-10-01' }));
+    await addDetail('Add repeat');
     await fireEvent.click(sheetRow('Weekly'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { recurrence: 'weekly', recurrenceInterval: 1, recurrenceWeekdaysOnly: undefined });
   });
@@ -489,7 +512,7 @@ describe('phone TaskScreen', () => {
     const { getByLabelText, getByText } = await open();
     const note = getByLabelText('Note');
     expect(getByLabelText('Title').compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(note.compareDocumentPosition(getByText('Status')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(note.compareDocumentPosition(screen.getByRole('group', { name: 'Status' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('the bar fills in and shows the title once the title scrolls under it', async () => {
@@ -516,18 +539,18 @@ describe('phone TaskScreen', () => {
 
   it('the Due sheet ticks a date none of its shortcuts covers, in the app format', async () => {
     const { getByText } = await open(task({ due_date: '2030-03-04' }));
-    await fireEvent.click(getByText('Due'));
+    await detail('Due');
     expect(sheetRow('Mon 4 Mar 2030').getAttribute('aria-pressed')).toBe('true');
     expect(document.querySelector('.psheet .cal-trigger')!.textContent!.trim()).toBe('Mon 4 Mar 2030');
   });
 
   it('Weekdays is a top-level repeat: daily, weekdays only', async () => {
     const { getByText } = await open(task({ due_date: '2026-10-01', recurrence: 'daily', recurrenceInterval: 1 }));
-    await fireEvent.click(getByText('Repeat'));
+    await detail('Repeat');
     await fireEvent.click(sheetRow('Weekdays'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { recurrence: 'daily', recurrenceInterval: 1, recurrenceWeekdaysOnly: true });
     await waitFor(() => expect(sheetRow('Weekdays').getAttribute('aria-pressed')).toBe('true'));
-    expect(getByText('Weekdays', { selector: '.p-v' })).toBeTruthy();
+    expect(getByText('Weekdays', { selector: '.vals .p-k span' })).toBeTruthy();
     await fireEvent.click(sheetRow('Daily'));
     expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { recurrence: 'daily', recurrenceInterval: 1, recurrenceWeekdaysOnly: false });
   });
@@ -537,7 +560,7 @@ describe('phone TaskScreen', () => {
     vi.setSystemTime(new Date(2026, 9, 1, 9, 35));
     try {
       const { getByLabelText } = await open();
-      await fireEvent.click(getByLabelText('Add reminder'));
+      await addDetail('Add reminder');
       await fireEvent.click(sheetRow('Later today'));
       expect(db.updateTask).toHaveBeenCalledWith('task:t', { reminder_at: new Date(2026, 9, 1, 13, 0).toISOString() });
     } finally { vi.useRealTimers(); }
@@ -545,7 +568,7 @@ describe('phone TaskScreen', () => {
 
   it('the Tags field says it finds as well as adds', async () => {
     const { getByText } = await open();
-    await fireEvent.click(getByText('Tags'));
+    await detail('Tags');
     expect((document.querySelector('.psheet input') as HTMLInputElement).placeholder).toBe('Find or add a tag');
   });
 
@@ -563,16 +586,16 @@ describe('phone TaskScreen', () => {
     it('due date, rolled back on the row', async () => {
       const { getByText } = await open();
       db.updateTask.mockRejectedValue(new Error('boom'));
-      await fireEvent.click(getByText('Due'));
+      await detail('Due');
       await fireEvent.click(sheetRow('Tomorrow'));
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the due date. Please try again.'));
-      await waitFor(() => expect(getByText('Due').closest('button')!.querySelector('.p-v')!.textContent!.trim()).toBe('—'));
+      await waitFor(() => expect(row('Due').textContent).toContain('Add due date'));
     });
 
     it('priority', async () => {
       const { getByText } = await open();
       db.updateTask.mockRejectedValue(new Error('boom'));
-      await fireEvent.click(getByText('Priority'));
+      await detail('Priority');
       await fireEvent.click(sheetRow('High'));
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the priority. Please try again.'));
     });
@@ -600,7 +623,7 @@ describe('phone TaskScreen', () => {
     it('reminder', async () => {
       const { getByText } = await open(task({ reminder_at: new Date(2030, 0, 2, 9, 0).toISOString() }));
       db.updateTask.mockRejectedValue(new Error('boom'));
-      await fireEvent.click(getByText('Reminder'));
+      await detail('Reminder');
       await fireEvent.click(sheetRow('No reminder'));
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the reminder. Please try again.'));
     });
@@ -608,7 +631,7 @@ describe('phone TaskScreen', () => {
     it('repeat', async () => {
       const { getByLabelText } = await open(task({ due_date: '2026-10-01' }));
       db.updateTask.mockRejectedValue(new Error('boom'));
-      await fireEvent.click(getByLabelText('Add repeat'));
+      await addDetail('Add repeat');
       await fireEvent.click(sheetRow('Weekly'));
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the repeat. Please try again.'));
     });
@@ -629,7 +652,7 @@ describe('phone TaskScreen', () => {
       db.searchTasksForLinking.mockResolvedValue([other]);
       db.linkRelatedTask.mockRejectedValue(new Error('boom'));
       const { getByLabelText } = await open();
-      await fireEvent.click(getByLabelText('Add related'));
+      await addDetail('Add related');
       await fireEvent.input(document.querySelector('.psheet input')!, { target: { value: 'quo' } });
       await waitFor(() => sheetRow('Get quotes'));
       await fireEvent.click(sheetRow('Get quotes'));
@@ -640,7 +663,7 @@ describe('phone TaskScreen', () => {
       db.searchTasksForLinking.mockResolvedValue([other]);
       db.linkBlockedBy.mockRejectedValue(new Error('boom'));
       const { getByLabelText } = await open();
-      await fireEvent.click(getByLabelText('Add blocked by'));
+      await addDetail('Add blocked by');
       await fireEvent.input(document.querySelector('.psheet input')!, { target: { value: 'quo' } });
       await waitFor(() => sheetRow('Get quotes'));
       await fireEvent.click(sheetRow('Get quotes'));
@@ -651,7 +674,7 @@ describe('phone TaskScreen', () => {
       db.getRelatedTasks.mockResolvedValue([other]);
       vi.mocked(unlinkRelatedTask).mockRejectedValueOnce(new Error('boom'));
       const { findByText, getByLabelText } = await open();
-      await fireEvent.click(await findByText('Related'));
+      await fireEvent.click(await screen.findByRole('button', { name: /^Related:/ }));
       await fireEvent.click(getByLabelText('Unlink Get quotes'));
       expect(unlinkRelatedTask).toHaveBeenCalledWith('task:t', 'task:o');
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove a related-task link. Please try again.'));
@@ -661,7 +684,7 @@ describe('phone TaskScreen', () => {
       db.getBlockingTasks.mockResolvedValue([other]);
       vi.mocked(unlinkBlockedBy).mockRejectedValueOnce(new Error('boom'));
       const { findByText, getByLabelText } = await open();
-      await fireEvent.click(await findByText('Blocked by'));
+      await fireEvent.click(await screen.findByRole('button', { name: /^Blocked by:/ }));
       await fireEvent.click(getByLabelText('Remove dependency on Get quotes'));
       expect(unlinkBlockedBy).toHaveBeenCalledWith('task:t', 'task:o');
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove a dependency. Please try again.'));
@@ -670,7 +693,7 @@ describe('phone TaskScreen', () => {
     it('a failed attachment removal, after the confirming second tap', async () => {
       vi.mocked(deleteAttachment).mockRejectedValueOnce(new Error('boom'));
       const { getByText, getByLabelText } = await open(task({ attachments: [{ key: 'k1', filename: 'quote.pdf', size: 100 }] } as Partial<TaskDoc>));
-      await fireEvent.click(getByText('Attachments'));
+      await detail('Attachments');
       await fireEvent.click(getByLabelText('Remove quote.pdf'));
       expect(deleteAttachment).not.toHaveBeenCalled();
       await fireEvent.click(getByLabelText('Remove quote.pdf'));
@@ -689,7 +712,7 @@ describe('phone TaskScreen', () => {
     it('a select field picks from a list instead of a native dropdown', async () => {
       db.getCustomFieldDefs.mockResolvedValue(defs);
       const { findByLabelText } = await open();
-      await fireEvent.click(await findByLabelText('Add field'));
+      await addDetail('Add field');
       expect(document.querySelector('.psheet select')).toBeNull();
       const vendor = sheetRow('Vendor');
       expect(vendor.textContent).toContain('—');
@@ -706,7 +729,7 @@ describe('phone TaskScreen', () => {
     it('a number field edits inline with the same empty dash', async () => {
       db.getCustomFieldDefs.mockResolvedValue(defs);
       const { findByLabelText } = await open();
-      await fireEvent.click(await findByLabelText('Add field'));
+      await addDetail('Add field');
       const input = document.querySelector('.psheet input.val') as HTMLInputElement;
       expect(input.placeholder).toBe('—');
       await fireEvent.change(input, { target: { value: '120' } });
@@ -717,7 +740,7 @@ describe('phone TaskScreen', () => {
       db.getCustomFieldDefs.mockResolvedValue(defs);
       const { findByLabelText } = await open();
       db.updateTask.mockRejectedValue(new Error('boom'));
-      await fireEvent.click(await findByLabelText('Add field'));
+      await addDetail('Add field');
       await fireEvent.change(document.querySelector('.psheet input.val') as HTMLInputElement, { target: { value: '120' } });
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the field. Please try again.'));
     });

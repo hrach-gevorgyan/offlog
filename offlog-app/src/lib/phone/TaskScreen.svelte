@@ -320,9 +320,9 @@
   });
 
   // ── Sheets ────────────────────────────────────────────────────────────────
-  type SheetKind = 'status' | 'due' | 'prio' | 'tags' | 'reminder' | 'repeat' | 'blocked' | 'related' | 'files' | 'fields' | 'more' | 'history';
+  type SheetKind = 'add' | 'due' | 'prio' | 'tags' | 'reminder' | 'repeat' | 'blocked' | 'related' | 'files' | 'fields' | 'more' | 'history';
   const SHEET_TITLE: Record<SheetKind, string> = {
-    status: 'Status', due: 'Due', prio: 'Priority', tags: 'Tags', reminder: 'Reminder', repeat: 'Repeat',
+    add: 'Add', due: 'Due', prio: 'Priority', tags: 'Tags', reminder: 'Reminder', repeat: 'Repeat',
     blocked: 'Blocked by', related: 'Related tasks', files: 'Attachments', fields: 'Fields', more: 'More', history: 'Task history',
   };
   let sheet: SheetKind | null = null;
@@ -366,7 +366,6 @@
   $: lastColByProject = Object.fromEntries($projects.map(p => [p._id, p.columns.at(-1)?.id]));
   $: openBlockers = blocking.filter(b => !isBlockerResolved(b, lastColByProject)).length;
   $: pill = task ? duePill(task.due_date, done, $today) : null;
-  $: statusName = project?.columns.find(c => c.id === task?.column_id)?.name ?? '—';
   $: reminderText = task?.reminder_at ? reminderLabel(task.reminder_at, $today) : '';
   function reminderLabel(iso: string, todayStr: string) {
     const d = new Date(iso);
@@ -377,6 +376,26 @@
     : (task.recurrenceInterval ?? 1) > 1
       ? `Every ${task.recurrenceInterval} ${UNIT[task.recurrence]}` + (task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? ', weekdays' : '')
       : task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? 'Weekdays' : REPEAT_WORD[task.recurrence];
+  $: dueText = !pill ? '' : task?.due_date && pill.text !== shortDate(task.due_date) ? `${pill.text} · ${shortDate(task.due_date)}` : pill.text;
+  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+  // Every detail that isn't set yet, in the order the Add sheet lists them.
+  type AddKind = 'reminder' | 'repeat' | 'blocked' | 'related' | 'files' | 'fields';
+  $: unset = ([
+    !reminderText && { kind: 'reminder', label: 'Reminder', word: 'reminder', icon: I.bell },
+    !repeatText && { kind: 'repeat', label: 'Repeat', word: 'repeat', icon: I.repeat },
+    !blocking.length && { kind: 'blocked', label: 'Blocked by', word: 'links', icon: I.block },
+    !related.length && { kind: 'related', label: 'Related', word: 'links', icon: I.link },
+    !files && { kind: 'files', label: 'Attachment', word: 'attachment', icon: I.clip },
+    fields.length > 0 && !fieldsSet && { kind: 'fields', label: 'Field', word: 'fields', icon: I.field },
+  ] as const).filter(Boolean) as { kind: AddKind; label: string; word: string; icon: string }[];
+  $: addWords = [...new Set(unset.map(u => u.word))];
+  $: addText = `Add ${addWords.slice(0, 3).join(', ')}${addWords.length > 3 ? '…' : ''}`;
+  // Keeps the current status in view in a bar that scrolls sideways.
+  function centre(node: HTMLElement, on: boolean) {
+    const go = (yes: boolean) => { const bar = node.parentElement; if (yes && bar) bar.scrollLeft = node.offsetLeft - (bar.clientWidth - node.clientWidth) / 2; };
+    go(on);
+    return { update: go };
+  }
   $: fieldsSet = fields.filter(f => { const v = task?.custom_values?.[f.id]; return v !== null && v !== undefined && v !== ''; }).length;
   $: files = task?.attachments?.length ?? 0;
   $: steps = task?.checklist ?? [];
@@ -432,85 +451,68 @@
   {#if body.length > 500}<p class="p-say count">{body.length} characters</p>{/if}
   {#if noteHint}<p class="p-say hint" class:indent={canFinish}>{noteHint}</p>{/if}
 
-  <div class="p-group">
-    <button class="p-row" on:click={() => openSheet('status')}>
-      <span class="p-ico">{@html I.status}</span><span class="p-k"><span>Status</span></span>
-      <span class="p-v set">{statusName}</span>
+  {#if project && project.columns.length > 1}
+    <!-- The last status is done: picking it fills the ring like finishing. -->
+    <div class="stbar" role="group" aria-label="Status">
+      {#each project.columns as c (c.id)}
+        <button class:on={c.id === task.column_id} aria-pressed={c.id === task.column_id} use:centre={c.id === task.column_id} on:click={() => setStatus(c.id)}>{c.name}</button>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- Rows show values, not labels; each still names itself for screen readers. -->
+  <div class="p-group vals">
+    <button class="p-row" aria-label="Due: {dueText || 'none'}" on:click={() => openSheet('due')}>
+      <span class="p-ico">{@html I.today}</span>
+      {#if pill}<span class="p-k {pill.tone}"><span>{dueText}</span></span>{:else}<span class="p-k empty"><span>Add due date</span></span>{/if}
     </button>
-    <button class="p-row" on:click={() => openSheet('due')}>
-      <span class="p-ico">{@html I.today}</span><span class="p-k"><span>Due</span></span>
-      <span class="p-v" class:set={!!pill}>{#if pill}<span class="p-pill {pill.tone}">{pill.text}</span>{:else}—{/if}</span>
+    {#if reminderText}
+      <button class="p-row" data-kind="reminder" aria-label="Reminder: {reminderText}" on:click={() => openSheet('reminder')}>
+        <span class="p-ico">{@html I.bell}</span><span class="p-k"><span>{reminderText}</span></span>
+      </button>
+    {/if}
+    {#if repeatText}
+      <button class="p-row" data-kind="repeat" aria-label="Repeat: {repeatText}" on:click={() => openSheet('repeat')}>
+        <span class="p-ico">{@html I.repeat}</span><span class="p-k"><span>{repeatText}</span></span>
+      </button>
+    {/if}
+    <button class="p-row" aria-label="Priority: {PRIORITY_LABEL[task.priority]}" on:click={() => openSheet('prio')}>
+      <span class="p-ico">{@html I.flag}</span>
+      <span class="p-k"><span><span class="p-dot" style:background={soften(PRIORITY_COLOR[task.priority])}></span>{PRIORITY_LABEL[task.priority]} priority</span></span>
     </button>
-    <button class="p-row" on:click={() => openSheet('prio')}>
-      <span class="p-ico">{@html I.flag}</span><span class="p-k"><span>Priority</span></span>
-      <span class="p-v set"><span class="p-dot" style:background={soften(PRIORITY_COLOR[task.priority])}></span>{PRIORITY_LABEL[task.priority]}</span>
+    <button class="p-row" aria-label="Tags: {task.tags.length ? task.tags.map(t => '#' + t).join(' ') : 'none'}" on:click={() => openSheet('tags')}>
+      <span class="p-ico">{@html I.tag}</span>
+      {#if task.tags.length}
+        <span class="p-k tags">{#each task.tags.slice(0, 3) as t (t)}<span class="p-tag" style="--tag:{tagColor(t)}">#{t}</span>{/each}{#if task.tags.length > 3}<span class="more-tags">+{task.tags.length - 3}</span>{/if}</span>
+      {:else}<span class="p-k empty"><span>Add tags</span></span>{/if}
     </button>
-    <button class="p-row" on:click={() => openSheet('tags')}>
-      <span class="p-ico">{@html I.tag}</span><span class="p-k"><span>Tags</span></span>
-      <span class="p-v tags" class:set={task.tags.length > 0}>
-        {#each task.tags.slice(0, 2) as t (t)}<span class="p-tag" style="--tag:{tagColor(t)}">#{t}</span>{:else}—{/each}
-        {#if task.tags.length > 2}<span class="more-tags">+{task.tags.length - 2}</span>{/if}
-      </span>
-    </button>
+    {#if blocking.length}
+      <button class="p-row" data-kind="blocked" aria-label="Blocked by: {openBlockers ? openBlockers + ' open' : blocking.length + ' done'}" on:click={() => openSheet('blocked')}>
+        <span class="p-ico">{@html I.block}</span>
+        <span class="p-k"><span>{#if openBlockers}<span class="blk">Blocked by {plural(openBlockers, 'open task')}</span>{:else}{plural(blocking.length, 'blocker')} done{/if}</span></span>
+      </button>
+    {/if}
+    {#if related.length}
+      <button class="p-row" data-kind="related" aria-label="Related: {related.length}" on:click={() => openSheet('related')}>
+        <span class="p-ico">{@html I.link}</span><span class="p-k"><span>{plural(related.length, 'related task')}</span></span>
+      </button>
+    {/if}
+    {#if files}
+      <button class="p-row" data-kind="files" aria-label="Attachments: {files}" on:click={() => openSheet('files')}>
+        <span class="p-ico">{@html I.clip}</span><span class="p-k"><span>{plural(files, 'attachment')}</span></span>
+      </button>
+    {/if}
+    {#if fieldsSet}
+      <button class="p-row" data-kind="fields" aria-label="Fields: {fieldsSet} set" on:click={() => openSheet('fields')}>
+        <span class="p-ico">{@html I.field}</span><span class="p-k"><span>{plural(fieldsSet, 'field')} set</span></span>
+      </button>
+    {/if}
+    {#if unset.length}
+      <button class="p-row add" data-kind="add" on:click={() => openSheet('add')}>
+        <span class="p-ico">{@html I.plus}</span><span class="p-k"><span>{addText}</span></span>
+      </button>
+    {/if}
   </div>
-
-  <!-- The rest show as rows only once set; unset ones wait as + chips. -->
-  {#if reminderText || repeatText}
-    <div class="p-group">
-      {#if reminderText}
-        <button class="p-row" data-kind="reminder" on:click={() => openSheet('reminder')}>
-          <span class="p-ico">{@html I.bell}</span><span class="p-k"><span>Reminder</span></span>
-          <span class="p-v set">{reminderText}</span>
-        </button>
-      {/if}
-      {#if repeatText}
-        <button class="p-row" data-kind="repeat" on:click={() => openSheet('repeat')}>
-          <span class="p-ico">{@html I.repeat}</span><span class="p-k"><span>Repeat</span></span>
-          <span class="p-v set">{repeatText}</span>
-        </button>
-      {/if}
-    </div>
-  {/if}
-
-  {#if blocking.length || related.length || files || fieldsSet}
-    <div class="p-group">
-      {#if blocking.length}
-        <button class="p-row" data-kind="blocked" on:click={() => openSheet('blocked')}>
-          <span class="p-ico">{@html I.block}</span><span class="p-k"><span>Blocked by</span></span>
-          <span class="p-v set">{#if openBlockers}<span class="blk">{openBlockers} open</span>{:else}{blocking.length} done{/if}</span>
-        </button>
-      {/if}
-      {#if related.length}
-        <button class="p-row" data-kind="related" on:click={() => openSheet('related')}>
-          <span class="p-ico">{@html I.link}</span><span class="p-k"><span>Related</span></span>
-          <span class="p-v set">{related.length}</span>
-        </button>
-      {/if}
-      {#if files}
-        <button class="p-row" data-kind="files" on:click={() => openSheet('files')}>
-          <span class="p-ico">{@html I.clip}</span><span class="p-k"><span>Attachments</span></span>
-          <span class="p-v set">{files}</span>
-        </button>
-      {/if}
-      {#if fieldsSet}
-        <button class="p-row" data-kind="fields" on:click={() => openSheet('fields')}>
-          <span class="p-ico">{@html I.field}</span><span class="p-k"><span>Fields</span></span>
-          <span class="p-v set">{fieldsSet} set</span>
-        </button>
-      {/if}
-    </div>
-  {/if}
-
-  {#if !reminderText || !repeatText || !blocking.length || !related.length || !files || (fields.length && !fieldsSet)}
-    <div class="p-cpick adds">
-      {#if !reminderText}<button class="p-chip" data-kind="reminder" aria-label="Add reminder" on:click={() => openSheet('reminder')}>{@html I.plus}<span>Reminder</span></button>{/if}
-      {#if !repeatText}<button class="p-chip" data-kind="repeat" aria-label="Add repeat" on:click={() => openSheet('repeat')}>{@html I.plus}<span>Repeat</span></button>{/if}
-      {#if !blocking.length}<button class="p-chip" data-kind="blocked" aria-label="Add blocked by" on:click={() => openSheet('blocked')}>{@html I.plus}<span>Blocked by</span></button>{/if}
-      {#if !related.length}<button class="p-chip" data-kind="related" aria-label="Add related" on:click={() => openSheet('related')}>{@html I.plus}<span>Related</span></button>{/if}
-      {#if !files}<button class="p-chip" data-kind="files" aria-label="Add attachment" on:click={() => openSheet('files')}>{@html I.plus}<span>Attachment</span></button>{/if}
-      {#if fields.length && !fieldsSet}<button class="p-chip" data-kind="fields" aria-label="Add field" on:click={() => openSheet('fields')}>{@html I.plus}<span>Field</span></button>{/if}
-    </div>
-  {/if}
 
   <Steps items={steps} on:change={e => setSteps(e.detail)} />
 {/if}
@@ -520,10 +522,14 @@
     <Sheet title={SHEET_TITLE[sheet]} on:close={onSheetClosed} let:close>
       {#if !task}
         <p class="p-empty">This task was deleted.</p>
-      {:else if sheet === 'status'}
-        <Pick options={(project?.columns ?? []).map(c => ({ value: c.id, label: c.name }))} current={task.column_id}
-          on:pick={e => { setStatus(e.detail); close(); }} />
-        {#if project && project.columns.length > 1}<p class="p-say">The last status counts as done.</p>{/if}
+      {:else if sheet === 'add'}
+        <div class="p-group">
+          {#each unset as u (u.kind)}
+            <button class="p-row" aria-label="Add {u.label.toLowerCase()}" on:click={() => { const k = u.kind; afterClosing(close, () => openSheet(k)); }}>
+              <span class="p-ico">{@html u.icon}</span><span class="p-k"><span>{u.label}</span></span>
+            </button>
+          {/each}
+        </div>
       {:else if sheet === 'due'}
         <DueSheet value={task.due_date} on:pick={e => { setDue(e.detail); close(); }} />
       {:else if sheet === 'prio'}
@@ -598,14 +604,24 @@
   .tbar.stuck :global(h1) { opacity: 1; transition: opacity var(--dur-small) var(--ease-decelerate); }
   .hint { color: var(--faint); }
   .indent { margin-left: 40px; }
-  .p-v .p-pill { font-size: var(--p-fs-s); }
-  .tags { min-width: 0; flex-shrink: 1; gap: 4px; }
   .more-tags { font-size: var(--p-fs-s); color: var(--muted); }
   .blk { color: var(--overdue-ink); font-weight: 600; }
   /* A quiet line under the title that grows with its text; no box. */
   .note { margin: 0 2px 16px; }
   .note :global(.md-editor), div.note:focus-within :global(.md-editor) { border: 0; border-radius: 0; background: none; min-height: 0; }
   .note :global(.cm-content) { font-size: var(--p-fs-m); padding: 4px 0; }
-  .adds { margin-bottom: 18px; }
+  .stbar { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; padding: 3px; border-radius: 12px; background: var(--col-bg); scroll-behavior: smooth; }
+  .stbar::-webkit-scrollbar { display: none; }
+  .stbar button { flex: 1 0 auto; min-width: 72px; padding: 8px 12px; border: 0; border-radius: 9px; background: none; cursor: pointer; white-space: nowrap;
+    font: inherit; font-size: var(--p-fs-s); font-weight: 600; color: var(--muted); transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
+  .stbar button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .vals .p-k > span { display: flex; align-items: center; gap: 6px; }
+  .vals .p-k.late, .vals .p-k.today { font-weight: 600; }
+  .vals .p-k.late { color: var(--overdue-ink); }
+  .vals .p-k.today { color: var(--due-soon-ink); }
+  .vals .p-k.empty, .vals .add { color: var(--faint); }
+  .vals .add { color: var(--accent); font-weight: 600; }
+  .vals .add .p-ico { color: var(--accent); }
+  .vals .tags { flex-direction: row; flex-wrap: wrap; gap: 6px; align-items: center; }
   .count { text-align: right; font-size: var(--p-fs-xs); color: var(--faint); margin-top: -8px; }
 </style>
