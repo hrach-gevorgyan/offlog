@@ -8,7 +8,6 @@
   import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
   import NotificationSettings from '../../settings/NotificationSettings.svelte';
   import DataSettings from '../../settings/DataSettings.svelte';
-  import SecuritySettings from '../../settings/SecuritySettings.svelte';
   import AdvancedSettings from '../../settings/AdvancedSettings.svelte';
   import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from '../../settings/helpers';
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt, getAutoBackupUsage } from '../../autoBackup';
@@ -31,6 +30,7 @@
   import TopBar from '../TopBar.svelte';
   import Sheet from '../Sheet.svelte';
   import Pick from '../task/Pick.svelte';
+  import LockPage from './LockPage.svelte';
   import { back, stack } from '../nav';
   import { get } from 'svelte/store';
   import { closeOnBack, closeAll } from '../../modalStack';
@@ -124,6 +124,12 @@
       setTimeout(() => { if (!destroyed && newRecoveryCode && get(stack).at(-1) === ownScreen) guardRecovery(); }, 0);
     });
   }
+  let armRecovery = false;
+  function onPinFormClosed() {
+    if (!armRecovery) return;
+    armRecovery = false;
+    if (!destroyed && get(stack).at(-1) === ownScreen) guardRecovery();
+  }
   function finishRecovery() {
     recoveryDone = true;
     if (recoveryClose) recoveryClose(); else newRecoveryCode = null;
@@ -196,7 +202,10 @@
       appLockEnabled = true;
       showPinForm = false;
       syncPrivacyScreen();
-      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; recoveryCopied = false; guardRecovery(); }
+      // The PIN sheet is closing through Back right now; the code's own Back
+      // guard is armed once that has landed (onPinFormClosed), or the two
+      // history steps cross.
+      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; recoveryCopied = false; armRecovery = true; }
     } catch {
       pinError = 'Could not save PIN. Please try again.';
     } finally {
@@ -515,8 +524,8 @@
       {importStatus} {handleImport} {importBusy}
     />
   {:else if page === 'security'}
-    <SecuritySettings phone
-      {appLockEnabled} bind:showPinForm {openPinForm}
+    <LockPage
+      {appLockEnabled} bind:showPinForm {openPinForm} {onPinFormClosed}
       bind:newPin bind:confirmPin bind:pinHint {pinError} {pinSaving} {savePin}
       bind:pinGateMode {onPinGateVerified}
       bind:lockTimeoutStr {onLockTimeoutChange}

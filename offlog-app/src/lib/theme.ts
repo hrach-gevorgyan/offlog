@@ -85,7 +85,9 @@ export interface StripTint { fill?: string; lightIcons: boolean }
 interface Claim { tint: StripTint | null }
 const claims: Claim[] = [];
 const hero: Claim = { tint: null };
-let applied = 'off', onHero = false, suppressed = false;
+// '' rather than 'off': the first sync must always reach the native API, or a
+// cold start that stays 'off' (locked) keeps the splash's light icons.
+let applied = '', onHero = false, suppressed = false;
 export function setStatusBarOnHero(on: boolean): void {
   if (!claims.includes(hero)) { if (!on) return; claims.push(hero); }
   hero.tint = on ? { lightIcons: true } : null;
@@ -103,6 +105,10 @@ export function claimStatusBar(tint: StripTint | null): { set(t: StripTint | nul
 // While something opaque covers the app (the lock screen), the hero tint
 // would leave light icons on a light strip.
 export function setStatusBarSuppressed(on: boolean): void { suppressed = on; syncHero(); }
+// Android's launch splash resets the status icons as it hands over, at a
+// moment the WebView can't observe; re-sending the current style after it
+// (and on every return to the foreground) puts them back.
+export function refreshStatusBar(): void { applied = ''; syncHero(); }
 // Older Android WebViews (before Chrome 140) report no top inset, so the
 // strip is 0px tall and the status area keeps the system's light colour;
 // switching to light icons there would make the clock vanish. Only tint when

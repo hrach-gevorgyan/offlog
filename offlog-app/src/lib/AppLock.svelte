@@ -22,6 +22,8 @@
 
   let pin = '';
   let error = false;
+  // Stays until the next keystroke; the shake alone is easy to miss.
+  let wrong = false;
   let wrongCount = 0;
   let cooldown = false;
   let inputEl: HTMLInputElement;
@@ -69,6 +71,7 @@
       return;
     }
     error = true;
+    wrong = true;
     wrongCount++;
     pin = '';
     // A light throttle, not real rate-limiting: this gates a UI, not a
@@ -90,6 +93,7 @@
   function onPinInput(e: Event) {
     // Digits only — a PIN, not a general password field.
     pin = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 8);
+    wrong = false;
   }
 
   // The "Forgot PIN" path must require the one-time recovery code shown
@@ -173,6 +177,8 @@
 
       {#if cooldown}
         <div class="lock-hint lock-hint-error">Too many attempts — try again in a few seconds</div>
+      {:else if wrong}
+        <div class="lock-hint lock-hint-error" role="alert">That isn't your PIN.</div>
       {/if}
 
       <button class="lock-submit" on:click={submit} disabled={!pin || cooldown}>Unlock</button>

@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
   storedUrl: 'http://old.local:5984/offlog',
   storedCreds: { user: 'olduser', pass: 'oldpass' },
   tauri: false,
+  lockOn: false,
   invokeTauri: vi.fn(),
   syncState: { status: 'idle', lastSynced: null, error: null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
 }));
@@ -33,7 +34,7 @@ vi.mock('../src/config', async () => {
     getNotificationsEnabled: () => true, setNotificationsEnabled: vi.fn(),
     getAutoUpdateCheckEnabled: () => true, setAutoUpdateCheckEnabled: vi.fn(),
     isTauri: () => m.tauri, invokeTauri: (...a: unknown[]) => m.invokeTauri(...a),
-    isAppLockEnabled: () => false, setAppLockPin: (...a: unknown[]) => setAppLockPin(...a), clearAppLockPin: vi.fn(),
+    isAppLockEnabled: () => m.lockOn, verifyAppLockPin: async (p: string) => p === '2580', setAppLockPin: (...a: unknown[]) => setAppLockPin(...a), clearAppLockPin: vi.fn(),
     getAppLockTimeoutMinutes: () => 5, setAppLockTimeoutMinutes: vi.fn(),
     getAppLockHint: () => '', isNativePlatform: () => false,
     isAppLockBiometricEnabled: () => false, setAppLockBiometricEnabled: vi.fn(),
@@ -185,6 +186,36 @@ describe('phone settings pages', () => {
     await waitFor(() => expect(get(nav.stack)).toHaveLength(1));
   });
 
+  describe('App lock is on', () => {
+    beforeEach(() => { m.lockOn = true; });
+    afterEach(() => { m.lockOn = false; });
+
+    it('Lock again after opens a sheet, and picking a time saves it', async () => {
+      const { getByText, findByText } = render(SettingsPage, { page: 'security' });
+      await fireEvent.click(getByText('Lock again after'));
+      await fireEvent.click(await findByText('15 minutes'));
+      expect(cfg.setAppLockTimeoutMinutes).toHaveBeenCalledWith(15);
+    });
+
+    it('Turn off asks for the current PIN; a wrong one says so and keeps the lock', async () => {
+      const { getByText, getByLabelText, findByText } = render(SettingsPage, { page: 'security' });
+      await fireEvent.click(getByText('Turn off PIN lock'));
+      await fireEvent.input(getByLabelText('Current PIN'), { target: { value: '1111' } });
+      await fireEvent.click(getByText('Turn off'));
+      expect(await findByText("That isn't your PIN.")).toBeTruthy();
+      expect(cfg.clearAppLockPin).not.toHaveBeenCalled();
+    });
+
+    it('Turn off with the right PIN clears the lock', async () => {
+      const { getByText, getByLabelText, findByText } = render(SettingsPage, { page: 'security' });
+      await fireEvent.click(getByText('Turn off PIN lock'));
+      await fireEvent.input(getByLabelText('Current PIN'), { target: { value: '2580' } });
+      await fireEvent.click(getByText('Turn off'));
+      await waitFor(() => expect(cfg.clearAppLockPin).toHaveBeenCalled());
+      expect(await findByText('Set a PIN')).toBeTruthy();
+    });
+  });
+
   it('App lock: a jump away while the recovery code is up leaves no history layer behind', async () => {
     setAppLockPin.mockResolvedValue({ recoveryCode: 'WXYZ-0000-9999' });
     nav.push({ k: 'set', page: 'security' });
@@ -195,7 +226,7 @@ describe('phone settings pages', () => {
     await fireEvent.input(again, { target: { value: '1234' } });
     await fireEvent.click(getByText('Save PIN'));
     await waitFor(() => getByText('WXYZ-0000-9999'));
-    expect(get(openLayers)).toBe(2);
+    await waitFor(() => expect(get(openLayers)).toBe(2));
     // The page is still mounted (as during its exit animation) when the guard's
     // deferred re-arm runs.
     nav.navigate('agenda');

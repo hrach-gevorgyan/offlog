@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, cleanup } from '@testing-library/svelte';
+import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 
 // AppLock's entire contract lives in config.ts — mocked so these tests
 // pin the *component's* security behavior (throttle, digit filter,
@@ -57,6 +57,17 @@ describe('AppLock PIN entry (A32)', () => {
 
     expect(unlocked).not.toHaveBeenCalled();
     expect(input.value).toBe('');
+  });
+
+  it('a wrong PIN says so until the next keystroke', async () => {
+    verifyAppLockPin.mockResolvedValue(false);
+    const { getByLabelText, getByText, queryByRole } = renderLock();
+    const input = getByLabelText('PIN') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: '9999' } });
+    await fireEvent.click(getByText('Unlock'));
+    await waitFor(() => expect(queryByRole('alert')?.textContent).toBe("That isn't your PIN."));
+    await fireEvent.input(input, { target: { value: '1' } });
+    expect(queryByRole('alert')).toBeNull();
   });
 
   it('strips non-digits and caps the PIN at 8 characters', async () => {

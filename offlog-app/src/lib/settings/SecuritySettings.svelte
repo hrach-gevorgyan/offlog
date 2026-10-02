@@ -34,8 +34,6 @@
   export let openBiometricEnrollment: () => void;
   export let privacyScreenEnabled: boolean;
   export let togglePrivacyScreen: () => void;
-  // The phone page keeps each caveat to a line.
-  export let phone = false;
 
   // Matches ConfirmPinGate's own onPinInput -- that re-auth field already
   // strips non-digits live; this, the primary entry form for the same PIN
@@ -55,11 +53,7 @@
 
               <div class="setting-group">
                 <div class="setting-section-title">PIN lock</div>
-                {#if phone}
-                  <p class="setting-hint">Asks for a PIN when Offlog opens. Not encryption — use your phone's lock too.</p>
-                {:else}
-                  <p class="setting-hint">Require a PIN to open Offlog. This is a screen lock, not encryption — it keeps a passer-by from casually opening the app, not a substitute for your device's own lock.</p>
-                {/if}
+                <p class="setting-hint">Require a PIN to open Offlog. This is a screen lock, not encryption — it keeps a passer-by from casually opening the app, not a substitute for your device's own lock.</p>
 
                 {#if !appLockEnabled}
                   {#if !showPinForm}
@@ -131,7 +125,7 @@
                     Lock after this much idle/background time
                     <CustomSelect options={LOCK_TIMEOUT_OPTIONS} bind:value={lockTimeoutStr} on:change={(e) => onLockTimeoutChange(e.detail)} />
                   </label>
-                  {#if !phone}<p class="setting-hint">Also locks whenever Offlog is closed and reopened, regardless of this setting.</p>{/if}
+                  <p class="setting-hint">Also locks whenever Offlog is closed and reopened, regardless of this setting.</p>
                 </div>
               {/if}
 
@@ -144,11 +138,7 @@
                       <span class="toggle-knob"></span>
                     </button>
                   </div>
-                  {#if phone}
-                    <p class="setting-hint">Your PIN still works too.</p>
-                  {:else}
-                    <p class="setting-hint">A faster path on top of your PIN, not a replacement — the PIN still works, and is still the only way to change or recover the lock.</p>
-                  {/if}
+                  <p class="setting-hint">A faster path on top of your PIN, not a replacement — the PIN still works, and is still the only way to change or recover the lock.</p>
                   {#if biometricError}<p class="setting-hint setting-hint-error">{biometricError}</p>{/if}
                   {#if biometricNoneEnrolled}
                     <button class="export-btn" on:click={openBiometricEnrollment}>Open enrollment settings</button>
@@ -163,11 +153,7 @@
                       <span class="toggle-knob"></span>
                     </button>
                   </div>
-                  {#if phone}
-                    <p class="setting-hint">Hides tasks in recent apps. Also blocks screenshots.</p>
-                  {:else}
-                    <p class="setting-hint">Extra privacy, beyond the PIN lock: when on, nobody can see your tasks in the recent-apps switcher or in a screenshot — Android blocks both at the same time, there's no way to have one without the other. Off by default since blocking screenshots is a real tradeoff (you can't screenshot your own tasks either), not just a cosmetic choice.</p>
-                  {/if}
+                  <p class="setting-hint">Extra privacy, beyond the PIN lock: when on, nobody can see your tasks in the recent-apps switcher or in a screenshot — Android blocks both at the same time, there's no way to have one without the other. Off by default since blocking screenshots is a real tradeoff (you can't screenshot your own tasks either), not just a cosmetic choice.</p>
                 </div>
               {/if}
 

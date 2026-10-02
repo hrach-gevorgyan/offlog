@@ -21,7 +21,7 @@
   import UpdateModal from './lib/UpdateModal.svelte';
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
   import { isPhone, actions as phoneActions, backAtRoot, switchTab, navigate, showToast, tab as phoneTab } from './lib/phone/nav';
-  import { setStatusBarSuppressed, setStatusBarOnHero } from './lib/theme';
+  import { setStatusBarSuppressed, setStatusBarOnHero, refreshStatusBar } from './lib/theme';
   import { fly } from 'svelte/transition';
   import { snackIn, snackOut } from './lib/motion';
   // On the phone errors drop in from the top, clear of the + button and
@@ -489,6 +489,7 @@
       hiddenAt = Date.now();
       if (idleTimer) clearTimeout(idleTimer);
     } else {
+      refreshStatusBar();
       if (hiddenAt !== null && isAppLockEnabled() && (Date.now() - hiddenAt) / 60000 >= getAppLockTimeoutMinutes()) {
         locked = true;
       }
@@ -509,10 +510,12 @@
     activityEvents.forEach(ev => window.addEventListener(ev, resetIdleTimer, { passive: true }));
     document.addEventListener('visibilitychange', onVisibilityChange);
     resetIdleTimer();
+    const settle = [400, 1500].map(ms => setTimeout(refreshStatusBar, ms));
     return () => {
       activityEvents.forEach(ev => window.removeEventListener(ev, resetIdleTimer));
       document.removeEventListener('visibilitychange', onVisibilityChange);
       if (idleTimer) clearTimeout(idleTimer);
+      settle.forEach(clearTimeout);
     };
   });
 
