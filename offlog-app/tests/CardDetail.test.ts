@@ -146,6 +146,16 @@ describe('CardDetail save logic (A9)', () => {
     expect(changes.title).toBe('Updated title');
   });
 
+  it('writes only what was edited here, so changes made meanwhile elsewhere survive', async () => {
+    const task = mkTask({ reminder_at: new Date(2030, 0, 1, 9, 0).toISOString(), column_id: 'col:idea' });
+    const { getByPlaceholderText, getByText } = render(CardDetail, { props: { task, project: mkProject() } });
+    await fireEvent.input(getByPlaceholderText('Task title') as HTMLTextAreaElement, { target: { value: 'Renamed' } });
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(1));
+    const [, changes] = updateTask.mock.calls[0];
+    expect(Object.keys(changes)).toEqual(['title']);
+  });
+
   it('reloads tasks after a successful save', async () => {
     const { getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
     await fireEvent.click(getByText('Save'));
@@ -154,7 +164,8 @@ describe('CardDetail save logic (A9)', () => {
 
   it('shows an error and keeps the card open if the save fails', async () => {
     updateTask.mockRejectedValueOnce(new Error('network down'));
-    const { getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+    const { getByText, getByPlaceholderText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+    await fireEvent.input(getByPlaceholderText('Task title') as HTMLTextAreaElement, { target: { value: 'Edited' } });
     await fireEvent.click(getByText('Save'));
     await waitFor(() => expect(showError).toHaveBeenCalledTimes(1));
     // Still mounted with its Save button -- a failed save (unlike a

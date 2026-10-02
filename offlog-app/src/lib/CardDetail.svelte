@@ -588,7 +588,7 @@
       ...await flushBlockedBy(),
     ];
     try {
-      await updateTask(task._id!, {
+      const edited: Partial<TaskDoc> = {
         title, body,
         priority: priority as 1 | 2 | 3,
         due_date: due_date || null,
@@ -597,7 +597,18 @@
         custom_values: customValues, checklist, recurrence,
         recurrenceInterval: recurrence ? recurrenceInterval : undefined,
         recurrenceWeekdaysOnly: recurrence === 'daily' ? recurrenceWeekdaysOnly : undefined,
-      });
+      };
+      // Only what was edited here: a field written back unchanged from the
+      // moment the card opened would undo a change made meanwhile (a
+      // notification's Done or Snooze, a cleared reminder, a synced edit).
+      const before: Partial<Record<keyof TaskDoc, unknown>> = task;
+      // The editor holds false / [] / {} where the doc may have nothing at all.
+      const blank = (v: unknown) => v == null || v === false || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v as object).length);
+      const same = (a: unknown, b: unknown) => (blank(a) && blank(b)) || JSON.stringify(a) === JSON.stringify(b);
+      const changes = Object.fromEntries(
+        Object.entries(edited).filter(([k, v]) => !same(v, before[k as keyof TaskDoc])),
+      ) as Partial<TaskDoc>;
+      if (Object.keys(changes).length) await updateTask(task._id!, changes);
     } catch (e) {
       errors.push('Failed to save the rest of the task. Please try again.');
     }
