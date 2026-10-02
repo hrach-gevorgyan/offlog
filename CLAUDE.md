@@ -5,8 +5,10 @@ telemetry. Everything works offline; the only network call is optional sync
 replication to a self-hosted NyxDB (or any CouchDB-protocol server).
 
 Svelte 5 + TypeScript + PouchDB, wrapped by Tauri (Windows) and Capacitor
-(Android). `offlog-desktop/` is a sibling project, not a subfolder — it wraps
-`offlog-app/dist` unmodified.
+(Android). `offlog-desktop/` sits beside `offlog-app/`, not inside it, and
+wraps `offlog-app/dist` unmodified. On phone-sized screens (never the Tauri
+window) `App.svelte` renders the phone shell in `src/lib/phone/` instead of
+the desktop views; both read the same `store.ts`.
 
 ## Docs
 
@@ -21,6 +23,8 @@ change not reflected in the doc it affects isn't finished.
 | [docs/motion.md](docs/motion.md) | adding or changing any animation, transition or hover state |
 | [docs/brand.md](docs/brand.md) | any public-facing copy; also forks, name/icon reuse, trademark questions |
 | [docs/security.md](docs/security.md) | touching crypto, credentials, permissions, CSP, or anything else with a security claim attached |
+| [docs/privacy.md](docs/privacy.md) | anything that changes what data leaves the device |
+| [docs/redesign/plan.md](docs/redesign/plan.md), [docs/redesign-minimal-lessons.md](docs/redesign-minimal-lessons.md) | any phone-shell (`src/lib/phone/`) screen or visual change |
 | [docs/changelog.md](docs/changelog.md), [docs/release-notes.md](docs/release-notes.md) | release time only |
 | [docs/maintenance.md](docs/maintenance.md) | running a maintenance pass |
 
@@ -61,8 +65,9 @@ UI components (.svelte) → store.ts → db.ts → PouchDB
 notifications.ts → db.ts   (one direction; db.ts must never import it)
 ```
 
-- `store.ts` is the only reactive state layer. Components hold no task lists
-  beyond derived/local view state.
+- `store.ts` is the only reactive layer for app data. Navigation/overlay
+  stores (`modalStack.ts`, `phone/nav.ts`) hold no task data. Components hold
+  no task lists beyond derived/local view state.
 - After a mutation from a component, call `reloadTasks()` — or rely on the
   live `subscribe()` feed if the write goes through sync.
 - Every task-mutating call site is wrapped in `try/catch` + `showError()`.
@@ -76,8 +81,9 @@ the *same instance* instead of recreating it. `closeOnBack()` only runs at
 setup, so the revived instance holds an already-spent `requestClose` and has
 no history entry: permanently stuck open, with a working-looking Escape and
 scrim that silently do nothing. Bump a counter per open and fold it in —
-`{#key task._id + ':' + openSession}`, as in `Sidebar.svelte` and
-`KanbanBoard.svelte`.
+`{#key detailTask._id + ':' + detailOpenSession}`, as in `KanbanBoard.svelte`;
+Sidebar's panels (`{#key settingsSession}`) and the phone's sheets key on a
+bare per-open counter.
 
 **Splitting a component's markup into children**: move the parent's CLASS
 rules to `:global()` under a parent-owned wrapper, but keep bare ELEMENT
@@ -137,8 +143,8 @@ tasks, so splitting them would be a cycle.
 component with real logic has a test file using `@testing-library/svelte`
 against mocked `db`/`store`/`config`: mock the module, render, `fireEvent`,
 assert the write's exact arguments. Purely presentational children
-(`settings/*`, `carddetail/*`, `PinStar`) are covered through their parents;
-`App.svelte` has none.
+(`settings/*`, `carddetail/*` except MarkdownEditor, `PinStar`) are covered
+through their parents; `App.svelte` and `phone/PhoneApp.svelte` have none.
 
 In order of how often they save you:
 
@@ -163,13 +169,19 @@ inside and import it back.
 ## Theming
 
 - **All colors are CSS custom properties** in `src/app.css` (`:root` light,
-  `body.dark` dark). Token table is in tech.md — the only copy.
+  `body.dark` dark). The colour token table is in tech.md, the only copy;
+  motion tokens are in motion.md.
 - **Never hardcode a hex/rgba in a component**; the one exception is
   pure-black shadows and scrims. Derived tints use
   `color-mix(in srgb, var(--token) X%, transparent)`.
 - A new semantic color gets a token in **both** blocks plus the tech.md table.
-- Brand color changes must also reach `index.html`'s `<meta theme-color>`,
-  `capacitor.config.ts`'s `iconColor`, and `android/.../values/colors.xml`.
+- Brand (accent/hero) colour changes must also reach `capacitor.config.ts`'s
+  `iconColor`, `android/.../res/values/colors.xml` + `values-night/colors.xml`
+  (`colorPrimary`, `colorAccent`, `splashBg` = `--hero-base`, the
+  `colorWidget*` set) and `resources/generate-icons.cjs`'s `BRAND` (then
+  regenerate the launcher icons). `<meta theme-color>` is not a brand colour:
+  it follows the background (`--statusbar-fill`), set in `index.html`,
+  `public/theme-init.js` and `theme.ts`; change all three together.
 
 ## Accessibility (build must stay warning-free)
 
@@ -182,10 +194,11 @@ inside and import it back.
   `:focus-visible` rule in app.css handles keyboard rings.
 - Every modal closes on Escape. Hover-only controls need a visible touch
   fallback.
-- Remaining `svelte-ignore` uses are load-bearing, in four categories:
+- Remaining `svelte-ignore` uses are load-bearing, in five categories:
   scrim click-to-close, intentional `a11y-autofocus` on inline editors,
-  drag-and-drop handlers on Kanban columns, and `role="option"` rows whose
-  key handling lives on the owning input.
+  pointer/touch drag handlers (Kanban columns and board, the sidebar resize
+  handle) and event-containment wrappers (`.card-menu`), and `role="option"`
+  rows whose key handling lives on the owning input.
 
 ## Android gotchas
 
@@ -205,7 +218,8 @@ inside and import it back.
   widget already on the home screen keeps stale PendingIntents until re-added
   or the device reboots.
 - **Prefer an official `@capacitor/*` plugin's own mechanism over a custom
-  native bridge event** when one exists (decisions.md, A25).
+  native bridge event** when one exists (decisions.md, "An official
+  `@capacitor/*` plugin's mechanism beats a custom native bridge event").
 
 ## Style
 
@@ -275,6 +289,8 @@ inside and import it back.
    in tech.md. Dev state accumulates silently otherwise.
 
 **Never push, build the APK, or commit palette/visual changes without the
-owner's explicit request.** The Android `release` build type currently points
-at AGP's public debug keystore so Studio's Run button works locally — a real
-key must be wired in before any Play Store packaging (roadmap C3).
+owner's explicit request.** The Android `release` build signs with the real
+key when `app/keystore.properties` is present (CI's `release.yml` writes it
+from repo secrets) and falls back to AGP's public debug keystore when it is
+absent, so Studio's Run button works locally. A release built without those
+secrets is debug-signed; check before any Play Store upload.

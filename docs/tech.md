@@ -15,7 +15,7 @@ aren't obvious from the code.
 [Performance & Reliability](#performance--reliability) ·
 [Testing & Dev Workflows](#testing--dev-workflows) ·
 [How Sync Works](#how-sync-works) · [Theme System](#theme-system) ·
-[Notifications](#notifications) · [Mobile (Android)](#mobile-android) ·
+[View Persistence](#view-persistence) · [Notifications](#notifications) · [Mobile (Android)](#mobile-android) ·
 [Desktop (Tauri)](#desktop-tauri)
 
 ---
@@ -28,7 +28,7 @@ aren't obvious from the code.
 | Build | **Vite 8** | |
 | Local database | **PouchDB 9** | IndexedDB in the browser; speaks the CouchDB replication protocol |
 | Sync server | Any **CouchDB-protocol** server (CouchDB, or **NyxDB**) | Self-hosted, optional. The app is fully usable without one |
-| Android | **Capacitor 7** | Wraps the same `dist/` in a WebView |
+| Android | **Capacitor 8** | Wraps the same `dist/` in a WebView |
 | Windows | **Tauri 2** (`offlog-desktop/`) | Wraps the same `dist/`, embeds a NyxDB sync host |
 | Notifications | `@capacitor/local-notifications` / Web Notification API | |
 | Biometrics | `capacitor-native-biometric` | Android only, opt-in alongside the PIN |
@@ -71,15 +71,15 @@ flowchart LR
   goes Home, and back at Home's root sends the app to the background
   (`CapApp.minimizeApp()`, never `exitApp()`, which would make the next open
   a cold start). With nothing open on Home, App.svelte hands Back to the
-  system (`toggleBackButtonHandler`, driven by `modalStack`'s `openLayers`)
-  so Android 16 plays its predictive-back preview; the manifest sets
+  system (`toggleBackButtonHandler`, driven by `modalStack`'s `openLayers`;
+  Android 13+ only, and never while App Lock is up) so Android plays its
+  predictive-back preview; the manifest sets
   `enableOnBackInvokedCallback`. The plugin flips that switch off the UI
   thread, which leaves Android's own callback on top: `scripts/patch-capacitor-app.js`
   (postinstall) wraps it in `runOnUiThread` until upstream does. The back
   handler also trusts `openLayers` over `canGoBack`: Chrome hides history
   entries pushed without a gesture (a sheet opened from the widget) from it. Re-tapping the current tab at its root scrolls it to the
-  top; the + steps aside on a long downward scroll (`fabScroll.ts`). The +
-  is a rounded square (20px corners). Late
+  top; the + steps aside on a long downward scroll (`fabScroll.ts`). Late
   has "All to today", which leaves repeating tasks alone (their due date is
   what the next repeat counts from).
   Week start and 12/24h follow the device locale (`Intl`) until chosen in
@@ -114,10 +114,17 @@ flowchart LR
   through the project list's `toggleDone`, so haptic, snackbar and Undo
   match; holding one opens the board's `CardMenuSheet` through
   `phone/TaskMenu.svelte`. A row drops its date pill when its section
-  already names that day. `searchAllTasks()` (shared with the desktop's
+  already names that day. The phone shell never runs in the Tauri window.
+  Widget deep links (`com.offlog.app://focus|quickadd|dashboard|agenda|project`)
+  arrive through `@capacitor/app` (`getLaunchUrl()` cold, `appUrlOpen` warm)
+  and route to `nav.navigate()`; a quick add is queued until the shell has
+  mounted. Focus holds three picks in the day's `focusLock.ts` commitment,
+  ranked by `phone/focus/rank.ts`, a copy of FocusView's scoring: change
+  both. Home applies `livingHero.ts`'s hue/lightness shift on mount and on
+  every return to the foreground. `searchAllTasks()` (shared with the desktop's
   GlobalSearch) returns open before done, title matches first, then by due
   date (undated last), then title.
-- **store.ts** — the only reactive state layer. Holds spaces, projects,
+- **store.ts** — the only reactive layer for app data. Holds spaces, projects,
   tasks and the active selection; reloads on any database change.
 - **db.ts** — all reads and writes, the changelog, the undo buffer, and
   sync control.
@@ -128,7 +135,8 @@ flowchart LR
 
 ## Source File Map
 
-Paths are relative to `offlog-app/`. Every source file is listed.
+Paths are relative to `offlog-app/`. Every source file is listed except the phone shell's
+per-screen sheets, which are grouped by folder.
 
 ```
 src/
@@ -168,6 +176,7 @@ src/
     logFormat.ts                Turns log: docs into plain English for TimeTravelView
     nlpParse.ts                 parseQuickAdd() — local regex parsing, no network
     haptics.ts                  Single gate for every haptic call (Android only)
+    demoSeed.ts                 Demo workspace for `npm run build:demo`; compiled out of normal builds
 
     Sidebar.svelte              Spaces, projects, sync indicator, bottom icon row
     DashboardView.svelte        Home: project cards, pinned/overdue panels, daily brief
@@ -221,9 +230,29 @@ src/
     AppLock.svelte              PIN lock screen; Escape must not dismiss it
     ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
     PinStar.svelte              The shared pin star icon
+
+    phone/                      The phone shell (PHONE_QUERY, never Tauri)
+      PhoneApp.svelte             Tabs, screen stacks, nav bar, +, snackbar, keyboard handling
+      nav.ts                      Tab/stack stores, push/back, navigate(), actions, memo()
+      Sheet.svelte                Bottom sheet (closeOnBack consumer: mount behind {#key})
+      phone.css                   Shared phone styles and --p-* tokens, scoped to .phone-shell/.psheet
+      Home / TaskListScreen / ProjectScreen / StatusesScreen / TaskScreen /
+      AgendaScreen / FocusScreen / SearchScreen / QuickAddSheet / NewProjectSheet .svelte
+                                  One file per screen or top-level sheet
+      TaskCard / TaskMenu / TopBar / Empty .svelte   Shared rows, menus, bars, empty states
+      livingHero.ts               Season/evening shift of --hero (--hero-dh, --hero-dl)
+      fabScroll.ts                Hides the + on a long downward scroll
+      rowMotion.ts                collapseOut/collapseIn for finished rows
+      mark.ts / icons.ts / format.ts  Logo paths, icon set, greeting and labels
+      agenda/month.ts             Month grid maths
+      focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)
+      project/                    Board, list, bulk/filter/card/project menu sheets, actions, filter.ts
+      quickadd/                   Quick add panels; memory.ts keeps the last keyboard height
+      settings/                   Settings pages (reuse settings/*), Trash, History, Archived, organize/
+      task/                       Task-screen sheets and Steps; when.ts formats dates
 ```
 
-**Two CSS rules worth knowing**, both learned from real regressions:
+**Two CSS rules worth knowing:**
 
 - `CardDetail.svelte` and `SettingsPanel.svelte` own their children's
   **class** rules as `:global()` under a parent wrapper, because the markup
@@ -244,8 +273,8 @@ One PouchDB database, `offlog`. The `_id` prefix is the document type.
 | `space:` | SpaceDoc | `name`, `color`, `icon`, `position` |
 | `project:` | ProjectDoc | `space_id`, `name`, `columns[]`, `default_view`, `archived` |
 | `task:` | TaskDoc | `project_id`, `column_id`, `title`, `body`, `priority`, `due_date`, `tags`, `deleted`, `archived` |
-| `log:` | LogDoc | `ref`, `action`, `diffs`, `ts` |
-| `meta:` | Custom field definitions | `fields[]` |
+| `log:` | LogDoc | `ts`, `source`, `source_id`, `ref`, `action`, then `field`/`from`/`to` or `diffs` |
+| `meta:` | Custom field definitions (one doc, `meta:custom_fields`) | `fields[]` |
 | `tag:` | Tag colour override | `tag`, `color` |
 
 ### Rules
@@ -258,17 +287,17 @@ One PouchDB database, `offlog`. The `_id` prefix is the document type.
 - **Archive.** `archived: true` hides a task from normal views; restorable.
   Archiving a *project* cascades onto its open tasks and marks each
   `archivedWithProject: true`, so un-archiving restores exactly those and
-  leaves any the user archived individually alone. Without that flag the two
-  are indistinguishable, and un-archiving used to restore nothing — the
-  project came back empty. Tasks hidden by a cascade from before the flag
-  existed cannot be identified and stay archived.
+  leaves any the user archived individually alone. Tasks hidden by a cascade
+  from before the flag existed cannot be identified and stay archived.
 - **Ordering** uses fractional positions, so inserting between two tasks
   never renumbers the rest.
-- **Priority** is `1` low, `2` medium, `3` high — shown as a left border.
+- **Priority** is `1` low, `2` medium, `3` high. The desktop shows it as a
+  left border; the phone tints the finish ring for medium and high only, with
+  a screen-reader label.
 - **Pinned** always sorts to the top.
 - **"Status" vs "Column".** Users see "Status". The stored field is
   `column_id` — a frozen legacy name.
-- **Source** records which device made a write, for the changelog.
+- **Source** is the device name that made a write, for the changelog.
 
 ### Fields with behaviour attached
 
@@ -321,7 +350,7 @@ try/catch with `showError()` — an audited invariant.
 **Integrity check.** `checkIntegrity()` reports nine issue types: orphaned
 projects and tasks, tasks pointing at a status that no longer exists,
 projects with no statuses, unresolved sync conflicts, values left behind by
-a deleted custom field (`removeCustomFieldDef()` sweeps them itself now, so
+a deleted custom field (`removeCustomFieldDef()` sweeps them itself, so
 this catches only ones synced in from a device running an older build), `related`/`blocked_by` ids pointing at tasks that
 were hard-pruned, active tasks inside an archived project, and
 `attachments[]` metadata that disagrees with PouchDB's own `_attachments`.
@@ -329,7 +358,7 @@ were hard-pruned, active tasks inside an archived project, and
 `repairDatabase()` fixes all but two, which are left for a person:
 the no-statuses case, and **conflicts**. Conflicts are never auto-resolved --
 keeping whichever revision PouchDB calls the winner is arbitrary, not "most
-recent", so repairing them silently discarded one device's edit.
+recent", so auto-repair would silently discard one device's edit.
 `scanConflicts()` already auto-settles the only safe case (a pristine default
 against a real edit), so anything still standing is a genuine disagreement;
 Settings -> Sync -> Resolve conflicts is where it gets decided. It accepts the issue list a caller already computed —
@@ -337,7 +366,7 @@ Settings -> Sync -> Resolve conflicts is where it gets decided. It accepts the i
 two or three times. Repair rewrites documents and drops conflicting
 revisions with no undo, so it asks first: `MaintOptions.confirmRepair` is a
 callback (db/ must never import UI) that SettingsPanel fulfils with
-`confirmAction()`. Declining leaves the data untouched and reports the
+`confirmAction()` and the phone's `PrefsPage` with its own confirm. Declining leaves the data untouched and reports the
 issues as needing review.
 
 It scans by id prefix (`space:`/`project:`/`task:`/`tag:`) rather than the
@@ -383,9 +412,11 @@ of attachments took 55 ms end to end.
 
 | Export | Used by |
 |---|---|
-| `dueLabel` / `dueLabelLong` / `dueRelative` | List, Dashboard, Agenda |
-| `dueState` / `dueInk` | ListView |
-| `filterTasks` | ListView, Kanban |
+| `dueLabel` | Kanban, List |
+| `dueLabelLong` | Dashboard, Agenda |
+| `dueRelative` | Agenda |
+| `dueInk` | ListView |
+| `filterTasks` | ListView, Kanban, `phone/project/filter.ts` |
 | `localDateStr` and friends | everywhere a calendar day matters |
 
 All date-only logic goes through `localDateStr()`. Never use
@@ -406,8 +437,8 @@ two databases), `backupRestore.test.ts` (export → wipe → restore), and
 `localStorage` (Node's own global shadows jsdom's), `Element.animate`,
 `matchMedia`, and `scrollIntoView`.
 
-`npm run bench` (`tests/perf.bench.ts`) is a separate Vitest benchmark over
-the three hot read paths. It is not a CI gate — `perfGuard.test.ts` is, since
+`npm run bench` (`tests/perf.bench.ts`, `tests/scale.bench.ts`) is a separate
+Vitest benchmark over the hot read paths. It is not a CI gate — `perfGuard.test.ts` is, since
 round-trip counts are stable across machines and wall-clock times are not.
 
 ### CI (`.github/workflows/`)
@@ -423,18 +454,20 @@ round-trip counts are stable across machines and wall-clock times are not.
   build. Scoped to `android/**`, `capacitor.config.ts` and
   `package-lock.json`, since nothing else can change its result. Compiles
   with `compileDebugJavaWithJavac` rather than `assembleDebug` — CodeQL
-  needs javac traces, not dexing or packaging — and caches Gradle, which
-  is also the cache `release.yml`'s tag build restores.
+  needs javac traces, not dexing or packaging — and caches Gradle
+  dependencies, which `release.yml`'s tag build also restores.
   `gradle.properties` enables `org.gradle.parallel` and
-  `org.gradle.caching` for the same reason: the Capacitor plugin modules
-  are independent, and compiling them serially and from scratch was most
-  of this job's Gradle time. The JDK must be
+  `org.gradle.caching` for release builds; this job compiles with
+  `--no-build-cache`, because a cached compile never runs javac and CodeQL
+  then sees no source. The JDK must be
   installed *before* CodeQL init or the extractor sees no source.
   `node_modules` is excluded via `codeql-config.yml`.
-- **`release.yml`** — on a `vX.Y.Z` tag: builds the signed Android APK and
-  the Windows installer, attaches both to a draft Release.
+- **`release.yml`** — on a `vX.Y.Z` tag: builds the Android APK (signed with
+  the real key when the signing secrets are set, else the debug key) and the
+  Windows installer, attaches both to a draft Release.
 
-All workflows cancel superseded in-flight runs for the same ref.
+Every workflow except `release.yml` cancels superseded in-flight runs for
+the same ref.
 
 ### Windows distribution
 
@@ -504,7 +537,7 @@ Do this after any real test round; dev state accumulates silently.
 - **Desktop**: `scripts/reset-dev-env.ps1`. `-IncludeRelease` also wipes the
   *installed* app's data — only when confirmed disposable.
 - **Web**: `new PouchDB('offlog').destroy().then(() => localStorage.clear())`,
-  then reload. Clearing PouchDB alone leaves `SEEDED_KEY` set and produces a
+  then reload. Clearing PouchDB alone leaves `offlog_seeded` set and produces a
   zero-spaces state that no real install ever has.
 - **Android**: `adb shell pm clear com.offlog.app.debug`, or reinstall.
 - **Automatic backups** live outside PouchDB and survive a `destroy()`.
@@ -564,8 +597,10 @@ Settings.
 ## Theme System
 
 All colours are CSS custom properties in `app.css` — `:root` for light,
-`body.dark` for dark. Nothing else hardcodes a colour, including Android's
-native theming. Derived tints use
+`body.dark` for dark. Outside `app.css`, colours are hand-kept copies only
+where CSS can't reach: Android `values/colors.xml` / `values-night/colors.xml`,
+`theme-color` in `index.html`, `public/theme-init.js` and `theme.ts`, and
+`constants.ts`'s `PRIORITY_COLOR`. Each mirrors a token and must move with it. Derived tints use
 `color-mix(in srgb, var(--accent) X%, transparent)`.
 
 | Token | Light | Dark | Role |
@@ -573,32 +608,31 @@ native theming. Derived tints use
 | `--bg` | `#F6F7F9` | `#181A20` | page background |
 | `--surface` | `#FFFFFF` | `#242934` | cards, panels |
 | `--sidebar-bg` | `#FBFBFC` | `#101218` | sidebar (follows theme) |
-| `--statusbar-fill` | `#f6f7f9` | `#181a20` | Android status-bar strip. Holds `--bg`'s value per theme; `theme.ts` flips the native icon style and the browser `theme-color` to match |
+| `--statusbar-fill` | `#f6f7f9` | `#181a20` | Android status-bar strip. `--bg` at rest; `body.statusbar-hero` makes it `--hero`, and `body.statusbar-band` makes it the claiming screen's `--statusbar-band` (deepened 62% into `--bg` in dark). Claims go through `theme.ts` (`setStatusBarOnHero`, `claimStatusBar`; latest live claim wins), applied after the native icon style lands |
 | `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
 | `--border` | `#E2E4EA` | `#2F3542` | hairlines |
 | `--border-strong` | `#C7CBD6` | `#3F4657` | stronger dividers, scrollbar |
 | `--state-hover` | `8%` | `8%` | hover tint alpha; `16%` in both high-contrast blocks |
 | `--state-press` | `12%` | `12%` | pressed tint alpha; `22%` in high contrast |
-| `--hover` | derived | derived | `color-mix(--text, --state-hover, transparent)` — a tint of the element's own ink, not an absolute colour. It was `#ECEEF2`, byte-identical to `--col-bg`, so hover on a Kanban column was invisible in light mode |
+| `--hover` | derived | derived | `color-mix(--text, --state-hover, transparent)` — a tint of the element's own ink, so it is visible on any ground, including `--col-bg` |
 | `--press` | derived | derived | same, at `--state-press` |
 | `--hover-on-surface` | derived | derived | opaque form, for a control with a solid `--surface` rest fill |
 | `--hover-on-col` | derived | derived | opaque form, for a solid `--col-bg` rest fill |
 | `--text` | `#1F2937` | `#F3F4F6` | primary ink |
 | `--muted` | `#4B5563` | `#A3A9B7` | secondary ink |
-| `--faint` | `#6B7280` | `#8B93A5` | tertiary ink, placeholders |
+| `--faint` | `#5F6674` | `#8B93A5` | tertiary ink, placeholders |
 | `--accent` | `#575FCA` | `#8590E5` | indigo — buttons, active states |
 | `--accent-ink` | `#4C54BD` | `#9AA3EE` | accent text on an accent tint (selected pills, "Today"), 4.5:1 where plain accent falls short |
 | `--check-ring` | `--faint` 75% | `--faint` 75% | unticked check circle/box border, 3:1 against cards (declared on `body`) |
 | `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
 | `--hero-base` / `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent. `--hero` is the base shifted by `--hero-dh` / `--hero-dl` on `<html>` (season and evening, `phone/livingHero.ts`) where relative colour is supported |
-| `--amber` | `#C98A2B` | `#EFC365` | decoration only (phone Settings icon tiles); never carries meaning |
+| `--amber` | `#C98A2B` | `#EFC365` | decoration only (phone Settings icon tiles); never carries meaning and is not a brand colour |
 | `--on-hero` | `#FFFFFF` | `#EFF0FC` | ink and the muted mark on `--hero` |
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
 | `--danger` | `#BD4138` | `#E77F7C` | destructive actions |
 | `--success` | `#5ABE73` | `#74D791` | done, sync ok |
 | `--due-soon-bg` / `--due-soon-ink` | `#FAF3D4` / `#884826` | `#372F1A` / `#EFC365` | due today/tomorrow chips |
 | `--overdue-bg` / `--overdue-ink` | `#F8E4E4` / `#AB3730` | `#351A21` / `#EA7F8C` | late chips and counts |
-
 | `--toggle-knob` | `#FFFFFF` | `#FFFFFF` | fixed — track carries the theme swap |
 | `--inverse-surface` / `--on-inverse` / `--inverse-accent` | `#2B313D` / `#F3F4F6` / `#A9B0F0` | `#353B49` / `#F3F4F6` / `#A9B0F0` | phone snackbar and bulk-select bar; a raised grey in dark mode, never a near-white slab |
 
@@ -607,10 +641,19 @@ lightness, every text pair still AA). User-picked space and tag colours are
 stored as picked and muted at render time by `soften()` in `tagColors.ts`, so
 seed detection and tag-colour balancing still see the original hex. `soften()` uses CSS relative colour syntax (`oklch(from …)`, Chromium 119+); an older WebView drops the declaration and the dot or tint goes blank.
 
-Changing `--accent` also means updating Android's `colors.xml` and
-`capacitor.config.ts`'s `iconColor`. `index.html`'s `<meta theme-color>` is
-intentionally the dark background, not the accent — it colours the browser's
-chrome, not an app surface.
+`body.high-contrast` / `body.dark.high-contrast` also raise `--border`,
+`--border-strong`, `--text`, `--muted` and `--faint` (never the meaning
+colours). Phone-only type and shadow tokens (`--p-fs-*`, `--p-shadow`) live in
+`phone/phone.css`, scoped to `.phone-shell`/`.psheet`.
+
+Changing `--accent` or `--hero-base` also means updating `capacitor.config.ts`'s
+`iconColor`, Android's `values/colors.xml` + `values-night/colors.xml`
+(`colorPrimary`, `colorAccent`, `splashBg`, and the `colorWidget*` set, which
+mirror `--bg`/`--text`/`--muted`/`--accent`; `colorWidgetSurface` is a
+widget-only shade) and `resources/generate-icons.cjs`'s `BRAND`.
+`<meta theme-color>` is not an accent: it follows the theme background
+(`#f6f7f9` / `#181a20`), set pre-paint by `public/theme-init.js` and kept in
+step by `theme.ts`.
 
 Dark mode is applied before first paint by `public/theme-init.js`, so there
 is no flash of light.
@@ -622,9 +665,10 @@ descendant. Both read page-level tokens; neither inherits from the other.
 
 ## View Persistence
 
-The last view is saved to `offlog_view` in `localStorage` as
-`{ view, projectId }` and restored on load. Active space and project ids are
-saved separately so the sidebar highlights correctly.
+The last desktop view is saved to `offlog_view` in `sessionStorage` as
+`{ view, projectId, mode }` and restored on reload within the session.
+Active space and project ids are saved separately in `localStorage` so the
+sidebar highlights correctly. The phone shell always opens on Home.
 
 ---
 
@@ -646,7 +690,10 @@ cheaper than tracking every call site.
 
 **Android** hands scheduling to the OS (`AlarmManager`), so reminders fire
 with the app fully closed. Task ids are hashed to a 32-bit integer because
-the plugin requires numeric ids. Tapping a notification opens that task.
+the plugin requires numeric ids. Tapping a notification opens that task;
+its **Done** and **Snooze 1h** actions act on the task directly.
+Quiet hours (`applyQuietHours()`) push a reminder that would land inside
+them to their end, staggered, on both platforms.
 Needs `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and
 `RECEIVE_BOOT_COMPLETED`. Exact alarms are requested only while
 `exactAlarmState` is `granted`: the plugin's `schedule()` opens the system
@@ -661,7 +708,8 @@ changed.
 
 **Web** is best-effort: there is no push backend by design, so notifications
 use `setTimeout` while the tab is open, plus a catch-up on load that fires
-anything that came due in the last hour. Permission is requested lazily,
+anything that came due in the last 24 hours (`CATCH_UP_WINDOW_MS`); an
+older missed reminder is cleared from its task. Permission is requested lazily,
 never on load.
 
 ---
@@ -674,23 +722,27 @@ same UI.
 - **Touch drag on Kanban**: HTML5 drag events don't fire on touch, so Kanban
   uses `touchstart`/`touchmove`/`touchend` with `document.elementFromPoint`.
 - **Status bar**: targetSdk 36 forces edge-to-edge, and
-  `StatusBar.setBackgroundColor()` is a hard no-op above API 35. The app
+  `StatusBar.setBackgroundColor()` is a hard no-op from API 35. The app
   embraces it instead: content draws behind a transparent bar, and a
   `.status-bar-fill` strip of `env(safe-area-inset-top)` sits behind it.
   Needs `viewport-fit=cover`.
-  While the phone Home's hero is under the bar, `setStatusBarOnHero(true)`
-  (theme.ts) asks for light icons and sets `body.statusbar-hero` (strip =
-  `--hero`) once the native call resolves, so the strip never changes ahead
-  of the icons; scrolling the hero away or leaving Home turns it off. The
-  phone loading screen is `--hero` too, continuing the launch splash
-  (`splashBg` in android colors.xml). The strip sits below every modal
+  While the phone Home's hero is under the bar, Home holds a
+  `claimStatusBar({ lightIcons: true })` (theme.ts): light icons, and
+  `body.statusbar-hero` (strip = `--hero`) once the native call resolves, so
+  the strip never changes ahead of the icons; scrolling the hero away or
+  leaving Home clears it. `setStatusBarOnHero()` is only for the phone
+  loading screen, which is `--hero` too, continuing the launch splash
+  (`splashBg` in android colors.xml). `setStatusBarSuppressed(locked)` drops
+  every tint while App Lock covers the app, and `stripVisible()` skips the
+  tint when the strip is 0px tall (WebViews that report no top inset), where
+  light icons would vanish on the system's light bar. The strip sits below every modal
   scrim (z-index 299), so dialogs and sheets dim it with the page.
   A project screen's header sits on a band in its space's colour (Home's
   diagonal edge; dark mode mixes it 62% toward `--bg`; ink is light unless
   the colour's luminance is high) and tints the strip the same way through
   `claimStatusBar()`. Claims stack: the newest live one wins and releasing it
   hands the strip back, so a screen whose outro ends after the next screen
-  claimed cannot undo that claim. Home's hero is one such claim.
+  claimed cannot undo that claim.
 - **Phone shell and the keyboard**: the WebView resizes (`adjustResize`), so
   PhoneApp hides the navigation bar and + button while a text field is
   focused, the page is not pinch-zoomed, and the visual viewport is more than
@@ -727,7 +779,7 @@ same UI.
   keeps stale PendingIntents until it is removed and re-added, or the
   device reboots.
 - `enterkeyhint` on inputs; breakpoints at 900/768/600/440px; `source` is
-  `'mobile'`.
+  the device name.
 
 ```bash
 npm run build && npx cap sync android
@@ -738,7 +790,7 @@ npm run build && npx cap sync android
 
 ## Desktop (Tauri)
 
-`offlog-desktop/` is a sibling project, not a subfolder. Its
+`offlog-desktop/` sits beside `offlog-app/` in this repo. Its
 `frontendDist` points at `offlog-app/dist`, so it wraps the exact same build
 the browser and Android use. The only new code is Rust.
 
@@ -757,8 +809,8 @@ The PC advertises `_offlog._tcp` over mDNS carrying a uuid and pairing port
 single-endpoint HTTP server: the PC shows a 6-digit code, single-use, valid
 5 minutes; the phone posts a PBKDF2-derived proof of it (never the code
 itself) and gets the real credentials back AES-256-GCM-encrypted under a
-key derived the same way — see decisions.md's Security section for the
-full protocol and its honest limits. There are no fixed username/password
+key derived the same way — see [security.md §1](security.md#1-connecting-a-phone-to-your-pc-pairing)
+for the full protocol and its honest limits. There are no fixed username/password
 constants, because nothing could match a per-install random password.
 
 **Sync URL resolution is three-way**, which is easy to get wrong:
@@ -791,7 +843,7 @@ sync target uses a random port. Everything else is locked down:
 `form-action 'self'`.
 
 **Installer** (NSIS). `sidebarImage` is a brand-matched 24-bit BMP generated
-by `resources/generate-installer-art.cjs` — NSIS requires classic
+by `offlog-app/resources/generate-installer-art.cjs` — NSIS requires classic
 uncompressed 24-bit BMP specifically. There is deliberately **no
 `headerImage`**: NSIS fills the rest of that bar with plain white and MUI2
 offers no supported way to recolour it, so a dark header clashes instead of

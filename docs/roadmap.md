@@ -2,8 +2,7 @@
 
 **Open, needed and doable. Nothing else.**
 
-The finite plan this app was built to is complete, so there are only two
-kinds of open work left: what is ours to do, and what is waiting on someone
+There are only two kinds of open work: what is ours to do, and what is waiting on someone
 else. Those are the two sections below. There is no "later" bucket — a maybe
 is not work, and keeping one here only grows the file.
 
@@ -26,11 +25,14 @@ nothing in it stays that way until real use puts something there.
 
 - **C3, Play Store listing.** Signing key wired into CI, privacy policy
   done, listing assets ready. Waiting on Google's identity verification and
-  review. One thing to answer before assuming a smooth listing: do the app's
-  local-network sync calls attract extra review friction — Android's
-  local-network permission prompts, or general policy scrutiny?
+  review. Whether local-network sync draws extra review friction is an open
+  question in decisions.md. The phone listing screenshots show `main`'s
+  phone layout and need recapturing once the phone redesign merges.
 - **C5, landing page.** One plain GitHub Pages page. Not blocking anything.
 
 ## Ours to do
 
-Nothing.
+- **Phone redesign (`redesign/full`).** Phone-only shell in
+  `src/lib/phone/`; decisions and remaining items in
+  [redesign/plan.md](redesign/plan.md). Merge to `main` when the owner signs
+  off on the real build.

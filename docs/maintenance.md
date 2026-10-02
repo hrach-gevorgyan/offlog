@@ -4,25 +4,14 @@ A scheduled audit routine, tailored to this repo. **Not a feature
 session:** external behaviour must stay identical. Read this whole file
 before touching code.
 
-**Current pointer** — last pass: **26th run** (2026-08-29; pulled forward
-by the pointer's "or on the next bug hit in daily use" clause — the
-Settings/Sync `each_key_duplicate` crash that survived two earlier fix
-releases (v6.10.1, v6.10.2) before v6.10.3 found the real cause. Standard
-Phase 1 checklist, with the recurring-blind-spots sweep specifically
-aimed at that bug's class: unguarded async call sites and the "flag set
-after an await" race. Found and fixed (all `[REVIEW]`, approved): five
-more unguarded `onMount`/timer call sites in the same shape as the
-incident (`CardDetail.svelte`, `SettingsPanel.svelte`'s PC-pairing poll,
-`App.svelte`'s tray-event listener, `ListView.svelte`, `TimeTravelView.svelte`
-— the last of which also left `loading` stuck `true` on failure). No
-other instance of the discovery.ts-shaped race found. Zero `[RISKY]`
-findings. `dist` now 1.8MB against the v6.5.0 baseline of 1.2MB (+50%,
-attributable to real feature growth across five releases) — the main
-chunk crossing the 500kB bundler-warning threshold is still an open,
-unacted code-splitting recommendation carried from pass 25. Oversized-function
-split candidates noted in `db/maintenance.ts`/`db/entities.ts`, propose-only,
-no urgency). Next pass due: **2026-12-01, or on the next bug hit in daily
-use, whichever comes first.**
+**Current pointer** — last pass: **26th run** (2026-08-29, see
+[archive/maintenance.md](archive/maintenance.md)). Next pass due:
+**2026-12-01, or on the next bug hit in daily use, whichever comes first.**
+
+A pass is likely worth running before `redesign/full` merges to `main`:
+on that branch `dist` is 2.1MB (1.8MB at the 26th run), the main chunk is
+about 980kB, and the phone shell ships in the desktop bundle too
+(`App.svelte` imports `PhoneApp` statically). Not yet run.
 
 This pointer is the only tracker state in this file. Past passes are
 narrated in
@@ -34,9 +23,7 @@ three times.** The three cycles that closed active development were:
 (1) the standard Phase 1 checklist, (2) an adversarial
 data-loss/data-integrity audit, (3) a stability audit aimed at what
 degrades over weeks of continuous use rather than what breaks on a fresh
-install. Cycles 2 and 3 found materially more — including a backup system
-that could not restore any backup containing an attachment, and automatic
-backups silently stopping once the desktop app became tray-resident.
+install. Cycles 2 and 3 find materially more than the checklist alone.
 
 ---
 
@@ -57,8 +44,7 @@ backups silently stopping once the desktop app became tray-resident.
 
    All three must be `0`. **Vitest prints "N passed" and still exits 1** on
    an unhandled rejection — an unguarded `await` in `onMount`, a jsdom API
-   that doesn't exist. Grepping the pass count hides it; CI does not. This
-   has already put main red once while every test reported passing.
+   that doesn't exist. Grepping the pass count hides it; CI does not.
 
    There is no lint config; the zero-warning build is the lint gate.
 
@@ -151,8 +137,9 @@ don't grow this list with generic-audit filler.
     repointed at new code. Dependabot updates SHAs and the comment
     together.
   - **Token permissions** — every workflow declares least privilege.
-    Only `release.yml` should widen beyond `contents: read`, and it must
-    say why inline.
+    Only `release.yml` (release assets) and the two CodeQL workflows
+    (`security-events: write`, to upload results) widen beyond
+    `contents: read`, and each must say why inline.
   - **Dangerous workflows** — no `pull_request_target`, and nothing from
     `github.event.*` interpolated into a `run:` block (script injection).
   - **Binary artifacts** — nothing executable committed beyond Android's
@@ -238,8 +225,8 @@ owner-only.
 1. Re-run all Phase 0 gates **by exit code**, plus `cargo build` if
    anything under `offlog-desktop/` changed.
 2. Trace the core flows in code and confirm the logic is unchanged: create
-   task → edit in CardDetail → move across statuses → mark done
-   (positional last-column rule) → delete/undo. Add sync replication and
+   task → edit in CardDetail (desktop) and the phone's `TaskScreen` → move
+   across statuses → mark done (positional last-column rule) → delete/undo. Add sync replication and
    reminder scheduling if either was touched. If `offlog-desktop/` changed,
    also trace sidecar spawn → pairing code → `/pair` → credentials
    returned. A code-level trace is enough; this doesn't need a live device.
@@ -250,12 +237,12 @@ owner-only.
 
 1. Update docs/tech.md if structure changed, CLAUDE.md if a convention
    changed. Shrink stale content rather than only adding.
-2. **If the pass fixed anything**, ship it as a light release: bump the
-   version in `package.json`, `android/app/build.gradle` and
-   `tauri.conf.json`, add a `### Fixed` entry to docs/changelog.md
-   (Keep a Changelog format) and an entry to docs/release-notes.md
-   including its Play-safe **In short** block, then commit and tag per the
-   release checklist.
+2. **If the pass fixed anything**, ship it as a light PATCH release:
+   `npm run version:set X.Y.Z` (never edit the three version sources by
+   hand), add a `### Fixed` entry to docs/changelog.md (Keep a Changelog
+   format) and an entry to docs/release-notes.md including its Play-safe
+   **In short** block, run `npm run version:check`, then commit and tag per
+   the release checklist in CLAUDE.md.
    **If the pass found nothing to fix, skip the version bump entirely** —
    nothing changed, so there is nothing to ship.
 3. Update the **Current pointer** at the top of this file, then append the

@@ -1,6 +1,6 @@
 # Offlog — Privacy Policy
 
-*Last updated: 2026-08-24*
+*Last updated: 2026-10-02*
 
 This page exists to satisfy app-store requirements (Google Play, and
 Windows/desktop distribution channels that ask for one) with something
@@ -32,15 +32,19 @@ stored, and the limits of each — see
 - **Sync between your own devices** (e.g. phone and PC) is optional and
   off by default. When enabled, it works by connecting directly to a
   sync server that *you* run yourself — either the Windows desktop app
-  (which has one built in) or your own self-hosted server. Connections
-  happen only over your own local network (Wi-Fi), device-to-device.
-  No Offlog-operated server exists, is involved, or ever sees your
+  (which has one built in) or your own self-hosted server, at the address
+  you give it. With the desktop app that is your own local network
+  (Wi-Fi). No Offlog-operated server exists, is involved, or ever sees your
   data — there is nothing for the developer to collect even if they
   wanted to.
-- **Local backups** (an optional feature) are written only to your
-  device's own private app storage, never uploaded anywhere.
+- **Local backups** (on by default; can be turned off) are written only
+  to your device's own private app storage, never uploaded anywhere.
 - **Notification content** (reminders you set) is scheduled and shown
   entirely on-device using your OS's own notification system.
+- **Update checks** (Windows desktop app only, on by default, can be
+  turned off in Settings) ask GitHub, where releases are published,
+  whether a newer version exists. Like any web request, that request
+  reaches GitHub with your IP address; it carries none of your data.
 
 ## What Offlog does *not* do
 
@@ -54,15 +58,20 @@ stored, and the limits of each — see
 
 ## Permissions the app requests, and why
 
-- **Local network access** (Android/desktop): used only to discover and
-  connect to your own sync server on your own Wi-Fi network. Never used
-  to contact any address outside your local network.
-- **Notifications**: used only to show reminders you've set for your
-  own tasks.
-- **Storage/filesystem access** (where applicable): used only to read
-  and write the app's own local database and backup files, and for
-  features you explicitly use (e.g. exporting your data to a file you
-  choose).
+On Android:
+
+- **Internet and local network access** (internet, Wi-Fi state, network
+  state, multicast): used only to discover and connect to the sync
+  server you set up.
+- **Notifications, exact alarms, restart after reboot, wake lock**: used
+  only to show reminders you've set for your own tasks on time.
+- **Biometrics / fingerprint**: only for the optional fingerprint unlock
+  of App Lock.
+- **Vibration**: haptic feedback.
+
+Offlog requests no storage permission. It reads and writes only its own
+private app storage; exporting a file goes through the system's share
+sheet or save dialog, where you choose the destination.
 
 No permission is ever used to collect data for the developer — every
 one exists solely to make a feature you use work on your own device.

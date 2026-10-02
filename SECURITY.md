@@ -3,10 +3,9 @@
 Offlog is a single-maintainer, local-first personal project (see
 [docs/decisions.md](docs/decisions.md) for the full context) — there's
 no dedicated security team, but real vulnerabilities are taken
-seriously and fixed promptly. The project is actively maintained:
-security review is one of the few things that still gets regular
-attention now that the feature roadmap is complete (see
-[docs/roadmap.md](docs/roadmap.md)).
+seriously and fixed promptly. The project is actively maintained, with
+security review as part of a recurring maintenance pass (see
+[docs/maintenance.md](docs/maintenance.md)).
 
 ## Supported versions
 
@@ -79,9 +78,11 @@ For clarity on where the bar actually is:
 
 - **The stored sync password is encrypted at rest** on both real
   platforms — Windows DPAPI (tied to the Windows user account) and
-  Android's Keystore via `capacitor-native-biometric`. The plain web
-  build keeps it in `localStorage`, which is why that build is out of
-  scope above. (Shipped in v5.8.1 as ROADMAP item C8.)
+  Android's Keystore via `capacitor-native-biometric` (which uses a fixed
+  GCM IV; see docs/security.md §2). The plain web build keeps it in
+  `localStorage`, which is why that build is out of scope above. The
+  desktop's built-in sync server keeps its own admin password in plain
+  text in `sync-host.json`, in the app's data folder.
 - **Pairing** uses a single-use, 5-minute, 8-attempt-lockout 6-digit
   code, with uniform failure responses and **zero credentials in the
   mDNS TXT record** — nothing sensitive goes over the air before a

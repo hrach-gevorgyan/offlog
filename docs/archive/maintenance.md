@@ -9,6 +9,31 @@ pass 22 and maintenance.md's scoping note.
 
 ---
 
+## 26th run — 2026-08-29
+
+Pulled forward by the pointer's "or on the next bug hit in daily use"
+clause — the Settings/Sync `each_key_duplicate` crash that survived two
+earlier fix releases (v6.10.1, v6.10.2) before v6.10.3 found the real
+cause. Standard Phase 1 checklist, with the recurring-blind-spots sweep
+aimed at that bug's class: unguarded async call sites and the "flag set
+after an await" race. Found and fixed (all `[REVIEW]`, approved): five
+more unguarded `onMount`/timer call sites in the same shape as the
+incident (`CardDetail.svelte`, `SettingsPanel.svelte`'s PC-pairing poll,
+`App.svelte`'s tray-event listener, `ListView.svelte`, `TimeTravelView.svelte`
+— the last of which also left `loading` stuck `true` on failure). No
+other instance of the discovery.ts-shaped race found. Zero `[RISKY]`
+findings. `dist` 1.8MB against the v6.5.0 baseline of 1.2MB (+50%,
+attributable to real feature growth across five releases); the main chunk
+over the 500kB bundler-warning threshold is still an open code-splitting
+recommendation carried from pass 25. Oversized-function split candidates
+noted in `db/maintenance.ts`/`db/entities.ts`, propose-only, no urgency.
+
+Cycles 2 and 3 of the close-out found, among others, a backup system that
+could not restore any backup containing an attachment, and automatic
+backups silently stopping once the desktop app became tray-resident.
+
+---
+
 ## 25th run — 2026-08-28
 
 Standard Phase 1 checklist only. `[SAFE]` fixes: dead exports, a

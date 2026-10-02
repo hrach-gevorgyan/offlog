@@ -46,7 +46,7 @@ competent, not the one performing enthusiasm.** Concretely, in a
   Confidence here means *not needing* to compare, not overstating.
 - **Honest, not polished-over.** Limitations (unsigned installers, no
   iOS, LAN-only sync) are stated plainly with the real reason, the same
-  way README's "Getting the apps" section already does — never buried
+  way README's "Install" section already does — never buried
   in a FAQ's fine print or omitted.
 
 **Personality words to reach for:** plain, direct, calm, honest,
@@ -72,12 +72,13 @@ Per decisions.md's manifesto: **"not competing, just likable."**
   selling point it is**, not a caveat or apology tacked onto the end
   of a sentence.
 - **Honest about limitations, stated plainly with the real reason.**
-  README's "Getting the apps" section (unsigned-installer warnings) is
-  the model to match everywhere else.
+  README's "Install" section (unsigned-installer warnings) is the model
+  to match everywhere else.
 - **Short sentences over long ones.** If a sentence needs a semicolon
   to hold two ideas, it's probably two sentences.
 - Every public string goes through the same plain-language bar as
-  in-app copy — see decisions.md's C10 entries for the standard.
+  in-app copy — see the C10 plain-language pass in
+  [archive/history.md](archive/history.md).
 
 ### Voice in practice — before/after
 
@@ -85,7 +86,7 @@ Per decisions.md's manifesto: **"not competing, just likable."**
 |---|---|---|
 | Landing page hero | "Supercharge your productivity with seamless cross-device sync!" | "Your tasks. Your devices. Nobody else's." |
 | Store listing | "The all-in-one task manager that finally does it all." | "A task manager with no account, no cloud, no subscription." |
-| Feature callout | "Powerful Kanban boards unlock your team's full potential." | "Kanban, List, Table, and Agenda views — pick whichever fits how you think." |
+| Feature callout | "Powerful Kanban boards unlock your team's full potential." | "Kanban, List and Agenda views — pick whichever fits how you think." |
 | Error/limitation copy | *(omitted or buried in FAQ)* | "Your OS will warn you before installing — this is expected, not a red flag. Here's why: [reason]." |
 | Social post | "🚀 Big news! Offlog is revolutionizing task management!" | "Offlog is public now — a free task manager that syncs phone-to-PC over your own Wi-Fi, no account needed." |
 
@@ -112,13 +113,21 @@ copy that implies enterprise/team-admin capability Offlog doesn't have
 
 | | Light | Dark |
 |---|---|---|
-| Accent | `#5457E0` | `#818CF8` |
+| Accent | `#575FCA` | `#8590E5` |
 
 Every other colour — background, surface, text, danger, success — lives
 in [tech.md](tech.md)'s Theme System table, which is the single source
-of truth. Don't copy those values here; the accent alone already has to
-stay in step with `app.css`, Android's `colors.xml` and
-`capacitor.config.ts`.
+of truth. Don't copy those values here. The accent (and the phone hero's
+`--hero-base`, which shares the light value) has to stay in step across:
+`app.css`; `capacitor.config.ts`'s `iconColor`; Android's
+`values/colors.xml` and `values-night/colors.xml` (`colorPrimary`,
+`colorAccent`, `splashBg`, `colorWidgetAccent`); and
+`resources/generate-icons.cjs`'s `BRAND`. `BRAND` and the launcher icon
+PNGs generated from it still carry the previous indigo `#5457E0`;
+regenerating them is a visual change that needs the owner's go-ahead.
+
+`--amber` (phone Settings icon tiles) is in-app wayfinding decoration only,
+not a second brand colour; it never appears on public material.
 
 **Rules for any new public material** (landing page, store banner,
 social card):
@@ -139,7 +148,7 @@ goes stale the moment nobody remembers to update it. Use a real
 shields.io or GitHub endpoint instead.
 
 **Badge colour:** any badge whose colour is free (licence, tech-stack)
-uses the accent, `?color=5457E0`. Badges whose colour belongs to the
+uses the accent. README's badges still use the previous `?color=5457E0`. Badges whose colour belongs to the
 service or a recognisable logo — GitHub's CI status, Svelte's orange —
 are left alone; overriding those looks broken, not on-brand.
 
@@ -156,15 +165,16 @@ default font or a second "display" typeface for headlines.
   (not Title Case, not ALL CAPS) — matches in-app heading style.
 - **Body copy:** Hanken Grotesk, regular weight.
 - **No second typeface, ever**, including for code/mono contexts — the
-  in-app `--mono` token also just points at Hanken Grotesk (a second,
-  monospace face was tried and reverted — it read as inconsistent, and
-  the same applies to any public material).
+  in-app `--mono` token also just points at Hanken Grotesk, and the same
+  applies to any public material.
 
 ### Icon & mark
 
-- **Source files:** `offlog-app/public/icon-512.png` (web/Android
-  master) and `offlog-desktop/src-tauri/icons/` (desktop, all platform
-  sizes already exported: 32/64/128/128@2x, `.ico`, `.icns`).
+- **Master:** `offlog-app/resources/source-logo.svg`.
+  `resources/generate-icons.cjs` exports the Android launcher and
+  notification icons and `public/icon-512.png` from it;
+  `offlog-desktop/src-tauri/icons/` holds the desktop sizes
+  (32/64/128/128@2x, `.ico`, `.icns`).
 - **No separate wordmark/logotype exists yet.** The icon is the only
   mark. For a header lockup (landing page nav, social profile), pair
   the icon at a fixed height with "Offlog" set in Hanken Grotesk
@@ -177,6 +187,9 @@ default font or a second "display" typeface for headlines.
 - **Minimum size:** don't render below 24px on screen (32px preferred)
   — the mark isn't legible smaller than that, per its existing smallest
   exported size (32x32.png).
+- **In-app**, the mark may be drawn in a single theme ink (the phone Home's
+  watermark in `--on-hero`, empty screens' logo line); that is the app
+  using its own mark, not a recolour for public material.
 - **Don't:** recolor the icon, add a drop shadow/glow/outline to it,
   place it on a background color that isn't one of §6's approved
   background tokens, or stretch/skew its aspect ratio.
@@ -213,8 +226,9 @@ public-facing surface:
 
 ## 8. Naming conventions (for future features)
 
-Feature names so far are plain, functional nouns — Kanban, List,
-Table, Agenda, Focus, Quick Add, Time Travel, Recycle. **Time Travel**
+Feature names so far are plain, functional nouns — Kanban (the phone
+calls it Board), List, Agenda, Focus, Quick Add, Time Travel (History on
+the phone), Recycle (Recycle bin on the phone), and the Android "Quick actions" widget. **Time Travel**
 is the one departure into a slightly playful name (for the changelog/
 history view) and works because it's immediately self-explanatory even
 before reading a description. Guidance for anything new: plain

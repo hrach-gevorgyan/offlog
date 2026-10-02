@@ -1,6 +1,6 @@
 # Offlog — What Protects Your Data
 
-*Last updated: 2026-08-29*
+*Last updated: 2026-10-02*
 
 This page explains, in plain language, everything Offlog actually does to
 keep your data safe — and, just as importantly, the things it
@@ -22,7 +22,8 @@ probably the most important part of this document.
 ## The short version
 
 Offlog has no accounts, no servers of ours, and no analytics. Your tasks
-live on your own devices, and sync goes phone-to-PC over your own Wi-Fi.
+live on your own devices, and sync, if you turn it on, goes to a server you
+run: normally the Offlog PC app, over your own Wi-Fi.
 That design removes most of the ways an app leaks data — there's no
 database of ours to breach, because there is no database of ours.
 
@@ -82,13 +83,11 @@ password instantly" to "spend real effort" — it is not a substitute for
 TLS against a determined, resourced attacker. This is a handshake
 between two devices you own on your own Wi-Fi, and it's built for that.
 
-**One more safeguard, added 2026-08-29.** The phone and the PC implement
-this crypto separately — one in TypeScript, one in Rust. If a library
-update quietly changed the output on one side, pairing would break for
-everyone, and every existing test would still have passed, because each
-side was only ever checked against itself. There is now a test on each
-side pinned to the same known-good values, so a drift like that fails
-loudly instead of shipping.
+**One more safeguard.** The phone and the PC implement this crypto
+separately — one in TypeScript, one in Rust. A test on each side is pinned
+to the same known-good values, so a library update that quietly changed
+the output on one side fails loudly instead of breaking pairing for
+everyone.
 
 ---
 
@@ -102,12 +101,24 @@ the operating system's real mechanism rather than something invented:
   your Windows user account. Copy the file to another PC or another
   Windows account and it's unreadable. There's no prompt and no master
   password to remember — Windows handles it.
-- **Android:** stored in the **Android Keystore** (AES/GCM), configured
-  so it's only available after the device has been unlocked at least
-  once since boot. No fingerprint prompt at sync time.
+- **Android:** encrypted with AES/GCM under a key held in the **Android
+  Keystore** (the key can't be exported), via the `capacitor-native-biometric`
+  plugin, and usable only while the device is unlocked. No fingerprint
+  prompt at sync time. **A known weakness:** the plugin uses a fixed IV
+  (nonce) for every encryption, and it encrypts both the username and the
+  password under the same key. GCM must never reuse a nonce: because the
+  username is the known word `offlog`, anyone who can already read the
+  app's private storage (a rooted phone, a forensic copy) can recover the
+  first six of the password's 24 characters without the key. The rest stays
+  protected. Fixing it needs a different storage plugin or an upstream fix.
 - **Plain web browser:** `localStorage`, unencrypted. See the
   limitations section — this build is a development and testing surface,
   not how the app is meant to be used.
+- **The PC's own copy is plain text.** The desktop app's built-in sync
+  server keeps its admin password in `sync-host.json` in the app's data
+  folder, unencrypted. Anything running as your Windows user can read it.
+  The DPAPI protection above covers the password the app *uses to
+  connect*, not this server-side file.
 
 **Why not "encrypt it ourselves" in the browser too?** Because that
 would be theatre. Any code that can read the encrypted value can also
@@ -129,7 +140,8 @@ Two related details:
 ## 3. App Lock — the PIN on the app itself
 
 Optional. Off by default. Turn it on and Offlog asks for a PIN when you
-open it, and again after 5 minutes in the background.
+open it, and again after a time in the background that you choose (5
+minutes unless you change it).
 
 - **The PIN itself is never stored.** Only a salted SHA-256 hash, with a
   fresh random salt generated when you set it. Reading the phone's stored
@@ -185,17 +197,17 @@ usual next step is blocked at the platform level.
 | `font-src 'self'` | Fonts from anywhere but the app itself — see privacy, below. |
 | `frame-ancestors 'none'` | Other sites embedding the desktop app in a hidden frame (clickjacking). |
 
-Network connections are deliberately left open to local addresses,
-because the whole point is connecting to a sync server *you* chose, at
-an address only you know.
+Network connections are deliberately **not** restricted: `connect-src`
+allows any host on any port (`http://*:*`, plus `https://*:*` outside
+the desktop app), because a sync server *you* chose can be at any
+address and port. The policy limits what can run, not where the app may
+connect.
 
 Two implementation notes worth recording: the policy is applied only to
 real builds, because the development server needs looser rules to work
 at all; and `frame-ancestors` is only present on desktop, because the
 specification says browsers must ignore that particular rule unless it
-arrives as a real HTTP header — as a page tag it was silently doing
-nothing, so it was removed from there rather than left as a comforting
-line that had no effect.
+arrives as a real HTTP header, so as a page tag it would do nothing.
 
 ---
 
@@ -207,9 +219,9 @@ so it can highlight matches and show formatting — which is exactly the
 situation where hostile text becomes a hostile page.
 
 Every place that does this escapes the text **first**, then adds the
-formatting. There are eleven such places in the app. Eight render fixed
-built-in icons and never touch your text at all. The remaining three
-handle real text — two for search-result highlighting, one for the
+formatting. There are about a hundred such places in the app; almost all
+render fixed built-in icons and never touch your text at all. Exactly
+three handle real text — two for search-result highlighting, one for the
 release notes in the update dialog — and all three run everything
 through an escaping function before any markup is added. Escaping first
 and highlighting second is the part that matters; done the other way
@@ -222,9 +234,7 @@ it afterwards. Offlog doesn't: the editor styles the text *in place*,
 applying formatting as styling rules over ranges of characters rather
 than building HTML from what you typed. Your note text is never
 converted into markup, so there is no sanitiser to get wrong — the
-entire category of bug is absent rather than defended against. (The
-change was originally made so formatting appears as you type; removing
-the sink was a bonus.)
+entire category of bug is absent rather than defended against.
 
 **Example.** Name a task `<script>steal()</script>` on your phone and
 search for it on your PC. It shows up as that literal text, with your
@@ -237,8 +247,9 @@ two independent layers.
 ## 6. Links from outside the app
 
 Android widgets and shortcuts open the app with URLs like
-`com.offlog.app://focus`. That's an entry point anything on the phone
-can invoke, so it's treated as untrusted input:
+`com.offlog.app://focus`. The link is registered as BROWSABLE, so any
+app, and a web page in a browser, can invoke it; it's treated as
+untrusted input:
 
 - The URL is parsed with the standard parser inside a try/catch; a
   malformed one does nothing at all.
@@ -284,8 +295,9 @@ Verified in the code, not just claimed:
   Analytics, Amplitude, Crashlytics.
 - **No third-party network calls.** Searching the entire app for web
   addresses turns up **zero** external ones. The only two things Offlog
-  ever connects to are the sync server you configured and the GitHub
-  release feed for update checks on desktop.
+  ever connects to are the sync server you configured and, on desktop,
+  GitHub's release feed for update checks (on by default; can be turned
+  off in Settings).
 - **The font is bundled, not fetched.** One typeface, shipped inside the
   app. Loading it from a font CDN would tell that CDN your IP address
   every time you opened the app.
@@ -297,11 +309,13 @@ Verified in the code, not just claimed:
   quietly uploads app data to the user's Google account — which would
   undo the entire "nothing leaves your devices" premise without ever
   telling you.
-- **The app asks for 8 Android permissions**, and nothing else:
-  internet, four networking permissions needed to find your PC on the
-  Wi-Fi, notifications and exact alarms for reminders, and biometrics
-  for the optional App Lock. No location, camera, contacts, storage or
-  accounts.
+- **The installed Android app holds 11 permissions**, eight declared by
+  Offlog and three added by the plugins it uses: internet; three
+  networking permissions needed to find your PC on the Wi-Fi;
+  notifications, exact alarms, restart-after-reboot and a wake lock for
+  reminders; biometrics and the older fingerprint permission for the
+  optional App Lock; and vibration for haptics. No location, camera,
+  contacts, storage or accounts.
 
 ---
 
@@ -317,10 +331,10 @@ Verified in the code, not just claimed:
   recorded reasoning: whichever version the database "prefers" is
   arbitrary rather than newest, so auto-resolving would silently throw
   away one device's real work.
-- **Automatic local backups**, kept to the most recent few, written to
-  the app's private storage and never uploaded. Attachments are included
-  in full rather than as references — a backup missing its attachment
-  data fails to restore *entirely*, which was a real bug once.
+- **Automatic local backups**, on by default, at most daily, the newest
+  seven kept, written to the app's private storage and never uploaded.
+  Attachments are included in full rather than as references, because a
+  backup missing its attachment data fails to restore *entirely*.
 - **A built-in database check and repair** that looks for nine specific
   kinds of inconsistency. It only applies fixes that are well understood
   and safe; anything where the right answer is a judgement call is left
@@ -349,12 +363,11 @@ Verified in the code, not just claimed:
 - **Desktop updates are signature-checked** before installing. A
   tampered or corrupted download is rejected.
 - **Installs are per-user and never ask for administrator rights.**
-- **File access is narrowly scoped.** The desktop app's filesystem
-  permission covers exactly one folder — its own automatic-backups
-  directory — and nothing else. Files you export go through the system's
-  own Save dialog, where you choose the location. This was tightened on
-  2026-08-29 after auto-backups were found to be silently failing for
-  exactly this reason.
+- **File access is narrowly scoped.** The desktop app can write, list and
+  delete only inside its own automatic-backups folder. Tauri's default
+  file permission set also lets it read its own app-data folders, and
+  nothing else. Files you export go through the system's own Save dialog,
+  where you choose the location.
 - **Only two small pieces of memory-unsafe code exist** in the whole
   desktop app: the call that shuts down the sync server, and the two
   calls to Windows' encryption facility. Both are a handful of lines
@@ -372,24 +385,27 @@ from reaching you.
   full checksum, not a moving label. Labels can be repointed at new code
   by whoever controls them; a checksum can't.
 - **Each automation has the minimum permissions it needs** — almost all
-  of them read-only. The one that publishes releases is the sole
-  exception, and even inside it, the steps that only run tests are
-  narrowed back to read-only.
+  of them read-only. The exceptions are the one that publishes releases
+  (and even inside it, the steps that only run tests are narrowed back to
+  read-only) and the code scanners, which may upload their results.
+- **One install-time patch.** `npm install` runs
+  `scripts/patch-capacitor-app.js`, which edits one line of the
+  `@capacitor/app` plugin's Android source so Back reaches the app. It is
+  in this repo, idempotent, and touches nothing else.
 - **Nothing publishes without the tests passing on the exact released
   code.** The release process re-runs the version check, type check and
   full test suite against the tagged commit before it builds anything.
 - **Automatic code scanning** (CodeQL) runs over the TypeScript, the
-  Rust, *and* the automation files themselves, on every change and
-  weekly.
+  Rust, the Android Java/Kotlin, *and* the automation files themselves,
+  on every change and weekly.
 - **Dependency updates are batched monthly so they actually get read**,
   rather than arriving as a stream of notifications nobody reviews. But
   **security advisories bypass that schedule entirely** and open
   immediately.
-- **A recurring manual audit** with a written checklist, currently on its
-  26th run. Some checks exist because of specific past incidents — for
-  instance, it requires searching the *built output* for credentials,
-  not just the source code, because a source-only scan once missed real
-  credentials that had been compiled into a shipped app.
+- **A recurring manual audit** with a written checklist. Some checks
+  exist because of specific past incidents — for instance, it requires
+  searching the *built output* for credentials, not just the source code,
+  because a source-only scan can miss credentials compiled into a build.
 - **Widening a permission is treated as a finding**, even when a feature
   needed it, because permission lists grow quietly and nobody re-reads
   them.
@@ -427,7 +443,10 @@ situation.
   code itself, not the origin.
 - **The sync server is reachable from your whole local network** — it
   must be, for your phone to reach it — protected by that random
-  24-character password.
+  24-character password, which the PC itself stores in plain text
+  (section 2).
+- **The Android credential store uses a fixed IV** (section 2), a
+  weakness inherited from the plugin, not a choice Offlog made.
 - **Offlog has never had a third-party security audit.** It's a personal
   project maintained by one person. The measures above are real and
   deliberate, but they haven't been reviewed by an independent expert.

@@ -5,7 +5,8 @@ Every animation in this project comes from one of two places: a preset in
 `--dur-*`/`--ease-*` token in `src/app.css` (CSS `transition`, state changes on
 an element that stays mounted). There is no third place. A component-local
 `@keyframes` or a literal `220ms` in a rule is a bug — it escapes Reduce Motion
-and it drifts.
+and it drifts. Existing exceptions: the spinner (`spin`, in app.css and
+SettingsPanel), AppLock's `shake`, CardDetail's `check-pop`.
 
 The system is Material 3's easing and duration scale.
 https://m3.material.io/styles/motion/easing-and-duration
@@ -31,7 +32,7 @@ Do not animate:
   the Android native icon style and `<meta theme-color>`. Animating the one
   that can animate desynchronises all three.
 - **Decoration.** Motion on an element that changes on nearly every
-  interaction (the FAB, a filter chip) adds up to visual noise, not polish.
+  interaction (a filter chip, a count badge) adds up to visual noise, not polish.
   Frequency is an argument *against*, not for.
 
 When in doubt the default is no motion. An un-animated element is plain; a
@@ -49,7 +50,7 @@ badly-animated one is broken.
    `OUT()`; CSS gets it from the `--dur-*-out` tokens.
 3. **Duration scales with distance, at constant velocity.** A 560px panel at
    300ms moves 33% faster than a 420px panel at 300ms — that is the rule being
-   broken, not followed. `edgePanelIn` takes the panel's width for exactly
+   broken, not followed. `panelIn` takes the panel's width for exactly
    this reason.
 
 ## Tokens (`src/app.css`, `:root`)
@@ -67,6 +68,8 @@ badly-animated one is broken.
 | `--dur-small-out` / `--dur-medium-out` / `--dur-large-out` | `113ms` / `150ms` / `225ms` | the CSS mirror of `OUT()` — see *Asymmetry* below |
 
 `--dur` (`.26s`) and `--ease` are legacy aliases. Do not use them in new code.
+Remaining users: KanbanBoard `.card`, and SettingsPanel's height animation (a
+literal `.28s` set from JavaScript, which escapes Reduce Motion).
 
 A new duration or curve is almost never the answer. If nothing in the table
 fits, the element probably belongs to a family that already exists.
@@ -83,7 +86,8 @@ correction is needed. 200ms in / 150ms out, decelerate / accelerate, scale
 
 The scrim behind it: `scrimIn`/`scrimOut`, 200/150ms, `easeStandard` **both
 ways** — a dim is a change of state, not an arrival from somewhere. Its
-background is `var(--scrim)`, never a literal rgba.
+background is pure-black rgba (`.scrim` in app.css, `.45`; phone sheets
+`.38`), the one sanctioned literal colour.
 
 Every modal closes on Escape (accessibility rule, not a motion one), and every
 component calling `closeOnBack()` must be mounted behind a `{#key}` that
@@ -96,11 +100,12 @@ Time Travel, Trash, Spaces, Tags, Archived Projects, Custom Fields. All are
 `position: fixed; top:0; right:0; bottom:0; width: min(Npx, 100vw)` with a
 `-8px 0 32px` shadow, at `z-index: 402` above the shared `.scrim`'s 400.
 
-Use `edgePanelIn`/`edgePanelOut` and pass the panel's own width:
+Use `panelIn(w)`/`panelOut(w)` with `fly`, and `panelScrimIn(w)`/
+`panelScrimOut(w)` with `fade`, passing the panel's own width:
 
 ```svelte
-<div class="scrim" in:panelScrimIn={{ w: 560 }} out:panelScrimOut={{ w: 560 }} …>
-<div class="panel" use:trapFocus in:edgePanelIn={{ w: 560 }} out:edgePanelOut={{ w: 560 }}>
+<div class="scrim" in:fade={panelScrimIn(560)} out:fade={panelScrimOut(560)} …>
+<div class="panel" use:trapFocus in:fly={panelIn(560)} out:fly={panelOut(560)}>
 ```
 
 Two rules with teeth:
@@ -111,9 +116,8 @@ Two rules with teeth:
   `w`, so a stale value silently changes velocity. Each `.panel` rule carries a
   comment naming its markup argument; move one, move both.
 - **A panel never fades.** An opaque `--surface` slab cross-dissolving over a
-  scrim is a brightening flash, worst in light theme. `edgePanelIn` sets no
-  opacity at all. If you reach for `fly`, remember it defaults `opacity: 0`
-  when you omit the key.
+  scrim is a brightening flash, worst in light theme. `panelIn` passes
+  `opacity: 1`, because `fly` defaults `opacity: 0` when you omit the key.
 
 The scrim uses the panel's duration, not the generic 200/150. One arrival, one
 departure — a scrim that finishes 100ms early visibly detaches from the surface
@@ -131,12 +135,11 @@ position. Used by `CustomSelect`, `CalendarPicker`, `FilterBar`, `CardDetail`,
 `KanbanBoard`, `SpaceManager`.
 
 ### Toasts and transient feedback
-`toastIn`/`toastOut` rise 12px into place, 200/150ms; they are centred with
+`toastIn`/`toastOut` rise 12px in and drop 8px out, 200/150ms; they are centred with
 `left:50%; transform: translateX(-50%)`, so the offset is baked into each frame
 like the dialogs. `quickAddIn`/`quickAddOut` are the same shape with 24px of
-travel at 300ms, for the bottom-docked Quick Add bar. `bannerIn`/`bannerOut`
-are the left-docked update banner — **do not reuse `toastIn` there**, it bakes
-in a centring translate the banner does not have.
+travel at 300ms, for the bottom-docked Quick Add bar. `searchIn`/`searchOut`
+are GlobalSearch's: centred horizontally only, scale 0.94→1, 200/150ms.
 
 The phone snackbar and bottom sheets are covered under *Phone* below.
 
@@ -196,15 +199,15 @@ row per family; a new phone animation joins one of these or does not exist.
 
 Home's logo mark sits inside the band (clipped by its diagonal) and enters
 once per app launch (a module flag in Home.svelte; later Home mounts show it
-at rest) with `markIn` — a 1.1s decelerating drift and quarter-turn,
-the one deliberately long animation, decorative only. It then scrolls at a
-third less than the page.
+at rest) with `markIn` — a 1.2s decelerating rise from below-left with a 16°
+turn and a 0.84→1 scale, the one deliberately long animation, decorative only.
+It then scrolls at 0.6x the page.
 
 Home's top bar is **scroll-linked, not timed**: `--t` (0..1, smoothstepped
 across the hero's last 40px) mixes the bar from `--hero` to `--bg`, and two
 copies of the title crossfade so it never passes through grey. It follows the
 finger; stop halfway and it stays halfway. Under Reduce Motion the watermark
-scrolls 1:1 instead of at 0.65x.
+scrolls 1:1 instead of at 0.6x.
 
 The task screen's top bar is sticky and **state-switched, not scroll-linked**:
 an IntersectionObserver flips `.stuck` once the title field is under the bar,
@@ -216,8 +219,6 @@ a cut.
 ### List items appearing and disappearing
 `revealIn`/`revealOut` with `transition:slide` for a disclosure section opening
 in place (`slide` measures its own height, so the preset carries only timing).
-`revealXIn`/`revealXOut` — same durations, `axis: 'x'` — for a control leaving
-a flex row whose width would otherwise snap.
 
 Never spread a preset to vary one field: `{...revealIn, axis: 'x'}` evaluates
 the `duration` getter and copies the value, which is exactly the freeze the
@@ -255,10 +256,9 @@ Three things to check when you add one:
   it, and falls back to `all 0s`. It looks like a typo and behaves like a
   deleted rule.
 
-Touch has no hover. Any control that matters on Android needs `:active
-{ transform: scale(.96) }`, not just a hover tint — otherwise the app gives
-zero feedback until the result lands. Light theme's tints are the subtlest, so
-this shows up there first.
+Touch has no hover. On the phone shell every tappable gets `:active` feedback
+(`scale(.98)` on cards and tiles, a tint on rows and buttons, see *Phone*);
+otherwise the app gives zero feedback until the result lands.
 
 ### Drag and drop
 Suppress motion outright while a drag is live: `.card.dragging` and
@@ -286,11 +286,8 @@ Svelte does not play an intro transition on an element when the element's own
 component is the thing being created. A modal mounted by a parent's
 `{#if showThing}` therefore animates **nothing**, no matter how its preset is
 written. This is not a tuning problem and no duration or easing change will
-reveal it -- the transition simply never starts.
-
-Every modal, panel and dialog in this app was in that state: the presets were
-correct and inert. Only `.view-fade` in `App.svelte` worked, because its
-`{#if}` lives in the same component as the element.
+reveal it -- the transition simply never starts. `.view-fade` in `App.svelte`
+is unaffected because its `{#if}` lives in the same component as the element.
 
 The fix, in every conditionally-mounted component:
 
@@ -329,9 +326,7 @@ A static `transform` with zero animations means the transition is not running.
 through the Web Animations API (`element.animate()`), not a CSS `animation:`
 property, so that field reads `0s` on a transition that is running perfectly --
 the entry in `getAnimations()` is an `Animation`, not a `CSSAnimation`. Sample
-the transform, or read the timing off the animation object as above. Reading
-the CSS property instead once cost a long detour chasing a duration of zero
-that was never real.
+the transform, or read the timing off the animation object as above.
 
 **Exits are a separate problem**, with its own fix -- when the parent sets its
 flag false the component is destroyed immediately, so an internal `{#if}`
@@ -361,15 +356,16 @@ export const popIn = { y: 4, get duration() { return d(DUR.small); }, easing: ea
 Evaluating `d()` once at module load freezes Reduce Motion at whatever it was
 when the app started; toggling the setting then does nothing until a reload,
 and the accessibility feature is silently dead. Function-shaped transitions
-(`dialogIn`, `edgePanelIn`, …) are safe for the same reason — they call `d()`
+(`dialogIn`, `panelIn`, …) are safe for the same reason — they call `d()`
 when the transition starts. A spread of a preset is **not** safe: it reads the
 getter and copies the number.
 
 The CSS half is covered by tokens, not by `d()`: a
 `@media (prefers-reduced-motion: reduce)` block on `:root` handles the OS
-setting with no JavaScript at all, and `body.reduce-motion` (applied by
-`applyMotionPreference()` in `theme.ts`) handles the in-app override. Both
-zero every `--dur-*`. Because every animated rule already reads a token, this
+setting with no JavaScript at all, and `body.reduce-motion` handles the
+in-app override: `applyTheme()` in `theme.ts` toggles that class from
+`getReduceMotion()`, and `setReduceMotion()` calls it. Both zero every
+`--dur-*`. Because every animated rule already reads a token, this
 reaches all of them without touching a single rule.
 
 **A duration written as a literal escapes all of this.** That includes
@@ -452,11 +448,13 @@ fade the content out, change it while it is invisible, fade it back in,
 all inside the container's own transition:
 
 ```css
-.sidebar.swapping .primary-nav { animation: sidebar-swap var(--dur-medium) var(--ease-standard); }
-@keyframes sidebar-swap { 0% {opacity:1} 45% {opacity:0} 55% {opacity:0} 100% {opacity:1} }
+.sidebar-top, .primary-nav { transition: opacity var(--dur-small-out) var(--ease-standard); }
+.sidebar.swapping .primary-nav, .sidebar.swapping .tree-section { opacity: 0; }
 ```
 
-with the state flip scheduled at the start of that invisible window.
+with the state flip scheduled at the start of that invisible window. Use a
+transition, not `@keyframes`: the incoming content is a fresh node, and a
+keyframe restarts from its own 0% on it.
 
 Two rules go with it:
 
@@ -474,8 +472,7 @@ Two rules go with it:
 An overlay that dispatches `close` and lets its parent unmount it has no
 outro, however carefully the preset is written. The parent's `{#if}` goes
 false in the same tick, the node is gone, and there is nothing left to
-animate out. This is the mirror of the intro problem above, and it hid
-behind the same symptom: motion that "looks instant" for no visible reason.
+animate out. This is the mirror of the intro problem above.
 
 The overlay has to outlive its own close. It clears its intro flag —
 starting the outro — and delays only the dispatch that tells the parent:
@@ -517,6 +514,7 @@ const requestClose = closeOnBack(() => {
 7. If a parent unmounts it, it delays its own `close` dispatch by `exitMs`
    (§ *A parent's `{#if}` destroys the outro*).
 8. If you added an `out:`, fix the DOM-presence assertions in the same commit.
-9. New token → both `:root` and `body.dark` **plus** the table in `docs/tech.md`.
+9. New colour token → `:root`, `body.dark` and tech.md's table. New motion
+   token → `:root`, both Reduce Motion blocks in app.css, and the table above.
 10. `npm run build` warning-free, `npm run check`, `npm test` — judged by exit
    code. Then look at it, in both themes.

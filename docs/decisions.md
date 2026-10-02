@@ -39,7 +39,10 @@ detail for anything summarized here lives in git history.
 
 ## Open Questions
 
-None open.
+- **Does local-network sync attract extra Play review friction?** Android's
+  local-network permission prompts, or general policy scrutiny of an app that
+  talks to LAN addresses over cleartext HTTP. Answered only by the C3 review
+  itself (roadmap.md).
 
 Genuinely unresolved questions live here — shareable as-is for outside
 input, and distinct from both the decisions log below and roadmap.md's
@@ -65,9 +68,8 @@ exercises 400 tasks across 8 projects and asserts round-trip counts rather
 than wall-clock timings, so it catches the regressions that matter at a
 size daily use has not reached. Optimising further would be guessing.
 
-This lived in roadmap.md for several versions as an open item, which was
-wrong: it is not work, it is a condition. Re-measure and revisit only when
-one of these is true, never on a schedule:
+It is not work, it is a condition. Re-measure and revisit only when one of
+these is true, never on a schedule:
 
 - more than 400 active tasks, so `perfGuard.test.ts` stops representing
   reality
@@ -154,12 +156,6 @@ same dependency mesh was meant to remove — a smaller version of the problem
 rather than a fix for it. Revisit only if daily use makes "one specific PC
 is off" a recurring annoyance.
 
-**What the pass paid for.** Three real defects in single-host code, found
-while modelling mesh and fixed independently: a seed-clearing guard that
-treated "zero tasks" as "untouched" and deleted renamed spaces, a conflict
-scan that walked six months of `log:` docs on every sync settle, and an
-error message blaming the network while the user was on it.
-
 Do not reopen on the strength of a new Android API without first checking
 all four blockers above — they are independent, and closing one changes
 nothing.
@@ -179,7 +175,8 @@ reimplementation of CouchDB's replication protocol, by the same owner.
 layer is a drop-in (zero `offlog-app` code changes, full test suite
 passing including byte-for-byte conflict parity) and the size win is
 large — **installer 52.7MB → 4.98MB (~10.6x), installed footprint 164MB →
-20.4MB (~8.0x)**. Requires NyxDB ≥ v0.1.5: v0.1.4 fixed `_bulk_get`
+20.4MB (~8.0x)**, measured when NyxDB replaced CouchDB, before v6.5.0;
+maintenance.md tracks current sizes. Requires NyxDB ≥ v0.1.5: v0.1.4 fixed `_bulk_get`
 misreporting a tombstoned/losing-conflict revision as `"deleted"` for a
 live document (hit on every first-time device pairing, since both devices
 independently create the same fixed default-seed IDs before syncing), and
@@ -201,7 +198,7 @@ conflict *source* changes fundamentally.
 
 ### Conflict resolution stops at "show both clearly and let them pick"
 
-Settled by the first feature audit (roadmap.md), which walked the screen
+Settled by the first feature audit (v6.8.0, see changelog.md), which walked the screen
 with real two-device conflicts rather than reading the code.
 
 **What conflicts actually are here.** They need the *same document* changed
@@ -229,8 +226,8 @@ A screen someone meets twice a year has to be readable cold.
 - no three-way diff view. The ancestor does not exist locally — see the
   entry above
 - no automatic resolution beyond the pristine-defaults case. Keeping
-  PouchDB's winner is arbitrary rather than newest, and maintenance used to
-  do exactly that, silently discarding one device's edit
+  PouchDB's winner is arbitrary rather than newest, so it would silently
+  discard one device's edit
 
 One limit worth stating rather than solving: "newest" comes from each
 device's own clock. Timezones are handled — every timestamp is UTC — but a
@@ -241,7 +238,7 @@ it.
 
 ### Delete is soft for tasks and permanent for projects, on purpose
 
-Settled by the second feature audit (roadmap.md), which walked the whole
+Settled by the second feature audit (v6.8.0, see changelog.md), which walked the whole
 lifecycle — delete, undo toast, Recycle, delete forever, empty, and the
 automatic prune — rather than reading the four functions separately.
 
@@ -253,16 +250,16 @@ and its confirm says so — "and all its tasks? This can't be undone." Soft
 deletes on a project would mean a hidden tree of tasks belonging to
 something the user believes is gone.
 
-**Undo has two ranges and both are needed.** The toast covers the last
-three deletions for five seconds each, for the misclick. Recycle covers
+**Undo has two ranges and both are needed.** For the misclick: on desktop
+the toast covers the last three deletions for five seconds each; on the
+phone one Undo snackbar covers the latest action for six seconds. Recycle covers
 everything else, shows what project each task came from, and says
 "auto-removed after 3 months" on its own header — so the prune is not a
 surprise.
 
-**Restoring must land somewhere the user can see.** This was the audit's
-main finding: `removeColumn()` moves the tasks it can see, and one sitting
-in Recycle is not among them, so restoring put the task back on a status
-that no longer existed and nothing rendered it. Restore now lands it on the
+**Restoring must land somewhere the user can see.** `removeColumn()` moves
+the tasks it can see, and one sitting in Recycle is not among them, so a
+restore can point at a status that no longer exists. Restore lands it on the
 project's first status, and if its project has since been archived it comes
 back archived alongside it, so it reappears when the project does rather
 than sitting as an inconsistency until a maintenance run.
@@ -276,40 +273,31 @@ them would make the common case pay for the rare one.
 
 ### Attachments: stored simply, handed over per platform
 
-Settled by the third feature audit (roadmap.md), which attached, opened,
+Settled by the third feature audit (v6.8.0, see changelog.md), which attached, opened,
 removed and backed up real files rather than reading the code.
 
-**The one that mattered: files could not be opened on either shipping
-platform.** The opener handed a blob URL to an `<a download>`, which works
+**Opening a file is platform work.** A blob URL on an `<a download>` works
 in a browser and nowhere else — Capacitor's Android WebView has no download
-manager to receive it, and neither does Tauri's WebView2. The codebase
-already knew: `downloadBlob()` documents that exact gap for backup exports
-and works around it. The attachment opener never got the same treatment, so
-a file could be attached, synced and backed up on Android and Windows, and
-never opened again. It now writes to cache and offers the share sheet on
-Android, opens a save dialog on desktop, and keeps the blob download in a
-browser — written for binary, since `downloadBlob()`'s UTF-8 path would
-corrupt every image and PDF.
+manager to receive it, and neither does Tauri's WebView2. So the opener
+writes to cache and offers the share sheet on Android, opens a save dialog
+on desktop, and keeps the blob download in a browser — written for binary,
+since `downloadBlob()`'s UTF-8 path would corrupt every image and PDF.
 
-**Attachments, Related, and Blocked-by are now batched into Save, not
-immediate-write.** Previously each wrote to PouchDB the instant you picked a
-file or a link — deliberately, per their own code comments, because a
-Related/Blocked-by link can touch two docs. A later audit flagged the
-inconsistency this created: some fields on the card only persist on Save,
-others the instant you touch them, and Cancel/Escape only protects the
-first group. Fixed by buffering all three the same way, replaying the diff
-against the original loaded state as real link/unlink/attach/delete calls
-inside `save()` — the two-doc functions themselves are unchanged, just
-called later. A blocked-by cycle is now only caught at Save time (no live
-check while picking), surfaced alongside any other save error, with the
-invalid pick rolled back out of the list.
+**On desktop, Attachments, Related and Blocked-by are batched into Save.**
+Every field on the card then persists the same way, and Cancel/Escape
+protects all of them. The diff against the loaded state is replayed as real
+link/unlink/attach/delete calls inside `save()`. A blocked-by cycle is
+caught at Save time (no live check while picking), surfaced alongside any
+other save error, with the invalid pick rolled back out of the list. The
+phone's task screen saves every field as it changes, so there each of these
+writes at once.
 
 **Backups carry the bytes, and that is the expensive part.** Every backup is
 a full snapshot with attachments inlined as base64, and seven are kept — so
 the folder grows with file size, not task count: 5.7 MB of attachments
 measured at 6.2 MB per file and 43 MB across the seven. That storage sits
-outside IndexedDB, so the estimate Settings reads never counted it; the
-figure is now shown next to the database breakdown. Collecting the JSON is
+outside IndexedDB, so the estimate Settings reads does not count it; the
+figure is shown next to the database breakdown. Collecting the JSON is
 not a cost worth optimising — 762 docs with 5.7 MB of attachments took
 55 ms.
 
@@ -320,8 +308,8 @@ on the way in, so the caps bite on documents rather than photos.
 
 ### Recurrence advances one occurrence per completion, never by wall clock
 
-Settled by the fourth feature audit (roadmap.md), which found nothing to
-change — recorded because the audit nearly changed the wrong thing.
+Settled by the fourth feature audit (v6.8.0, see changelog.md), which found
+nothing to change.
 
 A recurring task missed for five weeks comes back still weeks overdue: one
 completion advances one occurrence, so catching up means ticking it once per
@@ -354,7 +342,7 @@ suspicion is not an improvement.
 
 ### What survives weeks of running, and how it is kept that way
 
-Settled by the fifth feature audit (roadmap.md), aimed at the class that
+Settled by the fifth feature audit (v6.8.0, see changelog.md), aimed at the class that
 breaks only after a while — nothing here shows on a fresh install.
 
 **The one real defect was in the task cache.** `fullReload()` read the change
@@ -364,13 +352,12 @@ read together, a write landing in between is counted by the sequence but
 missing from the rows, and the catch-up resumes past it. The cache then
 serves a stale copy of that task until something forces another full reload,
 which normally never happens — a wrong title or due date that simply sticks.
-Sync delivers writes at arbitrary moments, so it needs weeks and a second
-device, not a fresh install. The sequence is read first now; the worst case
-is replaying a change the rows already have.
+So the sequence is read first; the worst case is replaying a change the rows
+already have.
 
 **Anything periodic runs on a timer, never on app start.** The desktop app
 is tray-resident, so a session can last weeks and "next launch" may never
-come — the lesson auto-backup taught when it silently stopped. Retention
+come. Retention
 pruning and the backup all run hourly, each with its own "is it due" check.
 
 **Reminders past setTimeout's ~24.8-day ceiling are skipped and re-armed
@@ -455,7 +442,8 @@ just downloads and runs it."
 
 ### Distribution: GitHub, a website, and Google Play
 Source from GitHub, builds from a website, Android from Google Play.
-Nothing else is worth the process overhead for a project this size.
+Nothing else, F-Droid included, is worth the process overhead for a
+project this size.
 
 ### iOS: community contribution only, PWA is the zero-cost path
 A native iOS app needs a Mac, Xcode, and Apple's $99/year developer
@@ -477,9 +465,27 @@ The two views duplicated most of their code and differed only in
 interactions. Merged into one with **Table as the design baseline** (real
 data grid, plain colored text for due dates instead of pill badges, which
 kept clipping) and List's interactions layered on top. Don't reintroduce
-a separate Table view or bring back pill-style due badges. Focus (a
+a separate Table view or bring back pill-style due badges in the desktop
+grid; the phone's cards use date pills, which is a different layout. Focus (a
 separate view) is "what should I do right now," not a re-split of this
 merge.
+
+### The phone gets its own shell; the desktop keeps main's design
+A full redesign of both screens in a minimal direction was built and judged
+against `main`, and lost: `main`'s depth, colour and contrast were what made
+it look good ([redesign-minimal-lessons.md](redesign-minimal-lessons.md)).
+The real problem was the phone, where `main` read as a desktop site squeezed
+onto a small screen. So phone-sized screens get their own shell
+(`src/lib/phone/`: Android navigation, full-screen task screen, bottom
+sheets) in `main`'s visual identity, and the desktop layout stays as it is.
+Both read the same stores and `db.ts`; nothing in the data model differs.
+Every decision and the owner's verdicts are in
+[redesign/plan.md](redesign/plan.md). Owner decisions there that override
+an earlier rule: phone Settings has an Offlog header card and coloured icon
+tiles (reversing the prototype's "no coloured squares"); the + is a plain
+rounded square; the Home hero shifts slightly by season and evening. Rejected
+there and not to be re-proposed without new evidence: dotted row lines, and
+showing a task's facts under its title instead of form rows.
 
 ### Calendar sync (.ics), live-subscribe or one-shot export: declined
 A live-subscribe feed (OS calendar polls a local URL) doesn't work: the
@@ -580,10 +586,15 @@ app-level "encrypt with a key that's also in localStorage" scheme is
 security theater — the same access that reads localStorage reads the key.
 Each platform uses its own primitive instead:
 - **Android**: `capacitor-native-biometric`'s Keystore-backed credential
-  storage (AES/GCM, `unlockedDeviceRequired` — no prompt at sync time).
+  storage (AES/GCM with a non-exportable Keystore key, usable only while the
+  device is unlocked; no prompt at sync time). The plugin uses a fixed IV,
+  which is a real weakness of GCM, bounded here because the key never leaves
+  the Keystore and encrypts only this one credential. See security.md §2.
 - **Desktop**: the `windows` crate's DPAPI, tying ciphertext to the
   current Windows user account, transparent and useless if copied
-  elsewhere.
+  elsewhere. The embedded host's own admin password is a separate matter:
+  `sync-host.json` in the app-data folder stores it in plain text, readable
+  by anything running as that Windows user.
 - **Plain web**: left as `localStorage` — no browser-level secure storage
   exists, and this build is a dev/test surface, not primary use. An
   accepted, documented limitation.
@@ -599,16 +610,11 @@ reserved for a change where an older install can no longer read, sync or
 restore without a migration. A feature is never MAJOR, however large.
 MINOR is a user-visible capability; PATCH is a fix or maintenance work.
 
-This reverses how versions were assigned through v6.5.0, which produced
-six majors in about a month for releases that were all additive -- v4.0.0
-was due-date shortcuts and tag autocomplete. A number chosen by how
-significant a release felt tells a user nothing about upgrade risk, which
-is the only thing a version number is for.
+A number chosen by how significant a release felt tells a user nothing
+about upgrade risk, which is the only thing a version number is for.
+Versions through v6.5.0 were assigned that way.
 
-The same drift left 11 versions documented but never tagged, two-segment
-tags (`v2.4`), a `v2.4.1-fixes` tag, and a `versionCode` that had wandered
-to 117 against 108 tags. So the rules are enforced by
-`offlog-app/scripts/version.js`, not by memory: `version:set` writes all
+The rules are enforced by `offlog-app/scripts/version.js`, not by memory: `version:set` writes all
 three version sources at once, `version:check` fails if they disagree or
 if either doc lacks an entry, CI runs it on every push, and `release.yml`
 refuses to publish a tag that does not match.
@@ -639,10 +645,8 @@ WebView's `fetch()` can't accept a self-signed cert without a native
 plugin, and installing a trusted CA is worse UX than the status quo.
 
 ### Pairing handshake is encrypted, not just the code
-The 6-digit code and the sync credentials it unlocked used to cross the
-network as plain HTTP text — a passive listener on the same Wi-Fi could
-read the password straight off the wire. Both `pairing.rs` and
-`discovery.ts` now derive a challenge proof and a response key from the
+Pairing runs over plain HTTP, so the code and credentials must not cross it
+as text. Both `pairing.rs` and `discovery.ts` derive a challenge proof and a response key from the
 code via PBKDF2 + AES-GCM, so a capture requires offline-brute-forcing
 the 6-digit space instead of just reading it. Still bounded by that
 entropy against a resourced attacker — same honest framing as the PIN
@@ -669,9 +673,9 @@ never a real key (the real request path always randomizes). Dismissed as
 **"Used in tests."**
 
 ### Web/Android build gets a CSP; a few other small hardenings
-`index.html` had no Content-Security-Policy while `tauri.conf.json`
-already carried one for desktop — added via a build-only Vite plugin
-(dev server needs things a strict CSP would break). Also: trimmed
+`index.html`'s Content-Security-Policy (desktop's lives in
+`tauri.conf.json`) is added by a build-only Vite plugin, because the dev
+server needs things a strict CSP would break. Also: trimmed
 `file_paths.xml`'s unused `<external-path>` (mapped FileProvider to the
 whole external-storage root; nothing in the app writes there), and
 scoped `release.yml`'s `build-android` job to `contents: read` (it only
@@ -730,9 +734,10 @@ pace would end in abandonment rather than a finished product. So roadmap.md
 is a finite plan with a defined end, then maintenance mode — and *being
 finished* is the mission succeeding, not stalling.
 
-That plan completed. A new direction (mesh sync) was then chosen from real
-daily use, which is the only thing that reopens planned work — not a
-backlog, not an idea. The rule is unchanged: finite, with an end.
+Only real daily use reopens planned work — not a backlog, not an idea. A
+new plan is still finite, with an end: the phone redesign
+([redesign/plan.md](redesign/plan.md)) is the current one. Mesh sync was
+reopened the same way and closed again (see its entry).
 
 ### `reset-dev-env.ps1 -IncludeRelease` is a real data-loss risk, not routine
 It wipes the real installed app's own data, not just the dev build's.
@@ -759,19 +764,18 @@ drops the link. Links are click-through, with a link-icon badge on
 cards/rows so a task's links are visible without opening it.
 
 ### Settings: per-tab controls apply live; the footer Save is Advanced-only
-Every tab but Advanced (and only while Sync is on) writes straight to its
-store on click — there's nothing buffered for Cancel to discard. Tried
-replacing the footer with a plain "Close" to stop implying otherwise;
-reverted after real feedback that a missing Save button reads as "did my
-change even take?" — worse than the button being a no-op. Landed on:
-Save shown everywhere (routed through `saveSettings()`, a no-op when
-nothing's buffered), Cancel only where Advanced genuinely has something
-to discard. Don't re-remove Save over the "but it doesn't cancel
-anything" observation — it's true, and was already tried.
+In the desktop Settings panel, every tab but Advanced (and only while Sync
+is on) writes straight to its store on click — there's nothing buffered for
+Cancel to discard. Save is still shown on every tab (routed through
+`saveSettings()`, a no-op when nothing's buffered), because a missing Save
+button reads as "did my change even take?" — worse than the button being a
+no-op. Cancel appears only where Advanced genuinely has something to
+discard. Don't re-remove Save over the "but it doesn't cancel anything"
+observation — it's true, and was already tried.
 
-Also fixed in the same pass: Escape closed all of Settings instead of
-backing out of PIN entry (`onWindowKeydown` missed `showPinForm`/
-`pinGateMode`; `ConfirmPinGate` needed `stopPropagation()` too, or the
-same keystroke both cancelled the gate and closed Settings). A UX audit
-afterward found ~24 smaller findings across Sync/Notifications/App Lock/
-Backup; details in git history rather than repeated here.
+The phone's Settings pages have no footer: every control applies live, and
+a typed value (such as the device name) saves from its own sheet.
+
+Escape inside PIN entry backs out of PIN entry, not all of Settings:
+`onWindowKeydown` checks `showPinForm`/`pinGateMode`, and `ConfirmPinGate`
+calls `stopPropagation()` so one keystroke can't do both.
