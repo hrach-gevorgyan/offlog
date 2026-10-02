@@ -559,6 +559,8 @@
       showError('Failed to check for a connected device.');
       return;
     }
+    // Settings can close during the read above; onDestroy has already run.
+    if (settingsGone) return;
     pcPollTimer = setInterval(async () => {
       try {
         const now = await getDeviceLastSeen();
@@ -703,10 +705,12 @@
     );
     if (!ok) return;
     try {
-      await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev);
+      await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev, c.versions.map(x => x.doc._rev));
       await loadConflicts();
-    } catch {
-      showError('Failed to resolve conflict. Please try again.');
+    } catch (e) {
+      if ((e as Error)?.name !== 'ConflictChangedError') { showError('Failed to resolve conflict. Please try again.'); return; }
+      showError((e as Error).message);
+      await loadConflicts();
     }
   }
 

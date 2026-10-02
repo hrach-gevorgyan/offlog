@@ -114,7 +114,9 @@ export async function renameTag(oldTag: string, newTag: string): Promise<number>
   const trimmed = newTag.trim();
   if (!trimmed || trimmed === oldTag) return 0;
   const all = await getAllTasksRaw();
-  const affected = all.filter(t => !t.deleted && t.tags?.includes(oldTag));
+  // Trashed tasks too, or restoring one from the Recycle bin brings the old
+  // name back. The count stays the live tasks, as getTagCounts() shows them.
+  const affected = all.filter(t => t.tags?.includes(oldTag));
   if (!affected.length) return 0;
   const updates = affected.map(t => ({
     ...t,
@@ -132,12 +134,13 @@ export async function renameTag(oldTag: string, newTag: string): Promise<number>
     if (!newHasOverride) await setTagColor(trimmed, oldColorDoc.color);
     await db.remove(oldColorDoc);
   }
-  return updates.length;
+  return updates.filter(t => !t.deleted).length;
 }
 
 export async function deleteTagEverywhere(tag: string): Promise<number> {
   const all = await getAllTasksRaw();
-  const affected = all.filter(t => !t.deleted && t.tags?.includes(tag));
+  // Trashed tasks too -- see renameTag().
+  const affected = all.filter(t => t.tags?.includes(tag));
   const updates = affected.map(t => ({
     ...t,
     tags: t.tags.filter(x => x !== tag),
@@ -149,5 +152,5 @@ export async function deleteTagEverywhere(tag: string): Promise<number> {
   }
   const colorDoc = await getTagColorDoc(tag);
   if (colorDoc) await db.remove(colorDoc);
-  return updates.length;
+  return updates.filter(t => !t.deleted).length;
 }

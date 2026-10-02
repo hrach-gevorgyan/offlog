@@ -3,7 +3,7 @@
 import type { SpaceDoc, ProjectDoc, TaskDoc } from '../types';
 import { localDateStr } from '../utils';
 import { db, getAllTasksRaw } from './core';
-import { getProjects, getSpaces } from './entities';
+import { getProjects, getSpaces, tombstone } from './entities';
 
 // ── Storage breakdown ────────────────────────────────────────────────────────
 // navigator.storage.estimate() (used by the existing "X MB used" line in
@@ -169,8 +169,8 @@ export async function searchAllTasks(query: string): Promise<(TaskDoc & { projec
 }
 
 export async function clearLogs(): Promise<void> {
-  const r = await db.allDocs({ startkey: 'log:', endkey: 'log:￰', include_docs: true });
-  const dels = r.rows.map(row => ({ ...row.doc!, _deleted: true }));
+  const r = await db.allDocs({ startkey: 'log:', endkey: 'log:￰' });
+  const dels = r.rows.map(row => tombstone({ _id: row.id, _rev: row.value.rev }));
   if (dels.length) await db.bulkDocs(dels);
 }
 

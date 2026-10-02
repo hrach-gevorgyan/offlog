@@ -73,8 +73,8 @@ const settle = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const conflict = {
   docId: 'task:a', label: 'Buy paint', type: 'task', differing: ['title'],
   versions: [
-    { rev: '', isCurrent: true, isNewest: false, doc: { source: 'Pixel', title: 'Buy paint', updated_at: new Date().toISOString() } },
-    { rev: '3-b', isCurrent: false, isNewest: true, doc: { source: 'PC', title: 'Buy paint now', updated_at: new Date().toISOString() } },
+    { rev: '', isCurrent: true, isNewest: false, doc: { _rev: '3-a', source: 'Pixel', title: 'Buy paint', updated_at: new Date().toISOString() } },
+    { rev: '3-b', isCurrent: false, isNewest: true, doc: { _rev: '3-b', source: 'PC', title: 'Buy paint now', updated_at: new Date().toISOString() } },
   ],
 };
 
@@ -201,12 +201,20 @@ describe('phone Sync page', () => {
     expect(resolveConflict).not.toHaveBeenCalled();
     confirmAction.mockResolvedValueOnce(true);
     await fireEvent.click(getAllByText('Keep this')[1]);
-    await waitFor(() => expect(resolveConflict).toHaveBeenCalledWith('task:a', 'other', '3-b'));
+    await waitFor(() => expect(resolveConflict).toHaveBeenCalledWith('task:a', 'other', '3-b', ['3-a', '3-b']));
     resolveConflict.mockRejectedValueOnce(new Error('x'));
     confirmAction.mockResolvedValueOnce(true);
     await fireEvent.click(getAllByText('Keep this')[0]);
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to resolve conflict. Please try again.'));
-    expect(resolveConflict).toHaveBeenLastCalledWith('task:a', 'current', '');
+    expect(resolveConflict).toHaveBeenLastCalledWith('task:a', 'current', '', ['3-a', '3-b']);
+    // A conflict that changed since it was shown names the reason and reloads.
+    const changed = Object.assign(new Error('This conflict changed while it was open'), { name: 'ConflictChangedError' });
+    resolveConflict.mockRejectedValueOnce(changed);
+    confirmAction.mockResolvedValueOnce(true);
+    const loads = getConflicts.mock.calls.length;
+    await fireEvent.click(getAllByText('Keep this')[0]);
+    await waitFor(() => expect(showError).toHaveBeenCalledWith(changed.message));
+    await waitFor(() => expect(getConflicts.mock.calls.length).toBeGreaterThan(loads));
   });
 
   it('Android: Connect a device finds the computer and pairs with the code', async () => {

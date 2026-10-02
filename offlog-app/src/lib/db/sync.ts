@@ -189,6 +189,15 @@ export async function scanConflicts(): Promise<number> {
   return count;
 }
 
+// Called on the app returning to the foreground (Capacitor's 'resume'). A
+// long background drops the live long-poll and PouchDB's retry backoff grows
+// to 5-10 minutes; 'online' never fires because the WebView saw no offline
+// transition. syncNow() recreates the replication, which resets the backoff.
+export function syncOnResume(): void {
+  if (!isSyncEnabled()) return;
+  syncNow().catch(() => {});
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     if (!isSyncEnabled()) return; // an explicit pause must not auto-resume on reconnect
@@ -360,9 +369,9 @@ export interface ConflictInfo {
 }
 
 export async function getConflicts(): Promise<ConflictInfo[]> {
-  const r = await db.allDocs<ConflictContent>({ include_docs: true, conflicts: true });
+  const rows = await conflictBearingRows() as PouchDB.Core.AllDocsResponse<ConflictContent>['rows'];
   const out: ConflictInfo[] = [];
-  for (const row of r.rows) {
+  for (const row of rows) {
     // See scanConflicts()'s comment — conflicts live on row.doc._conflicts,
     // never on row.value.
     const revs: string[] = row.doc?._conflicts ?? [];
@@ -408,9 +417,23 @@ export async function getConflicts(): Promise<ConflictInfo[]> {
   return out;
 }
 
-export async function resolveConflict(docId: string, keep: 'current' | 'other', otherRev?: string): Promise<void> {
+// `shownRevs` is every version's _rev as the screen displayed them, current
+// first (versions.map(v => v.doc._rev)). Live sync can extend a branch or add
+// one between rendering and the click, which changes which revision is
+// current; acting anyway keeps content the person never chose and discards a
+// version they never saw. Any difference throws ConflictChangedError instead.
+export async function resolveConflict(docId: string, keep: 'current' | 'other', otherRev?: string, shownRevs?: string[]): Promise<void> {
   const doc = await db.get<ConflictContent>(docId, { conflicts: true });
   const losingRevs: string[] = doc._conflicts ?? [];
+  if (shownRevs) {
+    const live = [doc._rev, ...losingRevs];
+    const same = doc._rev === shownRevs[0] && live.length === shownRevs.length && live.every(r => shownRevs.includes(r));
+    if (!same) {
+      const err = new Error('This conflict changed while it was open — another device synced a newer version. Review the versions again before choosing.');
+      err.name = 'ConflictChangedError';
+      throw err;
+    }
+  }
   if (keep === 'other' && otherRev) {
     const winning = await db.get<ConflictContent>(docId, { rev: otherRev });
     await db.put({ ...winning, _id: docId, _rev: doc._rev });

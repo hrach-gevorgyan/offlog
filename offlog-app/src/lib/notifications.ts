@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import db, { getAllActiveTasksWithReminders, updateTask, getTaskById } from './db';
+import db, { getAllActiveTasksWithReminders, updateTask, getTaskById, clearReminderIfUnchanged } from './db';
 import { invokeTauri, isTauri as isTauriPlatform, getQuietHours, getNotificationsEnabled } from '../config';
 import type { TaskDoc, ProjectDoc } from './types';
 
@@ -240,7 +240,7 @@ function fireWebNotification(task: TaskDoc): Promise<void> {
   // long as reminder_at stays inside the catch-up window). A failed clear
   // isn't user-initiated and isn't worth a toast — the notification already
   // fired, and the next catch-up pass retries the same clear.
-  return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
+  return clearReminderIfUnchanged(id, task.reminder_at!).then(() => {}, () => {});
 }
 
 function scheduleWeb(task: TaskDoc, staggerIndex = 0) {
@@ -312,7 +312,7 @@ export function catchUpWeb(tasks: TaskDoc[]): Promise<void> {
         pending.push(fireWebNotification(t));
       }
     }
-    else pending.push(updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {}));
+    else pending.push(clearReminderIfUnchanged(t._id!, t.reminder_at).then(() => {}, () => {}));
   }
   return Promise.all(pending).then(() => {});
 }
@@ -422,7 +422,7 @@ function fireTauriNotification(task: TaskDoc): Promise<void> {
   }).catch(() => {});
   // Return the updateTask promise rather than swallowing it silently, same
   // as fireWebNotification() above.
-  return updateTask(id, { reminder_at: null }).then(() => {}, () => {});
+  return clearReminderIfUnchanged(id, task.reminder_at!).then(() => {}, () => {});
 }
 
 function scheduleTauriTimer(task: TaskDoc, staggerIndex = 0) {
@@ -460,7 +460,7 @@ function catchUpTauri(tasks: TaskDoc[]) {
         fireTauriNotification(t);
       }
     }
-    else updateTask(t._id!, { reminder_at: null }).then(() => {}, () => {}); // see fireWebNotification()'s comment on this pattern
+    else clearReminderIfUnchanged(t._id!, t.reminder_at).then(() => {}, () => {}); // see fireWebNotification()'s comment on this pattern
   }
 }
 

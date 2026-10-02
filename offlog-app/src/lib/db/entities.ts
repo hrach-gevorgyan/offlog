@@ -4,9 +4,16 @@
 // cascades into tasks), so they deliberately live in one module.
 import { getDefaultReminderTime } from '../../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, CustomFieldDef, TaskAttachment, Source } from '../types';
-import { wordOverlapSimilarity, localDateStr, advanceDate } from '../utils';
+import { wordSet, wordSetSimilarity, localDateStr, advanceDate } from '../utils';
 import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension, attachmentMimeType } from '../attachments';
 import { db, SOURCE, DEFAULT_COLS, initIndexes, getAllTasksRaw, invalidateTaskCache, now, nanoid, logChange, queueTaskWrite, bulkWrite } from './core';
+
+// A purge writes only {_id, _rev, _deleted}. A deleted revision that keeps
+// the doc's fields keeps its _attachments digests, so compaction never frees
+// the blobs, and it replicates the deleted content to every paired device.
+export function tombstone(doc: { _id?: string; _rev?: string }): { _id: string; _rev: string; _deleted: true } {
+  return { _id: doc._id!, _rev: doc._rev!, _deleted: true };
+}
 
 // ── Seed ──────────────────────────────────────────────────────────────────────
 
@@ -50,10 +57,11 @@ export async function clearLocalSeedBeforeFirstPair(): Promise<void> {
 }
 
 export async function wipeAndReseed(): Promise<void> {
-  // Hard-delete every doc
-  const all = await db.allDocs({ include_docs: true });
-  const dels = all.rows.map(r => ({ ...r.doc!, _deleted: true }));
-  if (dels.length) await db.bulkDocs(dels);
+  // Hard-delete every doc except _design/ ones: tombstoning a design doc drops
+  // the Mango indexes initIndexes() has already marked as built.
+  const all = await db.allDocs();
+  const dels = all.rows.filter(r => !r.id.startsWith('_')).map(r => tombstone({ _id: r.id, _rev: r.value.rev }));
+  if (dels.length) await bulkWrite(dels);
   invalidateTaskCache();
 
   // Seed fresh: one space + one project
@@ -439,7 +447,7 @@ export async function deleteProject(id: string): Promise<void> {
   // tasks the user deleted.
   const all = await getAllTasksRaw();
   const projectTasks = all.filter(d => d.project_id === id);
-  if (projectTasks.length) await bulkWrite(projectTasks.map(t => ({ ...t, _deleted: true })));
+  if (projectTasks.length) await bulkWrite(projectTasks.map(tombstone));
   invalidateTaskCache();
   await db.remove(doc);
   // Logged after the doc is already gone, so this ref won't resolve to a live
@@ -484,14 +492,28 @@ export async function removeColumn(projectId: string, colId: string): Promise<Pr
   const doc = await db.get<ProjectDoc>(projectId);
   if (doc.columns.length <= 1) throw new Error('Cannot remove the last column');
   const remaining = doc.columns.filter(c => c.id !== colId);
-  const firstId = remaining[0].id;
   // Archived tasks too: unarchiving one later must not bring it back into a
   // status that no longer exists.
   const tasks = [...await getTasksForProject(projectId), ...await getArchivedTasksForProject(projectId)];
+  const fromName = doc.columns.find(c => c.id === colId)?.name ?? colId;
   for (const t of tasks.filter(t => t.column_id === colId)) {
-    await updateTask(t._id!, { column_id: firstId });
+    await moveForColumnRemoval(t._id!, colId, remaining[0], fromName, doc.name);
   }
   return updateProject(projectId, { columns: remaining });
+}
+
+// A structural move, never routed through updateTask(): its "moved into the
+// last status" check would complete the task and, for a repeating one, reset
+// it into the first status -- which can be the very status being removed,
+// leaving the task on an id no view renders.
+function moveForColumnRemoval(id: string, fromId: string, to: Column, fromName: string, projName: string): Promise<void> {
+  return queueTaskWrite(id, async () => {
+    const doc = await db.get<TaskDoc>(id);
+    if (doc.column_id !== fromId) return;
+    await db.put({ ...doc, column_id: to.id, updated_at: now(), source: SOURCE });
+    invalidateTaskCache();
+    await logChange(id, 'move', 'column_id', fromName, to.name, { task_title: doc.title, project_name: projName });
+  });
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -529,16 +551,25 @@ export async function findTasksByTitleInProject(projectId: string, title: string
 // where it was first written. Skips bodies under 20 chars: word-overlap
 // similarity is meaningless noise at that length. Local word-overlap only,
 // never a network call.
+// Each note's word set, keyed by _rev so an edited note re-tokenizes. Rebuilt
+// from the live task list on every call, so it never outgrows it.
+let _noteWords = new Map<string, { rev: string; words: Set<string> }>();
 export async function findSimilarNotes(taskId: string | null, body: string, threshold = 0.6): Promise<{ taskId: string; title: string; similarity: number }[]> {
   const text = body.trim();
   if (text.length < 20) return [];
   const all = await getAllTasksRaw();
+  const words = wordSet(text);
   const out: { taskId: string; title: string; similarity: number }[] = [];
+  const next = new Map<string, { rev: string; words: Set<string> }>();
   for (const t of all) {
     if (t._id === taskId || t.deleted || !t.body || t.body.trim().length < 20) continue;
-    const sim = wordOverlapSimilarity(text, t.body);
+    let entry = _noteWords.get(t._id!);
+    if (!entry || entry.rev !== t._rev) entry = { rev: t._rev!, words: wordSet(t.body) };
+    next.set(t._id!, entry);
+    const sim = wordSetSimilarity(words, entry.words);
     if (sim >= threshold) out.push({ taskId: t._id!, title: t.title, similarity: sim });
   }
+  _noteWords = next;
   return out.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
 }
 
@@ -595,7 +626,7 @@ export async function linkRelatedTask(taskId: string, otherId: string): Promise<
   if (!a || !b) return;
   const alreadyLinked = (a.related ?? []).includes(otherId) || (b.related ?? []).includes(taskId);
   if (alreadyLinked) return;
-  await updateTask(taskId, { related: [...(a.related ?? []), otherId] });
+  await updateTaskFrom(taskId, doc => (doc.related ?? []).includes(otherId) ? null : { related: [...(doc.related ?? []), otherId] });
 }
 
 // Removes a related-task link regardless of which of the two docs
@@ -605,8 +636,9 @@ export async function linkRelatedTask(taskId: string, otherId: string): Promise<
 // reverse (read-time-computed) link.
 export async function unlinkRelatedTask(taskId: string, otherId: string): Promise<void> {
   const [a, b] = await Promise.all([getTaskById(taskId), getTaskById(otherId)]);
-  if (a?.related?.includes(otherId)) await updateTask(taskId, { related: a.related.filter(id => id !== otherId) });
-  if (b?.related?.includes(taskId)) await updateTask(otherId, { related: b.related.filter(id => id !== taskId) });
+  const without = (drop: string) => (doc: TaskDoc) => doc.related?.includes(drop) ? { related: doc.related.filter(id => id !== drop) } : null;
+  if (a?.related?.includes(otherId)) await updateTaskFrom(taskId, without(otherId));
+  if (b?.related?.includes(taskId)) await updateTaskFrom(otherId, without(taskId));
 }
 
 // ── Blocked by ───────────────────────────────────────────────────────────────
@@ -686,13 +718,13 @@ export async function linkBlockedBy(taskId: string, blockerId: string): Promise<
   const all = await getAllTasksRaw();
   const byId = new Map(all.map(t => [t._id!, t]));
   if (wouldCreateCycle(taskId, blockerId, byId)) throw new Error('circular dependency');
-  await updateTask(taskId, { blocked_by: [...(task.blocked_by ?? []), blockerId] });
+  await updateTaskFrom(taskId, doc => doc.blocked_by?.includes(blockerId) ? null : { blocked_by: [...(doc.blocked_by ?? []), blockerId] });
 }
 
 export async function unlinkBlockedBy(taskId: string, blockerId: string): Promise<void> {
   const task = await getTaskById(taskId);
   if (task?.blocked_by?.includes(blockerId)) {
-    await updateTask(taskId, { blocked_by: task.blocked_by.filter(id => id !== blockerId) });
+    await updateTaskFrom(taskId, doc => doc.blocked_by?.includes(blockerId) ? { blocked_by: doc.blocked_by.filter(id => id !== blockerId) } : null);
   }
 }
 
@@ -784,8 +816,26 @@ export function updateTask(id: string, changes: Partial<TaskDoc>): Promise<TaskD
   return queueTaskWrite(id, () => updateTaskImpl(id, changes));
 }
 
-async function updateTaskImpl(id: string, changes: Partial<TaskDoc>): Promise<TaskDoc> {
+// For a change derived from the doc's current value (append to an array,
+// clear a field only if it still holds X): `compute` runs inside the per-task
+// write queue on the freshly read doc, so a concurrent write to the same task
+// can't be overwritten by a value computed from an older read. Returning null
+// writes nothing.
+function updateTaskFrom(id: string, compute: (doc: TaskDoc) => Partial<TaskDoc> | null): Promise<TaskDoc> {
+  return queueTaskWrite(id, () => updateTaskImpl(id, compute));
+}
+
+// Clears a fired or stale reminder only if the task still holds the reminder
+// the caller saw -- a reminder set since then (on this device or synced in)
+// must survive.
+export async function clearReminderIfUnchanged(id: string, reminderAt: string): Promise<void> {
+  await updateTaskFrom(id, doc => doc.reminder_at === reminderAt ? { reminder_at: null } : null);
+}
+
+async function updateTaskImpl(id: string, changesOrCompute: Partial<TaskDoc> | ((doc: TaskDoc) => Partial<TaskDoc> | null)): Promise<TaskDoc> {
   const doc = await db.get<TaskDoc>(id);
+  const changes = typeof changesOrCompute === 'function' ? changesOrCompute(doc) : changesOrCompute;
+  if (!changes) return doc;
 
   // Resolve project once -- needed both to detect "moved into the last
   // column" (this app's positional definition of "done") and, if so,
@@ -1042,14 +1092,26 @@ export async function deleteForever(id: string): Promise<void> {
   const doc = await db.get<TaskDoc>(id);
   await db.remove(doc);
   invalidateTaskCache();
+  await logPurge([doc]);
 }
 
 export async function emptyTrash(): Promise<number> {
   const all = await getAllTasksRaw();
   const trashed = all.filter(d => d.deleted);
-  if (trashed.length) await bulkWrite(trashed.map(d => ({ ...d, _deleted: true })));
+  if (trashed.length) await bulkWrite(trashed.map(tombstone));
   invalidateTaskCache();
+  await logPurge(trashed);
   return trashed.length;
+}
+
+// One 'delete' entry per purged task, the same shape the soft delete writes,
+// so history shows when a task left the Recycle bin for good.
+async function logPurge(tasks: TaskDoc[]): Promise<void> {
+  if (!tasks.length) return;
+  const names: Record<string, string> = Object.fromEntries((await getProjects()).map(p => [p._id!, p.name]));
+  for (const t of tasks) {
+    await logChange(t._id!, 'delete', 'purged', undefined, undefined, { task_title: t.title, project_name: names[t.project_id] });
+  }
 }
 
 

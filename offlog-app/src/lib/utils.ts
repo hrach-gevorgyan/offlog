@@ -170,8 +170,14 @@ export function fmtFullTimestamp(ts: string): string {
 // in the app, and "is this similar to that" doesn'''t need a network round-trip
 // to answer well enough for a soft hint.
 export function wordOverlapSimilarity(a: string, b: string): number {
-  const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
-  const setA = words(a), setB = words(b);
+  return wordSetSimilarity(wordSet(a), wordSet(b));
+}
+
+export function wordSet(s: string): Set<string> {
+  return new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+}
+
+export function wordSetSimilarity(setA: Set<string>, setB: Set<string>): number {
   if (!setA.size || !setB.size) return 0;
   let shared = 0;
   for (const w of setA) if (setB.has(w)) shared++;

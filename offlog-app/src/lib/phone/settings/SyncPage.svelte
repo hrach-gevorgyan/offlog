@@ -219,10 +219,12 @@
     );
     if (!ok) return;
     try {
-      await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev);
+      await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev, c.versions.map(x => x.doc._rev));
       await loadConflicts();
-    } catch {
-      showError('Failed to resolve conflict. Please try again.');
+    } catch (e) {
+      if ((e as Error)?.name !== 'ConflictChangedError') { showError('Failed to resolve conflict. Please try again.'); return; }
+      showError((e as Error).message);
+      await loadConflicts();
     }
   }
 

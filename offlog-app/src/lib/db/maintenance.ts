@@ -2,7 +2,7 @@
 // Settings maintenance run, and backup import/export.
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column } from '../types';
 import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS, bulkWrite } from './core';
-import { getProjects, getCustomFieldDefs, createProject } from './entities';
+import { getProjects, getCustomFieldDefs, createProject, tombstone } from './entities';
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
 import { scanConflicts, conflictBearingRows } from './sync';
@@ -36,9 +36,16 @@ export async function pruneOldLogs(): Promise<number> {
 
 // Fire-and-forget, rate-limited so it doesn't re-scan the whole log table on
 // every single app launch — called once from store.ts's init().
+// A stamp in the future (the clock was once set ahead) counts as due: waiting
+// for real time to catch up would stall retention for however far ahead it was.
+function pruneDue(key: string): boolean {
+  const last = Number(localStorage.getItem(key) ?? 0);
+  const elapsed = Date.now() - last;
+  return elapsed < 0 || elapsed >= LOG_PRUNE_INTERVAL_MS;
+}
+
 export function maybePruneOldLogs(): void {
-  const last = Number(localStorage.getItem(LOG_PRUNE_KEY) ?? 0);
-  if (Date.now() - last < LOG_PRUNE_INTERVAL_MS) return;
+  if (!pruneDue(LOG_PRUNE_KEY)) return;
   // Stamped only on success, so a failed prune is retried next hour.
   pruneOldLogs().then(() => localStorage.setItem(LOG_PRUNE_KEY, String(Date.now()))).catch(() => {});
 }
@@ -62,7 +69,7 @@ export async function pruneOldDeletedTasks(): Promise<number> {
   const all = await getAllTasksRaw();
   const stale = all.filter(d => d.deleted && d.updated_at && d.updated_at < cutoffIso);
   if (stale.length) {
-    await bulkWrite(stale.map(d => ({ ...d, _deleted: true })));
+    await bulkWrite(stale.map(tombstone));
     invalidateTaskCache();
   }
   return stale.length;
@@ -71,8 +78,7 @@ export async function pruneOldDeletedTasks(): Promise<number> {
 // Fire-and-forget, rate-limited the same way as maybePruneOldLogs — called
 // alongside it from store.ts's init().
 export function maybePruneOldDeletedTasks(): void {
-  const last = Number(localStorage.getItem(TASK_PRUNE_KEY) ?? 0);
-  if (Date.now() - last < LOG_PRUNE_INTERVAL_MS) return;
+  if (!pruneDue(TASK_PRUNE_KEY)) return;
   pruneOldDeletedTasks().then(() => localStorage.setItem(TASK_PRUNE_KEY, String(Date.now()))).catch(() => {});
 }
 
@@ -85,12 +91,17 @@ export function maybePruneOldDeletedTasks(): void {
 //  1. Attachment stubs take the WHOLE restore down. A backup can store
 //     `{stub: true}` with no bytes, and PouchDB rejects an entire bulkDocs
 //     batch with `missing_stub` if any doc carries a stub it can't resolve --
-//     one attached photo would make every doc in the file unrestorable. Stubs
-//     are dropped (losing an attachment beats losing the backup); real inlined
-//     base64 `data` is kept.
+//     one attached photo would make every doc in the file unrestorable. A stub
+//     whose key the local copy of the same doc still holds keeps that local
+//     attachment -- the restore is an update of the live doc, so dropping the
+//     stub would delete the file. Any other stub is dropped (losing an
+//     attachment beats losing the backup); real inlined base64 `data` is kept.
 //  2. Custom-field definitions and tag colours must not be filtered out, or
 //     restored tasks keep `custom_values` keyed to field ids that no longer
-//     exist -- values present but invisible in the UI.
+//     exist -- values present but invisible in the UI. The definitions are
+//     merged by id with the local list, never replaced: a field created after
+//     the backup still has values on tasks made after it, and Repair deletes
+//     values whose definition is missing.
 //  3. A project doc missing `columns` imports fine and then crashes the
 //     Dashboard, Kanban, List, FilterBar and CardDetail on `columns.at(-1)`,
 //     so structure is normalized on the way in.
@@ -103,13 +114,31 @@ export type ImportedDoc = Record<string, any>;
 // minimal stand-ins the per-document fallback pushes.
 type ImportResult = { ok?: boolean; error?: unknown };
 
-function sanitizeImportedDoc(d: ImportedDoc): ImportedDoc {
+const CUSTOM_FIELDS_ID = 'meta:custom_fields';
+
+type ImportAttachment = Partial<PouchDB.Core.FullAttachment> | Partial<PouchDB.Core.StubAttachment>;
+
+function hasStub(d: ImportedDoc): boolean {
+  return !!d._attachments && typeof d._attachments === 'object'
+    && Object.values<ImportAttachment | null>(d._attachments).some(a => !a || !('data' in a) || typeof a.data !== 'string');
+}
+
+// `local` is the same id's current local doc, when one exists and is needed.
+function sanitizeImportedDoc(d: ImportedDoc, local?: ImportedDoc): ImportedDoc {
   const out = { ...d };
 
+  if (out._id === CUSTOM_FIELDS_ID && Array.isArray(local?.fields)) {
+    const incoming: { id?: unknown }[] = Array.isArray(out.fields) ? out.fields : [];
+    const ids = new Set(incoming.map(f => f?.id));
+    out.fields = [...incoming, ...local.fields.filter((f: { id?: unknown }) => !ids.has(f?.id))];
+  }
+
   if (out._attachments && typeof out._attachments === 'object') {
-    const kept: Record<string, Partial<PouchDB.Core.FullAttachment>> = {};
-    for (const [key, att] of Object.entries<Partial<PouchDB.Core.FullAttachment>>(out._attachments)) {
-      if (att && typeof att.data === 'string') kept[key] = att; // real base64 payload
+    const kept: Record<string, ImportAttachment> = {};
+    const localAtts: Record<string, ImportAttachment> = local?._attachments ?? {};
+    for (const [key, att] of Object.entries<ImportAttachment | null>(out._attachments)) {
+      if (att && 'data' in att && typeof att.data === 'string') kept[key] = att; // real base64 payload
+      else if (localAtts[key]) kept[key] = localAtts[key];
     }
     if (Object.keys(kept).length) out._attachments = kept;
     else delete out._attachments;
@@ -143,7 +172,7 @@ function sanitizeImportedDoc(d: ImportedDoc): ImportedDoc {
 }
 
 export async function importJSON(docs: ImportedDoc[]): Promise<{ ok: number; skipped: number }> {
-  const valid = docs
+  const candidates = docs
     .filter(d =>
       d && d._id && typeof d._id === 'string' &&
       // 'meta' carries the custom-field definitions and 'tag_color' the
@@ -152,8 +181,14 @@ export async function importJSON(docs: ImportedDoc[]): Promise<{ ok: number; ski
       ['space', 'project', 'task', 'meta', 'tag_color'].includes(d.type) &&
       // A task pointing at no project can never be rendered anywhere.
       !(d.type === 'task' && typeof d.project_id !== 'string')
-    )
-    .map(sanitizeImportedDoc);
+    );
+  const needLocal = candidates.filter(d => d._id === CUSTOM_FIELDS_ID || hasStub(d)).map(d => d._id as string);
+  const localById = new Map<string, ImportedDoc>();
+  if (needLocal.length) {
+    const r = await db.allDocs({ keys: needLocal, include_docs: true });
+    for (const row of r.rows) if ('doc' in row && row.doc) localById.set(row.id, row.doc);
+  }
+  const valid = candidates.map(d => sanitizeImportedDoc(d, localById.get(d._id)));
   // A doc whose id already exists locally must be overwritten with the
   // backup's content (restore "merges instead of duplicating"). Fetch each
   // existing doc's current _rev and attach it so bulkDocs treats a collision
@@ -216,10 +251,14 @@ export function analyzeImport(docs: ImportedDoc[]): { toCreate: number; toSkip: 
 
 // Export a single project — the project doc plus its own tasks only, never
 // the space it belongs to: including the space would silently duplicate
-// spaces on re-import.
+// spaces on re-import. Attachments are inlined as base64, as in the full
+// backup: the task cache holds only stubs, which carry no bytes.
 export async function exportProjectDocs(projectId: string): Promise<Array<ProjectDoc | TaskDoc>> {
   const project = await db.get<ProjectDoc>(projectId);
-  const tasks = (await getAllTasksRaw()).filter(t => t.project_id === projectId && !t.deleted);
+  const ids = (await getAllTasksRaw()).filter(t => t.project_id === projectId && !t.deleted).map(t => t._id!);
+  if (!ids.length) return [project];
+  const r = await db.allDocs<TaskDoc>({ keys: ids, include_docs: true, attachments: true, binary: false });
+  const tasks = r.rows.flatMap(row => 'doc' in row && row.doc && !row.doc.deleted ? [row.doc] : []);
   return [project, ...tasks];
 }
 
@@ -382,7 +421,7 @@ export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed:
         // home there is always available.
         let fallback = (await getProjects('space:unsorted'))[0];
         if (!fallback) fallback = await createProject('space:unsorted', 'Recovered');
-        await db.put({ ...doc, project_id: fallback._id, column_id: fallback.columns[0]?.id ?? doc.column_id, updated_at: now(), source: SOURCE });
+        await db.put({ ...doc, project_id: fallback._id, space_id: fallback.space_id, column_id: fallback.columns[0]?.id ?? doc.column_id, updated_at: now(), source: SOURCE });
         fixed++;
       } else if (issue.type === 'invalid_column') {
         const doc = await db.get<TaskDoc>(issue.docId);

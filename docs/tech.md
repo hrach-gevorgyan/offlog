@@ -398,11 +398,29 @@ gone, so that rule would pay the full walk for zero bytes. Databases
 predating `auto_compaction` get the one real pass, marked done in
 `offlog_compacted`.
 
+Every purge (Empty Recycle bin, delete forever, retention pruning, deleting a
+project, clearing history, a data reset) writes a bare
+`{_id, _rev, _deleted: true}` tombstone (`tombstone()` in `entities.ts`). A
+deleted revision that kept the doc's fields would keep its `_attachments`
+digests, so the blobs were never freed, and it replicated the deleted
+content to every paired device.
+
 **Automatic backup** (`autoBackup.ts`). Runs at most every ~20h, writing the
 same JSON as a manual export to app-private storage (desktop
 `appDataDir()/auto-backups/`, Android `Directory.Data`; no-op on web). Keeps
 the newest 7. Plain unencrypted JSON, on-device, never uploaded. Failures
 are logged and retried next run — the timestamp only advances on success.
+A stored timestamp in the future (the clock was once set ahead) counts as
+due, as do the retention stamps; otherwise all three stall until real time
+catches up.
+
+**Restore** (`importJSON()`) updates docs in place. A one-project export
+inlines attachments like the full backup; for an older file that carries
+only `{stub: true}` entries, a stub whose key the live doc still holds keeps
+that attachment rather than deleting it. `meta:custom_fields` is merged by
+field id (the backup's definition wins on the same id), never replaced: a
+field created after the backup keeps its definition, so Repair doesn't
+erase its values.
 
 Each file is a full snapshot with attachments inlined as base64, so the
 folder grows with attachment size, not task count: 5.7 MB of attachments
@@ -579,14 +597,18 @@ can be real CouchDB or NyxDB (the small Rust server the desktop app embeds)
    server.
 2. A local write replicates out immediately.
 3. A remote change fires a `.changes()` event; `store.ts` reloads.
-4. Offline, writes queue locally; replication resumes on reconnect.
+4. Offline, writes queue locally; replication resumes on reconnect. On
+   Android, Capacitor's `resume` also restarts it (`syncOnResume()`): a long
+   background grows PouchDB's retry backoff to 5–10 minutes without the
+   WebView ever seeing an `offline` event.
 
 **Conflicts.** If two devices edit the same task while apart, both revisions
 survive and PouchDB picks a deterministic winner. The loser stays as a live
 branch until something resolves it — resolving means removing every losing
 revision explicitly, including one whose content you adopted. Conflicts are
 counted after each sync and shown as a badge; resolution is available in
-Settings.
+Settings. The screen passes the revisions it displayed to `resolveConflict()`,
+which refuses (`ConflictChangedError`) if sync changed them in the meantime.
 
 **Sync state** (`syncState`) tracks more than idle/error:
 
