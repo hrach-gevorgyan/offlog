@@ -149,14 +149,14 @@
   /* The slanted edge needs clear air on both sides: under the Board | List
      switch (where it rises) and before the status pills. */
   .band { margin: 0 -16px 24px; padding: 0 16px 38px; background: var(--band); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), 0 100%); }
-  .band :global(.sub) { margin-bottom: 0; }
+  .band :global(.sub) { margin-bottom: 0; font-weight: 500; }
   :global(body.dark) .band { background: color-mix(in srgb, var(--band) 62%, var(--bg)); }
   /* Ink on the band: TopBar and the view toggle read these tokens. */
   /* The page greys are tuned for --bg and vanish on a saturated band, so the
-     secondary text there is the band's own ink, softened. */
-  .band { --col-bg: color-mix(in srgb, var(--text) 9%, transparent); --muted: color-mix(in srgb, var(--text) 80%, transparent); --faint: color-mix(in srgb, var(--text) 74%, transparent); }
+     secondary text there is the band's own ink at full strength. */
+  .band { --col-bg: color-mix(in srgb, var(--text) 9%, transparent); --muted: var(--text); --faint: var(--text); }
   .band.light, :global(body.dark) .band {
-    --text: var(--on-hero); --muted: color-mix(in srgb, var(--on-hero) 88%, transparent); --faint: color-mix(in srgb, var(--on-hero) 82%, transparent);
+    --text: var(--on-hero); --muted: var(--on-hero); --faint: var(--on-hero);
     --col-bg: color-mix(in srgb, var(--on-hero) 18%, transparent); color: var(--text);
   }
   .fbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: -6px 0 12px; }
