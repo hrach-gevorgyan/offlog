@@ -358,6 +358,31 @@ describe('CardDetail batches related/blocked-by/attachments into Save (A2)', () 
   });
 });
 
+// The calendar is mounted after CardDetail, so CardDetail's window Escape
+// listener runs first; the picker marks the Escape handled in the capture
+// phase so only the popover closes.
+describe('CardDetail Escape with a popover open', () => {
+  it('closes only the open calendar, then the panel on a second Escape', async () => {
+    // closeOnBack's 400ms fallback from an earlier test's close must not
+    // unwind this test's layer mid-test.
+    await new Promise(r => setTimeout(r, 450));
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    const { container } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+    const trigger = container.querySelector('.cal-trigger') as HTMLButtonElement;
+    await fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    await fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(back).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(back).toHaveBeenCalledTimes(1);
+    await new Promise(r => setTimeout(r, 450));
+    back.mockRestore();
+  });
+});
+
 describe('CardDetail discard & delete (A32)', () => {
   it('Cancel discards edits — nothing is written', async () => {
     const { getByPlaceholderText, getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });

@@ -312,6 +312,27 @@ describe('undo / Deleted (trash)', () => {
     }
   });
 
+  // The Undo toast restores the id it is handed. Looking up "the most
+  // recently deleted" instead could pick a different task whose
+  // updated_at sorts later (a synced delete, or a skewed clock).
+  it('subscribeUndo hands each listener the id that was just deleted', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Test Project');
+    const colId = project.columns[0].id;
+    const taskA = await createTask(project._id, 'space:unsorted', colId, 'Task A');
+    const taskB = await createTask(project._id, 'space:unsorted', colId, 'Task B');
+
+    const ids: string[] = [];
+    const unsubscribe = subscribeUndo((id) => { ids.push(id); });
+    try {
+      await deleteTask(taskB._id!);
+      await deleteTask(taskA._id!);
+      expect(ids).toEqual([taskB._id, taskA._id]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it('deleteForever hard-removes a single trashed task', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Test Project');

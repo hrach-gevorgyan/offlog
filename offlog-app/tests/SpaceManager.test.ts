@@ -33,6 +33,7 @@ vi.mock('../src/lib/confirm', () => ({
 
 vi.mock('../src/lib/modalStack', () => ({
   closeOnBack: (cb: () => void) => cb,
+  isTopLayer: () => true,
 }));
 
 import SpaceManager from '../src/lib/SpaceManager.svelte';

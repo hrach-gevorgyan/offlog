@@ -164,8 +164,11 @@ export function dropLayer(request: CloseFn): void {
   stack.splice(idx, 1);
   sync();
 }
-export function isTopLayer(request: CloseFn): boolean {
-  return stack.at(-1)?.request === request;
+// Every open overlay's window-level Escape handler sees the same
+// keystroke, so each must check this or one Escape also closes the layer
+// underneath.
+export function isTopLayer(request: CloseFn | null): boolean {
+  return !!request && stack.at(-1)?.request === request;
 }
 
 // An on-screen back arrow: closes the topmost layer, whichever it is (a

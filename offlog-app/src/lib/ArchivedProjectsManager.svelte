@@ -5,7 +5,7 @@
   import { getProjects, getArchivedProjects, archiveProject, unarchiveProject, deleteProject, subscribe } from './db';
   import { reloadTasks, showError, activeProjectId } from './store';
   import { confirmAction } from './confirm';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
   import type { ProjectDoc } from './types';
@@ -51,7 +51,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') requestClose();
+    if (e.key === 'Escape' && !e.defaultPrevented && isTopLayer(requestClose)) requestClose();
   }
 
   async function doArchive() {
@@ -103,7 +103,7 @@
 <div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Archived Projects</span>
-    <button class="close-btn" on:click={() => requestClose()}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
   <div class="ap-sub">Archiving hides a project and its open tasks — nothing is deleted.</div>

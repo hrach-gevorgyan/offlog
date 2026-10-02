@@ -21,7 +21,9 @@ const discardTop = vi.fn();
 vi.mock('../src/lib/modalStack', () => ({
   closeOnBack: (close: () => void) => close,
   discardTop: (...a: unknown[]) => discardTop(...a),
+  isTopLayer: () => topLayer,
 }));
+let topLayer = true;
 
 import { projects, showError } from '../src/lib/store';
 import GlobalSearch from '../src/lib/GlobalSearch.svelte';
@@ -60,6 +62,7 @@ async function typeQuery(container: HTMLElement, q: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  topLayer = true;
   searchAllTasks.mockResolvedValue([]);
   projects.set([PROJECT]);
 });
@@ -181,6 +184,26 @@ describe('GlobalSearch keyboard navigation', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
+  it('Escape closes the palette when focus is outside the search input', async () => {
+    const onClose = vi.fn();
+    render(GlobalSearch, { props: { commands: COMMANDS }, events: { close: onClose } } as any);
+
+    await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it('Escape leaves the palette open while another layer sits on top of it', async () => {
+    topLayer = false;
+    const onClose = vi.fn();
+    const { container } = render(GlobalSearch, { props: { commands: COMMANDS }, events: { close: onClose } } as any);
+
+    await fireEvent.keyDown(input(container), { key: 'Escape' });
+    await new Promise(r => setTimeout(r, 400));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('selection follows the mouse, so Enter runs the hovered row', async () => {
     const { container } = render(GlobalSearch, { props: { commands: COMMANDS } });
 
@@ -243,5 +266,31 @@ describe('GlobalSearch highlighting', () => {
     expect(title.querySelector('img')).toBeNull();
     expect(title.textContent).toContain('<img src=x onerror=1>');
     expect(title.querySelector('mark')?.textContent).toBe('plan');
+  });
+
+  // Matching ran against the escaped title, so a query could land inside an
+  // entity: "amp" hit the "&amp;" for "&" and split it into broken markup.
+  it('never matches inside the escaping of &, < or >', async () => {
+    searchAllTasks.mockResolvedValue([mkResult({ title: 'R&D <lt> example' } as Partial<TaskDoc>)]);
+    const { container } = render(GlobalSearch, { props: { commands: [] } });
+
+    await typeQuery(container, 'amp');
+
+    await waitFor(() => expect(rows(container)).toHaveLength(1));
+    const title = container.querySelector('.result-title') as HTMLElement;
+    expect(title.textContent).toBe('R&D <lt> example');
+    expect([...title.querySelectorAll('mark')].map(m => m.textContent)).toEqual(['amp']);
+  });
+
+  it('highlights a query that itself contains & or <', async () => {
+    searchAllTasks.mockResolvedValue([mkResult({ title: 'R&D <lt>' } as Partial<TaskDoc>)]);
+    const { container } = render(GlobalSearch, { props: { commands: [] } });
+
+    await typeQuery(container, '&d <');
+
+    await waitFor(() => expect(rows(container)).toHaveLength(1));
+    const title = container.querySelector('.result-title') as HTMLElement;
+    expect(title.textContent).toBe('R&D <lt>');
+    expect(title.querySelector('mark')?.textContent).toBe('&D <');
   });
 });

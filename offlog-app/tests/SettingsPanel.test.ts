@@ -102,7 +102,8 @@ vi.mock('../src/lib/theme', () => ({
   prefersReducedMotion: () => false,
 }));
 
-import dbDefault from '../src/lib/db';
+import dbDefault, { importJSON } from '../src/lib/db';
+import { closeOnBack } from '../src/lib/modalStack';
 import SettingsPanel from '../src/lib/SettingsPanel.svelte';
 
 // saveSettings() calls location.reload() after a sync change; jsdom has no
@@ -198,6 +199,27 @@ describe('SettingsPanel sync save', () => {
 // list, so Escape fell through to the final `else requestClose()` and
 // closed all of Settings mid-PIN-entry instead of just dismissing the form.
 describe('SettingsPanel Escape key', () => {
+  // A manager or confirm dialog opened over Settings is its own layer; one
+  // Escape must close that layer only, not Settings underneath it too.
+  it('does not close while another layer sits on top of it', async () => {
+    // closeOnBack's 400ms fallback from an earlier test's close must not
+    // unwind this test's layer mid-test.
+    await new Promise(r => setTimeout(r, 450));
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    render(SettingsPanel, { initialCategory: 'appearance' });
+    const stateBeforeTop = history.state;
+    closeOnBack(vi.fn());
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(back).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new PopStateEvent('popstate', { state: stateBeforeTop }));
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(back).toHaveBeenCalledTimes(1);
+    await new Promise(r => setTimeout(r, 450));
+    back.mockRestore();
+  });
+
   it('backs out of the PIN entry form without closing the whole panel', async () => {
     const { container, getByText, queryByText, getByLabelText } =
       render(SettingsPanel, { initialCategory: 'security' });
@@ -267,6 +289,39 @@ describe('SettingsPanel backup with a docless row', () => {
 // handleImport() builds its own <input type=file> and reads the picked file.
 // The catch has to report a parse failure rather than let it escape — a
 // thrown rejection here would leave the panel silently stuck.
+describe('SettingsPanel restore failure', () => {
+  it('surfaces a failed import through showError, not only the inline status', async () => {
+    vi.mocked(importJSON).mockRejectedValueOnce(new Error('quota exceeded'));
+    const real = document.createElement.bind(document);
+    let picked: HTMLInputElement | null = null;
+    const spy = vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+      const el = real(tag) as HTMLElement;
+      if (tag === 'input') { picked = el as HTMLInputElement; (el as HTMLInputElement).click = () => {}; }
+      return el;
+    }) as never);
+
+    const { container, findByText } = render(SettingsPanel, { initialCategory: 'data' });
+    const nav = [...container.querySelectorAll('.nav-item')]
+      .find(b => /Backup/i.test((b as HTMLElement).textContent!)) as HTMLButtonElement;
+    await fireEvent.click(nav);
+    const choose = [...container.querySelectorAll('button')]
+      .find(b => /Choose backup file/i.test(b.textContent!)) as HTMLButtonElement;
+    await fireEvent.click(choose);
+    spy.mockRestore();
+
+    const { analyzeImport } = await import('../src/lib/db');
+    vi.mocked(analyzeImport).mockReturnValue({ toCreate: 1, toSkip: 0, byType: { space: 0, project: 0, task: 1 } } as never);
+    const file = new File(['[{"_id":"task:1","type":"task"}]'], 'ok.json', { type: 'application/json' });
+    Object.defineProperty(picked!, 'files', { value: [file], configurable: true });
+    await (picked!.onchange as () => Promise<void>)();
+
+    await fireEvent.click(await findByText(/^Import 1 item$/));
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(showError).toHaveBeenCalledWith('Import failed. Please try again.');
+  });
+});
+
 describe('SettingsPanel restore file errors', () => {
   it('reports an unparseable file instead of throwing', async () => {
     const real = document.createElement.bind(document);

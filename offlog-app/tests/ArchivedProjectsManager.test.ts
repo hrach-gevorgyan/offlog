@@ -37,6 +37,7 @@ vi.mock('../src/lib/confirm', () => ({
 
 vi.mock('../src/lib/modalStack', () => ({
   closeOnBack: (cb: () => void) => cb,
+  isTopLayer: () => true,
 }));
 
 import { activeProjectId } from '../src/lib/store';

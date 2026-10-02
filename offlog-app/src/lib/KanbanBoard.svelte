@@ -300,9 +300,8 @@
   async function doRemoveCol(colId: string) {
     const colTasks = tasksByCol[colId] ?? [];
     let msg = colTasks.length
-      ? `Remove column? ${colTasks.length} card(s) will move to the first column.`
-      : 'Remove this column?';
-    msg = msg.replace('column', 'status');
+      ? `Remove status? ${colTasks.length} card(s) will move to the first status.`
+      : 'Remove this status?';
     // Removing the *last* status promotes the one before it, and "done"
     // is positional — so every task sitting in that now-last status
     // silently becomes complete: gone from Agenda, Dashboard and Focus,

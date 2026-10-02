@@ -26,7 +26,7 @@
   import { checkExactAlarmPermission, rescheduleAll } from './notifications';
   import { updateState, showUpdateModal, checkForUpdate } from './updateChecker';
   import { showError, modalOpen } from './store';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from './theme';
   import { fade, scale } from 'svelte/transition';
@@ -143,7 +143,10 @@
   }
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    // A manager opened from here is a layer of its own and takes this Escape.
+    if (spaceManagerActive || tagManagerActive || customFieldManagerActive || archivedProjectsManagerActive) return;
+    if (!isTopLayer(requestClose) && !isTopLayer(popDetailLayer)) return;
     // No Escape-to-dismiss while the one-time recovery code is showing —
     // it must be acknowledged via the explicit button below, or someone
     // reflexively hitting Escape loses their only chance to see it.
@@ -968,6 +971,7 @@
       importStatus = `Done — ${ok} imported, ${skipped} skipped`;
     } catch {
       importStatus = 'Import failed. Please try again.';
+      showError('Import failed. Please try again.');
     }
     importBusy = false;
     setTimeout(() => { importStatus = ''; }, 4000);

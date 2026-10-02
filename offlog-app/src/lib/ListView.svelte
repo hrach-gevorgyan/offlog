@@ -317,20 +317,33 @@
     selected = next;
   }
 
-  function clearSelection() { selected = new Set(); }
-
   // Selection references task ids from whatever was visible when picked —
   // if a filter/sort change hides a previously-selected task, drop it
   // rather than silently bulk-acting on a task the user can no longer see.
   $: { const visible = new Set(sorted.map(t => t._id!)); const next = new Set([...selected].filter(id => visible.has(id))); if (next.size !== selected.size) selected = next; }
 
+  // Per task, not one try around the loop: one failure must not abort the
+  // rest. Returns the ids whose write failed.
+  async function eachSelected(write: (id: string) => Promise<unknown>): Promise<Set<string>> {
+    const failed = new Set<string>();
+    for (const id of selected) {
+      try { await write(id); } catch { failed.add(id); }
+    }
+    return failed;
+  }
+  function reportFailed(failed: Set<string>, total: number) {
+    if (failed.size) showError(`Could not update ${failed.size} of ${total} tasks. Please try again.`);
+  }
+
   async function bulkMoveStatus() {
     if (!bulkStatus || !selected.size) return;
     bulkBusy = true;
+    const total = selected.size;
     try {
-      for (const id of selected) await updateTask(id, { column_id: bulkStatus });
+      const failed = await eachSelected(id => updateTask(id, { column_id: bulkStatus }));
       await reloadTasks();
-      clearSelection();
+      selected = failed; // the ones that didn't move stay selected for a retry
+      reportFailed(failed, total);
     } catch {
       showError('Failed to update some tasks. Please try again.');
     } finally {
@@ -342,11 +355,13 @@
   async function bulkChangePriority() {
     if (!bulkPriorityStr || !selected.size) return;
     bulkBusy = true;
+    const total = selected.size;
     try {
       const priority = Number(bulkPriorityStr) as 1 | 2 | 3;
-      for (const id of selected) await updateTask(id, { priority });
+      const failed = await eachSelected(id => updateTask(id, { priority }));
       await reloadTasks();
-      clearSelection();
+      selected = failed;
+      reportFailed(failed, total);
     } catch {
       showError('Failed to update some tasks. Please try again.');
     } finally {
@@ -359,13 +374,15 @@
     const tag = bulkTagAdd.trim().toLowerCase().replace(/\s+/g, '-');
     if (!tag || !selected.size) return;
     bulkBusy = true;
+    const total = selected.size;
     try {
-      for (const id of selected) {
+      const failed = await eachSelected(async id => {
         const t = sorted.find(x => x._id === id);
         if (t && !t.tags.includes(tag)) await updateTask(id, { tags: [...t.tags, tag] });
-      }
+      });
       await reloadTasks();
-      bulkTagAdd = '';
+      if (failed.size) reportFailed(failed, total);
+      else bulkTagAdd = '';
     } catch {
       showError('Failed to tag some tasks. Please try again.');
     } finally {
@@ -478,7 +495,7 @@
           <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/>
         </svg>
         <input class="search-input" bind:value={search} placeholder="Search tasks…" />
-        {#if search}<button class="clear-x" on:click={() => search = ''}>×</button>{/if}
+        {#if search}<button class="clear-x" on:click={() => search = ''} aria-label="Clear search">×</button>{/if}
       </div>
 
     <div class="toolbar-actions">
@@ -757,6 +774,8 @@
     border-radius: 8px; padding: 6px 10px;
     flex: 1 1 auto; min-width: 110px; max-width: 280px;
   }
+  /* The input drops its own outline, so the box carries the focus ring. */
+  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .search-box svg { color: var(--faint); flex-shrink: 0; }
   .search-input {
     border: none; background: none; font-size: 13px; color: var(--text);

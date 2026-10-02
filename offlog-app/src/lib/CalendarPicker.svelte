@@ -119,6 +119,12 @@
   function onWindowKeydown(e: KeyboardEvent) {
     if (open && e.key === 'Escape') { e.preventDefault(); close(); }
   }
+  // Capture phase, so the Escape is marked handled before the bubble-phase
+  // window listener of the modal this picker sits in (registered earlier,
+  // so it would otherwise run first) sees it and closes the modal too.
+  function onWindowKeydownCapture(e: KeyboardEvent) {
+    if (open && e.key === 'Escape') e.preventDefault();
+  }
   onMount(() => document.addEventListener('click', onDocClick, true));
   onDestroy(() => document.removeEventListener('click', onDocClick, true));
 
@@ -131,7 +137,7 @@
     : dateText;
 </script>
 
-<svelte:window on:keydown={onWindowKeydown} />
+<svelte:window on:keydown={onWindowKeydown} on:keydown|capture={onWindowKeydownCapture} />
 
 <div class="cal-field" bind:this={wrapEl}>
   <button type="button" class="cal-trigger" class:has-value={!!value} class:open class:bare bind:this={triggerEl} on:click={toggle} {disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={bare && !selected ? emptyLabel : undefined}>

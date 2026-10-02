@@ -6,7 +6,7 @@
   import { createSpace, updateSpace, reorderSpaces, deleteSpace, getSpaces, subscribe, findSpacesByName } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import type { SpaceDoc } from './types';
   import { SPACE_ICONS, DEFAULT_SPACE_ICON_KEY, getSpaceIconSvg } from './spaceIcons';
@@ -81,7 +81,8 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') { if (editingId) editingId = null; else requestClose(); }
+    if (e.key !== 'Escape' || e.defaultPrevented || !isTopLayer(requestClose)) return;
+    if (editingId) editingId = null; else requestClose();
   }
 
   function startEdit(s: SpaceDoc) { editingId = s._id; editingName = s.name; }
@@ -158,7 +159,7 @@
 <div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Manage Spaces</span>
-    <button class="close-btn" on:click={() => requestClose()}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
   <div class="item-list">

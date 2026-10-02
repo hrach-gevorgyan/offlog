@@ -5,7 +5,7 @@
   import { getTagCounts, renameTag, deleteTagEverywhere, getTagColorOverrides, setTagColor, subscribe } from './db';
   import { reloadTasks, showError } from './store';
   import { confirmAction } from './confirm';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { TAG_PALETTE, resolveTagColor, soften } from './tagColors';
   // Svelte does not run intro transitions on a component's own root elements
@@ -52,7 +52,8 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') { if (openPicker) openPicker = null; else if (editingTag) editingTag = null; else requestClose(); }
+    if (e.key !== 'Escape' || e.defaultPrevented || !isTopLayer(requestClose)) return;
+    if (openPicker) openPicker = null; else if (editingTag) editingTag = null; else requestClose();
   }
 
   async function pickColor(tag: string, color: string | null) {
@@ -106,7 +107,7 @@
 <div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Manage Tags</span>
-    <button class="close-btn" on:click={() => requestClose()}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
   <div class="tg-sub">Rename a tag to match another to merge them.</div>

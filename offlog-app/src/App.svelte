@@ -5,7 +5,7 @@
   import { scrimIn, scrimOut, centredIn, centredOut, toastIn, toastOut, viewIn, viewOut } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
-  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, syncOnResume, getCustomFieldDefs } from './lib/db';
+  import { updateProject, subscribeUndo, undoDelete, getTaskById, syncNow, syncOnResume, getCustomFieldDefs } from './lib/db';
   import type { CustomFieldDef } from './lib/types';
   import type { CustomFieldFilter } from './lib/utils';
   import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
@@ -99,8 +99,10 @@
   // prefilled instead of blank — reset to null after every open so a
   // later Ctrl+N/FAB open (no date context) doesn't inherit a stale one.
   let quickAddDueDate: string | null = null;
-  function openQuickAdd(dueDate: string | null = null) { quickAddSession++; quickAddDueDate = dueDate; showQuickAdd = true; }
-  function openSearch() { searchSession++; showSearch = true; }
+  // Overlays render outside the inert wrapper, so nothing may open one
+  // behind the App Lock screen.
+  function openQuickAdd(dueDate: string | null = null) { if (locked) return; quickAddSession++; quickAddDueDate = dueDate; showQuickAdd = true; }
+  function openSearch() { if (locked) return; searchSession++; showSearch = true; }
 
   // Kanban's filter state lives here (not inside KanbanBoard) so the
   // Filters button can sit in this shared board-header row. List view
@@ -199,13 +201,14 @@
   // Undo toast
   let undoToasts: { id: string; title: string; timer: ReturnType<typeof setTimeout> }[] = [];
 
-  async function showUndoToast() {
-    const buf = await getRecentlyDeleted(1);
-    if (!buf.length) return;
-    const task = buf[0];
+  // Looks up the id that was just deleted, never "the most recent deletion":
+  // a synced or clock-skewed delete can outrank it, and Undo would then
+  // restore a different task.
+  async function showUndoToast(id: string) {
+    const task = await getTaskById(id);
+    if (!task || !task.deleted) return;
     // The phone shows it in its own snackbar, above the navigation bar.
     if (get(isPhone)) {
-      const id = task._id!;
       showToast(`Deleted: ${task.title}`, async () => {
         try { await undoDelete(id); await reloadTasks(); } catch { showError('Failed to undo. Please try again.'); }
       });
@@ -240,7 +243,8 @@
     pendingOpenTaskId.set(null);
   }
 
-  $: if ($pendingOpenTaskId) openFromNotification($pendingOpenTaskId);
+  // Held while locked and opened on unlock, rather than behind the lock.
+  $: if ($pendingOpenTaskId && !locked) openFromNotification($pendingOpenTaskId);
 
   // A "Done"/"Snooze" tap straight from a notification toast whose write
   // failed — surfaced here rather than via a showError() call inside
@@ -259,7 +263,7 @@
     // Don't hijack "?" while the user is typing in a field.
     const el = e.target as HTMLElement;
     const typing = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;
-    if (e.key === '?' && !typing && !get(isPhone)) { e.preventDefault(); showShortcuts = true; return; }
+    if (e.key === '?' && !typing && !locked && !get(isPhone)) { e.preventDefault(); showShortcuts = true; return; }
     if (e.key === 'Escape' && showShortcuts) { closeShortcuts(); return; }
     if (e.key === 'Escape' && sidebarOpen) { closeSidebar(); return; }
   }
@@ -410,7 +414,7 @@
       const { listen } = await import('@tauri-apps/api/event');
       await listen('show-dashboard', () => goToDashboard());
       await listen('quick-capture', () => openQuickAdd());
-      await listen('open-settings', () => sidebarRef?.openSettings());
+      await listen('open-settings', () => { if (!locked) sidebarRef?.openSettings(); });
     } catch {
       // Tray menu items just won't do anything -- not worth an error toast
       // for a background listener setup the user never directly triggered.
@@ -807,7 +811,7 @@
       <div class="toast" in:toastIn out:toastOut>
         <span class="toast-msg">Deleted "{t.title.length > 30 ? t.title.slice(0,30)+'…' : t.title}"</span>
         <button class="toast-undo" on:click={() => handleUndo(t.id)}>Undo</button>
-        <button class="toast-close" on:click={() => { clearTimeout(t.timer); undoToasts = undoToasts.filter(u => u.id !== t.id); }}>✕</button>
+        <button class="toast-close" on:click={() => { clearTimeout(t.timer); undoToasts = undoToasts.filter(u => u.id !== t.id); }} aria-label="Dismiss">✕</button>
       </div>
     {/each}
   </div>

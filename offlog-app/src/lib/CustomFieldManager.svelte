@@ -5,7 +5,7 @@
   import { getCustomFieldDefs, addCustomFieldDef, removeCustomFieldDef, updateCustomFieldDef, getCustomFieldUsageCount } from './db';
   import { showError } from './store';
   import { confirmAction } from './confirm';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
   import type { CustomFieldDef } from './types';
@@ -50,7 +50,7 @@
   onMount(load);
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') requestClose();
+    if (e.key === 'Escape' && !e.defaultPrevented && isTopLayer(requestClose)) requestClose();
   }
 
   async function add() {
@@ -114,7 +114,7 @@
 <div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Manage Custom Fields</span>
-    <button class="close-btn" on:click={() => requestClose()}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
   <div class="cf-sub">Fields apply to every task in every project — keep the list short so cards stay readable.</div>

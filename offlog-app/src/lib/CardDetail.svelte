@@ -9,7 +9,7 @@
   import { PRIORITY_COLOR } from './constants';
   import { reloadTasks, showError, modalOpen, projects } from './store';
   import { confirmAction } from './confirm';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import PinStar from './PinStar.svelte';
   import CalendarPicker from './CalendarPicker.svelte';
@@ -60,7 +60,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') requestClose();
+    if (e.key === 'Escape' && !e.defaultPrevented && isTopLayer(requestClose)) requestClose();
   }
 
   const DUE_SHORTCUTS: { label: string; days: number; months?: number }[] = [
@@ -81,23 +81,37 @@
   // Debounced because both re-fire on every keystroke via the two-way
   // bound title/body inputs, and checkNotesSimilarity scans every task's
   // body in the whole app, not just this project.
+  //
+  // Each lookup is stamped from `latestQuery` and only the newest may write
+  // its result: these resolve out of order, and a slow earlier one would
+  // otherwise overwrite the answer for what is typed now. A plain const
+  // object, so bumping it never re-triggers a reactive block.
+  const latestQuery = { title: 0, notes: 0, related: 0, blockedBy: 0 };
   let duplicateTitleHint = '';
   let titleCheckTimer: ReturnType<typeof setTimeout> | undefined;
   $: { clearTimeout(titleCheckTimer); titleCheckTimer = setTimeout(() => checkTitleDuplicate(title, project._id, task._id), 350); }
   async function checkTitleDuplicate(t: string, projectId: string, excludeId?: string) {
+    const seq = ++latestQuery.title;
     if (!t.trim()) { duplicateTitleHint = ''; return; }
-    const matches = await findTasksByTitleInProject(projectId, t, excludeId);
-    duplicateTitleHint = matches.length ? `Another task titled "${t.trim()}" already exists in this project.` : '';
+    try {
+      const matches = await findTasksByTitleInProject(projectId, t, excludeId);
+      if (seq !== latestQuery.title) return;
+      duplicateTitleHint = matches.length ? `Another task titled "${t.trim()}" already exists in this project.` : '';
+    } catch { /* a nudge only; a failed lookup just shows none */ }
   }
 
   let similarNotesHint = '';
   let notesCheckTimer: ReturnType<typeof setTimeout> | undefined;
   $: { clearTimeout(notesCheckTimer); notesCheckTimer = setTimeout(() => checkNotesSimilarity(body, task._id), 350); }
   async function checkNotesSimilarity(text: string, excludeId?: string) {
-    const matches = await findSimilarNotes(excludeId ?? null, text);
-    similarNotesHint = matches.length
-      ? `This looks similar to notes on "${matches[0].title}" (${Math.round(matches[0].similarity * 100)}% word overlap).`
-      : '';
+    const seq = ++latestQuery.notes;
+    try {
+      const matches = await findSimilarNotes(excludeId ?? null, text);
+      if (seq !== latestQuery.notes) return;
+      similarNotesHint = matches.length
+        ? `This looks similar to notes on "${matches[0].title}" (${Math.round(matches[0].similarity * 100)}% word overlap).`
+        : '';
+    } catch { /* a nudge only; a failed lookup just shows none */ }
   }
   onDestroy(() => {
     clearTimeout(titleCheckTimer); clearTimeout(notesCheckTimer);
@@ -331,22 +345,22 @@
     if (e.key === 'Backspace' && !tagInput && tags.length) { tags = tags.slice(0, -1); }
   }
 
-  $: {
-    const q = relatedInput.trim();
-    if (q) {
-      searchTasksForLinking(q, task._id!, relatedTasks.map(t => t._id!)).then(r => relatedSuggestions = r);
-    } else {
-      relatedSuggestions = [];
-    }
+  $: searchRelated(relatedInput.trim(), relatedTasks.map(t => t._id!));
+  function searchRelated(q: string, excludeIds: string[]) {
+    const seq = ++latestQuery.related;
+    if (!q) { relatedSuggestions = []; return; }
+    searchTasksForLinking(q, task._id!, excludeIds)
+      .then(r => { if (seq === latestQuery.related) relatedSuggestions = r; })
+      .catch(() => { if (seq === latestQuery.related) relatedSuggestions = []; });
   }
 
-  $: {
-    const q = blockedByInput.trim();
-    if (q) {
-      searchTasksForLinking(q, task._id!, blockingTasks.map(t => t._id!)).then(r => blockedBySuggestions = r);
-    } else {
-      blockedBySuggestions = [];
-    }
+  $: searchBlockedBy(blockedByInput.trim(), blockingTasks.map(t => t._id!));
+  function searchBlockedBy(q: string, excludeIds: string[]) {
+    const seq = ++latestQuery.blockedBy;
+    if (!q) { blockedBySuggestions = []; return; }
+    searchTasksForLinking(q, task._id!, excludeIds)
+      .then(r => { if (seq === latestQuery.blockedBy) blockedBySuggestions = r; })
+      .catch(() => { if (seq === latestQuery.blockedBy) blockedBySuggestions = []; });
   }
 
   function projectNameFor(t: TaskDoc): string {
@@ -680,7 +694,7 @@
       <button class="pin-btn" class:pinned on:click={() => pinned = !pinned} title={pinned ? 'Unpin' : 'Pin task'}>
         <PinStar size={15} filled={pinned} stroked />
       </button>
-      <button class="close-btn" on:click={() => requestClose()}>✕</button>
+      <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
     </div>
     {#if duplicateTitleHint}<p class="dup-name-hint">{duplicateTitleHint}</p>{/if}
 

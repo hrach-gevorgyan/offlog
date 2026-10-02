@@ -161,7 +161,7 @@ src/
     utils.ts                    Date formatting and task filtering (see table below)
     theme.ts                    Light/dark/system, high contrast, reduce motion
     motion.ts                   Shared transition params (panels, toasts). Motion only where it shows origin or progress
-    modalStack.ts               Back-button/Escape close ordering — closeOnBack()
+    modalStack.ts               Back-button/Escape close ordering — closeOnBack(); a window Escape handler acts only when isTopLayer()
     focusTrap.ts                use:trapFocus action, shared by every modal
     confirm.ts                  confirmAction() — promise wrapper around ConfirmDialog
     commands.ts                 Command palette action list (Ctrl+K)

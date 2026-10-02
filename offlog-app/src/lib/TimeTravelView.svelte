@@ -6,7 +6,7 @@
   import { projects, showError } from './store';
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from './logFormat';
   import { ACTION_COLOR } from './utils';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { confirmAction } from './confirm';
   import { trapFocus } from './focusTrap';
   import CardDetail from './CardDetail.svelte';
@@ -42,7 +42,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') requestClose();
+    if (e.key === 'Escape' && !e.defaultPrevented && isTopLayer(requestClose)) requestClose();
   }
 
   // Pagination is a growing limit on getRecentLogs(), not a date-range
@@ -58,9 +58,12 @@
   // doc write app-wide, not just log: docs, so this reruns constantly while
   // the panel stays open. Scroll position must be preserved across the
   // full-array replace (otherwise an unrelated edit snaps a scrolled reader
-  // to the top), and overlapping reloads are skipped.
+  // to the top), and overlapping reloads are coalesced: a call that arrives
+  // mid-load reruns once afterwards, or a Load more / change in that window
+  // would never show.
+  let reloadPending = false;
   async function load() {
-    if (loading && logs.length > 0) return; // already loading, not the initial mount
+    if (loading && logs.length > 0) { reloadPending = true; return; } // already loading, not the initial mount
     loading = true;
     const scrollTop = bodyEl?.scrollTop ?? 0;
     try {
@@ -73,6 +76,7 @@
     } finally {
       loading = false;
     }
+    if (reloadPending) { reloadPending = false; load(); }
   }
 
   function loadMore() { limit += PAGE_SIZE; load(); }
@@ -213,7 +217,7 @@
                 on:click={() => openEntry(log)}
                 on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEntry(log); } }}
               >
-                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
+                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? 'var(--faint)'}">{ACTION_LABEL[log.action] ?? log.action}</span>
                 <span class="entry-desc">{describeLog(log)}</span>
                 <span class="entry-meta">
                   <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
@@ -228,7 +232,7 @@
               <!-- role="listitem" matches entries-list's role="list" above;
                    never focusable since these entries have no click action. -->
               <div class="entry" role="listitem">
-                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? '#a39c90'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? '#a39c90'}">{ACTION_LABEL[log.action] ?? log.action}</span>
+                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? 'var(--faint)'}">{ACTION_LABEL[log.action] ?? log.action}</span>
                 <span class="entry-desc">{describeLog(log)}</span>
                 <span class="entry-meta">
                   <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>

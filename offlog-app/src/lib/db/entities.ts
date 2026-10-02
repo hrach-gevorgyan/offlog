@@ -996,8 +996,8 @@ export async function getAttachmentBlob(taskId: string, key: string): Promise<Bl
 // Tasks are soft-deleted (deleted: true), so "recently deleted" needs no
 // storage of its own — it's just a query, and undo survives a page refresh.
 
-const _undoListeners = new Set<() => void>();
-export function subscribeUndo(fn: () => void) { _undoListeners.add(fn); return () => _undoListeners.delete(fn); }
+const _undoListeners = new Set<(id: string) => void>();
+export function subscribeUndo(fn: (id: string) => void) { _undoListeners.add(fn); return () => _undoListeners.delete(fn); }
 
 export async function getRecentlyDeleted(limit = 10): Promise<TaskDoc[]> {
   const all = await getAllTasksRaw();
@@ -1009,7 +1009,7 @@ export async function getRecentlyDeleted(limit = 10): Promise<TaskDoc[]> {
 
 export async function deleteTask(id: string): Promise<void> {
   await updateTask(id, { deleted: true });
-  _undoListeners.forEach(fn => fn());
+  _undoListeners.forEach(fn => fn(id));
 }
 
 export async function duplicateTask(id: string): Promise<TaskDoc> {

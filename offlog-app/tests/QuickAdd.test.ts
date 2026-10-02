@@ -43,7 +43,9 @@ vi.mock('../src/lib/store', () => ({
 // callback straight back so requestClose() === the close callback.
 vi.mock('../src/lib/modalStack', () => ({
   closeOnBack: (cb: () => void) => cb,
+  isTopLayer: () => topLayer,
 }));
+let topLayer = true;
 
 import QuickAdd from '../src/lib/QuickAdd.svelte';
 
@@ -67,6 +69,7 @@ function renderQuickAdd() {
 }
 
 beforeEach(() => {
+  topLayer = true;
   createTask.mockClear();
   createTask.mockResolvedValue(undefined);
   reloadTasks.mockClear();
@@ -159,5 +162,47 @@ describe('QuickAdd create pipeline (A32)', () => {
     expect(showError).toHaveBeenCalledTimes(1);
     expect(q.close).not.toHaveBeenCalled();
     expect(q.created).not.toHaveBeenCalled();
+  });
+
+  // proj.columns[0].id threw a TypeError for a project with no statuses:
+  // an unhandled rejection with `saving` stuck true and no message.
+  it('explains instead of throwing when the project has no statuses', async () => {
+    projects.set([{ ...mkProject('1', 'Errands'), columns: [] }]);
+    const q = renderQuickAdd();
+    await fireEvent.input(titleInput(q), { target: { value: 'Buy milk' } });
+    await fireEvent.click(q.getByText('Add task'));
+
+    expect(createTask).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith(expect.stringMatching(/no statuses/));
+    expect((q.getByText('Add task') as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe('QuickAdd Escape', () => {
+  it('closes the panel when focus is outside the title input', async () => {
+    const q = renderQuickAdd();
+    await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    await waitFor(() => expect(q.close).toHaveBeenCalledTimes(1));
+  });
+
+  it('closes the help popover first, then the panel', async () => {
+    const q = renderQuickAdd();
+    await fireEvent.click(q.container.querySelector('.help-btn') as HTMLButtonElement);
+    await fireEvent.keyDown(titleInput(q), { key: 'Escape' });
+    await new Promise(r => setTimeout(r, 400));
+    expect(q.close).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(titleInput(q), { key: 'Escape' });
+    await waitFor(() => expect(q.close).toHaveBeenCalledTimes(1));
+  });
+
+  it('leaves the panel open while another layer sits on top of it', async () => {
+    topLayer = false;
+    const q = renderQuickAdd();
+    await fireEvent.keyDown(titleInput(q), { key: 'Escape' });
+    await new Promise(r => setTimeout(r, 400));
+
+    expect(q.close).not.toHaveBeenCalled();
   });
 });

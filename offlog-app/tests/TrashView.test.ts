@@ -36,7 +36,9 @@ vi.mock('../src/lib/confirm', () => ({
 // component its callback straight back as requestClose.
 vi.mock('../src/lib/modalStack', () => ({
   closeOnBack: (cb: () => void) => cb,
+  isTopLayer: () => topLayer,
 }));
+let topLayer = true;
 
 import TrashView from '../src/lib/TrashView.svelte';
 
@@ -196,5 +198,27 @@ describe('TrashView permanent delete', () => {
 
     await waitFor(() => expect(queryByText('Empty')).toBeNull());
     expect(queryByText('Restore all')).toBeNull();
+  });
+});
+
+// Every open overlay's window listener sees the same Escape, so a panel
+// below another layer must leave it to the one on top.
+describe('TrashView Escape', () => {
+  it('closes on Escape when it is the top layer', async () => {
+    const close = vi.fn();
+    render(TrashView, { events: { close } } as any);
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  });
+
+  it('ignores Escape while another layer sits on top of it', async () => {
+    topLayer = false;
+    const close = vi.fn();
+    const { container } = render(TrashView, { events: { close } } as any);
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await new Promise(r => setTimeout(r, 700));
+    topLayer = true;
+    expect(close).not.toHaveBeenCalled();
+    expect(container.querySelector('.close-btn')).toBeTruthy();
   });
 });

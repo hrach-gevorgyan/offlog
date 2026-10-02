@@ -7,7 +7,7 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import type { Command } from './commands';
   import { PRIORITY_COLOR } from './constants';
-  import { closeOnBack, discardTop } from './modalStack';
+  import { closeOnBack, discardTop, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { localDateStr, escapeHtml } from './utils';
   import { showError } from './store';
@@ -118,8 +118,12 @@
     resultsEl?.querySelector('.result-row.selected')?.scrollIntoView({ block: 'nearest' });
   }
 
+  // Window-level so Escape closes the palette wherever focus is.
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && !e.defaultPrevented && isTopLayer(requestClose)) requestClose();
+  }
+
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') { requestClose(); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(Math.min(selectedIdx + 1, combinedLength - 1)); }
     if (e.key === 'ArrowUp')   { e.preventDefault(); moveSelection(Math.max(selectedIdx - 1, 0)); }
     if (e.key === 'Enter' && combinedLength > 0) selectAt(selectedIdx);
@@ -131,16 +135,15 @@
   $: activeDescendantId = combinedLength > 0 ? `search-option-${selectedIdx}` : undefined;
 
   // r.title is sync-derived, untrusted data (can arrive from another
-  // device) — must be HTML-escaped before the <mark> wrap, not after,
-  // since this string is rendered via {@html}. Escaping first then
-  // matching against the escaped text keeps offsets correct because
-  // escapeHtml() only ever expands '&' '<' '>', never removes/reorders
-  // characters the query could span.
+  // device) and this string is rendered via {@html}, so every piece is
+  // HTML-escaped. Match against the RAW text and escape each piece after
+  // splitting: matching against escaped text lets a query hit inside an
+  // entity ("amp" in "&amp;") and break it.
   function highlight(text: string, q: string): string {
-    const escaped = escapeHtml(text);
-    if (!q.trim()) return escaped;
-    const re = new RegExp(`(${escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return escaped.replace(re, '<mark>$1</mark>');
+    if (!q.trim()) return escapeHtml(text);
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    // split() with one capturing group puts the matches at odd indices.
+    return text.split(re).map((part, i) => i % 2 ? `<mark>${escapeHtml(part)}</mark>` : escapeHtml(part)).join('');
   }
 
   const today = localDateStr(new Date());
@@ -150,6 +153,8 @@
   // so neither needs a hint.
   const MATCH_HINT: Partial<Record<string, string>> = { body: 'Matched in Notes', checklist: 'Matched in Checklist', attachments: 'Matched in an attachment name' };
 </script>
+
+<svelte:window on:keydown={onWindowKeydown}/>
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 {#if __introReady}
@@ -172,7 +177,7 @@
       on:keydown={onKey}
     />
     {#if query}
-      <button class="clear-btn" on:click={() => { query = ''; inputEl.focus(); }}>✕</button>
+      <button class="clear-btn" on:click={() => { query = ''; inputEl.focus(); }} aria-label="Clear search">✕</button>
     {/if}
   </div>
 

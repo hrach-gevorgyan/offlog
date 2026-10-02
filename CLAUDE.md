@@ -147,7 +147,9 @@ against mocked `db`/`store`/`config`: mock the module, render, `fireEvent`,
 assert the write's exact arguments. Purely presentational children
 (`settings/*`, `carddetail/*` except MarkdownEditor, `PinStar`, and the
 phone sub-pages and sheets, through the `Phone*.test.ts` suites) are covered
-through their parents; `App.svelte` and `phone/PhoneApp.svelte` have none.
+through their parents; `phone/PhoneApp.svelte` has none. `tests/App.test.ts`
+renders `App.svelte` against the real in-memory database for the App Lock
+gate and the Undo toast.
 
 In order of how often they save you:
 

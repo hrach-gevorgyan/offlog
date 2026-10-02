@@ -123,6 +123,54 @@ describe('ListView mark done', () => {
   });
 });
 
+// One try around the whole loop stopped at the first failing task, leaving
+// every task after it unwritten while the message said only "some" failed.
+describe('ListView bulk actions', () => {
+  async function selectAll(container: HTMLElement, getByLabelText: (l: string) => HTMLElement) {
+    await fireEvent.click(getByLabelText('Select rows or show/hide columns'));
+    await fireEvent.click(getByLabelText('Toggle row selection'));
+    await fireEvent.click(getByLabelText('Select all visible tasks'));
+    expect(container.querySelector('.bulk-count')?.textContent).toBe('3 selected');
+  }
+  afterEach(() => updateTask.mockReset().mockResolvedValue(undefined));
+  const three = () => [
+    mkTask({ _id: 'task:1', title: 'One', position: 100 }),
+    mkTask({ _id: 'task:2', title: 'Two', position: 200 }),
+    mkTask({ _id: 'task:3', title: 'Three', position: 300 }),
+  ];
+
+  it('writes every selected task even when one fails, and reports the count', async () => {
+    updateTask.mockImplementation(async (id: string) => { if (id === 'task:2') throw new Error('conflict'); });
+    const { container, getByLabelText } = render(ListView, { project: mkProject(), tasks: three() });
+    await selectAll(container, getByLabelText);
+
+    const prioTrigger = container.querySelectorAll('.bulk-bar .cs-trigger')[1] as HTMLButtonElement;
+    await fireEvent.click(prioTrigger);
+    const high = [...container.querySelectorAll('.bulk-bar .cs-option')].find(o => o.textContent === 'High') as HTMLButtonElement;
+    await fireEvent.click(high);
+
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update 1 of 3 tasks. Please try again.'));
+    expect(updateTask.mock.calls.map(c => c[0]).sort()).toEqual(['task:1', 'task:2', 'task:3']);
+    expect(reloadTasks).toHaveBeenCalled();
+    // only the one that failed stays selected, ready for a retry
+    expect(container.querySelector('.bulk-count')?.textContent).toBe('1 selected');
+  });
+
+  it('clears the selection and reports nothing when every write succeeds', async () => {
+    const { container, getByLabelText } = render(ListView, { project: mkProject(), tasks: three() });
+    await selectAll(container, getByLabelText);
+
+    const statusTrigger = container.querySelectorAll('.bulk-bar .cs-trigger')[0] as HTMLButtonElement;
+    await fireEvent.click(statusTrigger);
+    const doing = [...container.querySelectorAll('.bulk-bar .cs-option')].find(o => o.textContent === 'Doing') as HTMLButtonElement;
+    await fireEvent.click(doing);
+
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(container.querySelector('.bulk-count')?.textContent).toBe('0 selected'));
+    expect(showError).not.toHaveBeenCalled();
+  });
+});
+
 describe('ListView mount', () => {
   it('shows an error instead of crashing if loading custom fields fails', async () => {
     getCustomFieldDefs.mockRejectedValueOnce(new Error('db unreachable'));

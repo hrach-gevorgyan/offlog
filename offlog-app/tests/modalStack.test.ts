@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { closeOnBack, closeAll, discardTop, dropLayer, openLayers } from '../src/lib/modalStack';
+import { closeOnBack, closeAll, discardTop, dropLayer, openLayers, isTopLayer } from '../src/lib/modalStack';
 
 // modalStack.ts is pure JS with no Svelte/DOM dependency beyond
 // window.history/popstate (see its own header comment) — a real target
@@ -130,5 +130,27 @@ describe('modalStack', () => {
     window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
     expect(closeA).toHaveBeenCalledOnce();
     expect(closeB).not.toHaveBeenCalled();
+  });
+
+  it('isTopLayer() is true only for the most recently opened live layer', () => {
+    const requestA = closeOnBack(vi.fn());
+    const stateAfterA = history.state;
+    expect(isTopLayer(requestA)).toBe(true);
+
+    const requestB = closeOnBack(vi.fn());
+    expect(isTopLayer(requestB)).toBe(true);
+    expect(isTopLayer(requestA)).toBe(false);
+
+    window.dispatchEvent(new PopStateEvent('popstate', { state: stateAfterA }));
+    expect(isTopLayer(requestB)).toBe(false);
+    expect(isTopLayer(requestA)).toBe(true);
+
+    window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    expect(isTopLayer(requestA)).toBe(false);
+  });
+
+  it('isTopLayer() is false for a null or unknown handle', () => {
+    expect(isTopLayer(null)).toBe(false);
+    expect(isTopLayer(() => {})).toBe(false);
   });
 });

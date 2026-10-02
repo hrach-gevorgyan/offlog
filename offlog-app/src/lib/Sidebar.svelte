@@ -588,7 +588,7 @@
                     <path d="M12 17v5"/><path d="M9 3h6l-.5 6.5L17 12v2H7v-2l2.5-2.5L9 3Z"/>
                   </svg>
                 </button>
-                <button class="proj-delete-btn" title="Delete project" on:click={() => doDeleteProject(project._id, project.name)}>×</button>
+                <button class="proj-delete-btn" title="Delete project" aria-label="Delete project" on:click={() => doDeleteProject(project._id, project.name)}>×</button>
               </div>
             {/each}
 

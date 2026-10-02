@@ -222,6 +222,22 @@ describe('TimeTravelView pagination', () => {
     expect(container.querySelector('.load-more-btn')).toBeNull();
   });
 
+  // load() skipped any call that arrived while one was in flight, so a
+  // Load more clicked during a change-feed reload was silently dropped.
+  it('reruns a Load more that arrives while a reload is still in flight', async () => {
+    const full = Array.from({ length: 150 }, (_, i) => mkLog('log:' + i));
+    const { container } = await renderTT(full);
+
+    let release!: (v: unknown) => void;
+    getRecentLogs.mockImplementationOnce(() => new Promise(r => { release = r; }));
+    subscribe.mock.calls[0][0](); // change feed starts a reload that hangs
+    await fireEvent.click(container.querySelector('.load-more-btn') as HTMLButtonElement);
+    expect(getRecentLogs).not.toHaveBeenCalledWith(300);
+
+    release(full);
+    await waitFor(() => expect(getRecentLogs).toHaveBeenLastCalledWith(300));
+  });
+
   it('grows the limit by a page on Load more', async () => {
     const full = Array.from({ length: 150 }, (_, i) => mkLog('log:' + i));
     const { container } = await renderTT(full);

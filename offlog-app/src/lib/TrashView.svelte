@@ -6,7 +6,7 @@
   import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { confirmAction } from './confirm';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import { timeAgo } from './utils';
   import type { TaskDoc } from './types';
@@ -51,7 +51,7 @@
   });
 
   function onWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') requestClose();
+    if (e.key === 'Escape' && !e.defaultPrevented && isTopLayer(requestClose)) requestClose();
   }
 
   // A task whose project was deleted is hard-removed with it, so its doc is
@@ -136,7 +136,7 @@
       <button class="restore-all-btn" on:click={restoreAll} disabled={restoringAll || emptying}>{restoringAll ? 'Restoring…' : 'Restore all'}</button>
       <button class="clear-btn" on:click={emptyAll} disabled={emptying || restoringAll}>{emptying ? 'Emptying…' : 'Empty'}</button>
     {/if}
-    <button class="close-btn" on:click={() => requestClose()}>✕</button>
+    <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
   <div class="rc-sub">{items.length} deleted task{items.length === 1 ? '' : 's'} · auto-removed after 3 months</div>

@@ -4,7 +4,7 @@
   import { scrimIn, scrimOut, quickAddIn, quickAddOut, revealIn, revealOut, exitMs } from './motion';
   import { projects, reloadTasks, spaces, showError } from './store';
   import { createTask, findTasksByTitleInProject, ensureFreshTagColor } from './db';
-  import { closeOnBack } from './modalStack';
+  import { closeOnBack, isTopLayer } from './modalStack';
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
   import { parseQuickAdd } from './nlpParse';
@@ -93,17 +93,17 @@
     if (helpTriggerEl?.contains(t) || helpPanelEl?.contains(t)) return;
     showHelp = false;
   }
-  // Escape closes the help popover even when focus isn't in the title
-  // input (e.g. it's on the ? button itself) -- the input's own onKey
-  // below covers the common case where focus stayed put while typing.
-  function onWindowKeyForHelp(e: KeyboardEvent) {
-    if (showHelp && e.key === 'Escape') showHelp = false;
+  // Window-level, not on the title input, so Escape works wherever focus
+  // is. It closes the help popover first, then the panel.
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape' || e.defaultPrevented || !isTopLayer(requestClose)) return;
+    if (showHelp) showHelp = false;
+    else requestClose();
   }
 
   onMount(async () => { await tick(); inputEl?.focus(); });
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') { if (showHelp) { showHelp = false; return; } requestClose(); }
     if (e.key === 'Enter') doAdd();
   }
 
@@ -115,7 +115,8 @@
     saving = true;
     const proj = $projects.find(p => p._id === projectId);
     if (!proj) { saving = false; return; }
-    const firstCol = proj.columns[0].id;
+    const firstCol = proj.columns[0]?.id;
+    if (!firstCol) { saving = false; showError("This project has no statuses, so there's nowhere to add this task. Add a status first."); return; }
     try {
       // Before createTask, not after: once the task is saved these tags
       // are themselves the "already persisted" record, and
@@ -147,7 +148,7 @@
   }
 </script>
 
-<svelte:window on:click={onWindowClickForHelp} on:keydown={onWindowKeyForHelp} />
+<svelte:window on:click={onWindowClickForHelp} on:keydown={onWindowKeydown} />
 
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 {#if __introReady}
