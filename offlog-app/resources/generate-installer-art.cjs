@@ -101,7 +101,7 @@ async function main() {
   const SIDE_W = 164, SIDE_H = 314;
   const sideMarkSize = 96;
   const sideMark = await markOn(BG, ACCENT, sideMarkSize);
-  const sideBmp = await canvas(SIDE_W, SIDE_H, sideMark, Math.round((SIDE_W - sideMarkSize) / 2), Math.round((SIDE_H - sideMarkSize) / 2) - 20);
+  const sideBmp = await canvas(SIDE_W, SIDE_H, sideMark, Math.round((SIDE_W - sideMarkSize) / 2), Math.round((SIDE_H - sideMarkSize) / 2));
   fs.writeFileSync(path.join(OUT_DIR, 'installer-sidebar.bmp'), sideBmp);
 
   console.log('Wrote installer-sidebar.bmp to offlog-desktop/src-tauri/.');
