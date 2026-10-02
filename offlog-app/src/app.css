@@ -295,6 +295,12 @@ a { -webkit-tap-highlight-color: transparent; }
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* A dialog, sheet or panel takes focus itself so Tab starts inside it; that
+   is not something the user chose, so the container never shows a ring.
+   Controls inside it still do. */
+[role="dialog"]:focus-visible, [role="alertdialog"]:focus-visible,
+[role="listbox"]:focus-visible, [role="tabpanel"]:focus-visible,
+[tabindex="-1"]:focus-visible { outline: none; }
 
 /* shared modal scrim — B51: fade in/out is a per-usage Svelte
    `transition:fade` now (every consumer needs its own {#if}-driven
