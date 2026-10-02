@@ -112,7 +112,7 @@
   onMount(() => {
     const seen = get(exactAlarmNudge);
     return exactAlarmNudge.subscribe(n => {
-      if (n > seen) showToast('Reminders may be a few minutes late', undefined, { label: 'Make exact', run: () => { requestExactAlarmPermission(); } });
+      if (n > seen) showToast('Reminders may be a few minutes late', undefined, { label: 'Turn on', run: () => { requestExactAlarmPermission(); } });
     });
   });
 </script>

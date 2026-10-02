@@ -220,8 +220,8 @@ describe('phone settings pages', () => {
     it('exact alarms off: its row warns and the button opens the system setting', async () => {
       exact().set('denied');
       const { getByText, container } = render(SettingsPage, { page: 'notifications' });
-      expect(container.querySelector('.perm-state.warn')?.textContent).toContain('May arrive a few minutes late');
-      await fireEvent.click(getByText('Make exact'));
+      expect(container.querySelector('.perm-state.warn')?.textContent).toContain('Off — they may come a few minutes late');
+      await fireEvent.click(getByText('Turn on'));
       expect(notif.requestExactAlarmPermission).toHaveBeenCalledTimes(1);
     });
 
@@ -230,13 +230,13 @@ describe('phone settings pages', () => {
       const { getByText, container } = render(SettingsPage, { page: 'notifications' });
       expect(container.querySelectorAll('.perm-state.warn')).toHaveLength(2);
       expect(getByText('Allow')).toBeTruthy();
-      expect(getByText('Make exact')).toBeTruthy();
+      expect(getByText('Turn on')).toBeTruthy();
     });
 
     it('notifications blocked: the warning row asks again', async () => {
       perm().set('denied');
       const { getByText } = render(SettingsPage, { page: 'notifications' });
-      expect(getByText('Blocked in Android settings')).toBeTruthy();
+      expect(getByText("Blocked by Android — they won’t appear")).toBeTruthy();
       await fireEvent.click(getByText('Allow'));
       expect(notif.requestPermission).toHaveBeenCalledTimes(1);
     });
