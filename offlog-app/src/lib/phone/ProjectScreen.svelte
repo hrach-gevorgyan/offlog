@@ -4,7 +4,7 @@
   import { getTaskIdsBlocked, getTaskIdsWithRelatedLinks, getTagColorOverrides, getCustomFieldDefs, subscribe } from '../db';
   import type { CustomFieldDef, TaskDoc } from '../types';
   import { PRIORITY_LABEL } from '../constants';
-  import { soften } from '../tagColors';
+  import { soften, wantsLightInk } from '../tagColors';
   import { claimStatusBar, isEffectivelyDark } from '../theme';
   import { actions, addContext, memo } from './nav';
   import { onDestroy } from 'svelte';
@@ -26,18 +26,8 @@
   // The band at the top is the space's colour, with Home's diagonal edge. Ink
   // follows the colour: light ink on a dark colour, the page's own on a light
   // one (dark mode deepens every band, so ink is always light there).
-  function isDarkColour(hex: string): boolean {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-    if (!m) return true;
-    const n = parseInt(m[1], 16);
-    const lin = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
-    const L = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-    // White ink wins over the page's dark ink (#1f2937, L≈0.019) exactly when
-    // (L + .05)² < 1.05 × 0.069, i.e. L < 0.22.
-    return L < 0.22;
-  }
   $: band = space ? soften(space.color) : null;
-  $: lightInk = !space || isDarkColour(space.color);
+  $: lightInk = !space || wantsLightInk(space.color);
   // The strip under the clock takes the band's colour while the band is under it.
   const strip = claimStatusBar(null);
   onDestroy(() => strip.release());

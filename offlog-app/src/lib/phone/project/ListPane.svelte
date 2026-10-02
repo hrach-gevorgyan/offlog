@@ -62,6 +62,8 @@
   // The check fills on the tap, before the write lands.
   let pend: Record<string, boolean> = {};
   async function finish(t: TaskDoc) {
+    // One write per row at a time: a double tap would toggle twice.
+    if (t._id in pend) return;
     pend = { ...pend, [t._id]: t.column_id !== lastCol };
     await toggleDone(t, project);
     const next = { ...pend };

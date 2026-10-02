@@ -32,7 +32,7 @@
       const last = (pid: string) => data?.byProject[pid]?.lastColId;
       focus = { total: locked.length, done: locked.filter(t => t!.column_id === last(t!.project_id)).length };
     } catch {
-      showError('Could not load Home. Pull down or reopen to try again.');
+      showError('Could not load Home. Reopen the app to try again.');
     }
   }
 

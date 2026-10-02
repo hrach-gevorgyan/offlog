@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hapticToggle } from '../haptics';
   // The phone's full-screen task. Every field saves the moment it changes;
   // there is no Save button. Recurrence advancing on finish, log entries and
   // reminder rescheduling all happen inside updateTask()/the store reload.
@@ -151,6 +152,7 @@
     if (!task || !project) return;
     const target = done ? project.columns[0]?.id : lastCol;
     if (!target) return;
+    hapticToggle();
     saveUndoable({ column_id: target }, done ? `Not done: ${task.title}` : `Done: ${task.title}`, 'Could not update this task. Please try again.');
   }
 

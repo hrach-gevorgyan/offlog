@@ -68,3 +68,15 @@ const RELATIVE = typeof CSS !== 'undefined' && !!CSS.supports?.('color', 'oklch(
 export function soften(color: string): string {
   return RELATIVE ? `oklch(from ${color} l calc(c * 0.8) h)` : color;
 }
+
+// Whether white text reads better than the page's dark ink (--text, #1f2937,
+// relative luminance about 0.019) on a solid fill of this colour. White wins
+// exactly when (L + .05)² < 1.05 × 0.069, i.e. L < 0.22. Not a hex: white.
+export function wantsLightInk(hex: string): boolean {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return true;
+  const n = parseInt(m[1], 16);
+  const lin = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return L < 0.22;
+}

@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { dueShortcuts } from '../presets';
   import { createEventDispatcher } from 'svelte';
   import CalendarPicker from '../../CalendarPicker.svelte';
-  import { dateFromToday } from '../../carddetail/helpers';
   import { shortDate } from '../format';
   import Pick from '../task/Pick.svelte';
 
@@ -10,14 +10,8 @@
   // '' means "no date".
   const dispatch = createEventDispatcher<{ pick: string }>();
 
-  const dow = new Date().getDay();
   // Shortcuts that land on the same day keep only the first label; Pick keys by value.
-  const SHORTCUTS = [
-    { label: 'Today', date: dateFromToday(0) },
-    { label: 'Tomorrow', date: dateFromToday(1) },
-    { label: 'In a week', date: dateFromToday(7) },
-    { label: 'Next Monday', date: dateFromToday((8 - dow) % 7 || 7) },
-  ].filter((s, i, all) => all.findIndex(o => o.date === s.date) === i);
+  const SHORTCUTS = dueShortcuts();
   const options = [
     ...SHORTCUTS.map(s => ({ value: s.date, label: s.label, hint: shortDate(s.date) })),
     { value: '', label: 'No date' },

@@ -5,7 +5,7 @@
   // Calls closeOnBack() at setup, so — like every closeOnBack consumer —
   // it MUST be mounted behind a {#key} that changes on every real open
   // (see modalStack.ts and CLAUDE.md). Close by calling the bound `close`
-  // or dispatching through the ✕/scrim; never by flipping the parent's
+  // or through the scrim or Back; never by flipping the parent's
   // flag directly, or the history entry is left behind.
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';

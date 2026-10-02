@@ -632,7 +632,7 @@
   .pset :global(.setting-group) {
     display: flex; flex-direction: column; gap: 10px;
     background: var(--surface); border-radius: 14px; padding: 14px 16px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+    box-shadow: var(--p-shadow);
   }
   .pset :global(.reveal-wrap) { display: flex; flex-direction: column; gap: 14px; }
   .pset :global(.setting-section-title) { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }

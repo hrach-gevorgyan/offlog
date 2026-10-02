@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { dueShortcuts } from '../presets';
   import { createEventDispatcher } from 'svelte';
   import CalendarPicker from '../../CalendarPicker.svelte';
-  import { dateFromToday } from '../../carddetail/helpers';
   import { shortDate } from '../format';
   import { dateLabel } from './when';
   import Pick from './Pick.svelte';
@@ -11,12 +11,7 @@
   // '' means "no date".
   const dispatch = createEventDispatcher<{ pick: string }>();
 
-  const SHORTCUTS = [
-    { label: 'Today', date: dateFromToday(0) },
-    { label: 'Tomorrow', date: dateFromToday(1) },
-    { label: 'In a week', date: dateFromToday(7) },
-    { label: 'In a month', date: dateFromToday(0, 1) },
-  ];
+  const SHORTCUTS = dueShortcuts();
   // A date none of the shortcuts covers still opens on a ticked row.
   $: options = [
     ...(value && !SHORTCUTS.some(s => s.date === value) ? [{ value, label: dateLabel(value) }] : []),

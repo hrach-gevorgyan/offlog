@@ -33,8 +33,8 @@ export type Screen =
   | { k: 'set'; page: string };
 type Entry = Screen & { requestClose?: () => void };
 
-// Things only App.svelte can do (it owns QuickAdd, CardDetail and the
-// Sidebar-hosted Settings); App fills these in when it mounts the shell.
+// Openers other modules call (quick add, a task, Settings); PhoneApp fills
+// these in when it mounts.
 export const actions = {
   // Until the shell has mounted (a widget tap on a cold start), a quick add
   // is queued and the shell opens it on mount.

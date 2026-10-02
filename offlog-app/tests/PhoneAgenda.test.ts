@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 
@@ -41,7 +41,11 @@ const rows = () => [
 ];
 
 describe('phone Agenda', () => {
+  // Mid-month, so day(-2)..day(2) always sit in the month grid on show.
+  afterEach(() => { vi.useRealTimers(); });
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12, 0));
     localStorage.clear();
     stack.set([{ k: 'agenda' }]);
     (projects as Writable<ProjectDoc[]>).set([project]);

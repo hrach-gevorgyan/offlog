@@ -26,7 +26,7 @@ export function duePill(due: string | null | undefined, done = false, today = lo
   if (n === 0) return { text: 'Today', tone: 'today' };
   if (n === 1) return { text: 'Tomorrow', tone: '' };
   if (n > 1 && n < 7) return { text: WD[new Date(due + 'T12:00:00').getDay()], tone: '' };
-  return { text: shortDate(due), tone: '' };
+  return { text: shortDate(due, new Date(today + 'T12:00:00')), tone: '' };
 }
 
 export function greeting(hour = new Date().getHours()): string {

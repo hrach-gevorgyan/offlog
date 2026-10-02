@@ -4,9 +4,10 @@
   import { requestPermission, permissionState } from '../../notifications';
   import { getDefaultReminderTime, isTauri } from '../../../config';
   import { fmtTime } from '../../utils';
-  import { isoToLocalInput, dateFromToday, dueDateToReminderInput } from '../../carddetail/helpers';
+  import { isoToLocalInput, dueDateToReminderInput } from '../../carddetail/helpers';
   import { I } from '../icons';
-  import { dateLabel, laterToday } from './when';
+  import { reminderPresets } from '../presets';
+  import { dateLabel } from './when';
 
   export let task: TaskDoc;
   export let save: (changes: Partial<TaskDoc>, err: string) => Promise<boolean>;
@@ -19,15 +20,7 @@
   $: local = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
 
   // Presets in the past are left out; "now" is read once per open.
-  const nowLocal = isoToLocalInput(new Date().toISOString());
-  const later = laterToday();
-  const PRESETS = [
-    ...(later ? [{ at: later, label: `Later today at ${timeLabel(later.slice(11))}` }] : []),
-    { at: `${dateFromToday(0)}T${defTime}`, label: `Today at ${timeLabel(defTime)}` },
-    { at: `${dateFromToday(0)}T18:00`, label: `Today at ${timeLabel('18:00')}` },
-    { at: `${dateFromToday(1)}T${defTime}`, label: `Tomorrow at ${timeLabel(defTime)}` },
-  ].filter((p, i, all) => p.at > nowLocal && all.findIndex(q => q.at === p.at) === i)
-    .sort((a, b) => (a.at < b.at ? -1 : 1));
+  const PRESETS = reminderPresets();
 
   function setAt(v: string) {
     save({ reminder_at: v ? new Date(v).toISOString() : null }, ERR);
