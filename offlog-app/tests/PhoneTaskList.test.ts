@@ -76,6 +76,20 @@ describe('phone task lists', () => {
     expect(updateTask).toHaveBeenCalledWith('task:Older', { due_date: day(-9), reminder_at: null });
   });
 
+  it('Late: repeating tasks stay where they are; with only those left there is no button', async () => {
+    getAllTasksDue.mockResolvedValue([task('task:Old', day(-3)), task('task:Rep', day(-2), { recurrence: 'weekly' } as Partial<TaskDoc>)]);
+    const { findByText, getByRole, unmount } = render(TaskListScreen, { kind: 'late' });
+    await findByText('Rep');
+    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(1));
+    expect(updateTask).toHaveBeenCalledWith('task:Old', { due_date: day(0) });
+    unmount();
+    getAllTasksDue.mockResolvedValue([task('task:Rep', day(-2), { recurrence: 'weekly' } as Partial<TaskDoc>)]);
+    const r2 = render(TaskListScreen, { kind: 'late' });
+    await r2.findAllByText('Rep');
+    expect(r2.queryByRole('button', { name: 'All to today' })).toBeNull();
+  });
+
   it('Late: a reminder that follows the due date moves with it; a failure surfaces an error', async () => {
     getAllTasksDue.mockResolvedValue([task('task:Old', day(-3), { remindOnDue: true } as Partial<TaskDoc>)]);
     const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });

@@ -8,6 +8,7 @@
   import TopBar from '../TopBar.svelte';
   import { push } from '../nav';
   import { I } from '../icons';
+  import { MARK_PATHS } from '../mark';
   import { staleHostAlert } from '../../discovery';
   import { runSyncNow, syncing } from './syncNow';
 
@@ -68,27 +69,33 @@
   const go = (page: string) => push({ k: 'set', page });
   const THEME = { system: 'System', light: 'Light', dark: 'Dark' };
 
-  type Row = { page: string; icon: string; label: string; value?: string };
+  // Each row's icon sits on a small tile in one of the app's own colours.
+  type Row = { page: string; icon: string; label: string; value?: string; tone: string };
   $: groups = [
     [
-      { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme] },
-      { page: 'notifications', icon: I.bell, label: 'Notifications', value: notifications ? 'On' : 'Off' },
-      { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off' },
+      { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme], tone: 'var(--accent)' },
+      { page: 'notifications', icon: I.bell, label: 'Notifications', value: notifications ? 'On' : 'Off', tone: 'var(--amber)' },
+      { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off', tone: 'var(--success)' },
     ],
     [
-      { page: 'organize', icon: I.setBox, label: 'Spaces, tags & fields' },
-      { page: 'archived', icon: I.arch, label: 'Archived projects', value: archivedCount ? String(archivedCount) : '' },
-      { page: 'data', icon: I.setDisk, label: 'Backup & restore' },
+      { page: 'organize', icon: I.setBox, label: 'Spaces, tags & fields', tone: 'var(--accent)' },
+      { page: 'archived', icon: I.arch, label: 'Archived projects', value: archivedCount ? String(archivedCount) : '', tone: 'var(--faint)' },
+      { page: 'data', icon: I.setDisk, label: 'Backup & restore', tone: 'var(--success)' },
     ],
     [
-      { page: 'trash', icon: I.trash, label: 'Recycle bin', value: trashCount ? String(trashCount) : '' },
-      { page: 'history', icon: I.clock, label: 'History' },
-      { page: 'advanced', icon: I.sliders, label: 'Advanced' },
+      { page: 'trash', icon: I.trash, label: 'Recycle bin', value: trashCount ? String(trashCount) : '', tone: 'var(--danger)' },
+      { page: 'history', icon: I.clock, label: 'History', tone: 'var(--amber)' },
+      { page: 'advanced', icon: I.sliders, label: 'Advanced', tone: 'var(--faint)' },
     ],
   ] as Row[][];
 </script>
 
 <TopBar title="Settings" />
+
+<div class="about">
+  <svg viewBox="0 0 1024 1024" aria-hidden="true">{#each MARK_PATHS as d}<path {d} />{/each}</svg>
+  <span><b>Offlog</b><span>On this device · no account{version ? ` · ${version}` : ''}</span></span>
+</div>
 
 <div class="p-group synccard">
   <button class="p-row" on:click={() => go('sync')}>
@@ -112,7 +119,7 @@
   <div class="p-group">
     {#each rows as r (r.page)}
       <button class="p-row" on:click={() => go(r.page)}>
-        <span class="p-ico">{@html r.icon}</span>
+        <span class="p-ico tile" style:--tone={r.tone}>{@html r.icon}</span>
         <span class="p-k"><span>{r.label}</span></span>
         {#if r.value}<span class="p-v">{r.value}</span>{/if}
         <span class="chev">{@html I.chev}</span>
@@ -121,7 +128,6 @@
   </div>
 {/each}
 
-<p class="foot">Offlog{version ? ` ${version}` : ''} · local-first, no account</p>
 
 <style>
   .synccard { margin-top: 6px; display: flex; align-items: center; padding-right: 6px; }
@@ -135,5 +141,13 @@
   .chev { display: flex; color: var(--faint); margin-left: 2px; }
   .p-v + .chev { margin-left: 0; }
   .p-row > .p-k + .chev { margin-left: auto; }
-  .foot { font-size: 13px; color: var(--faint); text-align: center; margin: 4px 0 0; }
+  .about { display: flex; align-items: center; gap: 14px; margin: 2px 0 14px; padding: 16px; border-radius: 16px; background: var(--hero); color: var(--on-hero); }
+  .about svg { width: 40px; height: 40px; flex-shrink: 0; fill: currentColor; }
+  .about b { display: block; font-size: var(--p-fs-xl); }
+  .about > span > span { font-size: var(--p-fs-s); opacity: .88; }
+  /* Light mode darkens each tone toward --text so a white icon reads on it;
+     dark mode's tones are light already, and --on-accent turns dark there. */
+  .tile { width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--tone) 82%, var(--text)); color: var(--on-accent); }
+  :global(body.dark) .tile { background: var(--tone); }
+  .tile :global(svg.i) { width: 18px; height: 18px; }
 </style>

@@ -61,7 +61,8 @@
   --accent-ink: #4c54bd;
   /* The phone Home's hero band and what sits on it. Dark mode deepens it
      rather than using the lighter dark --accent, which glares as a fill. */
-  --hero: #575fca;
+  --hero-base: #575fca;
+  --hero: var(--hero-base);
   --on-hero: #ffffff;
   /* Snackbars and the bulk-select bar: an inverted surface. Dark mode keeps
      it a raised grey rather than a near-white slab. */
@@ -78,6 +79,8 @@
   --success: #5abe73;
   --due-soon-bg: #faf3d4;
   --due-soon-ink: #884826;
+  /* A warm accent for decoration only (Settings tiles), never for meaning. */
+  --amber: #c98a2b;
   --overdue-bg: #f8e4e4;
   --overdue-ink: #ab3730;
   /* Fixed (not overridden in body.dark) — the toggle-switch knob (ListView's
@@ -181,7 +184,8 @@ body.dark {
   --faint: #8b93a5;
   --accent: #8590e5;
   --accent-ink: #9aa3ee;
-  --hero: #373d81;
+  --hero-base: #373d81;
+  --hero: var(--hero-base);
   --on-hero: #eff0fc;
   --inverse-surface: #353b49;
   --on-inverse: #f3f4f6;
@@ -191,6 +195,7 @@ body.dark {
   --success: #74d791;
   --due-soon-bg: #372f1a;
   --due-soon-ink: #efc365;
+  --amber: #efc365;
   --overdue-bg: #351a21;
   --overdue-ink: #ea7f8c;
 }
@@ -219,6 +224,12 @@ body.dark.high-contrast {
 
 /* Set by theme.ts setStatusBarOnHero() while the phone Home's hero is under
    the status bar; after the theme blocks so it wins in both themes. */
+/* The living hero (phone/livingHero.ts): a few degrees of hue and a little
+   lightness, set on <html> by season and time of day. Redeclared in both theme
+   blocks so each derives from its own base. */
+@supports (color: oklch(from red l c h)) {
+  :root, body.dark { --hero: oklch(from var(--hero-base) calc(l + var(--hero-dl, 0)) c calc(h + var(--hero-dh, 0))); }
+}
 body.statusbar-hero { --statusbar-fill: var(--hero); }
 /* The strip's height is a fractional inset; a pixel of the same colour below
    it covers the rounding seam against the band. */

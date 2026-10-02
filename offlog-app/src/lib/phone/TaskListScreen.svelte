@@ -70,10 +70,12 @@
 
   // Late: every late task to today in one go, as the due sheet would set it
   // (a reminder that follows the due date moves with it). Undo puts back each
-  // task's own date and reminder.
+  // task's own date and reminder. Repeating tasks stay: their due date is
+  // what the next repeat counts from, so moving it would shift the schedule.
   let moving = false;
+  $: movable = kind === 'late' ? (sections[0]?.tasks ?? []).filter(t => !t.recurrence) : [];
   async function moveAllToToday() {
-    const rows = sections[0]?.tasks ?? [];
+    const rows = movable;
     if (!rows.length || moving) return;
     moving = true;
     const remind = new Date(dueDateToReminderInput(today)).toISOString();
@@ -103,7 +105,7 @@
 </script>
 
 <TopBar title={TITLE[kind]} {sub} {root}>
-  {#if kind === 'late' && count}<button class="p-tbtn" on:click={moveAllToToday} disabled={moving}>All to today</button>{/if}
+  {#if kind === 'late' && movable.length}<button class="p-tbtn" on:click={moveAllToToday} disabled={moving}>All to today</button>{/if}
 </TopBar>
 {#if kind === 'today' && lateCount}
   <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Late: {lateCount} late {lateCount === 1 ? 'task' : 'tasks'}">

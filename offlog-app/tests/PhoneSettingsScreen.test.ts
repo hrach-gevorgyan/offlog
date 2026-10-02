@@ -59,7 +59,7 @@ describe('phone Settings home', () => {
     expect(rowValue(getByText('App lock'))).toBe('Off');
     await waitFor(() => expect(rowValue(getByText('Recycle bin'))).toBe('3'));
     expect(rowValue(getByText('Archived projects'))).toBe('1');
-    expect(getByText('Offlog · local-first, no account')).toBeTruthy();
+    expect(getByText('On this device · no account')).toBeTruthy();
   });
 
   it('every row pushes its settings page', async () => {

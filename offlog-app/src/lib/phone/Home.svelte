@@ -1,4 +1,5 @@
 <script context="module" lang="ts">
+  import { applyHeroShift } from './livingHero';
   // The mark's entrance belongs to the app opening, not to every return to
   // Home; a module flag lives exactly as long as the launch does.
   let markPlayed = false;
@@ -40,7 +41,7 @@
   function newProject(spaceId: string) { newIn = spaceId; newSession++; }
 
   let unsub: (() => void) | undefined;
-  onMount(() => { load(); unsub = subscribe(load); });
+  onMount(() => { applyHeroShift(); load(); unsub = subscribe(load); });
   // Its own claim, taken when Home appears: the screen it returns from may
   // still be animating out with a claim of its own.
   const HERO = { lightIcons: true };
@@ -48,7 +49,7 @@
   onMount(() => { strip = claimStatusBar(HERO); });
   onDestroy(() => { unsub?.(); if (raf) cancelAnimationFrame(raf); strip?.release(); });
   // Coming back to the app the next morning shows the new day.
-  function onVisible() { if (!document.hidden) { todayStr = localDateStr(new Date()); load(); } }
+  function onVisible() { if (!document.hidden) { todayStr = localDateStr(new Date()); applyHeroShift(); load(); } }
   onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
 
   // A fresh install: the band invites the first task; everything else stays.

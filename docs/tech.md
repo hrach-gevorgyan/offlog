@@ -78,7 +78,11 @@ flowchart LR
   (postinstall) wraps it in `runOnUiThread` until upstream does. The back
   handler also trusts `openLayers` over `canGoBack`: Chrome hides history
   entries pushed without a gesture (a sheet opened from the widget) from it. Re-tapping the current tab at its root scrolls it to the
-  top; the + steps aside on a long downward scroll (`fabScroll.ts`).
+  top; the + steps aside on a long downward scroll (`fabScroll.ts`). The +
+  is a rounded square with the hero's slant, drawn as an SVG under the icon
+  so its corners and shadow survive; the + sits on the button's centre. Late
+  has "All to today", which leaves repeating tasks alone (their due date is
+  what the next repeat counts from).
   Week start and 12/24h follow the device locale (`Intl`) until chosen in
   Appearance. Screens: Home, Today/Late/Pinned, Search,
   Project (board by status with a drag-following swipe, list with select +
@@ -587,7 +591,8 @@ native theming. Derived tints use
 | `--accent-ink` | `#4C54BD` | `#9AA3EE` | accent text on an accent tint (selected pills, "Today"), 4.5:1 where plain accent falls short |
 | `--check-ring` | `--faint` 75% | `--faint` 75% | unticked check circle/box border, 3:1 against cards (declared on `body`) |
 | `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
-| `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent |
+| `--hero-base` / `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent. `--hero` is the base shifted by `--hero-dh` / `--hero-dl` on `<html>` (season and evening, `phone/livingHero.ts`) where relative colour is supported |
+| `--amber` | `#C98A2B` | `#EFC365` | decoration only (phone Settings icon tiles); never carries meaning |
 | `--on-hero` | `#FFFFFF` | `#EFF0FC` | ink and the muted mark on `--hero` |
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
 | `--danger` | `#BD4138` | `#E77F7C` | destructive actions |
