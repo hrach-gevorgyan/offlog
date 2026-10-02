@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import { setSyncUrl, getSyncUrl, setSyncCredentials, getPairedHostUuid, setPairedHostUuid } from '../config';
 import { startSync, clearLocalSeedBeforeFirstPair, syncState } from './db';
+import { showError } from './store';
 
 // Device-side half of "no human ever types an IP": listens for the PC app's
 // `_offlog._tcp` mDNS broadcast and surfaces found hosts so Settings can
@@ -52,6 +53,20 @@ export async function scanForHosts(): Promise<void> {
   discoveredHosts.set([]);
   isScanning.set(true);
 
+  // A failed start must clear isScanning, or Settings shows "Scanning" forever.
+  try {
+    await startWatch();
+  } catch {
+    isScanning.set(false);
+    showError('Could not search the network for your PC. Check that Wi-Fi is on and try again.');
+    return;
+  }
+
+  if (stopTimer) clearTimeout(stopTimer);
+  stopTimer = setTimeout(() => { stopScan().catch(() => {}); }, 10_000);
+}
+
+async function startWatch(): Promise<void> {
   const { ZeroConf } = await import('capacitor-zeroconf');
 
   watchId = await ZeroConf.watch({ type: SERVICE_TYPE, domain: DOMAIN }, (result) => {
@@ -74,9 +89,6 @@ export async function scanForHosts(): Promise<void> {
       pairingPort: pairingPortStr ? Number(pairingPortStr) : null,
     });
   });
-
-  if (stopTimer) clearTimeout(stopTimer);
-  stopTimer = setTimeout(() => { stopScan().catch(() => {}); }, 10_000);
 }
 
 interface PairResponse {

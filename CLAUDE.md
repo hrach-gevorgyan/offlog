@@ -113,8 +113,10 @@ tasks, so splitting them would be a cycle.
   core-only. Plugins like `pouchdb-find` need an explicit
   `PouchDB.plugin(...)`; importing is not enough.
 - `db.find()` **silently defaults to 25 results** — always pass `limit`.
-- **Soft delete only** for tasks (`deleted: true`); never `db.remove()` a task
-  except in `deleteProject`/`wipeAndReseed`. Hard deletes break sync.
+- **Soft delete only** for tasks (`deleted: true`). Hard deletes break sync;
+  the only exceptions are `deleteProject`, `wipeAndReseed`, the Recycle
+  bin's `deleteForever`/`emptyTrash`, `pruneOldDeletedTasks` and
+  `clearLocalSeedBeforeFirstPair` (decisions.md). Never add another.
 - **`_taskCache` must be invalidated** (`invalidateTaskCache()`) inside every
   function that writes a task doc, on top of the central invalidation in
   `subscribe()`. New write path → add the invalidation.

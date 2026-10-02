@@ -33,7 +33,7 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
+  security-events: write  # upload CodeQL results to the Security tab
 
 jobs:
   analyze-js-rust-actions:

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('../src/lib/store', () => ({ showError }));
+
 vi.mock('capacitor-zeroconf', () => ({
   ZeroConf: {
     watch: vi.fn().mockResolvedValue('watch-id'),
@@ -44,6 +47,7 @@ vi.mock('../src/lib/db', () => ({
   syncState: { status: 'idle', error: null, listeners: new Set() },
 }));
 
+import { ZeroConf } from 'capacitor-zeroconf';
 import { pairWithHost, scanForHosts, stopScan, isScanning, discoveredHosts, type DiscoveredHost } from '../src/lib/discovery';
 
 const host: DiscoveredHost = { name: 'PC', url: '', uuid: 'test-uuid', address: '127.0.0.1', pairingPort: 5000 };
@@ -142,5 +146,12 @@ describe('scanForHosts', () => {
     const promise = scanForHosts();
     expect(get(discoveredHosts)).toEqual([]);
     return promise;
+  });
+
+  it('a scan that cannot start clears Scanning and says why', async () => {
+    vi.mocked(ZeroConf.watch).mockRejectedValueOnce(new Error('multicast lock'));
+    await scanForHosts();
+    expect(get(isScanning)).toBe(false);
+    expect(showError).toHaveBeenCalledWith('Could not search the network for your PC. Check that Wi-Fi is on and try again.');
   });
 });
