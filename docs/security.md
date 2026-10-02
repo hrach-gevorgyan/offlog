@@ -328,11 +328,15 @@ Verified in the code, not just claimed:
   convenient, this is what makes sync safe: if a device that was offline
   reconnects, a genuinely destroyed record would come back to life as a
   brand-new one. Flagged deletions replicate correctly.
-- **Sync conflicts are never resolved silently.** If two devices edited
-  the same task while apart, Offlog shows you both and asks. The
-  recorded reasoning: whichever version the database "prefers" is
-  arbitrary rather than newest, so auto-resolving would silently throw
-  away one device's real work.
+- **Sync conflicts over real edits are never resolved silently.** If two
+  devices edited the same task while apart, Offlog shows you both and
+  asks. The recorded reasoning: whichever version the database "prefers"
+  is arbitrary rather than newest, so auto-resolving would silently throw
+  away one device's real work. The one exception is the starter spaces
+  and Draft project every fresh install creates: a copy of one that still
+  exactly matches what was first created is discarded without asking
+  when it conflicts, since it holds nothing anyone wrote. Two real edits are never
+  chosen between automatically.
 - **Automatic local backups**, on by default, at most daily, the newest
   seven kept, written to the app's private storage and never uploaded.
   Attachments are included in full rather than as references, because a
@@ -370,11 +374,12 @@ Verified in the code, not just claimed:
   file permission set also lets it read its own app-data folders, and
   nothing else. Files you export go through the system's own Save dialog,
   where you choose the location.
-- **Only two small pieces of memory-unsafe code exist** in the whole
-  desktop app: the call that shuts down the sync server, and the two
-  calls to Windows' encryption facility. Both are a handful of lines
-  with no attacker-reachable input, and every maintenance pass counts
-  them — a third would be treated as a finding in itself.
+- **Only two kinds of memory-unsafe code exist** in the whole desktop
+  app: the Windows call that shuts down the sync server (used on quit,
+  and by a reset that only debug builds allow), and the two calls to
+  Windows' encryption facility. Each is a handful of lines with no
+  attacker-reachable input, and every maintenance pass counts them — a
+  third kind would be treated as a finding in itself.
 
 ---
 

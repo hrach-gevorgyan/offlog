@@ -120,11 +120,10 @@ in [tech.md](tech.md)'s Theme System table, which is the single source
 of truth. Don't copy those values here. The accent (and the phone hero's
 `--hero-base`, which shares the light value) has to stay in step across:
 `app.css`; `capacitor.config.ts`'s `iconColor`; Android's
-`values/colors.xml` and `values-night/colors.xml` (`colorPrimary`,
-`colorAccent`, `splashBg`, `colorWidgetAccent`); and
-`resources/generate-icons.cjs`'s `BRAND`. `BRAND` and the launcher icon
-PNGs generated from it still carry the previous indigo `#5457E0`;
-regenerating them is a visual change that needs the owner's go-ahead.
+`values/colors.xml` (`colorPrimary`, `colorAccent`, `splashBg`,
+`colorWidgetAccent`) and `values-night/colors.xml` (`splashBg`,
+`colorWidgetAccent`); and `resources/generate-icons.cjs`'s `BRAND`, which
+is `#575fca`, as are the launcher icon PNGs generated from it.
 
 `--amber` (phone Settings icon tiles) is in-app wayfinding decoration only,
 not a second brand colour; it never appears on public material.
@@ -172,7 +171,8 @@ default font or a second "display" typeface for headlines.
 
 - **Master:** `offlog-app/resources/source-logo.svg`.
   `resources/generate-icons.cjs` exports the Android launcher and
-  notification icons and `public/icon-512.png` from it;
+  notification icons and `public/icon-512.png` from it (run
+  `npm i --no-save sharp` in `offlog-app/` first; it is not a dependency);
   `offlog-desktop/src-tauri/icons/` holds the desktop sizes
   (32/64/128/128@2x, `.ico`, `.icns`).
 - **No separate wordmark/logotype exists yet.** The icon is the only

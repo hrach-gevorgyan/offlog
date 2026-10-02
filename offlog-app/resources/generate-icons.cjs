@@ -2,7 +2,7 @@
 // Not part of the build pipeline; run manually (`node
 // resources/generate-icons.cjs` from offlog-app/) whenever the logo or
 // brand color changes, then commit the resulting PNGs. Uses `sharp`,
-// already present as a transitive dependency of @capacitor/assets.
+// which is not a dependency: run `npm i --no-save sharp` first.
 //
 // @capacitor/assets' own `generate` CLI was tried first and rejected: on
 // this Windows setup it silently fell back to re-rasterizing the Android

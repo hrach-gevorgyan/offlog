@@ -44,7 +44,7 @@ npm run dev             # http://localhost:5173
 ```
 
 Sync is optional — the app works fully offline with no setup. See the
-[README](README.md#getting-started) for the `.env.local` sync config and
+[README](README.md#build-from-source) for the `.env.local` sync config and
 the desktop (`offlog-desktop/`, Tauri) build steps.
 
 ## Before opening a PR

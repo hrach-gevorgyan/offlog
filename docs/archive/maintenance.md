@@ -9,6 +9,22 @@ pass 22 and maintenance.md's scoping note.
 
 ---
 
+## 27th run — 2026-10-02 (on `redesign/full`, before its merge to `main`)
+
+Run before the redesign branch merges, in the three differently-aimed
+cycles: (1) the standard Phase 1 checklist, (2) a data-integrity audit,
+(3) a stability audit. Gates green. Fixes, all committed on
+`redesign/full`, by theme: reload ordering and sync/reminder races in the
+database layer; project delete order corrected; the pairing server
+hardened so it can't be stalled; the recovery code drawn from a
+CSPRNG; unused webview permissions removed; the App Lock claim in
+security.md corrected to what the code does; launcher icons and badges
+recoloured to the current brand `#575fca`; desktop UI fixes to Escape
+handling and the lock gate; phone-shell fixes; further data-integrity
+fixes from cycle 2; and robustness fixes in the Rust desktop host.
+
+---
+
 ## 26th run — 2026-08-29
 
 Pulled forward by the pointer's "or on the next bug hit in daily use"

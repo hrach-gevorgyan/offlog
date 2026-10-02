@@ -2,6 +2,7 @@
 // resources/source-logo.svg. Not part of the build pipeline; run manually
 // (`node resources/generate-splash.cjs` from offlog-app/) whenever the
 // logo or brand color changes, same convention as generate-icons.cjs.
+// Uses `sharp`, which is not a dependency: run `npm i --no-save sharp` first.
 //
 // Run this whenever the mark changes: generate-icons.cjs regenerates the
 // launcher/notification icons but never touches these, so they go stale

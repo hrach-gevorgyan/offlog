@@ -29,8 +29,11 @@ stored, and the limits of each — see
   locally on your device, in the app's own local database (PouchDB).
   Offlog (the developer) never has access to this data — it is never
   uploaded anywhere by default.
-- **Sync between your own devices** (e.g. phone and PC) is optional and
-  off by default. When enabled, it works by connecting directly to a
+- **Sync between your own devices** (e.g. phone and PC) is optional:
+  nothing syncs to another device until you pair one or enter a server
+  address. (The desktop app replicates to its own built-in server on the
+  same PC from the start; that never leaves the machine.) Once set up,
+  it works by connecting directly to a
   sync server that *you* run yourself — either the Windows desktop app
   (which has one built in) or your own self-hosted server, at the address
   you give it. With the desktop app that is your own local network

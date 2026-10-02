@@ -4,7 +4,8 @@
 // of shipping Tauri/NSIS's generic default installer chrome. Not part of
 // the build pipeline; run manually (`node resources/generate-installer-art.cjs`
 // from offlog-app/) whenever the logo or brand color changes, same
-// convention as generate-icons.cjs/generate-splash.cjs.
+// convention as generate-icons.cjs/generate-splash.cjs. Uses `sharp`,
+// which is not a dependency: run `npm i --no-save sharp` first.
 //
 // Don't add a MUI_HEADERIMAGE_BITMAP. NSIS renders it at native size in
 // the header control's top-left corner and fills the rest of that bar

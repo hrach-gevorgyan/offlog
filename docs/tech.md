@@ -90,7 +90,7 @@ flowchart LR
   changes, pickers in bottom sheets; order is title, note, fields, steps —
   Status/Due/Priority/Tags always show, the other fields only once set, the
   unset ones as `+` chips opening the same sheets; an empty value reads as a
-  muted "—"; dates read "Sun 4 Oct" via `phone/task/when.ts` `dateLabel`,
+  muted "—"; dates read "Sun 4 Oct" via `phone/format.ts` `shortDate()`,
   which phone sheets pass to `CalendarPicker`'s `formatDate`), Agenda (list/month), Focus, Settings
   (pushed pages that reuse `settings/*`, plus Recycle bin, History, Archived
   projects, and Organize — spaces, tags and fields in `phone/settings/organize/`
@@ -242,14 +242,16 @@ src/
       TaskCard / TaskMenu / TopBar / Empty .svelte   Shared rows, menus, bars, empty states
       livingHero.ts               Season/evening shift of --hero (--hero-dh, --hero-dl)
       fabScroll.ts                Hides the + on a long downward scroll
-      rowMotion.ts                collapseOut/collapseIn for finished rows
-      mark.ts / icons.ts / format.ts  Logo paths, icon set, greeting and labels
+      rowMotion.ts                markLeaving/markReturning, leaves/returns: which rows play
+                                  lib/motion.ts's collapseOut/collapseIn
+      presets.ts                  Due and reminder shortcut lists, shared by quick add and the task screen
+      mark.ts / icons.ts / format.ts  Logo paths, icon set, greeting and labels (shortDate)
       agenda/month.ts             Month grid maths
       focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)
       project/                    Board, list, bulk/filter/card/project menu sheets, actions, filter.ts
       quickadd/                   Quick add panels; memory.ts keeps the last keyboard height
       settings/                   Settings pages (reuse settings/*), Trash, History, Archived, organize/
-      task/                       Task-screen sheets and Steps; when.ts formats dates
+      task/                       Task-screen sheets and Steps; when.ts has laterToday()
 ```
 
 **Two CSS rules worth knowing:**
@@ -369,9 +371,12 @@ callback (db/ must never import UI) that SettingsPanel fulfils with
 `confirmAction()` and the phone's `PrefsPage` with its own confirm. Declining leaves the data untouched and reports the
 issues as needing review.
 
-It scans by id prefix (`space:`/`project:`/`task:`/`tag:`) rather than the
-whole database, so the changelog is not loaded — and `checked` counts only
-records a check actually inspected. `log:` docs are excluded from the
+It reads every doc except the changelog, in two `allDocs` range scans either
+side of `log:` (`conflictBearingRows()` in `db/sync.ts`), so the changelog is
+not loaded — and `checked` counts only records a check actually inspected.
+Not a per-prefix allowlist: the same rows feed the conflict pass, and an
+allowlist there stops reporting conflicts on docs outside it (such as
+`meta:custom_fields`) that the sync badge still counts. `log:` docs are excluded from the
 conflict pass on purpose: their ids embed a random suffix, so two devices
 can never mint the same one.
 
@@ -534,7 +539,7 @@ tag's asset. Two consequences, both normal:
 
 Do this after any real test round; dev state accumulates silently.
 
-- **Desktop**: `scripts/reset-dev-env.ps1`. `-IncludeRelease` also wipes the
+- **Desktop**: `offlog-desktop/scripts/reset-dev-env.ps1`. `-IncludeRelease` also wipes the
   *installed* app's data — only when confirmed disposable.
 - **Web**: `new PouchDB('offlog').destroy().then(() => localStorage.clear())`,
   then reload. Clearing PouchDB alone leaves `offlog_seeded` set and produces a
@@ -647,10 +652,14 @@ colours). Phone-only type and shadow tokens (`--p-fs-*`, `--p-shadow`) live in
 `phone/phone.css`, scoped to `.phone-shell`/`.psheet`.
 
 Changing `--accent` or `--hero-base` also means updating `capacitor.config.ts`'s
-`iconColor`, Android's `values/colors.xml` + `values-night/colors.xml`
-(`colorPrimary`, `colorAccent`, `splashBg`, and the `colorWidget*` set, which
-mirror `--bg`/`--text`/`--muted`/`--accent`; `colorWidgetSurface` is a
-widget-only shade) and `resources/generate-icons.cjs`'s `BRAND`.
+`iconColor`, Android's `values/colors.xml` (`colorPrimary`, `colorAccent`,
+`splashBg` = `--hero-base`, and the `colorWidget*` set) and
+`values-night/colors.xml` (`splashBg` and the `colorWidget*` set only), and
+`resources/generate-icons.cjs`'s `BRAND` (currently `#575fca`). The widget
+colours mirror `--text`/`--muted`/`--accent`, with `colorWidgetBg` on `--bg`
+in light and `--surface` in dark; `colorWidgetSurface` is a widget-only
+shade. The `resources/generate-*.cjs` scripts need `sharp`, which is not a
+dependency: run `npm i --no-save sharp` in `offlog-app/` first.
 `<meta theme-color>` is not an accent: it follows the theme background
 (`#f6f7f9` / `#181a20`), set pre-paint by `public/theme-init.js` and kept in
 step by `theme.ts`.

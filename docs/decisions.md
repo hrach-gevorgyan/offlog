@@ -80,12 +80,10 @@ these is true, never on a schedule:
 Attachment bytes live in PouchDB's native `_attachments` map on the task
 doc, riding the existing sync with no new code. A separate
 `offlog_attachments` database would mean a second, independent sync
-lifecycle to avoid duplicating bytes across rotated auto-backups — but
-the backup's `db.allDocs({include_docs:true})` never fetches attachment
-binary content (PouchDB only does that with an explicit
-`attachments:true`), so rotation already excludes them. Accepted
-tradeoff: those backups can't restore attachment *content* on their own —
-an attachment's real safety net is sync to a second device.
+lifecycle, a second backup/restore path and a second place for a task and
+its files to fall out of step — all to keep bytes out of the main
+database, which buys nothing here. Backups do inline the bytes; what that
+costs is covered under "Backups carry the bytes" below.
 
 ### File attachments: no format allowlist beyond HEIC/HEIF
 An extension allowlist protects nothing here: Offlog never executes an
@@ -96,8 +94,9 @@ canvas-based downscaling can't decode it in a browser/webview. That's a
 compression-pipeline limit, not a security call.
 
 ### PouchDB as a UMD global, not ESM
-`db.ts` loads PouchDB via a `<script>` tag, registering `pouchdb-find`
-separately against the resulting global. Intentional, not an oversight —
+`index.html` loads PouchDB via a `<script>` tag, and `src/lib/db/core.ts`
+registers `pouchdb-find` separately against the resulting global
+(`PouchDB.plugin(PouchDBFind)`). Intentional, not an oversight —
 switching would mean re-verifying every corner of sync behavior against a
 different bundling path for no functional gain. The ~51KB duplication is
 an accepted cost.
