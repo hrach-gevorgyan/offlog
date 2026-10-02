@@ -75,8 +75,16 @@ function markSynced() {
   syncState.error = null;
   syncState.retryCount = 0;
   localStorage.setItem(LAST_SYNC_KEY, ts);
-  scanConflicts();
+  scheduleConflictScan();
   notify();
+}
+
+// Live sync pauses after every replicated batch, and a scan reads every
+// non-log doc, so a burst of pauses collapses into one scan.
+let _scanTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleConflictScan() {
+  clearTimeout(_scanTimer);
+  _scanTimer = setTimeout(() => { scanConflicts().catch(() => {}); }, 1000);
 }
 
 function markError(err?: SyncError) {
@@ -122,8 +130,11 @@ async function autoResolvePristineDefaultConflicts(): Promise<void> {
         } catch { /* already gone — ignore */ }
       }
       if (edited.length === 1) {
-        const winning = await db.get<PristineDoc>(id, { rev: edited[0] });
-        await db.put({ ...winning, _id: id, _rev: doc._rev });
+        // A 409 here means replication wrote this id meanwhile; the next scan retries.
+        try {
+          const winning = await db.get<PristineDoc>(id, { rev: edited[0] });
+          await db.put({ ...winning, _id: id, _rev: doc._rev });
+        } catch { continue; }
         for (const rev of losingRevs) { try { await db.remove(id, rev); } catch {} }
       } else if (edited.length === 0) {
         // every side is still pristine — doesn't matter which one "wins"
@@ -243,7 +254,13 @@ export async function startSync(): Promise<void> {
   // Settings' Sync tab renders "Not connected to another device yet" for this.
   if (!getSyncUrl()) { syncState.status = 'idle'; notify(); return; }
   if (!navigator.onLine) { syncState.status = 'offline'; notify(); }
-  _syncHandler = attachSyncHandlers(db.sync(await remote(), { live: true, retry: true }));
+  _syncHandler = attachSyncHandlers(db.sync(await remoteOrMarkError(), { live: true, retry: true }));
+}
+
+// Reading the stored credentials can fail; without this the status would
+// stay at whatever it was with no replication running behind it.
+async function remoteOrMarkError() {
+  try { return await remote(); } catch (e) { markError(e as SyncError); throw e; }
 }
 
 // Pause: cancels the live replication without touching the configured URL
@@ -259,8 +276,8 @@ export async function syncNow(): Promise<void> {
   // immediately rather than attempting new PouchDB('', ...).
   if (!getSyncUrl()) { syncState.status = 'idle'; notify(); return; }
   syncState.status = 'syncing'; notify();
-  if (_syncHandler) _syncHandler.cancel();
-  const remoteDb = await remote();
+  if (_syncHandler) { _syncHandler.cancel(); _syncHandler = null; }
+  const remoteDb = await remoteOrMarkError();
   return new Promise((resolve, reject) => {
     _syncHandler = attachSyncHandlers(db.sync(remoteDb, { live: true, retry: true }), (err) => {
       if (err) reject(err); else resolve();

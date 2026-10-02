@@ -434,12 +434,14 @@ export async function removeCustomFieldDef(fieldId: string): Promise<CustomField
 
 export async function deleteProject(id: string): Promise<void> {
   const doc = await db.get<ProjectDoc>(id);
-  await db.remove(doc);
-  // hard-delete all tasks in this project
+  // Tasks first: if this fails partway the project still exists, instead of
+  // leaving orphans that repairDatabase() would move to Unsorted, reviving
+  // tasks the user deleted.
   const all = await getAllTasksRaw();
   const projectTasks = all.filter(d => d.project_id === id);
   if (projectTasks.length) await bulkWrite(projectTasks.map(t => ({ ...t, _deleted: true })));
   invalidateTaskCache();
+  await db.remove(doc);
   // Logged after the doc is already gone, so this ref won't resolve to a live
   // project if clicked through -- same as any other deleted-item log row.
   await logChange(id, 'delete', undefined, undefined, undefined, { project_name: doc.name });

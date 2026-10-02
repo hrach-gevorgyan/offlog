@@ -1,7 +1,7 @@
 // Housekeeping: log/deleted-task retention, integrity check + repair, the
 // Settings maintenance run, and backup import/export.
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column } from '../types';
-import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS } from './core';
+import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, DEFAULT_COLS, bulkWrite } from './core';
 import { getProjects, getCustomFieldDefs, createProject } from './entities';
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
@@ -29,7 +29,7 @@ export async function pruneOldLogs(): Promise<number> {
   const r = await db.allDocs({ startkey: 'log:', endkey: `log:${cutoffIso}` });
   const stale = r.rows.filter(row => !row.value.deleted);
   if (stale.length) {
-    await db.bulkDocs(stale.map(row => ({ _id: row.id, _rev: row.value.rev, _deleted: true })));
+    await bulkWrite(stale.map(row => ({ _id: row.id, _rev: row.value.rev, _deleted: true })));
   }
   return stale.length;
 }
@@ -39,8 +39,8 @@ export async function pruneOldLogs(): Promise<number> {
 export function maybePruneOldLogs(): void {
   const last = Number(localStorage.getItem(LOG_PRUNE_KEY) ?? 0);
   if (Date.now() - last < LOG_PRUNE_INTERVAL_MS) return;
-  localStorage.setItem(LOG_PRUNE_KEY, String(Date.now()));
-  pruneOldLogs().catch(() => {});
+  // Stamped only on success, so a failed prune is retried next hour.
+  pruneOldLogs().then(() => localStorage.setItem(LOG_PRUNE_KEY, String(Date.now()))).catch(() => {});
 }
 
 // ── Deleted-task retention ──────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export async function pruneOldDeletedTasks(): Promise<number> {
   const all = await getAllTasksRaw();
   const stale = all.filter(d => d.deleted && d.updated_at && d.updated_at < cutoffIso);
   if (stale.length) {
-    await db.bulkDocs(stale.map(d => ({ ...d, _deleted: true })));
+    await bulkWrite(stale.map(d => ({ ...d, _deleted: true })));
     invalidateTaskCache();
   }
   return stale.length;
@@ -73,8 +73,7 @@ export async function pruneOldDeletedTasks(): Promise<number> {
 export function maybePruneOldDeletedTasks(): void {
   const last = Number(localStorage.getItem(TASK_PRUNE_KEY) ?? 0);
   if (Date.now() - last < LOG_PRUNE_INTERVAL_MS) return;
-  localStorage.setItem(TASK_PRUNE_KEY, String(Date.now()));
-  pruneOldDeletedTasks().catch(() => {});
+  pruneOldDeletedTasks().then(() => localStorage.setItem(TASK_PRUNE_KEY, String(Date.now()))).catch(() => {});
 }
 
 
@@ -279,7 +278,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
   const archivedProjectIds = new Set(projects.filter(p => p.archived).map(p => p._id));
   // archiveProject() leaves finished tasks (last status) as they are, so
   // only an unfinished task in an archived project is out of place.
-  const lastColOf = new Map(projects.map(p => [p._id, p.columns.at(-1)?.id]));
+  const lastColOf = new Map(projects.map(p => [p._id, p.columns?.at(-1)?.id]));
 
   for (const p of projects) {
     if (!spaceIds.has(p.space_id)) {
@@ -298,7 +297,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
       continue;
     }
     const proj = projectById.get(t.project_id);
-    if (proj && proj.columns.length && !proj.columns.some(c => c.id === t.column_id)) {
+    if (proj && proj.columns?.length && !proj.columns.some(c => c.id === t.column_id)) {
       issues.push({ type: 'invalid_column', docId: t._id!, description: `Task "${t.title}" points to a missing status in "${proj.name}"` });
     }
 

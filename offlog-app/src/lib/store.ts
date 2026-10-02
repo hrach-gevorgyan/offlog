@@ -47,6 +47,10 @@ export const projectTasks = derived(
 // flight at once there's no ordering guarantee between them, so the
 // last one to be *started* wins rather than the last to resolve.
 let _reloadSeq = 0;
+// The task list has a second writer, reloadTasks(), so it gets its own
+// counter: a reload started before a write must not overwrite the list a
+// later reloadTasks() already fetched, or a project switch's list.
+let _taskSeq = 0;
 
 async function reload() {
   // None of these three reads depend on each other (tasks only needs the
@@ -54,13 +58,13 @@ async function reload() {
   // so fetching them in parallel instead of sequentially shaves a full
   // round-trip off every reload — this runs on init and on every incoming
   // sync change.
-  const seq = ++_reloadSeq;
+  const seq = ++_reloadSeq, taskSeq = ++_taskSeq;
   const $projectId = get(activeProjectId);
   const [sp, pr, tk] = await Promise.all([getSpaces(), getProjects(), getTasksForProject($projectId)]);
   if (seq !== _reloadSeq) return; // superseded while we were awaiting
   spaces.set(sp);
   projects.set(pr);
-  tasks.set(tk);
+  if (taskSeq === _taskSeq) tasks.set(tk);
   // Not awaited — reminders don't need to block the UI becoming interactive.
   rescheduleAll().catch(() => {});
 }
@@ -81,8 +85,9 @@ function scheduleReload() {
 }
 
 export async function reloadTasks() {
-  const $projectId = get(activeProjectId);
-  tasks.set(await getTasksForProject($projectId));
+  const taskSeq = ++_taskSeq;
+  const tk = await getTasksForProject(get(activeProjectId));
+  if (taskSeq === _taskSeq) tasks.set(tk);
 }
 
 export async function init() {
@@ -146,5 +151,5 @@ function runHousekeeping() {
 let _initialized = false;
 activeProjectId.subscribe(() => {
   if (!_initialized) { _initialized = true; return; } // skip the initial firing; init() already loads it
-  reloadTasks();
+  reloadTasks().catch(() => showError('Could not load this project. Please try again.'));
 });

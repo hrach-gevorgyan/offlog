@@ -545,7 +545,26 @@ export async function recheckGrants(): Promise<void> {
 // (init + every live sync change). Simple, self-healing, and cheap at the
 // scale of a personal task manager — no need to track every individual
 // create/update/delete/complete site separately.
-export async function rescheduleAll(): Promise<void> {
+// One pass at a time: on Android a pass is several plugin round-trips
+// (pending, cancel, schedule), and two interleaved passes can re-arm a
+// stale list after the fresh one. A call during a pass queues one rerun.
+let _pass: Promise<void> | null = null, _rerun = false;
+export function rescheduleAll(): Promise<void> {
+  if (_pass) { _rerun = true; return _pass; }
+  _pass = (async () => {
+    let failure: unknown = null;
+    try {
+      do {
+        _rerun = false;
+        try { await reschedulePass(); failure = null; } catch (e) { failure = e; }
+      } while (_rerun);
+    } finally { _pass = null; }
+    if (failure) throw failure;
+  })();
+  return _pass;
+}
+
+async function reschedulePass(): Promise<void> {
   // Master in-app toggle (config.ts's getNotificationsEnabled) -- an empty
   // task list here means every scheduling path below cancels whatever it
   // already had pending instead of re-arming it, same effect as "disabled"
