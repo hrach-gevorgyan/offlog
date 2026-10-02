@@ -245,5 +245,7 @@ Phone only. After a research-backed UX pass (seven area reviews against Material
 | Settings top: one card with the version and three tiles (Sync with its last sync time, Reminders, App lock), each opening its page; a warning line under them for errors, conflicts or a lost paired computer | **Built** (owner picked option C, 2 Oct 2026) |
 | Lock screen: Offlog's own number pad, opens on a match, fingerprint key when enabled | **Built** (owner picked option A, 2 Oct 2026) |
 | App lock page: PIN forms in sheets, lock time as a picker row, plain wording | **Built** |
+| First launch: one welcome page (Start, or Connect to Offlog on my computer); no questions; Android asks about notifications at the first reminder | **Built** (owner picked option A, 3 Oct 2026) |
+| One word, "Reminders", for the feature on the phone: the Settings row and page, the tile, the reminder sheet. The page shows default time and quiet hours first, a fix-it row only when Android is in the way, and "Remind me about tasks" last | **Built** (owner, 3 Oct 2026) |
 | Dotted row lines | Rejected (owner, 2 Oct 2026): rows keep solid lines |
 | Facts under the title on the task screen | Rejected (owner, 2 Oct 2026): the task screen keeps form rows |

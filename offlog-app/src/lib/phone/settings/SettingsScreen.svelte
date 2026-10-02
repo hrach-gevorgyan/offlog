@@ -79,7 +79,7 @@
   $: groups = [
     [
       { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme] },
-      { page: 'notifications', icon: I.bell, label: 'Notifications', value: !notifications ? 'Off' : $permissionState === 'denied' ? 'Blocked' : 'On' },
+      { page: 'notifications', icon: I.bell, label: 'Reminders', value: remindTile.value },
       { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off' },
     ],
     [

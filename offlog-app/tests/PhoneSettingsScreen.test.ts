@@ -60,7 +60,7 @@ describe('phone Settings home', () => {
   it('shows each row with its current value', async () => {
     const { container, getByText } = render(SettingsScreen);
     expect(rowValue(container, 'Appearance')).toBe('Dark');
-    expect(rowValue(container, 'Notifications')).toBe('On');
+    expect(rowValue(container, 'Reminders')).toBe('Not yet');
     expect(rowValue(container, 'App lock')).toBe('Off');
     await waitFor(() => expect(rowValue(container, 'Recycle bin')).toBe('3'));
     expect(rowValue(container, 'Archived projects')).toBe('1');
@@ -70,7 +70,7 @@ describe('phone Settings home', () => {
   it('every row pushes its settings page', async () => {
     const { container } = render(SettingsScreen);
     const expected: [string, string][] = [
-      ['Appearance', 'appearance'], ['Notifications', 'notifications'],
+      ['Appearance', 'appearance'], ['Reminders', 'notifications'],
       ['App lock', 'security'], ['Spaces, tags & fields', 'organize'], ['Archived projects', 'archived'],
       ['Backup & restore', 'data'], ['Recycle bin', 'trash'], ['History', 'history'], ['Advanced', 'advanced'],
     ];

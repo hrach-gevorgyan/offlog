@@ -240,36 +240,44 @@ describe('phone settings pages', () => {
     beforeEach(() => { (window as { Capacitor?: unknown }).Capacitor = { getPlatform: () => 'android' }; });
     afterEach(() => { delete (window as { Capacitor?: unknown }).Capacitor; perm().set('granted'); exact().set('granted'); });
 
-    it('everything granted: one Reminders switch and no warning or explainer', () => {
+    it('everything allowed: no fix-it row, the settings people use first, the off switch last', () => {
       const { getByRole, container } = render(SettingsPage, { page: 'notifications' });
-      expect(getByRole('switch', { name: 'Reminders' })).toBeTruthy();
-      expect(container.querySelector('.setting-hint-warn')).toBeNull();
-      expect(container.textContent).not.toContain('Android 12');
-      expect(container.textContent).toContain('Default reminder time');
+      expect(container.querySelector('.perm-state')).toBeNull();
+      const labels = [...container.querySelectorAll('.setting-label')].map(l => l.textContent!.trim());
+      expect(labels[0]).toBe('Default time');
+      expect(labels.at(-1)).toBe('Remind me about tasks');
+      expect(getByRole('switch', { name: 'Remind me about tasks' }).getAttribute('aria-checked')).toBe('true');
     });
 
-    it('exact alarms off: its row warns and the button opens the system setting', async () => {
+    it('not asked yet: one row offers Allow', async () => {
+      perm().set('default');
+      const { getByText } = render(SettingsPage, { page: 'notifications' });
+      expect(getByText(/Reminders can’t pop up yet/)).toBeTruthy();
+      await fireEvent.click(getByText('Allow'));
+      expect(notif.requestPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it('blocked: the row says so and asks again', async () => {
+      perm().set('denied');
+      const { getByText } = render(SettingsPage, { page: 'notifications' });
+      expect(getByText(/Android is blocking reminders/)).toBeTruthy();
+      await fireEvent.click(getByText('Allow'));
+      expect(notif.requestPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it('exact timing off: the row explains and Turn on opens the system setting', async () => {
       exact().set('denied');
-      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
-      expect(container.querySelector('.perm-state.warn')?.textContent).toContain('Off — they may come a few minutes late');
+      const { getByText } = render(SettingsPage, { page: 'notifications' });
+      expect(getByText(/Reminders may come a few minutes late/)).toBeTruthy();
       await fireEvent.click(getByText('Turn on'));
       expect(notif.requestExactAlarmPermission).toHaveBeenCalledTimes(1);
     });
 
-    it('both grants missing: both rows show, each with its own button', async () => {
+    it('blocked and not exact: only the blocking problem shows first', () => {
       perm().set('denied'); exact().set('denied');
-      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
-      expect(container.querySelectorAll('.perm-state.warn')).toHaveLength(2);
-      expect(getByText('Allow')).toBeTruthy();
-      expect(getByText('Turn on')).toBeTruthy();
-    });
-
-    it('notifications blocked: the warning row asks again', async () => {
-      perm().set('denied');
-      const { getByText } = render(SettingsPage, { page: 'notifications' });
-      expect(getByText("Blocked by Android — they won’t appear")).toBeTruthy();
-      await fireEvent.click(getByText('Allow'));
-      expect(notif.requestPermission).toHaveBeenCalledTimes(1);
+      const { container, queryByText } = render(SettingsPage, { page: 'notifications' });
+      expect(container.querySelectorAll('.perm-state')).toHaveLength(1);
+      expect(queryByText('Turn on')).toBeNull();
     });
   });
 

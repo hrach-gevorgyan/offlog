@@ -79,12 +79,13 @@
 {#if task.reminder_at && $permissionState !== 'granted'}
   <p class="p-say">
     {#if $permissionState === 'unsupported'}
-      Notifications aren't supported here.
+      Reminders can't pop up here.
     {:else if $permissionState === 'denied'}
-      Notifications are blocked. Allow them for Offlog in {isTauri() ? 'Windows Settings → Notifications' : 'your phone or browser settings'} so this reminder can reach you.
+      {isTauri() ? 'Windows is blocking reminders. Allow them for Offlog in Windows Settings → Notifications so this one can reach you.' : 'Android is blocking reminders, so this one won’t pop up.'}
+      {#if !isTauri()}<button class="p-tbtn" on:click={() => requestPermission()}>Allow</button>{/if}
     {:else}
-      Notifications aren't on yet.
-      <button class="p-tbtn" on:click={() => requestPermission()}>Turn on</button>
+      Reminders can't pop up yet.
+      <button class="p-tbtn" on:click={() => requestPermission()}>Allow</button>
     {/if}
   </p>
 {/if}

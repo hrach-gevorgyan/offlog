@@ -24,78 +24,78 @@
 </script>
 
 {#if phone}
-              <div class="setting-group">
-                <div class="setting-row">
-                  <span class="setting-label">Reminders</span>
-                  <button class="toggle-btn" class:on={notificationsEnabled} on:click={toggleNotificationsEnabled} aria-label="Reminders" role="switch" aria-checked={notificationsEnabled}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                {#if notificationsEnabled}
-                  <!-- Both grants always show: either one missing changes how reminders arrive. -->
-                  <div class="setting-row perm" role="status">
-                    <span class="setting-label">Show reminders
-                      <span class="perm-state" class:warn={$permissionState !== 'granted'}>
-                        {$permissionState === 'granted' ? 'Allowed — they pop up on this phone' : $permissionState === 'denied' ? (isAndroid ? 'Blocked by Android — they won’t appear' : 'Blocked — they won’t appear') : $permissionState === 'unsupported' ? 'Not supported here' : 'Not allowed yet — they won’t appear'}
-                      </span>
-                    </span>
+              <!-- The phone page is "Reminders": the two settings people use
+                   first, a fix-it row only when Android is in the way, and the
+                   off switch last. -->
+              {#if notificationsEnabled}
+                {#if $permissionState === 'denied' || $permissionState === 'default' || (isAndroid && $exactAlarmState === 'denied')}
+                  <div class="setting-group">
                     {#if $permissionState === 'denied' || $permissionState === 'default'}
-                      <button class="export-btn" on:click={() => requestPermission()}>Allow</button>
+                      <div class="setting-row perm" role="status">
+                        <span class="setting-label">{$permissionState === 'denied' ? 'Android is blocking reminders' : 'Reminders can’t pop up yet'}
+                          <span class="perm-state warn">{$permissionState === 'denied' ? 'They won’t appear until you allow them.' : 'Allow them once and they’ll appear at their time.'}</span>
+                        </span>
+                        <button class="export-btn" on:click={() => requestPermission()}>Allow</button>
+                      </div>
+                    {:else}
+                      <div class="setting-row perm" role="status">
+                        <span class="setting-label">Reminders may come a few minutes late
+                          <span class="perm-state warn">Android saves battery by grouping them. Turn on exact timing to get them on the minute.</span>
+                        </span>
+                        <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Turn on</button>
+                      </div>
                     {/if}
                   </div>
-                  {#if isAndroid}
-                    <div class="setting-row perm" role="status">
-                      <span class="setting-label">On-time reminders
-                        <span class="perm-state" class:warn={$exactAlarmState === 'denied'}>
-                          {$exactAlarmState === 'granted' ? 'On — they arrive at the exact minute' : $exactAlarmState === 'denied' ? 'Off — they may come a few minutes late' : 'Checking…'}
-                        </span>
-                      </span>
-                      {#if $exactAlarmState === 'denied'}
-                        <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Turn on</button>
-                      {/if}
-                    </div>
-                  {/if}
                 {/if}
-              </div>
 
-              {#if notificationsEnabled}
-              <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
-              <div class="setting-group">
-                <label class="setting-row time-row">
-                  <span class="setting-label">Default reminder time</span>
-                  <span class="setting-value">{timeLabel(defaultReminderTime)}</span>
-                  <input type="time" class="time-native" value={defaultReminderTime} aria-label="Default reminder time"
-                    on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveDefaultReminderTime(new CustomEvent('change', { detail: v })); }} />
-                </label>
-              </div>
+                <div class="setting-group">
+                  <label class="setting-row time-row">
+                    <span class="setting-label">Default time</span>
+                    <span class="setting-value">{timeLabel(defaultReminderTime)}</span>
+                    <input type="time" class="time-native" value={defaultReminderTime} aria-label="Default reminder time"
+                      on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveDefaultReminderTime(new CustomEvent('change', { detail: v })); }} />
+                  </label>
+                  <p class="setting-hint compact-hint">Used when a reminder follows a task's due date.</p>
+                </div>
+
+                <div class="setting-group">
+                  <div class="setting-row">
+                    <span class="setting-label">Quiet hours</span>
+                    <button class="toggle-btn" class:on={quietHours.enabled} on:click={() => saveQuietHours({ enabled: !quietHours.enabled })} aria-label="Quiet hours" role="switch" aria-checked={quietHours.enabled}>
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  {#if quietHours.enabled}
+                    <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
+                      <label class="setting-row time-row">
+                        <span class="setting-label">From</span>
+                        <span class="setting-value">{timeLabel(quietHours.start)}</span>
+                        <input type="time" class="time-native" value={quietHours.start} aria-label="Quiet hours start"
+                          on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveQuietHours({ start: v }); }} />
+                      </label>
+                      <label class="setting-row time-row">
+                        <span class="setting-label">To</span>
+                        <span class="setting-value">{timeLabel(quietHours.end)}</span>
+                        <input type="time" class="time-native" value={quietHours.end} aria-label="Quiet hours end"
+                          on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveQuietHours({ end: v }); }} />
+                      </label>
+                      <p class="setting-hint">Reminders in this window wait until it ends.</p>
+                    </div>
+                  {:else}
+                    <p class="setting-hint compact-hint">No reminders at night, for example.</p>
+                  {/if}
+                </div>
+              {/if}
 
               <div class="setting-group">
                 <div class="setting-row">
-                  <span class="setting-label">Quiet hours</span>
-                  <button class="toggle-btn" class:on={quietHours.enabled} on:click={() => saveQuietHours({ enabled: !quietHours.enabled })} aria-label="Quiet hours" role="switch" aria-checked={quietHours.enabled}>
+                  <span class="setting-label">Remind me about tasks</span>
+                  <button class="toggle-btn" class:on={notificationsEnabled} on:click={toggleNotificationsEnabled} aria-label="Remind me about tasks" role="switch" aria-checked={notificationsEnabled}>
                     <span class="toggle-knob"></span>
                   </button>
                 </div>
-                {#if quietHours.enabled}
-                  <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
-                    <label class="setting-row time-row">
-                      <span class="setting-label">From</span>
-                      <span class="setting-value">{timeLabel(quietHours.start)}</span>
-                      <input type="time" class="time-native" value={quietHours.start} aria-label="Quiet hours start"
-                        on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveQuietHours({ start: v }); }} />
-                    </label>
-                    <label class="setting-row time-row">
-                      <span class="setting-label">To</span>
-                      <span class="setting-value">{timeLabel(quietHours.end)}</span>
-                      <input type="time" class="time-native" value={quietHours.end} aria-label="Quiet hours end"
-                        on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveQuietHours({ end: v }); }} />
-                    </label>
-                    <p class="setting-hint">Reminders in this window wait until it ends.</p>
-                  </div>
-                {/if}
+                <p class="setting-hint compact-hint">{notificationsEnabled ? 'Turn off to keep Offlog silent. Your reminder times stay on the tasks.' : 'Offlog is silent. Turn on to get your reminders again.'}</p>
               </div>
-              </div>
-              {/if}
 {:else}
 
               <div class="setting-group">
