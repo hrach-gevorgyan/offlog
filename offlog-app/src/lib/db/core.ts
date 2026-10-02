@@ -122,6 +122,18 @@ export async function getAllTasksRaw(): Promise<TaskDoc[]> {
 // changed, not to how much data exists.
 export function invalidateTaskCache(): void { _taskCacheStale = true; }
 
+// bulkDocs never throws for a document it could not write; it reports it in
+// the result array. User actions go through this so a partial failure
+// surfaces (and the task cache is dropped, since part of the batch landed).
+export async function bulkWrite(docs: object[]): Promise<void> {
+  const res = await db.bulkDocs(docs as never[]);
+  const failed = res.filter(r => 'error' in r && r.error).length;
+  if (failed) {
+    invalidateTaskCache();
+    throw new Error(`${failed} of ${docs.length} changes could not be saved`);
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function now() { return new Date().toISOString(); }

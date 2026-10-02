@@ -2592,3 +2592,15 @@ describe('computeGroupDropPosition (pinned cards sort first)', () => {
     expect(computeGroupDropPosition([P, U1], 2, { _id: 'x', position: 10 })).toBeGreaterThan(1024);
   });
 });
+
+describe('bulk writes report partial failure', () => {
+  it('emptyTrash throws when a document could not be removed, instead of reporting success', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Bin');
+    const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Trashed');
+    await deleteTask(t._id!);
+    const spy = vi.spyOn(db, 'bulkDocs').mockResolvedValueOnce([{ id: t._id!, error: true, status: 409, name: 'conflict', message: 'x' }] as never);
+    await expect(emptyTrash()).rejects.toThrow('1 of 1 changes could not be saved');
+    spy.mockRestore();
+  });
+});

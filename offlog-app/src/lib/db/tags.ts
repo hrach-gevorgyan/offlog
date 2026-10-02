@@ -1,6 +1,6 @@
 // Tags: free-form strings on each task, plus the per-tag colour overrides.
 import type { TagColorDoc } from '../types';
-import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now } from './core';
+import { db, SOURCE, getAllTasksRaw, invalidateTaskCache, now, bulkWrite } from './core';
 import { TAG_PALETTE, resolveTagColor } from '../tagColors';
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ export async function renameTag(oldTag: string, newTag: string): Promise<number>
     tags: [...new Set(t.tags.map(tag => (tag === oldTag ? trimmed : tag)))],
     updated_at: now(), source: SOURCE,
   }));
-  await db.bulkDocs(updates);
+  await bulkWrite(updates);
   invalidateTaskCache();
   // Carry the old tag's color override to the new name -- but only if the
   // new name doesn't already have its own override, since merging into an
@@ -144,7 +144,7 @@ export async function deleteTagEverywhere(tag: string): Promise<number> {
     updated_at: now(), source: SOURCE,
   }));
   if (updates.length) {
-    await db.bulkDocs(updates);
+    await bulkWrite(updates);
     invalidateTaskCache();
   }
   const colorDoc = await getTagColorDoc(tag);

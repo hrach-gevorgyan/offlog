@@ -6,7 +6,7 @@ import { getDefaultReminderTime } from '../../config';
 import type { SpaceDoc, ProjectDoc, TaskDoc, Column, CustomFieldDef, TaskAttachment, Source } from '../types';
 import { wordOverlapSimilarity, localDateStr, advanceDate } from '../utils';
 import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, attachmentExtension, attachmentMimeType } from '../attachments';
-import { db, SOURCE, DEFAULT_COLS, initIndexes, getAllTasksRaw, invalidateTaskCache, now, nanoid, logChange, queueTaskWrite } from './core';
+import { db, SOURCE, DEFAULT_COLS, initIndexes, getAllTasksRaw, invalidateTaskCache, now, nanoid, logChange, queueTaskWrite, bulkWrite } from './core';
 
 // ── Seed ──────────────────────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ export async function reorderSpaces(spaceIds: string[]): Promise<void> {
       return doc ? { ...doc, position: i, updated_at: now(), source: SOURCE } : null;
     })
     .filter((d): d is SpaceDoc => d !== null);
-  if (updates.length) await db.bulkDocs(updates);
+  if (updates.length) await bulkWrite(updates);
 }
 
 // "Unsorted" can't be deleted — it's the permanent fallback target
@@ -196,7 +196,7 @@ export async function deleteSpace(id: string): Promise<void> {
   // is gone.
   const projects = [...await getProjects(id), ...(await getArchivedProjects()).filter(p => p.space_id === id)];
   if (projects.length) {
-    await db.bulkDocs(projects.map(p => ({ ...p, space_id: 'space:unsorted', updated_at: now(), source: SOURCE })));
+    await bulkWrite(projects.map(p => ({ ...p, space_id: 'space:unsorted', updated_at: now(), source: SOURCE })));
   }
   await db.remove(doc);
   await logChange(id, 'delete', undefined, undefined, undefined, { space_name: doc.name });
@@ -418,7 +418,7 @@ export async function removeCustomFieldDef(fieldId: string): Promise<CustomField
   // that no longer exists.
   const affected = (await getAllTasksRaw()).filter(t => t.custom_values && fieldId in t.custom_values);
   if (affected.length) {
-    await db.bulkDocs(affected.map(t => {
+    await bulkWrite(affected.map(t => {
       const next = { ...t.custom_values };
       delete next[fieldId];
       return { ...t, custom_values: next, updated_at: now(), source: SOURCE };
@@ -438,7 +438,7 @@ export async function deleteProject(id: string): Promise<void> {
   // hard-delete all tasks in this project
   const all = await getAllTasksRaw();
   const projectTasks = all.filter(d => d.project_id === id);
-  if (projectTasks.length) await db.bulkDocs(projectTasks.map(t => ({ ...t, _deleted: true })));
+  if (projectTasks.length) await bulkWrite(projectTasks.map(t => ({ ...t, _deleted: true })));
   invalidateTaskCache();
   // Logged after the doc is already gone, so this ref won't resolve to a live
   // project if clicked through -- same as any other deleted-item log row.
@@ -1045,7 +1045,7 @@ export async function deleteForever(id: string): Promise<void> {
 export async function emptyTrash(): Promise<number> {
   const all = await getAllTasksRaw();
   const trashed = all.filter(d => d.deleted);
-  if (trashed.length) await db.bulkDocs(trashed.map(d => ({ ...d, _deleted: true })));
+  if (trashed.length) await bulkWrite(trashed.map(d => ({ ...d, _deleted: true })));
   invalidateTaskCache();
   return trashed.length;
 }
