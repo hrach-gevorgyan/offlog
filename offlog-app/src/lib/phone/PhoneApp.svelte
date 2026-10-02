@@ -146,7 +146,7 @@
     {/key}
   </div>
 
-  {#if !kb && !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" in:scale={keyboardFabIn} class:lift={!!$toast} class:away={fabAway} aria-hidden={fabAway || undefined} tabindex={fabAway ? -1 : undefined} on:click={() => actions.quickAdd()} aria-label="Add a task"><svg class="shape" viewBox="0 0 56 60" aria-hidden="true"><path d="M0 22Q0 12 10 10.6L44 4.8Q56 3 56 15V44Q56 60 40 60H16Q0 60 0 44Z" /></svg>{@html I.plus}</button>{/if}
+  {#if !kb && !$modalOpen && top.k !== 'settings' && top.k !== 'set' && top.k !== 'task' && top.k !== 'statuses'}<button class="fab" in:scale={keyboardFabIn} class:lift={!!$toast} class:away={fabAway} aria-hidden={fabAway || undefined} tabindex={fabAway ? -1 : undefined} on:click={() => actions.quickAdd()} aria-label="Add a task">{@html I.plus}</button>{/if}
 
   {#if qa}
     {#key qaSession}
@@ -199,21 +199,15 @@
 
   .fab {
     position: absolute; right: 16px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 10;
-    width: 56px; height: 60px; border: 0; padding: 0; cursor: pointer;
-    background: none; color: var(--on-accent); display: flex; align-items: center; justify-content: center;
+    width: 56px; height: 56px; border-radius: 20px; border: 0; padding: 0; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,.18);
     /* translate rides with the snackbar (its timings: rises decelerating,
        drops accelerating); scale is the press. Separate properties, so a
        press is never slowed to the lift's pace. */
     transition: translate var(--dur-medium-out) var(--ease-accelerate), scale var(--dur-hover) var(--ease-hover), transform var(--dur-medium) var(--ease-decelerate), opacity var(--dur-medium) var(--ease-decelerate);
   }
-  /* The hero's slant on a rounded square: the shape is drawn (not clipped)
-     so its corners stay round and its shadow shows. The + sits on the
-     shape, above it. */
-  .fab .shape { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--accent); filter: drop-shadow(0 4px 6px rgba(0,0,0,.18)); }
-  /* The slant lowers the shape's middle to about y 34 of 60, so the + moves
-     down with it to sit in the visual centre. */
-  .fab :global(svg.i) { position: relative; top: 3.5px; width: 24px; height: 24px; stroke-width: 2.2; }
-  .fab:focus-visible { outline-offset: 4px; border-radius: 18px; }
+  .fab :global(svg.i) { width: 24px; height: 24px; stroke-width: 2.2; }
   .fab:active { scale: .95; }
   /* Rises above the snackbar instead of hiding under it. */
   .fab.lift { translate: 0 -64px; transition: translate var(--dur-medium) var(--ease-decelerate), scale var(--dur-hover) var(--ease-hover), transform var(--dur-medium) var(--ease-decelerate), opacity var(--dur-medium) var(--ease-decelerate); }

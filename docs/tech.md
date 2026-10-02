@@ -79,8 +79,7 @@ flowchart LR
   handler also trusts `openLayers` over `canGoBack`: Chrome hides history
   entries pushed without a gesture (a sheet opened from the widget) from it. Re-tapping the current tab at its root scrolls it to the
   top; the + steps aside on a long downward scroll (`fabScroll.ts`). The +
-  is a rounded square with the hero's slant, drawn as an SVG under the icon
-  so its corners and shadow survive; the + sits on the button's centre. Late
+  is a rounded square (20px corners). Late
   has "All to today", which leaves repeating tasks alone (their due date is
   what the next repeat counts from).
   Week start and 12/24h follow the device locale (`Intl`) until chosen in
