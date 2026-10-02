@@ -105,6 +105,14 @@ describe('theme — native status bar', () => {
     expect(setStyle).not.toHaveBeenCalled();
   });
 
+  it('the in-app Reduce motion switch puts body.reduce-motion on, which zeroes the CSS durations', async () => {
+    const { setReduceMotion } = await import('../src/lib/theme');
+    setReduceMotion(true);
+    expect(document.body.classList.contains('reduce-motion')).toBe(true);
+    setReduceMotion(false);
+    expect(document.body.classList.contains('reduce-motion')).toBe(false);
+  });
+
   it('keeps the browser theme-color in step with the strip', async () => {
     const meta = document.createElement('meta');
     meta.setAttribute('name', 'theme-color');

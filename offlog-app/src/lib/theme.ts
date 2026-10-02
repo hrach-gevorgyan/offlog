@@ -51,6 +51,7 @@ export function getReduceMotion(): boolean {
 export function setReduceMotion(on: boolean): void {
   if (on) localStorage.setItem(REDUCE_MOTION_KEY, '1');
   else localStorage.removeItem(REDUCE_MOTION_KEY);
+  applyTheme();
 }
 
 export function prefersReducedMotion(): boolean {
@@ -65,6 +66,9 @@ export function applyTheme(): void {
   const dark = isEffectivelyDark();
   document.body.classList.toggle('dark', dark);
   document.body.classList.toggle('high-contrast', getHighContrast());
+  // Zeroes every --dur-* token (app.css), so CSS transitions honour the
+  // in-app switch too, not only motion.ts's Svelte transitions.
+  document.body.classList.toggle('reduce-motion', getReduceMotion());
   syncTauriWindowTheme(dark);
   syncAndroidStatusBar(dark || onHero);
   syncBrowserThemeColor(dark);
