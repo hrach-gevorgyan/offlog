@@ -525,6 +525,12 @@
   // indigo with light icons behind it.
   // The phone shell is its own chunk, fetched only on a phone-sized screen:
   // the desktop app never loads it.
+  // The phone's keypad lock screen lives in the phone code too; until it has
+  // loaded, a plain cover hides the app, and if it can't load the desktop
+  // lock screen stands in.
+  let PhoneLock: typeof import('./lib/phone/PhoneLock.svelte').default | null = null;
+  let phoneLockFailed = false;
+  $: if ($isPhone && !PhoneLock && !phoneLockFailed) import('./lib/phone/PhoneLock.svelte').then(m => { PhoneLock = m.default; }).catch(() => { phoneLockFailed = true; });
   let PhoneApp: typeof import('./lib/phone/PhoneApp.svelte').default | null = null;
   $: if ($isPhone && !PhoneApp) import('./lib/phone/PhoneApp.svelte').then(m => { PhoneApp = m.default; }).catch(() => showError('Could not load the app. Please reopen it.'));
   // Likewise the desktop views are one chunk a phone never fetches. Every
@@ -575,7 +581,11 @@
 <svelte:window on:keydown={onKeydown}/>
 
 {#if locked}
-  <AppLock on:unlocked={onUnlocked} />
+  {#if $isPhone && !phoneLockFailed}
+    {#if PhoneLock}<svelte:component this={PhoneLock} on:unlocked={onUnlocked} />{:else}<div class="lock-cover"></div>{/if}
+  {:else}
+    <AppLock on:unlocked={onUnlocked} />
+  {/if}
 {/if}
 
 {#if ready && ($isPhone || Desktop)}
@@ -1087,4 +1097,5 @@
     .view-label { display: none; }
     .view-btn { padding: 6px 9px; }
   }
+  .lock-cover { position: fixed; inset: 0; z-index: 10001; background: var(--bg); }
 </style>

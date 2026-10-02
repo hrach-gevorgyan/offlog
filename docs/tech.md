@@ -242,6 +242,7 @@ src/
 
     phone/                      The phone shell (PHONE_QUERY, never Tauri); its own chunk, loaded by App.svelte only on a phone
       PhoneApp.svelte             Tabs, screen stacks, nav bar, +, snackbar, keyboard handling
+      PhoneLock.svelte            The phone lock screen: own keypad, unlocks on a match; App.svelte loads it lazily
       nav.ts                      Tab/stack stores, push/back, navigate(), actions, memo()
       Sheet.svelte                Bottom sheet (closeOnBack consumer: mount behind {#key})
       phone.css                   Shared phone styles and --p-* tokens, scoped to .phone-shell/.psheet
@@ -254,6 +255,7 @@ src/
       rowMotion.ts                markLeaving/markReturning, leaves/returns: which rows play
                                   lib/motion.ts's collapseOut/collapseIn
       presets.ts                  Due and reminder shortcut lists, shared by quick add and the task screen
+      settings/LockPage.svelte    App lock page: PIN forms in sheets, lock time as a picker row
       mark.ts / icons.ts / format.ts  Logo paths, icon set, greeting and labels (shortDate)
       agenda/month.ts             Month grid maths
       focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)

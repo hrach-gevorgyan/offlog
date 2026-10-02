@@ -154,7 +154,9 @@ minutes unless you change it).
   As the code puts it: *a lock screen that closes on Escape isn't a
   lock.*
 - **Three wrong tries adds a 3-second pause**, to make rapid guessing
-  tedious.
+  tedious. On a phone the lock screen has its own number pad: it opens as
+  soon as the digits match, and a pause on digits that don't match counts
+  as one wrong try. The PIN's length is not stored anywhere.
 - **Fingerprint unlock is additive, never a replacement.** It's a faster
   way in; the PIN remains the only thing that can change or remove the
   lock. A failed or cancelled fingerprint just drops you to the PIN
