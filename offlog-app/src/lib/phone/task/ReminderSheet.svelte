@@ -23,7 +23,12 @@
   // Presets in the past are left out; "now" is read once per open.
   const PRESETS = reminderPresets();
 
+  // The first reminder is the moment the permission makes sense, so that's
+  // when Android is asked; never at launch.
+  function askOnce() { if ($permissionState === 'default') requestPermission(); }
+
   function setAt(v: string) {
+    if (v) askOnce();
     save({ reminder_at: v ? new Date(v).toISOString() : null }, ERR);
   }
 
@@ -31,6 +36,7 @@
   // Off: the last derived time stays as a plain reminder.
   function toggleOnDue() {
     if (!task.due_date) return;
+    if (!onDue) askOnce();
     save(onDue
       ? { remindOnDue: false }
       : { remindOnDue: true, reminder_at: new Date(dueDateToReminderInput(task.due_date)).toISOString() }, ERR);

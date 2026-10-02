@@ -131,13 +131,21 @@ function numericId(taskId: string): number {
 // Bare-called from Enable buttons with no local error handling, so a
 // plugin-call rejection is caught here instead of becoming an unhandled
 // rejection -- 'denied' is the safe fallback state.
+// Android's "not asked yet" is not "blocked": a fresh install must read as
+// 'default' so nothing says Blocked before Offlog has ever asked.
+function displayState(display: string): PermissionState {
+  return display === 'granted' ? 'granted' : display === 'denied' ? 'denied' : 'default';
+}
+
 export async function requestPermission(): Promise<PermissionState> {
   try {
     if (isNative()) {
       const { LocalNotifications } = await import('@capacitor/local-notifications');
       const res = await LocalNotifications.requestPermissions();
-      const state: PermissionState = res.display === 'granted' ? 'granted' : 'denied';
+      const state = displayState(res.display);
       permissionState.set(state);
+      // Reminders wait for the grant (see scheduleNative); arm them now.
+      if (state === 'granted') rescheduleAll().catch(() => {});
       return state;
     }
     if (isTauriPlatform()) {
@@ -387,7 +395,12 @@ async function scheduleNative(tasks: TaskDoc[]) {
       channelId: REMINDER_CHANNEL_ID,
       isExactNotification: exact,
     }));
-  if (toSchedule.length) await LocalNotifications.schedule({ notifications: toSchedule });
+  // The plugin's schedule() asks Android for permission by itself when it
+  // isn't granted, which put the prompt on the very first launch. Reminders
+  // wait instead; requestPermission() and recheckGrants() reschedule once
+  // the user allows them.
+  if (!toSchedule.length || (await LocalNotifications.checkPermissions()).display !== 'granted') return;
+  await LocalNotifications.schedule({ notifications: toSchedule });
 }
 
 // ── Native (Tauri desktop) scheduling — real Windows toast notifications,
@@ -516,7 +529,7 @@ export async function initNotificationListeners(): Promise<void> {
   if (!isNative()) return;
   const { LocalNotifications } = await import('@capacitor/local-notifications');
   const perm = await LocalNotifications.checkPermissions();
-  permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
+  permissionState.set(displayState(perm.display));
   await checkExactAlarmPermission();
   await ensureReminderChannel();
   // Back from the system settings (or anywhere): either grant may have
@@ -535,10 +548,11 @@ export async function recheckGrants(): Promise<void> {
   if (!isNative()) return;
   const { LocalNotifications } = await import('@capacitor/local-notifications');
   const perm = await LocalNotifications.checkPermissions();
-  permissionState.set(perm.display === 'granted' ? 'granted' : 'denied');
+  const shown = get(permissionState);
+  permissionState.set(displayState(perm.display));
   const before = get(exactAlarmState);
   await checkExactAlarmPermission();
-  if (get(exactAlarmState) !== before) await rescheduleAll();
+  if (get(exactAlarmState) !== before || get(permissionState) !== shown) await rescheduleAll();
 }
 
 // Cancel-all-then-reschedule-from-scratch, called after every store reload

@@ -42,7 +42,7 @@
     status === 'syncing' ? { value: 'Syncing…', tone: 'ok' } :
     status === 'offline' ? { value: 'Offline', tone: '' } :
     { value: lastSynced ? fmtLastSynced(lastSynced) : 'Waiting', tone: 'ok' };
-  $: remindTile = !notifications ? { value: 'Off', tone: '' } : $permissionState === 'denied' ? { value: 'Blocked', tone: 'bad' } : { value: 'On', tone: 'ok' };
+  $: remindTile = !notifications ? { value: 'Off', tone: '' } : $permissionState === 'denied' ? { value: 'Blocked', tone: 'bad' } : $permissionState === 'granted' ? { value: 'On', tone: 'ok' } : { value: 'Not yet', tone: '' };
   $: lockTile = appLock ? { value: 'On', tone: 'ok' } : { value: 'Off', tone: '' };
   $: alert = $staleHostAlert ? 'Paired computer not found. Pair again' : status === 'error' && syncError ? syncError : conflicts > 0 ? `${conflicts} sync conflict${conflicts === 1 ? '' : 's'} to resolve` : '';
 

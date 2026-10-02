@@ -35,6 +35,7 @@ import { stack, switchTab, toast } from '../src/lib/phone/nav';
 import { staleHostAlert } from '../src/lib/discovery';
 import type { Writable } from 'svelte/store';
 import { showError } from '../src/lib/store';
+import { permissionState } from '../src/lib/notifications';
 
 // Rows only: the glance tiles above repeat some of the same words.
 const row = (c: HTMLElement, label: string) => [...c.querySelectorAll('.p-row')].find(r => r.querySelector('.p-k')?.textContent?.trim() === label) as HTMLElement;
@@ -79,7 +80,14 @@ describe('phone Settings home', () => {
     }
   });
 
+  it('Reminders says Not yet until Android has been asked', () => {
+    permissionState.set('default');
+    const { container } = render(SettingsScreen);
+    expect(tileValue(container, 'Reminders')).toBe('Not yet');
+  });
+
   it('the glance tiles show Sync, Reminders and App lock, and open their pages', async () => {
+    permissionState.set('granted');
     const { container } = render(SettingsScreen);
     expect(tileValue(container, 'Reminders')).toBe('On');
     expect(tileValue(container, 'App lock')).toBe('Off');

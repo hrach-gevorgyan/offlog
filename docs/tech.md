@@ -234,7 +234,7 @@ src/
     CalendarPicker.svelte       Themed date picker
     TimePicker.svelte           Themed time picker
     ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
-    NamePrompt.svelte           First-run device name (desktop; the phone asks when Sync is on) + quick preferences + sync offer
+    NamePrompt.svelte           Desktop first run: device name + quick preferences + sync offer (the phone shows phone/Welcome.svelte)
     UpdateModal.svelte          Desktop update available/downloading/failed
     AppLock.svelte              PIN lock screen; Escape must not dismiss it
     ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
@@ -243,6 +243,7 @@ src/
     phone/                      The phone shell (PHONE_QUERY, never Tauri); its own chunk, loaded by App.svelte only on a phone
       PhoneApp.svelte             Tabs, screen stacks, nav bar, +, snackbar, keyboard handling
       PhoneLock.svelte            The phone lock screen: own keypad, unlocks on a match; App.svelte loads it lazily
+      Welcome.svelte              First launch on a phone: one page, no questions; Start or Connect to a computer
       nav.ts                      Tab/stack stores, push/back, navigate(), actions, memo()
       Sheet.svelte                Bottom sheet (closeOnBack consumer: mount behind {#key})
       phone.css                   Shared phone styles and --p-* tokens, scoped to .phone-shell/.psheet
@@ -777,8 +778,13 @@ Needs `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` and
 which would happen on every launch. Without it reminders are scheduled
 inexact, and the first reminder newly set in a launch bumps
 `exactAlarmNudge`; the phone shell turns that into a "Reminders may be a few
-minutes late · Make exact" snackbar. Settings › Notifications shows the same
-fix as a warning row. On every return to the foreground `recheckGrants()`
+minutes late · Turn on" snackbar. Settings › Notifications shows the same
+fix as a warning row. The plugin's `schedule()` likewise asks for
+`POST_NOTIFICATIONS` by itself, so `scheduleNative()` schedules nothing
+until that is granted: Android asks at the first reminder the user sets
+(task reminder sheet or quick add), never at launch, and
+`requestPermission()`/`recheckGrants()` reschedule once it is. A fresh
+install's "not asked yet" reads as `default`, not `denied`. On every return to the foreground `recheckGrants()`
 re-reads both grants and reschedules everything if the exact-alarm grant
 changed.
 

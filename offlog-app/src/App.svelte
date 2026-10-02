@@ -531,6 +531,9 @@
   let PhoneLock: typeof import('./lib/phone/PhoneLock.svelte').default | null = null;
   let phoneLockFailed = false;
   $: if ($isPhone && !PhoneLock && !phoneLockFailed) import('./lib/phone/PhoneLock.svelte').then(m => { PhoneLock = m.default; }).catch(() => { phoneLockFailed = true; });
+  // The phone's first-launch page replaces the desktop's preferences window.
+  let Welcome: typeof import('./lib/phone/Welcome.svelte').default | null = null;
+  $: if ($isPhone && showNamePrompt && !Welcome) import('./lib/phone/Welcome.svelte').then(m => { Welcome = m.default; }).catch(() => { showNamePrompt = false; });
   let PhoneApp: typeof import('./lib/phone/PhoneApp.svelte').default | null = null;
   $: if ($isPhone && !PhoneApp) import('./lib/phone/PhoneApp.svelte').then(m => { PhoneApp = m.default; }).catch(() => showError('Could not load the app. Please reopen it.'));
   // Likewise the desktop views are one chunk a phone never fetches. Every
@@ -751,7 +754,14 @@
 {/if}
 
 <ConfirmDialog />
-{#if showNamePrompt}<NamePrompt askName={!$isPhone} on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; if (get(isPhone)) navigate('home', { k: 'set', page: 'sync' }); else sidebarRef?.openSettings('sync'); }} />{/if}
+{#if showNamePrompt}
+  {#if $isPhone}
+    <!-- Shown once per install, so a single fixed key satisfies the per-open rule. -->
+    {#if Welcome}{#key 'welcome'}<svelte:component this={Welcome} on:start={() => showNamePrompt = false} on:connect={() => { showNamePrompt = false; navigate('home', { k: 'set', page: 'sync' }); }} />{/key}{/if}
+  {:else}
+    <NamePrompt on:close={() => showNamePrompt = false} on:setupSync={() => { showNamePrompt = false; sidebarRef?.openSettings('sync'); }} />
+  {/if}
+{/if}
 
 {#if isTauri()}
   <UpdateModal />

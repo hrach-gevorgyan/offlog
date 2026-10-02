@@ -4,6 +4,7 @@
   import type { TaskDoc } from '../types';
   import { projects, spaces, reloadTasks, showError } from '../store';
   import { createTask, findTasksByTitleInProject, ensureFreshTagColor } from '../db';
+  import { permissionState, requestPermission } from '../notifications';
   import { parseQuickAdd, type ParsedSpan, type ParsedSpanKind } from '../nlpParse';
   import { lastProject, rememberProject, keyboardHeight, trackKeyboard } from './quickadd/memory';
   import { PRIORITY_LABEL, PRIORITY_COLOR } from '../constants';
@@ -277,6 +278,8 @@
       }
       const doc = await createTask(p._id, p.space_id, col, t, overrides);
       rememberProject(p._id);
+      // A first reminder is when Android is asked for notifications.
+      if (reminder && get(permissionState) === 'default') requestPermission();
       // Outside the write's error path: the task exists, so a failed reload
       // must not invite a retry that would create it twice.
       try { await reloadTasks(); } catch { /* lists catch up on the next change */ }
