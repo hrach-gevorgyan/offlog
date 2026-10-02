@@ -128,7 +128,7 @@ Gotchas hit while working:
 - **Many source files are CRLF.** Multi-line string replacements must match
   the file's line endings. A small Node helper that converts the pattern to
   the file's endings avoided repeated misses.
-- **The desktop (Tauri) CSP allows `img-src 'self'` only**, so a CSS
+- **The desktop (Tauri) CSP allows `img-src 'self' blob:` only**, so a CSS
   `data:` image (for example an SVG noise texture) silently fails there.
   Ship it as a file in `public/`.
 - **The Gradle build can't run in this environment** (no network to Maven

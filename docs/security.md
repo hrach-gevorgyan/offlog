@@ -198,8 +198,7 @@ usual next step is blocked at the platform level.
 | `frame-ancestors 'none'` | Other sites embedding the desktop app in a hidden frame (clickjacking). |
 
 Network connections are deliberately **not** restricted: `connect-src`
-allows any host on any port (`http://*:*`, plus `https://*:*` outside
-the desktop app), because a sync server *you* chose can be at any
+allows any host on any port (`http://*:*` and `https://*:*`), because a sync server *you* chose can be at any
 address and port. The policy limits what can run, not where the app may
 connect.
 

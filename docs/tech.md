@@ -836,9 +836,10 @@ from a background thread.
 
 **Content Security Policy** (`tauri.conf.json`). `script-src 'self'` (the
 pre-paint theme script is same-origin); `style-src` allows `'unsafe-inline'`
-for per-space colour attributes; `connect-src 'self' http://*:*` — the `:*`
-is **required**, since a bare `http://*` means port 80 only and every real
-sync target uses a random port. Everything else is locked down:
+for per-space colour attributes; `img-src 'self' blob:` (image attachments
+are shown from blob URLs); `connect-src 'self' http://*:* https://*:*` — the
+`:*` is **required**, since a bare `http://*` means port 80 only and every
+real sync target uses a random port. Everything else is locked down:
 `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`,
 `form-action 'self'`.
 
