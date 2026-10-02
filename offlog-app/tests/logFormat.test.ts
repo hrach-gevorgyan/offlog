@@ -24,3 +24,24 @@ describe('describeLog (regression: raw "deleted: Yes → No" instead of "Restore
       .toBe('Restored project "Work"');
   });
 });
+
+describe('describeLog: note edits, excerpted and full-body', () => {
+  const ex = 'A'.repeat(120) + '…';
+
+  it('reads an excerpted note edit as "Notes updated" even when both excerpts match', () => {
+    expect(describeLog({ action: 'update', task_title: 'T', ref: 'task:1', diffs: { body: { from: ex, to: ex, changed: true } } }))
+      .toBe('Notes updated on "T"');
+  });
+
+  it('reads an old entry holding both full bodies the same way, never echoing the text', () => {
+    const text = describeLog({ action: 'update', task_title: 'T', ref: 'task:1',
+      diffs: { body: { from: 'secret old body '.repeat(50), to: 'secret new body '.repeat(50) } } });
+    expect(text).toBe('Notes updated on "T"');
+  });
+
+  it('shows a move that also edited the note', () => {
+    expect(describeLog({ action: 'move', from: 'Idea', to: 'Task', task_title: 'T', ref: 'task:1',
+      diffs: { body: { from: ex, to: ex, changed: true } } }))
+      .toBe('Moved "T" from "Idea" → "Task" · Notes updated');
+  });
+});

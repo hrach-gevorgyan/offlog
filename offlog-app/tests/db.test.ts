@@ -2688,3 +2688,65 @@ describe('subscribe() shares one change feed', () => {
     expect(a).not.toHaveBeenCalled();
   });
 });
+
+describe('history (log:) entries', () => {
+  beforeEach(seedSpace);
+
+  function failLogPuts() {
+    const realPut = db.put.bind(db) as (...a: unknown[]) => Promise<unknown>;
+    return vi.spyOn(db, 'put').mockImplementation(((doc: { _id?: string }, ...rest: unknown[]) =>
+      typeof doc?._id === 'string' && doc._id.startsWith('log:')
+        ? Promise.reject(Object.assign(new Error('disk full'), { name: 'QuotaExceededError' }))
+        : realPut(doc, ...rest)) as never);
+  }
+
+  it('a failed log write leaves createTask resolved and the task saved', async () => {
+    const project = await createProject('space:unsorted', 'Logs');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spy = failLogPuts();
+    const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Saved anyway');
+    const loggedAttempt = spy.mock.calls.some(([d]) => String((d as { _id?: string })._id).startsWith('log:'));
+    spy.mockRestore();
+    expect(loggedAttempt).toBe(true);
+    invalidateTaskCache();
+    expect((await getTaskById(t._id!))?.title).toBe('Saved anyway');
+    expect(warn).toHaveBeenCalled();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('Saved anyway');
+    warn.mockRestore();
+  });
+
+  it('a failed log write leaves updateTask resolved and the change saved', async () => {
+    const project = await createProject('space:unsorted', 'Logs');
+    const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Toggle me');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spy = failLogPuts();
+    await expect(updateTask(t._id!, { pinned: true })).resolves.toBeTruthy();
+    spy.mockRestore();
+    warn.mockRestore();
+    invalidateTaskCache();
+    expect((await getTaskById(t._id!))?.pinned).toBe(true);
+  });
+
+  it('a note edit logs an excerpt and a changed flag, never the full body', async () => {
+    const project = await createProject('space:unsorted', 'Logs');
+    const before = 'A'.repeat(500) + ' old ending';
+    const after = 'A'.repeat(500) + ' new ending';
+    const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Notes', { body: before });
+    await updateTask(t._id!, { body: after });
+    const log = (await getRecentLogs(5)).find(l => l.action === 'update' && l.ref === t._id)!;
+    const raw = JSON.stringify(log);
+    expect(raw).not.toContain('old ending');
+    expect(raw).not.toContain('new ending');
+    expect(raw.length).toBeLessThan(1000);
+    expect(log.diffs.body.changed).toBe(true);
+    expect((log.diffs.body.to as string).length).toBeLessThanOrEqual(121);
+  });
+
+  it('a short field edit is still logged in full, with no changed flag', async () => {
+    const project = await createProject('space:unsorted', 'Logs');
+    const t = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Short');
+    await updateTask(t._id!, { body: 'tiny note' });
+    const log = (await getRecentLogs(5)).find(l => l.action === 'update' && l.ref === t._id)!;
+    expect(log.diffs.body).toEqual({ from: '', to: 'tiny note' });
+  });
+});

@@ -74,6 +74,15 @@ describe('TaskHistoryPanel', () => {
     expect(descs(container)[0]).toBe('Priority changed to High; Pinned');
   });
 
+  it('shows an excerpted note edit whose stored excerpts are identical', async () => {
+    const ex = 'A'.repeat(120) + '…';
+    getLogsForTask.mockResolvedValueOnce([mkLog({ diffs: { body: { from: ex, to: ex, changed: true } } })]);
+    const { container } = render(TaskHistoryPanel, { props: { taskId: 'task:1' } });
+
+    await waitFor(() => expect(rows(container)).toHaveLength(1));
+    expect(descs(container)[0]).toBe('Notes updated');
+  });
+
   it('falls back to "Details updated" when every diff is a no-op', async () => {
     getLogsForTask.mockResolvedValueOnce([mkLog({
       diffs: { checklist: { from: null, to: [] }, tags: { from: [], to: [] } },

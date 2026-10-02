@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getLogsForTask } from './db';
   import { timeAgo, fmtFullTimestamp, ACTION_COLOR } from './utils';
-  import { describeField, hasRealChange } from './logFormat';
+  import { describeField, isRealDiff } from './logFormat';
   import type { LogEntry } from './logFormat';
 
   export let taskId: string;
@@ -12,7 +12,7 @@
 
   const ACTION_LABEL: Record<string, string> = { create: 'Created', update: 'Edited', move: 'Moved', delete: 'Deleted' };
 
-  // describeField/hasRealChange come from logFormat.ts, the single source
+  // describeField/isRealDiff come from logFormat.ts, the single source
   // this panel and TimeTravelView share — never re-implement them here, or
   // the two views disagree about what counts as a real change. describeLog()
   // below stays local: its create/move/delete phrasing is deliberately
@@ -25,7 +25,7 @@
     if (log.action === 'move') return `Moved from "${log.from}" to "${log.to}"`;
     if (log.diffs) {
       const clauses = Object.entries(log.diffs)
-        .filter(([, d]) => hasRealChange(d.from, d.to))
+        .filter(([, d]) => isRealDiff(d))
         .map(([f, d]) => describeField(f, d.from, d.to));
       if (clauses.length === 0) return 'Details updated';
       if (clauses.length > MAX_CLAUSES) {

@@ -293,6 +293,16 @@ One PouchDB database, `offlog`. The `_id` prefix is the document type.
   from before the flag existed cannot be identified and stay archived.
 - **Ordering** uses fractional positions, so inserting between two tasks
   never renumbers the rest.
+- **History is best-effort and excerpted.** Every mutation attempts a `log:`
+  doc via `logChange()`, which never rejects: a failed log write is a
+  `console.warn` (error name only), and the action still resolves, because
+  its data write has already landed. Strings longer than 120 characters in
+  `from`/`to`/`diffs` (task notes, long custom-field values, checklist
+  items) are stored as their first 120 characters plus `…`, never as full
+  copies; a diff shortened that way carries `changed: true`, and readers
+  must use `isRealDiff()` from `logFormat.ts` rather than compare the
+  excerpts. Older entries may still hold full bodies; every view renders a
+  notes change as "Notes updated" and never shows its text.
 - **Priority** is `1` low, `2` medium, `3` high. The desktop shows it as a
   left border; the phone tints the finish ring for medium and high only, with
   a screen-reader label.

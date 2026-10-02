@@ -213,6 +213,34 @@ export interface LogDoc {
   [meta: string]: any;
 }
 
+// Log docs are kept for months and replicated, so free text (a task's notes,
+// a long custom-field value or checklist item) is stored as an excerpt, never
+// a full copy. Applies to every string at any depth of from/to and diffs.
+export const LOG_EXCERPT_CHARS = 120;
+
+function excerpt(v: unknown): unknown {
+  if (typeof v === 'string') return v.length > LOG_EXCERPT_CHARS ? v.slice(0, LOG_EXCERPT_CHARS) + '…' : v;
+  if (Array.isArray(v)) return v.map(excerpt);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, excerpt(x)]));
+  return v;
+}
+
+// Two different long values can share an excerpt, so a diff whose values were
+// shortened carries `changed: true` -- readers must not re-derive "did it
+// change" by comparing the stored excerpts.
+function compactDiffs(diffs: Record<string, { from: unknown; to: unknown }>) {
+  const out: Record<string, { from: unknown; to: unknown; changed?: true }> = {};
+  for (const [k, d] of Object.entries(diffs)) {
+    const from = excerpt(d.from), to = excerpt(d.to);
+    const shortened = JSON.stringify(from) !== JSON.stringify(d.from) || JSON.stringify(to) !== JSON.stringify(d.to);
+    out[k] = shortened ? { from, to, changed: true } : { from, to };
+  }
+  return out;
+}
+
+// Never rejects: by the time this runs the caller's data write has landed, so
+// failing the action would report "Could not save" for a saved change, and a
+// retry would duplicate a create or flip a toggle back.
 export async function logChange(
   ref: string,
   action: LogAction,
@@ -221,13 +249,22 @@ export async function logChange(
   to?: unknown,
   meta?: Record<string, unknown>,
 ) {
-  const ts = now();
-  await db.put({
-    _id: `log:${ts}-${nanoid(8)}`,
-    type: 'log', ts, source: SOURCE, source_id: SOURCE_ID, ref, action,
-    ...(field !== undefined ? { field, from: from ?? null, to: to ?? null } : {}),
-    ...(meta ?? {}),
-  });
+  try {
+    const ts = now();
+    const m = meta?.diffs && typeof meta.diffs === 'object'
+      ? { ...meta, diffs: compactDiffs(meta.diffs as Record<string, { from: unknown; to: unknown }>) }
+      : meta;
+    await db.put({
+      _id: `log:${ts}-${nanoid(8)}`,
+      type: 'log', ts, source: SOURCE, source_id: SOURCE_ID, ref, action,
+      ...(field !== undefined ? { field, from: excerpt(from ?? null), to: excerpt(to ?? null) } : {}),
+      ...(m ?? {}),
+    });
+  } catch (e) {
+    // Error name/status only -- the doc being logged can hold task content.
+    const err = e as { name?: string; status?: number } | null;
+    console.warn('History entry not saved:', err?.name ?? 'error', err?.status ?? '');
+  }
 }
 
 export async function getRecentLogs(limit = 80): Promise<LogDoc[]> {

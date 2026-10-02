@@ -8,7 +8,10 @@ import { fmtTime } from './utils';
 // changelog fields these formatters read off a `log:` doc. Every field is
 // optional and most values are `unknown`: which keys a log entry carries
 // depends on the mutation, and a value can be any JSON a task field holds.
-export interface LogDiff { from?: unknown; to?: unknown }
+// `changed` is set when logChange() stored excerpts in place of long values:
+// two different notes can share an excerpt, so the flag, not a comparison of
+// the stored values, says the field changed.
+export interface LogDiff { from?: unknown; to?: unknown; changed?: boolean }
 
 export interface LogEntry {
   action?: string;
@@ -94,11 +97,15 @@ export function hasRealChange(from: unknown, to: unknown): boolean {
   return JSON.stringify(from) !== JSON.stringify(to);
 }
 
+export function isRealDiff(d: LogDiff): boolean {
+  return !!d.changed || hasRealChange(d.from, d.to);
+}
+
 const MAX_CLAUSES = 3;
 
 function fmtDiffs(diffs: Record<string, LogDiff>): string {
   const clauses = Object.entries(diffs)
-    .filter(([, d]) => hasRealChange(d.from, d.to))
+    .filter(([, d]) => isRealDiff(d))
     .map(([field, d]) => describeField(field, d.from, d.to));
   if (clauses.length === 0) return 'Details updated';
   if (clauses.length > MAX_CLAUSES) {
