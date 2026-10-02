@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { setSyncUrl, getSyncUrl, setSyncCredentials, getPairedHostUuid, setPairedHostUuid } from '../config';
+import { setSyncUrl, getSyncUrl, setSyncCredentials, getPairedHostUuid, setPairedHostUuid, setPairedHostName } from '../config';
 import { startSync, clearLocalSeedBeforeFirstPair, syncState } from './db';
 import { showError } from './store';
 
@@ -195,6 +195,7 @@ export async function pairWithHost(host: DiscoveredHost, code: string): Promise<
   await setSyncCredentials(data.user, data.password);
   setSyncUrl(`http://${host.address}:${data.port}/offlog`);
   setPairedHostUuid(data.uuid);
+  setPairedHostName(host.name);
   startSync().catch(() => {});
 }
 

@@ -9,7 +9,7 @@
   } from '../../db';
   import { showError } from '../../store';
   import { confirmAction } from '../../confirm';
-  import { getSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, shouldAskDeviceNameForSync, markDeviceNameAskedForSync, isTauri as isTauriCheck, invokeTauri, otherHostsDetected } from '../../../config';
+  import { getSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, shouldAskDeviceNameForSync, markDeviceNameAskedForSync, isTauri as isTauriCheck, invokeTauri, otherHostsDetected, getPairedHostName } from '../../../config';
   import { fmtLastSynced, timeAgo } from '../../utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, staleHostAlert, type DiscoveredHost } from '../../discovery';
   import TopBar from '../TopBar.svelte';
@@ -39,15 +39,25 @@
   onDestroy(() => syncState.listeners.delete(onSyncChange));
   onDestroy(() => stopScan());
 
-  $: status =
-    !syncEnabled ? { text: 'Off · everything stays on this device', tone: 'off' } :
-    !syncUrl ? { text: 'Not connected yet', tone: 'off' } :
-    syncStatus === 'syncing' ? { text: 'Syncing…', tone: 'ok' } :
-    syncStatus === 'offline' ? { text: 'Offline — resumes on your network', tone: 'off' } :
-    syncStatus === 'error' ? { text: syncError || 'Sync error', tone: 'error' } :
-    lastSynced ? { text: `Synced ${fmtLastSynced(lastSynced)}`, tone: 'ok' } :
-    { text: 'Waiting for the first sync', tone: 'ok' };
-  $: canSync = syncEnabled && !!syncUrl;
+  // Every device syncs through the paired computer, so the card shows this
+  // device's one link: here ↔ that computer.
+  const pairedName = getPairedHostName();
+  const hubName = pairedName || 'Your computer';
+  const hubInText = pairedName || 'your computer';
+  const here = isAndroid ? 'phone' : 'device';
+  type Card = { tone: 'ok' | 'idle' | 'bad'; title: string; text: string; act?: 'sync' | 'retry' | 'on' | 'connect' };
+  $: card = ((): Card => {
+    if (!syncUrl) return { tone: 'idle', title: 'Sync with your computer', text: `Keep this ${here} and your computer in step over your own Wi-Fi. Nothing goes to the cloud.`, act: isAndroid ? 'connect' : undefined };
+    if (!syncEnabled) return { tone: 'idle', title: 'Sync is off', text: `Everything stays on this ${here}.`, act: 'on' };
+    if ($staleHostAlert) return { tone: 'bad', title: `Can't find ${hubInText}`, text: `“${$staleHostAlert.name}” is on this network. Connect to it again.`, act: isAndroid ? 'connect' : undefined };
+    if (syncStatus === 'syncing') return { tone: 'ok', title: 'Syncing…', text: lastSynced ? `Synced ${fmtLastSynced(lastSynced)}` : 'First sync', act: 'sync' };
+    if (syncStatus === 'offline') return { tone: 'idle', title: 'Offline', text: `Sync picks up again when this ${here} is back on your network.`, act: 'sync' };
+    if (syncStatus === 'error') return /cannot reach/i.test(syncError ?? '')
+      ? { tone: 'bad', title: `Can't reach ${hubInText}`, text: 'Open Offlog on the computer and make sure both are on the same Wi-Fi. Your changes are safe here until then.', act: 'retry' }
+      : { tone: 'bad', title: 'Sync stopped', text: `${syncError || 'Something went wrong.'} Your changes are safe here.`, act: 'retry' };
+    if (lastSynced) return { tone: 'ok', title: 'Up to date', text: `Synced ${fmtLastSynced(lastSynced)}`, act: 'sync' };
+    return { tone: 'ok', title: 'Waiting for the first sync', text: 'This can take a minute.', act: 'sync' };
+  })();
 
   // The first time Sync goes on, the device name is asked for: it labels
   // this device's edits on the others.
@@ -68,6 +78,10 @@
     }
   }
   loadDeviceLastSeen();
+  // The card already shows this device and the computer.
+  $: others = deviceLastSeen.filter(d => d.device !== deviceName && d.device !== hubName);
+  const DAY = 24 * 3600e3;
+  const recent = (iso: string) => Date.now() - new Date(iso).getTime() < DAY;
 
   let showRename = false, renameSession = 0, nameDraft = '';
   function openRename() { nameDraft = deviceName; renameSession++; showRename = true; }
@@ -110,6 +124,7 @@
       const pairedName = selectedHost.name;
       await pairWithHost(selectedHost, pairingCode);
       syncUrl = getSyncUrl();
+      if (!syncEnabled) { syncEnabled = true; setSyncEnabled(true); }
       selectedHost = null;
       pairingCode = '';
       pairSuccessName = pairedName;
@@ -183,6 +198,7 @@
     stopScan();
     // A pairing may have added a device.
     loadDeviceLastSeen();
+    if (syncUrl && syncEnabled && shouldAskDeviceNameForSync()) { markDeviceNameAskedForSync(); openRename(); }
   }
   onDestroy(() => { stopPcPairPoll(); clearPcPairingExpiryTimer(); unlistenPairing?.(); });
 
@@ -261,71 +277,88 @@
 <TopBar title="Sync" />
 
 
-{#if $staleHostAlert}
-  <p class="warn" role="status">Paired computer not found. “{$staleHostAlert.name}” is on this network — connect again.</p>
-{/if}
 {#if syncEnabled && isTauri && $otherHostsDetected.length}
   <p class="warn">Another Offlog host (“{$otherHostsDetected[0].name}”) is on this network. Pair each device with only one.</p>
+{/if}
+
+<section class="card {card.tone}" aria-labelledby="sync-title">
+  <div class="pair" aria-hidden="true">
+    <span class="end me"><span class="circ">{@html isAndroid ? I.phone : I.monitor}</span><b>{deviceName}</b><small>This {here}</small></span>
+    <span class="link"><i>{@html card.tone === 'ok' ? I.check : card.tone === 'bad' ? '!' : ''}</i></span>
+    <span class="end"><span class="circ">{@html I.monitor}</span><b>{hubName}</b><small>Runs sync</small></span>
+  </div>
+  <h2 id="sync-title">{card.title}</h2>
+  <p role="status">{card.text}</p>
+  {#if card.act === 'sync'}
+    <button class="cbtn" on:click={runSyncNow} disabled={$syncing || syncStatus === 'syncing'}>{@html I.repeat}Sync now</button>
+  {:else if card.act === 'retry'}
+    <button class="cbtn solid" on:click={runSyncNow} disabled={$syncing || syncStatus === 'syncing'}>{@html I.repeat}Try again</button>
+  {:else if card.act === 'on'}
+    <button class="cbtn solid" on:click={toggleSyncEnabled}>Turn on sync</button>
+  {:else if card.act === 'connect'}
+    <button class="cbtn solid" on:click={openConnect}>Connect to my computer</button>
+  {/if}
+</section>
+{#if !isAndroid && !isTauri && !syncUrl}
+  <p class="hint">Pair from the Android or PC app.</p>
 {/if}
 
 {#if syncEnabled && conflictsShown > 0}
   <div class="p-group">
     <button class="p-row" on:click={openConflicts}>
-      <span class="p-k"><span>Conflicts</span></span>
+      <span class="p-k"><span>Conflicts</span><span class="p-sub">Edited on two devices. Pick which to keep.</span></span>
       <span class="p-v"><span class="badge">{conflictsShown}</span></span>
       <span class="chev">{@html I.chev}</span>
     </button>
   </div>
 {/if}
 
-<!-- One row carries both the switch and the state: the state is its subtitle. -->
-<div class="p-group">
-  <button class="p-row" role="switch" aria-checked={syncEnabled} on:click={toggleSyncEnabled}>
-    <span class="p-k"><span>Sync</span><span class="p-sub state" role="status"><span class="p-dot {$staleHostAlert ? 'error' : status.tone}"></span>{status.text}</span></span>
-    <span class="p-sw" class:on={syncEnabled}></span>
-  </button>
-  {#if canSync}
-    <button class="p-row" on:click={runSyncNow} disabled={$syncing || syncStatus === 'syncing'}>
-      <span class="p-k"><span>Sync now</span></span>
-    </button>
-  {/if}
-  {#if syncEnabled}
-    {#if isAndroid || isTauri}
-      <button class="p-row" on:click={openConnect}>
-        <span class="p-k"><span>Connect a device</span></span>
-        <span class="chev">{@html I.chev}</span>
-      </button>
-    {/if}
-    <button class="p-row" on:click={openRename}>
-      <span class="p-k"><span>This device</span></span>
-      <span class="p-v set name">{deviceName}</span>
-      <span class="chev">{@html I.chev}</span>
-    </button>
-    <button class="p-row" on:click={() => push({ k: 'set', page: 'advanced' })}>
-      <span class="p-k"><span>Own server</span></span>
-      <span class="p-v">Advanced</span>
-      <span class="chev">{@html I.chev}</span>
-    </button>
-  {/if}
-</div>
-{#if syncEnabled && !isAndroid && !isTauri}
-  <p class="hint">Pair from the Android or PC app.</p>
-{/if}
-
-{#if syncEnabled && deviceLastSeen.length}
-  <div class="p-sec" role="heading" aria-level="2">Devices</div>
+{#if syncUrl && (others.length || isAndroid || isTauri)}
+  <div class="p-sec" role="heading" aria-level="2">Other devices</div>
   <div class="p-group">
-    {#each deviceLastSeen as d (d.device)}
+    {#each others as d (d.device)}
       <div class="p-row dev">
+        <span class="ava" aria-hidden="true">{d.device.trim().charAt(0).toUpperCase() || '?'}</span>
         <span class="p-k">
           <span>{d.device}</span>
-          {#if d.device === deviceName}<span class="p-sub">This device</span>{/if}
+          <span class="p-sub seen"><span class="p-dot" class:fresh={recent(d.lastSeen)}></span>{recent(d.lastSeen) ? 'Synced' : 'Last seen'} {timeAgo(d.lastSeen)}</span>
         </span>
-        <span class="p-v">{timeAgo(d.lastSeen)}</span>
       </div>
     {/each}
+    {#if isAndroid || isTauri}
+      <button class="p-row acc" on:click={openConnect}>
+        <span class="ri">{@html I.plus}</span>
+        <span class="p-k"><span>Connect a device</span></span>
+      </button>
+    {/if}
   </div>
 {/if}
+
+<div class="p-sec" role="heading" aria-level="2">This {here}</div>
+<div class="p-group">
+  <button class="p-row" aria-label="Name, {deviceName}" on:click={openRename}>
+    <span class="ri">{@html I.pen}</span>
+    <span class="p-k"><span>Name</span><span class="p-sub">Shown on the changes you make</span></span>
+    <span class="p-v set name">{deviceName}</span>
+    <span class="chev">{@html I.chev}</span>
+  </button>
+  {#if syncUrl}
+  <button class="p-row" role="switch" aria-checked={syncEnabled} on:click={toggleSyncEnabled}>
+    <span class="ri">{@html I.repeat}</span>
+    <span class="p-k"><span>Sync this {here}</span><span class="p-sub">Off keeps everything here only</span></span>
+    <span class="p-sw" class:on={syncEnabled}></span>
+  </button>
+  {/if}
+</div>
+
+<div class="p-sec" role="heading" aria-level="2">Advanced</div>
+<div class="p-group">
+  <button class="p-row" on:click={() => push({ k: 'set', page: 'advanced' })}>
+    <span class="ri">{@html I.server}</span>
+    <span class="p-k"><span>Use my own server</span><span class="p-sub">Instead of the computer</span></span>
+    <span class="chev">{@html I.chev}</span>
+  </button>
+</div>
 
 {#if showRename}
   {#key renameSession}
@@ -445,10 +478,35 @@
 </div>
 
 <style>
-  .state { display: flex; align-items: center; gap: 6px; }
-  .state .p-dot { background: var(--faint); }
-  .state .p-dot.ok { background: var(--success); }
-  .state .p-dot.error { background: var(--danger); }
+  .card { background: var(--surface); border-radius: 20px; box-shadow: var(--p-shadow); padding: 22px 18px 18px; margin-bottom: 14px; text-align: center; }
+  .pair { display: flex; align-items: flex-start; justify-content: center; gap: 4px; margin-bottom: 16px; }
+  .end { display: flex; flex-direction: column; align-items: center; width: 108px; min-width: 0; font-size: var(--p-fs-s); color: var(--faint); }
+  .end b { margin-top: 8px; font-size: var(--p-fs-m); font-weight: 600; color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .circ { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .me .circ { color: var(--on-accent); background: var(--accent); }
+  .circ :global(svg.i) { width: 26px; height: 26px; }
+  .link { flex: 1; max-width: 76px; height: 3px; border-radius: 2px; margin-top: 29px; position: relative; background: var(--border-strong); }
+  .link i { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--surface);
+    display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; font-size: 14px; color: var(--on-accent); background: var(--border-strong); }
+  .link i :global(svg.i) { width: 14px; height: 14px; stroke-width: 3; }
+  .ok .link, .ok .link i { background: var(--success); }
+  .bad .link { background: repeating-linear-gradient(90deg, var(--danger) 0 6px, transparent 6px 11px); }
+  .bad .link i { background: var(--danger); }
+  .idle .link { background: repeating-linear-gradient(90deg, var(--border-strong) 0 6px, transparent 6px 11px); }
+  .idle .link i { display: none; }
+  .card h2 { margin: 0; font-size: 19px; font-weight: 700; }
+  .card p { margin: 4px 0 16px; font-size: var(--p-fs-m); color: var(--muted); line-height: 1.45; }
+  .cbtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; border: 0; border-radius: 12px; cursor: pointer;
+    font: inherit; font-size: var(--p-fs-l); font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+  .cbtn.solid { color: var(--on-accent); background: var(--accent); }
+  .cbtn:disabled { opacity: .5; cursor: default; }
+  .ri, .ava { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); background: var(--col-bg); }
+  .ava { border-radius: 50%; font-weight: 700; font-size: var(--p-fs-m); }
+  .acc .ri { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .seen { display: flex; align-items: center; gap: 6px; }
+  .seen .p-dot { background: var(--border-strong); }
+  .seen .p-dot.fresh { background: var(--success); }
   .chev { display: flex; color: var(--faint); }
   .p-row > .p-k + .chev { margin-left: auto; }
   .p-v + .chev { margin-left: -6px; }

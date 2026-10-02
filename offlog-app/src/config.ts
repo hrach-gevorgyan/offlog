@@ -640,6 +640,18 @@ export function getPairedHostUuid(): string | null {
   return localStorage.getItem(PAIRED_HOST_UUID_KEY);
 }
 
+// The paired computer's name as it announced itself at pairing time, for
+// display only. Phones paired before it was kept have none.
+const PAIRED_HOST_NAME_KEY = 'offlog_paired_host_name';
+
+export function getPairedHostName(): string | null {
+  return localStorage.getItem(PAIRED_HOST_NAME_KEY);
+}
+
+export function setPairedHostName(name: string) {
+  localStorage.setItem(PAIRED_HOST_NAME_KEY, name);
+}
+
 export function setPairedHostUuid(uuid: string) {
   localStorage.setItem(PAIRED_HOST_UUID_KEY, uuid);
 }

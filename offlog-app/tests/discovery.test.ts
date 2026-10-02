@@ -31,12 +31,14 @@ const FIXTURE = {
 
 const setSyncUrl = vi.fn();
 const setSyncCredentials = vi.fn().mockResolvedValue(undefined);
+const setPairedHostName = vi.fn();
 vi.mock('../src/config', () => ({
   setSyncUrl: (...a: unknown[]) => setSyncUrl(...a),
   getSyncUrl: () => '',
   setSyncCredentials: (...a: unknown[]) => setSyncCredentials(...a),
   getPairedHostUuid: () => null,
   setPairedHostUuid: vi.fn(),
+  setPairedHostName: (...a: unknown[]) => setPairedHostName(...a),
 }));
 
 const startSync = vi.fn().mockResolvedValue(undefined);
@@ -96,6 +98,7 @@ describe('pairWithHost', () => {
 
     expect(setSyncCredentials).toHaveBeenCalledWith(FIXTURE.expected.user, FIXTURE.expected.password);
     expect(setSyncUrl).toHaveBeenCalledWith(`http://${host.address}:${FIXTURE.expected.port}/offlog`);
+    expect(setPairedHostName).toHaveBeenCalledWith(host.name);
   });
 
   it('rejects with the same "incorrect code" message when the code is wrong, not a raw decrypt error', async () => {

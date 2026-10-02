@@ -7,6 +7,7 @@ const m = vi.hoisted(() => ({
   enabled: true,
   name: 'Pixel',
   askName: false,
+  hub: 'Office PC' as string | null,
   syncState: { status: 'idle', lastSynced: null as string | null, error: null as string | null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
 }));
 const setSyncEnabled = vi.fn((v: boolean) => { m.enabled = v; });
@@ -18,6 +19,7 @@ vi.mock('../src/config', async () => {
     isSyncEnabled: () => m.enabled,
     setSyncEnabled: (...a: unknown[]) => setSyncEnabled(...(a as [boolean])),
     getDeviceName: () => m.name,
+    getPairedHostName: () => m.hub,
     shouldAskDeviceNameForSync: () => m.askName,
     markDeviceNameAskedForSync: () => { m.askName = false; },
     setDeviceName: (...a: unknown[]) => setDeviceName(...(a as [string])),
@@ -88,12 +90,15 @@ beforeEach(async () => {
   m.enabled = true;
   m.name = 'Pixel';
   m.askName = false;
+  m.hub = 'Office PC';
   Object.assign(m.syncState, { status: 'idle', lastSynced: null, error: null, conflictCount: 0 });
   syncNow.mockResolvedValue(undefined);
   startSync.mockResolvedValue(undefined);
   getDeviceLastSeen.mockResolvedValue([
     { device: 'Pixel', lastSeen: new Date().toISOString() },
     { device: 'Office PC', lastSeen: new Date(Date.now() - 2 * 3600e3).toISOString() },
+    { device: 'Galaxy Tab', lastSeen: new Date(Date.now() - 3 * 3600e3).toISOString() },
+    { device: 'work phone', lastSeen: new Date(Date.now() - 3 * 86400e3).toISOString() },
   ]);
   getConflicts.mockResolvedValue([]);
   resolveConflict.mockResolvedValue(undefined);
@@ -105,20 +110,35 @@ beforeEach(async () => {
 afterEach(() => { cleanup(); delete (window as { Capacitor?: unknown }).Capacitor; });
 
 describe('phone Sync page', () => {
-  it('shows status, rows and devices; this device is a sub label, not a badge', async () => {
+  it('the card shows this device ↔ the computer; other devices list only the rest', async () => {
     m.syncState.lastSynced = new Date().toISOString();
     const { getByRole, getByText, container } = render(SettingsPage, { page: 'sync' });
-    expect(getByRole('heading', { name: 'Sync' })).toBeTruthy();
+    expect(getByRole('heading', { name: 'Up to date' })).toBeTruthy();
     expect(getByText(/^Synced /)).toBeTruthy();
-    expect(container.querySelector('[role=switch] .state .p-dot.ok')).toBeTruthy(); // state and switch are one row
+    const card = container.querySelector('.card')!;
+    expect(card.classList.contains('ok')).toBe(true);
+    expect(card.querySelector('.me b')!.textContent).toBe('Pixel');
+    expect(card.textContent).toContain('Office PC');
+    await waitFor(() => getByText('Galaxy Tab'));
+    const rows = [...container.querySelectorAll('.dev')].map(r => r.textContent!);
+    expect(rows).toHaveLength(2);
+    expect(rows.some(r => r.includes('Pixel') || r.includes('Office PC'))).toBe(false);
+    const tab = [...container.querySelectorAll('.dev')].find(r => r.textContent!.includes('Galaxy Tab'))!;
+    expect(tab.querySelector('.ava')!.textContent).toBe('G');
+    expect(tab.textContent).toContain('Synced 3h ago');
+    expect(tab.querySelector('.p-dot.fresh')).toBeTruthy();
+    const old = [...container.querySelectorAll('.dev')].find(r => r.textContent!.includes('work phone'))!;
+    expect(old.querySelector('.ava')!.textContent).toBe('W');
+    expect(old.textContent).toContain('Last seen 3d ago');
+    expect(old.querySelector('.p-dot.fresh')).toBeNull();
     expect(getByRole('switch').getAttribute('aria-checked')).toBe('true');
-    await waitFor(() => getByText('Office PC'));
-    expect(getByText('2h ago')).toBeTruthy();
-    const pixelRow = [...container.querySelectorAll('.dev')].find(r => r.textContent!.includes('Pixel'))!;
-    expect(pixelRow.querySelector('.p-sub')!.textContent).toBe('This device');
-    const pcRow = [...container.querySelectorAll('.dev')].find(r => r.textContent!.includes('Office PC'))!;
-    expect(pcRow.querySelector('.p-sub')).toBeNull();
     expect(getDeviceLastSeen).toHaveBeenCalledWith();
+  });
+
+  it('a phone paired before the name was kept calls the computer "Your computer"', () => {
+    m.hub = null;
+    const { container } = render(SettingsPage, { page: 'sync' });
+    expect(container.querySelector('.card')!.textContent).toContain('Your computer');
   });
 
   it('the switch turns sync off (cancelling it) and back on (starting it)', async () => {
@@ -127,12 +147,21 @@ describe('phone Sync page', () => {
     expect(setSyncEnabled).toHaveBeenLastCalledWith(false);
     expect(cancelSync).toHaveBeenCalledTimes(1);
     expect(getByRole('switch').getAttribute('aria-checked')).toBe('false');
-    expect(getByText('Off · everything stays on this device')).toBeTruthy();
-    expect(queryByText('This device')).toBeNull();
+    expect(getByRole('heading', { name: 'Sync is off' })).toBeTruthy();
+    expect(getByText('Everything stays on this device.')).toBeTruthy();
     expect(queryByText('Sync now')).toBeNull();
     await fireEvent.click(getByRole('switch'));
     expect(setSyncEnabled).toHaveBeenLastCalledWith(true);
     expect(startSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('with sync off, the card button turns it back on', async () => {
+    m.enabled = false;
+    const { getByText, getByRole } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByText('Turn on sync'));
+    expect(setSyncEnabled).toHaveBeenLastCalledWith(true);
+    expect(startSync).toHaveBeenCalledTimes(1);
+    expect(getByRole('heading', { name: 'Waiting for the first sync' })).toBeTruthy();
   });
 
   it('turning Sync on for the first time asks for the device name, once', async () => {
@@ -163,23 +192,43 @@ describe('phone Sync page', () => {
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not sync. Please try again.'));
   });
 
-  it('no server yet: says so, and offers no Sync now', () => {
-    m.url = '';
-    const { getByText, queryByText } = render(SettingsPage, { page: 'sync' });
-    expect(getByText('Not connected yet')).toBeTruthy();
-    expect(queryByText('Sync now')).toBeNull();
+  it('an unreachable computer says what to do, and Try again syncs', async () => {
+    Object.assign(m.syncState, { status: 'error', error: 'Cannot reach sync server — it may be switched off' });
+    const { getByRole, getByText, container } = render(SettingsPage, { page: 'sync' });
+    expect(getByRole('heading', { name: "Can't reach Office PC" })).toBeTruthy();
+    expect(getByText(/same Wi-Fi\. Your changes are safe here/)).toBeTruthy();
+    expect(container.querySelector('.card.bad')).toBeTruthy();
+    await fireEvent.click(getByText('Try again'));
+    expect(syncNow).toHaveBeenCalledTimes(1);
   });
 
-  it('This device renames in a sheet', async () => {
+  it('any other sync error is shown as it is, with Try again', () => {
+    Object.assign(m.syncState, { status: 'error', error: 'Disk is full.' });
+    const { getByRole, getByText } = render(SettingsPage, { page: 'sync' });
+    expect(getByRole('heading', { name: 'Sync stopped' })).toBeTruthy();
+    expect(getByText('Disk is full. Your changes are safe here.')).toBeTruthy();
+    expect(getByText('Try again')).toBeTruthy();
+  });
+
+  it('no server yet: invites pairing, and offers no Sync now', () => {
+    m.url = '';
+    const { getByRole, queryByText, getByText } = render(SettingsPage, { page: 'sync' });
+    expect(getByRole('heading', { name: 'Sync with your computer' })).toBeTruthy();
+    expect(queryByText('Sync now')).toBeNull();
+    expect(queryByText('Other devices')).toBeNull();
+    expect(getByText('Pair from the Android or PC app.')).toBeTruthy();
+  });
+
+  it('Name renames this device in a sheet', async () => {
     const { getByText, getByRole } = render(SettingsPage, { page: 'sync' });
-    await fireEvent.click(getByRole('button', { name: /^This device/ }));
+    await fireEvent.click(getByRole('button', { name: /^Name/ }));
     const input = getByRole('textbox') as HTMLInputElement;
     expect(input.value).toBe('Pixel');
     await fireEvent.input(input, { target: { value: '  Work phone ' } });
     await fireEvent.click(getByText('Save'));
     expect(setDeviceName).toHaveBeenCalledWith('  Work phone ');
     await waitFor(() => expect(document.querySelector('.psheet')).toBeNull());
-    expect(getByRole('button', { name: /^This device/ }).querySelector('.p-v')!.textContent).toBe('Work phone');
+    expect(getByRole('button', { name: /^Name/ }).querySelector('.p-v')!.textContent).toBe('Work phone');
   });
 
   it('a failed device list load surfaces showError', async () => {
@@ -215,6 +264,24 @@ describe('phone Sync page', () => {
     await fireEvent.click(getAllByText('Keep this')[0]);
     await waitFor(() => expect(showError).toHaveBeenCalledWith(changed.message));
     await waitFor(() => expect(getConflicts.mock.calls.length).toBeGreaterThan(loads));
+  });
+
+  it('Android, not paired yet: "Connect to my computer" pairs and turns sync on', async () => {
+    (window as { Capacitor?: unknown }).Capacitor = { getPlatform: () => 'android' };
+    m.url = ''; m.enabled = false;
+    const host = { uuid: 'h1', name: 'Office PC', address: '10.0.0.2', port: 1 };
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'sync' });
+    expect(getByText(/Keep this phone and your computer in step/)).toBeTruthy();
+    await fireEvent.click(getByText('Connect to my computer'));
+    await fireEvent.click(getByText('Find my computer'));
+    (discoveredHosts as Writable<unknown[]>).set([host]);
+    await waitFor(() => getByText('Connect'));
+    await fireEvent.click(getByText('Connect'));
+    await fireEvent.input(getByLabelText('Pairing code'), { target: { value: '123456' } });
+    m.url = 'http://10.0.0.2:1/offlog';
+    await fireEvent.click(getByText('Connect'));
+    await waitFor(() => getByText(/Connected to “Office PC”/));
+    expect(setSyncEnabled).toHaveBeenLastCalledWith(true);
   });
 
   it('Android: Connect a device finds the computer and pairs with the code', async () => {
@@ -255,17 +322,17 @@ describe('phone Sync page', () => {
     expect(queryByText(/Connected to/)).toBeNull();
   });
 
-  it('a web build has no Connect row, only a short hint', () => {
-    const { queryByText, getByText } = render(SettingsPage, { page: 'sync' });
+  it('a web build has no Connect row', () => {
+    const { queryByText } = render(SettingsPage, { page: 'sync' });
     expect(queryByText('Connect a device')).toBeNull();
-    expect(getByText('Pair from the Android or PC app.')).toBeTruthy();
   });
 
-  it('Own server opens Advanced; a stale paired host is shown', async () => {
+  it('Use my own server opens Advanced; a stale paired host is shown in the card', async () => {
     (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set({ uuid: 'u', name: 'Old PC' });
-    const { getByText } = render(SettingsPage, { page: 'sync' });
+    const { getByText, getByRole } = render(SettingsPage, { page: 'sync' });
+    expect(getByRole('heading', { name: "Can't find Office PC" })).toBeTruthy();
     expect(getByText(/“Old PC” is on this network/)).toBeTruthy();
-    await fireEvent.click(getByText('Own server'));
+    await fireEvent.click(getByText('Use my own server'));
     expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'advanced' });
   });
 });
