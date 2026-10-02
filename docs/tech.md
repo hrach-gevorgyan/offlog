@@ -864,6 +864,20 @@ the background thread keeps re-checking with a 1 s → 30 s capped backoff
 for as long as the sidecar process is alive, so a slow start delays
 pairing instead of disabling it for the session.
 
+**Supervision.** The same background thread then polls the sidecar every
+5 s (`supervise_nyxdb()` in `lib.rs`). If NyxDB exits on its own it is
+restarted with the same binary, data dir, port and credentials, inside the
+original Job Object (`sync_host::respawn_nyxdb()`), then readiness and
+`ensure_database` run again. Backoff and the give-up rule are the pure
+`sync_host::RestartPolicy`: 2 s doubling to a 60 s cap, and the 5th exit
+within 5 minutes stops restarting for the session (logged as an error). A
+failed respawn counts as another exit. The pairing server and mDNS start
+once per session, the first time NyxDB is ready, never again on restart.
+Deliberate teardown — `terminate_nyxdb()` (tray Quit, `ExitRequested`) and
+debug `reset_sync_data` — sets `NYXDB_STOPPING` before killing, and the
+supervisor re-checks it under the `NyxdbProcess` lock before respawning,
+so a quit is never mistaken for a crash.
+
 **Debug vs release on one machine.** Both share the identifier, so
 `app_data_dir()` and `app_local_data_dir()` are the same folders. Every
 per-build file is split on `debug_assertions`; release names are the

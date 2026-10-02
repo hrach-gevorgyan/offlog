@@ -4,8 +4,9 @@ mod pairing;
 mod secure_storage;
 mod sync_host;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -13,6 +14,10 @@ use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 struct NyxdbProcess(Mutex<Option<std::process::Child>>);
+
+// Set before any deliberate NyxDB teardown (quit, reset_sync_data) so the
+// supervisor never mistakes it for a crash and respawns the sidecar.
+static NYXDB_STOPPING: AtomicBool = AtomicBool::new(false);
 
 fn device_name() -> String {
     std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Offlog PC".to_string())
@@ -164,6 +169,10 @@ fn bring_to_front(app: &tauri::AppHandle) {
 // twice in a row: the Job/Child state is simply gone the second time and
 // the `let _ =` swallows the no-op error.
 fn terminate_nyxdb(app_handle: &tauri::AppHandle) {
+    // The flag goes up before the kill and the Child is taken under the
+    // same lock supervise_nyxdb() respawns under, so a restart racing this
+    // either sees the flag or has its new Child taken and killed here.
+    NYXDB_STOPPING.store(true, Ordering::SeqCst);
     if let Some(job) = app_handle.try_state::<win32job::Job>() {
         let _ = unsafe { TerminateJobObject(job.handle(), 0) };
     }
@@ -182,10 +191,10 @@ fn generate_pairing_code(state: tauri::State<Arc<pairing::PairingState>>) -> Str
 }
 
 // Keeps polling after the initial readiness window instead of giving up:
-// everything after readiness (database creation, pairing server, mDNS)
-// runs only once, so a slow first start would otherwise leave the whole
-// session unpairable. Stops only when the sidecar is gone -- exited on
-// its own, or taken by terminate_nyxdb() on quit.
+// the pairing server and mDNS start only once, so a slow first start would
+// otherwise leave the whole session unpairable. Stops only when the
+// sidecar is gone -- exited on its own (supervise_nyxdb() then decides
+// whether to restart it), or taken by terminate_nyxdb() on quit.
 fn wait_ready_with_backoff(app_handle: &tauri::AppHandle, port: u16) -> bool {
     let mut attempt = 0u32;
     loop {
@@ -193,7 +202,7 @@ fn wait_ready_with_backoff(app_handle: &tauri::AppHandle, port: u16) -> bool {
             state.0.lock().map(|mut guard| matches!(guard.as_mut().map(|c| c.try_wait()), Some(Ok(None)))).unwrap_or(false)
         });
         if !alive {
-            log::error!("sync_host: NyxDB exited before becoming ready on port {port}; sync host unavailable this session");
+            log::error!("sync_host: NyxDB exited before becoming ready on port {port}");
             return false;
         }
         std::thread::sleep(sync_host::retry_delay(attempt));
@@ -202,6 +211,114 @@ fn wait_ready_with_backoff(app_handle: &tauri::AppHandle, port: u16) -> bool {
             return true;
         }
         attempt = attempt.saturating_add(1);
+    }
+}
+
+// Runs once per session, the first time NyxDB is ready -- never again on a
+// supervisor restart: the pairing server's port and the mDNS daemon are
+// tied to this process, not to the sidecar, and survive it.
+fn start_pairing_and_discovery(app_handle: &tauri::AppHandle, info: &sync_host::SyncHostInfo) {
+    let Some(uuid) = sync_host::fetch_uuid(info.port) else {
+        log::warn!("discovery: couldn't fetch NyxDB uuid, skipping mDNS advertise");
+        return;
+    };
+    // Runs before this instance advertises itself below, so it
+    // can only see genuinely other hosts, never a self-echo.
+    let others = discovery::browse_for_others(Duration::from_millis(1500), &uuid);
+    if !others.is_empty() {
+        log::warn!("discovery: {} other Offlog host(s) detected on this network", others.len());
+    }
+    if let Some(state) = app_handle.try_state::<DetectedOtherHosts>() {
+        if let Ok(mut guard) = state.0.lock() {
+            *guard = others;
+        }
+    }
+    let pairing_state = Arc::new(pairing::PairingState::new(info.clone()));
+    match pairing::spawn_server(pairing_state.clone(), uuid.clone(), app_handle.clone()) {
+        Ok(pairing_port) => {
+            app_handle.manage(pairing_state);
+            let name = device_name();
+            if let Some(daemon) = discovery::advertise(info.port, &uuid, &name, pairing_port) {
+                app_handle.manage(daemon);
+            }
+        }
+        Err(e) => log::error!("pairing: failed to start server: {e}"),
+    }
+}
+
+const SUPERVISE_POLL: Duration = Duration::from_secs(5);
+
+// Restarts NyxDB if it exits mid-session, with the same binary, data dir,
+// port and credentials (so paired phones and the app's own sync URL keep
+// working), inside the original Job. Backoff and the give-up limit are
+// sync_host::RestartPolicy. Returns on quit, on giving up, or if the
+// Child has been taken by terminate_nyxdb().
+fn supervise_nyxdb(
+    app_handle: &tauri::AppHandle,
+    binary: &std::path::Path,
+    data_dir: &std::path::Path,
+    info: &sync_host::SyncHostInfo,
+    mut announced: bool,
+) {
+    let mut policy = sync_host::RestartPolicy::default();
+    loop {
+        std::thread::sleep(SUPERVISE_POLL);
+        if NYXDB_STOPPING.load(Ordering::SeqCst) {
+            return;
+        }
+        let Some(state) = app_handle.try_state::<NyxdbProcess>() else { return };
+        let status = {
+            let Ok(mut guard) = state.0.lock() else { return };
+            let Some(child) = guard.as_mut() else { return };
+            match child.try_wait() {
+                Ok(None) => continue,
+                Ok(Some(status)) => status.to_string(),
+                Err(e) => {
+                    log::warn!("sync_host: couldn't poll NyxDB status: {e}");
+                    continue;
+                }
+            }
+        };
+        if NYXDB_STOPPING.load(Ordering::SeqCst) {
+            return;
+        }
+        let Some(delay) = policy.record_crash(Instant::now()) else {
+            log::error!(
+                "sync_host: NyxDB exited ({status}) {} times within {} s; not restarting again, sync host unavailable until Offlog restarts",
+                policy.crashes_in_window(),
+                sync_host::CRASH_WINDOW.as_secs()
+            );
+            return;
+        };
+        log::warn!("sync_host: NyxDB exited ({status}); restarting in {} s", delay.as_secs());
+        std::thread::sleep(delay);
+
+        let Some(job) = app_handle.try_state::<win32job::Job>() else { return };
+        {
+            let Ok(mut guard) = state.0.lock() else { return };
+            // Checked under the lock terminate_nyxdb() takes the Child
+            // under, so a quit can't land between this check and the spawn.
+            if NYXDB_STOPPING.load(Ordering::SeqCst) || guard.is_none() {
+                return;
+            }
+            match sync_host::respawn_nyxdb(binary, data_dir, info, &job) {
+                Ok(child) => *guard = Some(child),
+                Err(e) => {
+                    // The exited Child stays in place, so the next poll
+                    // sees it again and counts this as another crash.
+                    log::error!("sync_host: failed to restart NyxDB: {e}");
+                    continue;
+                }
+            }
+        }
+        log::info!("sync_host: NyxDB restarted on port {}", info.port);
+        if sync_host::wait_ready(info.port, Duration::from_secs(20)) || wait_ready_with_backoff(app_handle, info.port) {
+            sync_host::ensure_database(info);
+            if !announced {
+                start_pairing_and_discovery(app_handle, info);
+                announced = true;
+            }
+        }
     }
 }
 
@@ -226,8 +343,10 @@ fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data
     // win32job::Job has no terminate() of its own -- TerminateJobObject is
     // the raw Win32 call, taking the same job handle already used to
     // register the NyxDB process (sync_host::spawn_nyxdb()).
+    NYXDB_STOPPING.store(true, Ordering::SeqCst);
     let ok = unsafe { TerminateJobObject(job.handle(), 0) };
     if ok == 0 {
+        NYXDB_STOPPING.store(false, Ordering::SeqCst);
         return Err("TerminateJobObject failed".to_string());
     }
     let _ = std::fs::remove_dir_all(&data_dir.0);
@@ -387,35 +506,12 @@ pub fn run() {
                         app_handle.manage(NyxdbProcess(Mutex::new(Some(child))));
                         let ready = sync_host::wait_ready(info_bg.port, Duration::from_secs(20));
                         log::info!("sync_host: NyxDB ready = {ready} on port {}", info_bg.port);
-                        if ready || wait_ready_with_backoff(&app_handle, info_bg.port) {
+                        let announced = ready || wait_ready_with_backoff(&app_handle, info_bg.port);
+                        if announced {
                             sync_host::ensure_database(&info_bg);
-                            if let Some(uuid) = sync_host::fetch_uuid(info_bg.port) {
-                                // Runs before this instance advertises itself below, so it
-                                // can only see genuinely other hosts, never a self-echo.
-                                let others = discovery::browse_for_others(Duration::from_millis(1500), &uuid);
-                                if !others.is_empty() {
-                                    log::warn!("discovery: {} other Offlog host(s) detected on this network", others.len());
-                                }
-                                if let Some(state) = app_handle.try_state::<DetectedOtherHosts>() {
-                                    if let Ok(mut guard) = state.0.lock() {
-                                        *guard = others;
-                                    }
-                                }
-                                let pairing_state = Arc::new(pairing::PairingState::new(info_bg.clone()));
-                                match pairing::spawn_server(pairing_state.clone(), uuid.clone(), app_handle.clone()) {
-                                    Ok(pairing_port) => {
-                                        app_handle.manage(pairing_state);
-                                        let name = device_name();
-                                        if let Some(daemon) = discovery::advertise(info_bg.port, &uuid, &name, pairing_port) {
-                                            app_handle.manage(daemon);
-                                        }
-                                    }
-                                    Err(e) => log::error!("pairing: failed to start server: {e}"),
-                                }
-                            } else {
-                                log::warn!("discovery: couldn't fetch NyxDB uuid, skipping mDNS advertise");
-                            }
+                            start_pairing_and_discovery(&app_handle, &info_bg);
                         }
+                        supervise_nyxdb(&app_handle, &nyxdb_binary_bg, &data_dir_bg, &info_bg, announced);
                     }
                     Err(e) => {
                         log::error!("sync_host: failed to spawn NyxDB sidecar: {e}");

@@ -164,9 +164,53 @@ pub fn nyxdb_binary_path(resource_dir: Option<PathBuf>) -> PathBuf {
 ///   and kills the sidecar.
 #[cfg(windows)]
 pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> std::io::Result<(Child, win32job::Job)> {
-    use std::os::windows::io::AsRawHandle;
-    use std::os::windows::process::CommandExt;
     use win32job::{ExtendedLimitInfo, Job};
+
+    let mut child = spawn_nyxdb_process(binary_path, data_dir, info)?;
+
+    // Without the job nothing would kill this process on quit, and it would
+    // keep the port and data directory from the next launch.
+    let mut limits = ExtendedLimitInfo::new();
+    limits.limit_kill_on_job_close();
+    let job = Job::create_with_limit_info(&limits)
+        .map_err(|e| std::io::Error::other(format!("failed to create job object: {e}")))
+        .and_then(|job| {
+            assign_to_job(&job, &child)?;
+            Ok(job)
+        });
+    match job {
+        Ok(job) => Ok((child, job)),
+        Err(e) => {
+            let _ = child.kill();
+            Err(e)
+        }
+    }
+}
+
+/// Restarts NyxDB with the same binary, data dir and identity (port and
+/// credentials), inside the Job the first spawn created — so the
+/// kill-on-close guarantee, `terminate_nyxdb()` and `reset_sync_data`
+/// all keep covering the new process without any change to managed state.
+#[cfg(windows)]
+pub fn respawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo, job: &win32job::Job) -> std::io::Result<Child> {
+    let mut child = spawn_nyxdb_process(binary_path, data_dir, info)?;
+    if let Err(e) = assign_to_job(job, &child) {
+        let _ = child.kill();
+        return Err(e);
+    }
+    Ok(child)
+}
+
+#[cfg(windows)]
+fn assign_to_job(job: &win32job::Job, child: &Child) -> std::io::Result<()> {
+    use std::os::windows::io::AsRawHandle;
+    job.assign_process(child.as_raw_handle() as _)
+        .map_err(|e| std::io::Error::other(format!("failed to assign process to job: {e}")))
+}
+
+#[cfg(windows)]
+fn spawn_nyxdb_process(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> std::io::Result<Child> {
+    use std::os::windows::process::CommandExt;
 
     let _ = fs::create_dir_all(data_dir);
     const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -176,7 +220,7 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
     // via NYXDB_ADDR.
     let working_dir = binary_path.parent().unwrap_or(binary_path);
 
-    let mut child = Command::new(binary_path)
+    Command::new(binary_path)
         .current_dir(working_dir)
         .env("NYXDB_ADDR", format!("0.0.0.0:{}", info.port))
         .env("NYXDB_DATA", data_dir)
@@ -193,26 +237,7 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .spawn()?;
-
-    // Without the job nothing would kill this process on quit, and it would
-    // keep the port and data directory from the next launch.
-    let mut limits = ExtendedLimitInfo::new();
-    limits.limit_kill_on_job_close();
-    let job = Job::create_with_limit_info(&limits)
-        .map_err(|e| std::io::Error::other(format!("failed to create job object: {e}")))
-        .and_then(|job| {
-            job.assign_process(child.as_raw_handle() as _)
-                .map_err(|e| std::io::Error::other(format!("failed to assign process to job: {e}")))?;
-            Ok(job)
-        });
-    match job {
-        Ok(job) => Ok((child, job)),
-        Err(e) => {
-            let _ = child.kill();
-            Err(e)
-        }
-    }
+        .spawn()
 }
 
 /// Polls the port instead of the HTTP welcome response — cheaper, and
@@ -237,6 +262,43 @@ pub fn is_ready(port: u16) -> bool {
 /// wait has run out: doubling from 1 s, capped at 30 s.
 pub fn retry_delay(attempt: u32) -> Duration {
     Duration::from_secs(1u64 << attempt.min(5)).min(Duration::from_secs(30))
+}
+
+/// Crashes within this window count toward `MAX_CRASHES_IN_WINDOW`.
+pub const CRASH_WINDOW: Duration = Duration::from_secs(5 * 60);
+/// The crash that reaches this count within `CRASH_WINDOW` is not
+/// restarted: a sidecar that keeps dying would otherwise respawn forever.
+pub const MAX_CRASHES_IN_WINDOW: usize = 5;
+
+/// Restart policy for an exited NyxDB sidecar. Pure: the caller passes the
+/// clock, so the window and backoff are testable without sleeping.
+#[derive(Default)]
+pub struct RestartPolicy {
+    recent: Vec<Instant>,
+}
+
+impl RestartPolicy {
+    /// Records an exit at `now`. Returns how long to wait before restarting,
+    /// or `None` when this exit is the `MAX_CRASHES_IN_WINDOW`th within
+    /// `CRASH_WINDOW` and the supervisor must give up.
+    pub fn record_crash(&mut self, now: Instant) -> Option<Duration> {
+        self.recent.retain(|t| now.saturating_duration_since(*t) < CRASH_WINDOW);
+        self.recent.push(now);
+        if self.recent.len() >= MAX_CRASHES_IN_WINDOW {
+            return None;
+        }
+        Some(restart_delay(self.recent.len() - 1))
+    }
+
+    pub fn crashes_in_window(&self) -> usize {
+        self.recent.len()
+    }
+}
+
+/// Delay before a restart, given how many earlier crashes are still inside
+/// the window: doubling from 2 s, capped at 60 s.
+pub fn restart_delay(prior_crashes: usize) -> Duration {
+    Duration::from_secs(2u64 << prior_crashes.min(5)).min(Duration::from_secs(60))
 }
 
 /// Creates the `offlog` database the app's PouchDB sync target expects —
@@ -352,5 +414,45 @@ mod tests {
         let secs: Vec<u64> = (0..10).map(|a| retry_delay(a).as_secs()).collect();
         assert_eq!(secs, vec![1, 2, 4, 8, 16, 30, 30, 30, 30, 30]);
         assert_eq!(retry_delay(u32::MAX), Duration::from_secs(30));
+    }
+
+    #[test]
+    fn restart_delay_doubles_from_two_then_caps_at_sixty() {
+        let secs: Vec<u64> = (0..8).map(|n| restart_delay(n).as_secs()).collect();
+        assert_eq!(secs, vec![2, 4, 8, 16, 32, 60, 60, 60]);
+        assert_eq!(restart_delay(usize::MAX), Duration::from_secs(60));
+    }
+
+    #[test]
+    fn rapid_crashes_back_off_then_give_up_on_the_fifth() {
+        let t0 = Instant::now();
+        let mut p = RestartPolicy::default();
+        let delays: Vec<Option<u64>> = (0..5).map(|i| p.record_crash(t0 + Duration::from_secs(i * 10)).map(|d| d.as_secs())).collect();
+        assert_eq!(delays, vec![Some(2), Some(4), Some(8), Some(16), None]);
+    }
+
+    #[test]
+    fn crashes_older_than_the_window_stop_counting() {
+        let t0 = Instant::now();
+        let mut p = RestartPolicy::default();
+        for i in 0..4 {
+            assert!(p.record_crash(t0 + Duration::from_secs(i)).is_some());
+        }
+        // Just past the window from the 4th crash: all four have aged out,
+        // so this is treated as a first crash again.
+        let later = t0 + Duration::from_secs(3) + CRASH_WINDOW;
+        assert_eq!(p.record_crash(later), Some(Duration::from_secs(2)));
+        assert_eq!(p.crashes_in_window(), 1);
+    }
+
+    #[test]
+    fn five_crashes_spread_just_inside_the_window_still_give_up() {
+        let t0 = Instant::now();
+        let mut p = RestartPolicy::default();
+        let step = (CRASH_WINDOW - Duration::from_secs(1)) / 4;
+        for i in 0..4 {
+            assert!(p.record_crash(t0 + step * i).is_some());
+        }
+        assert_eq!(p.record_crash(t0 + step * 4), None);
     }
 }

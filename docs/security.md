@@ -355,7 +355,8 @@ Verified in the code, not just claimed:
   moment Offlog's process handle closes — including on a crash or a
   force-kill from Task Manager, not just a clean quit. Otherwise a
   stopped app could leave a database server running and holding your
-  data directory.
+  data directory. If the server crashes and the app restarts it, the new
+  copy joins the same Job Object, so the guarantee still holds.
 - **Only one copy can run at a time**, enforced before anything else
   starts. Two instances would each start a sync server on the same port
   and data directory, advertise the same identity on your network, and
