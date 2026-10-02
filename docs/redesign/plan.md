@@ -241,5 +241,9 @@ Phone only. After a research-backed UX pass (seven area reviews against Material
 | Living hero: a few degrees of hue drift by season, deeper in the evening (`phone/livingHero.ts`) | **Built** (owner, 2 Oct 2026) |
 | + button as a plain rounded square, 20px corners (a slanted version was tried and replaced) | **Built** (owner, 2 Oct 2026) |
 | Settings: an Offlog header card and coloured icon tiles on the rows | **Built** (owner, 2 Oct 2026; reverses P2's "no coloured squares" for Settings) |
+| Settings rows: plain grey line icons, no coloured tiles | **Built** (owner, 2 Oct 2026; replaces the tiles above) |
+| Settings top: one card with the version and three tiles (Sync with its last sync time, Reminders, App lock), each opening its page; a warning line under them for errors, conflicts or a lost paired computer | **Built** (owner picked option C, 2 Oct 2026) |
+| Lock screen: Offlog's own number pad, opens on a match, fingerprint key when enabled | **Built** (owner picked option A, 2 Oct 2026) |
+| App lock page: PIN forms in sheets, lock time as a picker row, plain wording | **Built** |
 | Dotted row lines | Rejected (owner, 2 Oct 2026): rows keep solid lines |
 | Facts under the title on the task screen | Rejected (owner, 2 Oct 2026): the task screen keeps form rows |

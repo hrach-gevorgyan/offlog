@@ -33,13 +33,18 @@
   syncState.listeners.add(onSync);
   onDestroy(() => syncState.listeners.delete(onSync));
 
-  $: sync =
-    !syncOn ? { title: 'Sync is off', sub: 'Everything stays on this device', tone: 'off' } :
-    !syncUrl ? { title: 'Sync is on', sub: 'Not connected yet', tone: 'off' } :
-    status === 'error' ? { title: 'Sync error', sub: syncError || 'Something went wrong', tone: 'error' } :
-    status === 'syncing' ? { title: 'Syncing…', sub: lastSynced ? `Last synced ${fmtLastSynced(lastSynced)}` : 'First sync', tone: 'ok' } :
-    status === 'offline' ? { title: 'Offline', sub: 'Resumes on your network', tone: 'off' } :
-    { title: 'Sync is on', sub: lastSynced ? `Last synced ${fmtLastSynced(lastSynced)}` : 'Waiting for the first sync', tone: 'ok' };
+  // The three things that decide whether your tasks are safe and reach you,
+  // each a tile that opens its page.
+  $: syncTile =
+    !syncOn ? { value: 'Off', tone: '' } :
+    !syncUrl ? { value: 'Not set up', tone: '' } :
+    status === 'error' ? { value: 'Error', tone: 'bad' } :
+    status === 'syncing' ? { value: 'Syncing…', tone: 'ok' } :
+    status === 'offline' ? { value: 'Offline', tone: '' } :
+    { value: lastSynced ? fmtLastSynced(lastSynced) : 'Waiting', tone: 'ok' };
+  $: remindTile = !notifications ? { value: 'Off', tone: '' } : $permissionState === 'denied' ? { value: 'Blocked', tone: 'bad' } : { value: 'On', tone: 'ok' };
+  $: lockTile = appLock ? { value: 'On', tone: 'ok' } : { value: 'Off', tone: '' };
+  $: alert = $staleHostAlert ? 'Paired computer not found. Pair again' : status === 'error' && syncError ? syncError : conflicts > 0 ? `${conflicts} sync conflict${conflicts === 1 ? '' : 's'} to resolve` : '';
 
   $: canSync = syncOn && !!syncUrl;
 
@@ -92,27 +97,18 @@
 
 <TopBar title="Settings" />
 
-<div class="about">
-  <svg viewBox="0 0 1024 1024" aria-hidden="true">{#each MARK_PATHS as d}<path {d} />{/each}</svg>
-  <span><b>Offlog</b><span>On this device · no account{version ? ` · ${version}` : ''}</span></span>
-</div>
-
-<div class="p-group synccard">
-  <button class="p-row" on:click={() => go('sync')}>
-    <span class="p-dot {$staleHostAlert ? 'error' : sync.tone}"></span>
-    <span class="p-k">
-      <b>{sync.title}</b>
-      {#if $staleHostAlert}
-        <span class="p-sub conf">Paired computer not found — pair again</span>
-      {:else}
-        <span class="p-sub">{sync.sub}{#if conflicts > 0}{' · '}<span class="conf">{conflicts} conflict{conflicts === 1 ? '' : 's'}</span>{/if}</span>
-      {/if}
-    </span>
-    {#if !canSync}<span class="chev">{@html I.chev}</span>{/if}
-  </button>
-  {#if canSync}
-    <button class="p-tbtn now" on:click={runSyncNow} disabled={$syncing || status === 'syncing'}>Sync now</button>
-  {/if}
+<div class="glance">
+  <div class="head">
+    <svg viewBox="0 0 1024 1024" aria-hidden="true">{#each MARK_PATHS as d}<path {d} />{/each}</svg>
+    <span class="who"><b>Offlog{version ? ` ${version}` : ''}</b><span>On this phone · no account</span></span>
+    {#if canSync}<button class="p-tbtn" on:click={runSyncNow} disabled={$syncing || status === 'syncing'}>Sync now</button>{/if}
+  </div>
+  <div class="tiles">
+    <button class="tile" on:click={() => go('sync')}><small>Sync</small><strong class={syncTile.tone}>{syncTile.value}</strong></button>
+    <button class="tile" on:click={() => go('notifications')}><small>Reminders</small><strong class={remindTile.tone}>{remindTile.value}</strong></button>
+    <button class="tile" on:click={() => go('security')}><small>App lock</small><strong class={lockTile.tone}>{lockTile.value}</strong></button>
+  </div>
+  {#if alert}<button class="alert" on:click={() => go('sync')}>{alert}</button>{/if}
 </div>
 
 {#each groups as rows}
@@ -130,19 +126,21 @@
 
 
 <style>
-  .synccard { margin-top: 6px; display: flex; align-items: center; padding-right: 6px; }
-  .synccard .p-row { flex: 1; min-width: 0; }
-  .now { flex-shrink: 0; }
-  .synccard b { font-size: 15.5px; }
-  .synccard .p-dot { width: 10px; height: 10px; background: var(--faint); }
-  .synccard .p-dot.ok { background: var(--success); }
-  .synccard .p-dot.error { background: var(--danger); }
-  .conf { color: var(--overdue-ink); }
   .chev { display: flex; color: var(--faint); margin-left: 2px; }
   .p-v + .chev { margin-left: 0; }
   .p-row > .p-k + .chev { margin-left: auto; }
-  .about { display: flex; align-items: center; gap: 14px; margin: 2px 0 14px; padding: 16px; border-radius: 16px; background: var(--hero); color: var(--on-hero); }
-  .about svg { width: 40px; height: 40px; flex-shrink: 0; fill: currentColor; }
-  .about b { display: block; font-size: var(--p-fs-xl); }
-  .about > span > span { font-size: var(--p-fs-s); opacity: .88; }
+  .glance { background: var(--surface); border-radius: 16px; box-shadow: var(--p-shadow); padding: 16px; margin: 2px 0 14px; }
+  .head { display: flex; align-items: center; gap: 12px; }
+  .head svg { width: 36px; height: 36px; flex-shrink: 0; fill: var(--accent); }
+  .who { flex: 1; min-width: 0; }
+  .who b { display: block; font-size: var(--p-fs-l); }
+  .who > span { font-size: var(--p-fs-s); color: var(--faint); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 10px 12px; border: 0; border-radius: 12px; cursor: pointer; text-align: left; font: inherit; color: var(--text); background: color-mix(in srgb, var(--text) 6%, var(--surface)); }
+  .tile:active { background: color-mix(in srgb, var(--text) 12%, var(--surface)); }
+  .tile small { font-size: var(--p-fs-xs); color: var(--faint); }
+  .tile strong { font-size: var(--p-fs-m); font-weight: 600; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile strong.ok { color: var(--success); }
+  .tile strong.bad { color: var(--danger); }
+  .alert { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; border: 0; border-radius: 10px; text-align: left; font: inherit; font-size: var(--p-fs-s); font-weight: 600; cursor: pointer; color: var(--overdue-ink); background: var(--overdue-bg); }
 </style>

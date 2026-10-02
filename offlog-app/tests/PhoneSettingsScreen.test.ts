@@ -36,7 +36,11 @@ import { staleHostAlert } from '../src/lib/discovery';
 import type { Writable } from 'svelte/store';
 import { showError } from '../src/lib/store';
 
-const rowValue = (label: HTMLElement) => label.closest('button')!.querySelector('.p-v')?.textContent ?? '';
+// Rows only: the glance tiles above repeat some of the same words.
+const row = (c: HTMLElement, label: string) => [...c.querySelectorAll('.p-row')].find(r => r.querySelector('.p-k')?.textContent?.trim() === label) as HTMLElement;
+const rowValue = (c: HTMLElement, label: string) => row(c, label).querySelector('.p-v')?.textContent ?? '';
+const tile = (c: HTMLElement, label: string) => [...c.querySelectorAll('.tile')].find(t => t.querySelector('small')?.textContent === label) as HTMLElement;
+const tileValue = (c: HTMLElement, label: string) => tile(c, label).querySelector('strong')!.textContent;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -53,55 +57,58 @@ afterEach(cleanup);
 
 describe('phone Settings home', () => {
   it('shows each row with its current value', async () => {
-    const { getByText } = render(SettingsScreen);
-    expect(rowValue(getByText('Appearance'))).toBe('Dark');
-    expect(rowValue(getByText('Notifications'))).toBe('On');
-    expect(rowValue(getByText('App lock'))).toBe('Off');
-    await waitFor(() => expect(rowValue(getByText('Recycle bin'))).toBe('3'));
-    expect(rowValue(getByText('Archived projects'))).toBe('1');
-    expect(getByText('On this device · no account')).toBeTruthy();
+    const { container, getByText } = render(SettingsScreen);
+    expect(rowValue(container, 'Appearance')).toBe('Dark');
+    expect(rowValue(container, 'Notifications')).toBe('On');
+    expect(rowValue(container, 'App lock')).toBe('Off');
+    await waitFor(() => expect(rowValue(container, 'Recycle bin')).toBe('3'));
+    expect(rowValue(container, 'Archived projects')).toBe('1');
+    expect(getByText('On this phone · no account')).toBeTruthy();
   });
 
   it('every row pushes its settings page', async () => {
-    const { getByText } = render(SettingsScreen);
+    const { container } = render(SettingsScreen);
     const expected: [string, string][] = [
       ['Appearance', 'appearance'], ['Notifications', 'notifications'],
       ['App lock', 'security'], ['Spaces, tags & fields', 'organize'], ['Archived projects', 'archived'],
       ['Backup & restore', 'data'], ['Recycle bin', 'trash'], ['History', 'history'], ['Advanced', 'advanced'],
     ];
     for (const [label, page] of expected) {
-      await fireEvent.click(getByText(label));
+      await fireEvent.click(row(container, label));
       expect(get(stack).at(-1)).toMatchObject({ k: 'set', page });
     }
   });
 
-  it('the sync card is the only Sync entry; Advanced has the sliders icon', () => {
-    const { queryByText, getByText } = render(SettingsScreen);
-    expect(queryByText('Sync & devices')).toBeNull();
-    expect(getByText('Advanced').closest('button')!.querySelector('.p-ico circle[cx="16"][cy="7"]')).toBeTruthy();
+  it('the glance tiles show Sync, Reminders and App lock, and open their pages', async () => {
+    const { container } = render(SettingsScreen);
+    expect(tileValue(container, 'Reminders')).toBe('On');
+    expect(tileValue(container, 'App lock')).toBe('Off');
+    for (const [label, page] of [['Sync', 'sync'], ['Reminders', 'notifications'], ['App lock', 'security']]) {
+      await fireEvent.click(tile(container, label));
+      expect(get(stack).at(-1)).toMatchObject({ k: 'set', page });
+    }
   });
 
-  it('the sync card shows real status and conflicts, and opens Sync', async () => {
+  it('the Sync tile shows when it last synced; errors and conflicts show below', async () => {
     syncState.conflictCount = 2;
     syncState.lastSynced = new Date().toISOString();
-    const { getByText } = render(SettingsScreen);
-    expect(getByText('Sync is on')).toBeTruthy();
-    expect(getByText(/Last synced/)).toBeTruthy();
-    expect(getByText('2 conflicts')).toBeTruthy();
+    const { container, getByText } = render(SettingsScreen);
+    expect(tileValue(container, 'Sync')).not.toBe('Waiting');
+    expect(tile(container, 'Sync').querySelector('strong.ok')).toBeTruthy();
+    expect(getByText('2 sync conflicts to resolve')).toBeTruthy();
     // A live status change reaches the card.
     syncState.status = 'error'; syncState.error = 'Server unreachable';
     syncState.listeners.forEach(fn => fn());
-    await waitFor(() => getByText('Sync error'));
-    expect(getByText(/Server unreachable/)).toBeTruthy();
-    await fireEvent.click(getByText('Sync error'));
+    await waitFor(() => expect(tileValue(container, 'Sync')).toBe('Error'));
+    expect(getByText('Server unreachable')).toBeTruthy();
+    await fireEvent.click(getByText('Server unreachable'));
     expect(get(stack).at(-1)).toMatchObject({ k: 'set', page: 'sync' });
   });
 
   it('says when sync is off, with no Sync now', () => {
     syncOn = false;
-    const { getByText, queryByText } = render(SettingsScreen);
-    expect(getByText('Sync is off')).toBeTruthy();
-    expect(getByText('Everything stays on this device')).toBeTruthy();
+    const { container, queryByText } = render(SettingsScreen);
+    expect(tileValue(container, 'Sync')).toBe('Off');
     expect(queryByText('Sync now')).toBeNull();
   });
 
@@ -118,9 +125,8 @@ describe('phone Settings home', () => {
 
   it('a stale paired host shows on the card', async () => {
     (staleHostAlert as Writable<{ uuid: string; name: string } | null>).set({ uuid: 'u', name: 'Old PC' });
-    const { getByText, container } = render(SettingsScreen);
-    expect(getByText('Paired computer not found — pair again')).toBeTruthy();
-    expect(container.querySelector('.synccard .p-dot.error')).toBeTruthy();
+    const { getByText } = render(SettingsScreen);
+    expect(getByText('Paired computer not found. Pair again')).toBeTruthy();
   });
 
   it('a failed count load surfaces showError', async () => {
