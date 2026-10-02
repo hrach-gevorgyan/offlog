@@ -15,7 +15,7 @@
 const sharp = require('sharp');
 const path = require('path');
 
-const BRAND = { r: 0x54, g: 0x57, b: 0xe0, alpha: 1 }; // app.css --accent (light) / capacitor.config.ts iconColor / colors.xml colorPrimary
+const BRAND = { r: 0x57, g: 0x5f, b: 0xca, alpha: 1 }; // app.css --accent (light) / capacitor.config.ts iconColor / colors.xml colorPrimary
 const SRC = path.join(__dirname, 'source-logo.svg');
 const ANDROID_RES = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
 const WEB_PUBLIC = path.join(__dirname, '..', 'public');
