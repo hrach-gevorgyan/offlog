@@ -70,23 +70,22 @@
   const go = (page: string) => push({ k: 'set', page });
   const THEME = { system: 'System', light: 'Light', dark: 'Dark' };
 
-  // Each row's icon sits on a small tile in one of the app's own colours.
-  type Row = { page: string; icon: string; label: string; value?: string; tone: string };
+  type Row = { page: string; icon: string; label: string; value?: string };
   $: groups = [
     [
-      { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme], tone: 'var(--accent)' },
-      { page: 'notifications', icon: I.bell, label: 'Notifications', value: !notifications ? 'Off' : $permissionState === 'denied' ? 'Blocked' : 'On', tone: 'var(--amber)' },
-      { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off', tone: 'var(--success)' },
+      { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme] },
+      { page: 'notifications', icon: I.bell, label: 'Notifications', value: !notifications ? 'Off' : $permissionState === 'denied' ? 'Blocked' : 'On' },
+      { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off' },
     ],
     [
-      { page: 'organize', icon: I.setBox, label: 'Spaces, tags & fields', tone: 'var(--accent)' },
-      { page: 'archived', icon: I.arch, label: 'Archived projects', value: archivedCount ? String(archivedCount) : '', tone: 'var(--faint)' },
-      { page: 'data', icon: I.setDisk, label: 'Backup & restore', tone: 'var(--success)' },
+      { page: 'organize', icon: I.setBox, label: 'Spaces, tags & fields' },
+      { page: 'archived', icon: I.arch, label: 'Archived projects', value: archivedCount ? String(archivedCount) : '' },
+      { page: 'data', icon: I.setDisk, label: 'Backup & restore' },
     ],
     [
-      { page: 'trash', icon: I.trash, label: 'Recycle bin', value: trashCount ? String(trashCount) : '', tone: 'var(--danger)' },
-      { page: 'history', icon: I.clock, label: 'History', tone: 'var(--amber)' },
-      { page: 'advanced', icon: I.sliders, label: 'Advanced', tone: 'var(--faint)' },
+      { page: 'trash', icon: I.trash, label: 'Recycle bin', value: trashCount ? String(trashCount) : '' },
+      { page: 'history', icon: I.clock, label: 'History' },
+      { page: 'advanced', icon: I.sliders, label: 'Advanced' },
     ],
   ] as Row[][];
 </script>
@@ -120,7 +119,7 @@
   <div class="p-group">
     {#each rows as r (r.page)}
       <button class="p-row" on:click={() => go(r.page)}>
-        <span class="p-ico tile" style:--tone={r.tone}>{@html r.icon}</span>
+        <span class="p-ico">{@html r.icon}</span>
         <span class="p-k"><span>{r.label}</span></span>
         {#if r.value}<span class="p-v">{r.value}</span>{/if}
         <span class="chev">{@html I.chev}</span>
@@ -146,9 +145,4 @@
   .about svg { width: 40px; height: 40px; flex-shrink: 0; fill: currentColor; }
   .about b { display: block; font-size: var(--p-fs-xl); }
   .about > span > span { font-size: var(--p-fs-s); opacity: .88; }
-  /* Light mode darkens each tone toward --text so a white icon reads on it;
-     dark mode's tones are light already, and --on-accent turns dark there. */
-  .tile { width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--tone) 82%, var(--text)); color: var(--on-accent); }
-  :global(body.dark) .tile { background: var(--tone); }
-  .tile :global(svg.i) { width: 18px; height: 18px; }
 </style>

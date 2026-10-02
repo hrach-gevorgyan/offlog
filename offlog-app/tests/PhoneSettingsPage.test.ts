@@ -245,7 +245,7 @@ describe('phone settings pages', () => {
   it('Backup: the actions come first and the counts are one line', async () => {
     vi.mocked(db.getStorageBreakdown).mockResolvedValueOnce({ activeTasks: 48, archivedTasks: 2, deletedTasks: 4, logEntries: 95, attachmentCount: 0, attachmentBytes: 0 } as never);
     const { container, getByText } = render(SettingsPage, { page: 'data' });
-    await waitFor(() => getByText('48 tasks · 4 in bin · 95 history'));
+    await waitFor(() => getByText('48 tasks · 4 in bin · 95 in history'));
     const labels = [...container.querySelectorAll('.pset button')].map(b => b.textContent!.trim() || b.getAttribute('aria-label'));
     expect(labels.indexOf('Back up')).toBeLessThan(labels.indexOf('Restore'));
     expect(labels.indexOf('Back up')).toBe(1); // after the scope picker only

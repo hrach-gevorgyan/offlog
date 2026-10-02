@@ -57,7 +57,7 @@ describe('phone Search', () => {
     await findByText('Call Bob');
     const marks = [...container.querySelectorAll('mark')].map(m => m.textContent);
     expect(marks).toEqual(['tile', 'tile', 'tile']);
-    const snips = [...container.querySelectorAll('.why.snip')].map(s => s.textContent);
+    const snips = [...container.querySelectorAll('.n')].map(s => s.textContent);
     expect(snips).toEqual(['He said the tile delivery is late', 'Grout for tile']);
   });
 

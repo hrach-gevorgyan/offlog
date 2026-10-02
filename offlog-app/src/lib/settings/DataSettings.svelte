@@ -35,7 +35,7 @@
     storageUsed,
     `${breakdown.activeTasks} task${breakdown.activeTasks === 1 ? '' : 's'}`,
     `${breakdown.deletedTasks} in bin`,
-    `${breakdown.logEntries} history`,
+    `${breakdown.logEntries} in history`,
     breakdown.attachmentCount ? `${breakdown.attachmentCount} file${breakdown.attachmentCount === 1 ? '' : 's'}` : '',
   ].filter(Boolean).join(' · ') : '';
 </script>
@@ -68,12 +68,12 @@
               {#if isNativePlatform() || isTauriCheck()}
               <div class="setting-group">
                 <div class="setting-row">
-                  <span class="setting-label">Back up automatically</span>
-                  <button class="toggle-btn" class:on={autoBackupEnabled} on:click={toggleAutoBackup} aria-label="Back up automatically" role="switch" aria-checked={autoBackupEnabled}>
+                  <span class="setting-label">Daily safety copy</span>
+                  <button class="toggle-btn" class:on={autoBackupEnabled} on:click={toggleAutoBackup} aria-label="Daily safety copy" role="switch" aria-checked={autoBackupEnabled}>
                     <span class="toggle-knob"></span>
                   </button>
                 </div>
-                <p class="setting-hint compact-hint">{lastAutoBackupAt ? `Last saved ${fmtLastSynced(lastAutoBackupAt)}` : 'Daily'} · on this device</p>
+                <p class="setting-hint compact-hint">Once a day Offlog saves a copy of everything on this {isNativePlatform() ? 'phone' : 'computer'} and keeps the last 7, so you can go back if something goes wrong.{autoBackupEnabled && lastAutoBackupAt ? ` Last copy: ${fmtLastSynced(lastAutoBackupAt)}.` : ''}</p>
               </div>
               {/if}
 

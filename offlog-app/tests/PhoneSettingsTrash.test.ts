@@ -47,7 +47,7 @@ describe('phone Recycle bin', () => {
     const { getByText, getByLabelText } = render(SettingsPage, { page: 'trash' });
     await waitFor(() => getByText('Buy paint'));
     expect(getByText(/House ·/)).toBeTruthy();
-    expect(getByText('Kept for 3 months')).toBeTruthy();
+    expect(getByText(/items? · kept for 3 months/)).toBeTruthy();
     expect(getByLabelText('Restore Buy paint')).toBeTruthy();
   });
 

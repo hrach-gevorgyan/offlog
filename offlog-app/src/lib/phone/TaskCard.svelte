@@ -18,6 +18,9 @@
   export let menu = false;
   // Search text to mark in the title.
   export let highlight = '';
+  // A line under the title saying where a search matched: the matched text
+  // with its hit marked, or just the place ("Matched in steps").
+  export let note: { pre: string; hit?: string; post?: string } | null = null;
 
   const dispatch = createEventDispatcher<{ open: TaskDoc; changed: void; menu: TaskDoc }>();
 
@@ -86,6 +89,7 @@
       {#if task.recurrence}<span class="ic">· {@html I.repeat}</span>{/if}
       {#if steps.length}<span>· {steps.filter(s => s.done).length}/{steps.length}</span>{/if}
     </span>
+    {#if note}<span class="n" class:where={!note.hit}>{note.pre}{#if note.hit}<mark>{note.hit}</mark>{note.post}{/if}</span>{/if}
   </button>
   {#if pill}<span class="pill {pill.tone}">{pill.text}</span>{/if}
 </div>
@@ -103,6 +107,8 @@
   .g { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .t { font-size: var(--p-fs-l); font-weight: 600; line-height: 1.3; }
   .s { font-size: var(--p-fs-s); color: var(--faint); margin-top: 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .n { font-size: var(--p-fs-xs); color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .n.where { color: var(--accent); font-weight: 600; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .ic :global(svg) { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; vertical-align: -2px; }
   mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: inherit; border-radius: 3px; }

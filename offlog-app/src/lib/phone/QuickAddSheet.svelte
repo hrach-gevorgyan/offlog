@@ -384,9 +384,10 @@
   .compose, .chips, .note, .warn { flex: none; }
   .compose { display: flex; align-items: center; gap: 8px; }
   .field { position: relative; flex: 1; min-width: 0; display: flex; }
-  .field:focus-within { box-shadow: 0 0 0 2px var(--accent); border-radius: 10px; }
+  /* Inset, so a scrolling parent can't clip it. */
+  .field:focus-within { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 10px; }
   /* .qa and .mirror must stay metric-identical, or the caret drifts off the text. */
-  .qa, .mirror { font: inherit; font-size: var(--p-fs-xl); line-height: 1.5; letter-spacing: normal; padding: 10px 4px; border: 0; margin: 0; }
+  .qa, .mirror { font: inherit; font-size: var(--p-fs-xl); line-height: 1.5; letter-spacing: normal; padding: 10px 10px; border: 0; margin: 0; }
   .qa { position: relative; flex: 1; min-width: 0; outline: none; background: none; color: transparent; caret-color: var(--text); }
   .qa::placeholder { color: var(--faint); }
   .mirror { position: absolute; inset: 0; overflow: hidden; white-space: pre; color: var(--text); pointer-events: none; }
@@ -413,8 +414,8 @@
   .keep { color: var(--accent); }
   /* Overflow cue: the row's far edge fades while more chips sit past it. */
   .p-chips.fade-end {
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
-    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 56px), transparent);
   }
   .note, .warn { font-size: var(--p-fs-s); margin: 6px 4px 0; }
   .note { color: var(--faint); }

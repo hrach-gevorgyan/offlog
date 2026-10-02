@@ -98,8 +98,10 @@
   }
 </script>
 
-<TopBar title="Recycle bin" sub={items.length ? 'Kept for 3 months' : ''}>
+<!-- Both actions sit in the bar, reachable however long the list is. -->
+<TopBar title="Recycle bin" sub={items.length ? `${items.length} item${items.length === 1 ? '' : 's'} · kept for 3 months` : ''}>
   {#if items.length}
+    <button class="p-tbtn" on:click={restoreAll} disabled={busy}>Restore all</button>
     <button class="p-tbtn danger" on:click={emptyAll} disabled={busy}>Empty</button>
   {/if}
 </TopBar>
@@ -120,7 +122,6 @@
       </div>
     {/each}
   </div>
-  <button class="p-tbtn all" on:click={restoreAll} disabled={busy}>Restore all</button>
 {/if}
 
 <style>
@@ -130,5 +131,4 @@
   .p-row.item .p-k > .title { white-space: normal; overflow-wrap: anywhere; }
   .del { color: var(--faint); }
   .del:active { color: var(--danger); }
-  .all { display: block; margin: 0 auto; min-height: 44px; }
 </style>
