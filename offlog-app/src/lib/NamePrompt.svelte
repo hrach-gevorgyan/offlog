@@ -150,7 +150,7 @@
           <span class="pref-label">Notifications</span>
           <span class="pref-sublabel">
             {#if $permissionState === 'denied'}
-              Blocked — allow them for Offlog in {isTauri() ? 'Windows Settings → Notifications' : 'your browser/system settings'}, then tap Enable to re-check
+              Blocked — allow them for Offlog in {isTauri() ? 'Windows Settings → Notifications' : isNativePlatform() ? 'Android settings' : 'your browser settings'}, then tap Enable to check again
             {:else}
               Needed for reminders to fire
             {/if}

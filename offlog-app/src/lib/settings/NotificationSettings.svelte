@@ -25,16 +25,30 @@
                     <span class="toggle-knob"></span>
                   </button>
                 </div>
-                {#if notificationsEnabled && $permissionState === 'denied'}
-                  <div class="setting-row setting-hint-warn" role="status">
-                    <span class="setting-label">{isAndroid ? 'Blocked in Android settings' : 'Notifications are blocked'}</span>
-                    <button class="export-btn" on:click={() => requestPermission()}>Allow</button>
+                {#if notificationsEnabled}
+                  <!-- Both grants always show: either one missing changes how reminders arrive. -->
+                  <div class="setting-row perm" role="status">
+                    <span class="setting-label">Notifications
+                      <span class="perm-state" class:warn={$permissionState !== 'granted'}>
+                        {$permissionState === 'granted' ? 'Allowed' : $permissionState === 'denied' ? (isAndroid ? 'Blocked in Android settings' : 'Notifications are blocked') : $permissionState === 'unsupported' ? 'Not supported here' : 'Not allowed yet'}
+                      </span>
+                    </span>
+                    {#if $permissionState === 'denied' || $permissionState === 'default'}
+                      <button class="export-btn" on:click={() => requestPermission()}>Allow</button>
+                    {/if}
                   </div>
-                {:else if notificationsEnabled && isAndroid && $exactAlarmState === 'denied'}
-                  <div class="setting-row setting-hint-warn" role="status">
-                    <span class="setting-label">May arrive a few minutes late</span>
-                    <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Make exact</button>
-                  </div>
+                  {#if isAndroid}
+                    <div class="setting-row perm" role="status">
+                      <span class="setting-label">Exact timing
+                        <span class="perm-state" class:warn={$exactAlarmState === 'denied'}>
+                          {$exactAlarmState === 'granted' ? 'Reminders arrive on the minute' : $exactAlarmState === 'denied' ? 'May arrive a few minutes late' : 'Checking…'}
+                        </span>
+                      </span>
+                      {#if $exactAlarmState === 'denied'}
+                        <button class="export-btn" on:click={() => requestExactAlarmPermission()}>Make exact</button>
+                      {/if}
+                    </div>
+                  {/if}
                 {/if}
               </div>
 

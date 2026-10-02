@@ -644,6 +644,13 @@
   .pset :global(.setting-row) { display: flex; align-items: center; gap: 12px; min-height: 44px; flex-wrap: wrap; }
   .pset :global(.setting-row:has(> .toggle-btn)) { cursor: pointer; margin: 0 -16px; padding: 0 16px; min-height: 52px; transition: background var(--dur-hover) var(--ease-hover); }
   .pset :global(.setting-row:has(> .toggle-btn):active) { background: var(--col-bg); }
+  /* A switch row already has 52px of its own; at a card's edge it needs no
+     extra padding, or a one-switch card reads as half empty. */
+  .pset :global(.setting-group:has(> .setting-row:first-child > .toggle-btn)) { padding-top: 4px; }
+  .pset :global(.setting-group:has(> .setting-row:last-child > .toggle-btn)) { padding-bottom: 4px; }
+  .pset :global(.setting-row.perm) { border-top: 1px solid var(--border); padding-top: 10px; }
+  .pset :global(.perm-state) { display: block; margin-top: 2px; font-size: 13.5px; color: var(--faint); }
+  .pset :global(.perm-state.warn) { color: var(--due-soon-ink); font-weight: 500; }
   .pset :global(.setting-label) { flex: 1; min-width: 0; font-size: 16px; color: var(--text); }
   .pset :global(.setting-value) { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pset :global(.setting-hint) { margin: 0; font-size: 13.5px; color: var(--faint); line-height: 1.5; }

@@ -11,6 +11,7 @@
   import { MARK_PATHS } from '../mark';
   import { staleHostAlert } from '../../discovery';
   import { runSyncNow, syncing } from './syncNow';
+  import { permissionState } from '../../notifications';
 
   // Read at mount: this screen remounts each time a settings page pops back to it.
   const theme = getThemeMode();
@@ -74,7 +75,7 @@
   $: groups = [
     [
       { page: 'appearance', icon: I.setSun, label: 'Appearance', value: THEME[theme], tone: 'var(--accent)' },
-      { page: 'notifications', icon: I.bell, label: 'Notifications', value: notifications ? 'On' : 'Off', tone: 'var(--amber)' },
+      { page: 'notifications', icon: I.bell, label: 'Notifications', value: !notifications ? 'Off' : $permissionState === 'denied' ? 'Blocked' : 'On', tone: 'var(--amber)' },
       { page: 'security', icon: I.setLock, label: 'App lock', value: appLock ? 'On' : 'Off', tone: 'var(--success)' },
     ],
     [

@@ -216,12 +216,20 @@ describe('phone settings pages', () => {
       expect(container.textContent).toContain('Default reminder time');
     });
 
-    it('exact alarms off: one warning row whose button opens the system setting', async () => {
+    it('exact alarms off: its row warns and the button opens the system setting', async () => {
       exact().set('denied');
       const { getByText, container } = render(SettingsPage, { page: 'notifications' });
-      expect(container.querySelector('.setting-hint-warn')?.textContent).toContain('May arrive a few minutes late');
+      expect(container.querySelector('.perm-state.warn')?.textContent).toContain('May arrive a few minutes late');
       await fireEvent.click(getByText('Make exact'));
       expect(notif.requestExactAlarmPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it('both grants missing: both rows show, each with its own button', async () => {
+      perm().set('denied'); exact().set('denied');
+      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
+      expect(container.querySelectorAll('.perm-state.warn')).toHaveLength(2);
+      expect(getByText('Allow')).toBeTruthy();
+      expect(getByText('Make exact')).toBeTruthy();
     });
 
     it('notifications blocked: the warning row asks again', async () => {
