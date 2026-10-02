@@ -144,8 +144,11 @@ open it, and again after a time in the background that you choose (5
 minutes unless you change it).
 
 - **The PIN itself is never stored.** Only a salted SHA-256 hash, with a
-  fresh random salt generated when you set it. Reading the phone's stored
-  files doesn't reveal your PIN.
+  fresh random salt generated when you set it. That stops someone casually
+  reading the stored files from seeing it, but a PIN of 4 to 8 digits can
+  be guessed from its hash in seconds by anyone who copies those files off
+  the device. App Lock guards the screen, not the data at rest, so don't
+  reuse your phone's unlock PIN here.
 - **No escape hatch.** Unlike every other screen in the app, the lock
   screen ignores the back button, the Escape key, and taps outside it.
   As the code puts it: *a lock screen that closes on Escape isn't a

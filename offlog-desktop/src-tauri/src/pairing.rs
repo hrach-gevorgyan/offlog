@@ -182,83 +182,110 @@ pub fn spawn_server(state: Arc<PairingState>, uuid: String, app_handle: tauri::A
         .map_err(|e| std::io::Error::other(format!("failed to bind pairing server: {e}")))?;
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
 
-    // Every response must carry Access-Control-Allow-Origin, including the
-    // error ones. A WebView's fetch() silently rejects a cross-origin
-    // response with no CORS header, surfacing as a bare "Failed to fetch"
-    // indistinguishable from the host being unreachable; curl doesn't
-    // enforce CORS, so manual testing won't catch a missing header.
-    //
-    // `*` is deliberate and safe here: no credentials or cookies are
-    // involved, and the secret protecting this endpoint is the pairing
-    // code itself (via the proof), not origin-based access control.
-    // OPTIONS is answered defensively in case a WebView/fetch combination
-    // sends a preflight.
-    fn cors_header() -> tiny_http::Header {
-        tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap()
-    }
-
+    // Each request on its own thread, so a client that never finishes its
+    // body cannot stall pairing for everyone else; the cap bounds how many
+    // such clients can hold a thread at once.
+    let in_flight = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     std::thread::spawn(move || {
-        for mut request in server.incoming_requests() {
-            if request.method() == &tiny_http::Method::Options {
-                let response = Response::empty(204)
-                    .with_header(cors_header())
-                    .with_header(tiny_http::Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST"[..]).unwrap())
-                    .with_header(tiny_http::Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap());
-                let _ = request.respond(response);
+        for request in server.incoming_requests() {
+            use std::sync::atomic::Ordering;
+            if in_flight.load(Ordering::SeqCst) >= MAX_IN_FLIGHT {
+                let _ = request.respond(Response::empty(503).with_header(cors_header()));
                 continue;
             }
-            if request.method() != &tiny_http::Method::Post || request.url() != "/pair" {
-                let _ = request.respond(Response::empty(404).with_header(cors_header()));
-                continue;
-            }
-            let mut body = String::new();
-            if std::io::Read::read_to_string(request.as_reader(), &mut body).is_err() {
-                let _ = request.respond(Response::empty(400).with_header(cors_header()));
-                continue;
-            }
-            let parsed: Option<PairRequest> = serde_json::from_str(&body).ok();
-            let decoded = parsed.and_then(|p| {
-                let nonce = BASE64.decode(&p.nonce).ok()?;
-                let proof = BASE64.decode(&p.proof).ok()?;
-                Some((nonce, proof))
+            in_flight.fetch_add(1, Ordering::SeqCst);
+            let (state, uuid, app_handle, in_flight) = (state.clone(), uuid.clone(), app_handle.clone(), in_flight.clone());
+            std::thread::spawn(move || {
+                handle_pair_request(request, &state, &uuid, &app_handle);
+                in_flight.fetch_sub(1, Ordering::SeqCst);
             });
-            let Some((nonce, proof)) = decoded else {
-                let _ = request.respond(Response::empty(400).with_header(cors_header()));
-                continue;
-            };
-            let Some(code) = state.try_consume(&nonce, &proof) else {
-                let _ = request.respond(Response::empty(403).with_header(cors_header()));
-                continue;
-            };
-            // Fired the instant the handshake itself succeeds, before the
-            // response even goes out -- the PC previously had no direct
-            // signal that pairing finished at all, and inferred it only by
-            // polling getDeviceLastSeen() for a new device name, which
-            // stays empty (and the PC screen stuck on the code) until the
-            // phone happens to write something of its own. This doesn't
-            // carry the phone's chosen device name (not known yet, only
-            // discoverable once it actually syncs a doc) -- the frontend's
-            // existing poll still resolves that separately.
-            let _ = app_handle.emit("pairing-succeeded", ());
-            let payload = PairResponse {
-                port: state.info.port,
-                user: &state.info.user,
-                password: &state.info.password,
-                uuid: &uuid,
-            };
-            let Some(envelope) = encrypt_response(&code, &nonce, &payload) else {
-                let _ = request.respond(Response::empty(500).with_header(cors_header()));
-                continue;
-            };
-            let json = serde_json::to_string(&envelope).unwrap_or_default();
-            let response = Response::from_string(json)
-                .with_header(tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap())
-                .with_header(cors_header());
-            let _ = request.respond(response);
         }
     });
 
     Ok(port)
+}
+
+const MAX_BODY: usize = 4096;
+const MAX_IN_FLIGHT: usize = 8;
+
+// Every response must carry Access-Control-Allow-Origin, including the
+// error ones. A WebView's fetch() silently rejects a cross-origin
+// response with no CORS header, surfacing as a bare "Failed to fetch"
+// indistinguishable from the host being unreachable; curl doesn't
+// enforce CORS, so manual testing won't catch a missing header.
+//
+// `*` is deliberate and safe here: no credentials or cookies are
+// involved, and the secret protecting this endpoint is the pairing
+// code itself (via the proof), not origin-based access control.
+// OPTIONS is answered defensively in case a WebView/fetch combination
+// sends a preflight.
+fn cors_header() -> tiny_http::Header {
+    tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap()
+}
+
+fn handle_pair_request(mut request: tiny_http::Request, state: &PairingState, uuid: &str, app_handle: &tauri::AppHandle) {
+    if request.method() == &tiny_http::Method::Options {
+        let response = Response::empty(204)
+            .with_header(cors_header())
+            .with_header(tiny_http::Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST"[..]).unwrap())
+            .with_header(tiny_http::Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap());
+        let _ = request.respond(response);
+        return;
+    }
+    if request.method() != &tiny_http::Method::Post || request.url() != "/pair" {
+        let _ = request.respond(Response::empty(404).with_header(cors_header()));
+        return;
+    }
+    // The real body is about 200 bytes; a larger one is refused before
+    // reading, and the read is capped either way.
+    if request.body_length().is_some_and(|n| n > MAX_BODY) {
+        let _ = request.respond(Response::empty(413).with_header(cors_header()));
+        return;
+    }
+    let mut body = String::new();
+    if std::io::Read::read_to_string(&mut std::io::Read::take(request.as_reader(), MAX_BODY as u64), &mut body).is_err() {
+        let _ = request.respond(Response::empty(400).with_header(cors_header()));
+        return;
+    }
+    let parsed: Option<PairRequest> = serde_json::from_str(&body).ok();
+    let decoded = parsed.and_then(|p| {
+        let nonce = BASE64.decode(&p.nonce).ok()?;
+        let proof = BASE64.decode(&p.proof).ok()?;
+        Some((nonce, proof))
+    });
+    let Some((nonce, proof)) = decoded else {
+        let _ = request.respond(Response::empty(400).with_header(cors_header()));
+        return;
+    };
+    let Some(code) = state.try_consume(&nonce, &proof) else {
+        let _ = request.respond(Response::empty(403).with_header(cors_header()));
+        return;
+    };
+    // Fired the instant the handshake itself succeeds, before the
+    // response even goes out -- the PC previously had no direct
+    // signal that pairing finished at all, and inferred it only by
+    // polling getDeviceLastSeen() for a new device name, which
+    // stays empty (and the PC screen stuck on the code) until the
+    // phone happens to write something of its own. This doesn't
+    // carry the phone's chosen device name (not known yet, only
+    // discoverable once it actually syncs a doc) -- the frontend's
+    // existing poll still resolves that separately.
+    let _ = app_handle.emit("pairing-succeeded", ());
+    let payload = PairResponse {
+        port: state.info.port,
+        user: &state.info.user,
+        password: &state.info.password,
+        uuid,
+    };
+    let Some(envelope) = encrypt_response(&code, &nonce, &payload) else {
+        let _ = request.respond(Response::empty(500).with_header(cors_header()));
+        return;
+    };
+    let json = serde_json::to_string(&envelope).unwrap_or_default();
+    let response = Response::from_string(json)
+        .with_header(tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap())
+        .with_header(cors_header());
+    let _ = request.respond(response);
 }
 
 #[cfg(test)]

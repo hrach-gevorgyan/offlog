@@ -487,7 +487,10 @@ const APP_LOCK_BIOMETRIC_KEY = 'offlog_app_lock_biometric_enabled';
 // hand-copied onto paper or typed back in under pressure.
 function randomRecoveryCode(): string {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  const part = () => Array.from({ length: 5 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  // A secret, so a CSPRNG; bytes at or above 248 (8 x 31) are redrawn so
+  // every character is equally likely.
+  const pick = () => { const b = new Uint8Array(1); do crypto.getRandomValues(b); while (b[0] >= 248); return alphabet[b[0] % alphabet.length]; };
+  const part = () => Array.from({ length: 5 }, pick).join('');
   return `${part()}-${part()}`;
 }
 

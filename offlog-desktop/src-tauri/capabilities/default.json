@@ -26,8 +26,6 @@
       ]
     },
     "updater:default",
-    "process:default",
-    "global-shortcut:default",
-    "autostart:default"
+    "process:default"
   ]
 }

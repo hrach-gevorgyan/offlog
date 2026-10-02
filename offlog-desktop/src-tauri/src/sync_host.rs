@@ -126,7 +126,7 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
     // via NYXDB_ADDR.
     let working_dir = binary_path.parent().unwrap_or(binary_path);
 
-    let child = Command::new(binary_path)
+    let mut child = Command::new(binary_path)
         .current_dir(working_dir)
         .env("NYXDB_ADDR", format!("0.0.0.0:{}", info.port))
         .env("NYXDB_DATA", data_dir)
@@ -145,14 +145,24 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
         .stderr(Stdio::null())
         .spawn()?;
 
+    // Without the job nothing would kill this process on quit, and it would
+    // keep the port and data directory from the next launch.
     let mut limits = ExtendedLimitInfo::new();
     limits.limit_kill_on_job_close();
     let job = Job::create_with_limit_info(&limits)
-        .map_err(|e| std::io::Error::other(format!("failed to create job object: {e}")))?;
-    job.assign_process(child.as_raw_handle() as _)
-        .map_err(|e| std::io::Error::other(format!("failed to assign process to job: {e}")))?;
-
-    Ok((child, job))
+        .map_err(|e| std::io::Error::other(format!("failed to create job object: {e}")))
+        .and_then(|job| {
+            job.assign_process(child.as_raw_handle() as _)
+                .map_err(|e| std::io::Error::other(format!("failed to assign process to job: {e}")))?;
+            Ok(job)
+        });
+    match job {
+        Ok(job) => Ok((child, job)),
+        Err(e) => {
+            let _ = child.kill();
+            Err(e)
+        }
+    }
 }
 
 /// Polls the port instead of the HTTP welcome response — cheaper, and
