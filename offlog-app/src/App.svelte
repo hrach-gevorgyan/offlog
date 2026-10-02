@@ -11,16 +11,8 @@
   import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
   import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
   import { getCommands } from './lib/commands';
-  import Sidebar from './lib/Sidebar.svelte';
-  import KanbanBoard from './lib/KanbanBoard.svelte';
-  import ListView from './lib/ListView.svelte';
-  import AgendaView from './lib/AgendaView.svelte';
-  import FocusView from './lib/FocusView.svelte';
-  import DashboardView from './lib/DashboardView.svelte';
-  import GlobalSearch from './lib/GlobalSearch.svelte';
-  import FilterBar from './lib/FilterBar.svelte';
-  import CardDetail from './lib/CardDetail.svelte';
-  import QuickAdd from './lib/QuickAdd.svelte';
+  // Type-only: the desktop views load through desktopViews.ts (see below).
+  import type Sidebar from './lib/Sidebar.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
   import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen, isSyncEnabled } from './config';
@@ -460,6 +452,9 @@
       }
       // 'dashboard', nothing, or a stale projectId → keep showDashboard = true
     } catch {}
+    // Before `ready`, so the Tauri window is never revealed on the loading
+    // screen and the first desktop frame is the finished UI.
+    if (!get(isPhone)) await loadDesktop();
     ready = true;
     await revealTauriWindow();
     // Asked once, ever, regardless of skip/save (markNamePromptShown()
@@ -529,6 +524,16 @@
   // the desktop app never loads it.
   let PhoneApp: typeof import('./lib/phone/PhoneApp.svelte').default | null = null;
   $: if ($isPhone && !PhoneApp) import('./lib/phone/PhoneApp.svelte').then(m => { PhoneApp = m.default; }).catch(() => showError('Could not load the app. Please reopen it.'));
+  // Likewise the desktop views are one chunk a phone never fetches. Every
+  // desktop component below renders only once `Desktop` is set; a static
+  // import of any of them here would put them all back in the main bundle.
+  let Desktop: typeof import('./lib/desktopViews') | null = null;
+  let desktopLoad: Promise<void> | null = null;
+  function loadDesktop(): Promise<void> {
+    desktopLoad ??= import('./lib/desktopViews').then(m => { Desktop = m; }).catch(() => showError('Could not load the app. Please reopen it.'));
+    return desktopLoad;
+  }
+  $: if (!$isPhone) loadDesktop();
   $: setStatusBarSuppressed(locked);
   // The phone loading screen is --hero (it continues the splash), so the
   // status icons go light with it; Home claims the hero itself once mounted.
@@ -570,7 +575,7 @@
   <AppLock on:unlocked={onUnlocked} />
 {/if}
 
-{#if ready}
+{#if ready && ($isPhone || Desktop)}
   <!-- inert (not just visually covered by AppLock's z-index) so a
        keyboard user can't Tab past the lock screen into the app behind
        it, and so screen readers don't expose it either — display:contents
@@ -578,7 +583,9 @@
   <div inert={locked} style="display:contents">
   <div class="status-bar-fill"></div>
   <div class="layout">
-    <Sidebar
+    {#if Desktop}
+    <svelte:component
+      this={Desktop.Sidebar}
       bind:this={sidebarRef}
       bind:showAgenda
       bind:showDashboard
@@ -587,6 +594,7 @@
       on:navigate={() => { closeSidebar(); currentView = 'kanban'; }}
       on:openTask={(e) => { openSearchDetail(e.detail.task, e.detail.project); closeSidebar(); }}
     />
+    {/if}
 
     <!-- Mobile scrim -->
     {#if sidebarOpen}
@@ -597,9 +605,10 @@
     <main class="main">
       {#if $isPhone}
         <div class="view-fade">{#if PhoneApp}<svelte:component this={PhoneApp} />{/if}</div>
-      {:else if showDashboard}
+      {:else if Desktop && showDashboard}
         <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
-          <DashboardView
+          <svelte:component
+            this={Desktop.DashboardView}
             on:menu={() => sidebarOpen = true}
             on:openProject={(e) => {
               showDashboard = false;
@@ -610,15 +619,15 @@
             on:agenda={goToAgenda}
           />
         </div>
-      {:else if showFocus}
+      {:else if Desktop && showFocus}
         <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
-          <FocusView on:menu={() => sidebarOpen = true} on:search={openSearch} />
+          <svelte:component this={Desktop.FocusView} on:menu={() => sidebarOpen = true} on:search={openSearch} />
         </div>
-      {:else if showAgenda}
+      {:else if Desktop && showAgenda}
         <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
-          <AgendaView on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
+          <svelte:component this={Desktop.AgendaView} on:menu={() => sidebarOpen = true} on:search={openSearch} on:addTask={(e) => openQuickAdd(e.detail)} />
         </div>
-      {:else if $activeProject}
+      {:else if Desktop && $activeProject}
       <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
         <header class="board-header">
           <button class="hamburger" on:click={() => sidebarOpen = true} aria-label="Menu">
@@ -664,7 +673,7 @@
             </button>
             {#if currentView === 'kanban'}
               <span class="search-filter-divider"></span>
-              <FilterBar compact project={$activeProject} allTags={kbAllTags} tasks={$projectTasks} customFields={customFieldDefs} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} bind:customFieldFilters={kbCustomFieldFilters} />
+              <svelte:component this={Desktop.FilterBar} compact project={$activeProject} allTags={kbAllTags} tasks={$projectTasks} customFields={customFieldDefs} bind:search={kbSearch} bind:filterCol={kbFilterCol} bind:filterPrio={kbFilterPrio} bind:filterTag={kbFilterTag} bind:customFieldFilters={kbCustomFieldFilters} />
             {/if}
           </div>
 
@@ -684,7 +693,8 @@
         </header>
 
         {#if currentView === 'kanban'}
-          <KanbanBoard
+          <svelte:component
+            this={Desktop.KanbanBoard}
             project={$activeProject}
             tasks={$projectTasks}
             search={kbSearch}
@@ -697,7 +707,7 @@
             }}
           />
         {:else}
-          <ListView project={$activeProject} tasks={$projectTasks} />
+          <svelte:component this={Desktop.ListView} project={$activeProject} tasks={$projectTasks} />
         {/if}
       </div>
 
@@ -751,15 +761,16 @@
 </button>
 {/if}
 
-{#if showQuickAdd}
+{#if showQuickAdd && Desktop}
   {#key quickAddSession}
-    <QuickAdd initialDueDate={quickAddDueDate} on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
+    <svelte:component this={Desktop.QuickAdd} initialDueDate={quickAddDueDate} on:close={() => showQuickAdd = false} on:created={() => reloadTasks()} />
   {/key}
 {/if}
 
-{#if showSearch}
+{#if showSearch && Desktop}
   {#key searchSession}
-    <GlobalSearch
+    <svelte:component
+      this={Desktop.GlobalSearch}
       {commands}
       on:close={() => showSearch = false}
       on:open={(e) => { openSearchDetail(e.detail.task, e.detail.project); showSearch = false; }}
@@ -767,9 +778,10 @@
   {/key}
 {/if}
 
-{#if searchDetailTask && searchDetailProject}
+{#if searchDetailTask && searchDetailProject && Desktop}
   {#key searchDetailTask._id + ':' + searchDetailSession}
-    <CardDetail
+    <svelte:component
+      this={Desktop.CardDetail}
       task={searchDetailTask}
       project={searchDetailProject}
       on:close={async () => { searchDetailTask = null; searchDetailProject = null; await reloadTasks(); }}

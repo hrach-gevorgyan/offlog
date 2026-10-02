@@ -66,6 +66,13 @@ flowchart LR
   phone-sized screen (`PHONE_QUERY` in `phone/nav.ts`, the same breakpoint as
   the desktop layout's mobile rules) `<main>` renders `phone/PhoneApp.svelte`
   instead: four tabs (Home, Today, Agenda, Search), each a stack of screens.
+  Each shell is its own chunk, imported dynamically only on its side:
+  `phone/PhoneApp.svelte` on a phone, `desktopViews.ts` (Sidebar, the five
+  views, FilterBar, QuickAdd, GlobalSearch, CardDetail) everywhere else, so
+  neither downloads the other. App.svelte awaits the desktop chunk before
+  `ready`, so the Tauri window never reveals a half-built UI; App.svelte must
+  only ever reference those components through it (a static import pulls them
+  back into the main bundle).
   Every pushed screen owns one `modalStack` history entry, so Android back
   pops screens and overlays in one LIFO order; back at a non-Home tab root
   goes Home, and back at Home's root sends the app to the background
@@ -179,6 +186,7 @@ src/
     haptics.ts                  Single gate for every haptic call (Android only)
     demoSeed.ts                 Demo workspace for `npm run build:demo`; compiled out of normal builds
 
+    desktopViews.ts             The desktop views as one chunk; App.svelte imports it dynamically, never statically
     Sidebar.svelte              Spaces, projects, sync indicator, bottom icon row
     DashboardView.svelte        Home: project cards, pinned/overdue panels, daily brief
     FocusView.svelte            Pick up to 3 tasks for the day; corkboard picker
