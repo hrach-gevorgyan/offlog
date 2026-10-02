@@ -6,6 +6,7 @@
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabelLong, dueRelative, dueDateShort, daysSinceWeekStart, localDateStr } from './utils';
+  import { today as todayStore } from './today';
   import { getWeekStartsMonday } from '../config';
   import CardDetail from './CardDetail.svelte';
   import type { TaskDoc, ProjectDoc } from './types';
@@ -26,14 +27,7 @@
   // Reactive, not a one-shot const: the desktop app is tray-resident, so
   // this view can stay mounted across midnight. Captured once, it would
   // keep yesterday's date and silently mis-group Overdue/Today/This week.
-  // Re-checked on a timer, and immediately on tab focus so waking a laptop
-  // corrects it without waiting out the interval.
-  let today = localDateStr(new Date());
-  const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
-  function refreshToday() {
-    const current = localDateStr(new Date());
-    if (current !== today) today = current;
-  }
+  $: today = $todayStore;
 
   // Agenda's second view mode alongside the flat list. Same underlying
   // getAllTasksDue() query, just re-laid out. Per-device preference
@@ -69,7 +63,7 @@
   const DOW_SUNDAY_FIRST = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   $: orderedDayNames = weekStartsMonday ? DOW_MONDAY_FIRST : DOW_SUNDAY_FIRST;
   $: monthAnchor = (() => {
-    const d = new Date();
+    const d = new Date(`${today}T12:00:00`);
     d.setDate(1);
     d.setHours(0, 0, 0, 0);
     d.setMonth(d.getMonth() + monthOffset);
@@ -114,15 +108,7 @@
   onMount(() => {
     load();
     const unsub = subscribe(() => load());
-    const dayTimer = setInterval(refreshToday, DAY_ROLLOVER_CHECK_MS);
-    window.addEventListener('focus', refreshToday);
-    document.addEventListener('visibilitychange', refreshToday);
-    return () => {
-      unsub();
-      clearInterval(dayTimer);
-      window.removeEventListener('focus', refreshToday);
-      document.removeEventListener('visibilitychange', refreshToday);
-    };
+    return unsub;
   });
 
   $: overdue   = all.filter(t => t.due_date! < today);
@@ -292,7 +278,7 @@
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
               </div>
-              <span class="due-chip overdue">{dueLabelLong(t.due_date!)}</span>
+              <span class="due-chip overdue">{dueLabelLong(t.due_date!, today)}</span>
             </div>
           {/each}
         </section>
@@ -340,7 +326,7 @@
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
               </div>
-              <span class="due-chip week">{dueRelative(t.due_date!)} · {dueDateShort(t.due_date!)}</span>
+              <span class="due-chip week">{dueRelative(t.due_date!, today)} · {dueDateShort(t.due_date!)}</span>
             </div>
           {/each}
         </section>
@@ -364,7 +350,7 @@
                 <span class="task-title">{t.title}</span>
                 <span class="proj-badge">{t.project_name ?? '—'}</span>
               </div>
-              <span class="due-chip later">{dueLabelLong(t.due_date!)}</span>
+              <span class="due-chip later">{dueLabelLong(t.due_date!, today)}</span>
             </div>
           {/each}
         </section>

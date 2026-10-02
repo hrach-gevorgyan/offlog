@@ -6,6 +6,7 @@
   import { projects, showError } from '../store';
   import { PRIORITY_LABEL } from '../constants';
   import { today, loadFocusLock, saveFocusLock, type FocusLock } from '../focusLock';
+  import { onNewDay } from '../today';
   import { actions, showToast } from './nav';
   import { rankPicker, type Reason } from './focus/rank';
   import { I } from './icons';
@@ -134,11 +135,11 @@
     const unsub = subscribe(() => refresh());
     // The lock is per day; re-read it so a screen left open past midnight
     // drops yesterday's commitment.
-    const dayTimer = setInterval(refresh, 60 * 1000);
+    const unsubDay = onNewDay(() => refresh());
     document.addEventListener('visibilitychange', refresh);
     return () => {
       unsub();
-      clearInterval(dayTimer);
+      unsubDay();
       document.removeEventListener('visibilitychange', refresh);
     };
   });

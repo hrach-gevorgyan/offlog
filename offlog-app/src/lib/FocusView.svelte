@@ -7,6 +7,7 @@
   import type { TaskDoc, ProjectDoc } from './types';
   import { hapticToggle } from './haptics';
   import { today, loadFocusLock, saveFocusLock, type FocusLock } from './focusLock';
+  import { onNewDay } from './today';
 
   const dispatch = createEventDispatcher<{ menu: void; search: void }>();
 
@@ -125,18 +126,16 @@
   // one, but nothing re-invoked it on the clock -- refresh() only fired on
   // mount and task mutations, so a tray-resident desktop session left open
   // past midnight kept showing yesterday's lock as "Today's Focus" until an
-  // unrelated write happened to trigger a reload. Same fix as AgendaView's
-  // own day-rollover timer.
-  const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
+  // unrelated write happened to trigger a reload.
   onMount(() => {
     refresh();
     const unsub = subscribe(() => refresh());
-    const dayTimer = setInterval(refresh, DAY_ROLLOVER_CHECK_MS);
+    const unsubDay = onNewDay(() => refresh());
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
     return () => {
       unsub();
-      clearInterval(dayTimer);
+      unsubDay();
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };

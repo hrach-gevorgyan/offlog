@@ -5,6 +5,7 @@
   import { reloadTasks, showError } from './store';
   import { PRIORITY_COLOR } from './constants';
   import { dueLabelLong } from './utils';
+  import { today, onNewDay } from './today';
   import type { TaskDoc, ProjectDoc } from './types';
   import CardDetail from './CardDetail.svelte';
   import { loadFocusLock, type FocusLock } from './focusLock';
@@ -55,20 +56,19 @@
     await loadFocusSummary();
   }
 
-  // Same day-rollover gap as FocusView.svelte's own fix: loadFocusLock()
-  // discards a stale lock, but nothing re-invoked it on the clock, so a
-  // tray-resident session left open past midnight kept the Daily Brief
-  // card labeled "Today's Focus" on yesterday's picks.
-  const DAY_ROLLOVER_CHECK_MS = 60 * 1000;
+  // Reload at midnight: the Today/Overdue groups come from getDashboardData()
+  // and loadFocusLock() discards a stale lock, but neither re-runs on the
+  // clock, so a tray-resident session left open past midnight would keep
+  // yesterday's groups and Focus picks.
   onMount(() => {
     load();
     const unsub = subscribe(() => load());
-    const dayTimer = setInterval(loadFocusSummary, DAY_ROLLOVER_CHECK_MS);
+    const unsubDay = onNewDay(() => load());
     window.addEventListener('focus', loadFocusSummary);
     document.addEventListener('visibilitychange', loadFocusSummary);
     return () => {
       unsub();
-      clearInterval(dayTimer);
+      unsubDay();
       window.removeEventListener('focus', loadFocusSummary);
       document.removeEventListener('visibilitychange', loadFocusSummary);
     };
@@ -255,7 +255,7 @@
                     <span class="prio-bar" style="background:{PRIORITY_COLOR[t.priority]}"></span>
                     <div class="task-body">
                       <span class="task-title">{t.title}</span>
-                      <span class="task-proj">{data.projCache[t.project_id] ?? '—'} <span class="task-due overdue">· {dueLabelLong(t.due_date!)}</span></span>
+                      <span class="task-proj">{data.projCache[t.project_id] ?? '—'} <span class="task-due overdue">· {dueLabelLong(t.due_date!, $today)}</span></span>
                     </div>
                   </div>
                 {/each}

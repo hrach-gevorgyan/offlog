@@ -11,6 +11,7 @@
   import { popIn, popOut, collapseIn, collapseOut } from '../../motion';
   import { leaves, returns } from '../rowMotion';
   import { duePill } from '../format';
+  import { today } from '../../today';
   import { I } from '../icons';
   import { toggleDone, canFinish } from './actions';
   import { hapticDragStart } from '../../haptics';
@@ -169,7 +170,7 @@
   <div class="rows">
     {#each g.rows as t (t._id)}
       {@const done = t.column_id === lastCol}
-      {@const pill = duePill(t.due_date, done)}
+      {@const pill = duePill(t.due_date, done, $today)}
       <div class="rw" in:collapseIn={{ on: returns(t._id) }} out:collapseOut={{ on: leaves(t._id) }}>
       {#if selecting}
         <button class="row" class:done class:picked={selected.has(t._id)} role="checkbox" aria-checked={selected.has(t._id)} aria-label={t.title} on:pointerdown={() => (held = false)} on:click={() => pickRow(t._id)}>

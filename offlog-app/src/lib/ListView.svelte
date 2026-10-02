@@ -9,6 +9,7 @@
   import { reloadTasks, showError, projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
   import { dueLabel, dueInk, filterTasks, type CustomFieldFilter } from './utils';
+  import { today } from './today';
   import CardDetail from './CardDetail.svelte';
   import FilterBar from './FilterBar.svelte';
   import CustomSelect from './CustomSelect.svelte';
@@ -658,7 +659,7 @@
                 {PRIO_LABEL[task.priority]}
               </span>
             {:else if key === 'due'}
-              <span class="cell-due" style="color:{dueInk(task.due_date, task.column_id === lastColId())}">{dueLabel(task.due_date, '—', task.column_id === lastColId())}</span>
+              <span class="cell-due" style="color:{dueInk(task.due_date, task.column_id === lastColId(), $today)}">{dueLabel(task.due_date, '—', task.column_id === lastColId(), $today)}</span>
             {:else if key === 'tags'}
               <span class="cell-tags">
                 {#each task.tags as tag}<span class="tag">{tag}</span>{/each}

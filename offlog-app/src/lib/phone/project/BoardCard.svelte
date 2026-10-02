@@ -8,6 +8,7 @@
   import { hapticDragStart } from '../../haptics';
   import { toggleDone, canFinish } from './actions';
   import { duePill } from '../format';
+  import { today } from '../../today';
   import { I } from '../icons';
 
   export let task: TaskDoc;
@@ -19,7 +20,7 @@
   const dispatch = createEventDispatcher<{ open: TaskDoc; menu: TaskDoc }>();
 
   $: done = task.column_id === project.columns.at(-1)?.id;
-  $: pill = duePill(task.due_date, done);
+  $: pill = duePill(task.due_date, done, $today);
   $: steps = task.checklist ?? [];
   $: stepsDone = steps.filter(s => s.done).length;
   $: files = task.attachments?.length ?? 0;

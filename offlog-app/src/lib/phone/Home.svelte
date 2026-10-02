@@ -16,6 +16,7 @@
   import { push, actions } from './nav';
   import { greeting, shortDate } from './format';
   import { localDateStr } from '../utils';
+  import { onNewDay } from '../today';
   import { I } from './icons';
   import { MARK_PATHS } from './mark';
   import { markIn } from '../motion';
@@ -56,6 +57,7 @@
   // Coming back to the app the next morning shows the new day.
   function onVisible() { if (!document.hidden) { todayStr = localDateStr(new Date()); applyHeroShift(); load(); } }
   onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
+  onMount(() => onNewDay(d => { todayStr = d; load(); }));
 
   // A fresh install: the band invites the first task; everything else stays.
   $: firstRun = !!data && data.totalTasks === 0;

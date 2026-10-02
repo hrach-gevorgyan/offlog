@@ -12,9 +12,10 @@ export function isoToLocalInput(iso: string): string {
 
 // One-tap relative shortcuts; the exact-date picker covers everything
 // else. Local calendar dates (not UTC) so "Today" can't roll over to
-// yesterday west of UTC, matching how <input type="date"> works.
-export function dateFromToday(days: number, months = 0): string {
-  const d = new Date();
+// yesterday west of UTC, matching how <input type="date"> works. `from`
+// (YYYY-MM-DD) lets a template pass the reactive `$today` store.
+export function dateFromToday(days: number, months = 0, from?: string): string {
+  const d = from ? new Date(`${from}T00:00:00`) : new Date();
   d.setHours(0, 0, 0, 0);
   if (months) d.setMonth(d.getMonth() + months);
   d.setDate(d.getDate() + days);

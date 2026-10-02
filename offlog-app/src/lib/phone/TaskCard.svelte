@@ -8,6 +8,7 @@
   import { projects, spaces } from '../store';
   import { hapticDragStart } from '../haptics';
   import { duePill } from './format';
+  import { today } from '../today';
   import { I } from './icons';
   import { toggleDone, canFinish } from './project/actions';
 
@@ -23,7 +24,7 @@
   $: project = $projects.find(p => p._id === task.project_id);
   $: space = $spaces.find(s => s._id === task.space_id);
   $: done = !!project && task.column_id === project.columns.at(-1)?.id;
-  $: pill = task.due_date === sectionDate ? null : duePill(task.due_date, done);
+  $: pill = task.due_date === sectionDate ? null : duePill(task.due_date, done, $today);
   $: steps = task.checklist ?? [];
   $: hit = split(task.title, highlight.trim());
   function split(t: string, q: string): [string, string, string] | null {

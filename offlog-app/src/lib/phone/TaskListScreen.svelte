@@ -6,6 +6,7 @@
   import { dueDateToReminderInput } from '../carddetail/helpers';
   import { showError, reloadTasks } from '../store';
   import { localDateStr } from '../utils';
+  import { onNewDay } from '../today';
   import { actions, push, showToast } from './nav';
   import { I } from './icons';
   import { shortDate } from './format';
@@ -56,6 +57,7 @@
   onMount(() => { load(); unsub = subscribe(load); });
   function onVisible() { if (!document.hidden) { today = localDateStr(new Date()); load(); } }
   onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
+  onMount(() => onNewDay(d => { today = d; load(); }));
   onDestroy(() => unsub?.());
 
   const TITLE = { today: 'Today', late: 'Overdue', pinned: 'Pinned' };

@@ -24,6 +24,7 @@
   import AttachmentsBlock from './carddetail/AttachmentsBlock.svelte';
   import NotesBlock from './carddetail/NotesBlock.svelte';
   import { isoToLocalInput, dateFromToday, dueDateToReminderInput, formatExtrasSummary, blobToBase64, base64ToBlob, downscaleImage, openAttachmentFile } from './carddetail/helpers';
+  import { today } from './today';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -722,7 +723,7 @@
               <button
                 type="button"
                 class="due-shortcut"
-                class:active={due_date === dateFromToday(s.days, s.months)}
+                class:active={due_date === dateFromToday(s.days, s.months, $today)}
                 on:click={() => due_date = dateFromToday(s.days, s.months)}
               >{s.label}</button>
             {/each}

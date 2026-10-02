@@ -81,8 +81,10 @@ export function daysSinceWeekStart(d: Date, mondayStart: boolean): number {
   return mondayStart ? (d.getDay() + 6) % 7 : d.getDay();
 }
 
-function daysDiff(due: string): number {
-  return Math.round((new Date(due + 'T00:00:00').getTime() - new Date(TODAY() + 'T00:00:00').getTime()) / 86400000);
+// `today` is a parameter so a component can pass the reactive `$today`
+// store (today.ts) and re-render when the date rolls over.
+function daysDiff(due: string, today = TODAY()): number {
+  return Math.round((new Date(due + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
 }
 
 // Relative-time formatting for "edited on <device>, 2h ago" in CardDetail's
@@ -103,9 +105,9 @@ export function timeAgo(iso: string): string {
 
 // `done`: a finished task's date is history, not a deadline -- it must never
 // read "Overdue". Done is positional (last status), so the caller decides.
-export function dueLabel(due: string | null, fallback = '', done = false): string {
+export function dueLabel(due: string | null, fallback = '', done = false, today = TODAY()): string {
   if (!due) return fallback;
-  const days = daysDiff(due);
+  const days = daysDiff(due, today);
   const short = new Date(due + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   if (days < 0) return done ? short : `Overdue · ${short}`;
   if (days === 0) return 'Today';
@@ -113,8 +115,8 @@ export function dueLabel(due: string | null, fallback = '', done = false): strin
   return short;
 }
 
-export function dueLabelLong(due: string): string {
-  const days = daysDiff(due);
+export function dueLabelLong(due: string, today = TODAY()): string {
+  const days = daysDiff(due, today);
   const short = new Date(due + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   if (days < 0) return `${Math.abs(days)}d overdue · ${short}`;
   if (days === 0) return 'Today';
@@ -130,17 +132,17 @@ export function dueDateShort(due: string): string {
   return new Date(due + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export function dueRelative(due: string): string {
-  const days = daysDiff(due);
+export function dueRelative(due: string, today = TODAY()): string {
+  const days = daysDiff(due, today);
   if (days < 0) return `${Math.abs(days)}d overdue`;
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `in ${days}d`;
 }
 
-export function dueInk(due: string | null, done = false): string {
+export function dueInk(due: string | null, done = false, today = TODAY()): string {
   if (!due || done) return 'var(--faint)';
-  const days = daysDiff(due);
+  const days = daysDiff(due, today);
   if (days < 0) return 'var(--overdue-ink)';
   if (days <= 1) return 'var(--due-soon-ink)';
   return 'var(--muted)';

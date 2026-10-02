@@ -170,6 +170,7 @@ src/
     autoBackup.ts               Silent daily local backup, 7 kept
     attachments.ts              Attachment size cap and extension→mime map
     focusLock.ts                The day's Focus commitment — per-day UI state, never synced
+    today.ts                    `today` store: the local date, advancing at midnight
     tagColors.ts                Tag colour: stored override, else deterministic hash
     updateChecker.ts            Desktop update check (Tauri updater plugin)
     spaceIcons.ts               The 25-icon space-icon set and resolver
@@ -462,6 +463,20 @@ of attachments took 55 ms end to end.
 
 All date-only logic goes through `localDateStr()`. Never use
 `toISOString().slice(0, 10)` for a calendar day — it shifts to UTC.
+
+**Day rollover (`today.ts`).** Views stay mounted across midnight (the
+desktop is tray-resident), so anything that labels or groups by "today"
+reads the `today` store, never a date captured at mount. It is a lazy
+`readable` holding `localDateStr(now)`: one `setTimeout` to the next local
+midnight (built from calendar fields, so DST days are 23/25 h), re-armed
+on every fire, plus an immediate re-check on `visibilitychange`, `focus`
+and Capacitor's document `resume`, since timers stall while a device
+sleeps. The timer and listeners exist only while something is subscribed.
+Templates pass `$today` into the due helpers (`dueLabel`, `dueInk`,
+`dueLabelLong`, `dueRelative`, phone `duePill`, `dateFromToday`), whose
+optional `today` argument makes the expression re-run at midnight; screens
+whose groups come from a query (Dashboard, Focus, phone Home/Today/Agenda/
+Focus) reload through `onNewDay()`, which skips the current day.
 
 ---
 

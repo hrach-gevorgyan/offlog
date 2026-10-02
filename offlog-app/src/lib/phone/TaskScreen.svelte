@@ -16,6 +16,7 @@
   import { fmtTime, localDateStr } from '../utils';
   import { back, push, showToast } from './nav';
   import { duePill, shortDate } from './format';
+  import { today } from '../today';
   import { I } from './icons';
   import TopBar from './TopBar.svelte';
   import Sheet from './Sheet.svelte';
@@ -364,13 +365,13 @@
   const UNIT = { daily: 'days', weekly: 'weeks', monthly: 'months' };
   $: lastColByProject = Object.fromEntries($projects.map(p => [p._id, p.columns.at(-1)?.id]));
   $: openBlockers = blocking.filter(b => !isBlockerResolved(b, lastColByProject)).length;
-  $: pill = task ? duePill(task.due_date, done) : null;
+  $: pill = task ? duePill(task.due_date, done, $today) : null;
   $: statusName = project?.columns.find(c => c.id === task?.column_id)?.name ?? '—';
-  $: reminderText = task?.reminder_at ? reminderLabel(task.reminder_at) : '';
-  function reminderLabel(iso: string) {
+  $: reminderText = task?.reminder_at ? reminderLabel(task.reminder_at, $today) : '';
+  function reminderLabel(iso: string, todayStr: string) {
     const d = new Date(iso);
     const day = localDateStr(d);
-    return `${fmtTime(d)}, ${day === localDateStr(new Date()) ? 'today' : shortDate(day)}`;
+    return `${fmtTime(d)}, ${day === todayStr ? 'today' : shortDate(day)}`;
   }
   $: repeatText = !task?.recurrence ? ''
     : (task.recurrenceInterval ?? 1) > 1

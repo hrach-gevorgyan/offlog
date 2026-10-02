@@ -128,6 +128,23 @@ describe('phone task lists', () => {
     expect(getByText('3 days overdue')).toBeTruthy();
   });
 
+  it('Today regroups at local midnight with no write and no wake', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.setSystemTime(new Date(2026, 9, 2, 23, 59));
+      getAllTasksDue.mockResolvedValue([task('task:Now', '2026-10-02'), task('task:Next', '2026-10-03')]);
+      const { findByText, queryByText, findByLabelText, queryByLabelText } = render(TaskListScreen, { kind: 'today' });
+      await findByText('Now');
+      expect(queryByText('Next')).toBeNull();
+      expect(queryByLabelText(/Open Overdue/)).toBeNull();
+
+      await vi.advanceTimersByTimeAsync(61_000);
+      await findByText('Next');
+      expect(await findByLabelText('Open Overdue: 1 overdue task')).toBeTruthy();
+      expect(queryByText('Now')).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+
   it('Pinned, when empty, says how to pin', async () => {
     getDashboardData.mockResolvedValue({ pinnedAll: [], projCache: {} });
     const { findByText } = render(TaskListScreen, { kind: 'pinned' });

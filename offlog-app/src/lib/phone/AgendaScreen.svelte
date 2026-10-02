@@ -5,6 +5,7 @@
   import { getAllTasksDue, subscribe } from '../db';
   import { showError } from '../store';
   import { localDateStr } from '../utils';
+  import { onNewDay } from '../today';
   import { getWeekStartsMonday } from '../../config';
   import { actions, memo } from './nav';
   import { shortDate } from './format';
@@ -98,11 +99,11 @@
   onMount(() => {
     load();
     const unsub = subscribe(() => load());
-    const timer = setInterval(refreshToday, 60 * 1000);
+    const unsubDay = onNewDay(refreshToday);
     document.addEventListener('visibilitychange', refreshToday);
     return () => {
       unsub();
-      clearInterval(timer);
+      unsubDay();
       document.removeEventListener('visibilitychange', refreshToday);
     };
   });

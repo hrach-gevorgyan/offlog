@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/svelte';
 import { writable } from 'svelte/store';
+import { tick } from 'svelte';
 import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 
 // KanbanBoard reaches db.ts/store.ts for every mutation — mocked so this
@@ -227,5 +228,22 @@ describe('KanbanBoard due badge', () => {
     const { container } = render(KanbanBoard, { project: mkProject(), tasks: [withDue('col:idea', '2026-03-11')] });
 
     expect(badge(container).textContent!.trim()).toBe('Today');
+  });
+
+  // The board can stay mounted across midnight with no write to re-render it.
+  it('relabels at local midnight without any task change', async () => {
+    vi.setSystemTime(new Date('2026-03-11T23:59:00'));
+    const { container } = render(KanbanBoard, { project: mkProject(), tasks: [withDue('col:idea', '2026-03-12')] });
+    expect(badge(container).textContent!.trim()).toBe('Tomorrow');
+
+    await vi.advanceTimersByTimeAsync(61_000);
+    await tick();
+    expect(badge(container).textContent!.trim()).toBe('Today');
+    expect(badge(container).classList.contains('soon')).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(24 * 3600_000);
+    await tick();
+    expect(badge(container).textContent!.trim()).toBe('Overdue · Mar 12');
+    expect(badge(container).classList.contains('overdue')).toBe(true);
   });
 });
