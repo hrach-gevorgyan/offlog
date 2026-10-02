@@ -181,7 +181,7 @@ inside and import it back.
   `color-mix(in srgb, var(--token) X%, transparent)`.
 - A new semantic color gets a token in **both** blocks plus the tech.md table.
 - Brand (accent/hero) colour changes must also reach `capacitor.config.ts`'s
-  `iconColor`, `android/.../res/values/colors.xml` (`colorPrimary`,
+  `iconColor` and `android.backgroundColor`, `android/.../res/values/colors.xml` (`colorPrimary`,
   `colorAccent`, `splashBg` = `--hero-base`, the `colorWidget*` set) +
   `values-night/colors.xml` (`splashBg` and `colorWidget*` only) and `resources/generate-icons.cjs`'s `BRAND` (then
   regenerate the launcher icons). `<meta theme-color>` is not a brand colour:

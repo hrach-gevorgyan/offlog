@@ -6,7 +6,6 @@
   // instead of SettingsPanel's mini-modals. Sync has its own page.
   import { onMount, onDestroy } from 'svelte';
   import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
-  import NotificationSettings from '../../settings/NotificationSettings.svelte';
   import DataSettings from '../../settings/DataSettings.svelte';
   import AdvancedSettings from '../../settings/AdvancedSettings.svelte';
   import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from '../../settings/helpers';
@@ -31,6 +30,7 @@
   import Sheet from '../Sheet.svelte';
   import Pick from '../task/Pick.svelte';
   import LockPage from './LockPage.svelte';
+  import RemindersPage from './RemindersPage.svelte';
   import { back, stack } from '../nav';
   import { get } from 'svelte/store';
   import { closeOnBack, closeAll } from '../../modalStack';
@@ -512,8 +512,8 @@
       {reduceMotion} {toggleReduceMotion} {hapticsEnabled} {toggleHaptics}
     />
   {:else if page === 'notifications'}
-    <NotificationSettings phone
-      {isAndroid} {isTauri} {notificationsEnabled} {toggleNotificationsEnabled}
+    <RemindersPage
+      {isAndroid} {notificationsEnabled} {toggleNotificationsEnabled}
       {defaultReminderTime} {saveDefaultReminderTime} {quietHours} {saveQuietHours}
     />
   {:else if page === 'data'}
@@ -668,13 +668,17 @@
      extra padding, or a one-switch card reads as half empty. */
   .pset :global(.setting-group:has(> .setting-row:first-child > .toggle-btn)) { padding-top: 4px; }
   .pset :global(.setting-group:has(> .setting-row:last-child > .toggle-btn)) { padding-bottom: 4px; }
-  .pset :global(.setting-row.perm) { border-top: 1px solid var(--border); padding-top: 10px; }
+  .pset :global(.setup > .setting-label) { font-weight: 600; }
+  .pset :global(.setting-row.step) { flex-wrap: nowrap; padding-top: 4px; }
+  .pset :global(.setting-row.step + .setting-row.step) { border-top: 1px solid var(--border); padding-top: 10px; }
+  .pset :global(.step .tick) { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .pset :global(.step.done .tick) { color: var(--on-accent); background: var(--success); }
+  .pset :global(.step.done .setting-label) { color: var(--muted); }
   .pset :global(.scope-btn) { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 16px; color: var(--text); cursor: pointer; text-align: left; }
   .pset :global(.scope-btn .scope-label) { overflow-wrap: anywhere; }
   .pset :global(.scope-btn svg) { flex-shrink: 0; color: var(--faint); }
   .pset :global(.time-row) { position: relative; cursor: pointer; }
   .pset :global(.time-row .setting-value) { color: var(--accent); font-weight: 600; }
-  .pset :global(.time-native) { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; cursor: pointer; }
   .pset :global(.perm-state) { display: block; margin-top: 2px; font-size: 13.5px; color: var(--faint); }
   .pset :global(.perm-state.warn) { color: var(--due-soon-ink); font-weight: 500; }
   .pset :global(.setting-label) { flex: 1; min-width: 0; font-size: 16px; color: var(--text); }

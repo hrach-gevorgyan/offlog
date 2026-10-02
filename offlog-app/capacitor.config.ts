@@ -6,6 +6,9 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   android: {
     allowMixedContent: true,
+    // The WebView's colour before the first paint: the splash colour
+    // (--hero-base), so launch never flashes white between the two.
+    backgroundColor: '#575fca',
   },
   server: {
     androidScheme: 'https',

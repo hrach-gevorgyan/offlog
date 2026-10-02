@@ -249,35 +249,38 @@ describe('phone settings pages', () => {
       expect(getByRole('switch', { name: 'Remind me about tasks' }).getAttribute('aria-checked')).toBe('true');
     });
 
-    it('not asked yet: one row offers Allow', async () => {
+    it('not asked yet: the set-up card shows both steps, step 1 offers Allow', async () => {
       perm().set('default');
-      const { getByText } = render(SettingsPage, { page: 'notifications' });
-      expect(getByText(/Reminders can’t pop up yet/)).toBeTruthy();
+      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
+      expect(getByText('Set up reminders')).toBeTruthy();
+      expect(container.querySelectorAll('.step')).toHaveLength(2);
+      expect(container.querySelectorAll('.step.done')).toHaveLength(1);
       await fireEvent.click(getByText('Allow'));
       expect(notif.requestPermission).toHaveBeenCalledTimes(1);
     });
 
-    it('blocked: the row says so and asks again', async () => {
+    it('blocked: step 1 says so and asks again', async () => {
       perm().set('denied');
       const { getByText } = render(SettingsPage, { page: 'notifications' });
-      expect(getByText(/Android is blocking reminders/)).toBeTruthy();
+      expect(getByText(/Android is blocking them right now/)).toBeTruthy();
       await fireEvent.click(getByText('Allow'));
       expect(notif.requestPermission).toHaveBeenCalledTimes(1);
     });
 
-    it('exact timing off: the row explains and Turn on opens the system setting', async () => {
+    it('allowed but not exact: step 1 is ticked, step 2 offers Turn on', async () => {
       exact().set('denied');
-      const { getByText } = render(SettingsPage, { page: 'notifications' });
-      expect(getByText(/Reminders may come a few minutes late/)).toBeTruthy();
+      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
+      expect(container.querySelector('.step.done')?.textContent).toContain('Let reminders pop up');
       await fireEvent.click(getByText('Turn on'));
       expect(notif.requestExactAlarmPermission).toHaveBeenCalledTimes(1);
     });
 
-    it('blocked and not exact: only the blocking problem shows first', () => {
+    it('both missing: both steps show with their own buttons, in one card', () => {
       perm().set('denied'); exact().set('denied');
-      const { container, queryByText } = render(SettingsPage, { page: 'notifications' });
-      expect(container.querySelectorAll('.perm-state')).toHaveLength(1);
-      expect(queryByText('Turn on')).toBeNull();
+      const { getByText, container } = render(SettingsPage, { page: 'notifications' });
+      expect(container.querySelectorAll('.setup')).toHaveLength(1);
+      expect(getByText('Allow')).toBeTruthy();
+      expect(getByText('Turn on')).toBeTruthy();
     });
   });
 
@@ -427,9 +430,14 @@ describe('phone settings pages', () => {
     (projects as unknown as Writable<unknown[]>).set([]);
   });
 
-  it('Notifications: the default time row saves the time the system dialog returns', async () => {
-    const { getByLabelText } = render(SettingsPage, { page: 'notifications' });
-    await fireEvent.change(getByLabelText('Default reminder time'), { target: { value: '07:30' } });
+  it('Reminders: the default time opens the time sheet, and Done saves the picked time', async () => {
+    const { getByText, findByRole } = render(SettingsPage, { page: 'notifications' });
+    await fireEvent.click(getByText('Default time'));
+    const hours = await findByRole('group', { name: 'Hour' });
+    await fireEvent.click([...hours.querySelectorAll('button')].find(b => b.textContent === '07')!);
+    const mins = await findByRole('group', { name: 'Minute' });
+    await fireEvent.click([...mins.querySelectorAll('button')].find(b => b.textContent === ':30')!);
+    await fireEvent.click(getByText('Done'));
     expect(cfg.setDefaultReminderTime).toHaveBeenCalledWith('07:30');
   });
 

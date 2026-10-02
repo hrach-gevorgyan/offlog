@@ -37,7 +37,6 @@
 
   let ready = false;
   let initError: string | null = null;
-  let showNamePrompt = false;
   let showAgenda = false;
   let showDashboard = true;
   let showFocus = false;
@@ -531,6 +530,11 @@
   let PhoneLock: typeof import('./lib/phone/PhoneLock.svelte').default | null = null;
   let phoneLockFailed = false;
   $: if ($isPhone && !PhoneLock && !phoneLockFailed) import('./lib/phone/PhoneLock.svelte').then(m => { PhoneLock = m.default; }).catch(() => { phoneLockFailed = true; });
+  // On a phone the welcome page needs no data, so it shows straight after
+  // the splash while the database is set up behind it; the desktop's first-run
+  // window waits for `ready` below.
+  let showNamePrompt = get(isPhone) && !hasShownNamePrompt();
+  if (showNamePrompt) markNamePromptShown();
   // The phone's first-launch page replaces the desktop's preferences window.
   let Welcome: typeof import('./lib/phone/Welcome.svelte').default | null = null;
   $: if ($isPhone && showNamePrompt && !Welcome) import('./lib/phone/Welcome.svelte').then(m => { Welcome = m.default; }).catch(() => { showNamePrompt = false; });
