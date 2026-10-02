@@ -80,8 +80,9 @@ export async function toggleDone(task: TaskDoc, project: ProjectDoc): Promise<bo
 export async function restore(entries: [string, Partial<TaskDoc>][]): Promise<void> {
   try {
     for (const [id, changes] of entries) await updateTask(id, changes);
-    await reloadTasks();
   } catch {
     showError('Could not undo. Please try again.');
+    return;
   }
+  try { await reloadTasks(); } catch { /* the undo landed; lists catch up on the next change */ }
 }
