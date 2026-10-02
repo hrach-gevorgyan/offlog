@@ -56,6 +56,15 @@ describe('filesToDelete (B62)', () => {
       'offlog-autobackup-2026-07-20T00-00-00-000Z.json',
     ]);
   });
+
+  it('rotates out a backup dated in the future first', () => {
+    const files = [
+      'offlog-autobackup-2031-01-01T00-00-00-000Z.json',
+      'offlog-autobackup-2026-07-21T00-00-00-000Z.json',
+      'offlog-autobackup-2026-07-22T00-00-00-000Z.json',
+    ];
+    expect(filesToDelete(files, 2, new Date('2026-07-22T12:00:00Z'))).toEqual(['offlog-autobackup-2031-01-01T00-00-00-000Z.json']);
+  });
 });
 
 describe('getAutoBackupUsage', () => {

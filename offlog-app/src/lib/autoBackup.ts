@@ -42,8 +42,12 @@ export function isBackupDue(lastRunIso: string | null, now: Date): boolean {
 // match this module's own naming pattern, returns which to delete to
 // keep only the newest `keep`. Sorting by filename works because the
 // date is embedded in ISO order (offlog-autobackup-2026-07-23T...json).
-export function filesToDelete(filenames: string[], keep: number): string[] {
-  const sorted = [...filenames].sort(); // ascending -- oldest first
+// A file dated after tomorrow was written while the clock ran ahead; it
+// sorts as oldest, or it would outrank every real backup and never rotate.
+export function filesToDelete(filenames: string[], keep: number, now = new Date()): string[] {
+  const limit = new Date(now.getTime() + 864e5).toISOString().slice(0, 10);
+  const future = (n: string) => n.slice('offlog-autobackup-'.length, 'offlog-autobackup-'.length + 10) > limit;
+  const sorted = [...filenames].sort((a, b) => Number(future(b)) - Number(future(a)) || (a < b ? -1 : a > b ? 1 : 0));
   const excess = sorted.length - keep;
   return excess > 0 ? sorted.slice(0, excess) : [];
 }
