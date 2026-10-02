@@ -27,6 +27,9 @@
   // The phone page: actions first, then the automatic switch with one status
   // line, then a single line of counts. storageUsed is the used size alone.
   export let phone = false;
+  // The phone opens its own picker sheet instead of the dropdown.
+  export let pickScope: (() => void) | null = null;
+  $: scopeLabel = backupScopeOptions.find(o => o.value === backupScope)?.label ?? 'Everything';
   export let storageUsed = '';
   $: statsLine = breakdown ? [
     storageUsed,
@@ -40,9 +43,16 @@
 {#if phone}
               <div class="setting-group">
                 <div class="setting-row">
-                  <div class="project-export-select">
-                    <CustomSelect options={backupScopeOptions} bind:value={backupScope} />
-                  </div>
+                  {#if pickScope}
+                    <button class="scope-btn" on:click={pickScope} aria-label="What to back up: {scopeLabel}">
+                      <span class="scope-label">{scopeLabel}</span>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                  {:else}
+                    <div class="project-export-select">
+                      <CustomSelect options={backupScopeOptions} bind:value={backupScope} />
+                    </div>
+                  {/if}
                   <button class="export-btn" on:click={doBackup}>Back up</button>
                 </div>
                 <div class="setting-row">

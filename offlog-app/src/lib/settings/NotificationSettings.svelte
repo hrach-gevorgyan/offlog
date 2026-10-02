@@ -2,6 +2,7 @@
   import { slide } from 'svelte/transition';
   import { revealIn, revealOut } from '../motion';
   import TimePicker from '../TimePicker.svelte';
+  import { fmtTime } from '../utils';
   import type { QuietHours } from '../../config';
   import { requestPermission, permissionState, exactAlarmState, requestExactAlarmPermission } from '../notifications';
 
@@ -15,6 +16,11 @@
   export let saveQuietHours: (patch: Partial<QuietHours>) => void;
   // The phone page: one switch, and a warning row only when a grant is missing.
   export let phone = false;
+  const timeLabel = (hhmm: string) => fmtTime(new Date(`1970-01-01T${hhmm}`));
+  // The row looks like the rest of the page; the invisible native input on
+  // top of it opens the system time dialog wherever the row is tapped.
+  const openPicker = (e: MouseEvent) => { try { (e.currentTarget as HTMLInputElement).showPicker(); } catch { /* the tap itself opens it */ } };
+  const picked = (e: Event) => (e.currentTarget as HTMLInputElement).value;
 </script>
 
 {#if phone}
@@ -55,9 +61,11 @@
               {#if notificationsEnabled}
               <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
               <div class="setting-group">
-                <label class="field-label">
-                  Default reminder time
-                  <TimePicker value={defaultReminderTime} on:change={saveDefaultReminderTime} />
+                <label class="setting-row time-row">
+                  <span class="setting-label">Default reminder time</span>
+                  <span class="setting-value">{timeLabel(defaultReminderTime)}</span>
+                  <input type="time" class="time-native" value={defaultReminderTime} aria-label="Default reminder time"
+                    on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveDefaultReminderTime(new CustomEvent('change', { detail: v })); }} />
                 </label>
               </div>
 
@@ -69,13 +77,21 @@
                   </button>
                 </div>
                 {#if quietHours.enabled}
-                  <div class="setting-row" in:slide={revealIn} out:slide={revealOut}>
-                    <span class="setting-label">From</span>
-                    <TimePicker value={quietHours.start} placement="up" on:change={(e) => saveQuietHours({ start: e.detail })} />
-                    <span class="setting-label">to</span>
-                    <TimePicker value={quietHours.end} placement="up" on:change={(e) => saveQuietHours({ end: e.detail })} />
+                  <div class="reveal-wrap" in:slide={revealIn} out:slide={revealOut}>
+                    <label class="setting-row time-row">
+                      <span class="setting-label">From</span>
+                      <span class="setting-value">{timeLabel(quietHours.start)}</span>
+                      <input type="time" class="time-native" value={quietHours.start} aria-label="Quiet hours start"
+                        on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveQuietHours({ start: v }); }} />
+                    </label>
+                    <label class="setting-row time-row">
+                      <span class="setting-label">To</span>
+                      <span class="setting-value">{timeLabel(quietHours.end)}</span>
+                      <input type="time" class="time-native" value={quietHours.end} aria-label="Quiet hours end"
+                        on:click={openPicker} on:change={(e) => { const v = picked(e); if (v) saveQuietHours({ end: v }); }} />
+                    </label>
+                    <p class="setting-hint">Reminders in this window wait until it ends.</p>
                   </div>
-                  <p class="setting-hint">Reminders in this window wait until it ends.</p>
                 {/if}
               </div>
               </div>

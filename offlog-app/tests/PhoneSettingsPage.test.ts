@@ -94,7 +94,8 @@ const confirmAction = vi.fn();
 vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confirmAction(...a) }));
 
 import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
-import { showError } from '../src/lib/store';
+import { showError, projects } from '../src/lib/store';
+import * as cfg from '../src/config';
 import * as nav from '../src/lib/phone/nav';
 import { get, type Writable } from 'svelte/store';
 import * as notif from '../src/lib/notifications';
@@ -374,6 +375,23 @@ describe('phone settings pages', () => {
     await waitFor(() => expect(getByText('Could not save PIN. Please try again.')).toBeTruthy());
     expect(setAppLockPin).toHaveBeenCalledWith('1234', '');
     expect(getByText('Save PIN')).toBeTruthy();
+  });
+
+  it('Backup: the scope opens a sheet, and picking a project backs up only that project', async () => {
+    (projects as unknown as Writable<{ _id: string; name: string }[]>).set([{ _id: 'project:p1', name: 'Kitchen' }]);
+    const { getByRole, findByText } = render(SettingsPage, { page: 'data' });
+    await fireEvent.click(getByRole('button', { name: 'What to back up: Everything' }));
+    await fireEvent.click(await findByText('Kitchen'));
+    await waitFor(() => getByRole('button', { name: 'What to back up: Kitchen' }));
+    await fireEvent.click(getByRole('button', { name: 'Back up' }));
+    await waitFor(() => expect(db.exportProjectDocs).toHaveBeenCalledWith('project:p1'));
+    (projects as unknown as Writable<unknown[]>).set([]);
+  });
+
+  it('Notifications: the default time row saves the time the system dialog returns', async () => {
+    const { getByLabelText } = render(SettingsPage, { page: 'notifications' });
+    await fireEvent.change(getByLabelText('Default reminder time'), { target: { value: '07:30' } });
+    expect(cfg.setDefaultReminderTime).toHaveBeenCalledWith('07:30');
   });
 
   it('Backup: a failed back up surfaces showError', async () => {

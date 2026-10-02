@@ -30,6 +30,7 @@
   import { scrimIn, scrimOut, dialogIn, dialogOut } from '../../motion';
   import TopBar from '../TopBar.svelte';
   import Sheet from '../Sheet.svelte';
+  import Pick from '../task/Pick.svelte';
   import { back, stack } from '../nav';
   import { get } from 'svelte/store';
   import { closeOnBack, closeAll } from '../../modalStack';
@@ -240,6 +241,8 @@
   let showMaintenanceModal = false;
   // Sheet calls closeOnBack() at setup, so each real open needs a fresh {#key}.
   let maintSession = 0, importSession = 0;
+  let scopeOpen = false, scopeSession = 0;
+  function openScope() { scopeSession++; scopeOpen = true; }
   let wasMaint = false, wasImport = false;
   $: { if (showMaintenanceModal && !wasMaint) maintSession++; wasMaint = showMaintenanceModal; }
   $: { if (importPreview && !wasImport) importSession++; wasImport = !!importPreview; }
@@ -508,7 +511,7 @@
     <DataSettings phone {storageUsed} {backupUsage}
       {storageAvailable} {storagePercent} {storageInfo} {breakdown}
       {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
-      bind:backupScope {backupScopeOptions} {doBackup} {doExportCSV}
+      bind:backupScope {backupScopeOptions} pickScope={openScope} {doBackup} {doExportCSV}
       {importStatus} {handleImport} {importBusy}
     />
   {:else if page === 'security'}
@@ -534,6 +537,14 @@
     <p class="p-empty">This page doesn't exist.</p>
   {/if}
 </div>
+
+  {#if scopeOpen}
+    {#key scopeSession}
+      <Sheet title="What to back up" on:close={() => (scopeOpen = false)} let:close>
+        <Pick options={backupScopeOptions} current={backupScope} on:pick={(e) => { backupScope = e.detail; close(); }} />
+      </Sheet>
+    {/key}
+  {/if}
 
   {#if showMaintenanceModal}
     {#key maintSession}
@@ -649,6 +660,12 @@
   .pset :global(.setting-group:has(> .setting-row:first-child > .toggle-btn)) { padding-top: 4px; }
   .pset :global(.setting-group:has(> .setting-row:last-child > .toggle-btn)) { padding-bottom: 4px; }
   .pset :global(.setting-row.perm) { border-top: 1px solid var(--border); padding-top: 10px; }
+  .pset :global(.scope-btn) { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 16px; color: var(--text); cursor: pointer; text-align: left; }
+  .pset :global(.scope-btn .scope-label) { overflow-wrap: anywhere; }
+  .pset :global(.scope-btn svg) { flex-shrink: 0; color: var(--faint); }
+  .pset :global(.time-row) { position: relative; cursor: pointer; }
+  .pset :global(.time-row .setting-value) { color: var(--accent); font-weight: 600; }
+  .pset :global(.time-native) { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; cursor: pointer; }
   .pset :global(.perm-state) { display: block; margin-top: 2px; font-size: 13.5px; color: var(--faint); }
   .pset :global(.perm-state.warn) { color: var(--due-soon-ink); font-weight: 500; }
   .pset :global(.setting-label) { flex: 1; min-width: 0; font-size: 16px; color: var(--text); }
@@ -674,7 +691,8 @@
 
   .pset :global(.theme-segment) { display: flex; background: var(--col-bg); border-radius: 12px; padding: 3px; gap: 2px; flex-shrink: 0; }
   .pset :global(.theme-seg-btn) { min-height: 44px; padding: 0 14px; border-radius: 9px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .pset :global(.theme-seg-btn.active) { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  /* Same selected look as the shell's .p-seg (Board | List, Organize tabs). */
+  .pset :global(.theme-seg-btn.active) { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 
   .pset :global(.toggle-btn) {
     width: 42px; height: 26px; border-radius: 13px; border: 0; padding: 0; cursor: pointer; flex-shrink: 0;
@@ -689,19 +707,21 @@
   }
   .pset :global(.toggle-btn.on .toggle-knob) { transform: translateX(16px); }
 
+  /* Buttons inside a card are a tint of the card, so they sit above it in
+     both themes; the page colour would sink them into a black slab in dark. */
   .pset :global(.export-btn) {
     min-height: 44px; padding: 0 16px; border-radius: 12px; border: 0; cursor: pointer;
-    background: var(--col-bg); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap;
+    background: color-mix(in srgb, var(--text) 8%, var(--surface)); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap;
   }
-  .pset :global(.export-btn:active) { background: var(--border); }
+  .pset :global(.export-btn:active) { background: color-mix(in srgb, var(--text) 14%, var(--surface)); }
   .pset :global(.export-btn:disabled) { opacity: .5; cursor: default; }
   .pset :global(.export-btn-danger) { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 
   .pset :global(.link-row) {
     display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 14px;
-    background: var(--bg); border: 0; border-radius: 12px; cursor: pointer; text-align: left; font: inherit; color: var(--text);
+    background: color-mix(in srgb, var(--text) 8%, var(--surface)); border: 0; border-radius: 12px; cursor: pointer; text-align: left; font: inherit; color: var(--text);
   }
-  .pset :global(.link-row:active) { background: var(--col-bg); }
+  .pset :global(.link-row:active) { background: color-mix(in srgb, var(--text) 14%, var(--surface)); }
   .pset :global(.link-row-title) { flex: 1; font-size: 16px; font-weight: 600; }
   .pset :global(.link-row svg) { flex-shrink: 0; opacity: .5; }
   .save { margin-top: 4px; }
