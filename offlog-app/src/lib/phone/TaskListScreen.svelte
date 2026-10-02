@@ -4,7 +4,7 @@
   import type { TaskDoc } from '../types';
   import { getAllTasksDue, getDashboardData, subscribe, updateTask } from '../db';
   import { dueDateToReminderInput } from '../carddetail/helpers';
-  import { showError } from '../store';
+  import { showError, reloadTasks } from '../store';
   import { localDateStr } from '../utils';
   import { actions, push, showToast } from './nav';
   import { I } from './icons';
@@ -98,6 +98,7 @@
     } finally {
       moving = false;
       load();
+      reloadTasks().catch(() => {});
     }
   }
 

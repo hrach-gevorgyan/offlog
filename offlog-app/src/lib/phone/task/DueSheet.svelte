@@ -3,7 +3,7 @@
   import { createEventDispatcher } from 'svelte';
   import CalendarPicker from '../../CalendarPicker.svelte';
   import { shortDate } from '../format';
-  import { dateLabel } from './when';
+
   import Pick from './Pick.svelte';
 
   export let value: string | null;
@@ -14,7 +14,7 @@
   const SHORTCUTS = dueShortcuts();
   // A date none of the shortcuts covers still opens on a ticked row.
   $: options = [
-    ...(value && !SHORTCUTS.some(s => s.date === value) ? [{ value, label: dateLabel(value) }] : []),
+    ...(value && !SHORTCUTS.some(s => s.date === value) ? [{ value, label: shortDate(value) }] : []),
     ...SHORTCUTS.map(s => ({ value: s.date, label: s.label, hint: shortDate(s.date) })),
     ...(value ? [{ value: '', label: 'No date' }] : []),
   ];
@@ -24,7 +24,7 @@
 <div class="p-group cal">
   <div class="p-row" role="group" aria-label="Pick a date">
     <span class="p-k"><span>Pick a date</span></span>
-    <span class="pick"><CalendarPicker value={value ?? ''} bare placeholder="—" formatDate={dateLabel} on:change={e => dispatch('pick', e.detail)} /></span>
+    <span class="pick"><CalendarPicker value={value ?? ''} bare placeholder="—" formatDate={shortDate} on:change={e => dispatch('pick', e.detail)} /></span>
   </div>
 </div>
 

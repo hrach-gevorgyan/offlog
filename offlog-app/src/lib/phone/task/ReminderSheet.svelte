@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { shortDate } from '../format';
   import type { TaskDoc } from '../../types';
   import CalendarPicker from '../../CalendarPicker.svelte';
   import { requestPermission, permissionState } from '../../notifications';
@@ -7,7 +8,7 @@
   import { isoToLocalInput, dueDateToReminderInput } from '../../carddetail/helpers';
   import { I } from '../icons';
   import { reminderPresets } from '../presets';
-  import { dateLabel } from './when';
+
 
   export let task: TaskDoc;
   export let save: (changes: Partial<TaskDoc>, err: string) => Promise<boolean>;
@@ -60,7 +61,7 @@
 <div class="p-group cal">
   <div class="p-row" role="group" aria-label="Date & time">
     <span class="p-k"><span>Date &amp; time</span></span>
-    <span class="pick"><CalendarPicker value={local} withTime bare placeholder="—" formatDate={dateLabel} disabled={onDue} on:change={e => setAt(e.detail)} /></span>
+    <span class="pick"><CalendarPicker value={local} withTime bare placeholder="—" formatDate={shortDate} disabled={onDue} on:change={e => setAt(e.detail)} /></span>
   </div>
   {#if task.reminder_at}
     <button class="p-row danger" on:click={() => save({ reminder_at: null, remindOnDue: false }, ERR)}>

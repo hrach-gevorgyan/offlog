@@ -102,6 +102,19 @@ describe('phone task lists', () => {
     await waitFor(() => expect(showError).toHaveBeenCalled());
   });
 
+  it('Late: a move that fails part-way offers Undo for the moved ones; a failed Undo surfaces an error', async () => {
+    updateTask.mockReset().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('x'));
+    const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });
+    await findByText('Old');
+    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not move every task. Please try again.'));
+    const t = get(toast);
+    expect(t?.text).toBe('Moved 1 of 2 to today');
+    updateTask.mockReset().mockRejectedValue(new Error('y'));
+    await t!.undo!();
+    expect(showError).toHaveBeenCalledWith('Could not undo the move. Please try again.');
+  });
+
   it('Today: no late row when nothing is late', async () => {
     getAllTasksDue.mockResolvedValue([task('task:Now', day(0))]);
     const { findByText, queryByLabelText } = render(TaskListScreen, { kind: 'today' });

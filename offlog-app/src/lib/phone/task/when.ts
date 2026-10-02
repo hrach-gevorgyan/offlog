@@ -1,9 +1,4 @@
 import { localDateStr } from '../../utils';
-import { shortDate } from '../format';
-
-export function dateLabel(ymd: string, today = new Date()): string {
-  return shortDate(ymd, today);
-}
 
 // "Later today": three hours from now, rounded up to the hour, as a local
 // 'YYYY-MM-DDTHH:mm'. Null once that lands after 21:00 or past midnight —

@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { shortDate } from '../format';
   // Field definitions are managed in Settings; here a task only fills values,
   // keyed by field id so a rename never orphans them. Every type shares one
   // row: name left, value right, a muted "—" when empty.
   import type { TaskDoc, CustomFieldDef } from '../../types';
   import CalendarPicker from '../../CalendarPicker.svelte';
   import { I } from '../icons';
-  import { dateLabel } from './when';
+
 
   export let task: TaskDoc;
   export let fields: CustomFieldDef[];
@@ -38,7 +39,7 @@
       <!-- Not a <label>: a label re-clicks the picker's trigger and closes it again. -->
       <div class="p-row" role="group" aria-label={f.name}>
         <span class="p-k"><span>{f.name}</span></span>
-        <span class="pick"><CalendarPicker value={(values[f.id] as string) ?? ''} bare placeholder="—" formatDate={dateLabel} on:change={e => set(f.id, e.detail || null)} /></span>
+        <span class="pick"><CalendarPicker value={(values[f.id] as string) ?? ''} bare placeholder="—" formatDate={shortDate} on:change={e => set(f.id, e.detail || null)} /></span>
       </div>
     {:else if f.type === 'select'}
       {@const v = (values[f.id] as string) ?? ''}

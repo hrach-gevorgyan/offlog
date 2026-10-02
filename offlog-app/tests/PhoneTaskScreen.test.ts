@@ -559,13 +559,14 @@ describe('phone TaskScreen', () => {
 
 describe('phone task dates', () => {
   it('laterToday rounds three hours ahead up to the hour, and stops after 21:00', async () => {
-    const { laterToday, dateLabel } = await import('../src/lib/phone/task/when');
+    const { laterToday } = await import('../src/lib/phone/task/when');
+    const { shortDate } = await import('../src/lib/phone/format');
     expect(laterToday(new Date(2026, 9, 1, 9, 35))).toBe('2026-10-01T13:00');
     expect(laterToday(new Date(2026, 9, 1, 10, 0))).toBe('2026-10-01T13:00');
     expect(laterToday(new Date(2026, 9, 1, 18, 0))).toBe('2026-10-01T21:00');
     expect(laterToday(new Date(2026, 9, 1, 18, 1))).toBeNull();
     expect(laterToday(new Date(2026, 9, 1, 23, 0))).toBeNull();
-    expect(dateLabel('2026-10-04', new Date(2026, 9, 1))).toBe('Sun 4 Oct');
-    expect(dateLabel('2027-10-04', new Date(2026, 9, 1))).toBe('Mon 4 Oct 2027');
+    expect(shortDate('2026-10-04', new Date(2026, 9, 1))).toBe('Sun 4 Oct');
+    expect(shortDate('2027-10-04', new Date(2026, 9, 1))).toBe('Mon 4 Oct 2027');
   });
 });
