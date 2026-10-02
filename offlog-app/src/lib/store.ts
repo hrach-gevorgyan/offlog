@@ -6,7 +6,7 @@ import {
   scanConflicts,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
-import { initTauriSyncDefaults, checkForOtherHosts } from '../config';
+import { initTauriSyncDefaults, checkForOtherHosts, initDeviceName } from '../config';
 import { watchForStaleHost } from './discovery';
 import { runAutoBackupIfDue } from './autoBackup';
 
@@ -108,6 +108,8 @@ export async function init() {
   // initTauriSyncDefaults()), and startSync() needs the real URL in
   // localStorage already, not a stale/wrong default.
   await initTauriSyncDefaults();
+  // Before sync starts, so the first synced edits carry the real name.
+  await initDeviceName();
   await reload();
   startSync().catch(() => {});
   // Not just after the next sync settles (markSynced()/resolveConflict()

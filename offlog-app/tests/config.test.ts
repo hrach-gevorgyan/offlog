@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { invokeTauri, getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../src/config';
+import { invokeTauri, getSyncCredentials, setSyncCredentials, isAppLockEnabled, setAppLockPin, clearAppLockPin, verifyAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, verifyAppLockRecoveryCode, hasAppLockRecoveryCode, isAppLockBiometricEnabled, setAppLockBiometricEnabled, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled, initDeviceName, getDeviceName, setDeviceName, shouldAskDeviceNameForSync } from '../src/config';
+
+const plugin = vi.hoisted(() => ({ info: { name: 'Galaxy S24', model: 'SM-S921B' } as { name?: string; model: string } }));
+vi.mock('@capacitor/device', () => ({ Device: { getInfo: async () => plugin.info } }));
 
 // Pairing handshake (offlog-desktop/src-tauri/src/pairing.rs) replaced the
 // old fixed COUCH_USER/COUCH_PASS exports with per-device stored
@@ -340,4 +343,60 @@ describe('week start and clock: device locale until the user chooses', () => {
     expect(getTimeFormat24h()).toBe(true);
   });
 
+});
+
+describe('device name: the device\'s own name until the user picks one', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    (window as { Capacitor?: unknown }).Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android' };
+    plugin.info = { name: 'Galaxy S24', model: 'SM-S921B' };
+  });
+  afterEach(() => { delete (window as { Capacitor?: unknown }).Capacitor; localStorage.clear(); });
+
+  it('a fresh phone takes Android\'s device name, and is still asked to confirm it', async () => {
+    await initDeviceName();
+    expect(getDeviceName()).toBe('Galaxy S24');
+    expect(shouldAskDeviceNameForSync()).toBe(true);
+  });
+
+  it('falls back to the model when Android has no device name', async () => {
+    plugin.info = { model: 'SM-S921B' };
+    await initDeviceName();
+    expect(getDeviceName()).toBe('SM-S921B');
+  });
+
+  it('a generic default still gets replaced; a chosen name never does', async () => {
+    getDeviceName();
+    await initDeviceName();
+    expect(getDeviceName()).toBe('Galaxy S24');
+    localStorage.clear();
+    setDeviceName('Kitchen tablet');
+    await initDeviceName();
+    expect(getDeviceName()).toBe('Kitchen tablet');
+  });
+
+  it('runs once: a later rename back to the default is not overwritten', async () => {
+    await initDeviceName();
+    setDeviceName('Android phone');
+    plugin.info = { name: 'Other', model: 'X' };
+    await initDeviceName();
+    expect(getDeviceName()).toBe('Android phone');
+  });
+
+  it('the computer asks the desktop app for its name', async () => {
+    delete (window as { Capacitor?: unknown }).Capacitor;
+    const invoke = vi.fn().mockResolvedValue('HRACH-PC');
+    (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = { invoke };
+    try {
+      await initDeviceName();
+      expect(invoke).toHaveBeenCalledWith('get_device_name', undefined);
+      expect(getDeviceName()).toBe('HRACH-PC');
+    } finally { delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__; }
+  });
+
+  it('a failed lookup keeps the default', async () => {
+    plugin.info = { name: '  ', model: '' };
+    await initDeviceName();
+    expect(getDeviceName()).toBe('Android phone');
+  });
 });

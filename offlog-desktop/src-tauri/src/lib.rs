@@ -23,6 +23,12 @@ fn device_name() -> String {
     std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Offlog PC".to_string())
 }
 
+// The default name for this computer's edits, before the user picks one.
+#[tauri::command]
+fn get_device_name() -> String {
+    device_name()
+}
+
 #[tauri::command]
 fn get_sync_info(info: tauri::State<sync_host::SyncHostInfo>) -> sync_host::SyncHostInfo {
     info.inner().clone()
@@ -637,7 +643,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, check_desktop_notification_setting, get_detected_other_hosts, store_sync_secret, get_sync_secret])
+        .invoke_handler(tauri::generate_handler![get_sync_info, get_device_name,is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, check_desktop_notification_setting, get_detected_other_hosts, store_sync_secret, get_sync_secret])
         .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {

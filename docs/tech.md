@@ -327,7 +327,10 @@ One PouchDB database, `offlog`. The `_id` prefix is the document type.
 - **Pinned** always sorts to the top.
 - **"Status" vs "Column".** Users see "Status". The stored field is
   `column_id` — a frozen legacy name.
-- **Source** is the device name that made a write, for the changelog.
+- **Source** is the device name that made a write, for the changelog. Until someone picks a name it is the
+  device's own (Android's device name, else its model, via `@capacitor/device`;
+  Windows' computer name, via the desktop's `get_device_name` command), set
+  once by `initDeviceName()` before sync starts.
 
 ### Fields with behaviour attached
 

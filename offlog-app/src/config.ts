@@ -221,6 +221,33 @@ export function setDeviceName(name: string) {
   localStorage.setItem(DEVICE_NAME_KEY, trimmed || defaultDeviceName());
 }
 
+// The device's own name (Android's device name, else its model; Windows'
+// computer name) replaces the generic default, once, and only while nobody
+// has chosen a name. It still counts as unchosen for the sync name question.
+const DEVICE_NAME_AUTO_KEY = 'offlog_device_name_auto';
+
+export async function initDeviceName(): Promise<void> {
+  if (localStorage.getItem(DEVICE_NAME_AUTO_KEY) !== null) return;
+  const stored = localStorage.getItem(DEVICE_NAME_KEY);
+  if (stored && stored !== defaultDeviceName()) return;
+  let found = '';
+  try {
+    if (isTauri()) found = await invokeTauri<string>('get_device_name');
+    else if (isNativePlatform()) {
+      const { Device } = await import('@capacitor/device');
+      const info = await Device.getInfo();
+      found = info.name || info.model || '';
+    }
+  } catch { return; }
+  found = found.trim();
+  if (!found) return;
+  // Re-checked: a name chosen while the lookup was in flight wins.
+  const now = localStorage.getItem(DEVICE_NAME_KEY);
+  if (now && now !== defaultDeviceName()) return;
+  localStorage.setItem(DEVICE_NAME_KEY, found);
+  localStorage.setItem(DEVICE_NAME_AUTO_KEY, found);
+}
+
 // Turning Sync on asks for this device's name once, ever (the name only
 // labels synced edits, so nothing asks for it before then).
 const SYNC_NAME_ASKED_KEY = 'offlog_sync_name_asked';
@@ -230,7 +257,7 @@ export function shouldAskDeviceNameForSync(): boolean {
   // Someone who already chose a name (an older version asked at first run)
   // is not asked again.
   const stored = localStorage.getItem(DEVICE_NAME_KEY);
-  return !stored || stored === defaultDeviceName();
+  return !stored || stored === defaultDeviceName() || stored === localStorage.getItem(DEVICE_NAME_AUTO_KEY);
 }
 
 export function markDeviceNameAskedForSync() {
