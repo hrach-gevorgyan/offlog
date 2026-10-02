@@ -127,6 +127,13 @@ describe('parseQuickAdd() -- time / reminders', () => {
   });
 });
 
+describe('parseQuickAdd() -- backslash inside a word', () => {
+  it('a backslash inside a word (a path) is plain text, not an escape', () => {
+    const r = parseQuickAdd('Copy C:\\today notes', [], new Date(2026, 9, 1, 9, 0));
+    expect(r.title).toContain('C:\\');
+  });
+});
+
 describe('parseQuickAdd() -- base day', () => {
   it('a bare time lands on the day Quick add was opened for', () => {
     const r = parseQuickAdd('Dentist 3pm', [], new Date(2026, 9, 1, 9, 0), new Date(2026, 9, 10, 12, 0));

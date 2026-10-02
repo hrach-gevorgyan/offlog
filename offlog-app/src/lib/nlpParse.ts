@@ -88,7 +88,9 @@ function find(w: Work, re: RegExp): RegExpExecArray | null {
   let m: RegExpExecArray | null;
   while ((m = g.exec(w.text))) {
     const [s, e] = bounds(m);
-    if (w.text[s - 1] !== '\\') return m;
+    // Only a backslash that starts a word escapes (\friday); one inside a
+    // word, like a path (C:\today), is ordinary text.
+    if (w.text[s - 1] !== '\\' || (s > 1 && !/\s/.test(w.text[s - 2]))) return m;
     w.dropBackslash.add(s - 1);
     blank(w, s, e, HIDE);
   }

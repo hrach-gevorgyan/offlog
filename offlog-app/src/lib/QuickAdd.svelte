@@ -56,7 +56,8 @@
   // Live parse on every keystroke -- pure, cheap regex work, no debounce
   // needed. It only changes the dropdown's selection, and never overrides a
   // project the user picked by hand (projectManuallyChosen).
-  $: parsed = parseQuickAdd(title, $projects);
+  // A bare time lands on the day this was opened for (Month view's Add card).
+  $: parsed = parseQuickAdd(title, $projects, new Date(), initialDueDate ? new Date(initialDueDate + 'T12:00:00') : undefined);
   $: if (parsed.projectId && !projectManuallyChosen) projectId = parsed.projectId;
   // A typed date phrase wins over the prefilled default.
   $: effectiveDueDate = parsed.due_date ?? initialDueDate;
@@ -173,7 +174,7 @@
         <dt>Priority</dt><dd><code>!high</code>, <code>!low</code>, <code>!!</code>, <code>!!!</code></dd>
         <dt>Tag</dt><dd><code>#errand</code> — repeat for more than one</dd>
         <dt>Project</dt><dd><code>@fitness</code> — matches a project by name</dd>
-        <dt>Escape</dt><dd><code>\#</code> <code>\@</code> <code>\!</code> keep one character literal; wrap the whole title in <code>"quotes"</code> to turn parsing off entirely</dd>
+        <dt>Escape</dt><dd>a backslash keeps the next word as text (<code>\friday</code>, <code>\#</code>); wrap the whole title in <code>"quotes"</code> to turn parsing off entirely</dd>
       </dl>
       <div class="help-example">"Log workout tomorrow at 6am !high #fitness @fitness"</div>
     </div>
