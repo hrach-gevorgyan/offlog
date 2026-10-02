@@ -4,7 +4,7 @@
   import { renameTag, deleteTagEverywhere, setTagColor } from '../../../db';
   import { reloadTasks, showError } from '../../../store';
   import { confirmAction } from '../../../confirm';
-  import { TAG_PALETTE, hashTagColor, soften } from '../../../tagColors';
+  import { TAG_PALETTE, hashTagColor, soften, colourName } from '../../../tagColors';
   import Sheet from '../../Sheet.svelte';
   import { showToast } from '../../nav';
 
@@ -112,7 +112,7 @@
       <span style:background={soften(hashTagColor(tag))}>A</span>
     </button>
     {#each TAG_PALETTE as c (c)}
-      <button role="radio" aria-checked={current === c} aria-label="Colour {c}" class:on={current === c} on:click={() => pickColor(c)}>
+      <button role="radio" aria-checked={current === c} aria-label={colourName(c)} class:on={current === c} on:click={() => pickColor(c)}>
         <span style:background={soften(c)}></span>
       </button>
     {/each}

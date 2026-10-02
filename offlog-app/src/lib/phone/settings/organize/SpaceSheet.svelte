@@ -6,7 +6,7 @@
   import { confirmAction } from '../../../confirm';
   import type { SpaceDoc } from '../../../types';
   import { SPACE_ICONS, DEFAULT_SPACE_ICON_KEY } from '../../../spaceIcons';
-  import { TAG_PALETTE, soften } from '../../../tagColors';
+  import { TAG_PALETTE, soften, colourName } from '../../../tagColors';
   import Sheet from '../../Sheet.svelte';
   import { showToast } from '../../nav';
 
@@ -156,7 +156,7 @@
     <div class="p-lab">Colour</div>
     <div class="sw" role="radiogroup" aria-label="Colour">
       {#each SWATCHES as c (c)}
-        <button role="radio" aria-checked={same(color, c)} aria-label="Colour {c}" class:on={same(color, c)} on:click={() => setColor(c)}>
+        <button role="radio" aria-checked={same(color, c)} aria-label={colourName(c)} class:on={same(color, c)} on:click={() => setColor(c)}>
           <span style:background={soften(c)}></span>
         </button>
       {/each}

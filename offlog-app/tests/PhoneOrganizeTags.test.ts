@@ -30,7 +30,7 @@ vi.mock('../src/lib/confirm', async () => {
 import OrganizePage from '../src/lib/phone/settings/organize/OrganizePage.svelte';
 import { showError, reloadTasks } from '../src/lib/store';
 import { toast } from '../src/lib/phone/nav';
-import { TAG_PALETTE } from '../src/lib/tagColors';
+import { TAG_PALETTE, colourName } from '../src/lib/tagColors';
 
 window.matchMedia = ((q: string) => ({
   matches: q.includes('reduce'), media: q, onchange: null,
@@ -134,8 +134,8 @@ describe('phone Organize → Tags', () => {
   it('sets a colour override, or back to automatic', async () => {
     const r = await setup();
     await openTag(r, 'home');
-    expect(r.getByLabelText(`Colour ${TAG_PALETTE[3]}`).getAttribute('aria-checked')).toBe('true');
-    await fireEvent.click(r.getByLabelText(`Colour ${TAG_PALETTE[0]}`));
+    expect(r.getByLabelText(colourName(TAG_PALETTE[3])).getAttribute('aria-checked')).toBe('true');
+    await fireEvent.click(r.getByLabelText(colourName(TAG_PALETTE[0])));
     await waitFor(() => expect(setTagColor).toHaveBeenCalledWith('home', TAG_PALETTE[0]));
     await fireEvent.click(r.getByLabelText('Automatic'));
     await waitFor(() => expect(setTagColor).toHaveBeenLastCalledWith('home', null));

@@ -80,3 +80,11 @@ export function wantsLightInk(hex: string): boolean {
   const L = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
   return L < 0.22;
 }
+
+// Spoken names for TAG_PALETTE, same order (colour pickers read these,
+// not hex codes).
+const PALETTE_NAMES = ['Red', 'Vermilion', 'Orange', 'Amber', 'Yellow', 'Lime', 'Chartreuse', 'Spring green', 'Green', 'Mint', 'Emerald', 'Teal', 'Cyan', 'Sky', 'Blue', 'Cornflower', 'Indigo', 'Blue-violet', 'Violet', 'Purple', 'Fuchsia', 'Magenta', 'Pink', 'Rose'];
+export function colourName(hex: string): string {
+  const i = TAG_PALETTE.findIndex(c => c.toLowerCase() === hex.trim().toLowerCase());
+  return i >= 0 ? PALETTE_NAMES[i] : 'Custom colour';
+}

@@ -34,7 +34,7 @@ vi.mock('../src/lib/confirm', async () => {
 import SettingsPage from '../src/lib/phone/settings/SettingsPage.svelte';
 import { projects, showError } from '../src/lib/store';
 import { toast } from '../src/lib/phone/nav';
-import { TAG_PALETTE } from '../src/lib/tagColors';
+import { TAG_PALETTE, colourName } from '../src/lib/tagColors';
 
 window.matchMedia = ((q: string) => ({
   matches: q.includes('reduce'), media: q, onchange: null,
@@ -86,7 +86,7 @@ describe('phone Organize → Spaces', () => {
     const add = r.getByText('Add space') as HTMLButtonElement;
     expect(add.disabled).toBe(true);
     await fireEvent.input(r.getByLabelText('Space name'), { target: { value: '  Garden ' } });
-    await fireEvent.click(r.getByLabelText(`Colour ${TAG_PALETTE[0]}`));
+    await fireEvent.click(r.getByLabelText(colourName(TAG_PALETTE[0])));
     await fireEvent.click(r.getByLabelText('Icon briefcase'));
     await fireEvent.click(add);
     await waitFor(() => expect(createSpace).toHaveBeenCalledWith('Garden', TAG_PALETTE[0], 'briefcase'));
@@ -159,7 +159,7 @@ describe('phone Organize → Spaces', () => {
     const r = await setup();
     await openSpace(r, 'Home');
     expect(r.getByLabelText('Icon home').getAttribute('aria-checked')).toBe('true');
-    await fireEvent.click(r.getByLabelText(`Colour ${TAG_PALETTE[14]}`));
+    await fireEvent.click(r.getByLabelText(colourName(TAG_PALETTE[14])));
     await waitFor(() => expect(updateSpace).toHaveBeenCalledWith('space:a', { color: TAG_PALETTE[14] }));
     await fireEvent.click(r.getByLabelText('Icon rocket'));
     await waitFor(() => expect(updateSpace).toHaveBeenCalledWith('space:a', { icon: 'rocket' }));
@@ -172,7 +172,7 @@ describe('phone Organize → Spaces', () => {
     updateSpace.mockRejectedValue(new Error('x'));
     const r = await setup();
     await openSpace(r, 'Home');
-    await fireEvent.click(r.getByLabelText(`Colour ${TAG_PALETTE[14]}`));
+    await fireEvent.click(r.getByLabelText(colourName(TAG_PALETTE[14])));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to recolor space. Please try again.'));
     await fireEvent.click(r.getByLabelText('Icon rocket'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to change space icon. Please try again.'));
