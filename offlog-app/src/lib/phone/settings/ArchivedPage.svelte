@@ -47,48 +47,55 @@
     fn?.();
   }
 
+  // After a write has landed: a failed reload must not be reported as a
+  // failed write.
+  async function refresh() {
+    await load();
+    try { await reloadTasks(); } catch { /* lists catch up on the next change */ }
+  }
+
   // Reversible, so it acts at once and offers Undo.
   async function doArchive(p: ProjectDoc) {
     try {
       await archiveProject(p._id!);
-      // An archived project left as the active one blanks the board.
-      if ($activeProjectId === p._id) activeProjectId.set('');
-      await load();
-      await reloadTasks();
-      showToast(`Archived: ${p.name}`, async () => {
-        try {
-          await unarchiveProject(p._id!);
-          await load();
-          await reloadTasks();
-        } catch {
-          showError('Could not undo. Please try again.');
-        }
-      });
     } catch {
       showError('Failed to archive project. Please try again.');
+      return;
     }
+    // An archived project left as the active one blanks the board.
+    if ($activeProjectId === p._id) activeProjectId.set('');
+    await refresh();
+    showToast(`Archived: ${p.name}`, async () => {
+      try {
+        await unarchiveProject(p._id!);
+      } catch {
+        showError('Could not undo. Please try again.');
+        return;
+      }
+      await refresh();
+    });
   }
 
   async function doRestore(p: ProjectDoc) {
     try {
       await unarchiveProject(p._id!);
-      await load();
-      await reloadTasks();
-      showToast(`Restored: ${p.name}`);
     } catch {
       showError('Failed to restore project. Please try again.');
+      return;
     }
+    await refresh();
+    showToast(`Restored: ${p.name}`);
   }
 
   async function doDelete(p: ProjectDoc) {
     if (!(await confirmAction(`Delete project "${p.name}" and all its tasks? This can't be undone.`, { danger: true, confirmLabel: 'Delete' }))) return;
     try {
       await deleteProject(p._id!);
-      await load();
-      await reloadTasks();
     } catch {
       showError('Failed to delete project. Please try again.');
+      return;
     }
+    await refresh();
   }
 </script>
 

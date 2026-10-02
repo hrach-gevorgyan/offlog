@@ -350,8 +350,11 @@ describe('phone TaskScreen', () => {
     const input = document.querySelector('.psheet input') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'Floor Plan' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
-    expect(db.updateTask).toHaveBeenCalledWith('task:t', { tags: ['floor-plan'] });
-    await waitFor(() => expect(db.ensureFreshTagColor).toHaveBeenCalledWith('floor-plan', []));
+    await waitFor(() => expect(db.updateTask).toHaveBeenCalledWith('task:t', { tags: ['floor-plan'] }));
+    expect(db.ensureFreshTagColor).toHaveBeenCalledWith('floor-plan', []);
+    // The colour is picked before the save: once the tag is persisted on a
+    // task, ensureFreshTagColor treats it as existing and does nothing.
+    expect(db.ensureFreshTagColor.mock.invocationCallOrder[0]).toBeLessThan(db.updateTask.mock.invocationCallOrder[0]);
   });
 
   it('a failed tag write surfaces an error and rolls the tag back', async () => {

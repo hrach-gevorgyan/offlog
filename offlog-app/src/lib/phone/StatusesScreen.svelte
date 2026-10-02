@@ -4,7 +4,7 @@
   // status is last says what it does to done-ness.
   import { onDestroy } from 'svelte';
   import { activeProjectId, activeSpaceId, projects, projectTasks, reloadTasks, showError } from '../store';
-  import { renameColumn, reorderColumns, removeColumn, addColumn, archiveColumnTasks } from '../db';
+  import { renameColumn, reorderColumns, removeColumn, addColumn, archiveColumnTasks, getProjects } from '../db';
   import type { Column, ProjectDoc } from '../types';
   import { showToast } from './nav';
   import { I } from './icons';
@@ -46,6 +46,16 @@
     }
   });
 
+  // Undo of a reorder works on the project as it is now: a status added or
+  // renamed since must survive, or its tasks lose their status and vanish.
+  // Statuses that still exist go back to their earlier order in the slots
+  // they hold; any other status keeps its place.
+  function restoreOrder(current: Column[], order: string[]): Column[] {
+    const known = order.map(id => current.find(c => c.id === id)).filter((c): c is Column => !!c);
+    let k = 0;
+    return current.map(c => (order.includes(c.id) ? known[k++] : c));
+  }
+
   async function move(i: number, d: -1 | 1) {
     if (!project) return;
     const prev = project.columns, cols = [...prev];
@@ -58,8 +68,12 @@
       return;
     }
     if (oldLast.id !== newLast.id) {
+      const prevOrder = prev.map(c => c.id);
       showToast(`“${newLast.name}” is last now, so its ${count(newLast.id)} task(s) count as done`, async () => {
-        try { adopt(await reorderColumns(pid, prev)); } catch { showError('Could not undo. Please try again.'); }
+        try {
+          const now = (await getProjects()).find(p => p._id === pid);
+          if (now) adopt(await reorderColumns(pid, restoreOrder(now.columns, prevOrder)));
+        } catch { showError('Could not undo. Please try again.'); }
       });
     }
   }

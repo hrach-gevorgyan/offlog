@@ -85,6 +85,9 @@ export const reselect = writable(0);
 export function switchTab(t: Tab) {
   const same = get(tab) === t;
   if (same && get(stack).length === 1) reselect.update(n => n + 1);
+  // A jump still waiting on its popstate (navigate) is superseded by this
+  // switch; left armed, it would later push onto the new tab.
+  pendingNav = null;
   closeAll(); // screens above the root and any sheet still open
   tab.set(t);
   stack.set([{ k: t }]);

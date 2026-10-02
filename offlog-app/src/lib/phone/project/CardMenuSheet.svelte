@@ -2,7 +2,7 @@
   // The card menu (hold a card). Mount behind a {#key} bumped per open (Sheet rule).
   import { createEventDispatcher } from 'svelte';
   import type { ProjectDoc, TaskDoc } from '../../types';
-  import { updateTask, duplicateTask, archiveTask, deleteTask, computeDropPosition } from '../../db';
+  import { updateTask, duplicateTask, archiveTask, unarchiveTask, deleteTask, computeDropPosition } from '../../db';
   import { reloadTasks, showError } from '../../store';
   import { hapticToggle } from '../../haptics';
   import { showToast } from '../nav';
@@ -34,11 +34,11 @@
     sheet?.close();
     try {
       await fn();
-      await reloadTasks();
     } catch {
       showError(fail);
       return;
     }
+    try { await reloadTasks(); } catch { /* the write landed; lists catch up on the next change */ }
     if (done) showToast(done, undo);
   }
   // Undo values are captured before the write; the props update after it.
@@ -62,7 +62,12 @@
   const duplicate = () => run(() => duplicateTask(task._id), 'Could not duplicate this task. Please try again.');
   function archive() {
     const id = task._id;
-    run(() => archiveTask(id), 'Could not archive this task. Please try again.', 'Archived', () => restore([[id, { archived: false, archivedWithProject: false }]]));
+    run(() => archiveTask(id), 'Could not archive this task. Please try again.', 'Archived', () => unarchive(id));
+  }
+  async function unarchive(id: string) {
+    try { await unarchiveTask(id); }
+    catch { showError('Could not undo. Please try again.'); return; }
+    try { await reloadTasks(); } catch { /* the write landed; lists catch up on the next change */ }
   }
   // Soft delete; App's undo toast offers the way back.
   const remove = () => run(() => deleteTask(task._id), 'Could not delete this task. Please try again.');

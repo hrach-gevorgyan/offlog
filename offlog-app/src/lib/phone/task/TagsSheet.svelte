@@ -36,13 +36,16 @@
     input = '';
     if (!t || tags.includes(t)) return;
     const before = tags;
-    if (!(await set([...before, t]))) return;
-    // A new tag gets a colour no tag already on this task uses. Never blocks the tag itself.
-    if (!allTags.includes(t)) {
+    const isNew = !allTags.includes(t);
+    // A new tag gets a colour no tag already on this task uses. Must run before
+    // the save: ensureFreshTagColor is a no-op for a tag already persisted on a
+    // task. Never blocks the tag itself.
+    if (isNew) {
       try { await ensureFreshTagColor(t, before); dispatch('colors'); }
       catch (e) { console.warn('tag color assignment failed', e); }
-      allTags = [...allTags, t];
     }
+    if (!(await set([...before, t]))) return;
+    if (isNew) allTags = [...allTags, t];
   }
 
   function onKey(e: KeyboardEvent) {

@@ -99,6 +99,7 @@ import * as nav from '../src/lib/phone/nav';
 import { get, type Writable } from 'svelte/store';
 import * as notif from '../src/lib/notifications';
 import * as db from '../src/lib/db';
+import { openLayers } from '../src/lib/modalStack';
 
 const settle = (ms = 30) => new Promise(r => setTimeout(r, ms));
 
@@ -181,6 +182,24 @@ describe('phone settings pages', () => {
     // The next back is the page's own again.
     history.back();
     await waitFor(() => expect(get(nav.stack)).toHaveLength(1));
+  });
+
+  it('App lock: a jump away while the recovery code is up leaves no history layer behind', async () => {
+    setAppLockPin.mockResolvedValue({ recoveryCode: 'WXYZ-0000-9999' });
+    nav.push({ k: 'set', page: 'security' });
+    const { getByText, container } = render(SettingsPage, { page: 'security' });
+    await fireEvent.click(getByText('Set a PIN'));
+    const [pin, again] = container.querySelectorAll('input[type="password"]');
+    await fireEvent.input(pin, { target: { value: '1234' } });
+    await fireEvent.input(again, { target: { value: '1234' } });
+    await fireEvent.click(getByText('Save PIN'));
+    await waitFor(() => getByText('WXYZ-0000-9999'));
+    expect(get(openLayers)).toBe(2);
+    // The page is still mounted (as during its exit animation) when the guard's
+    // deferred re-arm runs.
+    nav.navigate('agenda');
+    await settle(60);
+    expect(get(openLayers)).toBe(0);
   });
 
   describe('Notifications', () => {

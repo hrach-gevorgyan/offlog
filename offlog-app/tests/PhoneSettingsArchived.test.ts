@@ -121,6 +121,16 @@ describe('phone Archived projects', () => {
     expect(queryByText('Archive…')).toBeNull();
   });
 
+  it('an archive that landed is not reported as failed when only the reload fails', async () => {
+    vi.mocked(reloadTasks).mockRejectedValueOnce(new Error('reload'));
+    const { getByText } = render(SettingsPage, { page: 'archived' });
+    await waitFor(() => getByText('Old Sprint'));
+    await fireEvent.click(getByText('Archive a project'));
+    await fireEvent.click(getByText('Live Sprint'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived: Live Sprint'));
+    expect(showError).not.toHaveBeenCalled();
+  });
+
   it('a failed archive surfaces showError', async () => {
     archiveProject.mockRejectedValueOnce(new Error('x'));
     const { getByText } = render(SettingsPage, { page: 'archived' });

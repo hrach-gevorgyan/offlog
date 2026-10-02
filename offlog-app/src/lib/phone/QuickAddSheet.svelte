@@ -158,12 +158,16 @@
   let dupHint = '';
   let dupTimer: ReturnType<typeof setTimeout> | undefined;
   $: { clearTimeout(dupTimer); dupTimer = setTimeout(() => checkDup(parsed.title, targetId), 350); }
+  // A slow lookup must not overwrite the answer for a newer title.
+  let dupSeq = 0;
   async function checkDup(t: string, pid: string | null) {
+    const mine = ++dupSeq;
     if (!t || !pid) { dupHint = ''; return; }
     try {
       const m = await findTasksByTitleInProject(pid, t);
+      if (mine !== dupSeq) return;
       dupHint = m.length ? `${$projects.find(p => p._id === pid)?.name ?? 'This project'} already has a task with this name.` : '';
-    } catch { dupHint = ''; }
+    } catch { if (mine === dupSeq) dupHint = ''; }
   }
 
   // A panel and the keyboard never share the screen: the WebView shrinks
@@ -273,7 +277,9 @@
       }
       const doc = await createTask(p._id, p.space_id, col, t, overrides);
       rememberProject(p._id);
-      await reloadTasks();
+      // Outside the write's error path: the task exists, so a failed reload
+      // must not invite a retry that would create it twice.
+      try { await reloadTasks(); } catch { /* lists catch up on the next change */ }
       text = '';
       dispatch('created', doc);
       closeSheet();
@@ -378,6 +384,7 @@
   .compose, .chips, .note, .warn { flex: none; }
   .compose { display: flex; align-items: center; gap: 8px; }
   .field { position: relative; flex: 1; min-width: 0; display: flex; }
+  .field:focus-within { box-shadow: 0 0 0 2px var(--accent); border-radius: 10px; }
   /* .qa and .mirror must stay metric-identical, or the caret drifts off the text. */
   .qa, .mirror { font: inherit; font-size: var(--p-fs-xl); line-height: 1.5; letter-spacing: normal; padding: 10px 4px; border: 0; margin: 0; }
   .qa { position: relative; flex: 1; min-width: 0; outline: none; background: none; color: transparent; caret-color: var(--text); }

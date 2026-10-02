@@ -280,14 +280,17 @@
   let titleHint = '';
   let titleHintTimer: ReturnType<typeof setTimeout> | undefined;
   $: if (task) checkTitle(title, task.project_id, task._id);
+  // A slow lookup must not overwrite the answer for newer text.
+  let titleSeq = 0, noteSeq = 0;
   function checkTitle(t: string, projectId: string, excludeId: string) {
     clearTimeout(titleHintTimer);
+    const mine = ++titleSeq;
     titleHintTimer = setTimeout(async () => {
       if (!t.trim()) { titleHint = ''; return; }
       try {
         const m = await findTasksByTitleInProject(projectId, t, excludeId);
-        titleHint = m.length ? `Another task in this project is called "${t.trim()}".` : '';
-      } catch { titleHint = ''; }
+        if (mine === titleSeq) titleHint = m.length ? `Another task in this project is called "${t.trim()}".` : '';
+      } catch { if (mine === titleSeq) titleHint = ''; }
     }, 350);
   }
 
@@ -296,11 +299,12 @@
   $: if (task) checkNote(body, task._id);
   function checkNote(text: string, excludeId: string) {
     clearTimeout(noteHintTimer);
+    const mine = ++noteSeq;
     noteHintTimer = setTimeout(async () => {
       try {
         const m = await findSimilarNotes(excludeId, text);
-        noteHint = m.length ? `Looks like the note on "${m[0].title}".` : '';
-      } catch { noteHint = ''; }
+        if (mine === noteSeq) noteHint = m.length ? `Looks like the note on "${m[0].title}".` : '';
+      } catch { if (mine === noteSeq) noteHint = ''; }
     }, 350);
   }
 

@@ -87,6 +87,34 @@ describe('phone Quick add', () => {
     expect(reloadTasks).toHaveBeenCalled();
   });
 
+  it('a created task is not reported as failed when only the reload fails', async () => {
+    vi.mocked(reloadTasks).mockRejectedValue(new Error('reload'));
+    const created = vi.fn();
+    const { getByLabelText } = render(QuickAddSheet, { events: { created } } as any);
+    await type(getByLabelText, 'Only once');
+    await fireEvent.click(getByLabelText('Add'));
+    await waitFor(() => expect(created).toHaveBeenCalled());
+    expect(showError).not.toHaveBeenCalled();
+    expect(get(toast)?.text).toBe('Added to Q4 Sprint');
+    // The title is cleared, so Add cannot create it a second time.
+    expect((getByLabelText('Task title') as HTMLInputElement).value).toBe('');
+    expect(createTask).toHaveBeenCalledTimes(1);
+  });
+
+  it('a slow duplicate check never overwrites the hint for a newer title', async () => {
+    let answerOld: (v: unknown[]) => void = () => {};
+    findTasksByTitleInProject.mockImplementation((_p: string, t: string) =>
+      t === 'Old' ? new Promise(r => { answerOld = r; }) : Promise.resolve([]));
+    const { getByLabelText, queryByText } = render(QuickAddSheet);
+    await type(getByLabelText, 'Old');
+    await waitFor(() => expect(findTasksByTitleInProject).toHaveBeenCalledWith('project:q', 'Old'));
+    await type(getByLabelText, 'New');
+    await waitFor(() => expect(findTasksByTitleInProject).toHaveBeenCalledWith('project:q', 'New'));
+    answerOld([{ _id: 'task:old' }]);
+    await new Promise(r => setTimeout(r, 0));
+    expect(queryByText(/already has a task with this name/)).toBeNull();
+  });
+
   it('confirms with a plain toast: no Undo, never a delete', async () => {
     const { getByLabelText } = render(QuickAddSheet);
     expect(getByLabelText('Project: Q4 Sprint').classList.contains('on')).toBe(false);

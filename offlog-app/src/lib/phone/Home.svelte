@@ -24,15 +24,20 @@
   let data: Data | null = null;
   let focus = { done: 0, total: 0 };
 
+  // Loads overlap (every change re-runs one); only the newest may land.
+  let loadSeq = 0;
   async function load() {
+    const mine = ++loadSeq;
     try {
-      data = await getDashboardData();
+      const d = await getDashboardData();
       const lock = loadFocusLock();
       const locked = lock ? (await Promise.all(lock.taskIds.map(id => getTaskById(id)))).filter(t => t && !t.deleted && !t.archived) : [];
-      const last = (pid: string) => data?.byProject[pid]?.lastColId;
+      if (mine !== loadSeq) return;
+      const last = (pid: string) => d.byProject[pid]?.lastColId;
+      data = d;
       focus = { total: locked.length, done: locked.filter(t => t!.column_id === last(t!.project_id)).length };
     } catch {
-      showError('Could not load Home. Reopen the app to try again.');
+      if (mine === loadSeq) showError('Could not load Home. Reopen the app to try again.');
     }
   }
 

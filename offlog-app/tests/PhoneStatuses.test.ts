@@ -9,7 +9,9 @@ const removeColumn = vi.fn();
 const addColumn = vi.fn();
 const archiveColumnTasks = vi.fn();
 const updateTask = vi.fn();
+const getProjects = vi.fn();
 vi.mock('../src/lib/db', () => ({
+  getProjects: (...a: unknown[]) => getProjects(...a),
   renameColumn: (...a: unknown[]) => renameColumn(...a),
   reorderColumns: (...a: unknown[]) => reorderColumns(...a),
   removeColumn: (...a: unknown[]) => removeColumn(...a),
@@ -56,13 +58,17 @@ async function menu(r: ReturnType<typeof setup>, name: string) {
   await waitFor(() => r.getByRole('dialog'));
 }
 
+let stored: typeof cols = cols;
 beforeEach(async () => {
   await new Promise(r => setTimeout(r, 20));
   vi.clearAllMocks();
   toast.set(null);
   const ok = (columns: typeof cols) => Promise.resolve({ ...project, columns });
   renameColumn.mockImplementation((_p, id, name) => ok(cols.map(c => (c.id === id ? { ...c, name } : c))));
-  reorderColumns.mockImplementation((_p, c) => ok(c));
+  // The stored project follows every reorder, as the database would.
+  stored = cols;
+  reorderColumns.mockImplementation((_p, c) => { stored = c; return ok(c); });
+  getProjects.mockImplementation(async () => [{ ...project, columns: stored }]);
   removeColumn.mockImplementation((_p, id) => ok(cols.filter(c => c.id !== id)));
   addColumn.mockImplementation((_p, name) => ok([...cols, { id: 'col:new', name }]));
   archiveColumnTasks.mockResolvedValue(undefined);
@@ -127,6 +133,17 @@ describe('phone Statuses screen', () => {
     await waitFor(() => expect(get(toast)?.text).toBe('“Doing” is last now, so its 2 task(s) count as done'));
     await get(toast)!.undo!();
     expect(reorderColumns).toHaveBeenLastCalledWith('project:p', cols);
+  });
+
+  it('Undo of a reorder keeps a status added (or renamed) since, in its place', async () => {
+    const r = setup();
+    await menu(r, 'Doing');
+    await fireEvent.click(r.getByText('Move down'));
+    await waitFor(() => expect(get(toast)).not.toBeNull());
+    const waiting = { id: 'col:new', name: 'Waiting' };
+    stored = [cols[0], { ...cols[2], name: 'Finished' }, waiting, cols[1]];
+    await get(toast)!.undo!();
+    expect(reorderColumns).toHaveBeenLastCalledWith('project:p', [cols[0], cols[1], waiting, { ...cols[2], name: 'Finished' }]);
   });
 
   it('Archive all its tasks archives them and Undo restores each', async () => {

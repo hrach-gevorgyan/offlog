@@ -19,7 +19,7 @@
   import './phone.css';
 
   export let title = '';
-  export let label = title || 'Sheet';
+  export let label = '';
 
   const dispatch = createEventDispatcher<{ close: void }>();
   let open = true;
@@ -91,7 +91,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="psheet-scrim" on:click={requestClose} in:fade={scrimIn} out:fade={scrimOut}></div>
   <div
-    class="psheet" class:dragging class:kbjump={kbJump} role="dialog" aria-modal="true" aria-label={label} tabindex="-1" bind:this={panel}
+    class="psheet" class:dragging class:kbjump={kbJump} role="dialog" aria-modal="true" aria-label={label || title || 'Sheet'} tabindex="-1" bind:this={panel}
     style:transform={dragY || kbOff ? `translateY(${dragY + kbOff}px)` : null}
     use:trapFocus
     in:sheetIn

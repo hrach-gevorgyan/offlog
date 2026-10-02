@@ -229,6 +229,7 @@
 <style>
   .sfield { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px; color: var(--faint); box-shadow: var(--p-shadow); }
   .sfield input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font: inherit; font-size: var(--p-fs-l); color: var(--text); }
+  .sfield:focus-within { box-shadow: 0 0 0 2px var(--accent); }
   .chips { margin-bottom: 10px; }
   .gh { display: flex; gap: 6px; margin-top: 14px; }
   .gh span { font-weight: 600; opacity: .8; }

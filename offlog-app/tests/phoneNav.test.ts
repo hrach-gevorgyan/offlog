@@ -100,6 +100,15 @@ describe('phone navigation', () => {
     expect(get(stack).map(s => s.k)).toEqual(['home', 'pinned']);
   });
 
+  it('a tab switch while a jump waits on its popstate cancels the jump', async () => {
+    push({ k: 'late' });
+    navigate('home', { k: 'focus' });
+    switchTab('agenda');
+    await new Promise(r => setTimeout(r, 450)); // past navigate's fallback window
+    expect(get(tab)).toBe('agenda');
+    expect(get(stack).map(s => s.k)).toEqual(['agenda']);
+  });
+
   it('navigate with nothing open pushes at once', () => {
     navigate('agenda', { k: 'focus' });
     expect(get(tab)).toBe('agenda');

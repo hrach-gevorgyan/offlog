@@ -30,7 +30,8 @@
   import { scrimIn, scrimOut, dialogIn, dialogOut } from '../../motion';
   import TopBar from '../TopBar.svelte';
   import Sheet from '../Sheet.svelte';
-  import { back } from '../nav';
+  import { back, stack } from '../nav';
+  import { get } from 'svelte/store';
   import { closeOnBack, closeAll } from '../../modalStack';
   import { rowTaps } from './rowTaps';
 
@@ -108,14 +109,18 @@
   // is up, a back press only re-arms this entry. Continue is the one way out.
   let recoveryClose: (() => void) | null = null;
   let recoveryDone = false, destroyed = false;
+  // This page's own screen entry. closeAll() (a widget jump, a tab switch)
+  // removes it from the stack while the page is still animating out; re-arming
+  // then would leave a history layer nothing owns.
+  const ownScreen = get(stack).at(-1);
   function guardRecovery() {
     recoveryDone = false;
     recoveryClose = closeOnBack(() => {
       recoveryClose = null;
       if (recoveryDone) { newRecoveryCode = null; return; }
-      // Deferred: closeAll() (a widget jump) also lands here, and pushing
-      // before its history.go() resolves would desync history.
-      setTimeout(() => { if (!destroyed && newRecoveryCode) guardRecovery(); }, 0);
+      // Deferred: closeAll() also lands here, and pushing before its
+      // history.go() resolves would desync history.
+      setTimeout(() => { if (!destroyed && newRecoveryCode && get(stack).at(-1) === ownScreen) guardRecovery(); }, 0);
     });
   }
   function finishRecovery() {

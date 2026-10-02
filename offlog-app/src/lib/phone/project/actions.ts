@@ -66,11 +66,11 @@ export async function toggleDone(task: TaskDoc, project: ProjectDoc): Promise<bo
   try {
     await updateTask(task._id, { column_id: target });
     hapticToggle();
-    await reloadTasks();
   } catch {
     showError('Could not update this task. Please try again.');
     return false;
   }
+  try { await reloadTasks(); } catch { /* the write landed; lists catch up on the next change */ }
   showToast(`${done ? 'Not done' : 'Done'}: ${task.title}`, () => { markReturning(task._id); return restore([[task._id, before]]); });
   return true;
 }

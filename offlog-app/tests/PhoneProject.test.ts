@@ -244,6 +244,13 @@ describe('phone Project screen — board', () => {
     expect(returns('task:a')).toBe(true);
   });
 
+  it('a finish that landed still counts as done when only the reload fails', async () => {
+    vi.mocked(reloadTasks).mockRejectedValueOnce(new Error('reload'));
+    expect(await toggleDone(tasks[0], project)).toBe(true);
+    expect(showError).not.toHaveBeenCalled();
+    expect(get(toast)?.text).toBe('Done: a');
+  });
+
   it('a one-status project has no finish checkbox', () => {
     const r = setup({ columns: [{ id: 'col:todo', name: 'To do' }] });
     expect(titles(r.container)).toEqual(['a', 'b', 'c']);
@@ -410,13 +417,34 @@ describe('phone Project screen — card menu', () => {
     await waitFor(() => expect(archiveTask).toHaveBeenCalledWith('task:a'));
     await waitFor(() => expect(get(toast)?.text).toBe('Archived'));
     await get(toast)!.undo!();
-    expect(updateTask).toHaveBeenLastCalledWith('task:a', { archived: false, archivedWithProject: false });
+    expect(unarchiveTask).toHaveBeenCalledWith('task:a');
     await waitFor(() => expect(r.queryByRole('dialog')).toBeNull());
     deleteTask.mockRejectedValue(new Error('boom'));
     await openMenu(r, 'a');
     await fireEvent.click(r.getByText('Delete'));
     await waitFor(() => expect(deleteTask).toHaveBeenCalledWith('task:a'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete this task. Please try again.'));
+  });
+
+  it('a failed Undo of Archive surfaces an error', async () => {
+    unarchiveTask.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMenu(r, 'a');
+    await fireEvent.click(r.getByText('Archive'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived'));
+    await get(toast)!.undo!();
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
+  });
+
+  it('a write that landed is not reported as failed when only the reload fails', async () => {
+    vi.mocked(reloadTasks).mockRejectedValueOnce(new Error('reload'));
+    const r = setup();
+    await openMenu(r, 'b');
+    await fireEvent.click(r.getByText('Duplicate'));
+    await waitFor(() => expect(duplicateTask).toHaveBeenCalledWith('task:b'));
+    await waitFor(() => expect(reloadTasks).toHaveBeenCalled());
+    await new Promise(res => setTimeout(res, 0));
+    expect(showError).not.toHaveBeenCalled();
   });
 
   it('Duplicate duplicates the task; a failure surfaces an error', async () => {

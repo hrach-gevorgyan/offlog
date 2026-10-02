@@ -35,23 +35,33 @@
     return r;
   };
 
+  // Refreshes overlap (every change re-runs one); only the newest may land.
+  let refreshSeq = 0;
   async function refresh() {
+    const mine = ++refreshSeq;
     try {
-      lock = loadFocusLock();
-      if (lock) {
-        const got = await Promise.all(lock.taskIds.map(id => getTaskById(id)));
-        locked = got.filter((t): t is TaskDoc => !!t && !t.deleted && !t.archived);
-      } else locked = [];
-      if (locked.length < MAX) {
-        const ids = new Set(locked.map(t => t._id));
-        const r = rankPicker((await getOpenTasksForFocusPicker()).filter(t => !ids.has(t._id)), today(), MAX - locked.length, seed);
+      const l = loadFocusLock();
+      let lk: TaskDoc[] = [];
+      if (l) {
+        const got = await Promise.all(l.taskIds.map(id => getTaskById(id)));
+        lk = got.filter((t): t is TaskDoc => !!t && !t.deleted && !t.archived);
+      }
+      let r: ReturnType<typeof rankPicker> | null = null;
+      if (lk.length < MAX) {
+        const ids = new Set(lk.map(t => t._id));
+        r = rankPicker((await getOpenTasksForFocusPicker()).filter(t => !ids.has(t._id)), today(), MAX - lk.length, seed);
+      }
+      if (mine !== refreshSeq) return;
+      lock = l;
+      locked = lk;
+      if (r) {
         suggested = r.suggested;
         rest = r.rest;
         selected = selected.filter(id => [...suggested.map(s => s.task), ...rest].some(t => t._id === id));
       } else { suggested = []; rest = []; selected = []; }
       loaded = true;
     } catch {
-      showError('Could not load Focus. Please try again.');
+      if (mine === refreshSeq) showError('Could not load Focus. Please try again.');
     }
   }
 
