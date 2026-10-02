@@ -124,7 +124,7 @@
 
   function why(s: { task: Row; reason: Reason }): string {
     if (s.reason === 'pinned') return 'Pinned';
-    if (s.reason === 'overdue') return 'Late';
+    if (s.reason === 'overdue') return 'Overdue';
     if (s.reason === 'due_soon') return 'Due soon';
     return `${PRIORITY_LABEL[s.task.priority] ?? 'Low'} priority`;
   }

@@ -54,7 +54,7 @@
   $: weekEnd = endOfWeek(mondayFirst, new Date(today + 'T12:00:00'));
   // `date`: the one day a group stands for, so its rows drop the repeated pill.
   $: groups = [
-    { label: 'Late', late: true, tasks: all.filter(t => t.due_date! < today) },
+    { label: 'Overdue', late: true, tasks: all.filter(t => t.due_date! < today) },
     { label: 'Today', date: today, tasks: all.filter(t => t.due_date === today) },
     { label: 'Tomorrow', date: tomorrow, tasks: all.filter(t => t.due_date === tomorrow) },
     { label: 'This week', tasks: all.filter(t => t.due_date! > tomorrow && t.due_date! <= weekEnd) },

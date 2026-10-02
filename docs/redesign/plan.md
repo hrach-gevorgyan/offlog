@@ -231,7 +231,8 @@ Phone only. After a research-backed UX pass (seven area reviews against Material
 | Empty screens: logo line, short title, one sentence | **Built** |
 | Today's late row as a white card with a red count | **Built** |
 | Focus as three places filled by "+ Add" picks | **Built** |
-| "All to today" on the Late screen (repeating tasks are skipped) | **Built** |
+| "All to today" on the Overdue screen (repeating tasks are skipped) | **Built** |
+| Phone says "Overdue", as the desktop does (was "Late"), on 2 Oct 2026 | **Built** |
 | Day loops replacing Home's progress dashes | Rejected: keep the dashes |
 | Day seal / stamp-card month | Rejected |
 | A second typeface for numbers and dates | Rejected: Hanken Grotesk only |

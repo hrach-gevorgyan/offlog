@@ -45,9 +45,9 @@ describe('phone Home', () => {
 
   it('shows what is left today, late and pinned counts, and each project; late is said once above the fold', async () => {
     const { getByText, getAllByText, getByLabelText, container } = render(Home);
-    await waitFor(() => expect(getByLabelText('Open Today: 4 left, 2 of 6 done, 3 late')).toBeTruthy());
+    await waitFor(() => expect(getByLabelText('Open Today: 4 left, 2 of 6 done, 3 overdue')).toBeTruthy());
     expect(getByText('Q4 Sprint')).toBeTruthy();
-    expect(getAllByText('3 late')).toHaveLength(1); // the project row; the Late tile carries the total
+    expect(getAllByText('3 overdue')).toHaveLength(1); // the project row; the Overdue tile carries the total
     expect(container.querySelector('.hero .meta')).toBeNull();
     expect(container.querySelector('.tile b.late')?.textContent).toBe('3');
     expect(container.querySelector('.appbar small')?.textContent).toBe('4 left');
@@ -60,7 +60,7 @@ describe('phone Home', () => {
     await waitFor(() => getByLabelText(/Open Today/));
     await fireEvent.click(getByLabelText(/Open Today/));
     expect(get(stack).at(-1)).toMatchObject({ k: 'today' });
-    await fireEvent.click(getByText('Late'));
+    await fireEvent.click(getByText('Overdue'));
     expect(get(stack).at(-1)).toMatchObject({ k: 'late' });
     await fireEvent.click(getByText('Q4 Sprint'));
     expect(get(stack).at(-1)).toMatchObject({ k: 'project', id: 'project:q' });

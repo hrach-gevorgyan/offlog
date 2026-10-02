@@ -18,11 +18,11 @@ export function shortDate(iso: string, today = new Date()): string {
 export type DueTone = 'late' | 'today' | '';
 
 // The date pill on a phone card. A finished task's date is history: it is
-// never "late" (done is positional, so the caller decides).
+// never "overdue" (done is positional, so the caller decides).
 export function duePill(due: string | null | undefined, done = false, today = localDateStr(new Date())): { text: string; tone: DueTone } | null {
   if (!due) return null;
   const n = daysFrom(today, due);
-  if (n < 0 && !done) return { text: n === -1 ? '1 day late' : n < -30 ? '30+ days late' : `${-n} days late`, tone: 'late' };
+  if (n < 0 && !done) return { text: n === -1 ? '1 day overdue' : n < -30 ? '30+ days overdue' : `${-n} days overdue`, tone: 'late' };
   if (n === 0) return { text: 'Today', tone: 'today' };
   if (n === 1) return { text: 'Tomorrow', tone: '' };
   if (n > 1 && n < 7) return { text: WD[new Date(due + 'T12:00:00').getDay()], tone: '' };

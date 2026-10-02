@@ -66,7 +66,7 @@ describe('phone Focus', () => {
     const { findByText, getByText, getAllByText, queryByText, container } = render(FocusScreen);
     await waitFor(() => expect(emptySlots(container)).toBe(3));
     expect(queryByText('Reset')).toBeNull();
-    expect([...container.querySelectorAll('.why')].map(x => x.textContent)).toEqual(['Pinned', 'Late', 'Due soon']);
+    expect([...container.querySelectorAll('.why')].map(x => x.textContent)).toEqual(['Pinned', 'Overdue', 'Due soon']);
     await fireEvent.click(getByText('Taxes'));
     await fireEvent.click(getByText('Dentist'));
     // The picks fill the day's places in order; one stays empty.

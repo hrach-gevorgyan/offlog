@@ -22,7 +22,7 @@
   type Row = TaskDoc & { project_name?: string };
   let sections: { label: string; date?: string; tasks: Row[] }[] = [];
   let count = 0;
-  // Today shows late tasks as one row at the top that opens the Late screen.
+  // Today shows overdue tasks as one row at the top that opens the Overdue screen.
   let lateCount = 0;
   let loaded = false;
   let today = localDateStr(new Date());
@@ -58,10 +58,10 @@
   onMount(() => { document.addEventListener('visibilitychange', onVisible); return () => document.removeEventListener('visibilitychange', onVisible); });
   onDestroy(() => unsub?.());
 
-  const TITLE = { today: 'Today', late: 'Late', pinned: 'Pinned' };
+  const TITLE = { today: 'Today', late: 'Overdue', pinned: 'Pinned' };
   const EMPTY = {
     today: { title: 'Nothing due today', text: 'A clear day. Plan ahead in Agenda, or add something.' },
-    late: { title: 'Nothing late', text: "You're on time with everything." },
+    late: { title: 'Nothing overdue', text: "You're on time with everything." },
     pinned: { title: 'Nothing pinned', text: 'Hold a task, or tap the pin on its page, to pin it.' },
   };
   // The card menu; {#key} bumped on every open (Sheet rule).
@@ -109,8 +109,8 @@
   {#if kind === 'late' && movable.length}<button class="p-tbtn" on:click={moveAllToToday} disabled={moving}>All to today</button>{/if}
 </TopBar>
 {#if kind === 'today' && lateCount}
-  <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Late: {lateCount} late {lateCount === 1 ? 'task' : 'tasks'}">
-    <span class="n" aria-hidden="true">{lateCount}</span><span class="lbl">Late tasks</span>{@html I.chev}
+  <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Overdue: {lateCount} overdue {lateCount === 1 ? 'task' : 'tasks'}">
+    <span class="n" aria-hidden="true">{lateCount}</span><span class="lbl">Overdue tasks</span>{@html I.chev}
   </button>
 {/if}
 {#each sections as s}

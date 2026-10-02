@@ -54,7 +54,7 @@ describe('phone task lists', () => {
     await findByText('Now');
     expect(queryByText('Old')).toBeNull();
     expect(container.querySelector('.p-sec.late')).toBeNull();
-    const row = getByLabelText('Open Late: 2 late tasks');
+    const row = getByLabelText('Open Overdue: 2 overdue tasks');
     expect(row.compareDocumentPosition(container.querySelector('.card')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(container.querySelector('.pill')).toBeNull();
     await fireEvent.click(row);
@@ -125,7 +125,7 @@ describe('phone task lists', () => {
   it('Late keeps its late pills', async () => {
     const { findByText, getByText } = render(TaskListScreen, { kind: 'late' });
     await findByText('Old');
-    expect(getByText('3 days late')).toBeTruthy();
+    expect(getByText('3 days overdue')).toBeTruthy();
   });
 
   it('Pinned, when empty, says how to pin', async () => {

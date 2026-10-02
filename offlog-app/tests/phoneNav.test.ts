@@ -131,10 +131,10 @@ describe('phone navigation', () => {
 describe('phone formatting', () => {
   const today = '2026-09-30';
   it('duePill: late, today, tomorrow, weekday, date', () => {
-    expect(duePill('2026-09-29', false, today)).toEqual({ text: '1 day late', tone: 'late' });
-    expect(duePill('2026-09-27', false, today)).toEqual({ text: '3 days late', tone: 'late' });
-    expect(duePill('2026-08-31', false, today)).toEqual({ text: '30 days late', tone: 'late' });
-    expect(duePill('2026-08-30', false, today)).toEqual({ text: '30+ days late', tone: 'late' });
+    expect(duePill('2026-09-29', false, today)).toEqual({ text: '1 day overdue', tone: 'late' });
+    expect(duePill('2026-09-27', false, today)).toEqual({ text: '3 days overdue', tone: 'late' });
+    expect(duePill('2026-08-31', false, today)).toEqual({ text: '30 days overdue', tone: 'late' });
+    expect(duePill('2026-08-30', false, today)).toEqual({ text: '30+ days overdue', tone: 'late' });
     expect(duePill('2026-09-30', false, today)).toEqual({ text: 'Today', tone: 'today' });
     expect(duePill('2026-10-01', false, today)).toEqual({ text: 'Tomorrow', tone: '' });
     expect(duePill('2026-10-03', false, today)).toEqual({ text: 'Sat', tone: '' });

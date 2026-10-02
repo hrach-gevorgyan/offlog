@@ -78,10 +78,10 @@ describe('phone TaskCard', () => {
 
   it('shows a late pill for an overdue open task, and none once finished', () => {
     const { getByText, unmount } = render(TaskCard, { task: task({ due_date: '2000-01-01' }) });
-    expect(getByText(/days late/)).toBeTruthy();
+    expect(getByText(/days overdue/)).toBeTruthy();
     unmount();
     const r = render(TaskCard, { task: task({ due_date: '2000-01-01', column_id: 'col:done' }) });
-    expect(r.queryByText(/late/)).toBeNull();
+    expect(r.queryByText(/overdue/)).toBeNull();
   });
 
   it('finishing gives the same haptic tick as the project list', async () => {
@@ -116,7 +116,7 @@ describe('phone TaskCard', () => {
     expect(plain.getByText('Today')).toBeTruthy();
     plain.unmount();
     const late = render(TaskCard, { task: task({ due_date: '2000-01-01' }), sectionDate: today });
-    expect(late.getByText('30+ days late')).toBeTruthy();
+    expect(late.getByText('30+ days overdue')).toBeTruthy();
   });
 
   it('holding a row asks for the card menu, and the release does not open the task', async () => {

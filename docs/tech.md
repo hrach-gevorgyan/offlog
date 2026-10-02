@@ -79,11 +79,11 @@ flowchart LR
   (postinstall) wraps it in `runOnUiThread` until upstream does. The back
   handler also trusts `openLayers` over `canGoBack`: Chrome hides history
   entries pushed without a gesture (a sheet opened from the widget) from it. Re-tapping the current tab at its root scrolls it to the
-  top; the + steps aside on a long downward scroll (`fabScroll.ts`). Late
+  top; the + steps aside on a long downward scroll (`fabScroll.ts`). Overdue
   has "All to today", which leaves repeating tasks alone (their due date is
   what the next repeat counts from).
   Week start and 12/24h follow the device locale (`Intl`) until chosen in
-  Appearance. Screens: Home, Today/Late/Pinned, Search,
+  Appearance. Screens: Home, Today/Overdue/Pinned, Search,
   Project (board by status with a drag-following swipe, list with select +
   bulk bar — a held row enters Select — filter and menu sheets; the card
   menu's status pills move a task in one tap) and Statuses, Task (full screen, every field saved as it
@@ -110,7 +110,7 @@ flowchart LR
   for deleting a project, deleting for good, emptying the bin and clearing
   history. Widget and notification jumps use `nav.navigate()`, which waits
   for `closeAll()`'s history jump before pushing. Cross-project rows
-  (`phone/TaskCard.svelte`: Today, Late, Pinned, Agenda, Search) finish
+  (`phone/TaskCard.svelte`: Today, Overdue, Pinned, Agenda, Search) finish
   through the project list's `toggleDone`, so haptic, snackbar and Undo
   match; holding one opens the board's `CardMenuSheet` through
   `phone/TaskMenu.svelte`. A row drops its date pill when its section

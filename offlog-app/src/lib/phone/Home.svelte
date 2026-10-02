@@ -152,7 +152,7 @@
           <span class="none">Add your first task</span>
         </button>
       {:else}
-      <button class="hbody" class:pending={!data} on:click={() => push({ k: 'today' })} aria-label={total ? `Open Today: ${left} left, ${doneToday} of ${total} done${late ? `, ${late} late` : ''}` : `Open Today: nothing due${late ? `, ${late} late` : ''}`}>
+      <button class="hbody" class:pending={!data} on:click={() => push({ k: 'today' })} aria-label={total ? `Open Today: ${left} left, ${doneToday} of ${total} done${late ? `, ${late} overdue` : ''}` : `Open Today: nothing due${late ? `, ${late} overdue` : ''}`}>
         <span class="hi">{greeting()} <span>· {shortDate(todayStr)}</span></span>
         {#if total || !data}
           <span class="count"><b>{left}</b><span>left today</span></span>
@@ -166,7 +166,7 @@
 
     <div class="tiles" class:pending={!data}>
       <button class="tile" on:click={() => push({ k: 'late' })}>
-        <span class="top"><span class="ic">{@html I.late}</span><b class:late={late > 0} class:quiet={!late}>{late}</b></span><span class="lbl">Late</span>
+        <span class="top"><span class="ic">{@html I.late}</span><b class:late={late > 0} class:quiet={!late}>{late}</b></span><span class="lbl">Overdue</span>
       </button>
       <button class="tile" on:click={() => push({ k: 'focus' })}>
         <span class="top"><span class="ic">{@html I.focus}</span><b class:quiet={!focus.total}>{focus.done}/{focus.total || 3}</b></span><span class="lbl">Focus</span>
@@ -189,7 +189,7 @@
             <span class="p-dot" style="background:{soften(s.color)}"></span>
             <span class="lbl">{p.name}</span>
             {#if p.pinned}<span class="pin" aria-label="Pinned">{@html I.pin}</span>{/if}
-            {#if st?.overdue}<span class="late-n">{st.overdue} late</span>{/if}
+            {#if st?.overdue}<span class="late-n">{st.overdue} overdue</span>{/if}
             {#if st?.open}<span class="p-n">{st.open}</span>{/if}
           </button>
         {/each}

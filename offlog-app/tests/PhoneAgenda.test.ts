@@ -58,8 +58,8 @@ describe('phone Agenda', () => {
     const { container, findByText } = render(AgendaScreen);
     await findByText('Now');
     const secs = [...container.querySelectorAll('.p-sec')].map(s => s.textContent!.replace(/\s+/g, ' ').trim());
-    expect(secs).toEqual(['Late 1', 'Today 1', 'Tomorrow 1', 'Later 1']);
-    expect(container.querySelector('.p-sec.late')?.textContent).toContain('Late');
+    expect(secs).toEqual(['Overdue 1', 'Today 1', 'Tomorrow 1', 'Later 1']);
+    expect(container.querySelector('.p-sec.late')?.textContent).toContain('Overdue');
     expect(get(agendaDay)).toBe(null); // the + button only takes a day from Month
   });
 
@@ -108,7 +108,7 @@ describe('phone Agenda', () => {
     const { findByText, container } = render(AgendaScreen);
     await findByText('Now');
     const pills = [...container.querySelectorAll('.pill')].map(p => p.textContent);
-    expect(pills).toEqual(['2 days late', shortDate(day(40))]);
+    expect(pills).toEqual(['2 days overdue', shortDate(day(40))]);
   });
 
   it('Month: up to three dots for a day, a count past that', async () => {
