@@ -25,7 +25,8 @@
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from '../../theme';
   import { trapFocus } from '../../focusTrap';
   import { fade } from 'svelte/transition';
-  import { scrimIn, scrimOut, dialogIn, dialogOut } from '../../motion';
+  import { scrimIn, scrimOut } from '../../motion';
+  import { I } from '../icons';
   import TopBar from '../TopBar.svelte';
   import Sheet from '../Sheet.svelte';
   import Pick from '../task/Pick.svelte';
@@ -93,7 +94,6 @@
   // The plaintext recovery code is never stored: this is the only time it
   // can be shown.
   let newRecoveryCode: string | null = null;
-  let recoveryCodeSavedAck = false;
   let recoveryCopied = false;
 
   async function copyRecoveryCode() {
@@ -104,6 +104,17 @@
       recoveryCopied = true;
       setTimeout(() => { recoveryCopied = false; }, 2000);
     } catch { /* the code is still on screen */ }
+  }
+
+  // Sharing hands the code to an app the person picks (a password manager,
+  // notes); it never leaves the phone any other way.
+  const canShare = isNativePlatform();
+  async function shareRecoveryCode() {
+    if (!newRecoveryCode) return;
+    try {
+      const { Share } = await import('@capacitor/share');
+      await Share.share({ title: 'Offlog recovery code', text: newRecoveryCode });
+    } catch { /* dismissed, or nothing to share to: the code is still on screen */ }
   }
 
   // Back must not take the page (and the one-time code) away: while the code
@@ -205,7 +216,7 @@
       // The PIN sheet is closing through Back right now; the code's own Back
       // guard is armed once that has landed (onPinFormClosed), or the two
       // history steps cross.
-      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCodeSavedAck = false; recoveryCopied = false; armRecovery = true; }
+      if (result.recoveryCode) { newRecoveryCode = result.recoveryCode; recoveryCopied = false; armRecovery = true; }
     } catch {
       pinError = 'Could not save PIN. Please try again.';
     } finally {
@@ -632,20 +643,20 @@
   {/if}
 
 {#if newRecoveryCode}
-  <!-- Dismissable only through the acknowledgement below: no scrim click,
-       no Escape. The code is shown exactly once. -->
-  <div class="rscrim" in:fade={scrimIn} out:fade={scrimOut}></div>
-  <div class="rmodal" use:trapFocus role="dialog" aria-modal="true" aria-label="Save your recovery code" in:dialogIn out:dialogOut>
-    <h3>Save your recovery code</h3>
-    <p class="p-say">
-      If you forget your PIN, this code is the only way back into Offlog — there's no
-      account to reset it through. Save it somewhere safe now (a password manager, a note,
-      written down). It will not be shown again.
-    </p>
+  <!-- Leaves only through "I've saved it": no Escape, and Back is held by
+       guardRecovery(). The code is shown exactly once. -->
+  <div class="rpage" use:trapFocus role="dialog" aria-modal="true" aria-labelledby="rtitle" in:fade={scrimIn} out:fade={scrimOut}>
+    <span class="rkey" aria-hidden="true">{@html I.key}</span>
+    <h1 id="rtitle">Save your recovery code</h1>
+    <p class="p-say">If you forget your PIN, this code is the only way back in. There's no account to reset it.</p>
     <div class="rcode">{newRecoveryCode}</div>
-    <button class="p-tbtn wide" on:click={copyRecoveryCode}>{recoveryCopied ? 'Copied' : 'Copy'}</button>
-    <label class="ack"><input type="checkbox" bind:checked={recoveryCodeSavedAck} /> I've saved this code somewhere safe</label>
-    <button class="p-go" on:click={finishRecovery} disabled={!recoveryCodeSavedAck}>Continue</button>
+    <div class="racts" class:one={!canShare}>
+      <button class="rbtn" on:click={copyRecoveryCode}>{@html I.copy}{recoveryCopied ? 'Copied' : 'Copy'}</button>
+      {#if canShare}<button class="rbtn" on:click={shareRecoveryCode}>{@html I.share}Share</button>{/if}
+    </div>
+    <div class="rfill"></div>
+    <p class="rfine">It won't be shown again.</p>
+    <button class="p-go" on:click={finishRecovery}>I've saved it</button>
   </div>
 {/if}
 
@@ -757,16 +768,22 @@
   .issues { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 12px; padding: 10px 12px; max-height: 160px; overflow-y: auto; font-size: 13px; color: var(--muted); }
   .fname { margin: 0; background: var(--col-bg); padding: 10px 12px; border-radius: 10px; font-size: 13.5px; word-break: break-all; }
 
-  .rscrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 660; }
-  .rmodal {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 661;
-    width: min(400px, calc(100vw - 32px)); max-height: 85dvh; overflow-y: auto;
-    background: var(--bg); color: var(--text); border-radius: 22px; padding: 20px 18px;
-    display: flex; flex-direction: column; gap: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  .rpage {
+    position: fixed; inset: 0; z-index: 661; overflow-y: auto; outline: none;
+    display: flex; flex-direction: column; background: var(--bg); color: var(--text);
+    padding: calc(56px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
   }
-  .rmodal h3 { margin: 0; font-size: 18px; }
-  .rmodal .p-say { margin: 0; }
-  .rcode { font-size: 22px; font-weight: 700; letter-spacing: .08em; text-align: center; color: var(--accent); background: var(--col-bg); border-radius: 12px; padding: 14px; word-break: break-all; }
-  .ack { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; cursor: pointer; }
-  .ack input { accent-color: var(--accent); width: 20px; height: 20px; margin: 0; }
+  .rkey { width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 22px;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .rpage .rkey :global(svg.i) { width: 26px; height: 26px; }
+  .rpage h1 { margin: 0 0 10px; font-size: 26px; font-weight: 700; line-height: 1.2; }
+  .rpage .p-say { margin: 0; }
+  .rcode { margin: 28px 0 14px; padding: 26px 10px; border: 2px dashed var(--border-strong); border-radius: 16px; background: var(--surface);
+    text-align: center; font-size: 30px; font-weight: 700; letter-spacing: .12em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; user-select: all; }
+  .racts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .racts.one { grid-template-columns: 1fr; }
+  .rbtn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border: 0; border-radius: 12px; cursor: pointer;
+    font: inherit; font-size: 16px; font-weight: 600; color: var(--accent); background: var(--surface); box-shadow: var(--p-shadow); }
+  .rfill { flex: 1; min-height: 24px; }
+  .rfine { margin: 0 0 12px; text-align: center; font-size: 14px; color: var(--faint); }
 </style>

@@ -166,7 +166,9 @@ minutes unless you change it).
 - **A recovery code is shown once**, in the format `XXXXX-XXXXX`, drawn
   from an alphabet with no `0`/`O` or `1`/`I`/`L` so it can't be copied
   down ambiguously. Only its hash is kept. Save it — "Forgot PIN"
-  requires it.
+  requires it. On the phone, Copy puts it on the clipboard and Share
+  hands it to an app you pick (a password manager, notes); nothing
+  sends it anywhere on its own.
 - **If you never saved the code, the app tells you the truth**: there's
   no way in. There's no server to prove your identity to, so a
   "confirm and wipe" button would just be a lock anyone can pick.

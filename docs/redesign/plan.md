@@ -248,6 +248,7 @@ Phone only. After a research-backed UX pass (seven area reviews against Material
 | First launch: one welcome page (Start, or Connect to Offlog on my computer); no questions; Android asks about notifications at the first reminder | **Built** (owner picked option A, 3 Oct 2026) |
 | Confirms are a bottom sheet: bin icon for deleting, the question, a line of detail, then the action row (red when it destroys) and Cancel | **Built** (owner picked option B, 3 Oct 2026) |
 | Time picker: hour and minute wheels on a band, Done below; default reminder time 10:00 | **Built** (owner picked option A, 3 Oct 2026) |
+| Recovery code is its own page: key icon, the code on a dashed slip, Copy and Share (phone only), "I've saved it" as the only way out | **Built** (owner picked option A, 3 Oct 2026) |
 | One word, "Reminders", for the feature on the phone: the Settings row and page, the tile, the reminder sheet. The page shows default time and quiet hours first, a fix-it row only when Android is in the way, and "Remind me about tasks" last | **Built** (owner, 3 Oct 2026) |
 | Dotted row lines | Rejected (owner, 2 Oct 2026): rows keep solid lines |
 | Facts under the title on the task screen | Rejected (owner, 2 Oct 2026): the task screen keeps form rows |

@@ -9,6 +9,8 @@ const m = vi.hoisted(() => ({
   storedCreds: { user: 'olduser', pass: 'oldpass' },
   tauri: false,
   lockOn: false,
+  native: false,
+  share: vi.fn(),
   invokeTauri: vi.fn(),
   syncState: { status: 'idle', lastSynced: null, error: null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
 }));
@@ -18,6 +20,7 @@ const setThemeMode = vi.fn();
 const setHighContrast = vi.fn();
 const setAppLockPin = vi.fn();
 const syncNow = vi.fn();
+vi.mock('@capacitor/share', () => ({ Share: { share: (...a: unknown[]) => m.share(...a) } }));
 vi.mock('../src/config', async () => {
   const { writable: w } = await import('svelte/store');
   return {
@@ -36,7 +39,7 @@ vi.mock('../src/config', async () => {
     isTauri: () => m.tauri, invokeTauri: (...a: unknown[]) => m.invokeTauri(...a),
     isAppLockEnabled: () => m.lockOn, verifyAppLockPin: async (p: string) => p === '2580', setAppLockPin: (...a: unknown[]) => setAppLockPin(...a), clearAppLockPin: vi.fn(),
     getAppLockTimeoutMinutes: () => 5, setAppLockTimeoutMinutes: vi.fn(),
-    getAppLockHint: () => '', isNativePlatform: () => false,
+    getAppLockHint: () => '', isNativePlatform: () => m.native,
     isAppLockBiometricEnabled: () => false, setAppLockBiometricEnabled: vi.fn(),
     syncPrivacyScreen: vi.fn(),
     isHapticsEnabled: () => true, setHapticsEnabled: vi.fn(),
@@ -156,10 +159,10 @@ describe('phone settings pages', () => {
     expect(setHighContrast).toHaveBeenCalledTimes(2);
   });
 
-  it('App lock: back cannot lose the one-time recovery code; Continue is the way out', async () => {
+  it('App lock: back cannot lose the one-time recovery code; the saved button is the way out', async () => {
     setAppLockPin.mockResolvedValue({ recoveryCode: 'ABCD-EFGH-1234' });
     nav.push({ k: 'set', page: 'security' });
-    const { getByText, container, queryByText, getByRole } = render(SettingsPage, { page: 'security' });
+    const { getByText, container, queryByText } = render(SettingsPage, { page: 'security' });
     await fireEvent.click(getByText('Set a PIN'));
     const [pin, again] = container.querySelectorAll('input[type="password"]');
     await fireEvent.input(pin, { target: { value: '1234' } });
@@ -177,13 +180,30 @@ describe('phone settings pages', () => {
     expect(getByText('ABCD-EFGH-1234')).toBeTruthy();
     expect(get(nav.stack)).toHaveLength(2);
 
-    await fireEvent.click(getByRole('checkbox'));
-    await fireEvent.click(getByText('Continue'));
+    expect(queryByText('Share')).toBeNull();
+    await fireEvent.click(getByText("I've saved it"));
     await waitFor(() => expect(queryByText('ABCD-EFGH-1234')).toBeNull());
     expect(get(nav.stack)).toHaveLength(2);
     // The next back is the page's own again.
     history.back();
     await waitFor(() => expect(get(nav.stack)).toHaveLength(1));
+  });
+
+  it('App lock: on the phone, Share hands the recovery code to the share sheet', async () => {
+    m.native = true;
+    m.share.mockReset().mockResolvedValue(undefined);
+    setAppLockPin.mockResolvedValue({ recoveryCode: 'SHAR-E000-1111' });
+    try {
+      const { getByText, container, findByRole } = render(SettingsPage, { page: 'security' });
+      await fireEvent.click(getByText('Set a PIN'));
+      const [pin, again] = container.querySelectorAll('input[type="password"]');
+      await fireEvent.input(pin, { target: { value: '1234' } });
+      await fireEvent.input(again, { target: { value: '1234' } });
+      await fireEvent.click(getByText('Save PIN'));
+      await fireEvent.click(await findByRole('button', { name: 'Share' }));
+      await waitFor(() => expect(m.share).toHaveBeenCalledWith({ title: 'Offlog recovery code', text: 'SHAR-E000-1111' }));
+      expect(getByText('SHAR-E000-1111')).toBeTruthy();
+    } finally { m.native = false; }
   });
 
   describe('App lock is on', () => {
