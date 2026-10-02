@@ -360,10 +360,10 @@ come. Retention
 pruning and the backup all run hourly, each with its own "is it due" check.
 
 **Reminders past setTimeout's ~24.8-day ceiling are skipped and re-armed
-later**, by the `rescheduleAll()` that follows every store reload. A task
-manager sees writes most days, so they self-heal; the residual case is a
-reminder set more than 24.8 days out on an app that is then never touched
-again until after it is due.
+later**, by the `rescheduleAll()` that follows every store reload and the
+hourly housekeeping pass, so one comes into range without needing a write.
+The residual case is a web tab (no housekeeping timer survives a closed tab)
+that is never opened again until after the reminder is due.
 
 **Log growth is not a problem at the volume the roadmap worried about.**
 Measured at 5,240 entries: recent-logs 34 ms, a task's own history 8 ms

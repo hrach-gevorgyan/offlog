@@ -32,7 +32,10 @@ export function isBackupDue(lastRunIso: string | null, now: Date): boolean {
   if (!lastRunIso) return true;
   const last = new Date(lastRunIso).getTime();
   if (Number.isNaN(last)) return true; // corrupted value -- treat as never run, don't get stuck
-  return now.getTime() - last >= DUE_INTERVAL_MS;
+  // A stamp in the future (the clock was once set ahead) is due now, not once
+  // real time catches up with it.
+  const elapsed = now.getTime() - last;
+  return elapsed < 0 || elapsed >= DUE_INTERVAL_MS;
 }
 
 // Exported for tests -- pure, no I/O. Given filenames already known to

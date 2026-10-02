@@ -5,7 +5,7 @@
   import { scrimIn, scrimOut, centredIn, centredOut, toastIn, toastOut, viewIn, viewOut } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
-  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, getCustomFieldDefs } from './lib/db';
+  import { updateProject, subscribeUndo, getRecentlyDeleted, undoDelete, getTaskById, syncNow, syncOnResume, getCustomFieldDefs } from './lib/db';
   import type { CustomFieldDef } from './lib/types';
   import type { CustomFieldFilter } from './lib/utils';
   import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
@@ -289,6 +289,7 @@
       else CapApp.minimizeApp();
     });
     backHandler = (enabled: boolean) => { CapApp.toggleBackButtonHandler({ enabled }).catch(() => {}); };
+    CapApp.addListener('resume', syncOnResume);
   }
 
   // Phone on Home with nothing open: Back would only background the app, so

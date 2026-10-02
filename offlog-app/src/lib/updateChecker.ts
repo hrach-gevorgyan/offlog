@@ -34,6 +34,9 @@ export async function checkForUpdate(): Promise<void> {
   try {
     const { check } = await import('@tauri-apps/plugin-updater');
     const update = await check();
+    // Each Update is a Tauri resource held in the Rust resource table until
+    // closed, so the one being replaced is released here.
+    if (pendingUpdate && pendingUpdate !== update) pendingUpdate.close().catch(() => {});
     if (!update) {
       pendingUpdate = null;
       updateState.set({ phase: 'idle' });

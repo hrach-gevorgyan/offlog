@@ -139,10 +139,15 @@ export async function init() {
 
 const HOUSEKEEPING_INTERVAL_MS = 60 * 60 * 1000; // hourly; each task self-checks whether it's actually due
 
-function runHousekeeping() {
+// Exported for tests. rescheduleAll() is here because desktop reminders are
+// setTimeouts that otherwise re-arm only after a database write: one more than
+// 24.8 days out is skipped when scheduled, and a long-idle session never gets
+// another chance to arm it.
+export function runHousekeeping() {
   maybePruneOldLogs();
   maybePruneOldDeletedTasks();
   runAutoBackupIfDue().catch(() => {});
+  rescheduleAll().catch(() => {});
 }
 
 // Switching the active project needs its own trigger (reload() only runs
