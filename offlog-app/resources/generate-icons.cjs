@@ -1,17 +1,12 @@
-// C8 — regenerates every app icon asset from resources/source-logo.svg.
+// Regenerates every app icon asset from resources/source-logo.svg.
 // Not part of the build pipeline; run manually (`node
 // resources/generate-icons.cjs` from offlog-app/) whenever the logo or
 // brand color changes, then commit the resulting PNGs. Uses `sharp`,
 // which is not a dependency: run `npm i --no-save sharp` first.
 //
-// @capacitor/assets' own `generate` CLI was tried first and rejected: on
-// this Windows setup it silently fell back to re-rasterizing the Android
-// project's old, unrelated leftover vector-drawable icon
-// (drawable/ic_launcher_background.xml, drawable-v24/ic_launcher_
-// foreground.xml — now deleted, they were unreferenced by any manifest
-// resource lookup) instead of reading resources/icon-foreground.png,
-// despite matching its documented default filenames exactly. Writing the
-// PNGs directly is simpler and fully under our control.
+// Don't switch to @capacitor/assets' `generate` CLI: on Windows it can
+// rasterize a stale Android vector drawable instead of
+// resources/icon-foreground.png.
 const sharp = require('sharp');
 const path = require('path');
 
