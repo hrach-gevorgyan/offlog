@@ -192,7 +192,9 @@ export async function reorderSpaces(spaceIds: string[]): Promise<void> {
 export async function deleteSpace(id: string): Promise<void> {
   if (id === 'space:unsorted') throw new Error('The Unsorted space cannot be deleted.');
   const doc = await db.get<SpaceDoc>(id);
-  const projects = await getProjects(id);
+  // Archived projects too, or unarchiving one restores it into a space that
+  // is gone.
+  const projects = [...await getProjects(id), ...(await getArchivedProjects()).filter(p => p.space_id === id)];
   if (projects.length) {
     await db.bulkDocs(projects.map(p => ({ ...p, space_id: 'space:unsorted', updated_at: now(), source: SOURCE })));
   }
@@ -481,7 +483,9 @@ export async function removeColumn(projectId: string, colId: string): Promise<Pr
   if (doc.columns.length <= 1) throw new Error('Cannot remove the last column');
   const remaining = doc.columns.filter(c => c.id !== colId);
   const firstId = remaining[0].id;
-  const tasks = await getTasksForProject(projectId);
+  // Archived tasks too: unarchiving one later must not bring it back into a
+  // status that no longer exists.
+  const tasks = [...await getTasksForProject(projectId), ...await getArchivedTasksForProject(projectId)];
   for (const t of tasks.filter(t => t.column_id === colId)) {
     await updateTask(t._id!, { column_id: firstId });
   }

@@ -108,6 +108,8 @@
   }
 
   async function doAdd() {
+    // A second Enter (or a held one) while the first add is in flight.
+    if (saving) return;
     const t = parsed.title;
     if (!t || !projectId) return;
     saving = true;

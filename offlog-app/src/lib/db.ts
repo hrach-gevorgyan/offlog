@@ -11,7 +11,7 @@
 // set of core members that was public before the split, so './db's surface is
 // unchanged.
 export type { LogDoc } from './db/core';
-export { initIndexes, invalidateTaskCache, posBetween, computeDropPosition, getRecentLogs, getDeviceLastSeen, getLogsForTask, subscribe } from './db/core';
+export { initIndexes, invalidateTaskCache, posBetween, computeDropPosition, computeGroupDropPosition, getRecentLogs, getDeviceLastSeen, getLogsForTask, subscribe } from './db/core';
 export * from './db/entities';
 export * from './db/sync';
 export * from './db/tags';

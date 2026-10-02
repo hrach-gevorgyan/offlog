@@ -92,7 +92,12 @@ let intervalId: ReturnType<typeof setInterval> | null = null;
 
 export function startBackgroundUpdateChecks(): void {
   if (!isTauri() || intervalId) return;
-  const runIfEnabled = () => { if (getAutoUpdateCheckEnabled()) checkForUpdate(); };
+  // Never while an update is downloading or ready: a new check replaces the
+  // pending Update, and installing an undownloaded one throws.
+  const runIfEnabled = () => {
+    const phase = get(updateState).phase;
+    if (getAutoUpdateCheckEnabled() && phase !== 'downloading' && phase !== 'ready') checkForUpdate();
+  };
   runIfEnabled();
   intervalId = setInterval(runIfEnabled, CHECK_INTERVAL_MS);
 }

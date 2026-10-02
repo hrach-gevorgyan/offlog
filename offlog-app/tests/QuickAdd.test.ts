@@ -97,6 +97,18 @@ describe('QuickAdd create pipeline (A32)', () => {
     await waitFor(() => expect(q.close).toHaveBeenCalledTimes(1));
   });
 
+  it('a second Enter while the first add is still saving adds nothing', async () => {
+    let release!: () => void;
+    createTask.mockImplementationOnce(() => new Promise<void>(r => { release = r; }));
+    const q = renderQuickAdd();
+    await fireEvent.input(titleInput(q), { target: { value: 'Buy milk' } });
+    await fireEvent.keyDown(titleInput(q), { key: 'Enter' });
+    await fireEvent.keyDown(titleInput(q), { key: 'Enter' });
+    release();
+    await waitFor(() => expect(q.close).toHaveBeenCalled());
+    expect(createTask).toHaveBeenCalledTimes(1);
+  });
+
   it('parses priority/tags out of the typed title (real nlpParse)', async () => {
     const q = renderQuickAdd();
     await fireEvent.input(titleInput(q), { target: { value: 'Call plumber !high #home' } });

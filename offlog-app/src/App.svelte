@@ -23,7 +23,7 @@
   import QuickAdd from './lib/QuickAdd.svelte';
   import ConfirmDialog from './lib/ConfirmDialog.svelte';
   import NamePrompt from './lib/NamePrompt.svelte';
-  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen } from './config';
+  import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen, isSyncEnabled } from './config';
   import { closeOnBack, closeAll, openLayers } from './lib/modalStack';
   import AppLock from './lib/AppLock.svelte';
   import UpdateModal from './lib/UpdateModal.svelte';
@@ -149,7 +149,9 @@
     openSettings: () => sidebarRef?.openSettings(),
     openTimeTravel: () => sidebarRef?.openTimeTravel(),
     openTrash: () => sidebarRef?.openTrash(),
-    syncNow: () => { syncNow(); },
+    // Paused sync stays paused; an unreachable server is a quiet no-op here
+    // (the sync status shows it), not the global "Something went wrong".
+    syncNow: () => { if (isSyncEnabled()) syncNow().catch(() => {}); },
   });
   let searchDetailTask: import('./lib/types').TaskDoc | null = null;
   let searchDetailProject: import('./lib/types').ProjectDoc | null = null;

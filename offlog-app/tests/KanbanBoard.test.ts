@@ -14,6 +14,7 @@ const computeDropPosition = vi.fn().mockReturnValue(4242);
 vi.mock('../src/lib/db', () => ({
   updateTask: (...args: unknown[]) => updateTask(...args),
   computeDropPosition: (...args: unknown[]) => computeDropPosition(...args),
+  computeGroupDropPosition: (...args: unknown[]) => computeDropPosition(...args),
   createTask: vi.fn().mockResolvedValue(undefined),
   addColumn: vi.fn().mockResolvedValue(undefined),
   renameColumn: vi.fn().mockResolvedValue(undefined),

@@ -167,6 +167,27 @@ describe('project + task CRUD', () => {
     expect(moved.column_id).toBe(firstCol.id);
   });
 
+  it('removeColumn also re-homes archived tasks, so unarchiving one shows it again', async () => {
+    await seedSpace();
+    const project = await createProject('space:unsorted', 'Archive Status');
+    const [firstCol, secondCol] = project.columns;
+    const task = await createTask(project._id, 'space:unsorted', secondCol.id, 'Shelved');
+    await archiveTask(task._id!);
+    await removeColumn(project._id, secondCol.id);
+    await unarchiveTask(task._id!);
+    expect((await getTaskById(task._id!))!.column_id).toBe(firstCol.id);
+  });
+
+  it('deleteSpace also moves its archived projects to Unsorted', async () => {
+    await seedSpace();
+    const space = await createSpace('Gone', '#f97316');
+    const project = await createProject(space._id, 'Shelved project');
+    await archiveProject(project._id);
+    await deleteSpace(space._id);
+    await unarchiveProject(project._id);
+    expect((await getProjects('space:unsorted')).some(p => p._id === project._id)).toBe(true);
+  });
+
   it('updateTask persists a checklist array (B18)', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Checklist Project');
@@ -2551,5 +2572,23 @@ describe('getDeviceLastSeen() merges a device that upgraded from legacy source-s
     const result = await getDeviceLastSeen();
 
     expect(result.map(d => d.device).sort()).toEqual(['PC', 'Phone']);
+  });
+});
+
+describe('computeGroupDropPosition (pinned cards sort first)', () => {
+  it('places a dropped unpinned card among unpinned neighbours only', async () => {
+    const { computeGroupDropPosition } = await import('../src/lib/db');
+    const P = { _id: 'p', position: 5000, pinned: true };
+    const U1 = { _id: 'u1', position: 1024 };
+    const U2 = { _id: 'u2', position: 2048 };
+    // Shown as P, U1, U2; dropping U2 just before U1 (index 1).
+    const pos = computeGroupDropPosition([P, U1, U2], 1, U2);
+    expect(pos).toBeLessThan(1024);
+  });
+  it('appends after the group when dropped past its last card', async () => {
+    const { computeGroupDropPosition } = await import('../src/lib/db');
+    const P = { _id: 'p', position: 5000, pinned: true };
+    const U1 = { _id: 'u1', position: 1024 };
+    expect(computeGroupDropPosition([P, U1], 2, { _id: 'x', position: 10 })).toBeGreaterThan(1024);
   });
 });

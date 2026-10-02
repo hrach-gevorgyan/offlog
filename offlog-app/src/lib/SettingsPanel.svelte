@@ -587,17 +587,18 @@
     }
   }
   // The Rust side emits this the instant the handshake itself succeeds --
-  // see pairing.rs's own comment. Registered once, harmless to receive
-  // while no code is showing (nothing reads pcJustPaired outside the
-  // pcPairingCode-shown states below).
+  // see pairing.rs's own comment. One listener per Settings mount, removed
+  // on close: Settings remounts on every open and the app stays in the tray.
+  // Harmless to receive while no code is showing (nothing reads
+  // pcJustPaired outside the pcPairingCode-shown states below).
+  let unlistenPairing: (() => void) | null = null, settingsGone = false;
   if (isTauri) {
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      listen('pairing-succeeded', () => {
-        pcJustPaired = true;
-        clearPcPairingExpiryTimer();
-      });
-    }).catch(() => {});
+    import('@tauri-apps/api/event').then(({ listen }) => listen('pairing-succeeded', () => {
+      pcJustPaired = true;
+      clearPcPairingExpiryTimer();
+    })).then(un => { if (settingsGone) un(); else unlistenPairing = un; }).catch(() => {});
   }
+  onDestroy(() => { settingsGone = true; unlistenPairing?.(); });
   // Stop polling (and clear any stale success message on either side)
   // once the modal closes, so it doesn't keep running in the background
   // or show last time's result if it's reopened.

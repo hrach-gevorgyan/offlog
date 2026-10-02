@@ -5,7 +5,7 @@
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
   import type { ProjectDoc, TaskDoc } from './types';
-  import { createTask, updateTask, computeDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, getTaskIdsBlocked, getTagColorOverrides, subscribe } from './db';
+  import { createTask, updateTask, computeDropPosition, computeGroupDropPosition, addColumn, renameColumn, reorderColumns, removeColumn, archiveColumnTasks, archiveTask, duplicateTask, deleteTask, getTaskById, getTaskIdsWithRelatedLinks, getTaskIdsBlocked, getTagColorOverrides, subscribe } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { confirmAction } from './confirm';
   import CardDetail from './CardDetail.svelte';
@@ -47,13 +47,17 @@
   // ── Quick add ──────────────────────────────────────────────────────────────
   let quickAddCol: string | null = null;
   let quickAddTitle = '';
+  let quickAdding = false;
 
   async function quickAdd(colId: string) {
+    // A second Enter while the first add is in flight would add it twice.
+    if (quickAdding) return;
     const t = quickAddTitle.trim();
     // Stay open on empty submit rather than closing as if Cancel had been
     // clicked -- Add doing nothing is more honest than Add silently acting
     // like Cancel.
     if (!t) return;
+    quickAdding = true;
     try {
       await createTask(project._id, project.space_id, colId, t);
       await reloadTasks();
@@ -61,6 +65,8 @@
       quickAddCol = null;
     } catch {
       showError('Failed to add task. Please try again.');
+    } finally {
+      quickAdding = false;
     }
   }
 
@@ -98,7 +104,7 @@
     if (!dragTask) return;
 
     const colTasks = tasksByCol[colId] ?? [];
-    const newPos = computeDropPosition(colTasks, dragOverIndex);
+    const newPos = computeGroupDropPosition(colTasks, dragOverIndex, dragTask);
 
     try {
       await updateTask(dragTask._id!, { column_id: colId, position: newPos });
@@ -439,7 +445,7 @@
     const colId = dragOverColId;
     if (colId) {
       const colTasks = tasksByCol[colId] ?? [];
-      const newPos = computeDropPosition(colTasks, dragOverIndex);
+      const newPos = computeGroupDropPosition(colTasks, dragOverIndex, touchTask);
       try {
         await updateTask(touchTask._id!, { column_id: colId, position: newPos });
         await reloadTasks();

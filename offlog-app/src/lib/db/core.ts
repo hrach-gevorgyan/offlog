@@ -150,6 +150,18 @@ export function computeDropPosition(colTasks: { position: number }[], dragOverIn
   return posBetween(before, after);
 }
 
+// A column shows pinned cards first, so the cards beside a drop point can
+// belong to the other group, whose positions say nothing about this one's
+// order. Neighbours come only from the dragged card's own group (itself
+// excluded); the index is the drop point in the column as shown.
+export function computeGroupDropPosition<T extends { _id?: string; position: number; pinned?: boolean }>(colTasks: T[], dragOverIndex: number | null, dragged: T): number {
+  const same = (t: T) => !!t.pinned === !!dragged.pinned && t._id !== dragged._id;
+  const group = colTasks.filter(same);
+  if (dragOverIndex === null) return computeDropPosition(group, null);
+  const gi = colTasks.slice(0, dragOverIndex).filter(same).length;
+  return computeDropPosition(group, gi >= group.length ? null : gi);
+}
+
 
 // The starter columns a fresh install seeds with. Shared: entities.ts seeds
 // them, sync.ts's pristine-default check compares against them, and
