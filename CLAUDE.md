@@ -105,7 +105,7 @@ cache, `logChange`, `subscribe`), `entities.ts` (spaces, projects, tasks,
 blocked-by, attachments, undo, trash), `sync.ts`, `tags.ts`, `stats.ts`,
 `maintenance.ts`. **Always import from `./db`**, never a `db/` module
 directly. Dependencies run one way: `core` ← `entities` ← {`sync`, `tags`,
-`stats`, `maintenance`}. Projects and tasks share a module deliberately —
+`stats`} and `sync` ← `maintenance`. Projects and tasks share a module deliberately —
 `updateTask` needs a project's columns while `deleteProject` cascades into
 tasks, so splitting them would be a cycle.
 
@@ -143,7 +143,8 @@ tasks, so splitting them would be a cycle.
 component with real logic has a test file using `@testing-library/svelte`
 against mocked `db`/`store`/`config`: mock the module, render, `fireEvent`,
 assert the write's exact arguments. Purely presentational children
-(`settings/*`, `carddetail/*` except MarkdownEditor, `PinStar`) are covered
+(`settings/*`, `carddetail/*` except MarkdownEditor, `PinStar`, and the
+phone sub-pages and sheets, through the `Phone*.test.ts` suites) are covered
 through their parents; `App.svelte` and `phone/PhoneApp.svelte` have none.
 
 In order of how often they save you:
@@ -176,9 +177,9 @@ inside and import it back.
   `color-mix(in srgb, var(--token) X%, transparent)`.
 - A new semantic color gets a token in **both** blocks plus the tech.md table.
 - Brand (accent/hero) colour changes must also reach `capacitor.config.ts`'s
-  `iconColor`, `android/.../res/values/colors.xml` + `values-night/colors.xml`
-  (`colorPrimary`, `colorAccent`, `splashBg` = `--hero-base`, the
-  `colorWidget*` set) and `resources/generate-icons.cjs`'s `BRAND` (then
+  `iconColor`, `android/.../res/values/colors.xml` (`colorPrimary`,
+  `colorAccent`, `splashBg` = `--hero-base`, the `colorWidget*` set) +
+  `values-night/colors.xml` (`splashBg` and `colorWidget*` only) and `resources/generate-icons.cjs`'s `BRAND` (then
   regenerate the launcher icons). `<meta theme-color>` is not a brand colour:
   it follows the background (`--statusbar-fill`), set in `index.html`,
   `public/theme-init.js` and `theme.ts`; change all three together.
@@ -195,7 +196,8 @@ inside and import it back.
 - Every modal closes on Escape. Hover-only controls need a visible touch
   fallback.
 - Remaining `svelte-ignore` uses are load-bearing, in five categories:
-  scrim click-to-close, intentional `a11y-autofocus` on inline editors,
+  scrim click-to-close, intentional `a11y-autofocus` on inline editors and
+  dialog primary fields,
   pointer/touch drag handlers (Kanban columns and board, the sidebar resize
   handle) and event-containment wrappers (`.card-menu`), and `role="option"`
   rows whose key handling lives on the owning input.
