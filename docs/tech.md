@@ -106,7 +106,8 @@ flowchart LR
   `nav.actions` routes task opening, quick add and Settings into the shell;
   `nav.showToast` is the Undo snackbar for reversible actions. Bottom sheets
   are `phone/Sheet.svelte` (a `closeOnBack` consumer: mount behind `{#key}`),
-  at z-index 650 so `ConfirmDialog` (700) shows above them. Shared phone
+  at z-index 650. Confirms on the phone are `phone/ConfirmSheet.svelte` (a
+  `raised` sheet at 700, mounted in PhoneApp); `ConfirmDialog` is desktop-only. Shared phone
   styles are `phone/phone.css`, all scoped under `.phone-shell`/`.psheet`.
   Only the top screen is mounted; a screen keeps state it wants back (board
   status, filters, sort, search query, Agenda month) on its stack entry via
@@ -246,6 +247,7 @@ src/
       Welcome.svelte              First launch on a phone: one page, no questions; Start or Connect to a computer
       nav.ts                      Tab/stack stores, push/back, navigate(), actions, memo()
       Sheet.svelte                Bottom sheet (closeOnBack consumer: mount behind {#key})
+      ConfirmSheet.svelte         confirmAction() on the phone: question, detail, then action and Cancel rows
       phone.css                   Shared phone styles and --p-* tokens, scoped to .phone-shell/.psheet
       Home / TaskListScreen / ProjectScreen / StatusesScreen / TaskScreen /
       AgendaScreen / FocusScreen / SearchScreen / QuickAddSheet / NewProjectSheet .svelte

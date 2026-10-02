@@ -20,11 +20,14 @@
 
   export let title = '';
   export let label = '';
+  // The confirm sheet: drawn above every other sheet, and owns Escape.
+  export let raised = false;
 
-  const dispatch = createEventDispatcher<{ close: void }>();
+  // `closing` fires as the exit starts, `close` once it has played.
+  const dispatch = createEventDispatcher<{ closing: void; close: void }>();
   let open = true;
   // The parent unmounts this on `close`; the outro runs first.
-  const requestClose = closeOnBack(() => { open = false; });
+  const requestClose = closeOnBack(() => { open = false; dispatch('closing'); });
   // Safe after the sheet already went (Android back during an await): a
   // second history.back() would pop the screen underneath.
   export function close() { if (open) requestClose(); }
@@ -44,7 +47,7 @@
   }
   // A confirm raised from inside the sheet owns Escape while it is open.
   function onKey(e: KeyboardEvent) {
-    if (e.key !== 'Escape' || e.defaultPrevented || get(confirmRequest)) return;
+    if (e.key !== 'Escape' || e.defaultPrevented || (!raised && get(confirmRequest))) return;
     e.stopPropagation();
     requestClose();
   }
@@ -89,9 +92,9 @@
 
 {#if open}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="psheet-scrim" on:click={requestClose} in:fade={scrimIn} out:fade={scrimOut}></div>
+  <div class="psheet-scrim" class:raised on:click={requestClose} in:fade={scrimIn} out:fade={scrimOut}></div>
   <div
-    class="psheet" class:dragging class:kbjump={kbJump} role="dialog" aria-modal="true" aria-label={label || title || 'Sheet'} tabindex="-1" bind:this={panel}
+    class="psheet" class:raised class:dragging class:kbjump={kbJump} role="dialog" aria-modal="true" aria-label={label || title || 'Sheet'} tabindex="-1" bind:this={panel}
     style:transform={dragY || kbOff ? `translateY(${dragY + kbOff}px)` : null}
     use:trapFocus
     in:sheetIn
@@ -117,6 +120,8 @@
     padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
     transition: transform var(--dur-medium) var(--ease-standard);
   }
+  .psheet-scrim.raised { z-index: 700; }
+  .psheet.raised { z-index: 701; }
   .psheet.dragging, .psheet.kbjump { transition: none; }
   /* The handle and title stay put while a tall sheet scrolls. */
   .grab-zone { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 10px 0 12px; touch-action: none; cursor: grab; }

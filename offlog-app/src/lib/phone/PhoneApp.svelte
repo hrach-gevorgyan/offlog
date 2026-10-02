@@ -18,6 +18,8 @@
   import AgendaScreen from './AgendaScreen.svelte';
   import FocusScreen from './FocusScreen.svelte';
   import QuickAddSheet from './QuickAddSheet.svelte';
+  import ConfirmSheet from './ConfirmSheet.svelte';
+  import { confirmRequest } from '../confirm';
   import { agendaDay } from './agenda/month';
   import SettingsScreen from './settings/SettingsScreen.svelte';
   import TaskScreen from './TaskScreen.svelte';
@@ -153,6 +155,11 @@
       <QuickAddSheet projectId={qa.projectId} columnId={qa.columnId} dueDate={qa.dueDate} on:close={() => (qa = null)} />
     {/key}
   {/if}
+
+  <!-- Keyed on the request object, so every confirm gets a fresh sheet. -->
+  {#each $confirmRequest ? [$confirmRequest] : [] as r (r)}
+    <ConfirmSheet req={r} />
+  {/each}
 
   <!-- A keyed each, not {#if}{#key}: a key block inside an {#if} drops its
        outro when the {#if} closes, so the snackbar would vanish on timeout. -->

@@ -757,7 +757,8 @@
   <div class="loading"><span class="spinner"></span>Loading…</div>
 {/if}
 
-<ConfirmDialog />
+<!-- Phones answer confirms with phone/ConfirmSheet, mounted in PhoneApp. -->
+{#if !$isPhone}<ConfirmDialog />{/if}
 {#if showNamePrompt}
   {#if $isPhone}
     <!-- Shown once per install, so a single fixed key satisfies the per-open rule. -->
