@@ -136,6 +136,17 @@ describe('TagManager rename', () => {
     expect(renameTag).not.toHaveBeenCalled();
   });
 
+  it('Escape in the rename field leaves the manager open', async () => {
+    const { container } = await open();
+    const back = vi.spyOn(history, 'back');
+
+    const input = await startRename(container, 'urgent', 'abandoned');
+    await fireEvent.keyDown(input, { key: 'Escape' });
+
+    expect(back).not.toHaveBeenCalled();
+    back.mockRestore();
+  });
+
   it('surfaces an error when the rename fails', async () => {
     renameTag.mockRejectedValueOnce(new Error('bulkDocs failed'));
     const { container } = await open();

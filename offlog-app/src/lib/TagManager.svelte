@@ -131,7 +131,7 @@
               class="name-input"
               autofocus
               bind:value={editingName}
-              on:keydown={(e) => { if (e.key === 'Enter') saveEdit(tag); if (e.key === 'Escape') editingTag = null; }}
+              on:keydown={(e) => { if (e.key === 'Enter') saveEdit(tag); if (e.key === 'Escape') { e.preventDefault(); editingTag = null; } }}
               on:blur={() => saveEdit(tag)}
             />
           {:else}
