@@ -141,6 +141,47 @@ describe('phone Statuses screen', () => {
     expect(updateTask).toHaveBeenCalledWith('task:3', { archived: false });
   });
 
+  it('a failed Undo of a reorder surfaces an error', async () => {
+    const r = setup();
+    await menu(r, 'Doing');
+    await fireEvent.click(r.getByText('Move down'));
+    await waitFor(() => expect(get(toast)).not.toBeNull());
+    reorderColumns.mockRejectedValue(new Error('boom'));
+    await get(toast)!.undo!();
+    expect(reorderColumns).toHaveBeenLastCalledWith('project:p', cols);
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
+  });
+
+  it('a failed Undo of Archive all surfaces an error', async () => {
+    const r = setup();
+    await menu(r, 'Doing');
+    await fireEvent.click(r.getByText('Archive all its tasks'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived 2 tasks'));
+    updateTask.mockRejectedValue(new Error('boom'));
+    await get(toast)!.undo!();
+    expect(updateTask).toHaveBeenCalledWith('task:2', { archived: false });
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
+  });
+
+  it('a failed reorder surfaces an error and offers no done-ness toast', async () => {
+    reorderColumns.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await menu(r, 'Doing');
+    await fireEvent.click(r.getByText('Move down'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not reorder the statuses. Please try again.'));
+    expect(get(toast)).toBeNull();
+    expect(names(r.container)).toEqual(['To do', 'Doing', 'Done']);
+  });
+
+  it('a failed archive surfaces an error and offers no Undo', async () => {
+    archiveColumnTasks.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await menu(r, 'Doing');
+    await fireEvent.click(r.getByText('Archive all its tasks'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not archive these tasks. Please try again.'));
+    expect(get(toast)).toBeNull();
+  });
+
   it('Remove status asks first, with the desktop warning for the last status', async () => {
     const r = setup();
     await menu(r, 'Done');

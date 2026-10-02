@@ -515,6 +515,16 @@ describe('phone Project screen — project menu', () => {
     expect(get(projects)[0].pinned).toBe(false);
   });
 
+  it('a failed pin surfaces an error, puts pinned back and offers no Undo', async () => {
+    updateProject.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMore(r);
+    await fireEvent.click(r.getByText('Pin project'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this project. Please try again.'));
+    expect(get(projects)[0].pinned).toBeFalsy();
+    expect(get(toast)).toBeNull();
+  });
+
   it('has no Opens as row; Board or List lives on the meta line', async () => {
     const r = setup();
     await openMore(r);
@@ -531,6 +541,29 @@ describe('phone Project screen — project menu', () => {
     expect(reloadTasks).toHaveBeenCalled();
   });
 
+  it('a failed Restore surfaces an error and keeps the task listed', async () => {
+    getArchivedTasksForProject.mockResolvedValue([task('task:old', { archived: true })]);
+    unarchiveTask.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMore(r);
+    await fireEvent.click(r.getByText('Archived tasks'));
+    await fireEvent.click(await r.findByText('Restore'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not restore this task. Please try again.'));
+    expect(r.getByText('old')).toBeTruthy();
+  });
+
+  it('a failed Archive project surfaces an error and stays on the screen', async () => {
+    push({ k: 'project', id: 'project:p' });
+    archiveProject.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMore(r);
+    await fireEvent.click(r.getByText('Archive project'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not archive this project. Please try again.'));
+    expect(get(stack).map(s => s.k)).toEqual(['home', 'project']);
+    expect(get(activeProjectId)).toBe('project:p');
+    expect(get(toast)).toBeNull();
+  });
+
   it('Archive project acts at once, leaves the screen and offers Undo', async () => {
     push({ k: 'project', id: 'project:p' });
     const r = setup();
@@ -541,6 +574,18 @@ describe('phone Project screen — project menu', () => {
     expect(get(activeProjectId)).toBe('');
     await get(toast)!.undo!();
     expect(unarchiveProject).toHaveBeenCalledWith('project:p');
+  });
+
+  it('a failed Undo of Archive project surfaces an error', async () => {
+    push({ k: 'project', id: 'project:p' });
+    unarchiveProject.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMore(r);
+    await fireEvent.click(r.getByText('Archive project'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Project archived'));
+    await get(toast)!.undo!();
+    expect(unarchiveProject).toHaveBeenCalledWith('project:p');
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
   });
 
   it('Delete project asks first, then deletes and leaves the screen; a failure surfaces an error', async () => {

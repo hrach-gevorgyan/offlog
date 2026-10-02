@@ -76,7 +76,7 @@ describe('phone Home', () => {
   it('a failed load surfaces an error', async () => {
     getDashboardData.mockRejectedValue(new Error('boom'));
     render(Home);
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not load Home. Reopen the app to try again.'));
   });
 
   it('an empty day: plain words instead of zeros, no empty bar, quiet focus count, no 0 badges', async () => {

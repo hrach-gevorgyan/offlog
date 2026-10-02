@@ -226,6 +226,27 @@ describe('phone Sync page', () => {
     expect(pairWithHost).toHaveBeenCalledWith(host, '123456');
   });
 
+  it('Android: a failed pairing says why, and after three tries says what to check', async () => {
+    (window as { Capacitor?: unknown }).Capacitor = { getPlatform: () => 'android' };
+    const host = { uuid: 'h1', name: 'Office PC', address: '10.0.0.2', port: 1 };
+    pairWithHost.mockRejectedValueOnce(new Error('Wrong code.')).mockRejectedValueOnce('x').mockRejectedValueOnce('x');
+    const { getByText, getByLabelText, queryByText } = render(SettingsPage, { page: 'sync' });
+    await fireEvent.click(getByText('Connect a device'));
+    await fireEvent.click(getByText('Find my computer'));
+    (discoveredHosts as Writable<unknown[]>).set([host]);
+    await waitFor(() => getByText('Connect'));
+    await fireEvent.click(getByText('Connect'));
+    await fireEvent.input(getByLabelText('Pairing code'), { target: { value: '000000' } });
+    await fireEvent.click(getByText('Connect'));
+    await waitFor(() => getByText('Wrong code.'));
+    await fireEvent.click(getByText('Connect'));
+    await waitFor(() => getByText('Failed to pair.'));
+    await fireEvent.click(getByText('Connect'));
+    await waitFor(() => getByText('Failed to pair. Double-check the code on the PC screen, or generate a new one there.'));
+    expect(pairWithHost).toHaveBeenCalledTimes(3);
+    expect(queryByText(/Connected to/)).toBeNull();
+  });
+
   it('a web build has no Connect row, only a short hint', () => {
     const { queryByText, getByText } = render(SettingsPage, { page: 'sync' });
     expect(queryByText('Connect a device')).toBeNull();

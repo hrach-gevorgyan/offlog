@@ -69,6 +69,17 @@ describe('phone Recycle bin', () => {
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to restore task. Please try again.'));
   });
 
+  it('a restore of a task removed for good says so, without "try again", and reloads the list', async () => {
+    undoDelete.mockRejectedValueOnce({ status: 404, name: 'not_found' });
+    const { getByText, getAllByText } = render(SettingsPage, { page: 'trash' });
+    await waitFor(() => getByText('Buy paint'));
+    expect(getAllDeletedTasks).toHaveBeenCalledTimes(1);
+    await fireEvent.click(getAllByText('Restore')[0]);
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('That task no longer exists — it was removed permanently.'));
+    expect(showError).not.toHaveBeenCalledWith('Failed to restore task. Please try again.');
+    await waitFor(() => expect(getAllDeletedTasks).toHaveBeenCalledTimes(2));
+  });
+
   it('Delete for good asks first and only deletes on yes', async () => {
     const { getByText, getByLabelText } = render(SettingsPage, { page: 'trash' });
     await waitFor(() => getByText('Buy paint'));
@@ -115,6 +126,17 @@ describe('phone Recycle bin', () => {
     await fireEvent.click(getByText('Restore all'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Restored 1 of 2. 1 could not be restored.'));
     expect(undoDelete.mock.calls).toEqual([['task:a'], ['task:b']]);
+  });
+
+  it('Restore all surfaces showError when the reload after restoring fails', async () => {
+    confirmAction.mockResolvedValue(true);
+    reloadTasks.mockRejectedValueOnce(new Error('x'));
+    const { getByText } = render(SettingsPage, { page: 'trash' });
+    await waitFor(() => getByText('Buy paint'));
+    await fireEvent.click(getByText('Restore all'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to restore some tasks. Please try again.'));
+    expect(undoDelete.mock.calls).toEqual([['task:a'], ['task:b']]);
+    expect(get(toast)).toBeNull();
   });
 
   it('shows the empty state', async () => {

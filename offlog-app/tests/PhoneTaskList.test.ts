@@ -99,7 +99,7 @@ describe('phone task lists', () => {
     expect(updateTask.mock.calls[0][1]).toMatchObject({ due_date: day(0), reminder_at: expect.any(String) });
     updateTask.mockRejectedValueOnce(new Error('x'));
     await fireEvent.click(getByRole('button', { name: 'All to today' }));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not move every task. Please try again.'));
   });
 
   it('Late: a move that fails part-way offers Undo for the moved ones; a failed Undo surfaces an error', async () => {
@@ -154,6 +154,6 @@ describe('phone task lists', () => {
     const { findByText } = render(TaskListScreen, { kind: 'today' });
     const body = (await findByText('Now')).closest('button')!;
     await fireEvent.contextMenu(body);
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not load this task. Please try again.'));
   });
 });

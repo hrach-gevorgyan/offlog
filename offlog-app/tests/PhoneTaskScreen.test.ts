@@ -58,6 +58,7 @@ vi.mock('../src/lib/notifications', async () => {
 
 import TaskScreen from '../src/lib/phone/TaskScreen.svelte';
 import { projects, showError } from '../src/lib/store';
+import { unlinkRelatedTask, unlinkBlockedBy, deleteAttachment } from '../src/lib/db';
 import { switchTab, push, stack, toast } from '../src/lib/phone/nav';
 import { dateFromToday } from '../src/lib/carddetail/helpers';
 import type { Writable } from 'svelte/store';
@@ -158,6 +159,16 @@ describe('phone TaskScreen', () => {
     expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { column_id: 'col:doing', due_date: '2026-10-01', reminder_at: null, checklist: undefined });
   });
 
+  it('a failed Undo of finishing surfaces an error', async () => {
+    const { getByLabelText } = await open(task({ due_date: '2026-10-01' }));
+    await fireEvent.click(getByLabelText('Finish'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Done: Order tiles'));
+    db.updateTask.mockRejectedValue(new Error('boom'));
+    await get(toast)!.undo!();
+    expect(db.updateTask).toHaveBeenLastCalledWith('task:t', { column_id: 'col:doing', due_date: '2026-10-01', reminder_at: null, checklist: undefined });
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
+  });
+
   it('un-finishing a done task sends it back to the first status', async () => {
     const { getByLabelText } = await open(task({ column_id: 'col:done' }));
     await fireEvent.click(getByLabelText('Mark not done'));
@@ -246,6 +257,19 @@ describe('phone TaskScreen', () => {
     await waitFor(() => expect(get(stack).map(s => s.k)).toEqual(['home']));
     await get(toast)!.undo!();
     expect(db.unarchiveTask).toHaveBeenCalledWith('task:t');
+  });
+
+  it('a failed archive Undo surfaces an error', async () => {
+    push({ k: 'task', id: 'task:t' });
+    db.archiveTask.mockResolvedValue(undefined);
+    db.unarchiveTask.mockRejectedValue(new Error('boom'));
+    const { getByLabelText } = await open();
+    await fireEvent.click(getByLabelText('More'));
+    await fireEvent.click(sheetRow('Archive'));
+    await waitFor(() => expect(get(toast)?.text).toBe('Archived'));
+    await get(toast)!.undo!();
+    expect(db.unarchiveTask).toHaveBeenCalledWith('task:t');
+    expect(showError).toHaveBeenCalledWith('Could not undo. Please try again.');
   });
 
   it('a failed archive surfaces an error', async () => {
@@ -522,6 +546,137 @@ describe('phone TaskScreen', () => {
     expect((document.querySelector('.psheet input') as HTMLInputElement).placeholder).toBe('Find or add a tag');
   });
 
+  describe('a failed write names what was not saved', () => {
+    it('title', async () => {
+      const { getByLabelText } = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      const ttl = getByLabelText('Title') as HTMLTextAreaElement;
+      await fireEvent.focus(ttl);
+      await fireEvent.input(ttl, { target: { value: 'Order floor tiles' } });
+      await fireEvent.blur(ttl);
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the title. Please try again.'));
+    });
+
+    it('due date, rolled back on the row', async () => {
+      const { getByText } = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      await fireEvent.click(getByText('Due'));
+      await fireEvent.click(sheetRow('Tomorrow'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the due date. Please try again.'));
+      await waitFor(() => expect(getByText('Due').closest('button')!.querySelector('.p-v')!.textContent!.trim()).toBe('—'));
+    });
+
+    it('priority', async () => {
+      const { getByText } = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      await fireEvent.click(getByText('Priority'));
+      await fireEvent.click(sheetRow('High'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the priority. Please try again.'));
+    });
+
+    it('steps', async () => {
+      const { getByLabelText, queryByLabelText } = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      const add = getByLabelText('Add a step') as HTMLInputElement;
+      await fireEvent.input(add, { target: { value: 'Call shop' } });
+      await fireEvent.keyDown(add, { key: 'Enter' });
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the steps. Please try again.'));
+      await waitFor(() => expect(queryByLabelText('Remove step: Call shop')).toBeNull());
+    });
+
+    it('note', async () => {
+      const r = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      const cm = await waitFor(() => { const el = document.querySelector('.cm-editor'); if (!el) throw new Error('no editor'); return el as HTMLElement; });
+      EditorView.findFromDOM(cm)!.dispatch({ changes: { from: 0, insert: 'Grey, matte' } });
+      r.unmount();
+      expect(db.updateTask).toHaveBeenCalledWith('task:t', { body: 'Grey, matte' });
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the note. Please try again.'));
+    });
+
+    it('reminder', async () => {
+      const { getByText } = await open(task({ reminder_at: new Date(2030, 0, 2, 9, 0).toISOString() }));
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      await fireEvent.click(getByText('Reminder'));
+      await fireEvent.click(sheetRow('No reminder'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the reminder. Please try again.'));
+    });
+
+    it('repeat', async () => {
+      const { getByLabelText } = await open(task({ due_date: '2026-10-01' }));
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      await fireEvent.click(getByLabelText('Add repeat'));
+      await fireEvent.click(sheetRow('Weekly'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the repeat. Please try again.'));
+    });
+
+    it('any other change (pin), with no Undo offered', async () => {
+      const { getByLabelText } = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      await fireEvent.click(getByLabelText('Pin'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save this change. Please try again.'));
+      expect(get(toast)).toBeNull();
+    });
+  });
+
+  describe('links and attachments surface failed writes', () => {
+    const other = task({ _id: 'task:o', title: 'Get quotes' });
+
+    it('a failed related link', async () => {
+      db.searchTasksForLinking.mockResolvedValue([other]);
+      db.linkRelatedTask.mockRejectedValue(new Error('boom'));
+      const { getByLabelText } = await open();
+      await fireEvent.click(getByLabelText('Add related'));
+      await fireEvent.input(document.querySelector('.psheet input')!, { target: { value: 'quo' } });
+      await waitFor(() => sheetRow('Get quotes'));
+      await fireEvent.click(sheetRow('Get quotes'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not link a related task. Please try again.'));
+    });
+
+    it('a failed blocker link that is not circular', async () => {
+      db.searchTasksForLinking.mockResolvedValue([other]);
+      db.linkBlockedBy.mockRejectedValue(new Error('boom'));
+      const { getByLabelText } = await open();
+      await fireEvent.click(getByLabelText('Add blocked by'));
+      await fireEvent.input(document.querySelector('.psheet input')!, { target: { value: 'quo' } });
+      await waitFor(() => sheetRow('Get quotes'));
+      await fireEvent.click(sheetRow('Get quotes'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not link "Get quotes" as a blocker. Please try again.'));
+    });
+
+    it('a failed related unlink', async () => {
+      db.getRelatedTasks.mockResolvedValue([other]);
+      vi.mocked(unlinkRelatedTask).mockRejectedValueOnce(new Error('boom'));
+      const { findByText, getByLabelText } = await open();
+      await fireEvent.click(await findByText('Related'));
+      await fireEvent.click(getByLabelText('Unlink Get quotes'));
+      expect(unlinkRelatedTask).toHaveBeenCalledWith('task:t', 'task:o');
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove a related-task link. Please try again.'));
+    });
+
+    it('a failed dependency removal', async () => {
+      db.getBlockingTasks.mockResolvedValue([other]);
+      vi.mocked(unlinkBlockedBy).mockRejectedValueOnce(new Error('boom'));
+      const { findByText, getByLabelText } = await open();
+      await fireEvent.click(await findByText('Blocked by'));
+      await fireEvent.click(getByLabelText('Remove dependency on Get quotes'));
+      expect(unlinkBlockedBy).toHaveBeenCalledWith('task:t', 'task:o');
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove a dependency. Please try again.'));
+    });
+
+    it('a failed attachment removal, after the confirming second tap', async () => {
+      vi.mocked(deleteAttachment).mockRejectedValueOnce(new Error('boom'));
+      const { getByText, getByLabelText } = await open(task({ attachments: [{ key: 'k1', filename: 'quote.pdf', size: 100 }] } as Partial<TaskDoc>));
+      await fireEvent.click(getByText('Attachments'));
+      await fireEvent.click(getByLabelText('Remove quote.pdf'));
+      expect(deleteAttachment).not.toHaveBeenCalled();
+      await fireEvent.click(getByLabelText('Remove quote.pdf'));
+      expect(deleteAttachment).toHaveBeenCalledWith('task:t', 'k1');
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove the attachment. Please try again.'));
+      expect(getByLabelText('Open quote.pdf')).toBeTruthy();
+    });
+  });
+
   describe('Fields', () => {
     const defs = [
       { _id: 'f1', id: 'f1', name: 'Vendor', type: 'select', options: ['Acme', 'Bolt'] },
@@ -553,6 +708,15 @@ describe('phone TaskScreen', () => {
       expect(input.placeholder).toBe('—');
       await fireEvent.change(input, { target: { value: '120' } });
       expect(db.updateTask).toHaveBeenCalledWith('task:t', { custom_values: { f2: 120 } });
+    });
+
+    it('a failed field write surfaces an error', async () => {
+      db.getCustomFieldDefs.mockResolvedValue(defs);
+      const { findByLabelText } = await open();
+      db.updateTask.mockRejectedValue(new Error('boom'));
+      await fireEvent.click(await findByLabelText('Add field'));
+      await fireEvent.change(document.querySelector('.psheet input.val') as HTMLInputElement, { target: { value: '120' } });
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save the field. Please try again.'));
     });
   });
 });

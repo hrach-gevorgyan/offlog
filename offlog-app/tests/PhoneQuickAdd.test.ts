@@ -437,7 +437,7 @@ describe('phone Quick add', () => {
       const { getByLabelText } = render(QuickAddSheet);
       await type(getByLabelText, 'Squats @fitness');
       await fireEvent.click(getByLabelText('Add'));
-      await waitFor(() => expect(showError).toHaveBeenCalled());
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to create task. Please try again.'));
       expect(localStorage.getItem('offlog_quickadd_last_project')).toBeNull();
     });
   });

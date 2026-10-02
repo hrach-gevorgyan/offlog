@@ -67,6 +67,16 @@ describe('phone Archived projects', () => {
     expect(reloadTasks).toHaveBeenCalled();
   });
 
+  it('a failed Restore surfaces showError and offers no toast', async () => {
+    unarchiveProject.mockRejectedValueOnce(new Error('x'));
+    const { getByText, getByLabelText } = render(SettingsPage, { page: 'archived' });
+    await waitFor(() => getByText('Old Sprint'));
+    await fireEvent.click(getByLabelText('Restore Old Sprint'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to restore project. Please try again.'));
+    expect(get(toast)).toBeNull();
+    expect(getByText('Old Sprint')).toBeTruthy();
+  });
+
   it('Delete asks first; a failure surfaces showError', async () => {
     const { getByText, getByLabelText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));

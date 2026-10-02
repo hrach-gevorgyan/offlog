@@ -7,6 +7,8 @@ import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 const m = vi.hoisted(() => ({
   storedUrl: 'http://old.local:5984/offlog',
   storedCreds: { user: 'olduser', pass: 'oldpass' },
+  tauri: false,
+  invokeTauri: vi.fn(),
   syncState: { status: 'idle', lastSynced: null, error: null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
 }));
 const setSyncUrl = vi.fn((u: string) => { m.storedUrl = u; });
@@ -30,7 +32,7 @@ vi.mock('../src/config', async () => {
     getQuietHours: () => ({ enabled: false, start: '22:00', end: '07:00' }), setQuietHours: vi.fn(),
     getNotificationsEnabled: () => true, setNotificationsEnabled: vi.fn(),
     getAutoUpdateCheckEnabled: () => true, setAutoUpdateCheckEnabled: vi.fn(),
-    isTauri: () => false, invokeTauri: vi.fn(),
+    isTauri: () => m.tauri, invokeTauri: (...a: unknown[]) => m.invokeTauri(...a),
     isAppLockEnabled: () => false, setAppLockPin: (...a: unknown[]) => setAppLockPin(...a), clearAppLockPin: vi.fn(),
     getAppLockTimeoutMinutes: () => 5, setAppLockTimeoutMinutes: vi.fn(),
     getAppLockHint: () => '', isNativePlatform: () => false,
@@ -113,6 +115,8 @@ beforeEach(async () => {
   m.storedUrl = 'http://old.local:5984/offlog';
   m.storedCreds = { user: 'olduser', pass: 'oldpass' };
   m.syncState.conflictCount = 0;
+  m.tauri = false;
+  m.invokeTauri.mockResolvedValue(undefined);
   setSyncCredentials.mockResolvedValue(undefined);
   getConflicts.mockResolvedValue([]);
   resolveConflict.mockResolvedValue(undefined);
@@ -330,5 +334,45 @@ describe('phone settings pages', () => {
     await fireEvent.click(getByText('Save & restart sync'));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save sync credentials securely. Please try again.'));
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('App lock: a failed PIN save says so in the form and does not turn the lock on', async () => {
+    setAppLockPin.mockRejectedValueOnce(new Error('keystore'));
+    const { getByText, container } = render(SettingsPage, { page: 'security' });
+    await fireEvent.click(getByText('Set a PIN'));
+    const [pin, again] = container.querySelectorAll('input[type="password"]');
+    await fireEvent.input(pin, { target: { value: '1234' } });
+    await fireEvent.input(again, { target: { value: '1234' } });
+    await fireEvent.click(getByText('Save PIN'));
+    await waitFor(() => expect(getByText('Could not save PIN. Please try again.')).toBeTruthy());
+    expect(setAppLockPin).toHaveBeenCalledWith('1234', '');
+    expect(getByText('Save PIN')).toBeTruthy();
+  });
+
+  it('Backup: a failed back up surfaces showError', async () => {
+    vi.mocked(db.default.allDocs).mockRejectedValueOnce(new Error('x'));
+    const { getByRole } = render(SettingsPage, { page: 'data' });
+    await fireEvent.click(getByRole('button', { name: 'Back up' }));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to back up. Please try again.'));
+  });
+
+  it('Backup: a failed CSV export surfaces showError', async () => {
+    vi.mocked(db.exportTasksCSV).mockRejectedValueOnce(new Error('x'));
+    const { getByRole } = render(SettingsPage, { page: 'data' });
+    await fireEvent.click(getByRole('button', { name: 'Export CSV' }));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to export CSV. Please try again.'));
+  });
+
+  it('Advanced (debug desktop build): a failed test-data reset surfaces showError and wipes no server', async () => {
+    m.tauri = true;
+    m.invokeTauri.mockImplementation(async (cmd: string) => (cmd === 'is_debug_build' ? true : undefined));
+    confirmAction.mockResolvedValueOnce(true);
+    vi.mocked(db.wipeAndReseed).mockRejectedValueOnce(new Error('x'));
+    const { findByText } = render(SettingsPage, { page: 'advanced' });
+    await fireEvent.click(await findByText('Reset test data'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to reset test data.'));
+    expect(db.wipeAndReseed).toHaveBeenCalled();
+    expect(m.invokeTauri).not.toHaveBeenCalledWith('reset_sync_data');
+    expect((await findByText('Reset test data')).closest('button')!.disabled).toBe(false);
   });
 });

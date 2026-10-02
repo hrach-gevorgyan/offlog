@@ -90,7 +90,7 @@ describe('phone NewProjectSheet', () => {
     const r = setup();
     await fireEvent.input(r.getByLabelText('Project name'), { target: { value: 'Garden' } });
     await fireEvent.click(r.getByText('Create'));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not create the project. Please try again.'));
     expect(r.created).not.toHaveBeenCalled();
     expect(r.getByRole('dialog')).toBeTruthy();
   });

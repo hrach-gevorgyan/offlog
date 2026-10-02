@@ -66,7 +66,7 @@ describe('phone TaskCard', () => {
     updateTask.mockRejectedValue(new Error('boom'));
     const { getByLabelText } = render(TaskCard, { task: task() });
     await fireEvent.click(getByLabelText('Finish: Order tiles'));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this task. Please try again.'));
   });
 
   it('tapping the body opens the task', async () => {
@@ -102,7 +102,7 @@ describe('phone TaskCard', () => {
     updateTask.mockRejectedValue(new Error('boom'));
     const { getByLabelText } = render(TaskCard, { task: task() });
     await fireEvent.click(getByLabelText('Finish: Order tiles'));
-    await waitFor(() => expect(showError).toHaveBeenCalled());
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update this task. Please try again.'));
     expect(get(toast)).toBeNull();
     expect(getByLabelText('Finish: Order tiles').classList.contains('on')).toBe(false);
   });
