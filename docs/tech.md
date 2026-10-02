@@ -342,7 +342,15 @@ explicit `limit`.
 autocomplete) each need *every* task, which no index can narrow.
 `getAllTasksRaw()` caches that full scan in memory. Invalidation happens
 centrally in `subscribe()` and again inside every task-writing function, so
-a read can't beat the change listener.
+a read can't beat the change listener. Each invalidation bumps a generation number; a reload or
+catch-up only marks the cache current if none landed while it was reading.
+
+**Change feed.** `subscribe()` shares one live PouchDB feed across every
+subscriber (opened with the first, closed with the last). The cache is
+invalidated on each change, but subscribers are called once per 50ms quiet
+period, so a sync burst of hundreds of docs costs each screen one reload.
+If the feed dies it restarts after 2s and notifies everyone, since changes
+during the gap were never delivered.
 
 **Crash recovery.** `App.svelte` wraps startup in try/catch and shows a
 retry screen rather than hanging. `main.ts` listens for `unhandledrejection`

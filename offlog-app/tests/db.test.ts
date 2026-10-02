@@ -22,6 +22,7 @@ import db, {
   addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK,
   skipRecurrence,
   getDeviceLastSeen,
+  subscribe,
 } from '../src/lib/db';
 import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
@@ -870,6 +871,37 @@ describe('task cache sequence bookkeeping', () => {
     // Either the rows already carried the write, or the recorded sequence
     // still lets the next catch-up replay it. Both are fine; losing it is not.
     invalidateTaskCache();
+    expect(await getAllTags()).toContain('after');
+  });
+
+  it('a write invalidated while a catch-up is reading keeps the cache stale', async () => {
+    const project = await createProject('space:unsorted', 'Cache gen');
+    const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Tagged', { tags: ['before'] });
+    await getAllTags(); // warm
+
+    // The catch-up's read resolves first; the write and its invalidation land
+    // before the catch-up records itself as current.
+    const realChanges = db.changes.bind(db);
+    let injected = false;
+    const spy = vi.spyOn(db, 'changes').mockImplementation((async (opts?: any) => {
+      const res = await realChanges(opts);
+      if (!injected) {
+        injected = true;
+        const doc = await db.get<any>(task._id!);
+        await db.put({ ...doc, tags: ['after'] });
+        invalidateTaskCache();
+      }
+      return res;
+    }) as any);
+
+    try {
+      invalidateTaskCache();
+      expect(await getAllTags()).toContain('before');
+      expect(injected).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+    // No further invalidation: the one made during the read must still count.
     expect(await getAllTags()).toContain('after');
   });
 });
@@ -2623,5 +2655,36 @@ describe('bulk writes report partial failure', () => {
     const spy = vi.spyOn(db, 'bulkDocs').mockResolvedValueOnce([{ id: t._id!, error: true, status: 409, name: 'conflict', message: 'x' }] as never);
     await expect(emptyTrash()).rejects.toThrow('1 of 1 changes could not be saved');
     spy.mockRestore();
+  });
+});
+
+describe('subscribe() shares one change feed', () => {
+  beforeEach(seedSpace);
+
+  it('opens one live feed for many subscribers and reports a burst once each', async () => {
+    const project = await createProject('space:unsorted', 'Feed');
+    const live = vi.spyOn(db, 'changes');
+    const a = vi.fn(), b = vi.fn();
+    const offA = subscribe(a), offB = subscribe(b);
+    try {
+      expect(live.mock.calls.filter(c => (c[0] as any)?.live).length).toBe(1);
+      for (let i = 0; i < 5; i++) await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Burst ' + i);
+      await vi.waitFor(() => expect(a).toHaveBeenCalled());
+      await new Promise(r => setTimeout(r, 120));
+      expect(a.mock.calls.length).toBeLessThan(5);
+      expect(b.mock.calls.length).toBe(a.mock.calls.length);
+    } finally {
+      offA(); offB();
+      live.mockRestore();
+    }
+  });
+
+  it('stops notifying after the last unsubscribe', async () => {
+    const project = await createProject('space:unsorted', 'Feed off');
+    const a = vi.fn();
+    subscribe(a)();
+    await createTask(project._id, 'space:unsorted', project.columns[0].id, 'Quiet');
+    await new Promise(r => setTimeout(r, 120));
+    expect(a).not.toHaveBeenCalled();
   });
 });

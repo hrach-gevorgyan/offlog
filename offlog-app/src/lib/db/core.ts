@@ -63,6 +63,10 @@ export function initIndexes(): Promise<void> {
 let _taskCache: TaskDoc[] | null = null;
 let _taskCacheSeq: string | number | null = null;
 let _taskCacheStale = false;
+// Bumped by every invalidation. A reload or catch-up only clears the stale
+// flag if no invalidation landed while it was awaiting, or a write made
+// during the read would be marked as seen without being in the cache.
+let _taskCacheGen = 0;
 
 // Past this many pending changes, catching up one doc at a time costs more
 // than re-reading the table -- a first sync or a wipeAndReseed lands here.
@@ -78,16 +82,18 @@ async function fullReload(): Promise<TaskDoc[]> {
   // something forces another full reload, which normally never happens.
   // Taken first, the worst case is replaying a change the rows already
   // have, which just re-sets the same doc.
+  const gen = _taskCacheGen;
   const info = await db.info();
   const r = await db.allDocs<TaskDoc>({ startkey: 'task:', endkey: 'task:￰', include_docs: true });
   _taskCache = r.rows.map(r => r.doc!);
   _taskCacheSeq = info.update_seq;
-  _taskCacheStale = false;
+  _taskCacheStale = gen !== _taskCacheGen;
   return _taskCache;
 }
 
 // Returns false when it declines, so the caller falls back to a full reload.
 async function catchUp(cache: TaskDoc[]): Promise<boolean> {
+  const gen = _taskCacheGen;
   const res = await db.changes<TaskDoc>({ since: _taskCacheSeq ?? 0, include_docs: true, limit: CATCHUP_LIMIT + 1 });
   if (res.results.length > CATCHUP_LIMIT) return false;
 
@@ -102,7 +108,7 @@ async function catchUp(cache: TaskDoc[]): Promise<boolean> {
   }
   _taskCache = [...byId.values()];
   _taskCacheSeq = res.last_seq;
-  _taskCacheStale = false;
+  _taskCacheStale = gen !== _taskCacheGen;
   return true;
 }
 
@@ -120,7 +126,7 @@ export async function getAllTasksRaw(): Promise<TaskDoc[]> {
 // on is unchanged -- the next getAllTasksRaw() reflects every write made
 // before it -- but the catch-up above makes that cost proportional to what
 // changed, not to how much data exists.
-export function invalidateTaskCache(): void { _taskCacheStale = true; }
+export function invalidateTaskCache(): void { _taskCacheStale = true; _taskCacheGen++; }
 
 // bulkDocs never throws for a document it could not write; it reports it in
 // the result array. User actions go through this so a partial failure
@@ -318,37 +324,57 @@ export function queueTaskWrite<T>(id: string, fn: () => Promise<T>): Promise<T> 
 // across weeks of sleep cycles.
 //
 // The rebuilt feed uses `since: 'now'`, so changes that landed during the gap
-// are never delivered -- hence callback() fires on every successful restart to
+// are never delivered -- hence every subscriber is notified on each restart to
 // force a full reload rather than resuming from a hole.
 const CHANGE_FEED_RETRY_MS = 2000;
 
+// One PouchDB feed is shared by every subscriber, and a burst of changes
+// (a sync landing hundreds of docs) reaches each subscriber once per quiet
+// period instead of once per doc. The cache is still invalidated per change.
+const CHANGE_COALESCE_MS = 50;
+const _subscribers = new Set<() => void>();
+let _feed: PouchDB.Core.Changes<{}> | null = null;
+let _feedRetry: ReturnType<typeof setTimeout> | undefined;
+let _flushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function flushSubscribers() {
+  _flushTimer = undefined;
+  for (const fn of [..._subscribers]) {
+    try { fn(); } catch (e) { console.warn('change subscriber failed', e); }
+  }
+}
+
+function scheduleFlush() {
+  if (_flushTimer === undefined) _flushTimer = setTimeout(flushSubscribers, CHANGE_COALESCE_MS);
+}
+
+function attachFeed(isRestart: boolean) {
+  if (!_subscribers.size) return;
+  _feed = db.changes({ since: 'now', live: true })
+    .on('change', () => {
+      invalidateTaskCache();
+      scheduleFlush();
+    })
+    .on('error', (err: unknown) => {
+      console.warn('change feed died, restarting', err);
+      try { _feed?.cancel(); } catch { /* already dead */ }
+      _feed = null;
+      _feedRetry = setTimeout(() => { _feedRetry = undefined; attachFeed(true); }, CHANGE_FEED_RETRY_MS);
+    });
+  // Anything that changed while the feed was down was never delivered.
+  if (isRestart) { invalidateTaskCache(); scheduleFlush(); }
+}
+
 export function subscribe(callback: () => void): () => void {
-  let cancelled = false;
-  let handler: PouchDB.Core.Changes<{}> | null = null;
-  let retryTimer: ReturnType<typeof setTimeout> | undefined;
-
-  const attach = (isRestart: boolean) => {
-    if (cancelled) return;
-    handler = db.changes({ since: 'now', live: true })
-      .on('change', () => {
-        invalidateTaskCache();
-        callback();
-      })
-      .on('error', (err: unknown) => {
-        console.warn('change feed died, restarting', err);
-        try { handler?.cancel(); } catch { /* already dead */ }
-        handler = null;
-        retryTimer = setTimeout(() => attach(true), CHANGE_FEED_RETRY_MS);
-      });
-    // Anything that changed while the feed was down was never delivered.
-    if (isRestart) { invalidateTaskCache(); callback(); }
-  };
-
-  attach(false);
-
+  // A wrapper, so the same function subscribed twice is two subscriptions.
+  const entry = () => callback();
+  _subscribers.add(entry);
+  if (!_feed && _feedRetry === undefined) attachFeed(false);
   return () => {
-    cancelled = true;
-    clearTimeout(retryTimer);
-    try { handler?.cancel(); } catch { /* already cancelled */ }
+    if (!_subscribers.delete(entry) || _subscribers.size) return;
+    clearTimeout(_feedRetry); _feedRetry = undefined;
+    clearTimeout(_flushTimer); _flushTimer = undefined;
+    try { _feed?.cancel(); } catch { /* already cancelled */ }
+    _feed = null;
   };
 }
