@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
   name: 'Pixel',
   askName: false,
   hub: 'Office PC' as string | null,
+  uuid: 'h1' as string | null,
   syncState: { status: 'idle', lastSynced: null as string | null, error: null as string | null, lastErrorAt: null, conflictCount: 0, listeners: new Set<() => void>() },
 }));
 const setSyncEnabled = vi.fn((v: boolean) => { m.enabled = v; });
@@ -20,6 +21,7 @@ vi.mock('../src/config', async () => {
     setSyncEnabled: (...a: unknown[]) => setSyncEnabled(...(a as [boolean])),
     getDeviceName: () => m.name,
     getPairedHostName: () => m.hub,
+    getPairedHostUuid: () => m.uuid,
     shouldAskDeviceNameForSync: () => m.askName,
     markDeviceNameAskedForSync: () => { m.askName = false; },
     setDeviceName: (...a: unknown[]) => setDeviceName(...(a as [string])),
@@ -91,6 +93,7 @@ beforeEach(async () => {
   m.name = 'Pixel';
   m.askName = false;
   m.hub = 'Office PC';
+  m.uuid = 'h1';
   Object.assign(m.syncState, { status: 'idle', lastSynced: null, error: null, conflictCount: 0 });
   syncNow.mockResolvedValue(undefined);
   startSync.mockResolvedValue(undefined);
@@ -322,6 +325,16 @@ describe('phone Sync page', () => {
     expect(queryByText(/Connected to/)).toBeNull();
   });
 
+  it('a typed-in server shows as Your server, with its own advice when unreachable', () => {
+    m.uuid = null;
+    Object.assign(m.syncState, { status: 'error', error: 'Cannot reach sync server' });
+    const { getByRole, getByText, container } = render(SettingsPage, { page: 'sync' });
+    expect(getByRole('heading', { name: "Can't reach your server" })).toBeTruthy();
+    expect(getByText(/Check that the server is on and its address is right/)).toBeTruthy();
+    expect(container.querySelector('.card')!.textContent).toContain('Your server');
+    expect(getByText('In use')).toBeTruthy();
+  });
+
   it('a web build has no Connect row', () => {
     const { queryByText } = render(SettingsPage, { page: 'sync' });
     expect(queryByText('Connect a device')).toBeNull();
@@ -333,6 +346,6 @@ describe('phone Sync page', () => {
     expect(getByRole('heading', { name: "Can't find Office PC" })).toBeTruthy();
     expect(getByText(/“Old PC” is on this network/)).toBeTruthy();
     await fireEvent.click(getByText('Use my own server'));
-    expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'advanced' });
+    expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'server' });
   });
 });

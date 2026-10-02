@@ -8,6 +8,8 @@ const m = vi.hoisted(() => ({
   storedUrl: 'http://old.local:5984/offlog',
   storedCreds: { user: 'olduser', pass: 'oldpass' },
   tauri: false,
+  uuid: null as string | null,
+  hubName: null as string | null,
   lockOn: false,
   native: false,
   share: vi.fn(),
@@ -16,6 +18,8 @@ const m = vi.hoisted(() => ({
 }));
 const setSyncUrl = vi.fn((u: string) => { m.storedUrl = u; });
 const setSyncCredentials = vi.fn();
+const setSyncEnabled = vi.fn();
+const clearPairedHost = vi.fn();
 const setThemeMode = vi.fn();
 const setHighContrast = vi.fn();
 const setAppLockPin = vi.fn();
@@ -29,7 +33,8 @@ vi.mock('../src/config', async () => {
     getSyncCredentials: async () => m.storedCreds,
     setSyncCredentials: (...a: unknown[]) => setSyncCredentials(...a),
     getDeviceName: () => 'Pixel', setDeviceName: vi.fn(),
-    isSyncEnabled: () => true, setSyncEnabled: vi.fn(),
+    isSyncEnabled: () => true, setSyncEnabled: (...a: unknown[]) => setSyncEnabled(...a),
+    getPairedHostUuid: () => m.uuid, getPairedHostName: () => m.hubName, clearPairedHost: () => clearPairedHost(),
     getDefaultReminderTime: () => '09:00', setDefaultReminderTime: vi.fn(),
     getWeekStartsMonday: () => true, setWeekStartsMonday: vi.fn(),
     getTimeFormat24h: () => true, setTimeFormat24h: vi.fn(),
@@ -122,6 +127,8 @@ beforeEach(async () => {
   m.storedCreds = { user: 'olduser', pass: 'oldpass' };
   m.syncState.conflictCount = 0;
   m.tauri = false;
+  m.uuid = null;
+  m.hubName = null;
   m.invokeTauri.mockResolvedValue(undefined);
   setSyncCredentials.mockResolvedValue(undefined);
   getConflicts.mockResolvedValue([]);
@@ -341,7 +348,7 @@ describe('phone settings pages', () => {
     async function openAndRun() {
       nav.push({ k: 'set', page: 'advanced' });
       const r = render(SettingsPage, { page: 'advanced' });
-      await fireEvent.click(r.getByText('Run maintenance'));
+      await fireEvent.click(r.getByText('Check and repair'));
       await fireEvent.click(r.getByText('Run'));
       await waitFor(() => r.getByText('Found 2 problems'));
       return r;
@@ -380,50 +387,127 @@ describe('phone settings pages', () => {
         throw new Error('x');
       });
       const { getByText } = render(SettingsPage, { page: 'advanced' });
-      await fireEvent.click(getByText('Run maintenance'));
+      await fireEvent.click(getByText('Check and repair'));
       await fireEvent.click(getByText('Run'));
       await waitFor(() => expect(showError).toHaveBeenCalledWith('Maintenance failed partway through. Please try again.'));
       expect(getByText('Failed — please try again')).toBeTruthy();
     });
   });
 
-  it('Advanced: Save & restart sync writes the changed server, unwinds history, then reloads', async () => {
-    nav.push({ k: 'settings' });
-    nav.push({ k: 'set', page: 'advanced' });
-    let depthAtReload = -1;
-    reload.mockImplementationOnce(() => { depthAtReload = get(nav.stack).length; });
-    const { container, getByText } = render(SettingsPage, { page: 'advanced' });
-    const url = container.querySelector('input[placeholder^="http://192.168"]') as HTMLInputElement;
-    await waitFor(() => expect(url.value).toBe('http://old.local:5984/offlog'));
-    await fireEvent.input(url, { target: { value: 'http://new.local:5984/offlog' } });
-    await fireEvent.click(getByText('Save & restart sync'));
-    await waitFor(() => expect(reload).toHaveBeenCalled());
-    expect(depthAtReload).toBe(1);
-    expect(setSyncUrl).toHaveBeenCalledWith('http://new.local:5984/offlog');
-    expect(setSyncCredentials).toHaveBeenCalledWith('olduser', 'oldpass');
+  describe('Own server', () => {
+    const field = (c: HTMLElement, label: string) => [...c.querySelectorAll('label.fld')].find(l => l.textContent!.startsWith(label))!.querySelector('input') as HTMLInputElement;
+
+    it('in use: shows it filled in; Save writes the change, forgets the computer, unwinds history, then reloads', async () => {
+      nav.push({ k: 'settings' });
+      nav.push({ k: 'set', page: 'server' });
+      let depthAtReload = -1;
+      reload.mockImplementationOnce(() => { depthAtReload = get(nav.stack).length; });
+      const { container, getByText } = render(SettingsPage, { page: 'server' });
+      await waitFor(() => expect(field(container, 'Username').value).toBe('olduser'));
+      expect(field(container, 'Address').value).toBe('http://old.local:5984/offlog');
+      expect(getByText('Stop using it')).toBeTruthy();
+      await fireEvent.input(field(container, 'Address'), { target: { value: ' http://new.local:5984/offlog ' } });
+      await fireEvent.click(getByText('Save and connect'));
+      await waitFor(() => expect(reload).toHaveBeenCalled());
+      expect(depthAtReload).toBe(1);
+      expect(setSyncUrl).toHaveBeenCalledWith('http://new.local:5984/offlog');
+      expect(setSyncCredentials).toHaveBeenCalledWith('olduser', 'oldpass');
+      expect(clearPairedHost).toHaveBeenCalled();
+      expect(setSyncEnabled).toHaveBeenCalledWith(true);
+    });
+
+    it('nothing changed goes back without writing or reloading', async () => {
+      const spy = vi.spyOn(nav, 'back');
+      const { getByText, container } = render(SettingsPage, { page: 'server' });
+      await waitFor(() => expect(field(container, 'Username').value).toBe('olduser'));
+      await fireEvent.click(getByText('Save and connect'));
+      await waitFor(() => expect(spy).toHaveBeenCalled());
+      expect(setSyncUrl).not.toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('an address without http:// is refused with a reason', async () => {
+      const { getByText, container, getByRole } = render(SettingsPage, { page: 'server' });
+      await fireEvent.input(field(container, 'Address'), { target: { value: 'my-server:5984' } });
+      await fireEvent.click(getByText('Save and connect'));
+      expect(getByRole('alert').textContent).toBe('Enter the full address, starting with http:// or https://');
+      expect(setSyncUrl).not.toHaveBeenCalled();
+    });
+
+    it('a failed credential write surfaces showError and does not reload', async () => {
+      setSyncCredentials.mockRejectedValueOnce(new Error('keystore'));
+      const { container, getByText } = render(SettingsPage, { page: 'server' });
+      await waitFor(() => expect(field(container, 'Username').value).toBe('olduser'));
+      await fireEvent.input(field(container, 'Address'), { target: { value: 'http://new.local:5984/offlog' } });
+      await fireEvent.click(getByText('Save and connect'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save sync credentials securely. Please try again.'));
+      expect(setSyncUrl).not.toHaveBeenCalled();
+      expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('paired with a computer: not in use, empty, and says what saving would replace', () => {
+      m.uuid = 'u1'; m.hubName = 'Office PC';
+      const { container, getByText, queryByText } = render(SettingsPage, { page: 'server' });
+      expect(getByText('Not in use')).toBeTruthy();
+      expect(getByText('This phone syncs with Office PC. Saving a server here replaces it.')).toBeTruthy();
+      expect(field(container, 'Address').value).toBe('');
+      expect(queryByText('Stop using it')).toBeNull();
+    });
+
+    it('Stop using it asks first, then clears the server and reloads', async () => {
+      confirmAction.mockResolvedValueOnce(false);
+      const { getByText } = render(SettingsPage, { page: 'server' });
+      await fireEvent.click(getByText('Stop using it'));
+      await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
+      expect(setSyncUrl).not.toHaveBeenCalled();
+      confirmAction.mockResolvedValueOnce(true);
+      await fireEvent.click(getByText('Stop using it'));
+      await waitFor(() => expect(reload).toHaveBeenCalled());
+      expect(setSyncCredentials).toHaveBeenCalledWith('', '');
+      expect(setSyncUrl).toHaveBeenCalledWith('');
+    });
   });
 
-  it('Advanced: nothing changed goes back without writing or reloading', async () => {
-    const spy = vi.spyOn(nav, 'back');
-    const { getByText, container } = render(SettingsPage, { page: 'advanced' });
-    const url = container.querySelector('input[placeholder^="http://192.168"]') as HTMLInputElement;
-    await waitFor(() => expect(url.value).toBe('http://old.local:5984/offlog'));
-    await fireEvent.click(getByText('Save & restart sync'));
-    await waitFor(() => expect(spy).toHaveBeenCalled());
-    expect(setSyncUrl).not.toHaveBeenCalled();
-    expect(reload).not.toHaveBeenCalled();
-    spy.mockRestore();
-  });
+  describe('Advanced', () => {
+    it('Own server and Privacy open their pages', async () => {
+      nav.push({ k: 'set', page: 'advanced' });
+      const { getByText } = render(SettingsPage, { page: 'advanced' });
+      expect(getByText('In use')).toBeTruthy();
+      await fireEvent.click(getByText('Own server'));
+      expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'server' });
+      await fireEvent.click(getByText('Privacy'));
+      expect(get(nav.stack).at(-1)).toMatchObject({ k: 'set', page: 'privacy' });
+    });
 
-  it('Advanced: a failed credential write surfaces showError and does not reload', async () => {
-    setSyncCredentials.mockRejectedValueOnce(new Error('keystore'));
-    const { container, getByText } = render(SettingsPage, { page: 'advanced' });
-    const url = container.querySelector('input[placeholder^="http://192.168"]') as HTMLInputElement;
-    await waitFor(() => expect(url.value).toBe('http://old.local:5984/offlog'));
-    await fireEvent.input(url, { target: { value: 'http://new.local:5984/offlog' } });
-    await fireEvent.click(getByText('Save & restart sync'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not save sync credentials securely. Please try again.'));
-    expect(reload).not.toHaveBeenCalled();
+    it('a paired phone shows Own server as not used, naming the computer', () => {
+      m.uuid = 'u1'; m.hubName = 'Office PC';
+      const { getByText } = render(SettingsPage, { page: 'advanced' });
+      expect(getByText('Not used · syncing with Office PC')).toBeTruthy();
+    });
+
+    it('Storage used counts every task and attachment', async () => {
+      vi.mocked(db.getStorageBreakdown).mockResolvedValueOnce({ activeTasks: 1200, archivedTasks: 30, deletedTasks: 10, logEntries: 9, attachmentCount: 1, attachmentBytes: 5 } as never);
+      const { findByText } = render(SettingsPage, { page: 'advanced' });
+      expect(await findByText(/^1.?240 tasks · 1 attachment$/)).toBeTruthy();
+    });
+
+    it('Source code opens the repository in a new tab', async () => {
+      const open = vi.fn();
+      vi.stubGlobal('open', open);
+      const { getByText } = render(SettingsPage, { page: 'advanced' });
+      await fireEvent.click(getByText('Source code'));
+      await waitFor(() => expect(open).toHaveBeenCalledWith('https://github.com/hrach-gevorgyan/offlog', '_blank', 'noopener'));
+    });
+
+    it('Privacy lists the short version and links the full policy', async () => {
+      const open = vi.fn();
+      vi.stubGlobal('open', open);
+      const { getByText } = render(SettingsPage, { page: 'privacy' });
+      expect(getByText('Nothing is collected')).toBeTruthy();
+      await fireEvent.click(getByText('Full privacy policy'));
+      await waitFor(() => expect(open).toHaveBeenCalledWith('https://github.com/hrach-gevorgyan/offlog/blob/main/docs/privacy.md', '_blank', 'noopener'));
+    });
   });
 
   it('App lock: a failed PIN save says so in the form and does not turn the lock on', async () => {
@@ -476,16 +560,4 @@ describe('phone settings pages', () => {
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to export CSV. Please try again.'));
   });
 
-  it('Advanced (debug desktop build): a failed test-data reset surfaces showError and wipes no server', async () => {
-    m.tauri = true;
-    m.invokeTauri.mockImplementation(async (cmd: string) => (cmd === 'is_debug_build' ? true : undefined));
-    confirmAction.mockResolvedValueOnce(true);
-    vi.mocked(db.wipeAndReseed).mockRejectedValueOnce(new Error('x'));
-    const { findByText } = render(SettingsPage, { page: 'advanced' });
-    await fireEvent.click(await findByText('Reset test data'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to reset test data.'));
-    expect(db.wipeAndReseed).toHaveBeenCalled();
-    expect(m.invokeTauri).not.toHaveBeenCalledWith('reset_sync_data');
-    expect((await findByText('Reset test data')).closest('button')!.disabled).toBe(false);
-  });
 });

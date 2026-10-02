@@ -679,6 +679,14 @@ export function setPairedHostName(name: string) {
   localStorage.setItem(PAIRED_HOST_NAME_KEY, name);
 }
 
+// A server typed in by hand replaces the paired computer. Forgetting the
+// computer's uuid also stops discovery.ts from "re-resolving" the address
+// back to that computer when the typed server is unreachable.
+export function clearPairedHost() {
+  localStorage.removeItem(PAIRED_HOST_UUID_KEY);
+  localStorage.removeItem(PAIRED_HOST_NAME_KEY);
+}
+
 export function setPairedHostUuid(uuid: string) {
   localStorage.setItem(PAIRED_HOST_UUID_KEY, uuid);
 }

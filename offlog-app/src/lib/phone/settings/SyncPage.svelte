@@ -9,7 +9,7 @@
   } from '../../db';
   import { showError } from '../../store';
   import { confirmAction } from '../../confirm';
-  import { getSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, shouldAskDeviceNameForSync, markDeviceNameAskedForSync, isTauri as isTauriCheck, invokeTauri, otherHostsDetected, getPairedHostName } from '../../../config';
+  import { getSyncUrl, getDeviceName, setDeviceName, isSyncEnabled, setSyncEnabled, shouldAskDeviceNameForSync, markDeviceNameAskedForSync, isTauri as isTauriCheck, invokeTauri, otherHostsDetected, getPairedHostName, getPairedHostUuid } from '../../../config';
   import { fmtLastSynced, timeAgo } from '../../utils';
   import { discoveredHosts, isScanning, scanForHosts, stopScan, pairWithHost, staleHostAlert, type DiscoveredHost } from '../../discovery';
   import TopBar from '../TopBar.svelte';
@@ -42,8 +42,10 @@
   // Every device syncs through the paired computer, so the card shows this
   // device's one link: here ↔ that computer.
   const pairedName = getPairedHostName();
-  const hubName = pairedName || 'Your computer';
-  const hubInText = pairedName || 'your computer';
+  // A server typed in under Own server has no paired computer behind it.
+  const ownServer = !!syncUrl && !getPairedHostUuid();
+  const hubName = ownServer ? 'Your server' : pairedName || 'Your computer';
+  const hubInText = ownServer ? 'your server' : pairedName || 'your computer';
   const here = isAndroid ? 'phone' : 'device';
   type Card = { tone: 'ok' | 'idle' | 'bad'; title: string; text: string; act?: 'sync' | 'retry' | 'on' | 'connect' };
   $: card = ((): Card => {
@@ -53,7 +55,7 @@
     if (syncStatus === 'syncing') return { tone: 'ok', title: 'Syncing…', text: lastSynced ? `Synced ${fmtLastSynced(lastSynced)}` : 'First sync', act: 'sync' };
     if (syncStatus === 'offline') return { tone: 'idle', title: 'Offline', text: `Sync picks up again when this ${here} is back on your network.`, act: 'sync' };
     if (syncStatus === 'error') return /cannot reach/i.test(syncError ?? '')
-      ? { tone: 'bad', title: `Can't reach ${hubInText}`, text: 'Open Offlog on the computer and make sure both are on the same Wi-Fi. Your changes are safe here until then.', act: 'retry' }
+      ? { tone: 'bad', title: `Can't reach ${hubInText}`, text: ownServer ? 'Check that the server is on and its address is right. Your changes are safe here until then.' : 'Open Offlog on the computer and make sure both are on the same Wi-Fi. Your changes are safe here until then.', act: 'retry' }
       : { tone: 'bad', title: 'Sync stopped', text: `${syncError || 'Something went wrong.'} Your changes are safe here.`, act: 'retry' };
     if (lastSynced) return { tone: 'ok', title: 'Up to date', text: `Synced ${fmtLastSynced(lastSynced)}`, act: 'sync' };
     return { tone: 'ok', title: 'Waiting for the first sync', text: 'This can take a minute.', act: 'sync' };
@@ -285,7 +287,7 @@
   <div class="pair" aria-hidden="true">
     <span class="end me"><span class="circ">{@html isAndroid ? I.phone : I.monitor}</span><b>{deviceName}</b><small>This {here}</small></span>
     <span class="link"><i>{@html card.tone === 'ok' ? I.check : card.tone === 'bad' ? '!' : ''}</i></span>
-    <span class="end"><span class="circ">{@html I.monitor}</span><b>{hubName}</b><small>Runs sync</small></span>
+    <span class="end"><span class="circ">{@html ownServer ? I.server : I.monitor}</span><b>{hubName}</b><small>Runs sync</small></span>
   </div>
   <h2 id="sync-title">{card.title}</h2>
   <p role="status">{card.text}</p>
@@ -353,9 +355,9 @@
 
 <div class="p-sec" role="heading" aria-level="2">Advanced</div>
 <div class="p-group">
-  <button class="p-row" on:click={() => push({ k: 'set', page: 'advanced' })}>
+  <button class="p-row" on:click={() => push({ k: 'set', page: 'server' })}>
     <span class="ri">{@html I.server}</span>
-    <span class="p-k"><span>Use my own server</span><span class="p-sub">Instead of the computer</span></span>
+    <span class="p-k"><span>Use my own server</span><span class="p-sub">{ownServer ? 'In use' : 'Instead of the computer'}</span></span>
     <span class="chev">{@html I.chev}</span>
   </button>
 </div>

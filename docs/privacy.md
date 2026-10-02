@@ -18,6 +18,9 @@ crash reporting, no advertising, no data sent to the developer or to
 any third party, ever. Everything you enter into the app stays on your
 own device(s).
 
+The phone app shows a short version of this page under Settings →
+Advanced → Privacy; the two are kept in step.
+
 This page covers *what data exists and where*. For how that data is
 protected — the pairing handshake, App Lock, where the sync password is
 stored, and the limits of each — see

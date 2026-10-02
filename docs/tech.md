@@ -260,6 +260,9 @@ src/
       presets.ts                  Due and reminder shortcut lists, shared by quick add and the task screen
       settings/LockPage.svelte    App lock page: PIN forms in sheets, lock time as a picker row
       settings/SyncPage.svelte    Sync page: a this-device ↔ computer status card, other devices, this device, Advanced
+      settings/ServerPage.svelte  Own server: a typed-in CouchDB-compatible server; saving forgets the paired computer
+      settings/PrivacyPage.svelte The short version of docs/privacy.md (change both together)
+      openLink.ts                 Opens a web page in the phone's browser (AppLauncher on Android)
       settings/RemindersPage.svelte  Reminders page: default time, quiet hours, a two-step set-up card while Android is in the way
       settings/TimeSheet.svelte   The app's own time picker: hour and minute wheels (plus AM/PM in 12 h mode)
       Wheel.svelte                One snap-scrolling wheel; arrow keys step it, tapping an item centres it
@@ -953,7 +956,10 @@ rejected requests — never the code, proof, nonce or response.
 The phone keeps the computer's uuid (to find it again after an address
 change) and its announced name (`offlog_paired_host_name`, display only:
 the Sync page's phone ↔ computer card). Phones paired before the name was
-kept show "Your computer" until they pair again.
+kept show "Your computer" until they pair again. Saving a server under
+Own server clears both (`clearPairedHost()`): with the uuid left behind,
+the stale-host re-resolve would point sync back at the computer whenever
+the typed server was unreachable.
 
 **Sync URL resolution is three-way**, which is easy to get wrong:
 

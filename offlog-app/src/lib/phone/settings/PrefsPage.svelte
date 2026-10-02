@@ -7,21 +7,18 @@
   import { onMount, onDestroy } from 'svelte';
   import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
   import DataSettings from '../../settings/DataSettings.svelte';
-  import AdvancedSettings from '../../settings/AdvancedSettings.svelte';
   import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from '../../settings/helpers';
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt, getAutoBackupUsage } from '../../autoBackup';
   import db, {
-    syncState, syncNow, importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
+    importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     runMaintenanceSteps, type IntegrityIssue, type MaintStepResult,
-    wipeAndReseed, type ImportedDoc,
+    type ImportedDoc,
   } from '../../db';
-  import { confirmAction } from '../../confirm';
   import { projects as projectsStore, showError } from '../../store';
-  import { getSyncUrl, setSyncUrl, getSyncCredentials, setSyncCredentials, isSyncEnabled, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, getAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, isTauri as isTauriCheck, invokeTauri, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../../../config';
+  import { getSyncUrl, getPairedHostUuid, getPairedHostName, getDefaultReminderTime, setDefaultReminderTime, getWeekStartsMonday, setWeekStartsMonday, getTimeFormat24h, setTimeFormat24h, getQuietHours, setQuietHours, getNotificationsEnabled, setNotificationsEnabled, isAppLockEnabled, setAppLockPin, clearAppLockPin, getAppLockTimeoutMinutes, setAppLockTimeoutMinutes, getAppLockHint, isNativePlatform, isAppLockBiometricEnabled, setAppLockBiometricEnabled, syncPrivacyScreen, isHapticsEnabled, setHapticsEnabled, isPrivacyScreenEnabled, setPrivacyScreenEnabled } from '../../../config';
   import { fmtLastSynced, localDateStr } from '../../utils';
   import { checkExactAlarmPermission, rescheduleAll } from '../../notifications';
-  import { updateState, showUpdateModal, checkForUpdate } from '../../updateChecker';
   import { getThemeMode, setThemeMode, getHighContrast, setHighContrast, getReduceMotion, setReduceMotion, type ThemeMode } from '../../theme';
   import { trapFocus } from '../../focusTrap';
   import { fade } from 'svelte/transition';
@@ -32,9 +29,10 @@
   import Pick from '../task/Pick.svelte';
   import LockPage from './LockPage.svelte';
   import RemindersPage from './RemindersPage.svelte';
-  import { back, stack } from '../nav';
+  import { push, stack } from '../nav';
+  import { openLink, REPO_URL } from '../openLink';
   import { get } from 'svelte/store';
-  import { closeOnBack, closeAll } from '../../modalStack';
+  import { closeOnBack } from '../../modalStack';
   import { rowTaps } from './rowTaps';
 
   export let page: string;
@@ -241,23 +239,8 @@
   }
   function onLockTimeoutChange(v: string) { setAppLockTimeoutMinutes(Number(v)); }
 
-  // ── Sync server (Advanced) ──
-  let syncUrl = getSyncUrl();
-  let credentialUser = '';
-  let credentialPass = '';
-  onMount(async () => {
-    try {
-      ({ user: credentialUser, pass: credentialPass } = await getSyncCredentials());
-    } catch { /* left empty */ }
-  });
-  const syncEnabled = isSyncEnabled();
-
-  const isTauri = isTauriCheck();
-  let isTauriDebug = false;
-  if (isTauri) invokeTauri<boolean>('is_debug_build').then((v) => { isTauriDebug = v; }).catch(() => {});
-
-  // AdvancedSettings only ever sets this to true; the sheet clears it once
-  // its outro has played.
+  // Set by the Check and repair row; the sheet clears it once its outro has
+  // played.
   let showMaintenanceModal = false;
   // Sheet calls closeOnBack() at setup, so each real open needs a fresh {#key}.
   let maintSession = 0, importSession = 0;
@@ -266,33 +249,6 @@
   let wasMaint = false, wasImport = false;
   $: { if (showMaintenanceModal && !wasMaint) maintSession++; wasMaint = showMaintenanceModal; }
   $: { if (importPreview && !wasImport) importSession++; wasImport = !!importPreview; }
-
-  // Debug builds only (the Rust command refuses otherwise). wipeAndReseed()
-  // clears the local PouchDB and the sync pushes its tombstones out before
-  // the server itself is wiped, so a paired phone is cleared too.
-  let resetBusy = false;
-  async function resetPcTestData() {
-    const ok = await confirmAction('Delete all tasks/projects on this PC and restart the app?', { confirmLabel: 'Delete everything', danger: true });
-    if (!ok) return;
-    resetBusy = true;
-    try {
-      await wipeAndReseed();
-      await syncNow().catch(() => {});
-      await invokeTauri('reset_sync_data');
-    } catch {
-      showError('Failed to reset test data.');
-      resetBusy = false;
-    }
-  }
-
-  let syncError = syncState.error;
-  let lastErrorAt = syncState.lastErrorAt;
-  function onSyncChange() {
-    syncError = syncState.error;
-    lastErrorAt = syncState.lastErrorAt;
-  }
-  syncState.listeners.add(onSyncChange);
-  onDestroy(() => syncState.listeners.delete(onSyncChange));
 
   // ── Backup & storage ──
   let breakdown: StorageBreakdown | null = null;
@@ -323,7 +279,7 @@
     }
   }
   onMount(() => {
-    if (page !== 'data') return;
+    if (page !== 'data' && page !== 'advanced') return;
     loadBreakdown();
     loadStorage();
     return subscribeDb(() => loadBreakdown());
@@ -409,27 +365,10 @@
   }
 
   // ── Advanced ──
-  let updateChecking = false;
-  let updateStatus = '';
   let appVersion = '';
-  if (isTauri) {
-    import('@tauri-apps/api/app').then(({ getVersion }) => getVersion()).then(v => { appVersion = v; }).catch(() => {});
-  } else if (isNativePlatform()) {
+  if (isNativePlatform()) {
     import('@capacitor/app').then(({ App }) => App.getInfo()).then(info => { appVersion = info.version; }).catch(() => {});
   }
-  async function onCheckForUpdate() {
-    if ($updateState.phase === 'ready') { showUpdateModal.set(true); return; }
-    updateChecking = true;
-    updateStatus = '';
-    await checkForUpdate();
-    updateChecking = false;
-    if ($updateState.phase === 'available') showUpdateModal.set(true);
-    else if ($updateState.phase === 'idle') updateStatus = "You're on the latest version.";
-    else if ($updateState.phase === 'error') updateStatus = $updateState.error ?? 'Could not check for updates right now.';
-  }
-  let autoUpdateCheckEnabled = getAutoUpdateCheckEnabled();
-  function toggleAutoUpdateCheck() { autoUpdateCheckEnabled = !autoUpdateCheckEnabled; setAutoUpdateCheckEnabled(autoUpdateCheckEnabled); }
-
   let maintRunning = false;
   let maintSteps: MaintStep[] = freshMaintSteps();
   let maintRemainingIssues: IntegrityIssue[] = [];
@@ -478,39 +417,17 @@
   // Closing the sheet mid-question skips the repair (it cannot be undone).
   function onMaintClosed() { showMaintenanceModal = false; decideRepair(false); }
   onDestroy(() => decideRepair(false));
+  // A paired computer's address is kept in the same place; only a typed-in
+  // one counts as the phone's own server.
+  const ownServer = !!getSyncUrl() && !getPairedHostUuid();
+  const pairedName = getPairedHostName();
+  $: allTasks = breakdown ? breakdown.activeTasks + breakdown.archivedTasks + breakdown.deletedTasks : 0;
+
   const MAINT_LABEL: Record<string, string> = {
     check: 'Check data', repair: 'Repair', history: 'Clear old history',
     trash: 'Clear old Recycle items', compact: 'Free up space',
   };
 
-  // Only the server address and credentials are buffered; everything else
-  // applies on tap. Reload only when they actually changed — with App Lock on,
-  // a reload re-runs the cold-start lock.
-  async function saveServer() {
-    let storedUser = '', storedPass = '';
-    try {
-      ({ user: storedUser, pass: storedPass } = await getSyncCredentials());
-    } catch { /* treated as nothing stored */ }
-    const changed = syncUrl !== getSyncUrl() || credentialUser !== storedUser || credentialPass !== storedPass;
-    if (!changed) { back(); return; }
-    setSyncUrl(syncUrl);
-    try {
-      await setSyncCredentials(credentialUser, credentialPass);
-    } catch {
-      showError('Could not save sync credentials securely. Please try again.');
-      return;
-    }
-    // Unwind the pushed screens first, or the first back after the reload
-    // lands on a stale history entry and does nothing.
-    if (closeAll()) {
-      await new Promise<void>(r => {
-        const done = () => { window.removeEventListener('popstate', done); r(); };
-        window.addEventListener('popstate', done);
-        setTimeout(done, 300);
-      });
-    }
-    location.reload();
-  }
 </script>
 
 <TopBar title={TITLE[page] ?? 'Settings'} />
@@ -545,14 +462,47 @@
       {privacyScreenEnabled} {togglePrivacyScreen}
     />
   {:else if page === 'advanced'}
-    <AdvancedSettings
-      {isTauri} {isTauriDebug} bind:showMaintenanceModal
-      {autoUpdateCheckEnabled} {toggleAutoUpdateCheck} {appVersion}
-      {updateChecking} {updateStatus} {onCheckForUpdate}
-      {syncEnabled} bind:syncUrl bind:credentialUser bind:credentialPass
-      {syncError} {lastErrorAt} {resetBusy} {resetPcTestData}
-    />
-    {#if syncEnabled}<button class="p-go save" on:click={saveServer}>Save &amp; restart sync</button>{/if}
+    <div class="adv">
+      <div class="p-sec" role="heading" aria-level="2">Your data</div>
+      <div class="p-group">
+        <button class="p-row" on:click={() => (showMaintenanceModal = true)}>
+          <span class="ri">{@html I.wrench}</span>
+          <span class="p-k"><span>Check and repair</span><span class="p-sub">Finds problems and clears old history</span></span>
+          <span class="chev">{@html I.chev}</span>
+        </button>
+        <div class="p-row still">
+          <span class="ri">{@html I.disk}</span>
+          <span class="p-k"><span>Storage used</span>{#if breakdown}<span class="p-sub">{allTasks.toLocaleString()} task{allTasks === 1 ? '' : 's'} · {breakdown.attachmentCount} attachment{breakdown.attachmentCount === 1 ? '' : 's'}</span>{/if}</span>
+          <span class="p-v">{storageAvailable ? storageUsed || '…' : '—'}</span>
+        </div>
+      </div>
+      <div class="p-sec" role="heading" aria-level="2">Sync</div>
+      <div class="p-group">
+        <button class="p-row" on:click={() => push({ k: 'set', page: 'server' })}>
+          <span class="ri">{@html I.server}</span>
+          <span class="p-k"><span>Own server</span><span class="p-sub">{ownServer ? 'In use' : pairedName ? `Not used · syncing with ${pairedName}` : 'Not used'}</span></span>
+          <span class="chev">{@html I.chev}</span>
+        </button>
+      </div>
+      <div class="p-sec" role="heading" aria-level="2">About</div>
+      <div class="p-group">
+        <div class="p-row still">
+          <span class="ri">{@html I.info}</span>
+          <span class="p-k"><span>Version</span>{#if isNativePlatform()}<span class="p-sub">Updates come through the Play Store</span>{/if}</span>
+          <span class="p-v">{appVersion || '—'}</span>
+        </div>
+        <button class="p-row" on:click={() => push({ k: 'set', page: 'privacy' })}>
+          <span class="ri">{@html I.shield}</span>
+          <span class="p-k"><span>Privacy</span><span class="p-sub">No accounts, no tracking, nothing in the cloud</span></span>
+          <span class="chev">{@html I.chev}</span>
+        </button>
+        <button class="p-row" on:click={() => openLink(REPO_URL)}>
+          <span class="ri">{@html I.code}</span>
+          <span class="p-k"><span>Source code</span><span class="p-sub">Open source on GitHub</span></span>
+          <span class="chev">{@html I.ext}</span>
+        </button>
+      </div>
+    </div>
   {:else}
     <p class="p-empty">This page doesn't exist.</p>
   {/if}
@@ -768,6 +718,11 @@
   .issues { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 12px; padding: 10px 12px; max-height: 160px; overflow-y: auto; font-size: 13px; color: var(--muted); }
   .fname { margin: 0; background: var(--col-bg); padding: 10px 12px; border-radius: 10px; font-size: 13.5px; word-break: break-all; }
 
+  .adv .ri { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); background: var(--col-bg); }
+  .adv .chev { display: flex; margin-left: auto; color: var(--faint); }
+  .adv .p-k + .p-v { margin-left: auto; }
+  .adv .still { cursor: default; }
+  .adv .p-row.still:active { background: none; }
   .rpage {
     position: fixed; inset: 0; z-index: 661; overflow-y: auto; outline: none;
     display: flex; flex-direction: column; background: var(--bg); color: var(--text);
