@@ -231,7 +231,7 @@ src/
     ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
     PinStar.svelte              The shared pin star icon
 
-    phone/                      The phone shell (PHONE_QUERY, never Tauri)
+    phone/                      The phone shell (PHONE_QUERY, never Tauri); its own chunk, loaded by App.svelte only on a phone
       PhoneApp.svelte             Tabs, screen stacks, nav bar, +, snackbar, keyboard handling
       nav.ts                      Tab/stack stores, push/back, navigate(), actions, memo()
       Sheet.svelte                Bottom sheet (closeOnBack consumer: mount behind {#key})

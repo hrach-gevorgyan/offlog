@@ -9,9 +9,9 @@ before touching code.
 **2026-12-01, or on the next bug hit in daily use, whichever comes first.**
 
 A pass is likely worth running before `redesign/full` merges to `main`:
-on that branch `dist` is 2.1MB (1.8MB at the 26th run), the main chunk is
-about 980kB, and the phone shell ships in the desktop bundle too
-(`App.svelte` imports `PhoneApp` statically). Not yet run.
+on that branch `dist` is 2.1MB (1.8MB at the 26th run); the main chunk is
+about 710kB, with the phone shell split into its own ~236kB chunk that only
+phones load. Not yet run.
 
 This pointer is the only tracker state in this file. Past passes are
 narrated in

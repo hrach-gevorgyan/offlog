@@ -28,7 +28,6 @@
   import AppLock from './lib/AppLock.svelte';
   import UpdateModal from './lib/UpdateModal.svelte';
   import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
-  import PhoneApp from './lib/phone/PhoneApp.svelte';
   import { isPhone, actions as phoneActions, backAtRoot, switchTab, navigate, showToast, tab as phoneTab } from './lib/phone/nav';
   import { setStatusBarSuppressed, setStatusBarOnHero } from './lib/theme';
   import { fly } from 'svelte/transition';
@@ -519,6 +518,10 @@
 
   // The lock screen covers Home's hero, so the status bar must not stay
   // indigo with light icons behind it.
+  // The phone shell is its own chunk, fetched only on a phone-sized screen:
+  // the desktop app never loads it.
+  let PhoneApp: typeof import('./lib/phone/PhoneApp.svelte').default | null = null;
+  $: if ($isPhone && !PhoneApp) import('./lib/phone/PhoneApp.svelte').then(m => { PhoneApp = m.default; }).catch(() => showError('Could not load the app. Please reopen it.'));
   $: setStatusBarSuppressed(locked);
   // The phone loading screen is --hero (it continues the splash), so the
   // status icons go light with it; Home claims the hero itself once mounted.
@@ -586,7 +589,7 @@
 
     <main class="main">
       {#if $isPhone}
-        <div class="view-fade"><PhoneApp /></div>
+        <div class="view-fade">{#if PhoneApp}<svelte:component this={PhoneApp} />{/if}</div>
       {:else if showDashboard}
         <div class="view-fade" in:fade={viewIn} out:fade={viewOut}>
           <DashboardView
