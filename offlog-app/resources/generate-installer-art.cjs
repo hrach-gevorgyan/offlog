@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 
 const BG = { r: 0x18, g: 0x1a, b: 0x20, alpha: 1 };      // colorPrimaryDark / tauri.conf.json window backgroundColor
-const ACCENT = { r: 0x54, g: 0x57, b: 0xe0, alpha: 1 };  // app.css --accent (light) / brand.md's only brand color
+const ACCENT = { r: 0x57, g: 0x5f, b: 0xca, alpha: 1 };  // app.css --accent (light) / brand.md's only brand color
 const SRC = path.join(__dirname, 'source-logo.svg');
 const OUT_DIR = path.join(__dirname, '..', '..', 'offlog-desktop', 'src-tauri');
 
