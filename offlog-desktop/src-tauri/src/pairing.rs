@@ -207,6 +207,9 @@ pub fn spawn_server(state: Arc<PairingState>, uuid: String, app_handle: tauri::A
 
 const MAX_BODY: usize = 4096;
 const MAX_IN_FLIGHT: usize = 8;
+// Outcome logging only: never log the code, proof, nonce or anything from
+// the request body or response.
+static REJECTED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 // Every response must carry Access-Control-Allow-Origin, including the
 // error ones. A WebView's fetch() silently rejects a cross-origin
@@ -258,9 +261,12 @@ fn handle_pair_request(mut request: tiny_http::Request, state: &PairingState, uu
         return;
     };
     let Some(code) = state.try_consume(&nonce, &proof) else {
+        let rejected = REJECTED.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+        log::warn!("pairing: request rejected ({rejected} rejected since start)");
         let _ = request.respond(Response::empty(403).with_header(cors_header()));
         return;
     };
+    log::info!("pairing: succeeded");
     // Fired the instant the handshake itself succeeds, before the
     // response even goes out -- the PC previously had no direct
     // signal that pairing finished at all, and inferred it only by

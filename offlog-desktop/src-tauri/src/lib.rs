@@ -27,10 +27,13 @@ fn get_sync_info(info: tauri::State<sync_host::SyncHostInfo>) -> sync_host::Sync
 // Settings' manual-connection field) is encrypted at rest via Windows
 // DPAPI and kept separately from sync-host.json, which holds only this
 // install's own generated identity and is fine as plain JSON.
-// See secure_storage.rs.
+// See secure_storage.rs. Debug builds use their own file, same split as
+// sync-host.dev.json -- a dev run must never read or overwrite the
+// installed build's stored credential.
 #[cfg(windows)]
 fn sync_secret_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
-    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("sync-secret.enc"))
+    let filename = if cfg!(debug_assertions) { "sync-secret.dev.enc" } else { "sync-secret.enc" };
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join(filename))
 }
 
 #[tauri::command]
@@ -178,6 +181,30 @@ fn generate_pairing_code(state: tauri::State<Arc<pairing::PairingState>>) -> Str
     state.generate_code()
 }
 
+// Keeps polling after the initial readiness window instead of giving up:
+// everything after readiness (database creation, pairing server, mDNS)
+// runs only once, so a slow first start would otherwise leave the whole
+// session unpairable. Stops only when the sidecar is gone -- exited on
+// its own, or taken by terminate_nyxdb() on quit.
+fn wait_ready_with_backoff(app_handle: &tauri::AppHandle, port: u16) -> bool {
+    let mut attempt = 0u32;
+    loop {
+        let alive = app_handle.try_state::<NyxdbProcess>().is_some_and(|state| {
+            state.0.lock().map(|mut guard| matches!(guard.as_mut().map(|c| c.try_wait()), Some(Ok(None)))).unwrap_or(false)
+        });
+        if !alive {
+            log::error!("sync_host: NyxDB exited before becoming ready on port {port}; sync host unavailable this session");
+            return false;
+        }
+        std::thread::sleep(sync_host::retry_delay(attempt));
+        if sync_host::is_ready(port) {
+            log::info!("sync_host: NyxDB ready on port {port} after {} retries", attempt + 1);
+            return true;
+        }
+        attempt = attempt.saturating_add(1);
+    }
+}
+
 struct NyxdbDataDir(std::path::PathBuf);
 
 // reset_sync_data below wipes the local NyxDB data dir so a first-run
@@ -213,6 +240,14 @@ fn reset_sync_data(app: tauri::AppHandle, job: tauri::State<win32job::Job>, data
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[allow(unused_mut)]
+    let mut context = tauri::generate_context!();
+    // Debug only: setup() creates the main window itself with a separate
+    // WebView2 data directory. Release builds keep Tauri's own creation.
+    #[cfg(debug_assertions)]
+    for w in context.config_mut().app.windows.iter_mut() {
+        w.create = false;
+    }
     tauri::Builder::default()
         // Must be registered FIRST (plugin docs) so a second launch is
         // rejected before it can start doing anything expensive.
@@ -269,11 +304,31 @@ pub fn run() {
             // release build with no log file is undiagnosable. Don't gate
             // this on `cfg!(debug_assertions)`. tauri-plugin-log's own
             // rotation handles file growth.
-            app.handle().plugin(
-                tauri_plugin_log::Builder::default()
-                    .level(log::LevelFilter::Info)
-                    .build(),
-            )?;
+            //
+            // Debug builds log to Offlog-dev.log so reset-dev-env.ps1 can
+            // clear dev logs without touching the installed build's
+            // Offlog.log in the same folder.
+            let log_builder = tauri_plugin_log::Builder::default().level(log::LevelFilter::Info);
+            #[cfg(debug_assertions)]
+            let log_builder = log_builder.clear_targets().targets([
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: Some("Offlog-dev".into()) }),
+            ]);
+            app.handle().plugin(log_builder.build())?;
+
+            // Debug builds get their own WebView2 profile. The default one
+            // (app_local_data_dir()) is keyed only on the identifier and
+            // both builds load the same tauri.localhost origin, so a dev
+            // run would otherwise share the installed build's IndexedDB
+            // (its PouchDB tasks) and localStorage (offlog_sync_url).
+            // run() stops Tauri creating the config window in debug; it is
+            // created here instead with the separate data directory.
+            #[cfg(debug_assertions)]
+            if let Some(cfg) = app.config().app.windows.iter().find(|w| w.label == "main").cloned() {
+                tauri::WebviewWindowBuilder::from_config(app.handle(), &cfg)?
+                    .data_directory(app.path().app_local_data_dir()?.join("webview-dev"))
+                    .build()?;
+            }
 
             let app_data_dir = app.path().app_data_dir()?;
             // `app_data_dir()` depends only on the app identifier, not on
@@ -314,7 +369,11 @@ pub fn run() {
             let nyxdb_binary_bg = nyxdb_binary.clone();
             let data_dir_bg = data_dir.clone();
             let info_bg = info.clone();
-            tauri::async_runtime::spawn(async move {
+            //
+            // A plain OS thread, not an async task: the readiness retry
+            // below can block for as long as NyxDB stays down, which would
+            // pin one of the async runtime's few worker threads.
+            std::thread::spawn(move || {
                 match sync_host::spawn_nyxdb(&nyxdb_binary_bg, &data_dir_bg, &info_bg) {
                     Ok((child, job)) => {
                         // The Job must stay alive for the app's lifetime — its
@@ -328,7 +387,7 @@ pub fn run() {
                         app_handle.manage(NyxdbProcess(Mutex::new(Some(child))));
                         let ready = sync_host::wait_ready(info_bg.port, Duration::from_secs(20));
                         log::info!("sync_host: NyxDB ready = {ready} on port {}", info_bg.port);
-                        if ready {
+                        if ready || wait_ready_with_backoff(&app_handle, info_bg.port) {
                             sync_host::ensure_database(&info_bg);
                             if let Some(uuid) = sync_host::fetch_uuid(info_bg.port) {
                                 // Runs before this instance advertises itself below, so it
@@ -483,7 +542,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![get_sync_info, is_debug_build, generate_pairing_code, reset_sync_data, show_main_window, send_task_notification, check_desktop_notification_setting, get_detected_other_hosts, store_sync_secret, get_sync_secret])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {

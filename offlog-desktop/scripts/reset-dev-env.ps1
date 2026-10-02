@@ -50,6 +50,11 @@ if (Test-Path $devConfig) {
     Remove-Item -Force $devConfig
     Write-Host "Removed debug sync-host config: $devConfig"
 }
+$devSecret = Join-Path $roaming "sync-secret.dev.enc"
+if (Test-Path $devSecret) {
+    Remove-Item -Force $devSecret
+    Write-Host "Removed debug stored sync credential: $devSecret"
+}
 $devData = Join-Path $roaming "nyxdb-data-dev"
 if (Test-Path $devData) {
     Remove-Item -Recurse -Force $devData
@@ -80,15 +85,30 @@ if ($IncludeRelease) {
         Write-Host "Removed stale pre-NyxDB release CouchDB data: $staleCouchData"
     }
 }
-if (Test-Path $local) {
-    # -Recurse also matches WebView2's own internal IndexedDB leveldb .log
-    # files (EBWebView\...\*.leveldb\*.log) -- locked while the app is
-    # running, and not something this script should ever touch anyway
-    # (that's real WebView2 state, not an Offlog-written log). Errors here
-    # are non-fatal; this step is cosmetic log cleanup, not core state.
-    Get-ChildItem $local -Filter "*.log" -Recurse -ErrorAction SilentlyContinue |
-        ForEach-Object { try { Remove-Item -Force $_.FullName -ErrorAction Stop } catch {} }
-    Write-Host "Cleared logs under: $local"
+# Debug builds' own WebView2 profile (IndexedDB/PouchDB, localStorage).
+# The release profile is $local\EBWebView and is never touched here.
+$devWebview = Join-Path $local "webview-dev"
+if (Test-Path $devWebview) {
+    try {
+        Remove-Item -Recurse -Force $devWebview -ErrorAction Stop
+        Write-Host "Removed debug WebView2 profile: $devWebview"
+    } catch {
+        Write-Host "Couldn't remove $devWebview (is a dev build still running?)" -ForegroundColor Yellow
+    }
+}
+# Only the logs folder, never recursively across $local: WebView2 keeps
+# IndexedDB journals as *.log files under EBWebView\, and deleting those
+# loses the installed app's recent writes. Debug builds write
+# Offlog-dev*.log; Offlog.log / Offlog_*.log belong to the installed build.
+$logDir = Join-Path $local "logs"
+if (Test-Path $logDir) {
+    $patterns = @("Offlog-dev*.log")
+    if ($IncludeRelease) { $patterns += @("Offlog.log", "Offlog_*.log") }
+    foreach ($p in $patterns) {
+        Get-ChildItem $logDir -Filter $p -File -ErrorAction SilentlyContinue |
+            ForEach-Object { try { Remove-Item -Force $_.FullName -ErrorAction Stop } catch {} }
+    }
+    Write-Host "Cleared $($patterns -join ', ') under: $logDir"
 }
 
 Write-Host ""

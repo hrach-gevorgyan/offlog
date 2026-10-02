@@ -54,22 +54,72 @@ fn pick_free_port() -> u16 {
 /// reused on every subsequent launch — regenerating the port/password
 /// on every start would break anything (e.g. a paired phone) that
 /// already has last run's URL/credentials saved.
+///
+/// Regenerating re-keys the host and breaks every paired phone, so it only
+/// happens when there is genuinely no usable file. A file that exists but
+/// won't parse is renamed to `<name>.bad-<unix-secs>` first, never
+/// overwritten; a file that exists but can't be read or set aside gets a
+/// session-only identity and is left on disk for the next launch.
 pub fn load_or_create_info(config_path: &Path) -> SyncHostInfo {
-    if let Ok(bytes) = fs::read(config_path) {
-        if let Ok(info) = serde_json::from_slice::<SyncHostInfo>(&bytes) {
-            return info;
+    match fs::read(config_path) {
+        Ok(bytes) => match serde_json::from_slice::<SyncHostInfo>(&bytes) {
+            Ok(info) => return info,
+            Err(e) => {
+                let bad = quarantine_path(config_path);
+                if let Err(re) = fs::rename(config_path, &bad) {
+                    log::error!("sync_host: {} is unparseable ({e}) and couldn't be set aside ({re}); using a session-only identity", config_path.display());
+                    return new_info();
+                }
+                log::warn!("sync_host: {} was unparseable ({e}); moved to {} and generating a new identity -- paired phones must pair again", config_path.display(), bad.display());
+            }
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => {
+            log::error!("sync_host: couldn't read {} ({e}); using a session-only identity", config_path.display());
+            return new_info();
         }
     }
-    let info = SyncHostInfo {
+    let info = new_info();
+    if let Err(e) = write_atomically(config_path, &serde_json::to_vec_pretty(&info).unwrap()) {
+        log::error!("sync_host: couldn't save {} ({e})", config_path.display());
+    }
+    info
+}
+
+fn new_info() -> SyncHostInfo {
+    SyncHostInfo {
         port: pick_free_port(),
         user: "offlog".to_string(),
         password: random_string(24),
-    };
-    if let Some(parent) = config_path.parent() {
-        let _ = fs::create_dir_all(parent);
     }
-    let _ = fs::write(config_path, serde_json::to_vec_pretty(&info).unwrap());
-    info
+}
+
+fn quarantine_path(config_path: &Path) -> PathBuf {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let mut name = config_path.file_name().unwrap_or_default().to_os_string();
+    name.push(format!(".bad-{secs}"));
+    config_path.with_file_name(name)
+}
+
+/// Temp file + rename, so a crash mid-write leaves either the old file or
+/// the new one, never a truncated one that would later force a re-key.
+fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut tmp_name = path.file_name().unwrap_or_default().to_os_string();
+    tmp_name.push(".tmp");
+    let tmp = path.with_file_name(tmp_name);
+    {
+        let mut f = fs::File::create(&tmp)?;
+        f.write_all(bytes)?;
+        f.sync_all()?;
+    }
+    fs::rename(&tmp, path)
 }
 
 /// `cargo build`/`cargo run` (no bundling step) has no resource dir to
@@ -171,12 +221,22 @@ pub fn spawn_nyxdb(binary_path: &Path, data_dir: &Path, info: &SyncHostInfo) -> 
 pub fn wait_ready(port: u16, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
-        if TcpStream::connect(("127.0.0.1", port)).is_ok() {
+        if is_ready(port) {
             return true;
         }
         std::thread::sleep(Duration::from_millis(300));
     }
     false
+}
+
+pub fn is_ready(port: u16) -> bool {
+    TcpStream::connect(("127.0.0.1", port)).is_ok()
+}
+
+/// Delay before readiness re-check `attempt` (0-based) once the initial
+/// wait has run out: doubling from 1 s, capped at 30 s.
+pub fn retry_delay(attempt: u32) -> Duration {
+    Duration::from_secs(1u64 << attempt.min(5)).min(Duration::from_secs(30))
 }
 
 /// Creates the `offlog` database the app's PouchDB sync target expects —
@@ -225,4 +285,72 @@ fn base64_encode(input: &str) -> String {
         out.push(if chunk.len() > 2 { TABLE[(n & 0x3F) as usize] as char } else { '=' });
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_dir(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("offlog-sync-host-test-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn entries(dir: &Path) -> Vec<String> {
+        let mut v: Vec<String> = fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn creates_once_and_reloads_the_same_identity_without_rewriting() {
+        let dir = temp_dir("create");
+        let path = dir.join("sync-host.json");
+        let first = load_or_create_info(&path);
+        let bytes = fs::read(&path).unwrap();
+        let second = load_or_create_info(&path);
+        assert_eq!((first.port, first.user, first.password), (second.port, second.user, second.password));
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(entries(&dir), vec!["sync-host.json"]);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn corrupt_file_is_set_aside_not_overwritten() {
+        let dir = temp_dir("corrupt");
+        let path = dir.join("sync-host.json");
+        let garbage = b"{\"port\": 123, \"user\": \"off";
+        fs::write(&path, garbage).unwrap();
+        let info = load_or_create_info(&path);
+
+        let names = entries(&dir);
+        assert_eq!(names.len(), 2, "{names:?}");
+        let bad = names.iter().find(|n| n.starts_with("sync-host.json.bad-")).expect("quarantined copy");
+        assert_eq!(fs::read(dir.join(bad)).unwrap(), garbage);
+        let saved: SyncHostInfo = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!((saved.port, saved.password), (info.port, info.password));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unreadable_path_is_left_alone() {
+        let dir = temp_dir("unreadable");
+        // A directory where the file should be: the read fails with
+        // something other than NotFound.
+        let path = dir.join("sync-host.json");
+        fs::create_dir_all(&path).unwrap();
+        let _ = load_or_create_info(&path);
+        assert!(path.is_dir());
+        assert_eq!(entries(&dir), vec!["sync-host.json"]);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn retry_delay_doubles_then_caps() {
+        let secs: Vec<u64> = (0..10).map(|a| retry_delay(a).as_secs()).collect();
+        assert_eq!(secs, vec![1, 2, 4, 8, 16, 30, 30, 30, 30, 30]);
+        assert_eq!(retry_delay(u32::MAX), Duration::from_secs(30));
+    }
 }

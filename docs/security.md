@@ -364,8 +364,16 @@ Verified in the code, not just claimed:
   network, since two independent hubs means devices silently splitting
   into two sets of data that never merge.
 - **Development and release builds are kept apart**, with separate
-  identities and data folders, so a phone paired with one can't
-  accidentally talk to the other's database.
+  identities, data folders, stored sync passwords and browser storage, so
+  a phone paired with one can't accidentally talk to the other's
+  database, and a test build never reads or changes your real tasks.
+- **A damaged sync settings file isn't silently replaced.** If the file
+  holding your PC's sync identity can't be read, Offlog keeps the broken
+  copy alongside (renamed `.bad-…`) and logs a warning before making a new
+  one, and it saves that file in a way a crash can't leave half-written.
+- **The log records pairing outcomes, not secrets.** It notes that a
+  pairing succeeded or was rejected — never the code or anything derived
+  from it.
 - **Desktop updates are signature-checked** before installing. A
   tampered or corrupted download is rejected.
 - **Installs are per-user and never ask for administrator rights.**

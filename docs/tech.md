@@ -539,8 +539,10 @@ tag's asset. Two consequences, both normal:
 
 Do this after any real test round; dev state accumulates silently.
 
-- **Desktop**: `offlog-desktop/scripts/reset-dev-env.ps1`. `-IncludeRelease` also wipes the
-  *installed* app's data — only when confirmed disposable.
+- **Desktop**: `offlog-desktop/scripts/reset-dev-env.ps1` — debug-build files only (see
+  the debug/release table under Desktop). `-IncludeRelease` also wipes the
+  *installed* app's host config, NyxDB data and `Offlog.log` — only when
+  confirmed disposable. It never touches the release WebView2 profile.
 - **Web**: `new PouchDB('offlog').destroy().then(() => localStorage.clear())`,
   then reload. Clearing PouchDB alone leaves `offlog_seeded` set and produces a
   zero-spaces state that no real install ever has.
@@ -812,6 +814,37 @@ Object (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) ties that process to the app's
 lifetime on every exit path, including a crash. The binary is built by
 `scripts/fetch-nyxdb-win.ps1` from a pinned tag and is not committed.
 
+`sync-host.json` is the host's identity; regenerating it breaks every
+paired phone. It is written via temp file + rename. A file that won't
+parse is renamed to `sync-host.json.bad-<unix-secs>` (with a log warning)
+before a new identity is generated; one that can't be read at all gets a
+session-only identity and is left on disk. Database creation, the pairing
+server and mDNS run once NyxDB accepts connections: after the first 20 s
+the background thread keeps re-checking with a 1 s → 30 s capped backoff
+for as long as the sidecar process is alive, so a slow start delays
+pairing instead of disabling it for the session.
+
+**Debug vs release on one machine.** Both share the identifier, so
+`app_data_dir()` and `app_local_data_dir()` are the same folders. Every
+per-build file is split on `debug_assertions`; release names are the
+originals and must never change:
+
+| | release | debug |
+|---|---|---|
+| host identity | `sync-host.json` | `sync-host.dev.json` |
+| NyxDB data | `nyxdb-data/` | `nyxdb-data-dev/` |
+| stored sync credential (DPAPI) | `sync-secret.enc` | `sync-secret.dev.enc` |
+| WebView2 profile (IndexedDB, localStorage) | `%LOCALAPPDATA%\com.offlog.app\EBWebView` | `…\com.offlog.app\webview-dev\` |
+| log | `…\com.offlog.app\logs\Offlog.log` | `…\logs\Offlog-dev.log` |
+
+The WebView2 split matters because both builds load the same
+`tauri.localhost` origin: without it a dev run reads and writes the
+installed app's PouchDB tasks and `offlog_sync_url`. Debug builds set
+`create: false` on the config window in `run()` and build it in `setup()`
+with `.data_directory(...)`; release builds keep Tauri's own window
+creation. A debug build from before this split used the shared profile,
+so dev data written then lives in the release profile.
+
 **Discovery and pairing** (`discovery.rs`, `pairing.rs`, `discovery.ts`).
 The PC advertises `_offlog._tcp` over mDNS carrying a uuid and pairing port
 — deliberately no credentials over the air. Pairing is a separate
@@ -821,6 +854,8 @@ itself) and gets the real credentials back AES-256-GCM-encrypted under a
 key derived the same way — see [security.md §1](security.md#1-connecting-a-phone-to-your-pc-pairing)
 for the full protocol and its honest limits. There are no fixed username/password
 constants, because nothing could match a per-install random password.
+The pairing server logs only outcomes — "succeeded" and a running count of
+rejected requests — never the code, proof, nonce or response.
 
 **Sync URL resolution is three-way**, which is easy to get wrong:
 
