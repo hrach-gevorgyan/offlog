@@ -678,6 +678,7 @@
   .pset :global(.scope-btn .scope-label) { overflow-wrap: anywhere; }
   .pset :global(.scope-btn svg) { flex-shrink: 0; color: var(--faint); }
   .pset :global(.time-row) { position: relative; cursor: pointer; }
+  .pset :global(button.time-row) { width: 100%; border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; }
   .pset :global(.time-row .setting-value) { color: var(--accent); font-weight: 600; }
   .pset :global(.perm-state) { display: block; margin-top: 2px; font-size: 13.5px; color: var(--faint); }
   .pset :global(.perm-state.warn) { color: var(--due-soon-ink); font-weight: 500; }
