@@ -110,9 +110,9 @@
 
 <TopBar title="Agenda" root />
 
-<div class="p-seg" role="tablist" aria-label="Agenda view" style="--n:2;--i:{mode === 'list' ? 0 : 1}">
-  <button role="tab" aria-selected={mode === 'list'} class:on={mode === 'list'} on:click={() => setMode('list')}>List</button>
-  <button role="tab" aria-selected={mode === 'month'} class:on={mode === 'month'} on:click={() => setMode('month')}>Month</button>
+<div class="p-seg" role="group" aria-label="Agenda view" style="--n:2;--i:{mode === 'list' ? 0 : 1}">
+  <button aria-pressed={mode === 'list'} class:on={mode === 'list'} on:click={() => setMode('list')}>List</button>
+  <button aria-pressed={mode === 'month'} class:on={mode === 'month'} on:click={() => setMode('month')}>Month</button>
 </div>
 
 {#if mode === 'month'}

@@ -55,7 +55,7 @@ afterEach(cleanup);
 
 async function setup() {
   const r = render(OrganizePage);
-  await fireEvent.click(r.getByRole('tab', { name: 'Fields' }));
+  await fireEvent.click(r.getByRole('button', { name: 'Fields' }));
   await waitFor(() => r.getByText('Cost'));
   return r;
 }

@@ -50,7 +50,7 @@ afterEach(cleanup);
 
 async function setup() {
   const r = render(OrganizePage);
-  await fireEvent.click(r.getByRole('tab', { name: 'Tags' }));
+  await fireEvent.click(r.getByRole('button', { name: 'Tags' }));
   await waitFor(() => r.getByText('#urgent'));
   return r;
 }
@@ -74,7 +74,7 @@ describe('phone Organize → Tags', () => {
   it('shows an empty state with no tags', async () => {
     getTagCounts.mockResolvedValue([]);
     const r = render(OrganizePage);
-    await fireEvent.click(r.getByRole('tab', { name: 'Tags' }));
+    await fireEvent.click(r.getByRole('button', { name: 'Tags' }));
     await waitFor(() => r.getByText('No tags yet. Add them on a task.'));
   });
 
