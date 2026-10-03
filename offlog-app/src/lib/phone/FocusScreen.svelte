@@ -169,17 +169,21 @@
 
 {#if loaded && room > 0}
   {#if suggested.length || rest.length}
-    <div class="slots">
-      {#each Array(MAX) as _, i}
-        {#if i < lockedN}
-          <div class="slot full">{locked[i].title}</div>
-        {:else if picks[i - lockedN]}
-          {@const t = picks[i - lockedN]}
-          <button class="slot pend" on:click={() => toggle(t._id ?? '')} aria-label="Take {t.title} out of this pick">{t.title}</button>
-        {:else}
-          <div class="slot"><span class="p-sr">Empty place </span>{i + 1}</div>
-        {/if}
-      {/each}
+    <!-- The day's three places: committed, then this pick, then free. -->
+    <div class="meter">
+      <div class="mt"><b>Today’s three</b><span>{lockedN + picks.length} of {MAX} picked</span></div>
+      <div class="bars" aria-hidden="true">
+        {#each Array(MAX) as _, i}<i class:full={i < lockedN} class:pend={i >= lockedN && i < lockedN + picks.length}></i>{/each}
+      </div>
+      {#if picks.length}
+        <div class="chips">
+          {#each picks as t (t._id)}
+            <button class="chip" on:click={() => toggle(t._id ?? '')} aria-label="Take {t.title} out of this pick"><span>{t.title}</span>{@html I.x}</button>
+          {/each}
+        </div>
+      {:else}
+        <p class="mhint">Add {room === MAX ? 'up to three' : room === 1 ? 'one more' : `up to ${room} more`} from below.</p>
+      {/if}
     </div>
     <div class="p-sec" role="heading" aria-level="2">Suggested</div>
     <div class="rows">
@@ -242,16 +246,19 @@
   .why.due_soon { color: var(--due-soon-ink); }
   .add { flex-shrink: 0; font-size: var(--p-fs-s); font-weight: 700; color: var(--accent-ink); }
   .picked .add { color: var(--faint); }
-  /* Three places for the day, filled left to right. */
-  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 18px; }
-  .slot {
-    min-height: 68px; border-radius: 14px; box-sizing: border-box; padding: 8px 10px; display: flex; align-items: center; justify-content: center; text-align: center;
-    border: 2px dashed var(--check-ring); color: var(--faint); font: inherit; font-size: var(--p-fs-s); font-weight: 700; overflow-wrap: anywhere;
-    background: none; transition: background var(--dur-small) var(--ease-decelerate), border-color var(--dur-small) var(--ease-decelerate);
-  }
-  .slot.full { border: 0; background: var(--accent); color: var(--on-accent); }
-  .slot.pend { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); cursor: pointer; }
-  .slot.full, .slot.pend { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; padding-top: 12px; }
+  .meter { background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow); padding: 14px 16px; margin: 0 0 18px; }
+  .mt { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; font-size: var(--p-fs-m); }
+  .mt span { color: var(--muted); font-size: var(--p-fs-s); }
+  .bars { display: flex; gap: 6px; }
+  .bars i { flex: 1; height: 6px; border-radius: 3px; background: var(--col-bg); transition: background var(--dur-small) var(--ease-decelerate); }
+  .bars i.full { background: var(--accent); }
+  .bars i.pend { background: color-mix(in srgb, var(--accent) 55%, var(--col-bg)); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 8px 6px 12px; border: 0; border-radius: 999px; cursor: pointer;
+    font: inherit; font-size: var(--p-fs-s); font-weight: 600; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+  .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip :global(svg.i) { width: 16px; height: 16px; }
+  .mhint { margin: 10px 0 0; font-size: var(--p-fs-s); color: var(--faint); }
   .go { margin-top: 14px; }
   .more { display: block; margin: 10px auto 0; min-height: 44px; }
 </style>

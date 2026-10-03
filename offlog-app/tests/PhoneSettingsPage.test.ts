@@ -311,15 +311,39 @@ describe('phone settings pages', () => {
     });
   });
 
-  it('Backup: the actions come first and the counts are one line', async () => {
-    vi.mocked(db.getStorageBreakdown).mockResolvedValueOnce({ activeTasks: 48, archivedTasks: 2, deletedTasks: 4, logEntries: 95, attachmentCount: 0, attachmentBytes: 0 } as never);
-    const { container, getByText } = render(SettingsPage, { page: 'data' });
-    await waitFor(() => getByText('48 tasks · 4 in bin · 95 in history'));
-    const labels = [...container.querySelectorAll('.pset button')].map(b => b.textContent!.trim() || b.getAttribute('aria-label'));
-    expect(labels.indexOf('Back up')).toBeLessThan(labels.indexOf('Restore'));
-    expect(labels.indexOf('Back up')).toBe(1); // after the scope picker only
-    expect(labels.indexOf('Restore')).toBe(2);
-    expect(container.textContent).not.toContain('well within limits');
+  it('Backup: back up, restore and export are rows in that order, with no counts line', () => {
+    const { container } = render(SettingsPage, { page: 'data' });
+    const labels = [...container.querySelectorAll('.bk .p-row')].map(b => b.getAttribute('aria-label'));
+    expect(labels).toEqual(['Back up now', 'What to include: Everything', 'Restore from a file', 'Export as spreadsheet']);
+    expect(container.textContent).not.toContain('in history');
+  });
+
+  it('Backup: Restore from a file asks for a file, and a wrong one says so on the row', async () => {
+    let picker: HTMLInputElement | null = null;
+    const make = document.createElement.bind(document);
+    const spy = vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
+      const el = make(tag);
+      if (tag === 'input') { picker = el as HTMLInputElement; picker.click = () => {}; }
+      return el;
+    }) as typeof document.createElement);
+    try {
+      const { getByRole } = render(SettingsPage, { page: 'data' });
+      await fireEvent.click(getByRole('button', { name: 'Restore from a file' }));
+      expect(picker!.accept).toBe('.json,application/json');
+      Object.defineProperty(picker!, 'files', { value: [new File(['not json'], 'x.json')] });
+      await picker!.onchange!(new Event('change'));
+      await waitFor(() => expect(getByRole('button', { name: 'Restore from a file' }).textContent).toContain("That doesn't look like an Offlog backup file."));
+    } finally { spy.mockRestore(); }
+  });
+
+  it('Backup on the phone: the daily safety copy switch says when the last one was made', async () => {
+    (window as { Capacitor?: unknown }).Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android' };
+    m.native = true;
+    try {
+      const { getByRole } = render(SettingsPage, { page: 'data' });
+      const sw = getByRole('switch', { name: 'Daily safety copy' });
+      expect(sw.textContent).toContain('Keeps the last 7 on this phone');
+    } finally { m.native = false; delete (window as { Capacitor?: unknown }).Capacitor; }
   });
 
   it('an unknown page says so', () => {
@@ -526,10 +550,10 @@ describe('phone settings pages', () => {
   it('Backup: the scope opens a sheet, and picking a project backs up only that project', async () => {
     (projects as unknown as Writable<{ _id: string; name: string }[]>).set([{ _id: 'project:p1', name: 'Kitchen' }]);
     const { getByRole, findByText } = render(SettingsPage, { page: 'data' });
-    await fireEvent.click(getByRole('button', { name: 'What to back up: Everything' }));
+    await fireEvent.click(getByRole('button', { name: 'What to include: Everything' }));
     await fireEvent.click(await findByText('Kitchen'));
-    await waitFor(() => getByRole('button', { name: 'What to back up: Kitchen' }));
-    await fireEvent.click(getByRole('button', { name: 'Back up' }));
+    await waitFor(() => getByRole('button', { name: 'What to include: Kitchen' }));
+    await fireEvent.click(getByRole('button', { name: 'Back up now' }));
     await waitFor(() => expect(db.exportProjectDocs).toHaveBeenCalledWith('project:p1'));
     (projects as unknown as Writable<unknown[]>).set([]);
   });
@@ -549,14 +573,14 @@ describe('phone settings pages', () => {
   it('Backup: a failed back up surfaces showError', async () => {
     vi.mocked(db.default.allDocs).mockRejectedValueOnce(new Error('x'));
     const { getByRole } = render(SettingsPage, { page: 'data' });
-    await fireEvent.click(getByRole('button', { name: 'Back up' }));
+    await fireEvent.click(getByRole('button', { name: 'Back up now' }));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to back up. Please try again.'));
   });
 
   it('Backup: a failed CSV export surfaces showError', async () => {
     vi.mocked(db.exportTasksCSV).mockRejectedValueOnce(new Error('x'));
     const { getByRole } = render(SettingsPage, { page: 'data' });
-    await fireEvent.click(getByRole('button', { name: 'Export CSV' }));
+    await fireEvent.click(getByRole('button', { name: 'Export as spreadsheet' }));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to export CSV. Please try again.'));
   });
 

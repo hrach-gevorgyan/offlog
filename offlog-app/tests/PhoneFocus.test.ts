@@ -44,7 +44,7 @@ const pool = [
 const byId = Object.fromEntries(pool.map(t => [t._id, t]));
 const lockIds = () => JSON.parse(localStorage.getItem(KEY) ?? 'null')?.taskIds ?? null;
 
-const emptySlots = (c: HTMLElement) => c.querySelectorAll('.slot:not(.full):not(.pend)').length;
+const emptySlots = (c: HTMLElement) => c.querySelectorAll('.meter .bars i:not(.full):not(.pend)').length;
 
 describe('phone Focus', () => {
   beforeEach(() => {
@@ -70,13 +70,23 @@ describe('phone Focus', () => {
     await fireEvent.click(getByText('Taxes'));
     await fireEvent.click(getByText('Dentist'));
     // The picks fill the day's places in order; one stays empty.
-    expect([...container.querySelectorAll('.slot.pend')].map(x => x.textContent)).toEqual(['Taxes', 'Dentist']);
+    expect([...container.querySelectorAll('.meter .chip')].map(x => x.textContent)).toEqual(['Taxes', 'Dentist']);
+    expect(container.querySelector('.mt span')!.textContent).toBe('2 of 3 picked');
     expect(emptySlots(container)).toBe(1);
     await fireEvent.click(getByText("Let's focus on 2 tasks"));
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ date: TODAY, taskIds: ['task:Taxes', 'task:Dentist'] });
     await findByText('0 of 2 done');
     expect(getAllByText('Reset')).toHaveLength(1);
     expect(container.querySelectorAll('.bar i')).toHaveLength(2);
+  });
+
+  it('the chip of a pick takes it back out', async () => {
+    const { findByText, getByText, getByLabelText, container } = render(FocusScreen);
+    await findByText('Taxes');
+    await fireEvent.click(getByText('Taxes'));
+    await fireEvent.click(getByLabelText('Take Taxes out of this pick'));
+    expect(container.querySelectorAll('.meter .chip')).toHaveLength(0);
+    expect(container.querySelector('.mhint')!.textContent).toBe('Add up to three from below.');
   });
 
   it('stops at three picks; the full list is one tap away', async () => {
@@ -94,7 +104,8 @@ describe('phone Focus', () => {
     const { findByText, getByText, container } = render(FocusScreen);
     await findByText('0 of 1 done');
     await waitFor(() => expect(emptySlots(container)).toBe(2));
-    expect(container.querySelector('.slot.full')?.textContent).toBe('Report');
+    expect(container.querySelectorAll('.meter .bars i.full')).toHaveLength(1);
+    expect(container.querySelector('.mhint')!.textContent).toBe('Add up to 2 more from below.');
     await fireEvent.click(getByText('Plants'));
     await fireEvent.click(getByText('Add 1 to focus'));
     expect(lockIds()).toEqual(['task:Report', 'task:Plants']);
@@ -170,7 +181,7 @@ describe('phone Focus', () => {
     const { findByText, queryByText, getByLabelText, container } = render(FocusScreen);
     await findByText('3 of 3 done');
     expect(queryByText('All done for today.')).toBeTruthy();
-    expect(container.querySelector('.slots')).toBeNull();
+    expect(container.querySelector('.meter')).toBeNull();
     updateTask.mockReset().mockResolvedValue(undefined);
     await fireEvent.click(getByLabelText('Mark not done: Report'));
     await waitFor(() => expect(updateTask).toHaveBeenCalledWith('task:Report', { column_id: 'col:todo' }));

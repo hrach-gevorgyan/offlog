@@ -6,9 +6,9 @@
   // instead of SettingsPanel's mini-modals. Sync has its own page.
   import { onMount, onDestroy } from 'svelte';
   import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
-  import DataSettings from '../../settings/DataSettings.svelte';
+  import BackupPage from './BackupPage.svelte';
   import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from '../../settings/helpers';
-  import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt, getAutoBackupUsage } from '../../autoBackup';
+  import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from '../../autoBackup';
   import db, {
     importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
@@ -252,17 +252,13 @@
 
   // ── Backup & storage ──
   let breakdown: StorageBreakdown | null = null;
-  // Kept backups live outside IndexedDB, so the storage estimate misses them.
-  let backupUsage: { count: number; bytes: number } | null = null;
   async function loadBreakdown() {
     try {
       breakdown = await getStorageBreakdown();
-      backupUsage = await getAutoBackupUsage();
     } catch {
       showError('Failed to load storage usage.');
     }
   }
-  let storageInfo = '';
   let storageUsed = '';
   let storagePercent = 0;
   let storageAvailable = true;
@@ -270,12 +266,12 @@
     try {
       if (navigator.storage?.estimate) {
         const { usage = 0, quota = 0 } = await navigator.storage.estimate();
-        ({ info: storageInfo, percent: storagePercent } = formatStorageEstimate(usage, quota));
+        ({ percent: storagePercent } = formatStorageEstimate(usage, quota));
         storageUsed = `${(usage / 1048576).toFixed(1)} MB`;
         storageAvailable = true;
-      } else { storageInfo = 'Not available'; storageAvailable = false; }
+      } else storageAvailable = false;
     } catch {
-      storageInfo = 'Not available'; storageAvailable = false;
+      storageAvailable = false;
     }
   }
   onMount(() => {
@@ -445,11 +441,9 @@
       {defaultReminderTime} {saveDefaultReminderTime} {quietHours} {saveQuietHours}
     />
   {:else if page === 'data'}
-    <DataSettings phone {storageUsed} {backupUsage}
-      {storageAvailable} {storagePercent} {storageInfo} {breakdown}
-      {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
-      bind:backupScope {backupScopeOptions} pickScope={openScope} {doBackup} {doExportCSV}
-      {importStatus} {handleImport} {importBusy}
+    <BackupPage scopeLabel={backupScopeOptions.find(o => o.value === backupScope)?.label ?? 'Everything'} pickScope={openScope}
+      {doBackup} {autoBackupEnabled} {toggleAutoBackup} {lastAutoBackupAt}
+      {importStatus} {handleImport} {importBusy} {doExportCSV} {storageAvailable} {storagePercent}
     />
   {:else if page === 'security'}
     <LockPage
@@ -635,9 +629,6 @@
   .pset :global(.step .tick) { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .pset :global(.step.done .tick) { color: var(--on-accent); background: var(--success); }
   .pset :global(.step.done .setting-label) { color: var(--muted); }
-  .pset :global(.scope-btn) { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 16px; color: var(--text); cursor: pointer; text-align: left; }
-  .pset :global(.scope-btn .scope-label) { overflow-wrap: anywhere; }
-  .pset :global(.scope-btn svg) { flex-shrink: 0; color: var(--faint); }
   .pset :global(.time-row) { position: relative; cursor: pointer; }
   .pset :global(button.time-row) { width: 100%; border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; }
   .pset :global(.time-row .setting-value) { color: var(--accent); font-weight: 600; }
@@ -649,12 +640,6 @@
   .pset :global(.setting-hint.compact-hint) { margin-top: -6px; }
   .pset :global(.setting-hint-error) { color: var(--danger); }
   .pset :global(.setting-hint-warn) { color: var(--due-soon-ink); background: var(--due-soon-bg); padding: 10px 12px; border-radius: 10px; font-weight: 500; }
-  .pset :global(.storage-info) { flex: 1; min-width: 0; font-size: 14px; color: var(--muted); }
-  .pset :global(.storage-summary) { display: flex; flex-direction: column; gap: 2px; }
-  .pset :global(.storage-headline) { font-size: 16px; color: var(--text); font-weight: 500; }
-  .pset :global(.storage-headline-warn) { color: var(--danger); }
-  .pset :global(.storage-detail) { font-size: 13px; color: var(--faint); }
-  .pset :global(.project-export-select) { flex: 1; min-width: 0; }
   .pset :global(.field-label) { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
   .pset :global(.field-label input) {
     font: inherit; font-size: 16px; text-transform: none; letter-spacing: 0; font-weight: 400;

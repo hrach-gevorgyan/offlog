@@ -24,64 +24,8 @@
   export let importStatus: string;
   export let handleImport: () => void;
   export let importBusy: boolean;
-  // The phone page: actions first, then the automatic switch with one status
-  // line, then a single line of counts. storageUsed is the used size alone.
-  export let phone = false;
-  // The phone opens its own picker sheet instead of the dropdown.
-  export let pickScope: (() => void) | null = null;
-  $: scopeLabel = backupScopeOptions.find(o => o.value === backupScope)?.label ?? 'Everything';
-  export let storageUsed = '';
-  $: statsLine = breakdown ? [
-    storageUsed,
-    `${breakdown.activeTasks} task${breakdown.activeTasks === 1 ? '' : 's'}`,
-    `${breakdown.deletedTasks} in bin`,
-    `${breakdown.logEntries} in history`,
-    breakdown.attachmentCount ? `${breakdown.attachmentCount} file${breakdown.attachmentCount === 1 ? '' : 's'}` : '',
-  ].filter(Boolean).join(' · ') : '';
 </script>
 
-{#if phone}
-              <div class="setting-group">
-                <div class="setting-row">
-                  {#if pickScope}
-                    <button class="scope-btn" on:click={pickScope} aria-label="What to back up: {scopeLabel}">
-                      <span class="scope-label">{scopeLabel}</span>
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-                    </button>
-                  {:else}
-                    <div class="project-export-select">
-                      <CustomSelect options={backupScopeOptions} bind:value={backupScope} />
-                    </div>
-                  {/if}
-                  <button class="export-btn" on:click={doBackup}>Back up</button>
-                </div>
-                <div class="setting-row">
-                  <span class="storage-info">{importStatus || 'From a backup file'}</span>
-                  <button class="export-btn" on:click={handleImport} disabled={importBusy}>Restore</button>
-                </div>
-                <div class="setting-row">
-                  <span class="storage-info">Spreadsheet, one way</span>
-                  <button class="export-btn" on:click={doExportCSV}>Export CSV</button>
-                </div>
-              </div>
-
-              {#if isNativePlatform() || isTauriCheck()}
-              <div class="setting-group">
-                <div class="setting-row">
-                  <span class="setting-label">Daily safety copy</span>
-                  <button class="toggle-btn" class:on={autoBackupEnabled} on:click={toggleAutoBackup} aria-label="Daily safety copy" role="switch" aria-checked={autoBackupEnabled}>
-                    <span class="toggle-knob"></span>
-                  </button>
-                </div>
-                <p class="setting-hint compact-hint">Once a day Offlog saves a copy of everything on this {isNativePlatform() ? 'phone' : 'computer'} and keeps the last 7, so you can go back if something goes wrong.{autoBackupEnabled && lastAutoBackupAt ? ` Last copy: ${fmtLastSynced(lastAutoBackupAt)}.` : ''}</p>
-              </div>
-              {/if}
-
-              {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
-                <p class="setting-hint setting-hint-warn">Storage is {(storagePercent * 100).toFixed(0)}% full. Run Maintenance in Advanced or free up space.</p>
-              {/if}
-              {#if statsLine}<p class="setting-hint stats-line">{statsLine}</p>{/if}
-{:else}
 
               <div class="setting-group">
                 <div class="setting-section-title">Storage</div>
@@ -166,4 +110,3 @@
                   <button class="export-btn" on:click={handleImport} disabled={importBusy}>Choose backup file</button>
                 </div>
               </div>
-{/if}
