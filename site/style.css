@@ -369,13 +369,13 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 .howto ol { margin: 4px 0 0; padding-left: 22px; color: var(--muted); font-size: 15px; }
 .howto li { padding: 4px 0; }
 .howto b { color: var(--ink); }
-/* Desktop only: a phone can just tap the button. Fixed white tile, since a
-   scanner needs dark modules on a light ground in either page theme. */
+/* Hidden at phone width, where tapping the button is simpler. Fixed white
+   tile, since a scanner needs dark modules on a light ground in either page theme. */
 .qr { display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 16px 20px; border-radius: 24px; border: 1px solid var(--line); background: var(--surface); max-width: 560px; }
 .qr img { flex: none; width: 112px; height: 112px; border-radius: 10px; background: #fff; padding: 4px; }
 .qr p { margin: 0; font-size: 15px; color: var(--muted); }
 .qr b { display: block; color: var(--ink); }
-@media (max-width: 900px), (pointer: coarse) { .qr { display: none; } }
+@media (max-width: 760px) { .qr { display: none; } }
 .howto code { font-size: 13px; background: var(--sunk); border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
 .get { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 54px; }
 .plat { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 30px; padding: clamp(26px, 3vw, 40px); display: flex; flex-direction: column; gap: 18px; min-width: 0; transition: transform .2s, box-shadow .2s; }

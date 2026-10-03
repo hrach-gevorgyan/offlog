@@ -1062,7 +1062,7 @@ to `main` that touch it, and daily. Before upload,
 version, date, installer link and file sizes into the download section's
 `data-rel` elements; the committed values are the fallback if that lookup
 fails. The Android button links `releases/latest/download/app-release.apk`,
-so the APK keeps that file name; `site/img/qr-apk.svg` (desktop only)
+so the APK keeps that file name; `site/img/qr-apk.svg` (hidden at phone width)
 encodes that same URL and was generated once with the `qrcode` npm package,
 outside the repo. Preview locally with the `offlog-site` entry in
 `.claude/launch.json` (Vite serving `site/` on port 4200). offlog.co is a
