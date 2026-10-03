@@ -1036,9 +1036,12 @@ cargo tauri build
 
 ## Website (offlog.io)
 
-`site/` is a static page, hand-written HTML and CSS with one small script
-(`site.js`: the nav hairline and scroll reveals; the page reads fine
-without it). It follows brand.md: one accent, Hanken Grotesk self-hosted
+`site/` is a static page, hand-written HTML and CSS with one script,
+`site.js`: the hero phone demo (built in HTML, not a screenshot), the
+auto-advancing Board/List/Agenda tabs, the playable "Today's three", the
+scroll-linked phone, and the privacy receipt. The page is complete without
+it, and every animation stops under prefers-reduced-motion. Light and dark
+follow the visitor's system setting. It follows brand.md: one accent, Hanken Grotesk self-hosted
 from `site/fonts/`, real app screenshots in `site/img/` as WebP. It loads
 nothing from other origins, and its CSP meta forbids inline styles and
 scripts, so styling goes in `style.css`. `site/CNAME` holds `offlog.io`;
