@@ -137,8 +137,8 @@ accounts, and sync only ever happens on your own local network.
   restore brings back the workspace, not just the text
 - Automatic local backups, last 7 kept
 - A database check-and-repair tool for orphaned tasks and invalid states
-- An optional **App Lock**: a PIN, fingerprint unlock on Android, and a
-  recovery code shown once. Lose both PIN and code and there is no way
+- An optional **App Lock**: a PIN, fingerprint or face unlock on Android,
+  and a recovery code shown once, to copy or (on the phone) share. Lose both PIN and code and there is no way
   in — there is no server to prove who you are to
 
 **Sync — the actual point**

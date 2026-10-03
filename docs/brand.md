@@ -236,7 +236,8 @@ Feature names are plain, functional nouns, and both apps use the same
 ones: Board, List, Agenda, Focus, Quick Add, History, Recycle bin,
 Fields, and the Android "Quick actions" widget. The phone's tabs are
 Home, Today, Agenda and Search; the desktop's overview is Dashboard. A
-task is a task on both, never a card ("Add task", not "Add card"), and a
+task is a task on both, never a card ("Add task", not "Add card"; Quick
+Add is the feature, "Add task" is what its buttons say), and a
 task's stage is its Status, never a column. One name per thing beats a
 playful second name. Guidance for anything new: plain
 functional names by default; a playful name only if it's still
