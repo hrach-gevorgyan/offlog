@@ -65,7 +65,7 @@ a market giants own (decisions.md, "The roadmap is finite").
   feature-count comparison invites a feature-count reply, and that's
   not the point. The one comparison in public copy, the website's
   "Different by design" table, follows from this: it names no product,
-  compares Offlog with "a typical cloud task app" on what differs in kind
+  compares Offlog with "a typical cloud app" on what differs in kind
   (where tasks live, account, who can read them, price), and keeps the rows
   where a cloud app wins (sync away from home, iPhone and Mac, sharing).
 - **State facts plainly, no hype words.** Banned words/phrases in
