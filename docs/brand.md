@@ -86,7 +86,7 @@ Per decisions.md's manifesto: **"not competing, just likable."**
 |---|---|---|
 | Landing page hero | "Supercharge your productivity with seamless cross-device sync!" | "Your tasks. Your devices. Nobody else's." |
 | Store listing | "The all-in-one task manager that finally does it all." | "A task manager with no account, no cloud, no subscription." |
-| Feature callout | "Powerful Kanban boards unlock your team's full potential." | "Kanban, List and Agenda views — pick whichever fits how you think." |
+| Feature callout | "Powerful Kanban boards unlock your team's full potential." | "Board, List and Agenda views — pick whichever fits how you think." |
 | Error/limitation copy | *(omitted or buried in FAQ)* | "Your OS will warn you before installing — this is expected, not a red flag. Here's why: [reason]." |
 | Social post | "🚀 Big news! Offlog is revolutionizing task management!" | "Offlog is public now — a free task manager that syncs phone-to-PC over your own Wi-Fi, no account needed." |
 
@@ -227,7 +227,7 @@ public-facing surface:
 ## 8. Naming conventions (for future features)
 
 Feature names are plain, functional nouns, and both apps use the same
-ones: Board (the desktop view is still labelled Kanban), List, Agenda,
+ones: Board, List, Agenda,
 Focus, Quick Add, History, Recycle bin, Fields, and the Android "Quick
 actions" widget. A task is a task on both, never a card. History was
 called Time Travel on the desktop until 3 Oct 2026; one name per thing

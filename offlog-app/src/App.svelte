@@ -580,7 +580,7 @@
   };
 
   const VIEWS: { key: View; label: string }[] = [
-    { key: 'kanban', label: 'Kanban' },
+    { key: 'kanban', label: 'Board' },
     { key: 'list',   label: 'List' },
   ];
 </script>

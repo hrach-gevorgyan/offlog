@@ -679,7 +679,7 @@
 
       {#if sorted.length === 0}
         <div class="empty">
-          {#if activeFilters > 0}No tasks match the current filters.{:else}No tasks yet — add one from the Kanban view.{/if}
+          {#if activeFilters > 0}No tasks match the current filters.{:else}No tasks yet — add one from the Board view.{/if}
         </div>
       {/if}
     </div>
