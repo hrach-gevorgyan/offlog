@@ -83,27 +83,36 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 .btn-sm { height: 40px; padding: 0 16px; font-size: 15px; border-radius: 12px; }
 
 /* Hero */
-.hero { padding-block: clamp(36px, 6vw, 80px) clamp(56px, 7vw, 96px); overflow-x: clip; }
-.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: clamp(28px, 4vw, 64px); align-items: center; }
-.hero-copy { min-width: 0; }
-.hero h1 { font-size: clamp(52px, 7vw, 124px); line-height: .9; letter-spacing: -.055em; font-weight: 800; margin: 22px 0 30px; }
-.hero h1 .ln { display: block; white-space: nowrap; animation: rise .9s cubic-bezier(.2, .7, .2, 1) both; }
+/* Words centred on top; below them the Windows window with the live phone
+   demo in front of it, so the first screen shows both apps. */
+.hero { padding-block: clamp(24px, 3.5vw, 52px) clamp(64px, 8vw, 110px); overflow-x: clip; }
+.hero .wrap { display: grid; justify-items: center; text-align: center; }
+.hero-copy { min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.hero h1 { font-size: clamp(42px, 4.7vw, 80px); line-height: .98; letter-spacing: -.05em; font-weight: 800; margin: 16px 0 18px; }
+/* inline-block, not inline: the rise animation needs a box to transform. */
+.hero h1 .ln { display: inline-block; margin-inline: .13em; white-space: nowrap; animation: rise .9s cubic-bezier(.2, .7, .2, 1) both; }
 .hero h1 .ln:nth-child(2) { animation-delay: .08s; }
 .hero h1 .ln:nth-child(3) { animation-delay: .16s; }
 .hero h1 em { font-style: normal; background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 82% / 0 38%; animation: sweep 1s .7s cubic-bezier(.6, 0, .2, 1) forwards; padding: 0 .04em; margin: 0 -.04em; }
 @keyframes rise { from { transform: translateY(.35em); opacity: .001; } }
 @keyframes sweep { to { background-size: 100% 38%; } }
-.hero .lede { font-size: clamp(19px, 1.7vw, 23px); max-width: 32ch; }
+.hero .lede { font-size: clamp(18px, 1.5vw, 21px); max-width: 60ch; }
 .hero .lede b { color: var(--ink); font-weight: 650; }
-.ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 38px 0 28px; }
-.facts { display: flex; flex-wrap: wrap; gap: 10px 26px; font-size: 15px; color: var(--muted); margin: 0; padding: 0; list-style: none; }
+.ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 26px 0 18px; }
+.facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 26px; font-size: 15px; color: var(--muted); margin: 0; padding: 0; list-style: none; }
 .facts li { display: flex; align-items: center; gap: 8px; }
 .facts li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
 /* The live demo phone: built in HTML so it can move. Its screen is the
    app's light theme in both page themes, so it uses fixed colours. */
-.demo-stage { position: relative; display: grid; place-items: center; min-height: 680px; isolation: isolate; }
-.demo-stage::before { content: ''; position: absolute; z-index: -1; width: 120%; aspect-ratio: 1; max-width: 640px; border-radius: 50%; background: radial-gradient(closest-side, var(--accent-tint), transparent 72%); }
+.stage { position: relative; width: min(1100px, 100%); margin-top: clamp(32px, 3.5vw, 52px); }
+.win { border-radius: 18px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: left; }
+.win .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--sunk); }
+.win .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
+.win .bar span { margin-left: 10px; font-size: 13px; color: var(--faint); font-weight: 600; }
+.win img { width: 100%; }
+/* Scaled rather than resized: the demo screen's type is set in fixed px. */
+.demo-stage { position: absolute; top: 9%; right: -3%; text-align: left; transform: scale(.74); transform-origin: top right; }
 .device { position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 18.6; border-radius: 48px; padding: 11px; background: var(--bezel); box-shadow: var(--shadow), 0 0 0 1.5px var(--bezel-ring); animation: float 7s ease-in-out infinite; }
 @keyframes float { 50% { transform: translateY(-10px) rotate(-.6deg); } }
 .screen { position: relative; height: 100%; border-radius: 38px; overflow: hidden; background: #F6F7F9; color: #1F2937; font-size: 13px; display: flex; flex-direction: column; transition: opacity .4s; }
@@ -154,12 +163,6 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 .fab { position: absolute; right: 16px; bottom: 74px; width: 50px; height: 50px; border-radius: 16px; background: #575FCA; color: #fff; display: grid; place-items: center; box-shadow: 0 10px 20px -8px rgba(87, 95, 202, .9); transition: transform .2s; }
 .fab svg { width: 22px; height: 22px; }
 .fab.press { transform: scale(.88); }
-.callout { position: absolute; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.callout .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
-/* Placed over the bezel and the empty right of the purple band, never over
-   the demo's text. */
-.callout.c1 { left: -6%; top: 1%; animation: float 6s ease-in-out infinite reverse; }
-.callout.c2 { right: -6%; top: 21%; animation: float 8s 1s ease-in-out infinite; }
 
 /* Marquee of plain facts */
 .marquee { border-block: 1px solid var(--line); overflow: hidden; padding-block: 22px; background: var(--surface); }
@@ -434,16 +437,13 @@ html.paused *, html.paused *::before, html.paused *::after { animation-play-stat
 @media (max-width: 1100px) {
   .today .wrap, .privacy .wrap { grid-template-columns: 1fr; }
   .today-card { max-width: 560px; }
-  .callout { display: none; }
   .story .wrap { grid-template-columns: 1fr 300px; }
   .receipt-slot { max-width: 440px; }
   .feats.short li:nth-child(n+13) { display: none; }
   .feats.short + .more-btn { display: flex; }
 }
 @media (max-width: 900px) {
-  .hero .wrap { grid-template-columns: 1fr; }
-  .hero .lede { max-width: 44ch; }
-  .demo-stage { min-height: 600px; }
+  .demo-stage { transform: scale(.6); }
   .pair { grid-template-columns: 1fr; justify-items: center; margin: 56px 0 48px; }
   .dev.pc { width: 100%; max-width: 360px; }
   .dev.ph { width: 220px; min-height: 220px; }
@@ -462,8 +462,10 @@ html.paused *, html.paused *::before, html.paused *::after { animation-play-stat
   section { padding-block: 64px; }
   .nav .wrap { height: 64px; gap: 12px; }
   .ctas .btn, .plat .btn { width: 100%; }
-  .hero h1 { font-size: 11.6vw; }
-  .demo-stage { min-height: 560px; }
+  .hero h1 { font-size: 11.4vw; }
+  .hero h1 .ln { white-space: normal; }
+  .stage { margin-bottom: 110px; }
+  .demo-stage { top: 22%; right: -2%; transform: scale(.5); }
   .views .head { align-items: flex-start; }
   .tabs { width: 100%; } .tabs button { flex: 1; padding: 0 8px; }
   .window { width: min(300px, 82%); margin-inline: auto; border-radius: 40px; border: 9px solid var(--bezel); box-shadow: var(--shadow), 0 0 0 1.5px var(--bezel-ring); background: #F6F7F9; }

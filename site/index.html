@@ -71,412 +71,416 @@
         </ul>
       </div>
 
-      <div class="demo-stage" role="img" aria-label="A phone running Offlog: a task is typed, its date, reminder time and priority are picked out, and it joins the list.">
-        <div class="device" aria-hidden="true">
-          <div class="screen" id="demo">
-            <div class="hero-band">
-              <div class="hello">Good morning · Sat 3 Oct</div>
-              <div class="left"><b id="d-left">3</b><span>left today</span></div>
-            </div>
-            <div class="tiles"><span><b class="late">1</b>Overdue</span><span><b>1/3</b>Focus</span><span><b>2</b>Pinned</span></div>
-            <div class="sec">UP NEXT</div>
-            <div class="list" id="d-list">
-              <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Passports</span><span class="pill late">Overdue</span></div>
-              <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Plant new trees</span><span class="pill">Today</span></div>
-              <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Long run</span><span class="pill">Today</span></div>
-              <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Dry cleaning</span><span class="pill">Mon</span></div>
-            </div>
-            <div class="fab" id="d-fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
-            <div class="tabbar">
-              <span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</span>
-              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4m6-4v4"/></svg>Today</span>
-              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Agenda</span>
-              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Search</span>
-            </div>
-            <div class="sheet" id="d-sheet">
-              <div class="grab"></div>
-              <div class="qa"><div class="field" id="d-field"></div><div class="send" id="d-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg></div></div>
-              <div class="chips" id="d-chips"></div>
+      <div class="stage">
+        <div class="win" role="img" aria-label="Offlog for Windows: the Dashboard, with every project on one page">
+          <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>Offlog for Windows</span></div>
+          <img src="img/dashboard.webp" srcset="img/dashboard.webp 1600w, img/dashboard-2x.webp 2560w" sizes="min(1100px, 92vw)" width="1600" height="1000" alt="" decoding="async" fetchpriority="high">
+        </div>
+        <div class="demo-stage" role="img" aria-label="A phone running Offlog: a task is typed, its date, reminder time and priority are picked out, and it joins the list.">
+          <div class="device" aria-hidden="true">
+            <div class="screen" id="demo">
+              <div class="hero-band">
+                <div class="hello">Good morning · Sat 3 Oct</div>
+                <div class="left"><b id="d-left">3</b><span>left today</span></div>
+              </div>
+              <div class="tiles"><span><b class="late">1</b>Overdue</span><span><b>1/3</b>Focus</span><span><b>2</b>Pinned</span></div>
+              <div class="sec">UP NEXT</div>
+              <div class="list" id="d-list">
+                <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Passports</span><span class="pill late">Overdue</span></div>
+                <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Plant new trees</span><span class="pill">Today</span></div>
+                <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Long run</span><span class="pill">Today</span></div>
+                <div class="row"><span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span><span class="t">Dry cleaning</span><span class="pill">Mon</span></div>
+              </div>
+              <div class="fab" id="d-fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+              <div class="tabbar">
+                <span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4m6-4v4"/></svg>Today</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Agenda</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Search</span>
+              </div>
+              <div class="sheet" id="d-sheet">
+                <div class="grab"></div>
+                <div class="qa"><div class="field" id="d-field"></div><div class="send" id="d-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg></div></div>
+                <div class="chips" id="d-chips"></div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="callout c1" aria-hidden="true"><span class="dot"></span>Synced with your PC</div>
-        <div class="callout c2" aria-hidden="true">No cloud involved</div>
       </div>
     </div>
   </section>
 
   <div class="marquee" aria-hidden="true">
     <div class="track">
-      <span>No account</span><span>No cloud</span><span>No subscription</span><span>Works offline</span><span>Open source</span><span>Board, List, Agenda</span><span>Today's three</span><span>Daily backups</span><span>App Lock</span><span>Landscape too</span>
-      <span>No account</span><span>No cloud</span><span>No subscription</span><span>Works offline</span><span>Open source</span><span>Board, List, Agenda</span><span>Today's three</span><span>Daily backups</span><span>App Lock</span><span>Landscape too</span>
+        <span>No account</span><span>No cloud</span><span>No subscription</span><span>Works offline</span><span>Open source</span><span>Board, List, Agenda</span><span>Today's three</span><span>Daily backups</span><span>App Lock</span><span>Landscape too</span>
+        <span>No account</span><span>No cloud</span><span>No subscription</span><span>Works offline</span><span>Open source</span><span>Board, List, Agenda</span><span>Today's three</span><span>Daily backups</span><span>App Lock</span><span>Landscape too</span>
     </div>
   </div>
 
   <section class="views" id="views">
     <div class="wrap">
-      <div class="head">
-        <div>
-          <p class="eyebrow lift">Plan</p>
-          <h2 class="lift">Three ways to look at the same tasks.</h2>
+        <div class="head">
+          <div>
+            <p class="eyebrow lift">Plan</p>
+            <h2 class="lift">Three ways to look at the same tasks.</h2>
+          </div>
+          <div class="tabs" role="tablist" aria-label="Views">
+            <button type="button" role="tab" id="tab-board" aria-controls="views-panel" aria-selected="true" tabindex="0">Board<span class="bar"></span></button>
+            <button type="button" role="tab" id="tab-list" aria-controls="views-panel" aria-selected="false" tabindex="-1">List<span class="bar"></span></button>
+            <button type="button" role="tab" id="tab-agenda" aria-controls="views-panel" aria-selected="false" tabindex="-1">Agenda<span class="bar"></span></button>
+          </div>
         </div>
-        <div class="tabs" role="tablist" aria-label="Views">
-          <button type="button" role="tab" id="tab-board" aria-controls="views-panel" aria-selected="true" tabindex="0">Board<span class="bar"></span></button>
-          <button type="button" role="tab" id="tab-list" aria-controls="views-panel" aria-selected="false" tabindex="-1">List<span class="bar"></span></button>
-          <button type="button" role="tab" id="tab-agenda" aria-controls="views-panel" aria-selected="false" tabindex="-1">Agenda<span class="bar"></span></button>
+        <div class="window lift" id="views-panel" role="tabpanel" aria-labelledby="tab-board" aria-describedby="views-cap">
+          <div class="bar"><i></i><i></i><i></i><span>Offlog for Windows</span></div>
+          <div class="views-stack">
+            <picture class="on"><source media="(max-width: 760px)" srcset="img/tour/ph-2.webp 540w, img/tour/ph-2-2x.webp 880w" sizes="min(300px, 82vw)" width="540" height="1169"><img decoding="async" src="img/board.webp" srcset="img/board.webp 1600w, img/board-2x.webp 2560w" sizes="min(1232px, 92vw)" width="1600" height="1000" alt="Board: a project's tasks grouped by status, from Backlog to Done" loading="lazy"></picture>
+            <picture aria-hidden="true"><source media="(max-width: 760px)" srcset="img/tour/ph-3.webp 540w, img/tour/ph-3-2x.webp 880w" sizes="min(300px, 82vw)" width="540" height="1169"><img decoding="async" src="img/list.webp" srcset="img/list.webp 1600w, img/list-2x.webp 2560w" sizes="min(1232px, 92vw)" width="1600" height="1000" alt="List: the same tasks in a sortable table" loading="lazy"></picture>
+            <picture aria-hidden="true"><source media="(max-width: 760px)" srcset="img/tour/ph-5.webp 540w, img/tour/ph-5-2x.webp 880w" sizes="min(300px, 82vw)" width="540" height="1169"><img decoding="async" src="img/agenda.webp" srcset="img/agenda.webp 1600w, img/agenda-2x.webp 2560w" sizes="min(1232px, 92vw)" width="1600" height="1000" alt="Agenda: a month calendar with each day's tasks" loading="lazy"></picture>
+          </div>
         </div>
-      </div>
-      <div class="window lift" id="views-panel" role="tabpanel" aria-labelledby="tab-board" aria-describedby="views-cap">
-        <div class="bar"><i></i><i></i><i></i><span>Offlog for Windows</span></div>
-        <div class="views-stack">
-          <picture class="on"><source media="(max-width: 760px)" srcset="img/tour/ph-2.webp 540w, img/tour/ph-2-2x.webp 880w" sizes="min(300px, 82vw)" width="540" height="1169"><img decoding="async" src="img/board.webp" srcset="img/board.webp 1600w, img/board-2x.webp 2560w" sizes="min(1232px, 92vw)" width="1600" height="1000" alt="Board: a project's tasks grouped by status, from Backlog to Done" loading="lazy"></picture>
-          <picture aria-hidden="true"><source media="(max-width: 760px)" srcset="img/tour/ph-3.webp 540w, img/tour/ph-3-2x.webp 880w" sizes="min(300px, 82vw)" width="540" height="1169"><img decoding="async" src="img/list.webp" srcset="img/list.webp 1600w, img/list-2x.webp 2560w" sizes="min(1232px, 92vw)" width="1600" height="1000" alt="List: the same tasks in a sortable table" loading="lazy"></picture>
-          <picture aria-hidden="true"><source media="(max-width: 760px)" srcset="img/tour/ph-5.webp 540w, img/tour/ph-5-2x.webp 880w" sizes="min(300px, 82vw)" width="540" height="1169"><img decoding="async" src="img/agenda.webp" srcset="img/agenda.webp 1600w, img/agenda-2x.webp 2560w" sizes="min(1232px, 92vw)" width="1600" height="1000" alt="Agenda: a month calendar with each day's tasks" loading="lazy"></picture>
-        </div>
-      </div>
-      <p class="cap" id="views-cap">Drag a task from one status to the next. Done is simply the last status.</p>
+        <p class="cap" id="views-cap">Drag a task from one status to the next. Done is simply the last status.</p>
     </div>
   </section>
 
   <section class="today">
     <div class="wrap">
-      <div>
-        <p class="eyebrow lift">Focus</p>
-        <h2 class="lift">Pick three. Finish them. Go outside.</h2>
-        <p class="lede lift">A long list is a source of guilt. Offlog asks you to choose up to three tasks for today, and suggests pinned and overdue ones first. Try it.</p>
-      </div>
-      <div class="today-card lift" id="today">
-        <div class="top"><b>Today's three</b><span class="count" id="today-count">0 of 3 done</span></div>
-        <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
-        <button type="button" class="pick" aria-pressed="false"><span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" focusable="false"><path d="m5 12 5 5 9-10"/></svg></span><span class="what"><b>Call the plumber</b><small>Home · due today, reminder 17:00</small></span></button>
-        <button type="button" class="pick" aria-pressed="false"><span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" focusable="false"><path d="m5 12 5 5 9-10"/></svg></span><span class="what"><b>Renew passports</b><small>Family trip · 2 days overdue</small></span></button>
-        <button type="button" class="pick" aria-pressed="false"><span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" focusable="false"><path d="m5 12 5 5 9-10"/></svg></span><span class="what"><b>Send the sprint notes</b><small>Work · pinned</small></span></button>
-        <p class="dayend" id="today-end" aria-live="polite"></p>
-      </div>
+        <div>
+          <p class="eyebrow lift">Focus</p>
+          <h2 class="lift">Pick three. Finish them. Go outside.</h2>
+          <p class="lede lift">A long list is a source of guilt. Offlog asks you to choose up to three tasks for today, and suggests pinned and overdue ones first. Try it.</p>
+        </div>
+        <div class="today-card lift" id="today">
+          <div class="top"><b>Today's three</b><span class="count" id="today-count">0 of 3 done</span></div>
+          <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
+          <button type="button" class="pick" aria-pressed="false"><span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" focusable="false"><path d="m5 12 5 5 9-10"/></svg></span><span class="what"><b>Call the plumber</b><small>Home · due today, reminder 17:00</small></span></button>
+          <button type="button" class="pick" aria-pressed="false"><span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" focusable="false"><path d="m5 12 5 5 9-10"/></svg></span><span class="what"><b>Renew passports</b><small>Family trip · 2 days overdue</small></span></button>
+          <button type="button" class="pick" aria-pressed="false"><span class="ring" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" focusable="false"><path d="m5 12 5 5 9-10"/></svg></span><span class="what"><b>Send the sprint notes</b><small>Work · pinned</small></span></button>
+          <p class="dayend" id="today-end" aria-live="polite"></p>
+        </div>
     </div>
   </section>
 
   <section class="story" aria-labelledby="story-h">
     <div class="wrap">
-      <div class="steps">
-        <h2 class="eyebrow" id="story-h">On your phone</h2>
-        <div class="step on" data-shot="0">
-          <div class="k">Home</div><h3>Open it and you know where you stand.</h3><p>What's left today, what's overdue, and every project, one thumb away.</p>
-          <img decoding="async" class="mobile-shot" src="img/phone-home.webp" srcset="img/phone-home.webp 640w, img/phone-home-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="The phone's Home tab" loading="lazy">
+        <div class="steps">
+          <h2 class="eyebrow" id="story-h">On your phone</h2>
+          <div class="step on" data-shot="0">
+            <div class="k">Home</div><h3>Open it and you know where you stand.</h3><p>What's left today, what's overdue, and every project, one thumb away.</p>
+            <img decoding="async" class="mobile-shot" src="img/phone-home.webp" srcset="img/phone-home.webp 640w, img/phone-home-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="The phone's Home tab" loading="lazy">
+          </div>
+          <div class="step" data-shot="1">
+            <div class="k">Add a task</div><h3>Type it the way you'd say it.</h3><p>"Call plumber tomorrow 5pm !high" becomes a high-priority task due tomorrow, with a reminder at 17:00. No forms to fill in.</p>
+            <img decoding="async" class="mobile-shot" src="img/phone-quickadd.webp" srcset="img/phone-quickadd.webp 640w, img/phone-quickadd-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="Quick Add: the date, reminder time and priority are picked out as you type" loading="lazy">
+          </div>
+          <div class="step" data-shot="2">
+            <div class="k">One task</div><h3>Everything about a task, on one screen.</h3><p>Status, due date, steps, tags, notes and files. Tap any row to change it, and set times with scroll wheels.</p>
+            <img decoding="async" class="mobile-shot" src="img/phone-task.webp" srcset="img/phone-task.webp 640w, img/phone-task-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="A task screen with its status, date, priority, tags and steps" loading="lazy">
+          </div>
+          <div class="step" data-shot="3">
+            <div class="k">Agenda</div><h3>The month, at a glance.</h3><p>Dots show the busy days. Tap one to see what's due.</p>
+            <img decoding="async" class="mobile-shot" src="img/phone-agenda.webp" srcset="img/phone-agenda.webp 640w, img/phone-agenda-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="The Agenda month on the phone" loading="lazy">
+          </div>
+          <div class="step" data-shot="4">
+            <div class="k">History</div><h3>Mistakes are easy to take back.</h3><p>Undo a delete, a move or a finished task right from the message. Deleted tasks wait in the Recycle bin for three months, and History keeps six months of changes.</p>
+            <img decoding="async" class="mobile-shot" src="img/phone-history.webp" srcset="img/phone-history.webp 640w, img/phone-history-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="History: changes, newest first" loading="lazy">
+          </div>
         </div>
-        <div class="step" data-shot="1">
-          <div class="k">Add a task</div><h3>Type it the way you'd say it.</h3><p>"Call plumber tomorrow 5pm !high" becomes a high-priority task due tomorrow, with a reminder at 17:00. No forms to fill in.</p>
-          <img decoding="async" class="mobile-shot" src="img/phone-quickadd.webp" srcset="img/phone-quickadd.webp 640w, img/phone-quickadd-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="Quick Add: the date, reminder time and priority are picked out as you type" loading="lazy">
+        <div class="pin" aria-hidden="true">
+          <div class="frame"><div class="scr">
+            <img decoding="async" class="on" src="img/phone-home.webp" srcset="img/phone-home.webp 640w, img/phone-home-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
+            <img decoding="async" src="img/phone-quickadd.webp" srcset="img/phone-quickadd.webp 640w, img/phone-quickadd-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
+            <img decoding="async" src="img/phone-task.webp" srcset="img/phone-task.webp 640w, img/phone-task-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
+            <img decoding="async" src="img/phone-agenda.webp" srcset="img/phone-agenda.webp 640w, img/phone-agenda-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
+            <img decoding="async" src="img/phone-history.webp" srcset="img/phone-history.webp 640w, img/phone-history-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
+          </div></div>
         </div>
-        <div class="step" data-shot="2">
-          <div class="k">One task</div><h3>Everything about a task, on one screen.</h3><p>Status, due date, steps, tags, notes and files. Tap any row to change it, and set times with scroll wheels.</p>
-          <img decoding="async" class="mobile-shot" src="img/phone-task.webp" srcset="img/phone-task.webp 640w, img/phone-task-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="A task screen with its status, date, priority, tags and steps" loading="lazy">
-        </div>
-        <div class="step" data-shot="3">
-          <div class="k">Agenda</div><h3>The month, at a glance.</h3><p>Dots show the busy days. Tap one to see what's due.</p>
-          <img decoding="async" class="mobile-shot" src="img/phone-agenda.webp" srcset="img/phone-agenda.webp 640w, img/phone-agenda-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="The Agenda month on the phone" loading="lazy">
-        </div>
-        <div class="step" data-shot="4">
-          <div class="k">History</div><h3>Mistakes are easy to take back.</h3><p>Undo a delete, a move or a finished task right from the message. Deleted tasks wait in the Recycle bin for three months, and History keeps six months of changes.</p>
-          <img decoding="async" class="mobile-shot" src="img/phone-history.webp" srcset="img/phone-history.webp 640w, img/phone-history-2x.webp 1000w" sizes="min(280px, 80vw)" width="640" height="1385" alt="History: changes, newest first" loading="lazy">
-        </div>
-      </div>
-      <div class="pin" aria-hidden="true">
-        <div class="frame"><div class="scr">
-          <img decoding="async" class="on" src="img/phone-home.webp" srcset="img/phone-home.webp 640w, img/phone-home-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
-          <img decoding="async" src="img/phone-quickadd.webp" srcset="img/phone-quickadd.webp 640w, img/phone-quickadd-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
-          <img decoding="async" src="img/phone-task.webp" srcset="img/phone-task.webp 640w, img/phone-task-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
-          <img decoding="async" src="img/phone-agenda.webp" srcset="img/phone-agenda.webp 640w, img/phone-agenda-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
-          <img decoding="async" src="img/phone-history.webp" srcset="img/phone-history.webp 640w, img/phone-history-2x.webp 1000w" sizes="330px" width="640" height="1385" alt="" loading="lazy">
-        </div></div>
-      </div>
     </div>
   </section>
 
   <section class="sync" id="sync">
     <div class="wrap">
-      <div class="band">
-        <p class="eyebrow">Sync</p>
-        <h2>Your phone finds your PC. Nothing else is involved.</h2>
-        <p class="lede">The Windows app is your own private sync point. Pair once, and every change travels straight between your devices on your Wi-Fi.</p>
-        <div class="pair">
-          <div class="dev pc" aria-hidden="true"><small>Offlog on your PC · Settings → Sync</small><div class="code">482917</div><div class="exp">Valid for 5 minutes, one-time use</div></div>
-          <div class="wire" aria-hidden="true">
-            <div class="nocloud"><svg viewBox="0 0 54 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 32h24a9 9 0 0 0 1-17.9A12 12 0 0 0 17 12a10 10 0 0 0-2 20Z"/><path d="M8 4l38 32" stroke-width="3"/></svg>No cloud in the way</div>
-            <span class="packet"><i></i>Call plumber</span>
-            <span class="packet back"><i></i>✓ Passports</span>
+        <div class="band">
+          <p class="eyebrow">Sync</p>
+          <h2>Your phone finds your PC. Nothing else is involved.</h2>
+          <p class="lede">The Windows app is your own private sync point. Pair once, and every change travels straight between your devices on your Wi-Fi.</p>
+          <div class="pair">
+            <div class="dev pc" aria-hidden="true"><small>Offlog on your PC · Settings → Sync</small><div class="code">482917</div><div class="exp">Valid for 5 minutes, one-time use</div></div>
+            <div class="wire" aria-hidden="true">
+              <div class="nocloud"><svg viewBox="0 0 54 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 32h24a9 9 0 0 0 1-17.9A12 12 0 0 0 17 12a10 10 0 0 0-2 20Z"/><path d="M8 4l38 32" stroke-width="3"/></svg>No cloud in the way</div>
+              <span class="packet"><i></i>Call plumber</span>
+              <span class="packet back"><i></i>✓ Passports</span>
+            </div>
+            <div class="dev ph" aria-hidden="true"><small>Offlog on your phone</small><div class="find">Find my computer</div></div>
           </div>
-          <div class="dev ph" aria-hidden="true"><small>Offlog on your phone</small><div class="find">Find my computer</div></div>
+          <ol class="syncsteps">
+            <li><h3>Install on Windows</h3><p>The Windows app keeps a full copy and hosts the sync.</p></li>
+            <li><h3>Get a code</h3><p>Settings → Sync → Generate a code. Six digits, valid for five minutes.</p></li>
+            <li><h3>Enter it on your phone</h3><p>Settings → Sync → Connect to my computer → Find my computer. Paired for good.</p></li>
+          </ol>
+          <ul class="honest" aria-label="What sync does and doesn't do">
+            <li><b aria-hidden="true">✓</b> Encrypted pairing</li>
+            <li><b aria-hidden="true">✓</b> Works offline, catches up later</li>
+            <li><b aria-hidden="true">✓</b> No account to create</li>
+            <li class="no"><b aria-hidden="true">✕</b> Not across the internet, by design</li>
+            <li class="no"><b aria-hidden="true">✕</b> Sync traffic isn't encrypted on your Wi-Fi</li>
+            <li class="no"><b aria-hidden="true">✕</b> Two phones need a PC between them</li>
+          </ul>
         </div>
-        <ol class="syncsteps">
-          <li><h3>Install on Windows</h3><p>The Windows app keeps a full copy and hosts the sync.</p></li>
-          <li><h3>Get a code</h3><p>Settings → Sync → Generate a code. Six digits, valid for five minutes.</p></li>
-          <li><h3>Enter it on your phone</h3><p>Settings → Sync → Connect to my computer → Find my computer. Paired for good.</p></li>
-        </ol>
-        <ul class="honest" aria-label="What sync does and doesn't do">
-          <li><b aria-hidden="true">✓</b> Encrypted pairing</li>
-          <li><b aria-hidden="true">✓</b> Works offline, catches up later</li>
-          <li><b aria-hidden="true">✓</b> No account to create</li>
-          <li class="no"><b aria-hidden="true">✕</b> Not across the internet, by design</li>
-          <li class="no"><b aria-hidden="true">✕</b> Sync traffic isn't encrypted on your Wi-Fi</li>
-          <li class="no"><b aria-hidden="true">✕</b> Two phones need a PC between them</li>
-        </ul>
-      </div>
     </div>
   </section>
 
   <section class="privacy" id="privacy">
     <div class="wrap">
-      <div>
-        <p class="eyebrow lift">Privacy</p>
-        <h2 class="lift">Here's everything we collect.</h2>
-        <p class="lede lift">It's a short receipt. No account, no analytics, no telemetry, no ads, in the app or on this website. Your tasks live on your devices, and the code is open for anyone to check.</p>
-        <p class="lede lift"><a class="textlink" href="https://github.com/hrach-gevorgyan/offlog/blob/main/docs/privacy.md">Read the privacy policy, in plain words</a></p>
-      </div>
-      <div class="receipt-slot">
-        <div class="receipt" id="receipt">
-          <h3>OFFLOG</h3>
-          <p class="sub">What we keep about you</p>
-          <div class="ln"><span>Account</span><span></span><b>none</b></div>
-          <div class="ln"><span>Email address</span><span></span><b>none</b></div>
-          <div class="ln"><span>Analytics</span><span></span><b>none</b></div>
-          <div class="ln"><span>Ads</span><span></span><b>none</b></div>
-          <div class="ln"><span>Servers of ours</span><span></span><b>0</b></div>
-          <div class="ln"><span>Your tasks</span><span></span><b>yours</b></div>
-          <hr>
-          <div class="total"><span>TOTAL</span><span>€0.00</span></div>
-          <p class="thanks">Free, with every feature. Always.</p>
-          <div class="barcode"></div>
+        <div>
+          <p class="eyebrow lift">Privacy</p>
+          <h2 class="lift">Here's everything we collect.</h2>
+          <p class="lede lift">It's a short receipt. No account, no analytics, no telemetry, no ads, in the app or on this website. Your tasks live on your devices, and the code is open for anyone to check.</p>
+          <p class="lede lift"><a class="textlink" href="https://github.com/hrach-gevorgyan/offlog/blob/main/docs/privacy.md">Read the privacy policy, in plain words</a></p>
         </div>
-      </div>
+        <div class="receipt-slot">
+          <div class="receipt" id="receipt">
+            <h3>OFFLOG</h3>
+            <p class="sub">What we keep about you</p>
+            <div class="ln"><span>Account</span><span></span><b>none</b></div>
+            <div class="ln"><span>Email address</span><span></span><b>none</b></div>
+            <div class="ln"><span>Analytics</span><span></span><b>none</b></div>
+            <div class="ln"><span>Ads</span><span></span><b>none</b></div>
+            <div class="ln"><span>Servers of ours</span><span></span><b>0</b></div>
+            <div class="ln"><span>Your tasks</span><span></span><b>yours</b></div>
+            <hr>
+            <div class="total"><span>TOTAL</span><span>€0.00</span></div>
+            <p class="thanks">Free, with every feature. Always.</p>
+            <div class="barcode"></div>
+          </div>
+        </div>
     </div>
   </section>
 
   <section class="tour" id="tour" aria-labelledby="tour-h">
     <div class="wrap">
-      <div class="tour-head">
-        <div>
-          <p class="eyebrow lift">The tour</p>
-          <h2 class="lift" id="tour-h">Real screens, nothing staged.</h2>
-          <p class="lede lift">Screenshots of the app as it is today. Swipe, scroll or use the arrows.</p>
-        </div>
-        <div class="tour-ctl">
-          <div class="seg" role="group" aria-label="Which app">
-            <button type="button" aria-pressed="true" data-set="phone">Phone</button>
-            <button type="button" aria-pressed="false" data-set="desktop">Windows</button>
+        <div class="tour-head">
+          <div>
+            <p class="eyebrow lift">The tour</p>
+            <h2 class="lift" id="tour-h">Real screens, nothing staged.</h2>
+            <p class="lede lift">Screenshots of the app as it is today. Swipe, scroll or use the arrows.</p>
           </div>
-          <button type="button" class="arrow" data-dir="-1" aria-label="Previous screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" focusable="false"><path d="m15 5-7 7 7 7"/></svg></button>
-          <button type="button" class="arrow" data-dir="1" aria-label="Next screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></button>
+          <div class="tour-ctl">
+            <div class="seg" role="group" aria-label="Which app">
+              <button type="button" aria-pressed="true" data-set="phone">Phone</button>
+              <button type="button" aria-pressed="false" data-set="desktop">Windows</button>
+            </div>
+            <button type="button" class="arrow" data-dir="-1" aria-label="Previous screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" focusable="false"><path d="m15 5-7 7 7 7"/></svg></button>
+            <button type="button" class="arrow" data-dir="1" aria-label="Next screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></button>
+          </div>
         </div>
-      </div>
     </div>
     <div class="reel phone-reel" data-set="phone" tabindex="0" role="region" aria-label="Phone screenshots">
-      <figure><img decoding="async" src="img/tour/ph-0.webp" srcset="img/tour/ph-0.webp 540w, img/tour/ph-0-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Home: what's left today, with Overdue, Focus and Pinned counts, and projects by space" loading="lazy"><figcaption><b>Home</b>What's left today, at a glance</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-1.webp" srcset="img/tour/ph-1.webp 540w, img/tour/ph-1-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Today: overdue tasks in one row, then everything due today" loading="lazy"><figcaption><b>Today</b>What's due, and what's late</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-2.webp" srcset="img/tour/ph-2.webp 540w, img/tour/ph-2-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="A project on the Board, filtered by status" loading="lazy"><figcaption><b>Board</b>Swipe through statuses</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-3.webp" srcset="img/tour/ph-3.webp 540w, img/tour/ph-3-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="A project as a list, grouped by status" loading="lazy"><figcaption><b>List</b>Grouped, sorted, filtered</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-4.webp" srcset="img/tour/ph-4.webp 540w, img/tour/ph-4-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="The task screen with status, due date, priority, tags, fields and steps" loading="lazy"><figcaption><b>Task</b>Every detail on one screen</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-5.webp" srcset="img/tour/ph-5.webp 540w, img/tour/ph-5-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="The Agenda month with dots on busy days" loading="lazy"><figcaption><b>Agenda</b>The month, and what's due</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-6.webp" srcset="img/tour/ph-6.webp 540w, img/tour/ph-6-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Quick Add turning typed words into a date, a reminder time and a priority" loading="lazy"><figcaption><b>Quick Add</b>Type it, Offlog sorts it</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-7.webp" srcset="img/tour/ph-7.webp 540w, img/tour/ph-7-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Search results with the matching words highlighted" loading="lazy"><figcaption><b>Search</b>Titles, notes, steps, tags</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-8.webp" srcset="img/tour/ph-8.webp 540w, img/tour/ph-8-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Settings with Sync, Reminders and App Lock" loading="lazy"><figcaption><b>Settings</b>Plain words, no maze</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/ph-9.webp" srcset="img/tour/ph-9.webp 540w, img/tour/ph-9-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="History: changes, newest first" loading="lazy"><figcaption><b>History</b>Six months of changes</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-0.webp" srcset="img/tour/ph-0.webp 540w, img/tour/ph-0-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Home: what's left today, with Overdue, Focus and Pinned counts, and projects by space" loading="lazy"><figcaption><b>Home</b>What's left today, at a glance</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-1.webp" srcset="img/tour/ph-1.webp 540w, img/tour/ph-1-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Today: overdue tasks in one row, then everything due today" loading="lazy"><figcaption><b>Today</b>What's due, and what's late</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-2.webp" srcset="img/tour/ph-2.webp 540w, img/tour/ph-2-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="A project on the Board, filtered by status" loading="lazy"><figcaption><b>Board</b>Swipe through statuses</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-3.webp" srcset="img/tour/ph-3.webp 540w, img/tour/ph-3-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="A project as a list, grouped by status" loading="lazy"><figcaption><b>List</b>Grouped, sorted, filtered</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-4.webp" srcset="img/tour/ph-4.webp 540w, img/tour/ph-4-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="The task screen with status, due date, priority, tags, fields and steps" loading="lazy"><figcaption><b>Task</b>Every detail on one screen</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-5.webp" srcset="img/tour/ph-5.webp 540w, img/tour/ph-5-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="The Agenda month with dots on busy days" loading="lazy"><figcaption><b>Agenda</b>The month, and what's due</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-6.webp" srcset="img/tour/ph-6.webp 540w, img/tour/ph-6-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Quick Add turning typed words into a date, a reminder time and a priority" loading="lazy"><figcaption><b>Quick Add</b>Type it, Offlog sorts it</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-7.webp" srcset="img/tour/ph-7.webp 540w, img/tour/ph-7-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Search results with the matching words highlighted" loading="lazy"><figcaption><b>Search</b>Titles, notes, steps, tags</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-8.webp" srcset="img/tour/ph-8.webp 540w, img/tour/ph-8-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="Settings with Sync, Reminders and App Lock" loading="lazy"><figcaption><b>Settings</b>Plain words, no maze</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/ph-9.webp" srcset="img/tour/ph-9.webp 540w, img/tour/ph-9-2x.webp 880w" sizes="clamp(200px, 22vw, 270px)" width="540" height="1169" alt="History: changes, newest first" loading="lazy"><figcaption><b>History</b>Six months of changes</figcaption></figure>
     </div>
     <div class="reel desk-reel" data-set="desktop" tabindex="0" role="region" aria-label="Windows screenshots" hidden>
-      <figure><img decoding="async" src="img/tour/dk-0.webp" srcset="img/tour/dk-0.webp 1200w, img/tour/dk-0-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="The Windows Dashboard with every project, today and pinned tasks" loading="lazy"><figcaption><b>Dashboard</b>Every project on one page</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-1.webp" srcset="img/tour/dk-1.webp 1200w, img/tour/dk-1-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Focus on Windows: suggested tasks to pick for today" loading="lazy"><figcaption><b>Focus</b>Suggestions, ranked</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-2.webp" srcset="img/tour/dk-2.webp 1200w, img/tour/dk-2-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="The Agenda month on Windows with a day's tasks" loading="lazy"><figcaption><b>Agenda</b>The month and the day</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-3.webp" srcset="img/tour/dk-3.webp 1200w, img/tour/dk-3-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Search on Windows, showing where each result matched" loading="lazy"><figcaption><b>Search, Ctrl+K</b>Shows where it matched</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-4.webp" srcset="img/tour/dk-4.webp 1200w, img/tour/dk-4-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Quick Add on Windows reading a date, a tag and a priority from typed text" loading="lazy"><figcaption><b>Quick Add, Ctrl+N</b>From anywhere in the app</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-5.webp" srcset="img/tour/dk-5.webp 1200w, img/tour/dk-5-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="A task's extras: repeat, checklist, fields, related, blocked by, attachments, notes" loading="lazy"><figcaption><b>Task extras</b>Repeat, checklist, files and more</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-6.webp" srcset="img/tour/dk-6.webp 1200w, img/tour/dk-6-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Fields on a task: a number, a choice and a date" loading="lazy"><figcaption><b>Fields</b>Your own: number, text, date, choice</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-7.webp" srcset="img/tour/dk-7.webp 1200w, img/tour/dk-7-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Backup and Storage settings on Windows" loading="lazy"><figcaption><b>Backups</b>Daily, the last seven kept</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-8.webp" srcset="img/tour/dk-8.webp 1200w, img/tour/dk-8-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="App Lock settings on Windows, ready to set a PIN" loading="lazy"><figcaption><b>App Lock</b>Lock it with a PIN</figcaption></figure>
-      <figure><img decoding="async" src="img/tour/dk-9.webp" srcset="img/tour/dk-9.webp 1200w, img/tour/dk-9-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="The Recycle bin with deleted tasks waiting to be restored" loading="lazy"><figcaption><b>Recycle bin</b>Restore, or let it go</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-0.webp" srcset="img/tour/dk-0.webp 1200w, img/tour/dk-0-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="The Windows Dashboard with every project, today and pinned tasks" loading="lazy"><figcaption><b>Dashboard</b>Every project on one page</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-1.webp" srcset="img/tour/dk-1.webp 1200w, img/tour/dk-1-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Focus on Windows: suggested tasks to pick for today" loading="lazy"><figcaption><b>Focus</b>Suggestions, ranked</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-2.webp" srcset="img/tour/dk-2.webp 1200w, img/tour/dk-2-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="The Agenda month on Windows with a day's tasks" loading="lazy"><figcaption><b>Agenda</b>The month and the day</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-3.webp" srcset="img/tour/dk-3.webp 1200w, img/tour/dk-3-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Search on Windows, showing where each result matched" loading="lazy"><figcaption><b>Search, Ctrl+K</b>Shows where it matched</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-4.webp" srcset="img/tour/dk-4.webp 1200w, img/tour/dk-4-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Quick Add on Windows reading a date, a tag and a priority from typed text" loading="lazy"><figcaption><b>Quick Add, Ctrl+N</b>From anywhere in the app</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-5.webp" srcset="img/tour/dk-5.webp 1200w, img/tour/dk-5-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="A task's extras: repeat, checklist, fields, related, blocked by, attachments, notes" loading="lazy"><figcaption><b>Task extras</b>Repeat, checklist, files and more</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-6.webp" srcset="img/tour/dk-6.webp 1200w, img/tour/dk-6-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Fields on a task: a number, a choice and a date" loading="lazy"><figcaption><b>Fields</b>Your own: number, text, date, choice</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-7.webp" srcset="img/tour/dk-7.webp 1200w, img/tour/dk-7-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="Backup and Storage settings on Windows" loading="lazy"><figcaption><b>Backups</b>Daily, the last seven kept</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-8.webp" srcset="img/tour/dk-8.webp 1200w, img/tour/dk-8-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="App Lock settings on Windows, ready to set a PIN" loading="lazy"><figcaption><b>App Lock</b>Lock it with a PIN</figcaption></figure>
+        <figure><img decoding="async" src="img/tour/dk-9.webp" srcset="img/tour/dk-9.webp 1200w, img/tour/dk-9-2x.webp 2000w" sizes="min(820px, 92vw)" width="1200" height="750" alt="The Recycle bin with deleted tasks waiting to be restored" loading="lazy"><figcaption><b>Recycle bin</b>Restore, or let it go</figcaption></figure>
     </div>
   </section>
 
   <section class="showroom" id="features">
     <div class="wrap">
-      <div class="show-head">
-        <div>
-          <p class="eyebrow lift">Everything it does</p>
-          <h2 class="lift">The whole showroom.</h2>
+        <div class="show-head">
+          <div>
+            <p class="eyebrow lift">Everything it does</p>
+            <h2 class="lift">The whole showroom.</h2>
+          </div>
+          <p class="tally lift"><b id="tally">62</b><span>features,<br>all free</span></p>
         </div>
-        <p class="tally lift"><b id="tally">62</b><span>features,<br>all free</span></p>
-      </div>
-      <div class="filters" role="group" aria-label="Filter features">
-        <button type="button" aria-pressed="true" data-cat="all">All</button>
-        <button type="button" aria-pressed="false" data-cat="plan">Plan</button>
-        <button type="button" aria-pressed="false" data-cat="tasks">Tasks</button>
-        <button type="button" aria-pressed="false" data-cat="focus">Focus</button>
-        <button type="button" aria-pressed="false" data-cat="find">Find</button>
-        <button type="button" aria-pressed="false" data-cat="phone">Phone</button>
-        <button type="button" aria-pressed="false" data-cat="windows">Windows</button>
-        <button type="button" aria-pressed="false" data-cat="sync">Sync</button>
-        <button type="button" aria-pressed="false" data-cat="safety">Safety</button>
-        <button type="button" aria-pressed="false" data-cat="data">Your data</button>
-        <button type="button" aria-pressed="false" data-cat="look">Look and feel</button>
-      </div>
-      <p class="sr-only" id="feats-status" role="status"></p>
-      <ul class="feats short" id="feats">
-        <li data-cat="plan"><i>Plan</i><b>Spaces and projects</b><span>Group projects into spaces, each with its own color and one of 25 icons.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Your own statuses</b><span>Name them, reorder them, add more. The last one means done.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Board</b><span>Drag tasks from one status to the next.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>List</b><span>A dense table with sorting on several columns, column choice and saved filters.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Agenda</b><span>Every deadline across every project, as a grouped list or a month.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Dashboard</b><span>All projects on one page, with what you finished in the past week.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Project templates</b><span>Start a project from another one's statuses, and its open tasks if you like.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Rename and move</b><span>Rename a project or move it to another space in two taps.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Pin what matters</b><span>Pin projects and tasks to keep them in view.</span></li>
-        <li data-cat="plan"><i>Plan</i><b>Archive</b><span>Put finished projects and tasks away without deleting them.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Notes in Markdown</b><span>Headings, bold and lists render as you type, in one pane.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Steps</b><span>A checklist inside a task, with progress shown on the task.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Tags</b><span>Colored tags you can rename and merge.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Fields</b><span>Your own fields: text, number, date or a choice from a list.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Attachments</b><span>Photos and files up to 10 MB, with thumbnails.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Due date and reminder</b><span>Set them separately: due Friday, remind me Thursday evening.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Repeat</b><span>Daily, weekly, monthly, weekdays only, or every few days, weeks or months. One task that resets itself.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Blocked by</b><span>Mark what a task is waiting on. Circular chains are refused.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Related tasks</b><span>Link tasks that belong together, across projects.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Priority</b><span>Low, medium or high, shown on the task's circle.</span></li>
-        <li data-cat="tasks"><i>Tasks</i><b>Duplicate</b><span>Copy a task with its steps, tags, fields, notes and files.</span></li>
-        <li data-cat="focus"><i>Focus</i><b>Today's three</b><span>Pick up to three tasks for the day. Finish those first.</span></li>
-        <li data-cat="focus"><i>Focus</i><b>Suggestions</b><span>Pinned first, then overdue, then due soon. The likely three, ready to pick.</span></li>
-        <li data-cat="focus"><i>Focus</i><b>Overdue, handled</b><span>On the phone, one tap moves every overdue task to today, with Undo.</span></li>
-        <li data-cat="focus"><i>Focus</i><b>Reminders</b><span>Done and Snooze 1h right in the notification.</span></li>
-        <li data-cat="focus"><i>Focus</i><b>Quiet hours</b><span>No reminders while you sleep.</span></li>
-        <li data-cat="focus"><i>Focus</i><b>Default reminder time</b><span>Pick a date and the time is already filled in.</span></li>
-        <li data-cat="find"><i>Find</i><b>Search everything</b><span>Titles, notes, tags, steps and attachment names, with where it matched.</span></li>
-        <li data-cat="find"><i>Find</i><b>Quick Add</b><span>Reads dates, times, #tags, !priority and @project from what you type.</span></li>
-        <li data-cat="find"><i>Find</i><b>Command palette</b><span>On Windows, Ctrl+K opens one box to search, jump and run commands.</span></li>
-        <li data-cat="find"><i>Find</i><b>Keyboard first</b><span>Every control works from the keyboard on Windows.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>Made for one hand</b><span>Four tabs: Home, Today, Agenda and Search, with + always in reach.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>A real task screen</b><span>Tap any row to change it. No tiny forms.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>Scroll-wheel times</b><span>Set times with your thumb, and pick dates from a full month.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>Landscape</b><span>Turn the phone sideways and the tabs become a rail.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>Home-screen widget</b><span>Focus, Quick Add and Home, one tap from your home screen.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>Back button</b><span>Android's back closes the top thing, every time.</span></li>
-        <li data-cat="phone"><i>Phone</i><b>Haptics</b><span>On Android, a light tap when you finish or pin something. You can turn it off.</span></li>
-        <li data-cat="windows"><i>Windows</i><b>Lives in the tray</b><span>Always one click away, and Ctrl+Alt+O from anywhere.</span></li>
-        <li data-cat="windows"><i>Windows</i><b>Native notifications</b><span>Reminders arrive as normal Windows notifications.</span></li>
-        <li data-cat="windows"><i>Windows</i><b>Updates</b><span>Offlog tells you when a new version is out. Each one is signature-checked before it installs.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>Your PC is the server</b><span>The Windows app hosts sync for your phone. Nothing in between.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>Pair with six digits</b><span>A code on the PC, typed once on the phone. No IP addresses.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>Finds your PC by itself</b><span>And finds it again if its address on your Wi-Fi changes.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>Encrypted pairing</b><span>Nothing secret is sent before the code is proven.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>Offline, then caught up</b><span>Work anywhere. Changes meet the next time your devices do.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>You settle conflicts</b><span>If two devices change the same task, you choose which version to keep.</span></li>
-        <li data-cat="sync"><i>Sync</i><b>Device names</b><span>Each device names itself, so History shows where a change came from.</span></li>
-        <li data-cat="safety"><i>Safety</i><b>App Lock</b><span>A PIN, with fingerprint or face unlock on Android.</span></li>
-        <li data-cat="safety"><i>Safety</i><b>Recovery code</b><span>Shown once, to copy or share somewhere safe. Only you keep it.</span></li>
-        <li data-cat="safety"><i>Safety</i><b>Privacy screen</b><span>With App Lock on, you can hide Offlog in Android's recent apps. Android then blocks screenshots of it too.</span></li>
-        <li data-cat="safety"><i>Safety</i><b>Undo</b><span>Undo a delete, a move or a finished task, right from the message.</span></li>
-        <li data-cat="safety"><i>Safety</i><b>Recycle bin</b><span>Deleted tasks wait three months before they go.</span></li>
-        <li data-cat="safety"><i>Safety</i><b>History</b><span>Six months of changes, which device made each one, and when.</span></li>
-        <li data-cat="data"><i>Your data</i><b>Daily backups</b><span>One a day, the last seven kept, without asking.</span></li>
-        <li data-cat="data"><i>Your data</i><b>Backup and restore</b><span>Everything, including attachments, fields and tag colors.</span></li>
-        <li data-cat="data"><i>Your data</i><b>One project at a time</b><span>Back up a single project on its own.</span></li>
-        <li data-cat="data"><i>Your data</i><b>CSV export</b><span>Every task as a spreadsheet, whenever you want.</span></li>
-        <li data-cat="data"><i>Your data</i><b>Check and repair</b><span>Finds orphaned tasks and broken states, and fixes the ones that are safe to fix.</span></li>
-        <li data-cat="look"><i>Look and feel</i><b>Light, dark, system</b><span>And a high-contrast mode for bright days.</span></li>
-        <li data-cat="look"><i>Look and feel</i><b>Reduce motion</b><span>Every animation respects it, in the app and on this page.</span></li>
-        <li data-cat="look"><i>Look and feel</i><b>Your calendar, your clock</b><span>Weeks start on Monday or Sunday. Time shows as 12- or 24-hour.</span></li>
-        <li class="end"><b>All of it, free.</b><span>On every device you own. No paywall, ever.</span><a class="btn btn-primary" href="#download">Download Offlog</a></li>
-      </ul>
-      <button type="button" class="btn btn-ghost more-btn" id="feats-more">Show all 62 features</button>
+        <div class="filters" role="group" aria-label="Filter features">
+          <button type="button" aria-pressed="true" data-cat="all">All</button>
+          <button type="button" aria-pressed="false" data-cat="plan">Plan</button>
+          <button type="button" aria-pressed="false" data-cat="tasks">Tasks</button>
+          <button type="button" aria-pressed="false" data-cat="focus">Focus</button>
+          <button type="button" aria-pressed="false" data-cat="find">Find</button>
+          <button type="button" aria-pressed="false" data-cat="phone">Phone</button>
+          <button type="button" aria-pressed="false" data-cat="windows">Windows</button>
+          <button type="button" aria-pressed="false" data-cat="sync">Sync</button>
+          <button type="button" aria-pressed="false" data-cat="safety">Safety</button>
+          <button type="button" aria-pressed="false" data-cat="data">Your data</button>
+          <button type="button" aria-pressed="false" data-cat="look">Look and feel</button>
+        </div>
+        <p class="sr-only" id="feats-status" role="status"></p>
+        <ul class="feats short" id="feats">
+          <li data-cat="plan"><i>Plan</i><b>Spaces and projects</b><span>Group projects into spaces, each with its own color and one of 25 icons.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Your own statuses</b><span>Name them, reorder them, add more. The last one means done.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Board</b><span>Drag tasks from one status to the next.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>List</b><span>A dense table with sorting on several columns, column choice and saved filters.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Agenda</b><span>Every deadline across every project, as a grouped list or a month.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Dashboard</b><span>All projects on one page, with what you finished in the past week.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Project templates</b><span>Start a project from another one's statuses, and its open tasks if you like.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Rename and move</b><span>Rename a project or move it to another space in two taps.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Pin what matters</b><span>Pin projects and tasks to keep them in view.</span></li>
+          <li data-cat="plan"><i>Plan</i><b>Archive</b><span>Put finished projects and tasks away without deleting them.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Notes in Markdown</b><span>Headings, bold and lists render as you type, in one pane.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Steps</b><span>A checklist inside a task, with progress shown on the task.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Tags</b><span>Colored tags you can rename and merge.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Fields</b><span>Your own fields: text, number, date or a choice from a list.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Attachments</b><span>Photos and files up to 10 MB, with thumbnails.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Due date and reminder</b><span>Set them separately: due Friday, remind me Thursday evening.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Repeat</b><span>Daily, weekly, monthly, weekdays only, or every few days, weeks or months. One task that resets itself.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Blocked by</b><span>Mark what a task is waiting on. Circular chains are refused.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Related tasks</b><span>Link tasks that belong together, across projects.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Priority</b><span>Low, medium or high, shown on the task's circle.</span></li>
+          <li data-cat="tasks"><i>Tasks</i><b>Duplicate</b><span>Copy a task with its steps, tags, fields, notes and files.</span></li>
+          <li data-cat="focus"><i>Focus</i><b>Today's three</b><span>Pick up to three tasks for the day. Finish those first.</span></li>
+          <li data-cat="focus"><i>Focus</i><b>Suggestions</b><span>Pinned first, then overdue, then due soon. The likely three, ready to pick.</span></li>
+          <li data-cat="focus"><i>Focus</i><b>Overdue, handled</b><span>On the phone, one tap moves every overdue task to today, with Undo.</span></li>
+          <li data-cat="focus"><i>Focus</i><b>Reminders</b><span>Done and Snooze 1h right in the notification.</span></li>
+          <li data-cat="focus"><i>Focus</i><b>Quiet hours</b><span>No reminders while you sleep.</span></li>
+          <li data-cat="focus"><i>Focus</i><b>Default reminder time</b><span>Pick a date and the time is already filled in.</span></li>
+          <li data-cat="find"><i>Find</i><b>Search everything</b><span>Titles, notes, tags, steps and attachment names, with where it matched.</span></li>
+          <li data-cat="find"><i>Find</i><b>Quick Add</b><span>Reads dates, times, #tags, !priority and @project from what you type.</span></li>
+          <li data-cat="find"><i>Find</i><b>Command palette</b><span>On Windows, Ctrl+K opens one box to search, jump and run commands.</span></li>
+          <li data-cat="find"><i>Find</i><b>Keyboard first</b><span>Every control works from the keyboard on Windows.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>Made for one hand</b><span>Four tabs: Home, Today, Agenda and Search, with + always in reach.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>A real task screen</b><span>Tap any row to change it. No tiny forms.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>Scroll-wheel times</b><span>Set times with your thumb, and pick dates from a full month.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>Landscape</b><span>Turn the phone sideways and the tabs become a rail.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>Home-screen widget</b><span>Focus, Quick Add and Home, one tap from your home screen.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>Back button</b><span>Android's back closes the top thing, every time.</span></li>
+          <li data-cat="phone"><i>Phone</i><b>Haptics</b><span>On Android, a light tap when you finish or pin something. You can turn it off.</span></li>
+          <li data-cat="windows"><i>Windows</i><b>Lives in the tray</b><span>Always one click away, and Ctrl+Alt+O from anywhere.</span></li>
+          <li data-cat="windows"><i>Windows</i><b>Native notifications</b><span>Reminders arrive as normal Windows notifications.</span></li>
+          <li data-cat="windows"><i>Windows</i><b>Updates</b><span>Offlog tells you when a new version is out. Each one is signature-checked before it installs.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>Your PC is the server</b><span>The Windows app hosts sync for your phone. Nothing in between.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>Pair with six digits</b><span>A code on the PC, typed once on the phone. No IP addresses.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>Finds your PC by itself</b><span>And finds it again if its address on your Wi-Fi changes.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>Encrypted pairing</b><span>Nothing secret is sent before the code is proven.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>Offline, then caught up</b><span>Work anywhere. Changes meet the next time your devices do.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>You settle conflicts</b><span>If two devices change the same task, you choose which version to keep.</span></li>
+          <li data-cat="sync"><i>Sync</i><b>Device names</b><span>Each device names itself, so History shows where a change came from.</span></li>
+          <li data-cat="safety"><i>Safety</i><b>App Lock</b><span>A PIN, with fingerprint or face unlock on Android.</span></li>
+          <li data-cat="safety"><i>Safety</i><b>Recovery code</b><span>Shown once, to copy or share somewhere safe. Only you keep it.</span></li>
+          <li data-cat="safety"><i>Safety</i><b>Privacy screen</b><span>With App Lock on, you can hide Offlog in Android's recent apps. Android then blocks screenshots of it too.</span></li>
+          <li data-cat="safety"><i>Safety</i><b>Undo</b><span>Undo a delete, a move or a finished task, right from the message.</span></li>
+          <li data-cat="safety"><i>Safety</i><b>Recycle bin</b><span>Deleted tasks wait three months before they go.</span></li>
+          <li data-cat="safety"><i>Safety</i><b>History</b><span>Six months of changes, which device made each one, and when.</span></li>
+          <li data-cat="data"><i>Your data</i><b>Daily backups</b><span>One a day, the last seven kept, without asking.</span></li>
+          <li data-cat="data"><i>Your data</i><b>Backup and restore</b><span>Everything, including attachments, fields and tag colors.</span></li>
+          <li data-cat="data"><i>Your data</i><b>One project at a time</b><span>Back up a single project on its own.</span></li>
+          <li data-cat="data"><i>Your data</i><b>CSV export</b><span>Every task as a spreadsheet, whenever you want.</span></li>
+          <li data-cat="data"><i>Your data</i><b>Check and repair</b><span>Finds orphaned tasks and broken states, and fixes the ones that are safe to fix.</span></li>
+          <li data-cat="look"><i>Look and feel</i><b>Light, dark, system</b><span>And a high-contrast mode for bright days.</span></li>
+          <li data-cat="look"><i>Look and feel</i><b>Reduce motion</b><span>Every animation respects it, in the app and on this page.</span></li>
+          <li data-cat="look"><i>Look and feel</i><b>Your calendar, your clock</b><span>Weeks start on Monday or Sunday. Time shows as 12- or 24-hour.</span></li>
+          <li class="end"><b>All of it, free.</b><span>On every device you own. No paywall, ever.</span><a class="btn btn-primary" href="#download">Download Offlog</a></li>
+        </ul>
+        <button type="button" class="btn btn-ghost more-btn" id="feats-more">Show all 62 features</button>
     </div>
   </section>
 
   <section class="compare" id="compare" aria-labelledby="compare-h">
     <div class="wrap">
-      <p class="eyebrow lift">Different by design</p>
-      <h2 class="lift" id="compare-h">Not a cloud app, on purpose.</h2>
-      <p class="lede lift">Most task apps keep your list on their servers. Offlog keeps it on your devices. That changes a few things, some in your favor and some not.</p>
-      <div class="cmp-wrap lift">
-        <table class="cmp">
-          <thead><tr><td></td><th scope="col">Offlog</th><th scope="col">A typical cloud app</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Where your tasks live</th><td class="y">On your phone and your PC</td><td>On the company's servers</td></tr>
-            <tr><th scope="row">Account</th><td class="y">None</td><td>Email and password, or a Google or Apple sign-in</td></tr>
-            <tr><th scope="row">Who can read your tasks</th><td class="y">Only you</td><td>You, and the company running it</td></tr>
-            <tr><th scope="row">Price</th><td class="y">Free, every feature, no ads</td><td>Often a free tier, then a subscription</td></tr>
-            <tr><th scope="row">If the company shuts down</th><td class="y">The app keeps working. The code is open.</td><td>The service can go with it</td></tr>
-            <tr><th scope="row">Sync away from home</th><td class="n">No, only on your own Wi-Fi</td><td class="y">Anywhere with internet</td></tr>
-            <tr><th scope="row">iPhone and Mac</th><td class="n">No</td><td class="y">Usually</td></tr>
-            <tr><th scope="row">Sharing with other people</th><td class="n">No, it's for one person</td><td class="y">Usually</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="fit lift">
-        <div class="for"><h3>Offlog is for you if</h3><ul><li>You want your tasks to stay on your own devices</li><li>You use an Android phone, a Windows PC, or both</li><li>You plan your own work and your own life</li></ul></div>
-        <div class="notfor"><h3>Look elsewhere if</h3><ul><li>You plan together with a team or a family</li><li>You use an iPhone or a Mac</li><li>You need your phone and PC to sync while you're away</li></ul></div>
-      </div>
+        <p class="eyebrow lift">Different by design</p>
+        <h2 class="lift" id="compare-h">Not a cloud app, on purpose.</h2>
+        <p class="lede lift">Most task apps keep your list on their servers. Offlog keeps it on your devices. That changes a few things, some in your favor and some not.</p>
+        <div class="cmp-wrap lift">
+          <table class="cmp">
+            <thead><tr><td></td><th scope="col">Offlog</th><th scope="col">A typical cloud app</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Where your tasks live</th><td class="y">On your phone and your PC</td><td>On the company's servers</td></tr>
+              <tr><th scope="row">Account</th><td class="y">None</td><td>Email and password, or a Google or Apple sign-in</td></tr>
+              <tr><th scope="row">Who can read your tasks</th><td class="y">Only you</td><td>You, and the company running it</td></tr>
+              <tr><th scope="row">Price</th><td class="y">Free, every feature, no ads</td><td>Often a free tier, then a subscription</td></tr>
+              <tr><th scope="row">If the company shuts down</th><td class="y">The app keeps working. The code is open.</td><td>The service can go with it</td></tr>
+              <tr><th scope="row">Sync away from home</th><td class="n">No, only on your own Wi-Fi</td><td class="y">Anywhere with internet</td></tr>
+              <tr><th scope="row">iPhone and Mac</th><td class="n">No</td><td class="y">Usually</td></tr>
+              <tr><th scope="row">Sharing with other people</th><td class="n">No, it's for one person</td><td class="y">Usually</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fit lift">
+          <div class="for"><h3>Offlog is for you if</h3><ul><li>You want your tasks to stay on your own devices</li><li>You use an Android phone, a Windows PC, or both</li><li>You plan your own work and your own life</li></ul></div>
+          <div class="notfor"><h3>Look elsewhere if</h3><ul><li>You plan together with a team or a family</li><li>You use an iPhone or a Mac</li><li>You need your phone and PC to sync while you're away</li></ul></div>
+        </div>
     </div>
   </section>
 
   <section id="download">
     <div class="wrap">
-      <p class="eyebrow lift">Download</p>
-      <h2 class="lift">Two apps. One set of tasks.</h2>
-      <p class="lede lift">Use either on its own, or both together.</p>
-      <p class="rel lift">Version <b data-rel="version">6.10.5</b> · released <time data-rel="date" datetime="2026-09-29">29 September 2026</time> · <a class="textlink" data-rel="notes" href="https://github.com/hrach-gevorgyan/offlog/releases/tag/v6.10.5">What's new</a></p>
-      <div class="get lift">
-        <article class="plat">
-          <div class="big-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 5.5 10 4.5v7H3zM11 4.4 21 3v8.5H11zM3 12.5h7v7l-7-1zM11 12.5h10V21l-10-1.4z"/></svg></div>
-          <div><h3>Windows</h3><p class="req">64-bit Windows · installs for your user, no admin rights needed</p></div>
-          <ul><li>Board, List, Agenda and Focus, with keyboard shortcuts</li><li>Lives in the tray, opens with Ctrl+Alt+O</li><li>Hosts sync for your phone, and tells you about updates</li></ul>
-          <a class="btn btn-primary" data-rel="exe" href="https://github.com/hrach-gevorgyan/offlog/releases/download/v6.10.5/Offlog_6.10.5_x64-setup.exe">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
-            Download for Windows <small data-rel="exe-size">5.2 MB</small>
-          </a>
-          <details class="howto">
-            <summary>How to install</summary>
-            <ol>
-              <li>Open the downloaded <code data-rel="exe-name">Offlog_6.10.5_x64-setup.exe</code>.</li>
-              <li>If Windows says "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>. It warns because the installer isn't code-signed.</li>
-              <li>Follow the installer. Offlog opens, and stays in the tray when you close its window.</li>
-            </ol>
-          </details>
-        </article>
-        <article class="plat">
-          <div class="big-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.6 9.48 19.4 6.3a.4.4 0 0 0-.7-.4l-1.84 3.2a11 11 0 0 0-9.72 0L5.3 5.9a.4.4 0 0 0-.7.4l1.8 3.18A10.3 10.3 0 0 0 1 18h22a10.3 10.3 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg></div>
-          <div><h3>Android</h3><p class="req">Android 7.0 or newer</p></div>
-          <ul><li>Made for one hand: tabs, a full task screen, scroll wheels for time</li><li>Reminders with Done and Snooze 1h, and a home-screen widget</li><li>Works in landscape, and fully offline</li></ul>
-          <a class="btn btn-primary" href="https://github.com/hrach-gevorgyan/offlog/releases/latest/download/app-release.apk">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
-            Download the APK <small data-rel="apk-size">4.9 MB</small>
-          </a>
-          <details class="howto">
-            <summary>How to install</summary>
-            <ol>
-              <li>Download the APK on your phone, then open it from the download notification or your Downloads.</li>
-              <li>Android asks whether your browser may install apps. Tap <b>Settings</b>, turn on <b>Allow from this source</b>, and go back.</li>
-              <li>Tap <b>Install</b>. If Google Play Protect asks, let it scan the app first.</li>
-            </ol>
-          </details>
-        </article>
-      </div>
-      <div class="qr lift">
-        <img src="img/qr-apk.svg" width="112" height="112" alt="QR code linking to the Android APK download" loading="lazy" decoding="async">
-        <p><b>Reading this on your PC?</b> Point your phone's camera at the code to download the APK there.</p>
-      </div>
-      <p class="note lift">Updates are signature-checked before they install. Until the Google Play listing is live, the APK comes from GitHub, where every release and its source code are public. No iOS or Mac version.</p>
+        <p class="eyebrow lift">Download</p>
+        <h2 class="lift">Two apps. One set of tasks.</h2>
+        <p class="lede lift">Use either on its own, or both together.</p>
+        <p class="rel lift">Version <b data-rel="version">6.10.5</b> · released <time data-rel="date" datetime="2026-09-29">29 September 2026</time> · <a class="textlink" data-rel="notes" href="https://github.com/hrach-gevorgyan/offlog/releases/tag/v6.10.5">What's new</a></p>
+        <div class="get lift">
+          <article class="plat">
+            <div class="big-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 5.5 10 4.5v7H3zM11 4.4 21 3v8.5H11zM3 12.5h7v7l-7-1zM11 12.5h10V21l-10-1.4z"/></svg></div>
+            <div><h3>Windows</h3><p class="req">64-bit Windows · installs for your user, no admin rights needed</p></div>
+            <ul><li>Board, List, Agenda and Focus, with keyboard shortcuts</li><li>Lives in the tray, opens with Ctrl+Alt+O</li><li>Hosts sync for your phone, and tells you about updates</li></ul>
+            <a class="btn btn-primary" data-rel="exe" href="https://github.com/hrach-gevorgyan/offlog/releases/download/v6.10.5/Offlog_6.10.5_x64-setup.exe">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
+              Download for Windows <small data-rel="exe-size">5.2 MB</small>
+            </a>
+            <details class="howto">
+              <summary>How to install</summary>
+              <ol>
+                <li>Open the downloaded <code data-rel="exe-name">Offlog_6.10.5_x64-setup.exe</code>.</li>
+                <li>If Windows says "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>. It warns because the installer isn't code-signed.</li>
+                <li>Follow the installer. Offlog opens, and stays in the tray when you close its window.</li>
+              </ol>
+            </details>
+          </article>
+          <article class="plat">
+            <div class="big-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.6 9.48 19.4 6.3a.4.4 0 0 0-.7-.4l-1.84 3.2a11 11 0 0 0-9.72 0L5.3 5.9a.4.4 0 0 0-.7.4l1.8 3.18A10.3 10.3 0 0 0 1 18h22a10.3 10.3 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg></div>
+            <div><h3>Android</h3><p class="req">Android 7.0 or newer</p></div>
+            <ul><li>Made for one hand: tabs, a full task screen, scroll wheels for time</li><li>Reminders with Done and Snooze 1h, and a home-screen widget</li><li>Works in landscape, and fully offline</li></ul>
+            <a class="btn btn-primary" href="https://github.com/hrach-gevorgyan/offlog/releases/latest/download/app-release.apk">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
+              Download the APK <small data-rel="apk-size">4.9 MB</small>
+            </a>
+            <details class="howto">
+              <summary>How to install</summary>
+              <ol>
+                <li>Download the APK on your phone, then open it from the download notification or your Downloads.</li>
+                <li>Android asks whether your browser may install apps. Tap <b>Settings</b>, turn on <b>Allow from this source</b>, and go back.</li>
+                <li>Tap <b>Install</b>. If Google Play Protect asks, let it scan the app first.</li>
+              </ol>
+            </details>
+          </article>
+        </div>
+        <div class="qr lift">
+          <img src="img/qr-apk.svg" width="112" height="112" alt="QR code linking to the Android APK download" loading="lazy" decoding="async">
+          <p><b>Reading this on your PC?</b> Point your phone's camera at the code to download the APK there.</p>
+        </div>
+        <p class="note lift">Updates are signature-checked before they install. Until the Google Play listing is live, the APK comes from GitHub, where every release and its source code are public. No iOS or Mac version.</p>
     </div>
   </section>
 
   <section id="faq">
     <div class="wrap">
-      <p class="eyebrow lift">Questions</p>
-      <h2 class="lift">Plain answers.</h2>
-      <div class="faq">
-        <details><summary>Is it really free?</summary><p>Yes. Every feature, on every device, with no paywall, no ads and no trial. Offlog is open source under the MIT license.</p></details>
-        <details><summary>Do I need the Windows app?</summary><p>Only to sync. The phone app and the Windows app each work fully on their own. To keep them in step, the Windows app acts as the sync point, so two phones without a PC can't sync with each other.</p></details>
-        <details><summary>Does sync work away from home?</summary><p>No, and that's on purpose. Your devices sync when they're on the same network. Everything still works offline in the meantime, and catches up the next time they meet.</p></details>
-        <details><summary>What if I lose my phone?</summary><p>If you sync, your tasks are also on your PC. For a copy off the phone, use Back up and keep the file somewhere else. The daily backups stay on the phone itself. App Lock stops someone opening the app, but your tasks aren't encrypted on the phone.</p></details>
-        <details><summary>Why does Windows warn me when I install it?</summary><p>The installer isn't code-signed. A certificate costs money every year, and this project won't pay for one. Click "More info", then "Run anyway". The app's own updates are checked against a signature before they install.</p></details>
-        <details><summary>Who makes this?</summary><p>One person, who wanted a task list that stays on their own devices. The code is on GitHub. Issues and ideas are welcome there.</p></details>
-      </div>
+        <p class="eyebrow lift">Questions</p>
+        <h2 class="lift">Plain answers.</h2>
+        <div class="faq">
+          <details><summary>Is it really free?</summary><p>Yes. Every feature, on every device, with no paywall, no ads and no trial. Offlog is open source under the MIT license.</p></details>
+          <details><summary>Do I need the Windows app?</summary><p>Only to sync. The phone app and the Windows app each work fully on their own. To keep them in step, the Windows app acts as the sync point, so two phones without a PC can't sync with each other.</p></details>
+          <details><summary>Does sync work away from home?</summary><p>No, and that's on purpose. Your devices sync when they're on the same network. Everything still works offline in the meantime, and catches up the next time they meet.</p></details>
+          <details><summary>What if I lose my phone?</summary><p>If you sync, your tasks are also on your PC. For a copy off the phone, use Back up and keep the file somewhere else. The daily backups stay on the phone itself. App Lock stops someone opening the app, but your tasks aren't encrypted on the phone.</p></details>
+          <details><summary>Why does Windows warn me when I install it?</summary><p>The installer isn't code-signed. A certificate costs money every year, and this project won't pay for one. Click "More info", then "Run anyway". The app's own updates are checked against a signature before they install.</p></details>
+          <details><summary>Who makes this?</summary><p>One person, who wanted a task list that stays on their own devices. The code is on GitHub. Issues and ideas are welcome there.</p></details>
+        </div>
     </div>
   </section>
 </main>
@@ -484,14 +488,14 @@
 <footer>
   <div class="wrap">
     <div class="row1">
-      <a class="brand" href="#top"><img decoding="async" src="img/logo.webp" alt="" width="28" height="28">Offlog</a>
-      <span class="tagline">Off the cloud, still logged.</span>
-      <nav aria-label="Footer">
-        <a href="https://github.com/hrach-gevorgyan/offlog">Source</a>
-        <a href="https://github.com/hrach-gevorgyan/offlog/releases">Releases</a>
-        <a href="https://github.com/hrach-gevorgyan/offlog/blob/main/docs/privacy.md">Privacy</a>
-        <a href="https://github.com/hrach-gevorgyan/offlog/blob/main/LICENSE">MIT license</a>
-      </nav>
+        <a class="brand" href="#top"><img decoding="async" src="img/logo.webp" alt="" width="28" height="28">Offlog</a>
+        <span class="tagline">Off the cloud, still logged.</span>
+        <nav aria-label="Footer">
+          <a href="https://github.com/hrach-gevorgyan/offlog">Source</a>
+          <a href="https://github.com/hrach-gevorgyan/offlog/releases">Releases</a>
+          <a href="https://github.com/hrach-gevorgyan/offlog/blob/main/docs/privacy.md">Privacy</a>
+          <a href="https://github.com/hrach-gevorgyan/offlog/blob/main/LICENSE">MIT license</a>
+        </nav>
     </div>
     <div class="wordmark" aria-hidden="true">Offlog</div>
   </div>

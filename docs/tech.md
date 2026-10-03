@@ -1037,7 +1037,8 @@ cargo tauri build
 ## Website (offlog.io)
 
 `site/` is a static page, hand-written HTML and CSS with one script,
-`site.js`: the hero phone demo (built in HTML, not a screenshot), the
+`site.js`: the hero (the Windows Dashboard window with the phone demo, built
+in HTML rather than a screenshot, in front of it), the
 auto-advancing Board/List/Agenda tabs, the playable "Today's three", the
 scroll-linked phone, the screenshot tour (phone and Windows reels in
 `site/img/tour/`), the filterable feature showroom (each feature is one
@@ -1045,7 +1046,7 @@ scroll-linked phone, the screenshot tour (phone and Windows reels in
 receipt. The page is complete without
 it, and every animation stops under prefers-reduced-motion. The nav's
 pause button (`html.paused`) freezes the CSS animations and holds the
-scripted loops; the hero demo also holds while it's under 60% on screen or
+scripted loops; the hero demo also holds while it's under 40% on screen or
 the tab is hidden. On phone widths the views tabs swap to phone
 screenshots through `<picture>` sources. Light and dark
 follow the visitor's system setting. It follows brand.md: one accent, Hanken Grotesk self-hosted

@@ -123,10 +123,10 @@ onSight(lifts, el => el.classList.remove('wait'), '0px 0px -6% 0px');
   let started = false;
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(([e]) => {
-      visible = e.intersectionRatio >= .6;
+      visible = e.intersectionRatio >= .4;
       if (visible && !started) { started = true; loop(); }
       check();
-    }, { threshold: [0, .6] }).observe(stage);
+    }, { threshold: [0, .4] }).observe(stage);
   } else { visible = true; loop(); }
 })();
 
