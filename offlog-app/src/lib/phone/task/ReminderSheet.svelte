@@ -1,14 +1,11 @@
 <script lang="ts">
-  import { shortDate } from '../format';
+  import { createEventDispatcher } from 'svelte';
   import type { TaskDoc } from '../../types';
-  import CalendarPicker from '../../CalendarPicker.svelte';
+  import ReminderPicker from './ReminderPicker.svelte';
   import { requestPermission, permissionState } from '../../notifications';
   import { getDefaultReminderTime, isTauri } from '../../../config';
   import { fmtTime } from '../../utils';
-  import { isoToLocalInput, dueDateToReminderInput } from '../../carddetail/helpers';
-  import { I } from '../icons';
-  import { reminderPresets } from '../presets';
-
+  import { dueDateToReminderInput } from '../../carddetail/helpers';
 
   export let task: TaskDoc;
   export let save: (changes: Partial<TaskDoc>, err: string) => Promise<boolean>;
@@ -17,19 +14,18 @@
   const defTime = getDefaultReminderTime();
   const timeLabel = (hhmm: string) => fmtTime(new Date(`1970-01-01T${hhmm}`));
 
-  $: onDue = !!task.remindOnDue;
-  $: local = task.reminder_at ? isoToLocalInput(task.reminder_at) : '';
+  // `done`: a reminder was set or removed; the sheet can close.
+  const dispatch = createEventDispatcher<{ done: void }>();
 
-  // Presets in the past are left out; "now" is read once per open.
-  const PRESETS = reminderPresets();
+  $: onDue = !!task.remindOnDue;
 
   // The first reminder is the moment the permission makes sense, so that's
   // when Android is asked; never at launch.
   function askOnce() { if ($permissionState === 'default') requestPermission(); }
 
-  function setAt(v: string) {
-    if (v) askOnce();
-    save({ reminder_at: v ? new Date(v).toISOString() : null }, ERR);
+  async function setAt(iso: string) {
+    if (iso) askOnce();
+    if (await save(iso ? { reminder_at: iso } : { reminder_at: null, remindOnDue: false }, ERR)) dispatch('done');
   }
 
   // On: the reminder follows the due date at the default reminder time.
@@ -53,28 +49,11 @@
   </button>
 </div>
 
-{#if PRESETS.length}
-  <div class="p-group">
-    {#each PRESETS as p (p.at)}
-      <button class="p-row" disabled={onDue} on:click={() => setAt(p.at)}>
-        <span class="p-k"><span>{p.label}</span></span>
-        {#if local === p.at}<span class="p-tick">{@html I.check}</span>{/if}
-      </button>
-    {/each}
-  </div>
+{#if !onDue}
+  <ReminderPicker value={task.reminder_at ?? null} on:set={(e) => setAt(e.detail)} />
+{:else}
+  <button class="clear" on:click={() => setAt('')}>No reminder</button>
 {/if}
-
-<div class="p-group cal">
-  <div class="p-row" role="group" aria-label="Date & time">
-    <span class="p-k"><span>Date &amp; time</span></span>
-    <span class="pick"><CalendarPicker value={local} withTime bare placeholder="—" formatDate={shortDate} disabled={onDue} on:change={e => setAt(e.detail)} /></span>
-  </div>
-  {#if task.reminder_at}
-    <button class="p-row danger" on:click={() => save({ reminder_at: null, remindOnDue: false }, ERR)}>
-      <span class="p-k"><span>No reminder</span></span>
-    </button>
-  {/if}
-</div>
 
 {#if task.reminder_at && $permissionState !== 'granted'}
   <p class="p-say">
@@ -91,7 +70,5 @@
 {/if}
 
 <style>
-  .cal { overflow: visible; }
-  .cal div.p-row { cursor: default; padding-top: 4px; padding-bottom: 4px; }
-  .pick { margin-left: auto; flex: 1; min-width: 0; font-size: var(--p-fs-m); font-weight: 500; }
+  .clear { display: block; width: 100%; height: 46px; border: 0; background: none; cursor: pointer; font: inherit; font-size: var(--p-fs-m); font-weight: 600; color: var(--danger); }
 </style>

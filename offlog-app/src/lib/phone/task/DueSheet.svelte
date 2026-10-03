@@ -1,35 +1,28 @@
 <script lang="ts">
-  import { dueShortcuts } from '../presets';
+  // Picks a due date: one-tap shortcuts, then any day on the month. Used by
+  // the task screen's Due sheet and quick add's Date panel.
   import { createEventDispatcher } from 'svelte';
-  import CalendarPicker from '../../CalendarPicker.svelte';
-  import { shortDate } from '../format';
-
-  import Pick from './Pick.svelte';
+  import { dueShortcuts } from '../presets';
+  import Month from '../Month.svelte';
 
   export let value: string | null;
 
   // '' means "no date".
   const dispatch = createEventDispatcher<{ pick: string }>();
-
   const SHORTCUTS = dueShortcuts();
-  // A date none of the shortcuts covers still opens on a ticked row.
-  $: options = [
-    ...(value && !SHORTCUTS.some(s => s.date === value) ? [{ value, label: shortDate(value) }] : []),
-    ...SHORTCUTS.map(s => ({ value: s.date, label: s.label, hint: shortDate(s.date) })),
-    ...(value ? [{ value: '', label: 'No date' }] : []),
-  ];
 </script>
 
-<Pick {options} current={value ?? ''} on:pick />
-<div class="p-group cal">
-  <div class="p-row" role="group" aria-label="Pick a date">
-    <span class="p-k"><span>Pick a date</span></span>
-    <span class="pick"><CalendarPicker value={value ?? ''} bare placeholder="—" formatDate={shortDate} on:change={e => dispatch('pick', e.detail)} /></span>
-  </div>
+<div class="p-chips sc" role="group" aria-label="Shortcuts">
+  {#each SHORTCUTS as s (s.date)}
+    <button class="p-chip" class:on={value === s.date} aria-pressed={value === s.date} on:click={() => dispatch('pick', s.date)}>{s.label}</button>
+  {/each}
 </div>
+<Month value={value ?? ''} on:pick />
+{#if value}
+  <button class="clear" on:click={() => dispatch('pick', '')}>No date</button>
+{/if}
 
 <style>
-  .cal { overflow: visible; }
-  .cal .p-row { cursor: default; padding-top: 4px; padding-bottom: 4px; }
-  .pick { margin-left: auto; flex: 1; min-width: 0; font-size: var(--p-fs-m); font-weight: 500; }
+  .sc { margin: -7px 0 6px; }
+  .clear { display: block; width: 100%; height: 46px; margin-top: 6px; border: 0; background: none; cursor: pointer; font: inherit; font-size: var(--p-fs-m); font-weight: 600; color: var(--danger); }
 </style>

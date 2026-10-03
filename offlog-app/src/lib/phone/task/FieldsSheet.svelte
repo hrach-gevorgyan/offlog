@@ -4,7 +4,7 @@
   // keyed by field id so a rename never orphans them. Every type shares one
   // row: name left, value right, a muted "—" when empty.
   import type { TaskDoc, CustomFieldDef } from '../../types';
-  import CalendarPicker from '../../CalendarPicker.svelte';
+  import Month from '../Month.svelte';
   import { I } from '../icons';
 
 
@@ -13,7 +13,7 @@
   export let save: (changes: Partial<TaskDoc>, err: string) => Promise<boolean>;
 
   $: values = task.custom_values ?? {};
-  // The select field whose options are showing under its row.
+  // The select or date field open under its row.
   let choosing: string | null = null;
 
   function set(id: string, v: string | number | null) {
@@ -36,11 +36,17 @@
 <div class="p-group fields">
   {#each fields as f (f.id)}
     {#if f.type === 'date'}
-      <!-- Not a <label>: a label re-clicks the picker's trigger and closes it again. -->
-      <div class="p-row" role="group" aria-label={f.name}>
+      {@const d = (values[f.id] as string) ?? ''}
+      <button class="p-row" aria-expanded={choosing === f.id} on:click={() => choosing = choosing === f.id ? null : f.id}>
         <span class="p-k"><span>{f.name}</span></span>
-        <span class="pick"><CalendarPicker value={(values[f.id] as string) ?? ''} bare placeholder="—" formatDate={shortDate} on:change={e => set(f.id, e.detail || null)} /></span>
-      </div>
+        <span class="p-v" class:set={!!d}>{d ? shortDate(d) : '—'}</span>
+      </button>
+      {#if choosing === f.id}
+        <div class="mo"><Month value={d} on:pick={e => choose(f.id, e.detail)} /></div>
+        {#if d}
+          <button class="p-row opt" on:click={() => choose(f.id, null)}><span class="p-k"><span>Clear</span></span></button>
+        {/if}
+      {/if}
     {:else if f.type === 'select'}
       {@const v = (values[f.id] as string) ?? ''}
       <button class="p-row" aria-expanded={choosing === f.id} on:click={() => choosing = choosing === f.id ? null : f.id}>
@@ -72,7 +78,7 @@
 
 <style>
   .fields { overflow: visible; }
-  .fields div.p-row, .fields label.p-row { cursor: default; padding-top: 4px; padding-bottom: 4px; }
+  .fields label.p-row { cursor: default; padding-top: 4px; padding-bottom: 4px; }
   .opt { padding-left: 32px; font-size: var(--p-fs-m); }
   .val {
     margin-left: auto; width: 52%; min-width: 0; min-height: 44px; box-sizing: border-box; text-align: right;
@@ -80,5 +86,5 @@
   }
   .val::placeholder { color: var(--faint); font-weight: 400; }
   .val:focus { outline: none; box-shadow: 0 2px 0 var(--accent); }
-  .pick { margin-left: auto; flex: 1; min-width: 0; font-size: var(--p-fs-m); font-weight: 500; }
+  .mo { padding: 4px 8px 8px; background: var(--bg); }
 </style>

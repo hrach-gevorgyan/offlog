@@ -94,11 +94,11 @@ flowchart LR
   Project (board by status with a drag-following swipe, list with select +
   bulk bar — a held row enters Select — filter and menu sheets; the card
   menu's status pills move a task in one tap) and Statuses, Task (full screen, every field saved as it
-  changes, pickers in bottom sheets; order is title, note, fields, steps —
-  Status/Due/Priority/Tags always show, the other fields only once set, the
-  unset ones as `+` chips opening the same sheets; an empty value reads as a
-  muted "—"; dates read "Sun 4 Oct" via `phone/format.ts` `shortDate()`,
-  which phone sheets pass to `CalendarPicker`'s `formatDate`), Agenda (list/month), Focus, Settings
+  changes, pickers in bottom sheets; order is title, note, status bar, fields,
+  steps — the rows show values, not labels, Due/Priority/Tags always, the
+  other fields only once set, the unset ones behind one "Add …" row; dates
+  read "Sun 4 Oct" via `phone/format.ts` `shortDate()`; every phone date
+  is picked on `phone/Month.svelte`, every time on the wheels), Agenda (list/month), Focus, Settings
   (pushed pages that reuse `settings/*`, plus Recycle bin, History, Archived
   projects, and Organize — spaces, tags and fields in `phone/settings/organize/`
   instead of the desktop manager overlays). Quick add is a bottom sheet that adds where the user is (the
@@ -232,7 +232,7 @@ src/
     ArchivedProjectsManager.svelte  Archive and restore projects
 
     CustomSelect.svelte         Themed dropdown, replaces every native <select>
-    CalendarPicker.svelte       Themed date picker
+    CalendarPicker.svelte       Themed date picker (desktop; the phone uses phone/Month.svelte)
     TimePicker.svelte           Themed time picker
     ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
     NamePrompt.svelte           Desktop first run: device name + quick preferences + sync offer (the phone shows phone/Welcome.svelte)
@@ -267,6 +267,9 @@ src/
       settings/RemindersPage.svelte  Reminders page: default time, quiet hours, a two-step set-up card while Android is in the way
       settings/TimeSheet.svelte   The app's own time picker: hour and minute wheels (plus AM/PM in 12 h mode)
       Wheel.svelte                One snap-scrolling wheel; arrow keys step it, tapping an item centres it
+      TimeWheels.svelte           Hour and minute wheels on one band (AM/PM in 12 h); TimeSheet and reminders
+      Month.svelte                A full-width month to pick a day: today ringed, the picked day filled
+      task/ReminderPicker.svelte  Reminder chips, month, time wheels and one confirm button (task screen and quick add)
       mark.ts / icons.ts / format.ts  Logo paths, icon set, greeting and labels (shortDate)
       agenda/month.ts             Month grid maths
       focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)

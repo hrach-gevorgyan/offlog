@@ -538,7 +538,7 @@
       {:else if sheet === 'tags'}
         <TagsSheet {task} {colors} {save} on:colors={loadColors} />
       {:else if sheet === 'reminder'}
-        <ReminderSheet {task} {save} />
+        <ReminderSheet {task} {save} on:done={close} />
       {:else if sheet === 'repeat'}
         <RepeatSheet {task} {save} on:skip={() => afterClosing(close, skip)} />
       {:else if sheet === 'blocked' || sheet === 'related'}

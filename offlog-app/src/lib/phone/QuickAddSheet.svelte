@@ -19,7 +19,7 @@
   import { revealIn, revealOut } from '../motion';
   import Pick from './task/Pick.svelte';
   import Panel from './quickadd/Panel.svelte';
-  import DuePanel from './quickadd/DuePanel.svelte';
+  import DueSheet from './task/DueSheet.svelte';
   import ReminderPanel from './quickadd/ReminderPanel.svelte';
   import ProjectPanel from './quickadd/ProjectPanel.svelte';
   import TagsPanel from './quickadd/TagsPanel.svelte';
@@ -359,7 +359,7 @@
         {#key panelSession}
           <Panel bind:this={panelRef} title={PANEL_TITLE[panel]} on:close={onPanelClosed} on:done={toTitle}>
             {#if panel === 'due'}
-              <DuePanel value={due} on:pick={e => pickDue(e.detail)} />
+              <DueSheet value={due} on:pick={e => pickDue(e.detail)} />
             {:else if panel === 'priority'}
               <Pick options={PRIORITIES} current={priority ? String(priority) : ''} on:pick={e => pickPriority(e.detail)} />
             {:else if panel === 'project'}
@@ -367,7 +367,7 @@
             {:else if panel === 'tags'}
               <TagsPanel selected={tags} on:toggle={e => toggleTag(e.detail)} on:add={e => toggleTag(e.detail)} />
             {:else}
-              <ReminderPanel value={reminder} on:pick={e => pickReminder(e.detail)} on:set={e => (pickedReminder = e.detail || null)} />
+              <ReminderPanel value={reminder} on:pick={e => pickReminder(e.detail)} />
             {/if}
           </Panel>
         {/key}

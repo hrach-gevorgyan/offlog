@@ -537,11 +537,42 @@ describe('phone TaskScreen', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
-  it('the Due sheet ticks a date none of its shortcuts covers, in the app format', async () => {
-    const { getByText } = await open(task({ due_date: '2030-03-04' }));
+  it('the Due sheet opens its month on a date none of its shortcuts covers, with that day picked', async () => {
+    await open(task({ due_date: '2030-03-04' }));
     await detail('Due');
-    expect(sheetRow('Mon 4 Mar 2030').getAttribute('aria-pressed')).toBe('true');
-    expect(document.querySelector('.psheet .cal-trigger')!.textContent!.trim()).toBe('Mon 4 Mar 2030');
+    expect(screen.getByRole('button', { name: 'Mon 4 Mar 2030' }).getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelectorAll('.psheet .p-chip[aria-pressed="true"]')).toHaveLength(0);
+    await fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Tue 2 Apr 2030' }));
+    expect(db.updateTask).toHaveBeenCalledWith('task:t', { due_date: '2030-04-02' });
+  });
+
+  it('a reminder is picked on the month and the wheels, and saved only by the button', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 1, 9, 35));
+    try {
+      await open();
+      await addDetail('Add reminder');
+      await fireEvent.click(screen.getByRole('button', { name: 'Mon 5 Oct' }));
+      await fireEvent.click(sheetRow('Time'));
+      const hours = await screen.findByRole('spinbutton', { name: 'Hour' });
+      await fireEvent.keyDown(hours, { key: 'ArrowDown' });
+      expect(db.updateTask).not.toHaveBeenCalled();
+      await fireEvent.click(screen.getByRole('button', { name: /^Remind me Mon 5 Oct, 11:00/ }));
+      expect(db.updateTask).toHaveBeenCalledWith('task:t', { reminder_at: new Date(2026, 9, 5, 11, 0).toISOString() });
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('a reminder time already past cannot be saved', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 1, 9, 35));
+    try {
+      await open();
+      await addDetail('Add reminder');
+      await fireEvent.click(screen.getByRole('button', { name: 'Wed 30 Sep' }));
+      const go = screen.getByRole('button', { name: 'That time has passed' }) as HTMLButtonElement;
+      expect(go.disabled).toBe(true);
+    } finally { vi.useRealTimers(); }
   });
 
   it('Weekdays is a top-level repeat: daily, weekdays only', async () => {
@@ -562,6 +593,7 @@ describe('phone TaskScreen', () => {
       const { getByLabelText } = await open();
       await addDetail('Add reminder');
       await fireEvent.click(sheetRow('Later today'));
+      await fireEvent.click(screen.getByRole('button', { name: /^Remind me today, 13:00/ }));
       expect(db.updateTask).toHaveBeenCalledWith('task:t', { reminder_at: new Date(2026, 9, 1, 13, 0).toISOString() });
     } finally { vi.useRealTimers(); }
   });
@@ -707,7 +739,19 @@ describe('phone TaskScreen', () => {
     const defs = [
       { _id: 'f1', id: 'f1', name: 'Vendor', type: 'select', options: ['Acme', 'Bolt'] },
       { _id: 'f2', id: 'f2', name: 'Budget', type: 'number' },
+      { _id: 'f3', id: 'f3', name: 'Deadline', type: 'date' },
     ];
+
+    it('a date field opens a month under its row and saves the picked day', async () => {
+      db.getCustomFieldDefs.mockResolvedValue(defs);
+      await open(task({ custom_values: { f3: '2030-03-04' } } as Partial<TaskDoc>));
+      await fireEvent.click(screen.getByRole('button', { name: /^Fields:/ }));
+      const row = sheetRow('Deadline');
+      expect(row.textContent).toContain('Mon 4 Mar 2030');
+      await fireEvent.click(row);
+      await fireEvent.click(screen.getByRole('button', { name: 'Fri 8 Mar 2030' }));
+      expect(db.updateTask).toHaveBeenCalledWith('task:t', { custom_values: { f3: '2030-03-08' } });
+    });
 
     it('a select field picks from a list instead of a native dropdown', async () => {
       db.getCustomFieldDefs.mockResolvedValue(defs);

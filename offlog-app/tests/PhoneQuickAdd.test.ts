@@ -194,15 +194,14 @@ describe('phone Quick add', () => {
     }));
   });
 
-  it('the date panel offers Next Monday and a calendar', async () => {
-    const { getByLabelText, getByRole, getByText, findByLabelText } = render(QuickAddSheet);
+  it('the date panel offers Next Monday and a month to pick any day from', async () => {
+    const { getByLabelText, getByRole, findByLabelText } = render(QuickAddSheet);
     await type(getByLabelText, 'Plan');
     await fireEvent.click(getByLabelText('Due: No date'));
     const dow = new Date().getDay();
-    if (dow !== 0 && dow !== 1) expect(getByRole('button', { name: /^Next Monday/ })).toBeTruthy();
-    await fireEvent.click(getByText('Select date…'));
+    if (dow !== 0 && dow !== 1) expect(getByRole('button', { name: 'Next Monday' })).toBeTruthy();
     const d = new Date(); d.setDate(28);
-    await fireEvent.click(getByRole('button', { name: '28' }));
+    await fireEvent.click(getByRole('button', { name: shortDate(localDateStr(d)) }));
     await findByLabelText(/^Due: (?!No date)/);
     await fireEvent.click(getByLabelText('Add'));
     await waitFor(() => expect(createTask).toHaveBeenCalled());
@@ -260,7 +259,8 @@ describe('phone Quick add', () => {
     const { getByLabelText, getByRole, findByLabelText } = render(QuickAddSheet);
     await type(getByLabelText, 'Call bank');
     await fireEvent.click(getByLabelText('Reminder: none'));
-    await fireEvent.click(getByRole('button', { name: /^Tomorrow at/ }));
+    await fireEvent.click(getByRole('button', { name: /^Tomorrow / }));
+    await fireEvent.click(getByRole('button', { name: /^Remind me tomorrow, / }));
     await findByLabelText(/^Reminder: Tomorrow /);
     await fireEvent.click(getByLabelText('Add'));
     await waitFor(() => expect(createTask).toHaveBeenCalledWith('project:q', 'space:w', 'col:q1', 'Call bank', {
