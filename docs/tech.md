@@ -1043,7 +1043,11 @@ scroll-linked phone, the screenshot tour (phone and Windows reels in
 `site/img/tour/`), the filterable feature showroom (each feature is one
 `<li data-cat>` in `index.html`; add new features there), and the privacy
 receipt. The page is complete without
-it, and every animation stops under prefers-reduced-motion. Light and dark
+it, and every animation stops under prefers-reduced-motion. The nav's
+pause button (`html.paused`) freezes the CSS animations and holds the
+scripted loops; the hero demo also holds while it's under 60% on screen or
+the tab is hidden. On phone widths the views tabs swap to phone
+screenshots through `<picture>` sources. Light and dark
 follow the visitor's system setting. It follows brand.md: one accent, Hanken Grotesk self-hosted
 from `site/fonts/`, real app screenshots in `site/img/` as WebP. It loads
 nothing from other origins, and its CSP meta forbids inline styles and

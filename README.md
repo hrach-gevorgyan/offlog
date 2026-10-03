@@ -115,7 +115,7 @@ accounts, and sync only ever happens on your own local network.
   multi-column sort
 - **Agenda** — deadlines across every project, as a grouped list or a
   month calendar
-- **Focus** (the **Today** tab on a phone) — pick up to 3 tasks for today.
+- **Focus** (the Focus tile on the phone's Home tab) — pick up to 3 tasks for today.
   A deliberate commitment, not an auto-generated list nobody trusts
 
 **Tasks that hold real detail**
