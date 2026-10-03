@@ -71,7 +71,7 @@
         showError('That task no longer exists — it was removed permanently.');
         await load();
       } else {
-        showError('Failed to restore task. Please try again.');
+        showError('Could not restore task. Please try again.');
       }
     }
   }
@@ -82,7 +82,7 @@
       await deleteForever(t._id!);
       await load();
     } catch {
-      showError('Failed to delete task. Please try again.');
+      showError('Could not delete task. Please try again.');
     }
   }
 
@@ -102,7 +102,7 @@
       await load();
       if (failed) showError(`Restored ${items.length - failed} of ${items.length}. ${failed} could not be restored.`);
     } catch {
-      showError('Failed to restore some tasks. Please try again.');
+      showError('Could not restore some tasks. Please try again.');
     } finally {
       restoringAll = false;
     }
@@ -116,7 +116,7 @@
       await emptyTrash();
       await load();
     } catch {
-      showError('Failed to empty the Recycle bin. Please try again.');
+      showError('Could not empty the Recycle bin. Please try again.');
     } finally {
       emptying = false;
     }

@@ -18,7 +18,7 @@ describe('describeSyncError', () => {
   // which it is NOT when you are on the right WiFi and the host PC is simply
   // powered off. The message must therefore not assert the network is wrong.
   it('does not blame the network for an unreachable host', () => {
-    const msg = describeSyncError({ status: 0, message: 'Failed to fetch' });
+    const msg = describeSyncError({ status: 0, message: 'Could not fetch' });
     expect(msg).not.toMatch(/check you'?re on the same network/i);
     expect(msg).toMatch(/switched off/i);
     expect(msg).toMatch(/network/i); // still names the other possible cause
@@ -35,7 +35,7 @@ describe('describeSyncError', () => {
 
   it('classifies a network-shaped error (dropped connection) as unreachable', () => {
     expect(describeSyncError({ status: 0 })).toMatch(/cannot reach/i);
-    expect(describeSyncError({ name: 'TypeError', message: 'Failed to fetch' })).toMatch(/cannot reach/i);
+    expect(describeSyncError({ name: 'TypeError', message: 'Could not fetch' })).toMatch(/cannot reach/i);
     expect(describeSyncError({ message: 'network error occurred' })).toMatch(/cannot reach/i);
   });
 

@@ -29,7 +29,7 @@
     try {
       [spaces, tags, overrides, fields] = await Promise.all([getSpaces(), getTagCounts(), getTagColorOverrides(), getCustomFieldDefs()]);
     } catch {
-      showError('Failed to load spaces, tags and fields.');
+      showError('Could not load spaces, tags and fields. Please try again.');
     } finally {
       loaded = true;
     }

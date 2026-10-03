@@ -193,7 +193,7 @@ describe('Sidebar project rename and move', () => {
     await fireEvent.click(getByTitle('Rename or move project'));
     await fireEvent.input(getByLabelText('Project name'), { target: { value: 'Beta' } });
     await fireEvent.click(getByText('Save'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to update project. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update project. Please try again.'));
   });
 });
 

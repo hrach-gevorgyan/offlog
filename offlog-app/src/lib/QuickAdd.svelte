@@ -141,7 +141,7 @@
       dispatch('created');
       requestClose();
     } catch {
-      showError('Failed to create task. Please try again.');
+      showError('Could not create task. Please try again.');
     } finally {
       saving = false;
     }

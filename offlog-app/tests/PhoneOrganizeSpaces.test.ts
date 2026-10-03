@@ -120,7 +120,7 @@ describe('phone Organize → Spaces', () => {
     await waitFor(() => r.getByRole('dialog'));
     await fireEvent.input(r.getByLabelText('Space name'), { target: { value: 'Garden' } });
     await fireEvent.click(r.getByText('Add space'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to create space. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not create space. Please try again.'));
   });
 
   it('renames on change and offers Undo that renames back', async () => {
@@ -151,7 +151,7 @@ describe('phone Organize → Spaces', () => {
     const input = await openSpace(r, 'Home');
     await fireEvent.input(input, { target: { value: 'House' } });
     await fireEvent.change(input);
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to rename space. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not rename space. Please try again.'));
     expect(input.value).toBe('Home');
   });
 
@@ -173,9 +173,9 @@ describe('phone Organize → Spaces', () => {
     const r = await setup();
     await openSpace(r, 'Home');
     await fireEvent.click(r.getByLabelText(colourName(TAG_PALETTE[14])));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to recolor space. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not recolor space. Please try again.'));
     await fireEvent.click(r.getByLabelText('Icon rocket'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to change space icon. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not change space icon. Please try again.'));
   });
 
   it('Move up / Move down swap neighbours; the ends are disabled', async () => {
@@ -196,7 +196,7 @@ describe('phone Organize → Spaces', () => {
     const r = await setup();
     await openSpace(r, 'Home');
     await fireEvent.click(r.getByText('Move down'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to reorder spaces. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not reorder spaces. Please try again.'));
   });
 
   it('delete asks first, says where its projects go, and only deletes on yes', async () => {
@@ -227,7 +227,7 @@ describe('phone Organize → Spaces', () => {
     const r = await setup();
     await openSpace(r, 'Home');
     await fireEvent.click(r.getByText('Delete space'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to delete space. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete space. Please try again.'));
   });
 
   it('Unsorted cannot be deleted', async () => {

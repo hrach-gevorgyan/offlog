@@ -195,7 +195,7 @@
       await refresh();
       hapticToggle();
     } catch {
-      showError('Failed to update task. Please try again.');
+      showError('Could not update task. Please try again.');
     }
   }
 

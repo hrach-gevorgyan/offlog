@@ -68,7 +68,7 @@
     try {
       await updateSpace(s._id, { icon });
     } catch {
-      showError('Failed to change space icon. Please try again.');
+      showError('Could not change space icon. Please try again.');
     }
   }
 
@@ -94,7 +94,7 @@
     try {
       await updateSpace(s._id, { name });
     } catch {
-      showError('Failed to rename space. Please try again.');
+      showError('Could not rename space. Please try again.');
     }
   }
 
@@ -102,7 +102,7 @@
     try {
       await updateSpace(s._id, { color });
     } catch {
-      showError('Failed to recolor space. Please try again.');
+      showError('Could not recolor space. Please try again.');
     }
   }
 
@@ -114,7 +114,7 @@
     try {
       await reorderSpaces(reordered.map(s => s._id));
     } catch {
-      showError('Failed to reorder spaces. Please try again.');
+      showError('Could not reorder spaces. Please try again.');
     }
   }
 
@@ -123,7 +123,7 @@
     try {
       await deleteSpace(s._id);
     } catch (e) {
-      showError('Failed to delete space. Please try again.');
+      showError('Could not delete space. Please try again.');
     }
   }
 
@@ -143,7 +143,7 @@
       newColor = '#6366f1';
       newIcon = DEFAULT_SPACE_ICON_KEY;
     } catch {
-      showError('Failed to create space. Please try again.');
+      showError('Could not create space. Please try again.');
     }
     adding = false;
     duplicateSpaceHint = '';

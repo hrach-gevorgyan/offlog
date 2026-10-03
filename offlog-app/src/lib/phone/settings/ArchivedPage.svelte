@@ -20,7 +20,7 @@
     try {
       [active, archived] = await Promise.all([getProjects(), getArchivedProjects()]);
     } catch {
-      showError('Failed to load archived projects.');
+      showError('Could not load archived projects. Please try again.');
     } finally {
       loaded = true;
     }
@@ -59,7 +59,7 @@
     try {
       await archiveProject(p._id!);
     } catch {
-      showError('Failed to archive project. Please try again.');
+      showError('Could not archive project. Please try again.');
       return;
     }
     // An archived project left as the active one blanks the board.
@@ -80,7 +80,7 @@
     try {
       await unarchiveProject(p._id!);
     } catch {
-      showError('Failed to restore project. Please try again.');
+      showError('Could not restore project. Please try again.');
       return;
     }
     await refresh();
@@ -92,7 +92,7 @@
     try {
       await deleteProject(p._id!);
     } catch {
-      showError('Failed to delete project. Please try again.');
+      showError('Could not delete project. Please try again.');
       return;
     }
     await refresh();

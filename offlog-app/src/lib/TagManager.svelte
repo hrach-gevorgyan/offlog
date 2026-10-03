@@ -62,7 +62,7 @@
       await setTagColor(tag, color);
       await load();
     } catch {
-      showError('Failed to update tag color. Please try again.');
+      showError('Could not update tag color. Please try again.');
     }
   }
 
@@ -82,7 +82,7 @@
       await reloadTasks();
       await load();
     } catch {
-      showError('Failed to rename tag. Please try again.');
+      showError('Could not rename tag. Please try again.');
     }
   }
 
@@ -93,7 +93,7 @@
       await reloadTasks();
       await load();
     } catch {
-      showError('Failed to delete tag. Please try again.');
+      showError('Could not delete tag. Please try again.');
     }
   }
 </script>

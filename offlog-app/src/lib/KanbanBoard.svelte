@@ -65,7 +65,7 @@
       quickAddTitle = '';
       quickAddCol = null;
     } catch {
-      showError('Failed to add task. Please try again.');
+      showError('Could not add task. Please try again.');
     } finally {
       quickAdding = false;
     }
@@ -112,7 +112,7 @@
       await reloadTasks();
       hapticDragDrop();
     } catch {
-      showError('Failed to move task. Please try again.');
+      showError('Could not move task. Please try again.');
     }
     dragTask = null;
     dragOverColId = null;
@@ -172,7 +172,7 @@
       await reloadTasks();
       hapticToggle();
     } catch {
-      showError('Failed to update task.');
+      showError('Could not update task. Please try again.');
     }
   }
   async function cardArchive(task: TaskDoc) {
@@ -180,7 +180,7 @@
       await archiveTask(task._id!);
       await reloadTasks();
     } catch {
-      showError('Failed to archive task.');
+      showError('Could not archive task. Please try again.');
     }
   }
   async function cardDuplicate(task: TaskDoc) {
@@ -188,7 +188,7 @@
       await duplicateTask(task._id!);
       await reloadTasks();
     } catch {
-      showError('Failed to duplicate task.');
+      showError('Could not duplicate task. Please try again.');
     }
   }
   async function cardMove(task: TaskDoc, colId: string) {
@@ -197,7 +197,7 @@
       await updateTask(task._id!, { column_id: colId, position: computeDropPosition(colTasks, null) });
       await reloadTasks();
     } catch {
-      showError('Failed to move task. Please try again.');
+      showError('Could not move task. Please try again.');
     }
   }
   async function cardDelete(task: TaskDoc) {
@@ -206,7 +206,7 @@
       await deleteTask(task._id!);
       await reloadTasks();
     } catch {
-      showError('Failed to delete task.');
+      showError('Could not delete task. Please try again.');
     }
   }
 
@@ -257,7 +257,7 @@
       project = updated;
       dispatch('projectUpdated', updated);
     } catch {
-      showError('Failed to reorder statuses. Please try again.');
+      showError('Could not reorder statuses. Please try again.');
     }
     dragCol = null;
     dragOverCol = null;
@@ -277,7 +277,7 @@
         project = updated;
         dispatch('projectUpdated', updated);
       } catch {
-        showError('Failed to rename status. Please try again.');
+        showError('Could not rename status. Please try again.');
       }
     }
     editingColId = null;
@@ -294,7 +294,7 @@
       newColName = '';
       addingCol = false;
     } catch {
-      showError('Failed to add status. Please try again.');
+      showError('Could not add status. Please try again.');
     }
   }
 
@@ -320,7 +320,7 @@
       dispatch('projectUpdated', updated);
       await reloadTasks();
     } catch (e) {
-      showError('Failed to remove status. Please try again.');
+      showError('Could not remove status. Please try again.');
     }
   }
 
@@ -451,7 +451,7 @@
         await reloadTasks();
         hapticDragDrop();
       } catch {
-        showError('Failed to move task. Please try again.');
+        showError('Could not move task. Please try again.');
       }
     }
     resetTouchDragState();
@@ -579,7 +579,7 @@
                 await archiveColumnTasks(project._id, col.id);
                 await reloadTasks();
               } catch {
-                showError('Failed to archive tasks. Please try again.');
+                showError('Could not archive tasks. Please try again.');
               }
             }}>
               <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

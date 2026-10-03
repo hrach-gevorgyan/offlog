@@ -140,6 +140,6 @@ describe('phone Settings home', () => {
   it('a failed count load surfaces showError', async () => {
     getAllDeletedTasks.mockRejectedValue(new Error('x'));
     render(SettingsScreen);
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to load settings.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not load settings. Please try again.'));
   });
 });

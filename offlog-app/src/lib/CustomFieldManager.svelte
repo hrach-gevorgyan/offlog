@@ -61,7 +61,7 @@
       fields = await addCustomFieldDef(name, newType, options);
       newName = ''; newOptions = ''; newType = 'text';
     } catch {
-      showError('Failed to add field. Please try again.');
+      showError('Could not add field. Please try again.');
     }
   }
 
@@ -72,7 +72,7 @@
     try {
       fields = await removeCustomFieldDef(field.id);
     } catch {
-      showError('Failed to remove field. Please try again.');
+      showError('Could not remove field. Please try again.');
     }
   }
 
@@ -100,7 +100,7 @@
       fields = await updateCustomFieldDef(field.id, { name, type: editType, options });
       editingId = null;
     } catch {
-      showError('Failed to update field. Please try again.');
+      showError('Could not update field. Please try again.');
     }
   }
 </script>

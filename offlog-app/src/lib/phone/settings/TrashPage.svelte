@@ -20,7 +20,7 @@
     try {
       items = await getAllDeletedTasks();
     } catch {
-      showError('Failed to load the Recycle bin.');
+      showError('Could not load the Recycle bin. Please try again.');
     } finally {
       loaded = true;
     }
@@ -46,7 +46,7 @@
         showError('That task no longer exists — it was removed permanently.');
         await load();
       } else {
-        showError('Failed to restore task. Please try again.');
+        showError('Could not restore task. Please try again.');
       }
     }
   }
@@ -57,7 +57,7 @@
       await deleteForever(t._id!);
       await load();
     } catch {
-      showError('Failed to delete task. Please try again.');
+      showError('Could not delete task. Please try again.');
     }
   }
 
@@ -77,7 +77,7 @@
       if (failed) showError(`Restored ${all.length - failed} of ${all.length}. ${failed} could not be restored.`);
       else showToast(`Restored ${all.length} task${all.length === 1 ? '' : 's'}`);
     } catch {
-      showError('Failed to restore some tasks. Please try again.');
+      showError('Could not restore some tasks. Please try again.');
     } finally {
       busy = false;
     }
@@ -91,7 +91,7 @@
       await emptyTrash();
       await load();
     } catch {
-      showError('Failed to empty the Recycle bin. Please try again.');
+      showError('Could not empty the Recycle bin. Please try again.');
     } finally {
       busy = false;
     }

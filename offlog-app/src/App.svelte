@@ -201,7 +201,7 @@
     // The phone shows it in its own snackbar, above the navigation bar.
     if (get(isPhone)) {
       showToast(`Deleted: ${task.title}`, async () => {
-        try { await undoDelete(id); await reloadTasks(); } catch { showError('Failed to undo. Please try again.'); }
+        try { await undoDelete(id); await reloadTasks(); } catch { showError('Could not undo. Please try again.'); }
       });
       return;
     }
@@ -220,7 +220,7 @@
       await undoDelete(id);
       await reloadTasks();
     } catch {
-      showError('Failed to undo. Please try again.');
+      showError('Could not undo. Please try again.');
     }
   }
 

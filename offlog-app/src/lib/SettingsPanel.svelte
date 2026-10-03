@@ -517,7 +517,7 @@
       pairingFailCount = 0;
     } catch (e) {
       pairingFailCount++;
-      pairingError = e instanceof Error ? e.message : 'Failed to pair.';
+      pairingError = e instanceof Error ? e.message : 'Could not pair.';
       if (pairingFailCount >= 3) pairingError += ' Double-check the code on the PC screen, or generate a new one there.';
     } finally {
       pairingBusy = false;
@@ -559,7 +559,7 @@
     try {
       before = new Set((await getDeviceLastSeen()).map(d => d.device));
     } catch {
-      showError('Failed to check for a connected device.');
+      showError('Could not check for a connected device. Please try again.');
       return;
     }
     // Settings can close during the read above; onDestroy has already run.
@@ -586,7 +586,7 @@
       pcPairingExpiryTimer = setTimeout(() => { pcPairingExpired = true; stopPcPairPoll(); }, 5 * 60 * 1000);
       startPcPairPoll();
     } catch {
-      showError('Failed to generate a pairing code.');
+      showError('Could not generate a pairing code. Please try again.');
     } finally {
       pcPairingBusy = false;
     }
@@ -633,7 +633,7 @@
       await syncNow().catch(() => {});
       await invokeTauri('reset_sync_data');
     } catch {
-      showError('Failed to reset test data.');
+      showError('Could not reset test data. Please try again.');
       resetBusy = false;
     }
   }
@@ -655,7 +655,7 @@
       // uncaught rejection here becomes the generic crash-net toast
       // (main.ts's unhandledrejection listener) instead of a message that
       // says what actually failed.
-      showError('Failed to load recent devices.');
+      showError('Could not load recent devices. Please try again.');
     }
   }
 
@@ -694,7 +694,7 @@
     } catch {
       // Same reasoning as loadDeviceLastSeen() -- this also fires from a
       // reactive statement with nothing awaiting it.
-      showError('Failed to load sync conflicts.');
+      showError('Could not load sync conflicts. Please try again.');
     } finally { loadingConflicts = false; }
   }
   async function resolve(c: ConflictInfo, v: ConflictVersion) {
@@ -711,7 +711,7 @@
       await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev, c.versions.map(x => x.doc._rev));
       await loadConflicts();
     } catch (e) {
-      if ((e as Error)?.name !== 'ConflictChangedError') { showError('Failed to resolve conflict. Please try again.'); return; }
+      if ((e as Error)?.name !== 'ConflictChangedError') { showError('Could not resolve conflict. Please try again.'); return; }
       showError((e as Error).message);
       await loadConflicts();
     }
@@ -789,7 +789,7 @@
       showSpaceManager = true;
     } catch (e) {
       spaceManagerActive = false;
-      showError('Failed to open Spaces. Please try again.');
+      showError('Could not open Spaces. Please try again.');
     }
   }
   function onSpaceManagerClosed() { showSpaceManager = false; spaceManagerActive = false; }
@@ -807,7 +807,7 @@
       showTagManager = true;
     } catch (e) {
       tagManagerActive = false;
-      showError('Failed to open Tags. Please try again.');
+      showError('Could not open Tags. Please try again.');
     }
   }
   function onTagManagerClosed() { showTagManager = false; tagManagerActive = false; }
@@ -825,7 +825,7 @@
       showCustomFieldManager = true;
     } catch (e) {
       customFieldManagerActive = false;
-      showError('Failed to open Fields. Please try again.');
+      showError('Could not open Fields. Please try again.');
     }
   }
   function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
@@ -844,7 +844,7 @@
       showArchivedProjectsManager = true;
     } catch (e) {
       archivedProjectsManagerActive = false;
-      showError('Failed to open Archived Projects. Please try again.');
+      showError('Could not open Archived Projects. Please try again.');
     }
   }
   function onArchivedProjectsManagerClosed() { showArchivedProjectsManager = false; archivedProjectsManagerActive = false; }
@@ -864,7 +864,7 @@
       breakdown = await getStorageBreakdown();
       backupUsage = await getAutoBackupUsage();
     } catch {
-      showError('Failed to load storage usage.');
+      showError('Could not load storage usage. Please try again.');
     }
   }
   onMount(() => {
@@ -1001,7 +1001,7 @@
       const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
       await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${localDateStr(new Date())}.json`);
     } catch {
-      showError('Failed to back up. Please try again.');
+      showError('Could not back up. Please try again.');
     }
   }
 
@@ -1010,7 +1010,7 @@
       const csv = await exportTasksCSV();
       await downloadBlob(csv, 'text/csv', `offlog-tasks-${localDateStr(new Date())}.csv`);
     } catch {
-      showError('Failed to export CSV. Please try again.');
+      showError('Could not export CSV. Please try again.');
     }
   }
 

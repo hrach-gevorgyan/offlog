@@ -216,7 +216,7 @@
     try {
       customFields = await getCustomFieldDefs();
     } catch {
-      showError('Failed to load custom fields.');
+      showError('Could not load custom fields. Please try again.');
     }
     const knownKeys = [...DEFAULT_ORDER, ...customFields.map(f => f.id)];
     try {
@@ -346,7 +346,7 @@
       selected = failed; // the ones that didn't move stay selected for a retry
       reportFailed(failed, total);
     } catch {
-      showError('Failed to update some tasks. Please try again.');
+      showError('Could not update some tasks. Please try again.');
     } finally {
       bulkBusy = false;
       bulkStatus = '';
@@ -364,7 +364,7 @@
       selected = failed;
       reportFailed(failed, total);
     } catch {
-      showError('Failed to update some tasks. Please try again.');
+      showError('Could not update some tasks. Please try again.');
     } finally {
       bulkBusy = false;
       bulkPriorityStr = '';
@@ -385,7 +385,7 @@
       if (failed.size) reportFailed(failed, total);
       else bulkTagAdd = '';
     } catch {
-      showError('Failed to tag some tasks. Please try again.');
+      showError('Could not tag some tasks. Please try again.');
     } finally {
       bulkBusy = false;
     }
@@ -455,7 +455,7 @@
       await reloadTasks();
       hapticToggle();
     } catch {
-      showError('Failed to update task. Please try again.');
+      showError('Could not update task. Please try again.');
       return;
     }
     if (undoMarkDone) clearTimeout(undoMarkDone.timer);
@@ -472,7 +472,7 @@
       await updateTask(id, { column_id: fromColId, due_date: fromDueDate, reminder_at: fromReminderAt, checklist: fromChecklist });
       await reloadTasks();
     } catch {
-      showError('Failed to undo. Please try again.');
+      showError('Could not undo. Please try again.');
     }
   }
 </script>
@@ -704,7 +704,7 @@
                     await reloadTasks();
                     archivedTasksRaw = await getArchivedTasksForProject(project._id);
                   } catch {
-                    showError('Failed to restore task. Please try again.');
+                    showError('Could not restore task. Please try again.');
                   }
                 }}>Restore</button>
               </div>

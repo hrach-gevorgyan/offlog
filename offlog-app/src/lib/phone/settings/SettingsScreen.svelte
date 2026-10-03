@@ -56,7 +56,7 @@
       trashCount = t.length;
       archivedCount = a.length;
     } catch {
-      showError('Failed to load settings.');
+      showError('Could not load settings. Please try again.');
     }
   }
   onMount(() => {

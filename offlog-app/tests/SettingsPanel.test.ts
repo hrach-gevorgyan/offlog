@@ -372,7 +372,7 @@ describe('SettingsPanel sync tab load failures', () => {
 
     await new Promise(r => setTimeout(r, 0));
 
-    expect(showError).toHaveBeenCalledWith('Failed to load recent devices.');
+    expect(showError).toHaveBeenCalledWith('Could not load recent devices. Please try again.');
   });
 
   it('surfaces a specific error instead of an unhandled rejection when conflicts fail to load', async () => {
@@ -386,7 +386,7 @@ describe('SettingsPanel sync tab load failures', () => {
 
     await new Promise(r => setTimeout(r, 0));
 
-    expect(showError).toHaveBeenCalledWith('Failed to load sync conflicts.');
+    expect(showError).toHaveBeenCalledWith('Could not load sync conflicts. Please try again.');
     (syncState as { conflictCount: number }).conflictCount = 0;
   });
 
@@ -400,7 +400,7 @@ describe('SettingsPanel sync tab load failures', () => {
 
     await new Promise(r => setTimeout(r, 0));
 
-    expect(showError).toHaveBeenCalledWith('Failed to load storage usage.');
+    expect(showError).toHaveBeenCalledWith('Could not load storage usage. Please try again.');
   });
 
   it('surfaces a specific error instead of an unhandled rejection when auto-backup usage fails to load', async () => {
@@ -409,7 +409,7 @@ describe('SettingsPanel sync tab load failures', () => {
 
     await new Promise(r => setTimeout(r, 0));
 
-    expect(showError).toHaveBeenCalledWith('Failed to load storage usage.');
+    expect(showError).toHaveBeenCalledWith('Could not load storage usage. Please try again.');
   });
 
   it('falls back to "Not available" instead of an unhandled rejection when navigator.storage.estimate() rejects', async () => {

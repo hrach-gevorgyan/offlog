@@ -72,7 +72,7 @@
       logs = fetched;
       if (bodyEl) requestAnimationFrame(() => { bodyEl.scrollTop = scrollTop; });
     } catch {
-      showError('Failed to load history.');
+      showError('Could not load history. Please try again.');
     } finally {
       loading = false;
     }
@@ -182,7 +182,7 @@
            looked like before an unwanted edit or conflict resolution. -->
       <button class="clear-btn" on:click={async () => {
         if (!(await confirmAction('Clear the entire history? This erases the record of every change ever made, and cannot be undone.', { danger: true, confirmLabel: 'Clear all' }))) return;
-        try { await clearLogs(); logs = []; } catch { showError('Failed to clear history.'); }
+        try { await clearLogs(); logs = []; } catch { showError('Could not clear history. Please try again.'); }
       }}>Clear all</button>
     {/if}
     <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>

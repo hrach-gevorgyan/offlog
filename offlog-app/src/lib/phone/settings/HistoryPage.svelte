@@ -31,7 +31,7 @@
       logs = fetched;
       loaded = true;
     } catch {
-      showError('Failed to load history.');
+      showError('Could not load history. Please try again.');
     } finally {
       loading = false;
     }
@@ -89,7 +89,7 @@
       logs = [];
       hasMore = false;
     } catch {
-      showError('Failed to clear history.');
+      showError('Could not clear history. Please try again.');
     }
   }
 </script>

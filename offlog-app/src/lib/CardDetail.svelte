@@ -269,7 +269,7 @@
       [allTags, projectTags, customFields] = await Promise.all([getAllTags(), getAllTags(project._id), getCustomFieldDefs()]);
       await Promise.all([loadRelatedTasks(), loadBlockingTasks()]);
     } catch {
-      showError('Failed to load task details. Please try again.');
+      showError('Could not load task details. Please try again.');
     }
   });
   onDestroy(() => modalOpen.set(false));
@@ -284,7 +284,7 @@
       }
       showHistory = true;
     } catch (e) {
-      showError('Failed to load task history. Please try again.');
+      showError('Could not load task history. Please try again.');
     } finally {
       loadingHistory = false;
     }
@@ -625,7 +625,7 @@
       ) as Partial<TaskDoc>;
       if (Object.keys(changes).length) await updateTask(task._id!, changes);
     } catch (e) {
-      errors.push('Failed to save the rest of the task. Please try again.');
+      errors.push('Could not save the rest of the task. Please try again.');
     }
     await reloadTasks();
     saving = false;
@@ -643,7 +643,7 @@
       await reloadTasks();
       requestClose();
     } catch (e) {
-      showError('Failed to delete task.');
+      showError('Could not delete task. Please try again.');
     }
   }
 
@@ -653,7 +653,7 @@
       await reloadTasks();
       requestClose();
     } catch {
-      showError('Failed to archive task.');
+      showError('Could not archive task. Please try again.');
     }
   }
 
@@ -663,7 +663,7 @@
       await reloadTasks();
       requestClose();
     } catch (e) {
-      showError('Failed to duplicate task.');
+      showError('Could not duplicate task. Please try again.');
     }
   }
 
@@ -679,7 +679,7 @@
       await reloadTasks();
       requestClose();
     } catch (e) {
-      showError('Failed to skip to the next occurrence.');
+      showError('Could not skip to the next occurrence. Please try again.');
     }
   }
 </script>

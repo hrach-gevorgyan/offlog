@@ -66,7 +66,7 @@ describe('phone Recycle bin', () => {
     const { getByText, getAllByText } = render(SettingsPage, { page: 'trash' });
     await waitFor(() => getByText('Buy paint'));
     await fireEvent.click(getAllByText('Restore')[0]);
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to restore task. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not restore task. Please try again.'));
   });
 
   it('a restore of a task removed for good says so, without "try again", and reloads the list', async () => {
@@ -76,7 +76,7 @@ describe('phone Recycle bin', () => {
     expect(getAllDeletedTasks).toHaveBeenCalledTimes(1);
     await fireEvent.click(getAllByText('Restore')[0]);
     await waitFor(() => expect(showError).toHaveBeenCalledWith('That task no longer exists — it was removed permanently.'));
-    expect(showError).not.toHaveBeenCalledWith('Failed to restore task. Please try again.');
+    expect(showError).not.toHaveBeenCalledWith('Could not restore task. Please try again.');
     await waitFor(() => expect(getAllDeletedTasks).toHaveBeenCalledTimes(2));
   });
 
@@ -99,7 +99,7 @@ describe('phone Recycle bin', () => {
     const { getByText, getByLabelText } = render(SettingsPage, { page: 'trash' });
     await waitFor(() => getByText('Buy paint'));
     await fireEvent.click(getByLabelText('Delete “Buy paint” for good'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to delete task. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete task. Please try again.'));
   });
 
   it('Empty asks first, then empties the bin; a failure surfaces showError', async () => {
@@ -115,7 +115,7 @@ describe('phone Recycle bin', () => {
     confirmAction.mockResolvedValueOnce(true);
     emptyTrash.mockRejectedValueOnce(new Error('x'));
     await fireEvent.click(getByText('Empty'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to empty the Recycle bin. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not empty the Recycle bin. Please try again.'));
   });
 
   it('Restore all restores each task and reports partial failures', async () => {
@@ -134,7 +134,7 @@ describe('phone Recycle bin', () => {
     const { getByText } = render(SettingsPage, { page: 'trash' });
     await waitFor(() => getByText('Buy paint'));
     await fireEvent.click(getByText('Restore all'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to restore some tasks. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not restore some tasks. Please try again.'));
     expect(undoDelete.mock.calls).toEqual([['task:a'], ['task:b']]);
     expect(get(toast)).toBeNull();
   });

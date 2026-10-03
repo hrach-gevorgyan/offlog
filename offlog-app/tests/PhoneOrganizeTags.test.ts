@@ -127,7 +127,7 @@ describe('phone Organize → Tags', () => {
     const r = await setup();
     const input = await openTag(r, 'urgent');
     await typeName(input, 'soon');
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to rename tag. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not rename tag. Please try again.'));
     expect(input.value).toBe('urgent');
   });
 
@@ -146,7 +146,7 @@ describe('phone Organize → Tags', () => {
     const r = await setup();
     await openTag(r, 'home');
     await fireEvent.click(r.getByLabelText('Automatic'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to update tag color. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update tag color. Please try again.'));
   });
 
   it('removing everywhere asks with the count, and only removes on yes', async () => {
@@ -168,6 +168,6 @@ describe('phone Organize → Tags', () => {
     const r = await setup();
     await openTag(r, 'urgent');
     await fireEvent.click(r.getByText('Remove from 2 tasks'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to delete tag. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete tag. Please try again.'));
   });
 });

@@ -240,7 +240,11 @@ justify itself.
 **Spelling and dates.** American spelling (Color, Canceled, Organize).
 Dates are written day first, in English, the same on both apps: "Wed 30
 Sep", "30 Sep", with the year only when it isn't this year (`fmtDay` in
-`utils.ts`). Long forms ("October 2026") follow the system language.
+`utils.ts`). Month titles are English too ("October 2026").
+
+**Error messages.** One voice: "Could not [do X]. Please try again." Never
+"Failed to …". When a retry won't help, say what will instead ("Check that
+Wi-Fi is on and try again").
 
 ## 9. Quick-reference do/don't
 

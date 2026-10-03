@@ -34,7 +34,7 @@
       else await addCustomFieldDef(n, type, opts);
     } catch {
       busy = false;
-      showError(field ? 'Failed to update field. Please try again.' : 'Failed to add field. Please try again.');
+      showError(field ? 'Could not update field. Please try again.' : 'Could not add field. Please try again.');
       return;
     }
     sheet?.close();
@@ -43,7 +43,7 @@
       const old = field;
       showToast('Field saved', async () => {
         try { await updateCustomFieldDef(old.id, { name: old.name, type: old.type, options: old.options }); }
-        catch { showError('Failed to update field. Please try again.'); }
+        catch { showError('Could not update field. Please try again.'); }
       });
     }
   }
@@ -58,7 +58,7 @@
       if (!(await confirmAction(`Remove “${f.name}”?${usage}`, { danger: true, confirmLabel: 'Remove' }))) return;
       await removeCustomFieldDef(f.id);
     } catch {
-      showError('Failed to remove field. Please try again.');
+      showError('Could not remove field. Please try again.');
       return;
     } finally {
       busy = false;

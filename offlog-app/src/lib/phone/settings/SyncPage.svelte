@@ -76,7 +76,7 @@
     try {
       deviceLastSeen = await getDeviceLastSeen();
     } catch {
-      showError('Failed to load recent devices.');
+      showError('Could not load recent devices. Please try again.');
     }
   }
   loadDeviceLastSeen();
@@ -133,7 +133,7 @@
       pairingFailCount = 0;
     } catch (e) {
       pairingFailCount++;
-      pairingError = e instanceof Error ? e.message : 'Failed to pair.';
+      pairingError = e instanceof Error ? e.message : 'Could not pair.';
       if (pairingFailCount >= 3) pairingError += ' Double-check the code on the PC screen, or generate a new one there.';
     } finally {
       pairingBusy = false;
@@ -159,7 +159,7 @@
     try {
       before = new Set((await getDeviceLastSeen()).map(d => d.device));
     } catch {
-      showError('Failed to check for a connected device.');
+      showError('Could not check for a connected device. Please try again.');
       return;
     }
     pcPollTimer = setInterval(async () => {
@@ -181,7 +181,7 @@
       pcPairingExpiryTimer = setTimeout(() => { pcPairingExpired = true; stopPcPairPoll(); }, 5 * 60 * 1000);
       startPcPairPoll();
     } catch {
-      showError('Failed to generate a pairing code.');
+      showError('Could not generate a pairing code. Please try again.');
     } finally {
       pcPairingBusy = false;
     }
@@ -220,7 +220,7 @@
       const defs = await getCustomFieldDefs();
       conflictFieldNames = Object.fromEntries(defs.map(d => [d.id, d.name]));
     } catch {
-      showError('Failed to load sync conflicts.');
+      showError('Could not load sync conflicts. Please try again.');
     } finally { loadingConflicts = false; }
   }
   $: if (conflictCount > 0 && conflictCount !== conflictsAttemptedFor && !loadingConflicts) {
@@ -240,7 +240,7 @@
       await resolveConflict(c.docId, v.isCurrent ? 'current' : 'other', v.rev, c.versions.map(x => x.doc._rev));
       await loadConflicts();
     } catch (e) {
-      if ((e as Error)?.name !== 'ConflictChangedError') { showError('Failed to resolve conflict. Please try again.'); return; }
+      if ((e as Error)?.name !== 'ConflictChangedError') { showError('Could not resolve conflict. Please try again.'); return; }
       showError((e as Error).message);
       await loadConflicts();
     }

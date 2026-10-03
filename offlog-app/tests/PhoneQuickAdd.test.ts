@@ -465,7 +465,7 @@ describe('phone Quick add', () => {
       const { getByLabelText } = render(QuickAddSheet);
       await type(getByLabelText, 'Squats @fitness');
       await fireEvent.click(getByLabelText('Add'));
-      await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to create task. Please try again.'));
+      await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not create task. Please try again.'));
       expect(localStorage.getItem('offlog_quickadd_last_project')).toBeNull();
     });
   });
@@ -530,7 +530,7 @@ describe('phone Quick add', () => {
     const { getByLabelText } = render(QuickAddSheet, { events: { created } } as any);
     const input = await type(getByLabelText, 'Will fail');
     await fireEvent.click(getByLabelText('Add'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to create task. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not create task. Please try again.'));
     expect(created).not.toHaveBeenCalled();
     expect(input.value).toBe('Will fail');
   });

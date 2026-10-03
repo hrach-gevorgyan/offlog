@@ -68,7 +68,7 @@
       await load();
       await reloadTasks();
     } catch {
-      showError('Failed to archive project. Please try again.');
+      showError('Could not archive project. Please try again.');
     }
   }
 
@@ -78,7 +78,7 @@
       await load();
       await reloadTasks();
     } catch {
-      showError('Failed to restore project. Please try again.');
+      showError('Could not restore project. Please try again.');
     }
   }
 
@@ -89,7 +89,7 @@
       await load();
       await reloadTasks();
     } catch {
-      showError('Failed to delete project. Please try again.');
+      showError('Could not delete project. Please try again.');
     }
   }
 </script>

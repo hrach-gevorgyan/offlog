@@ -72,7 +72,7 @@ describe('phone Archived projects', () => {
     const { getByText, getByLabelText } = render(SettingsPage, { page: 'archived' });
     await waitFor(() => getByText('Old Sprint'));
     await fireEvent.click(getByLabelText('Restore Old Sprint'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to restore project. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not restore project. Please try again.'));
     expect(get(toast)).toBeNull();
     expect(getByText('Old Sprint')).toBeTruthy();
   });
@@ -87,7 +87,7 @@ describe('phone Archived projects', () => {
     confirmAction.mockResolvedValueOnce(true);
     deleteProject.mockRejectedValueOnce(new Error('x'));
     await fireEvent.click(getByLabelText('Delete Old Sprint'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to delete project. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not delete project. Please try again.'));
     expect(deleteProject).toHaveBeenCalledWith('project:old');
   });
 
@@ -137,7 +137,7 @@ describe('phone Archived projects', () => {
     await waitFor(() => getByText('Old Sprint'));
     await fireEvent.click(getByText('Archive a project'));
     await fireEvent.click(getByText('Live Sprint'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to archive project. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not archive project. Please try again.'));
     expect(get(toast)).toBeNull();
   });
 });

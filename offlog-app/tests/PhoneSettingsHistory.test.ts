@@ -103,6 +103,6 @@ describe('phone History', () => {
     const { getByText } = render(SettingsPage, { page: 'history' });
     await waitFor(() => getByText('Today'));
     await fireEvent.click(getByText('Clear all'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to clear history.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not clear history. Please try again.'));
   });
 });

@@ -37,7 +37,7 @@
     } catch {
       done = false;
       name = tag;
-      showError('Failed to rename tag. Please try again.');
+      showError('Could not rename tag. Please try again.');
       return;
     }
     sheet?.close();
@@ -47,7 +47,7 @@
       try {
         await renameTag(next, old);
         await reloadTasks();
-      } catch { showError('Failed to rename tag. Please try again.'); }
+      } catch { showError('Could not rename tag. Please try again.'); }
     });
   }
 
@@ -61,7 +61,7 @@
     } catch {
       done = false;
       name = tag;
-      showError('Failed to rename tag. Please try again.');
+      showError('Could not rename tag. Please try again.');
       return;
     }
     sheet?.close();
@@ -73,7 +73,7 @@
   onDestroy(() => {
     const next = norm(name);
     if (done || !next || next === tag || items.some(i => i.tag === next)) return;
-    renameTag(tag, next).then(() => reloadTasks(), () => showError('Failed to rename tag. Please try again.'));
+    renameTag(tag, next).then(() => reloadTasks(), () => showError('Could not rename tag. Please try again.'));
   });
 
   async function pickColor(c: string | null) {
@@ -81,7 +81,7 @@
       await setTagColor(tag, c);
       dispatch('changed');
     } catch {
-      showError('Failed to update tag color. Please try again.');
+      showError('Could not update tag color. Please try again.');
     }
   }
 
@@ -93,7 +93,7 @@
       await reloadTasks();
     } catch {
       done = false;
-      showError('Failed to delete tag. Please try again.');
+      showError('Could not delete tag. Please try again.');
       return;
     }
     sheet?.close();

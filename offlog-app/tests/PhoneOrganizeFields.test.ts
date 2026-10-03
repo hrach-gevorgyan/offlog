@@ -101,7 +101,7 @@ describe('phone Organize → Fields', () => {
     await openNew(r);
     await fireEvent.input(r.getByLabelText('Field name'), { target: { value: 'Owner' } });
     await fireEvent.click(r.getByText('Add field'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to add field. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not add field. Please try again.'));
   });
 
   it('edits name, type and options, and Undo restores the old definition', async () => {
@@ -131,7 +131,7 @@ describe('phone Organize → Fields', () => {
     const r = await setup();
     await openField(r, 'Cost');
     await fireEvent.click(r.getByText('Save'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to update field. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not update field. Please try again.'));
   });
 
   it('remove warns how many task values are erased, and only removes on yes', async () => {
@@ -163,10 +163,10 @@ describe('phone Organize → Fields', () => {
     const r = await setup();
     await openField(r, 'Cost');
     await fireEvent.click(r.getByText('Remove field'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to remove field. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove field. Please try again.'));
     vi.mocked(showError).mockClear();
     getCustomFieldUsageCount.mockRejectedValueOnce(new Error('x'));
     await fireEvent.click(r.getByText('Remove field'));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to remove field. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not remove field. Please try again.'));
   });
 });

@@ -256,7 +256,7 @@
     try {
       breakdown = await getStorageBreakdown();
     } catch {
-      showError('Failed to load storage usage.');
+      showError('Could not load storage usage. Please try again.');
     }
   }
   let storageUsed = '';
@@ -348,7 +348,7 @@
       const name = backupScope ? ($projectsStore.find(p => p._id === backupScope)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'project') : 'backup';
       await downloadBlob(JSON.stringify(docs, null, 2), 'application/json', `offlog-${name}-${localDateStr(new Date())}.json`);
     } catch {
-      showError('Failed to back up. Please try again.');
+      showError('Could not back up. Please try again.');
     }
   }
   async function doExportCSV() {
@@ -356,7 +356,7 @@
       const csv = await exportTasksCSV();
       await downloadBlob(csv, 'text/csv', `offlog-tasks-${localDateStr(new Date())}.csv`);
     } catch {
-      showError('Failed to export CSV. Please try again.');
+      showError('Could not export CSV. Please try again.');
     }
   }
 

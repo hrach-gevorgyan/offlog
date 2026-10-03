@@ -328,7 +328,7 @@ describe('TimeTravelView clear all', () => {
     await fireEvent.click(container.querySelector('.clear-btn') as HTMLButtonElement);
 
     await waitFor(() =>
-      expect(vi.mocked(showError)).toHaveBeenCalledWith('Failed to clear history.'));
+      expect(vi.mocked(showError)).toHaveBeenCalledWith('Could not clear history. Please try again.'));
     expect(entries(container)).toHaveLength(1);
   });
 

@@ -235,7 +235,7 @@
       showTimeTravel = true;
     } catch (e) {
       timeTravelActive = false;
-      showError('Failed to open History. Please try again.');
+      showError('Could not open History. Please try again.');
     }
   }
   function onTimeTravelClosed() { showTimeTravel = false; timeTravelActive = false; }
@@ -253,7 +253,7 @@
       showTrash = true;
     } catch (e) {
       trashActive = false;
-      showError('Failed to open the Recycle bin. Please try again.');
+      showError('Could not open the Recycle bin. Please try again.');
     }
   }
   function onTrashClosed() { showTrash = false; trashActive = false; }
@@ -272,7 +272,7 @@
       showSettings = true;
     } catch (e) {
       settingsActive = false;
-      showError('Failed to open Settings. Please try again.');
+      showError('Could not open Settings. Please try again.');
     }
   }
   function onSettingsClosed() { showSettings = false; settingsActive = false; }
@@ -406,7 +406,7 @@
       await updateProject(p._id, changes);
       if (changes.space_id && $activeProjectId === p._id) activeSpaceId.set(editSpace);
     } catch {
-      showError('Failed to update project. Please try again.');
+      showError('Could not update project. Please try again.');
     }
   }
 
@@ -414,7 +414,7 @@
     try {
       await updateProject(project._id, { pinned: !project.pinned });
     } catch {
-      showError('Failed to update project. Please try again.');
+      showError('Could not update project. Please try again.');
     }
   }
 
@@ -439,7 +439,7 @@
       }
       newProjectName = '';
     } catch {
-      showError('Failed to create project. Please try again.');
+      showError('Could not create project. Please try again.');
     }
     closeAddProject();
   }
@@ -458,7 +458,7 @@
       await deleteProject(id);
       if ($activeProjectId === id) activeProjectId.set('');
     } catch {
-      showError('Failed to delete project. Please try again.');
+      showError('Could not delete project. Please try again.');
     }
   }
 

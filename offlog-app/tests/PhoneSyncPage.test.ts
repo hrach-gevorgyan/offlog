@@ -237,7 +237,7 @@ describe('phone Sync page', () => {
   it('a failed device list load surfaces showError', async () => {
     getDeviceLastSeen.mockRejectedValueOnce(new Error('x'));
     render(SettingsPage, { page: 'sync' });
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to load recent devices.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not load recent devices. Please try again.'));
   });
 
   it('a conflict opens in a sheet and "Keep this" resolves it after confirming', async () => {
@@ -257,7 +257,7 @@ describe('phone Sync page', () => {
     resolveConflict.mockRejectedValueOnce(new Error('x'));
     confirmAction.mockResolvedValueOnce(true);
     await fireEvent.click(getAllByText('Keep this')[0]);
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to resolve conflict. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not resolve conflict. Please try again.'));
     expect(resolveConflict).toHaveBeenLastCalledWith('task:a', 'current', '', ['3-a', '3-b']);
     // A conflict that changed since it was shown names the reason and reloads.
     const changed = Object.assign(new Error('This conflict changed while it was open'), { name: 'ConflictChangedError' });
@@ -318,9 +318,9 @@ describe('phone Sync page', () => {
     await fireEvent.click(getByText('Connect'));
     await waitFor(() => getByText('Wrong code.'));
     await fireEvent.click(getByText('Connect'));
-    await waitFor(() => getByText('Failed to pair.'));
+    await waitFor(() => getByText('Could not pair.'));
     await fireEvent.click(getByText('Connect'));
-    await waitFor(() => getByText('Failed to pair. Double-check the code on the PC screen, or generate a new one there.'));
+    await waitFor(() => getByText('Could not pair. Double-check the code on the PC screen, or generate a new one there.'));
     expect(pairWithHost).toHaveBeenCalledTimes(3);
     expect(queryByText(/Connected to/)).toBeNull();
   });

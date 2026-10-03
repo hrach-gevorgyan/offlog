@@ -574,14 +574,14 @@ describe('phone settings pages', () => {
     vi.mocked(db.default.allDocs).mockRejectedValueOnce(new Error('x'));
     const { getByRole } = render(SettingsPage, { page: 'data' });
     await fireEvent.click(getByRole('button', { name: 'Back up now' }));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to back up. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not back up. Please try again.'));
   });
 
   it('Backup: a failed CSV export surfaces showError', async () => {
     vi.mocked(db.exportTasksCSV).mockRejectedValueOnce(new Error('x'));
     const { getByRole } = render(SettingsPage, { page: 'data' });
     await fireEvent.click(getByRole('button', { name: 'Export as spreadsheet' }));
-    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to export CSV. Please try again.'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not export CSV. Please try again.'));
   });
 
 });
