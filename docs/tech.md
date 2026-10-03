@@ -1039,7 +1039,10 @@ cargo tauri build
 `site/` is a static page, hand-written HTML and CSS with one script,
 `site.js`: the hero phone demo (built in HTML, not a screenshot), the
 auto-advancing Board/List/Agenda tabs, the playable "Today's three", the
-scroll-linked phone, and the privacy receipt. The page is complete without
+scroll-linked phone, the screenshot tour (phone and Windows reels in
+`site/img/tour/`), the filterable feature showroom (each feature is one
+`<li data-cat>` in `index.html`; add new features there), and the privacy
+receipt. The page is complete without
 it, and every animation stops under prefers-reduced-motion. Light and dark
 follow the visitor's system setting. It follows brand.md: one accent, Hanken Grotesk self-hosted
 from `site/fonts/`, real app screenshots in `site/img/` as WebP. It loads

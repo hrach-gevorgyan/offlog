@@ -28,7 +28,8 @@
   <div class="wrap">
     <a class="brand" href="#top"><img src="icon-512.png" alt="" width="32" height="32">Offlog</a>
     <nav aria-label="Main">
-      <a href="#views">Features</a>
+      <a href="#tour">Tour</a>
+      <a href="#features">Features</a>
       <a href="#sync">Sync</a>
       <a href="#privacy">Privacy</a>
       <a href="#download">Download</a>
@@ -231,18 +232,137 @@
     </div>
   </section>
 
-  <section class="extras">
+  <section class="tour" id="tour" aria-label="Screenshots">
     <div class="wrap">
-      <p class="eyebrow lift">And the rest</p>
-      <h2 class="lift">Small things, done properly.</h2>
-      <div class="more">
-        <article class="tile lift"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h3>App Lock</h3><p>A PIN, your fingerprint or face, and a recovery code only you keep.</p></article>
-        <article class="tile lift"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg></div><h3>Daily backups</h3><p>Seven kept automatically, plus export and import whenever you like.</p></article>
-        <article class="tile lift"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 7 2 2 4-4M4 17l2 2 4-4M14 7h6M14 17h6"/></svg></div><h3>Steps, tags, fields</h3><p>Checklists, colored tags, your own fields, and files up to 10 MB.</p></article>
-        <article class="tile lift"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg></div><h3>Reminders that behave</h3><p>Done and Snooze right in the notification, and quiet hours at night.</p></article>
-        <article class="tile lift"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h7"/></svg></div><h3>Repeat anything</h3><p>Daily, weekly, every N days, weekdays only. One task that resets itself.</p></article>
-        <article class="tile lift"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="7" width="16" height="10" rx="2"/><path d="M8 12h.01M16 12h.01"/></svg></div><h3>Sideways too</h3><p>The phone app works in landscape, with a rail of tabs on the side.</p></article>
+      <div class="tour-head">
+        <div>
+          <p class="eyebrow lift">The tour</p>
+          <h2 class="lift">Every screen, nothing staged.</h2>
+          <p class="lede lift">Real screenshots of the app as it is today. Swipe, scroll or use the arrows.</p>
+        </div>
+        <div class="tour-ctl">
+          <div class="seg" role="group" aria-label="Which app">
+            <button type="button" aria-pressed="true" data-set="phone">Phone</button>
+            <button type="button" aria-pressed="false" data-set="desktop">Windows</button>
+          </div>
+          <button type="button" class="arrow" data-dir="-1" aria-label="Previous screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 5-7 7 7 7"/></svg></button>
+          <button type="button" class="arrow" data-dir="1" aria-label="Next screenshots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 5 7 7-7 7"/></svg></button>
+        </div>
       </div>
+    </div>
+    <div class="reel phone-reel" data-set="phone" tabindex="0" aria-label="Phone screenshots">
+      <figure><img src="img/tour/ph-0.webp" width="520" height="1125" alt="Home: what's left today, overdue, focus and pinned counts, projects by space" loading="lazy"><figcaption><b>Home</b>What's left today, at a glance</figcaption></figure>
+      <figure><img src="img/tour/ph-1.webp" width="520" height="1125" alt="Today: the three tasks picked for the day" loading="lazy"><figcaption><b>Today</b>Your three, and nothing else</figcaption></figure>
+      <figure><img src="img/tour/ph-2.webp" width="520" height="1125" alt="A project on the Board, filtered by status" loading="lazy"><figcaption><b>Board</b>Swipe through statuses</figcaption></figure>
+      <figure><img src="img/tour/ph-3.webp" width="520" height="1125" alt="A project as a list, grouped by status" loading="lazy"><figcaption><b>List</b>Grouped, sorted, filtered</figcaption></figure>
+      <figure><img src="img/tour/ph-4.webp" width="520" height="1125" alt="The task screen with status, due date, priority, tags, fields and steps" loading="lazy"><figcaption><b>Task</b>Every detail on one screen</figcaption></figure>
+      <figure><img src="img/tour/ph-5.webp" width="520" height="1125" alt="The Agenda month with dots on busy days" loading="lazy"><figcaption><b>Agenda</b>The month, and what's due</figcaption></figure>
+      <figure><img src="img/tour/ph-6.webp" width="520" height="1125" alt="Quick add turning typed words into a date, a time and a priority" loading="lazy"><figcaption><b>Quick add</b>Type it, Offlog sorts it</figcaption></figure>
+      <figure><img src="img/tour/ph-7.webp" width="520" height="1125" alt="Search results with the matching words highlighted" loading="lazy"><figcaption><b>Search</b>Titles, notes, steps, tags</figcaption></figure>
+      <figure><img src="img/tour/ph-8.webp" width="520" height="1125" alt="Settings with sync, reminders and app lock" loading="lazy"><figcaption><b>Settings</b>Plain words, no maze</figcaption></figure>
+      <figure><img src="img/tour/ph-9.webp" width="520" height="1125" alt="History: every change, newest first" loading="lazy"><figcaption><b>History</b>Every change, kept</figcaption></figure>
+    </div>
+    <div class="reel desk-reel" data-set="desktop" tabindex="0" aria-label="Windows screenshots" hidden>
+      <figure><img src="img/tour/dk-0.webp" width="1200" height="750" alt="The Windows Dashboard with every project, today and pinned tasks" loading="lazy"><figcaption><b>Dashboard</b>Every project on one page</figcaption></figure>
+      <figure><img src="img/tour/dk-1.webp" width="1200" height="750" alt="Focus on Windows: suggested tasks to pick for today" loading="lazy"><figcaption><b>Focus</b>Suggestions, ranked</figcaption></figure>
+      <figure><img src="img/tour/dk-2.webp" width="1200" height="750" alt="The Agenda month on Windows with a day's tasks" loading="lazy"><figcaption><b>Agenda</b>The month and the day</figcaption></figure>
+      <figure><img src="img/tour/dk-3.webp" width="1200" height="750" alt="Search on Windows, showing where each result matched" loading="lazy"><figcaption><b>Search, Ctrl+K</b>Shows where it matched</figcaption></figure>
+      <figure><img src="img/tour/dk-4.webp" width="1200" height="750" alt="Quick add on Windows reading a date, a tag and a priority from typed text" loading="lazy"><figcaption><b>Quick add, Ctrl+N</b>From anywhere in the app</figcaption></figure>
+      <figure><img src="img/tour/dk-5.webp" width="1200" height="750" alt="A task's extras: repeat, checklist, fields, related, blocked by, attachments, notes" loading="lazy"><figcaption><b>Task extras</b>Repeat, steps, files and more</figcaption></figure>
+      <figure><img src="img/tour/dk-6.webp" width="1200" height="750" alt="Fields on a task: a number, a choice and a date" loading="lazy"><figcaption><b>Fields</b>Your own: number, text, date, choice</figcaption></figure>
+      <figure><img src="img/tour/dk-7.webp" width="1200" height="750" alt="Sync settings on Windows" loading="lazy"><figcaption><b>Sync</b>Your PC is the server</figcaption></figure>
+      <figure><img src="img/tour/dk-8.webp" width="1200" height="750" alt="App Lock settings on Windows" loading="lazy"><figcaption><b>App Lock</b>PIN and recovery code</figcaption></figure>
+      <figure><img src="img/tour/dk-9.webp" width="1200" height="750" alt="The Recycle bin with deleted tasks waiting to be restored" loading="lazy"><figcaption><b>Recycle bin</b>Restore, or let it go</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="showroom" id="features">
+    <div class="wrap">
+      <div class="show-head">
+        <div>
+          <p class="eyebrow lift">Everything it does</p>
+          <h2 class="lift">The whole showroom.</h2>
+        </div>
+        <p class="tally lift"><b id="tally">62</b><span>features, all free,<br>on every device</span></p>
+      </div>
+      <div class="filters" role="group" aria-label="Filter features">
+        <button type="button" aria-pressed="true" data-cat="all">All</button>
+        <button type="button" aria-pressed="false" data-cat="plan">Plan</button>
+        <button type="button" aria-pressed="false" data-cat="tasks">Tasks</button>
+        <button type="button" aria-pressed="false" data-cat="focus">Focus</button>
+        <button type="button" aria-pressed="false" data-cat="find">Find</button>
+        <button type="button" aria-pressed="false" data-cat="phone">Phone</button>
+        <button type="button" aria-pressed="false" data-cat="windows">Windows</button>
+        <button type="button" aria-pressed="false" data-cat="sync">Sync</button>
+        <button type="button" aria-pressed="false" data-cat="safety">Safety</button>
+        <button type="button" aria-pressed="false" data-cat="data">Your data</button>
+        <button type="button" aria-pressed="false" data-cat="look">Look and feel</button>
+      </div>
+      <ul class="feats short" id="feats">
+        <li data-cat="plan"><i>Plan</i><b>Spaces and projects</b><span>Group projects into spaces, each with its own color and one of 25 icons.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Your own statuses</b><span>Name them, reorder them, add more. The last one means done.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Board</b><span>Drag tasks from one status to the next.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>List</b><span>A dense table with sorting on several columns, column choice and saved filters.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Agenda</b><span>Every deadline across every project, as a grouped list or a month.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Dashboard</b><span>All projects on one page, with what you finished in the past week.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Project templates</b><span>Start a project from another one's statuses, and its open tasks if you like.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Rename and move</b><span>Rename a project or move it to another space in two taps.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Pin what matters</b><span>Pin projects and tasks to keep them in view.</span></li>
+        <li data-cat="plan"><i>Plan</i><b>Archive</b><span>Put finished projects and tasks away without deleting them.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Notes in Markdown</b><span>Headings, bold and lists render as you type, in one pane.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Steps</b><span>A checklist inside a task, with progress on the card.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Tags</b><span>Colored tags you can rename and merge.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Fields</b><span>Your own fields: text, number, date or a choice from a list.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Attachments</b><span>Photos and files up to 10 MB, with thumbnails.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Due date and reminder</b><span>Set them separately: due Friday, remind me Thursday evening.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Repeat</b><span>Daily, weekly, monthly, every N days or weekdays only. One task that resets itself.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Blocked by</b><span>Mark what a task is waiting on. Circular chains are refused.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Related tasks</b><span>Link tasks that belong together, across projects.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Priority</b><span>Low, medium or high, shown on the task's circle.</span></li>
+        <li data-cat="tasks"><i>Tasks</i><b>Duplicate</b><span>Copy a task with everything in it.</span></li>
+        <li data-cat="focus"><i>Focus</i><b>Today's three</b><span>Pick up to three tasks for the day. A promise, not a pile.</span></li>
+        <li data-cat="focus"><i>Focus</i><b>Suggestions</b><span>Pinned, then overdue, then due soon: the likely three, ready to pick.</span></li>
+        <li data-cat="focus"><i>Focus</i><b>Overdue, handled</b><span>One tap moves every overdue task to today, with Undo.</span></li>
+        <li data-cat="focus"><i>Focus</i><b>Reminders</b><span>Done and Snooze 1h right in the notification.</span></li>
+        <li data-cat="focus"><i>Focus</i><b>Quiet hours</b><span>No reminders while you sleep.</span></li>
+        <li data-cat="focus"><i>Focus</i><b>Default reminder time</b><span>Pick a date and the time is already filled in.</span></li>
+        <li data-cat="find"><i>Find</i><b>Search everything</b><span>Titles, notes, tags, steps and attachment names, with where it matched.</span></li>
+        <li data-cat="find"><i>Find</i><b>Quick add</b><span>Reads dates, times, #tags, !priority and @project from what you type.</span></li>
+        <li data-cat="find"><i>Find</i><b>Command palette</b><span>Ctrl+K on Windows: search, jump and run commands from one box.</span></li>
+        <li data-cat="find"><i>Find</i><b>Keyboard first</b><span>Every control works from the keyboard on Windows.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>Made for one hand</b><span>Four tabs: Home, Today, Agenda and Search, with + always in reach.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>A real task screen</b><span>Tap any row to change it, no tiny forms.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>Scroll-wheel times</b><span>Set a time with your thumb, and dates on a full month.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>Landscape</b><span>Turn the phone sideways and the tabs become a rail.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>Home-screen widget</b><span>Focus, Quick add and Home, one tap from your home screen.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>Back button</b><span>Android's back closes the top thing, every time.</span></li>
+        <li data-cat="phone"><i>Phone</i><b>Haptics</b><span>A light tap when you finish or pin something. Can be turned off.</span></li>
+        <li data-cat="windows"><i>Windows</i><b>Lives in the tray</b><span>Always one click away, and Ctrl+Alt+O from anywhere.</span></li>
+        <li data-cat="windows"><i>Windows</i><b>Native notifications</b><span>Reminders arrive as normal Windows notifications.</span></li>
+        <li data-cat="windows"><i>Windows</i><b>Updates itself</b><span>New versions install on their own, each one signature-checked.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Your PC is the server</b><span>The Windows app hosts sync for your phone. Nothing in between.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Pair with six digits</b><span>A code on the PC, typed once on the phone. No IP addresses.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Finds your PC by itself</b><span>And finds it again if its address on your Wi-Fi changes.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Encrypted pairing</b><span>Nothing secret is sent before the code is proven.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Offline, then caught up</b><span>Work anywhere. Changes meet the next time your devices do.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Conflicts, never lost</b><span>If two devices change the same task, you choose which to keep.</span></li>
+        <li data-cat="sync"><i>Sync</i><b>Device names</b><span>Each device names itself, so History shows where a change came from.</span></li>
+        <li data-cat="safety"><i>Safety</i><b>App Lock</b><span>A PIN, with fingerprint or face unlock on Android.</span></li>
+        <li data-cat="safety"><i>Safety</i><b>Recovery code</b><span>Shown once, to copy or share somewhere safe. Only you keep it.</span></li>
+        <li data-cat="safety"><i>Safety</i><b>Privacy screen</b><span>With App Lock on, your tasks stay hidden in the app switcher.</span></li>
+        <li data-cat="safety"><i>Safety</i><b>Undo</b><span>Changed your mind? Undo, right from the message.</span></li>
+        <li data-cat="safety"><i>Safety</i><b>Recycle bin</b><span>Deleted tasks wait three months before they go.</span></li>
+        <li data-cat="safety"><i>Safety</i><b>History</b><span>Every change, which device made it, and when.</span></li>
+        <li data-cat="data"><i>Your data</i><b>Daily backups</b><span>One a day, the last seven kept, without asking.</span></li>
+        <li data-cat="data"><i>Your data</i><b>Backup and restore</b><span>Everything, including attachments, fields and tag colors.</span></li>
+        <li data-cat="data"><i>Your data</i><b>One project at a time</b><span>Back up a single project on its own.</span></li>
+        <li data-cat="data"><i>Your data</i><b>CSV export</b><span>Every task as a spreadsheet, whenever you want.</span></li>
+        <li data-cat="data"><i>Your data</i><b>Check and repair</b><span>Finds orphaned tasks and broken states, and repairs them.</span></li>
+        <li data-cat="look"><i>Look and feel</i><b>Light, dark, system</b><span>And a high-contrast mode for bright days.</span></li>
+        <li data-cat="look"><i>Look and feel</i><b>Reduce motion</b><span>Every animation respects it, in the app and on this page.</span></li>
+        <li data-cat="look"><i>Look and feel</i><b>Your calendar, your clock</b><span>Weeks start Monday or Sunday; 12 or 24-hour time.</span></li>
+      </ul>
+      <button type="button" class="btn btn-ghost more-btn" id="feats-more">Show all 62 features</button>
     </div>
   </section>
 

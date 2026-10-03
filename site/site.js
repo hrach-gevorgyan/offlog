@@ -172,3 +172,49 @@ onSight(lifts, el => el.classList.remove('wait'), '0px 0px -6% 0px');
   if (r.getBoundingClientRect().top < innerHeight) return;
   onSight([r], el => el.classList.add('print'), '0px 0px -20% 0px');
 })();
+
+// ── The tour: phone or Windows reel, with arrow buttons ──
+(() => {
+  const segs = $$('.tour .seg button'), reels = $$('.tour .reel');
+  if (!reels.length) return;
+  const current = () => reels.find(r => !r.hidden);
+  segs.forEach(b => b.addEventListener('click', () => {
+    segs.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    reels.forEach(r => { r.hidden = r.dataset.set !== b.dataset.set; });
+    current().scrollTo({ left: 0 });
+  }));
+  $$('.tour .arrow').forEach(b => b.addEventListener('click', () => {
+    const r = current(), fig = $('figure', r);
+    const step = fig ? fig.getBoundingClientRect().width + 20 : 300;
+    r.scrollBy({ left: Number(b.dataset.dir) * step * (innerWidth > 900 ? 2 : 1), behavior: still ? 'auto' : 'smooth' });
+  }));
+})();
+
+// ── The showroom: filter chips and the running count ──
+(() => {
+  const chips = $$('.filters button'), cards = $$('#feats li'), tally = $('#tally');
+  if (!cards.length) return;
+  const count = n => {
+    if (still) { tally.textContent = n; return; }
+    const from = Number(tally.textContent) || 0, t0 = performance.now();
+    const tick = t => { const k = Math.min(1, (t - t0) / 500); tally.textContent = Math.round(from + (n - from) * (1 - (1 - k) ** 3)); if (k < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  };
+  const list = $('#feats'), more = $('#feats-more');
+  more.textContent = `Show all ${cards.length} features`;
+  more.addEventListener('click', () => { list.classList.remove('short'); more.hidden = true; });
+  chips.forEach(b => b.addEventListener('click', () => {
+    chips.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    list.classList.remove('short'); more.hidden = true;
+    let n = 0, k = 0;
+    cards.forEach(li => {
+      const show = b.dataset.cat === 'all' || li.dataset.cat === b.dataset.cat;
+      li.hidden = !show;
+      li.classList.remove('in');
+      if (show) { n++; if (!still) { void li.offsetWidth; li.style.animationDelay = `${Math.min(k++, 12) * 25}ms`; li.classList.add('in'); } }
+    });
+    count(n);
+  }));
+  tally.textContent = cards.length;
+  if (!still) onSight([tally], () => { tally.textContent = '0'; count(cards.length); }, '0px 0px -10% 0px');
+})();
