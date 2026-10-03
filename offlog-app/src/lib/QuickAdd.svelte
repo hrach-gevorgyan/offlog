@@ -154,7 +154,7 @@
 {#if __introReady}
 <div class="scrim" on:click={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}></div>
 
-<div class="panel" use:trapFocus in:quickAddIn out:quickAddOut>
+<div class="panel" role="dialog" aria-modal="true" aria-label="Quick add task" use:trapFocus in:quickAddIn out:quickAddOut>
   <div class="panel-head">
     <div class="panel-title">Quick add task</div>
     <button
@@ -247,7 +247,7 @@
     line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: color var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
-  .help-btn:hover, .help-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .help-btn:hover, .help-btn.active { color: var(--accent-ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
   .help-panel {
     border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
@@ -283,8 +283,8 @@
     letter-spacing: .02em; padding: 3px 8px; border-radius: 20px;
     background: var(--col-bg); color: var(--muted);
   }
-  .chip-date { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
-  .chip-priority { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .chip-date { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
+  .chip-priority { background: color-mix(in srgb, var(--danger) 12%, transparent); color: color-mix(in srgb, var(--danger) 82%, var(--text)); }
   .chip-tag { background: var(--col-bg); color: var(--muted); }
   .chip-project { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success-ink); }
   .chip-raw { background: var(--col-bg); color: var(--faint); font-style: italic; }

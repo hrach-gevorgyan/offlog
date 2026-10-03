@@ -485,7 +485,7 @@
   .end { display: flex; flex-direction: column; align-items: center; width: 108px; min-width: 0; font-size: var(--p-fs-s); color: var(--faint); }
   .end b { margin-top: 8px; font-size: var(--p-fs-m); font-weight: 600; color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .circ { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .me .circ { color: var(--on-accent); background: var(--accent); }
   .circ :global(svg.i) { width: 26px; height: 26px; }
   .link { flex: 1; max-width: 76px; height: 3px; border-radius: 2px; margin-top: 29px; position: relative; background: var(--border-strong); }
@@ -500,12 +500,12 @@
   .card h2 { margin: 0; font-size: 19px; font-weight: 700; }
   .card p { margin: 4px 0 16px; font-size: var(--p-fs-m); color: var(--muted); line-height: 1.45; }
   .cbtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; border: 0; border-radius: 12px; cursor: pointer;
-    font: inherit; font-size: var(--p-fs-l); font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+    font: inherit; font-size: var(--p-fs-l); font-weight: 700; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
   .cbtn.solid { color: var(--on-accent); background: var(--accent); }
   .cbtn:disabled { opacity: .5; cursor: default; }
   .ri, .ava { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); background: var(--col-bg); }
   .ava { border-radius: 50%; font-weight: 700; font-size: var(--p-fs-m); }
-  .acc .ri { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .acc .ri { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .seen { display: flex; align-items: center; gap: 6px; }
   .seen .p-dot { background: var(--border-strong); }
   .seen .p-dot.fresh { background: var(--success); }

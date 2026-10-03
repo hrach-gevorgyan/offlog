@@ -202,7 +202,7 @@
   }
   .action-btn.compact { padding: 5px 8px; }
   .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
-  .action-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .action-btn.active { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 10%, transparent); }
   .filter-count {
     position: absolute; top: -3px; right: -3px;
     min-width: 14px; height: 14px; padding: 0 3px;
@@ -244,7 +244,7 @@
     color: var(--faint); font-size: .95rem; line-height: 1;
     padding: .3rem .3rem; border-radius: 6px; margin-top: 2px;
   }
-  .field-filter-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .field-filter-remove:hover { color: color-mix(in srgb, var(--danger) 82%, var(--text)); background: color-mix(in srgb, var(--danger) 10%, transparent); }
   .add-field-filter-btn {
     width: 100%; text-align: left; background: none; border: none; cursor: pointer;
     color: var(--accent); font-size: .78rem; font-weight: 600;
@@ -282,7 +282,7 @@
     background: none; border: none; cursor: pointer; color: var(--faint);
     font-size: .85rem; padding: .2rem .4rem; border-radius: 6px; flex-shrink: 0;
   }
-  .filter-del-btn:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .filter-del-btn:hover { color: color-mix(in srgb, var(--danger) 82%, var(--text)); background: color-mix(in srgb, var(--danger) 10%, transparent); }
   .filter-empty { padding: .5rem; text-align: center; color: var(--faint); font-size: .78rem; }
 
   @media (max-width: 600px) {

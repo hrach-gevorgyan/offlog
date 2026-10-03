@@ -1151,9 +1151,9 @@
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 {#if __introReady}
 <div class="settings-overlay" on:click|self={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}>
-  <div class="settings-panel" bind:this={panelEl} use:trapFocus in:scale={centredIn} out:scale={centredOut}>
+  <div class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings" bind:this={panelEl} use:trapFocus in:scale={centredIn} out:scale={centredOut}>
     <div class="settings-body" class:detail-open={activeCategory !== null}>
-      <nav class="settings-nav">
+      <nav class="settings-nav" aria-label="Settings sections">
         <h3 class="nav-title">Settings</h3>
         {#each CATEGORIES as cat (cat.key)}
           <button class="nav-item" class:active={activeCategory === cat.key} on:click={() => selectCategory(cat.key)}>
@@ -1603,7 +1603,7 @@
   .nav-item svg { flex-shrink: 0; opacity: .8; }
   .nav-item span { flex: 1; }
   .nav-item:hover { background: var(--hover); }
-  .nav-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .nav-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-ink); }
   .nav-item.active svg { opacity: 1; }
   .nav-badge, .detail-content :global(.nav-badge) {
     font-family: var(--mono); font-size: .62rem; font-weight: 700;
@@ -1708,7 +1708,7 @@
   .detail-content :global(.this-device-tag) {
     font-family: 'Hanken Grotesk', sans-serif; font-size: .68rem; font-weight: 600;
     line-height: 1; display: inline-flex; align-items: center;
-    color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent);
     padding: 3px 6px; border-radius: 999px;
   }
 
@@ -1783,7 +1783,7 @@
      needs the same visual weight wherever it appears, not just where it
      happened to be built first. */
   .detail-content :global(.export-btn-danger) {
-    border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: color-mix(in srgb, var(--danger) 82%, var(--text));
   }
   .detail-content :global(.export-btn-danger:hover) {
     background: color-mix(in srgb, var(--danger) 12%, transparent);
@@ -1840,7 +1840,7 @@
   }
   .maint-step-icon.done    { color: var(--success-ink); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .maint-step-icon.skipped { color: var(--faint); }
-  .maint-step-icon.error   { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .maint-step-icon.error   { color: color-mix(in srgb, var(--danger) 82%, var(--text)); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
   .maint-step-icon.running { border-color: var(--accent); }
 
   .spinner {

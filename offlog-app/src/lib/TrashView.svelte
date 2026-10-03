@@ -129,7 +129,7 @@
 {#if __introReady}
 <div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(480)} out:fade={panelScrimOut(480)}></div>
 
-<div class="panel" use:trapFocus in:fly={panelIn(480)} out:fly={panelOut(480)}>
+<div class="panel" role="dialog" aria-modal="true" aria-label="Recycle" use:trapFocus in:fly={panelIn(480)} out:fly={panelOut(480)}>
   <div class="panel-head">
     <span class="panel-title">Recycle</span>
     {#if items.length > 0}
@@ -256,6 +256,6 @@
     display: flex; align-items: center; justify-content: center;
     transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); flex-shrink: 0;
   }
-  .restore-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-  .forever-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .restore-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-ink); }
+  .forever-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: color-mix(in srgb, var(--danger) 82%, var(--text)); }
 </style>

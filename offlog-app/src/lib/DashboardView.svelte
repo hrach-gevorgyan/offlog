@@ -374,7 +374,7 @@
      call to action competing with the task rows themselves. */
   .view-all {
     background: none; border: none; cursor: pointer;
-    color: var(--faint); opacity: .7;
+    color: var(--faint);
     font-size: 11px; padding: 8px 12px 0; text-align: left;
     transition: opacity var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
@@ -441,8 +441,8 @@
     padding: 3px 8px; border-radius: 20px; background: var(--hover);
     white-space: nowrap;
   }
-  .pinned-stat { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .overdue-stat { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .pinned-stat { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .overdue-stat { color: color-mix(in srgb, var(--danger) 82%, var(--text)); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
   .task-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 10px; overflow: hidden; }
   .task-row {

@@ -160,7 +160,7 @@
 {#if __introReady}
 <div class="scrim" on:click={() => requestClose()} in:fade={scrimIn} out:fade={scrimOut}></div>
 
-<div class="search-panel" use:trapFocus in:searchIn out:searchOut>
+<div class="search-panel" role="dialog" aria-modal="true" aria-label="Search" use:trapFocus in:searchIn out:searchOut>
   <div class="search-bar">
     <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
       <circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
@@ -310,7 +310,7 @@
 
   .result-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .result-title { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .result-title :global(mark) { background: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); border-radius: 2px; padding: 0 1px; }
+  .result-title :global(mark) { background: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent-ink); border-radius: 2px; padding: 0 1px; }
   .result-tags { font-size: 11px; color: var(--faint); font-family: var(--mono); }
   .result-match-hint { font-size: 11px; color: var(--faint); font-style: italic; }
 

@@ -69,6 +69,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('GlobalSearch matching', () => {
+  it('is announced as a dialog named Search', () => {
+    const { getByRole } = render(GlobalSearch, { props: { commands: COMMANDS } });
+    expect(getByRole('dialog', { name: 'Search' })).toBeTruthy();
+  });
+
   it('lists every command when the query is empty', () => {
     const { container } = render(GlobalSearch, { props: { commands: COMMANDS } });
     expect(rows(container).map(r => r.textContent?.replace(/\s+/g, ' ').trim()))

@@ -745,6 +745,7 @@
         {/each}
         <input
           class="tag-input"
+          aria-label="Add a tag"
           bind:value={tagInput}
           placeholder={tags.length ? '' : 'Add tag…'}
           enterkeyhint="done"
@@ -1259,7 +1260,7 @@
   .extras-panel :global(.blocked-status) {
     font-size: .68rem; font-weight: 700; white-space: nowrap;
     padding: 1px 7px; border-radius: 999px;
-    color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent);
+    color: color-mix(in srgb, var(--danger) 82%, var(--text)); background: color-mix(in srgb, var(--danger) 14%, transparent);
   }
   .extras-panel :global(.blocked-status-done) { color: var(--success-ink); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .extras-panel :global(.blocked-badge-active) { color: var(--danger); }

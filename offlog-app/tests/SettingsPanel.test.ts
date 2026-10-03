@@ -136,6 +136,12 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('SettingsPanel sync save', () => {
+  it('is announced as a dialog, with a named list of sections', () => {
+    const { getByRole } = render(SettingsPanel, { initialCategory: 'advanced' });
+    expect(getByRole('dialog', { name: 'Settings' })).toBeTruthy();
+    expect(getByRole('navigation', { name: 'Settings sections' })).toBeTruthy();
+  });
+
   it('writes nothing and does not reload when nothing changed', async () => {
     const { container } = render(SettingsPanel, { initialCategory: 'advanced' });
     await openAdvancedTab(container);

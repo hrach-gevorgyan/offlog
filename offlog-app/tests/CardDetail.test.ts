@@ -128,6 +128,11 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('CardDetail save logic (A9)', () => {
+  it('names the tag input for screen readers', () => {
+    const { getByLabelText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
+    expect(getByLabelText('Add a tag').tagName).toBe('INPUT');
+  });
+
   it('saves an edited title', async () => {
     const task = mkTask();
     const { getByPlaceholderText, getByText } = render(CardDetail, { props: { task, project: mkProject() } });

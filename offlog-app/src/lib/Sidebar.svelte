@@ -481,7 +481,7 @@
        of these views is "inside" a project, and leaving it set keeps
        .project-row.active (below) highlighting a stale project as
        "current". -->
-  <nav class="primary-nav">
+  <nav class="primary-nav" aria-label="Main">
     <button
       class="nav-btn"
       class:active={showDashboard}
@@ -1002,7 +1002,7 @@
     flex-shrink: 0;
   }
   .project-row:hover .proj-pin-btn { opacity: .8; }
-  .proj-pin-btn:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .proj-pin-btn:hover { opacity: 1; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .proj-pin-btn.pinned { opacity: 1; color: var(--accent); }
 
   .project-row {

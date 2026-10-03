@@ -626,7 +626,7 @@
   .pset :global(.setup > .setting-label) { font-weight: 600; }
   .pset :global(.setting-row.step) { flex-wrap: nowrap; padding-top: 4px; }
   .pset :global(.setting-row.step + .setting-row.step) { border-top: 1px solid var(--border); padding-top: 10px; }
-  .pset :global(.step .tick) { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .pset :global(.step .tick) { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent); }
   .pset :global(.step.done .tick) { color: var(--on-accent); background: var(--success); }
   .pset :global(.step.done .setting-label) { color: var(--muted); }
   .pset :global(.time-row) { position: relative; cursor: pointer; }
@@ -675,7 +675,7 @@
   }
   .pset :global(.export-btn:active) { background: color-mix(in srgb, var(--text) 14%, var(--surface)); }
   .pset :global(.export-btn:disabled) { opacity: .5; cursor: default; }
-  .pset :global(.export-btn-danger) { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .pset :global(.export-btn-danger) { color: color-mix(in srgb, var(--danger) 82%, var(--text)); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 
   .pset :global(.link-row) {
     display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 14px;
@@ -698,7 +698,7 @@
     font-size: 12px; font-weight: 700; color: var(--faint); border: 1.5px solid var(--border-strong);
   }
   .sicon.done { color: var(--success-ink); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
-  .sicon.error { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+  .sicon.error { color: color-mix(in srgb, var(--danger) 82%, var(--text)); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
   .sicon.running { color: var(--accent); border-color: var(--accent); }
   .issues { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 12px; padding: 10px 12px; max-height: 160px; overflow-y: auto; font-size: 13px; color: var(--muted); }
   .fname { margin: 0; background: var(--col-bg); padding: 10px 12px; border-radius: 10px; font-size: 13.5px; word-break: break-all; }
@@ -714,7 +714,7 @@
     padding: calc(56px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
   }
   .rkey { width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 22px;
-    color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .rpage .rkey :global(svg.i) { width: 26px; height: 26px; }
   .rpage h1 { margin: 0 0 10px; font-size: 26px; font-weight: 700; line-height: 1.2; }
   .rpage .p-say { margin: 0; }

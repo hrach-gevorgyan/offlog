@@ -156,7 +156,7 @@
 {#if __introReady}
 <div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(420)} out:fade={panelScrimOut(420)}></div>
 
-<div class="panel" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
+<div class="panel" role="dialog" aria-modal="true" aria-label="Manage Spaces" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
     <span class="panel-title">Manage Spaces</span>
     <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
@@ -304,7 +304,7 @@
     color: var(--muted); transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .icon-opt:hover { background: var(--hover); color: var(--text); }
-  .icon-opt.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .icon-opt.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-ink); }
   .icon-opt :global(svg) { width: 16px; height: 16px; }
 
   .name-btn {
@@ -334,7 +334,7 @@
     color: var(--faint); font-size: 1rem; padding: .15rem .5rem; border-radius: 6px;
     flex-shrink: 0; transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
-  .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .delete-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: color-mix(in srgb, var(--danger) 82%, var(--text)); }
 
   .add-btn {
     background: none; border: none; cursor: pointer; color: var(--accent);

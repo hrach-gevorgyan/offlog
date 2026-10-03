@@ -661,7 +661,7 @@
     padding: 3px 9px; border-radius: 6px; white-space: nowrap;
   }
   .due-chip.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
-  .due-chip.today   { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .due-chip.today   { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-ink); }
   .due-chip.week    { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success-ink); }
   .due-chip.later   { background: var(--col-bg); color: var(--faint); }
 

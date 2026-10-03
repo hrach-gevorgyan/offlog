@@ -199,6 +199,6 @@
   .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; margin: 0 0 14px; }
   .icons button { height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 10px; color: var(--muted); cursor: pointer; }
   .icons button:active { background: var(--col-bg); }
-  .icons button.on { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .icons button.on { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
   .icons :global(svg) { width: 20px; height: 20px; }
 </style>

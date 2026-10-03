@@ -409,7 +409,7 @@
     width: 100%; box-sizing: border-box;
   }
 
-  .picker-hint { color: var(--faint); opacity: .7; font-size: 12.5px; margin: 0 0 16px; max-width: 640px; }
+  .picker-hint { color: var(--faint); font-size: 12.5px; margin: 0 0 16px; max-width: 640px; }
   .empty { color: var(--faint); font-size: 14px; padding: 12px 0; }
 
   /* The corkboard. flex-wrap, not a grid with fixed tracks, so
@@ -480,7 +480,7 @@
     font-family: var(--mono); font-size: 10px; font-weight: 600;
     padding: 3px 8px; border-radius: 6px; white-space: nowrap;
   }
-  .suggest-chip.pinned    { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .suggest-chip.pinned    { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-ink); }
   .suggest-chip.overdue   { background: var(--overdue-bg); color: var(--overdue-ink); }
   .suggest-chip.due_soon  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success-ink); }
   .suggest-chip.priority  { background: var(--col-bg); color: var(--faint); }

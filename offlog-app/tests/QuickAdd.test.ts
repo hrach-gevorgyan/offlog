@@ -84,6 +84,11 @@ const titleInput = (utils: ReturnType<typeof render>) =>
   utils.container.querySelector('.title-input') as HTMLInputElement;
 
 describe('QuickAdd create pipeline (A32)', () => {
+  it('is announced as a dialog named Quick add task', () => {
+    const { getByRole } = render(QuickAdd);
+    expect(getByRole('dialog', { name: 'Quick add task' })).toBeTruthy();
+  });
+
   it('creates a task in the first column of the default project', async () => {
     const q = renderQuickAdd();
     await fireEvent.input(titleInput(q), { target: { value: 'Buy milk' } });

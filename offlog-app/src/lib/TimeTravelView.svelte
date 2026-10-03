@@ -178,7 +178,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 <div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(560)} out:fade={panelScrimOut(560)}></div>
 
-{#if __introReady}<div class="panel" use:trapFocus in:fly={panelIn(560)} out:fly={panelOut(560)}>
+{#if __introReady}<div class="panel" role="dialog" aria-modal="true" aria-label="Time Travel" use:trapFocus in:fly={panelIn(560)} out:fly={panelOut(560)}>
   <div class="panel-head">
     <span class="panel-title">Time Travel</span>
     {#if logs.length > 0}
@@ -217,7 +217,7 @@
                 on:click={() => openEntry(log)}
                 on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEntry(log); } }}
               >
-                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? 'var(--faint)'}">{ACTION_LABEL[log.action] ?? log.action}</span>
+                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 13%, transparent); color:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 50%, var(--text))">{ACTION_LABEL[log.action] ?? log.action}</span>
                 <span class="entry-desc">{describeLog(log)}</span>
                 <span class="entry-meta">
                   <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
@@ -232,7 +232,7 @@
               <!-- role="listitem" matches entries-list's role="list" above;
                    never focusable since these entries have no click action. -->
               <div class="entry" role="listitem">
-                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 13%, transparent); color:{ACTION_COLOR[log.action] ?? 'var(--faint)'}">{ACTION_LABEL[log.action] ?? log.action}</span>
+                <span class="action-pill" style="background:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 13%, transparent); color:color-mix(in srgb, {ACTION_COLOR[log.action] ?? 'var(--faint)'} 50%, var(--text))">{ACTION_LABEL[log.action] ?? log.action}</span>
                 <span class="entry-desc">{describeLog(log)}</span>
                 <span class="entry-meta">
                   <span class="source-pill source-{log.source ?? 'pc'}">{log.source ?? 'pc'}</span>
@@ -353,7 +353,7 @@
     background: var(--col-bg); color: var(--muted);
     justify-self: start; width: fit-content;
   }
-  .source-pill.source-mobile { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .source-pill.source-mobile { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-ink); }
 
   /* nowrap, and the column must stay wide enough: a wrapped "09:53 AM"
      inflates the whole row's height (grid rows size to their tallest cell)

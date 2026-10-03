@@ -39,7 +39,7 @@
 <style>
   .ask { display: flex; gap: 14px; align-items: flex-start; margin: 2px 2px 18px; }
   .ic { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+    color: color-mix(in srgb, var(--danger) 82%, var(--text)); background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .txt { min-width: 0; }
   h2 { margin: 0 0 6px; font-size: var(--p-fs-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
   p { margin: 0; color: var(--muted); line-height: 1.5; white-space: pre-line; }

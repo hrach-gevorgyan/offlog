@@ -763,7 +763,7 @@
   /* Genuine footnote -- outside the table panel entirely, muted, small,
      out of the way of the actual data. */
   .sort-hint {
-    font-size: 10.5px; color: var(--faint); opacity: .65;
+    font-size: 10.5px; color: var(--faint);
     padding: 0 4px; margin: 10px 0 4px;
   }
   /* Touch screens have no Shift key, so the hint describes nothing they can do. */
@@ -803,7 +803,7 @@
     transition: color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   }
   .action-btn:hover { color: var(--text); background: var(--hover, var(--surface)); }
-  .action-btn.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .action-btn.active { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
   .menu-divider { height: 1px; background: var(--border); margin: 8px -6px 0; }
   .col-menu {
