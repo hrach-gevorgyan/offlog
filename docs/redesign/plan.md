@@ -258,5 +258,6 @@ Phone only. After a research-backed UX pass (seven area reviews against Material
 | Date and time pickers on the phone: shortcut chips, a full-width month (today ringed, picked day filled), times on the wheels; a reminder is confirmed with one "Remind me …" button; date fields open the month under their row. The desktop pop-up is no longer used on the phone | **Built** (owner picked A, 3 Oct 2026) |
 | Desktop date pop-up to match: shortcut chips, round days (today ringed), week start from the setting, common times (09:00 / default / 13:00 / 18:00) plus ✎ for any other, Clear and Done; starts at the default reminder time | **Built** (owner, 3 Oct 2026) |
 | One word, "Reminders", for the feature on the phone: the Settings row and page, the tile, the reminder sheet. The page shows default time and quiet hours first, a fix-it row only when Android is in the way, and "Remind me about tasks" last | **Built** (owner, 3 Oct 2026) |
+| Agenda month drawn like the date picker: month name and arrows inside the card, two-letter days, round days (today ringed, chosen day filled), task dots under the day | **Built** (owner picked A, 3 Oct 2026) |
 | Dotted row lines | Rejected (owner, 2 Oct 2026): rows keep solid lines |
 | Facts under the title on the task screen | Rejected (owner, 2 Oct 2026): the task screen keeps form rows |

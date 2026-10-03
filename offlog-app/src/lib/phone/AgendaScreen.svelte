@@ -76,8 +76,10 @@
   $: grid = monthGrid(offset, mondayFirst, new Date(today + 'T12:00:00'));
   $: monthLabel = grid.anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   $: dayTasks = (byDate[selected] ?? []).slice().sort(byDue);
-  const WD_MON = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const WD_SUN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  // The same month as the date picker (Month.svelte): header inside the
+  // card, two-letter days, round days.
+  const WD_MON = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const WD_SUN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const weekdays = mondayFirst ? WD_MON : WD_SUN;
 
   // The new month slides in from the side it lies on.
@@ -117,13 +119,12 @@
 </div>
 
 {#if mode === 'month'}
-  <div class="mhead">
-    <span class="ml">{monthLabel}</span>
-    {#if offset !== 0}<button class="p-tbtn" on:click={thisMonth}>Today</button>{/if}
-    <button class="p-ib" on:click={() => shiftMonth(-1)} aria-label="Previous month">{@html I.back}</button>
-    <button class="p-ib" on:click={() => shiftMonth(1)} aria-label="Next month">{@html I.chev}</button>
-  </div>
   <div class="month">
+    <div class="mh">
+      <button class="nav" on:click={() => shiftMonth(-1)} aria-label="Previous month">{@html I.back}</button>
+      <span class="mc"><span class="ml">{monthLabel}</span>{#if offset !== 0}<button class="p-tbtn" on:click={thisMonth}>Today</button>{/if}</span>
+      <button class="nav" on:click={() => shiftMonth(1)} aria-label="Next month">{@html I.chev}</button>
+    </div>
     <div class="wds">{#each weekdays as w, i (i)}<span class="wd">{w}</span>{/each}</div>
     {#key offset}
     <div class="days" in:axisIn={{ dir: monthDir }}>
@@ -134,7 +135,7 @@
         aria-label="{shortDate(d.iso)}, {n.length} due" aria-pressed={d.iso === selected}
         on:click={() => (selected = d.iso)}
       >
-        {d.day}
+        <span class="n">{d.day}</span>
         <!-- Up to three dots; past that a count, so three and six differ. -->
         <span class="dots" class:late={d.iso < today}>{#if n.length > 3}<b>{n.length}</b>{:else}{#each n as t (t._id)}<i></i>{/each}{/if}</span>
       </button>
@@ -171,31 +172,38 @@
 {/key}
 
 <style>
-  .mhead { display: flex; align-items: center; margin: 0 0 6px 4px; }
-  .ml { flex: 1; font-weight: 700; font-size: var(--p-fs-l); }
   .month {
-    padding: 8px 6px; margin-bottom: 6px; overflow: hidden;
-    background: var(--surface); border-radius: 14px; box-shadow: var(--p-shadow);
+    padding: 8px 8px 6px; margin-bottom: 6px; overflow: hidden;
+    background: var(--surface); border-radius: 16px; box-shadow: var(--p-shadow);
   }
+  .mh { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 4px; }
+  .mc { display: flex; align-items: center; gap: 4px; }
+  .ml { font-weight: 700; font-size: var(--p-fs-l); }
+  .mc .p-tbtn { font-size: var(--p-fs-s); }
+  .month .nav { width: 40px; height: 40px; flex: none; border-radius: 50%; color: var(--muted); }
+  .month .nav:active { background: var(--col-bg); }
   .wds, .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .wds { margin-bottom: 2px; }
-  .wd { font-size: var(--p-fs-xs); font-weight: 700; color: var(--faint); text-align: center; padding: 2px 0 4px; }
+  .wd { font-size: var(--p-fs-xs); font-weight: 600; color: var(--faint); text-align: center; padding: 4px 0; }
   .month button {
-    height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    border-radius: 10px; border: 0; background: none; padding: 0; cursor: pointer;
-    font: inherit; font-size: var(--p-fs-m); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text);
-    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
+    display: flex; align-items: center; justify-content: center;
+    border: 0; background: none; padding: 0; cursor: pointer; font: inherit; color: var(--text);
   }
-  .month button:active { background: var(--col-bg); }
-  .month button.out { color: var(--faint); }
-  .month button.today { color: var(--accent); font-weight: 700; }
-  .month button.sel { background: var(--accent); color: var(--on-accent); }
+  .days button { height: 48px; flex-direction: column; gap: 2px; }
+  .n { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: var(--p-fs-m); font-variant-numeric: tabular-nums;
+    transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover); }
+  .days button:not(.sel):active .n { background: var(--col-bg); }
+  .days button.out { color: var(--faint); }
+  .days button.today .n { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent-ink); }
+  .days button.sel .n { background: var(--accent); color: var(--on-accent); font-weight: 700; box-shadow: none; }
   .dots { display: flex; align-items: center; gap: 2px; height: 9px; color: var(--accent); }
   .dots.late { color: var(--overdue-ink); }
   .dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
   .dots b { font-size: 9px; font-weight: 700; line-height: 1; }
-  .month button.sel .dots { color: var(--on-accent); }
   .none { display: flex; flex-direction: column; align-items: center; padding: 0 0 12px; }
   .none .p-empty { padding-bottom: 6px; }
-  @media (orientation: landscape) and (max-height: 500px) { .month button { height: 36px; gap: 1px; } }
+  @media (orientation: landscape) and (max-height: 500px) {
+    .days button { height: 38px; gap: 1px; }
+    .n { width: 30px; height: 30px; }
+  }
 </style>

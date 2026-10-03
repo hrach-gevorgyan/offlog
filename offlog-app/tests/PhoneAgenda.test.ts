@@ -139,9 +139,9 @@ describe('phone Agenda', () => {
     await findByText('Now');
     await fireEvent.click(getByText('Month'));
     expect(localStorage.getItem('offlog_agenda_view')).toBe('month');
-    expect([...container.querySelectorAll('.wd')].map(x => x.textContent).join('')).toBe('MTWTFSS');
-    expect(container.querySelectorAll('.month button').length).toBe(monthGrid(0, true).days.length);
-    expect(container.querySelector('.month button.today')?.classList.contains('sel')).toBe(true);
+    expect([...container.querySelectorAll('.wd')].map(x => x.textContent).join('')).toBe('MoTuWeThFrSaSu');
+    expect(container.querySelectorAll('.days button').length).toBe(monthGrid(0, true).days.length);
+    expect(container.querySelector('.days button.today')?.classList.contains('sel')).toBe(true);
     expect(get(agendaDay)).toBe(day(0));
     expect(getByText('Now')).toBeTruthy();
 
@@ -152,7 +152,7 @@ describe('phone Agenda', () => {
     expect(getByText('Next')).toBeTruthy();
     expect(get(agendaDay)).toBe(day(1));
     expect(container.querySelector('.none')).toBeNull();
-    const empty = [...container.querySelectorAll('.month button')].find(b => b.getAttribute('aria-label')!.endsWith(', 0 due'))!;
+    const empty = [...container.querySelectorAll('.days button')].find(b => b.getAttribute('aria-label')!.endsWith(', 0 due'))!;
     await fireEvent.click(empty);
     expect(getByText('Nothing due.')).toBeTruthy();
     await fireEvent.click(getByText('Add a task'));
@@ -167,9 +167,9 @@ describe('phone Agenda', () => {
     await waitFor(() => getByText('Nothing due.'));
     await fireEvent.click(getByLabelText('Next month'));
     const d = new Date(); const first = localDateStr(new Date(d.getFullYear(), d.getMonth() + 1, 1, 12));
-    expect(container.querySelector('.month button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(first)}, 0 due`);
+    expect(container.querySelector('.days button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(first)}, 0 due`);
     await fireEvent.click(getByText('Today'));
-    expect(container.querySelector('.month button.sel.today')).toBeTruthy();
+    expect(container.querySelector('.days button.sel.today')).toBeTruthy();
   });
 
   it('Month: the month and day survive the screen being rebuilt', async () => {
@@ -184,7 +184,7 @@ describe('phone Agenda', () => {
     first.unmount();
     const again = render(AgendaScreen);
     await waitFor(() => expect(getAllTasksDue).toHaveBeenCalledTimes(2));
-    expect(again.container.querySelector('.month button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(pick)}, 0 due`);
+    expect(again.container.querySelector('.days button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(pick)}, 0 due`);
     expect(again.container.querySelector('.ml')?.textContent).toBe(new Date(d.getFullYear(), d.getMonth() + 2, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
     expect(get(agendaDay)).toBe(pick);
   });
