@@ -969,6 +969,12 @@
   }
   .circle:hover { border-color: var(--accent); }
   .circle.done { border-color: var(--accent); }
+  /* An invisible 24px+ hit area around the small boxes (the pseudo-element
+     is inset from the padding box, inside the border). The 14px grid gap
+     keeps it off the neighbouring cell. */
+  .circle, .row-check { position: relative; }
+  .circle::before { content: ''; position: absolute; inset: -5px; }
+  .row-check::before { content: ''; position: absolute; inset: -6px; }
 
   /* No truncation, anywhere in the grid — plain nowrap, never
      text-overflow: ellipsis. Long content makes the row (and the whole
