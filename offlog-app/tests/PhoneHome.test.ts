@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 
 const getDashboardData = vi.fn();
@@ -77,6 +77,18 @@ describe('phone Home', () => {
     getDashboardData.mockRejectedValue(new Error('boom'));
     render(Home);
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not load Home. Reopen the app to try again.'));
+  });
+
+  it('a project row says what its number counts: open tasks', async () => {
+    getDashboardData.mockResolvedValue(data);
+    const { findByRole } = render(Home);
+    const row = await findByRole('button', { name: /^Q4 Sprint/ });
+    expect(row.textContent).toContain('6 open tasks');
+    cleanup();
+    getDashboardData.mockResolvedValue({ ...data, byProject: { 'project:q': { ...data.byProject['project:q'], open: 1 } } });
+    const one = await render(Home).findByRole('button', { name: /^Q4 Sprint/ });
+    await waitFor(() => expect(one.textContent).toContain('1 open task'));
+    expect(one.textContent).not.toContain('1 open tasks');
   });
 
   it('an empty day: plain words instead of zeros, no empty bar, quiet focus count, no 0 badges', async () => {

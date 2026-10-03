@@ -192,7 +192,7 @@
             <span class="lbl">{p.name}</span>
             {#if p.pinned}<span class="pin" aria-label="Pinned">{@html I.pin}</span>{/if}
             {#if st?.overdue}<span class="late-n">{st.overdue} overdue</span>{/if}
-            {#if st?.open}<span class="p-n">{st.open}</span>{/if}
+            {#if st?.open}<span class="p-n">{st.open}<span class="p-sr">{` open task${st.open === 1 ? '' : 's'}`}</span></span>{/if}
           </button>
         {/each}
         {#if !ps.length}
