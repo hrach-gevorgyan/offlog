@@ -824,7 +824,7 @@
 
   .toggle-mini {
     width: 30px; height: 17px; border-radius: 9px; border: none; cursor: pointer;
-    background: var(--border-strong); position: relative; transition: background var(--dur-hover) var(--ease-hover);
+    background: var(--switch-off); position: relative; transition: background var(--dur-hover) var(--ease-hover);
     flex-shrink: 0; padding: 0;
   }
   .toggle-mini.on { background: var(--accent); }

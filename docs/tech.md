@@ -720,6 +720,7 @@ where CSS can't reach: Android `values/colors.xml` / `values-night/colors.xml`,
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
 | `--danger` | `#BD4138` | `#E77F7C` | destructive actions |
 | `--success` | `#5ABE73` | `#74D791` | done, sync ok (dots, fills) |
+| `--switch-off` | `--border-strong` 60% + `--text` | same mix | an off switch's track (3:1 or more against the card) |
 | `--success-ink` | `--success` 50% + `--text` | same mix | green as text or an icon (`--success` alone is 2.3:1 on white) |
 | `--due-soon-bg` / `--due-soon-ink` | `#FAF3D4` / `#884826` | `#372F1A` / `#EFC365` | due today/tomorrow chips |
 | `--overdue-bg` / `--overdue-ink` | `#F8E4E4` / `#AB3730` | `#351A21` / `#EA7F8C` | late chips and counts |

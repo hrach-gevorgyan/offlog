@@ -1760,7 +1760,7 @@
 
   .detail-content :global(.toggle-btn) {
     width: 42px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
-    background: var(--border-strong); position: relative; transition: background var(--dur-hover) var(--ease-hover);
+    background: var(--switch-off); position: relative; transition: background var(--dur-hover) var(--ease-hover);
     flex-shrink: 0; padding: 0;
   }
   .detail-content :global(.toggle-btn.on) { background: var(--accent); }

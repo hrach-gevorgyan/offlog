@@ -656,7 +656,7 @@
 
   .pset :global(.toggle-btn) {
     width: 42px; height: 26px; border-radius: 13px; border: 0; padding: 0; cursor: pointer; flex-shrink: 0;
-    background: var(--border-strong); position: relative; transition: background var(--dur-small) var(--ease-standard);
+    background: var(--switch-off); position: relative; transition: background var(--dur-small) var(--ease-standard);
   }
   .pset :global(.toggle-btn.on) { background: var(--accent); }
   .pset :global(.toggle-btn:disabled) { opacity: .5; }

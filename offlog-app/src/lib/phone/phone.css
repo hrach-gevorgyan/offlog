@@ -46,7 +46,7 @@ body.dark .phone-shell, body.dark .psheet { --p-shadow: 0 0 0 1px color-mix(in s
 .phone-shell .p-tick, .psheet .p-tick { margin-left: auto; color: var(--accent); display: flex; }
 
 /* Switch at the end of a row (role="switch" on the row). */
-.phone-shell .p-sw, .psheet .p-sw { margin-left: auto; width: 42px; height: 26px; border-radius: 13px; background: var(--border-strong); position: relative; flex-shrink: 0; transition: background var(--dur-small) var(--ease-standard); }
+.phone-shell .p-sw, .psheet .p-sw { margin-left: auto; width: 42px; height: 26px; border-radius: 13px; background: var(--switch-off); position: relative; flex-shrink: 0; transition: background var(--dur-small) var(--ease-standard); }
 .phone-shell .p-sw::after, .psheet .p-sw::after { content: ''; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--toggle-knob); box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform var(--dur-small) var(--ease-standard); }
 .phone-shell .p-sw.on, .psheet .p-sw.on { background: var(--accent); }
 .phone-shell .p-sw.on::after, .psheet .p-sw.on::after { transform: translateX(16px); }
