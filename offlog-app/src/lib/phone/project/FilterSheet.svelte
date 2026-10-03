@@ -6,6 +6,7 @@
   import { PRIORITY_LABEL } from '../../constants';
   import { applyFilter, activeCount, loadSaved, saveFilter, deleteSaved, EMPTY, type Filter } from './filter';
   import { I } from '../icons';
+  import { shortDate } from '../format';
   import Sheet from '../Sheet.svelte';
 
   export let project: ProjectDoc;
@@ -96,7 +97,7 @@
     <div class="p-cpick">
       {#each values as v}
         {@const k = fieldCount(f.id, v)}
-        <button class="p-chip" class:on={fieldValue(f.id) === v} class:none={!k} aria-pressed={fieldValue(f.id) === v} on:click={() => pickField(f.id, v)}>{v}<i>{k}</i></button>
+        <button class="p-chip" class:on={fieldValue(f.id) === v} class:none={!k} aria-pressed={fieldValue(f.id) === v} on:click={() => pickField(f.id, v)}>{f.type === 'date' ? shortDate(v) : v}<i>{k}</i></button>
       {/each}
     </div>
   {/each}
