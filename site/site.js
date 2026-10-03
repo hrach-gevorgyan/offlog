@@ -22,16 +22,16 @@ const lifts = $$('.lift').filter(el => el.getBoundingClientRect().top > innerHei
 lifts.forEach(el => el.classList.add('wait'));
 onSight(lifts, el => el.classList.remove('wait'), '0px 0px -6% 0px');
 
-// ── Hero demo: type a task, recognise its parts, drop it into the list ──
+// ── Hero demo: type a task, recognize its parts, drop it into the list ──
 (() => {
   const field = $('#d-field'), chips = $('#d-chips'), sheet = $('#d-sheet'), list = $('#d-list');
   const left = $('#d-left'), fab = $('#d-fab'), send = $('#d-send');
   if (!field) return;
   const ring = '<span class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="m5 12 5 5 9-10"/></svg></span>';
-  // The words quick add recognises, and the chip each becomes.
+  // The words quick add recognizes, and the chip each becomes.
   const parts = [
     { text: 'Call plumber ' },
-    { text: 'tomorrow', tok: true, chip: 'Tomorrow' },
+    { text: 'fri', tok: true, chip: 'Fri 9 Oct' },
     { text: ' ' },
     { text: '5pm', tok: true, chip: '17:00' },
     { text: ' ' },
@@ -46,13 +46,14 @@ onSight(lifts, el => el.classList.remove('wait'), '0px 0px -6% 0px');
       html += p.tok && whole ? `<span class="tok">${t}</span>` : t.replace(/ /g, '&nbsp;');
     }
     field.innerHTML = html + '<span class="caret"></span>';
+    field.scrollLeft = field.scrollWidth;
   };
   const total = parts.reduce((a, p) => a + p.text.length, 0);
   const final = () => {
     sheet.classList.remove('open');
     const row = document.createElement('div');
     row.className = 'row';
-    row.innerHTML = `${ring}<span class="t">Call plumber</span><span class="pill hi">Tomorrow 17:00</span>`;
+    row.innerHTML = `${ring}<span class="t">Call plumber</span><span class="pill hi">Fri 17:00</span>`;
     list.prepend(row);
     list.lastElementChild.remove();
     list.children[1].classList.add('done');
@@ -70,14 +71,14 @@ onSight(lifts, el => el.classList.remove('wait'), '0px 0px -6% 0px');
         draw(i);
         let acc = 0;
         for (const p of parts) { acc += p.text.length; if (p.chip && acc === i) { shown++; chips.insertAdjacentHTML('beforeend', `<span class="chip">${p.chip}</span>`); } }
-        await wait(i < 13 ? 70 : 95);
+        await wait(i < 13 ? 70 : 110);
       }
       await wait(900);
       send.classList.add('press'); await wait(160); send.classList.remove('press');
       sheet.classList.remove('open'); await wait(380);
       const row = document.createElement('div');
       row.className = 'row new';
-      row.innerHTML = `${ring}<span class="t">Call plumber</span><span class="pill hi">Tomorrow 17:00</span>`;
+      row.innerHTML = `${ring}<span class="t">Call plumber</span><span class="pill hi">Fri 17:00</span>`;
       list.prepend(row);
       list.lastElementChild.remove();
       await wait(1400);
