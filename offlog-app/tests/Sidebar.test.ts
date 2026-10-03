@@ -157,6 +157,46 @@ describe('Sidebar project delete', () => {
   });
 });
 
+describe('Sidebar project rename and move', () => {
+  it('renames in place: Enter saves the trimmed name, Escape leaves it alone', async () => {
+    const { getByTitle, getByLabelText, queryByLabelText } = await renderTree([mkProject()]);
+    await fireEvent.click(getByTitle('Rename or move project'));
+    const input = getByLabelText('Project name') as HTMLInputElement;
+    expect(input.value).toBe('Alpha');
+    await fireEvent.keyDown(input, { key: 'Escape' });
+    expect(queryByLabelText('Project name')).toBeNull();
+    expect(updateProject).not.toHaveBeenCalled();
+    await fireEvent.click(getByTitle('Rename or move project'));
+    await fireEvent.input(getByLabelText('Project name'), { target: { value: '  Beta ' } });
+    await fireEvent.keyDown(getByLabelText('Project name'), { key: 'Enter' });
+    await waitFor(() => expect(updateProject).toHaveBeenCalledWith('project:1', { name: 'Beta' }));
+  });
+
+  it('moves to another space, last there, and follows it when it is the open project', async () => {
+    spacesStore.set([mkSpace(), mkSpace({ _id: 'space:home', name: 'Home', position: 1 })]);
+    projectsStore.set([mkProject(), mkProject({ _id: 'project:2', name: 'Garden', space_id: 'space:home', position: 4 })]);
+    activeSpaceId.set('space:work');
+    activeProjectId.set('project:1');
+    const { getByText, getAllByTitle } = render(Sidebar);
+    await waitFor(() => getByText('Alpha'));
+    await fireEvent.click(getAllByTitle('Rename or move project')[0]);
+    await fireEvent.click(document.querySelector('.edit-project-form .cs-trigger')!);
+    await fireEvent.click([...document.querySelectorAll('.edit-project-form .cs-option')].find(o => o.textContent === 'Home')!);
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(updateProject).toHaveBeenCalledWith('project:1', { space_id: 'space:home', position: 5 }));
+    expect(get(activeSpaceId)).toBe('space:home');
+  });
+
+  it('a failed edit surfaces an error', async () => {
+    updateProject.mockRejectedValueOnce(new Error('offline'));
+    const { getByTitle, getByLabelText, getByText } = await renderTree([mkProject()]);
+    await fireEvent.click(getByTitle('Rename or move project'));
+    await fireEvent.input(getByLabelText('Project name'), { target: { value: 'Beta' } });
+    await fireEvent.click(getByText('Save'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Failed to update project. Please try again.'));
+  });
+});
+
 describe('Sidebar project pin', () => {
   it('toggles the pinned flag to the opposite of its current value', async () => {
     const { getByTitle } = await renderTree([mkProject({ pinned: true })]);

@@ -12,6 +12,7 @@ const archiveProject = vi.fn();
 const unarchiveProject = vi.fn();
 const deleteProject = vi.fn();
 const getArchivedTasksForProject = vi.fn();
+const findProjectsByName = vi.fn();
 const unarchiveTask = vi.fn();
 vi.mock('../src/lib/db', () => {
   const posBetween = (b: number | null, a: number | null) => (b === null && a === null ? 1024 : b === null ? a! / 2 : a === null ? b + 1024 : (a + b) / 2);
@@ -26,6 +27,7 @@ vi.mock('../src/lib/db', () => {
     deleteProject: (...a: unknown[]) => deleteProject(...a),
     getArchivedTasksForProject: (...a: unknown[]) => getArchivedTasksForProject(...a),
     unarchiveTask: (...a: unknown[]) => unarchiveTask(...a),
+    findProjectsByName: (...a: unknown[]) => findProjectsByName(...a),
     getTaskIdsBlocked: vi.fn().mockResolvedValue(new Set(['task:b'])),
     getTaskIdsWithRelatedLinks: vi.fn().mockResolvedValue(new Set()),
     getTagColorOverrides: vi.fn().mockResolvedValue({}),
@@ -53,7 +55,7 @@ vi.mock('../src/lib/store', async () => {
 });
 
 import ProjectScreen from '../src/lib/phone/ProjectScreen.svelte';
-import { projects, projectTasks, activeProjectId, showError, reloadTasks } from '../src/lib/store';
+import { projects, projectTasks, activeProjectId, showError, reloadTasks, spaces } from '../src/lib/store';
 import { actions, addContext, stack, switchTab, push, toast } from '../src/lib/phone/nav';
 import { toggleDone } from '../src/lib/phone/project/actions';
 import { leaves, returns } from '../src/lib/phone/rowMotion';
@@ -530,6 +532,63 @@ describe('phone Project screen — project menu', () => {
     await openMore(r);
     await fireEvent.click(r.getByText('Edit statuses'));
     await waitFor(() => expect(get(stack).at(-1)).toMatchObject({ k: 'statuses', id: 'project:p' }));
+  });
+
+  it('Rename writes the new name and offers Undo; a name in use elsewhere is pointed out', async () => {
+    findProjectsByName.mockResolvedValue([{ _id: 'project:x', name: 'Garden', space_id: 'space:h' }]);
+    const r = setup();
+    await openMore(r);
+    await fireEvent.click(r.getByText('Rename'));
+    const field = await r.findByLabelText('Project name') as HTMLInputElement;
+    expect(field.value).toBe('House');
+    await fireEvent.input(field, { target: { value: ' Garden ' } });
+    await waitFor(() => r.getByText('“Garden” already exists in Home.'));
+    expect(findProjectsByName).toHaveBeenLastCalledWith('Garden', 'project:p');
+    await fireEvent.click(r.getByText('Save'));
+    await waitFor(() => expect(updateProject).toHaveBeenCalledWith('project:p', { name: 'Garden' }));
+    await waitFor(() => expect(get(toast)?.text).toBe('Renamed to Garden'));
+    expect(get(projects)[0].name).toBe('Garden');
+    await get(toast)!.undo!();
+    expect(updateProject).toHaveBeenLastCalledWith('project:p', { name: 'House' });
+  });
+
+  it('a failed rename surfaces an error and keeps the old name', async () => {
+    findProjectsByName.mockResolvedValue([]);
+    updateProject.mockRejectedValue(new Error('boom'));
+    const r = setup();
+    await openMore(r);
+    await fireEvent.click(r.getByText('Rename'));
+    await fireEvent.input(await r.findByLabelText('Project name'), { target: { value: 'Garden' } });
+    await fireEvent.click(r.getByText('Save'));
+    await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not rename this project. Please try again.'));
+    expect(get(projects)[0].name).toBe('House');
+  });
+
+  it('Move to another space puts it last there and offers Undo; with one space the row is off', async () => {
+    let r = setup();
+    await openMore(r);
+    expect((r.getByText('Move to another space').closest('button') as HTMLButtonElement).disabled).toBe(true);
+    r.unmount();
+    (spaces as unknown as Writable<unknown[]>).set([
+      { _id: 'space:h', name: 'Home', color: '#3b82f6', position: 0 },
+      { _id: 'space:w', name: 'Work', color: '#ef4444', position: 1 },
+    ]);
+    try {
+      r = setup();
+      (projects as Writable<ProjectDoc[]>).update(ps => [...ps, { ...ps[0], _id: 'project:o', name: 'Office', space_id: 'space:w', position: 7 }]);
+      await openMore(r);
+      await fireEvent.click(r.getByText('Move to another space'));
+      await waitFor(() => r.getByRole('dialog', { name: 'Move to another space' }));
+      await fireEvent.click(r.getByRole('button', { name: 'Work' }));
+      await waitFor(() => expect(updateProject).toHaveBeenCalledWith('project:p', { space_id: 'space:w', position: 8 }));
+      await waitFor(() => expect(get(toast)?.text).toBe('Moved to Work'));
+      const before = get(projects).find(p => p._id === 'project:p')!;
+      expect(before.space_id).toBe('space:w');
+      await get(toast)!.undo!();
+      expect(updateProject).toHaveBeenLastCalledWith('project:p', { space_id: 'space:h', position: expect.any(Number) });
+    } finally {
+      (spaces as unknown as Writable<unknown[]>).set([{ _id: 'space:h', name: 'Home', color: '#3b82f6', position: 0 }]);
+    }
   });
 
   it('Pin project writes pinned and offers Undo', async () => {

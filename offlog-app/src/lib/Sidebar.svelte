@@ -386,6 +386,30 @@
     dispatch('navigate');
   }
 
+  // A project's name and space are edited in place, on its own row.
+  let editingProjectId: string | null = null;
+  let editName = '', editSpace = '';
+  function startEditProject(p: ProjectDoc) { editingProjectId = p._id; editName = p.name; editSpace = p.space_id; }
+  async function saveEditProject(p: ProjectDoc) {
+    const name = editName.trim();
+    if (!name) return;
+    const changes: Partial<ProjectDoc> = {};
+    if (name !== p.name) changes.name = name;
+    if (editSpace !== p.space_id) {
+      changes.space_id = editSpace;
+      // Last in its new space, where a person looks for something just moved.
+      changes.position = Math.max(0, ...$projects.filter(x => x.space_id === editSpace).map(x => x.position ?? 0)) + 1;
+    }
+    editingProjectId = null;
+    if (!Object.keys(changes).length) return;
+    try {
+      await updateProject(p._id, changes);
+      if (changes.space_id && $activeProjectId === p._id) activeSpaceId.set(editSpace);
+    } catch {
+      showError('Failed to update project. Please try again.');
+    }
+  }
+
   async function toggleProjectPin(project: ProjectDoc) {
     try {
       await updateProject(project._id, { pinned: !project.pinned });
@@ -574,9 +598,26 @@
         {#if spaceOpen}
           <div class="space-projects">
             {#each spProjects as project (project._id)}
+              {#if editingProjectId === project._id}
+              <div class="new-project-form edit-project-form">
+                <!-- svelte-ignore a11y-autofocus -->
+                <input autofocus class="new-project-input" bind:value={editName} aria-label="Project name" enterkeyhint="done"
+                  on:keydown={(e) => { if (e.key === 'Enter') saveEditProject(project); if (e.key === 'Escape') { e.stopPropagation(); editingProjectId = null; } }} />
+                {#if $spaces.length > 1}
+                  <CustomSelect options={$spaces.map(sp => ({ value: sp._id, label: sp.name }))} bind:value={editSpace} />
+                {/if}
+                <div class="template-actions">
+                  <button type="button" on:click={() => (editingProjectId = null)}>Cancel</button>
+                  <button type="button" class="template-create-btn" disabled={!editName.trim()} on:click={() => saveEditProject(project)}>Save</button>
+                </div>
+              </div>
+              {:else}
               <div class="project-row" class:active={$activeProjectId === project._id}>
                 <button class="project-btn" on:click={() => goToProject(project)}>
                   {project.name}
+                </button>
+                <button class="proj-pin-btn proj-edit-btn" title="Rename or move project" aria-label="Rename or move {project.name}" on:click|stopPropagation={() => startEditProject(project)}>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
                 </button>
                 <button
                   class="proj-pin-btn"
@@ -590,6 +631,7 @@
                 </button>
                 <button class="proj-delete-btn" title="Delete project" aria-label="Delete project" on:click={() => doDeleteProject(project._id, project.name)}>×</button>
               </div>
+              {/if}
             {/each}
 
             {#if addingProjectFor === space._id}
@@ -1040,6 +1082,7 @@
   .proj-delete-btn:hover { color: var(--danger); opacity: 1; background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
   .new-project-form { display: flex; flex-direction: column; gap: 6px; }
+  .edit-project-form { padding: 4px 0 6px; }
   .new-project-input {
     padding: .35rem .55rem; font-size: .85rem;
     border: 1.5px solid var(--accent); border-radius: var(--radius-sm);
