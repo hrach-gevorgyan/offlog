@@ -42,6 +42,10 @@ html { scroll-padding-top: 90px; }
 html.smooth { scroll-behavior: smooth; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--text); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: clip; }
 img { max-width: 100%; height: auto; display: block; }
+/* site.js marks images still downloading, so each fades in instead of
+   popping into an empty box. */
+img { transition: opacity .45s; }
+.js img.pending { opacity: 0; }
 [hidden] { display: none !important; }
 a { color: inherit; }
 button { font: inherit; color: inherit; }

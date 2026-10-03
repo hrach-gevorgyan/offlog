@@ -1053,8 +1053,11 @@ follow the visitor's system setting. It follows brand.md: one accent, Hanken Gro
 from `site/fonts/`, real app screenshots in `site/img/` as WebP. Every
 screenshot ships twice, `name.webp` and a sharper `name-2x.webp`, picked by
 `srcset`/`sizes`; make both from the full-size capture (2880 wide desktop,
-1170 wide phone), never by upscaling. Everything below the hero has
-`loading="lazy"`. It loads
+1170 wide phone), never by upscaling. WebP quality is 0.8 for `name.webp`
+and 0.72 for `-2x` (shown at a third of its size on a 3x phone, the
+difference doesn't show); widths are what the layout needs at 2x/3x, no
+more. Everything below the hero has `loading="lazy"` and fades in once it
+arrives; the hero's Dashboard image is preloaded. It loads
 nothing from other origins, and its CSP meta forbids inline styles and
 scripts, so styling goes in `style.css`. `site/CNAME` holds `offlog.io`;
 `.github/workflows/pages.yml` publishes `site/` to GitHub Pages on pushes

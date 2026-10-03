@@ -14,6 +14,15 @@ const onSight = (els, fn, margin = '0px 0px -12% 0px', threshold = 0) => {
 };
 addEventListener('load', () => root.classList.add('smooth'), { once: true });
 
+// Images fade in as they arrive.
+$$('img[loading="lazy"]').forEach(img => {
+  if (img.complete) return;
+  img.classList.add('pending');
+  const done = () => img.classList.remove('pending');
+  img.addEventListener('load', done, { once: true });
+  img.addEventListener('error', done, { once: true });
+});
+
 // Nav hairline once the page scrolls.
 const nav = $('.nav');
 const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
