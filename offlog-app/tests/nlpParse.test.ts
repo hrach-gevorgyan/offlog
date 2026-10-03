@@ -20,6 +20,19 @@ describe('parseQuickAdd() -- dates', () => {
     expect(parseQuickAdd('Water plants tomorrow', [], NOW).due_date).toBe('2026-07-16');
   });
 
+  it('a possessive stays in the title (Tomorrow\'s plan, Friday’s meeting)', () => {
+    const a = parseQuickAdd("Tomorrow's plan", [], NOW);
+    expect(a.title).toBe("Tomorrow's plan");
+    expect(a.due_date).toBeNull();
+    const b = parseQuickAdd('Friday’s meeting notes', [], NOW);
+    expect(b.title).toBe('Friday’s meeting notes');
+    expect(b.due_date).toBeNull();
+    // A real date word later in the same title is still found.
+    const c = parseQuickAdd("Today's list friday", [], NOW);
+    expect(c.title).toBe("Today's list");
+    expect(c.due_date).toBe('2026-07-17');
+  });
+
   it('parses a bare upcoming weekday as the next occurrence', () => {
     // NOW is Wednesday; "friday" should land two days later, not this week's already-passed days.
     expect(parseQuickAdd('Ship report friday', [], NOW).due_date).toBe('2026-07-17');

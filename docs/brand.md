@@ -124,9 +124,6 @@ have to stay in step across several native files (Capacitor config, Android
 `colors.xml`, the icon generator); the list is in tech.md's Theme System
 section and CLAUDE.md's Theming rules.
 
-`--amber` is in-app decoration only, not a second brand colour; it never
-appears on public material.
-
 **Rules for any new public material** (landing page, store banner,
 social card):
 - The accent is the *only* brand color — don't introduce a second

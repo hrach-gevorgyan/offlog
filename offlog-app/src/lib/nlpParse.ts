@@ -88,6 +88,9 @@ function find(w: Work, re: RegExp): RegExpExecArray | null {
   let m: RegExpExecArray | null;
   while ((m = g.exec(w.text))) {
     const [s, e] = bounds(m);
+    // A possessive ("Tomorrow's plan", "Friday’s meeting") is a noun in the
+    // title, not a date or keyword to pull out.
+    if (/^['’]s\b/i.test(w.text.slice(e))) continue;
     // Only a backslash that starts a word escapes (\friday); one inside a
     // word, like a path (C:\today), is ordinary text.
     if (w.text[s - 1] !== '\\' || (s > 1 && !/\s/.test(w.text[s - 2]))) return m;

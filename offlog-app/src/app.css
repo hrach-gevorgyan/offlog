@@ -85,8 +85,6 @@
   --success-mark: color-mix(in srgb, var(--success) 70%, var(--text));
   --due-soon-bg: #faf3d4;
   --due-soon-ink: #884826;
-  /* A warm accent for decoration only (Settings tiles), never for meaning. */
-  --amber: #c98a2b;
   --overdue-bg: #f8e4e4;
   --overdue-ink: #ab3730;
   /* Fixed (not overridden in body.dark) — the toggle-switch knob (ListView's
@@ -204,7 +202,6 @@ body.dark {
   --success-mark: var(--success);
   --due-soon-bg: #372f1a;
   --due-soon-ink: #efc365;
-  --amber: #efc365;
   --overdue-bg: #351a21;
   --overdue-ink: #ea7f8c;
 }
