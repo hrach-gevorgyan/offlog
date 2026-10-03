@@ -26,7 +26,7 @@
   <div class="ask" role="alert">
     {#if bin}<span class="ic">{@html I.trash}</span>{/if}
     <div class="txt">
-      <h3>{title}</h3>
+      <h2>{title}</h2>
       {#if body}<p>{body}</p>{/if}
     </div>
   </div>
@@ -41,7 +41,7 @@
   .ic { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .txt { min-width: 0; }
-  h3 { margin: 0 0 6px; font-size: var(--p-fs-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+  h2 { margin: 0 0 6px; font-size: var(--p-fs-xl); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
   p { margin: 0; color: var(--muted); line-height: 1.5; white-space: pre-line; }
   .p-row.danger { font-weight: 600; }
 </style>

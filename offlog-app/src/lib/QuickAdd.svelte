@@ -286,7 +286,7 @@
   .chip-date { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
   .chip-priority { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
   .chip-tag { background: var(--col-bg); color: var(--muted); }
-  .chip-project { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+  .chip-project { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success-ink); }
   .chip-raw { background: var(--col-bg); color: var(--faint); font-style: italic; }
 
   .row { display: flex; align-items: center; gap: 10px; }

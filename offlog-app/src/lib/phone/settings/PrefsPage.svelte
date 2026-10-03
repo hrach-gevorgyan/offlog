@@ -652,7 +652,7 @@
   .pset :global(.theme-segment) { display: flex; background: var(--col-bg); border-radius: 12px; padding: 3px; gap: 2px; flex-shrink: 0; }
   .pset :global(.theme-seg-btn) { min-height: 44px; padding: 0 14px; border-radius: 9px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
   /* Same selected look as the shell's .p-seg (Board | List, Organize tabs). */
-  .pset :global(.theme-seg-btn.active) { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+  .pset :global(.theme-seg-btn.active) { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink); }
 
   .pset :global(.toggle-btn) {
     width: 42px; height: 26px; border-radius: 13px; border: 0; padding: 0; cursor: pointer; flex-shrink: 0;
@@ -697,7 +697,7 @@
     width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700; color: var(--faint); border: 1.5px solid var(--border-strong);
   }
-  .sicon.done { color: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .sicon.done { color: var(--success-ink); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .sicon.error { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
   .sicon.running { color: var(--accent); border-color: var(--accent); }
   .issues { display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 12px; padding: 10px 12px; max-height: 160px; overflow-y: auto; font-size: 13px; color: var(--muted); }

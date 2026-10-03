@@ -104,7 +104,7 @@
     <div class="grab-zone" on:pointerdown={down} on:pointermove={move} on:pointerup={up} on:pointercancel={up} role="presentation">
       <div class="grab"></div>
     </div>
-    {#if title}<h3>{title}</h3>{/if}
+    {#if title}<h2>{title}</h2>{/if}
     <slot {close} />
   </div>
 {/if}
@@ -126,5 +126,5 @@
   /* The handle and title stay put while a tall sheet scrolls. */
   .grab-zone { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 10px 0 12px; touch-action: none; cursor: grab; }
   .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); margin: 0 auto; }
-  h3 { position: sticky; top: 27px; z-index: 1; background: var(--bg); margin: 0 -4px 8px; padding: 0 8px 4px; font-size: var(--p-fs-xl); font-weight: 700; }
+  h2 { position: sticky; top: 27px; z-index: 1; background: var(--bg); margin: 0 -4px 8px; padding: 0 8px 4px; font-size: var(--p-fs-xl); font-weight: 700; }
 </style>

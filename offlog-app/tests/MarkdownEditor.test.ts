@@ -24,6 +24,14 @@ describe('MarkdownEditor', () => {
     expect(editor!.textContent).toContain('- item');
   });
 
+  it('names its typing area for screen readers', () => {
+    const { container } = render(MarkdownEditor, { value: '' });
+    expect(container.querySelector('.cm-content')!.getAttribute('aria-label')).toBe('Notes');
+    cleanup();
+    const other = render(MarkdownEditor, { value: '', label: 'Description' });
+    expect(other.container.querySelector('.cm-content')!.getAttribute('aria-label')).toBe('Description');
+  });
+
   it('renders the placeholder when empty', () => {
     const { container } = render(MarkdownEditor, { value: '', placeholderText: 'Notes…' });
 

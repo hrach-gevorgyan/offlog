@@ -600,7 +600,7 @@
   }
   .overdue-label { color: var(--overdue-ink); border-color: color-mix(in srgb, var(--overdue-ink) 20%, transparent); }
   .today-label   { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
-  .week-label    { color: var(--success); border-color: color-mix(in srgb, var(--success) 20%, transparent); }
+  .week-label    { color: var(--success-ink); border-color: color-mix(in srgb, var(--success) 20%, transparent); }
   .later-label   { color: var(--faint); }
 
   .badge-count {
@@ -662,7 +662,7 @@
   }
   .due-chip.overdue { background: var(--overdue-bg); color: var(--overdue-ink); }
   .due-chip.today   { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-  .due-chip.week    { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+  .due-chip.week    { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success-ink); }
   .due-chip.later   { background: var(--col-bg); color: var(--faint); }
 
   @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {

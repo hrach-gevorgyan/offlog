@@ -138,9 +138,9 @@
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
   .tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 10px 12px; border: 0; border-radius: 12px; cursor: pointer; text-align: left; font: inherit; color: var(--text); background: color-mix(in srgb, var(--text) 6%, var(--surface)); }
   .tile:active { background: color-mix(in srgb, var(--text) 12%, var(--surface)); }
-  .tile small { font-size: var(--p-fs-xs); color: var(--faint); }
+  .tile small { font-size: var(--p-fs-xs); color: var(--muted); }
   .tile strong { font-size: var(--p-fs-m); font-weight: 600; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tile strong.ok { color: var(--success); }
+  .tile strong.ok { color: var(--success-ink); }
   .tile strong.bad { color: var(--danger); }
   .alert { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; border: 0; border-radius: 10px; text-align: left; font: inherit; font-size: var(--p-fs-s); font-weight: 600; cursor: pointer; color: var(--overdue-ink); background: var(--overdue-bg); }
 </style>

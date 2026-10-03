@@ -482,7 +482,7 @@
   }
   .suggest-chip.pinned    { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
   .suggest-chip.overdue   { background: var(--overdue-bg); color: var(--overdue-ink); }
-  .suggest-chip.due_soon  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+  .suggest-chip.due_soon  { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success-ink); }
   .suggest-chip.priority  { background: var(--col-bg); color: var(--faint); }
 
   /* Same minimal checkbox language as ListView/AgendaView's .circle:

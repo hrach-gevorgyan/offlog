@@ -1692,7 +1692,7 @@
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 500;
   }
   .success-hint, .detail-content :global(.success-hint) {
-    color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success-ink); background: color-mix(in srgb, var(--success) 14%, transparent);
     padding: .5rem .65rem; border-radius: var(--radius-sm); font-weight: 600;
   }
   .detail-content :global(.setting-label) { font-size: .88rem; color: var(--text); flex: 1; }
@@ -1838,7 +1838,7 @@
     font-size: .7rem; font-weight: 700; color: var(--faint);
     border: 1.5px solid var(--border-strong);
   }
-  .maint-step-icon.done    { color: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .maint-step-icon.done    { color: var(--success-ink); border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .maint-step-icon.skipped { color: var(--faint); }
   .maint-step-icon.error   { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
   .maint-step-icon.running { border-color: var(--accent); }

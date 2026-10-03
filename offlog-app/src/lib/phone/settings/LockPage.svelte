@@ -178,7 +178,7 @@
   .intro { margin: 0 4px; }
   .static { cursor: default; }
   .static:active { background: none; }
-  .static .p-ico { color: var(--success); }
+  .static .p-ico { color: var(--success-ink); }
   .sh { display: flex; flex-direction: column; }
   .lbl { font-size: var(--p-fs-s); color: var(--muted); margin: 0 4px 6px; }
   .pin { letter-spacing: .3em; }

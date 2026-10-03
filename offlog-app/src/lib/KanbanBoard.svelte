@@ -954,7 +954,7 @@
      plain neutral .meta-badge pill. dueDateClass() still distinguishes
      'soon' for non-visual use, it just isn't styled differently here. */
   .due-badge.overdue { color: var(--overdue-ink); background: var(--overdue-bg); }
-  .checklist-badge.complete { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .checklist-badge.complete { color: var(--success-ink); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .checklist-bar {
     display: inline-block; width: 24px; height: 4px; border-radius: 2px;
     background: var(--border-strong); overflow: hidden; flex-shrink: 0;

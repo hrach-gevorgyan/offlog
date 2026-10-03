@@ -9,6 +9,8 @@
 
   export let value: string;
   export let placeholderText = '';
+  // The typing area's spoken name; a placeholder alone is not a name.
+  export let label = 'Notes';
 
   let host: HTMLDivElement;
   let view: EditorView;
@@ -31,6 +33,7 @@
           markdownLiveView(),
           EditorView.lineWrapping,
           placeholderExt(placeholderText),
+          EditorView.contentAttributes.of({ 'aria-label': label, 'aria-multiline': 'true' }),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) {
               lastEmitted = u.state.doc.toString();

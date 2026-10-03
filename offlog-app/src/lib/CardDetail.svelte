@@ -1261,7 +1261,7 @@
     padding: 1px 7px; border-radius: 999px;
     color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent);
   }
-  .extras-panel :global(.blocked-status-done) { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+  .extras-panel :global(.blocked-status-done) { color: var(--success-ink); background: color-mix(in srgb, var(--success) 14%, transparent); }
   .extras-panel :global(.blocked-badge-active) { color: var(--danger); }
 
   .extras-panel :global(.checklist-field) { display: flex; flex-direction: column; gap: .3rem; }

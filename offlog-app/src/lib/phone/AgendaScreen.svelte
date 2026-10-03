@@ -187,7 +187,7 @@
     transition: background var(--dur-hover) var(--ease-hover), color var(--dur-hover) var(--ease-hover);
   }
   .month button:active { background: var(--col-bg); }
-  .month button.out { color: var(--faint); opacity: .45; }
+  .month button.out { color: var(--faint); }
   .month button.today { color: var(--accent); font-weight: 700; }
   .month button.sel { background: var(--accent); color: var(--on-accent); }
   .dots { display: flex; align-items: center; gap: 2px; height: 9px; color: var(--accent); }

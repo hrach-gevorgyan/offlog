@@ -92,7 +92,7 @@ const row = (name: string) => screen.getByRole('button', { name: new RegExp(`^${
 async function addDetail(label: string) {
   await fireEvent.click(document.querySelector('[data-kind="add"]') as HTMLElement);
   await fireEvent.click(await screen.findByRole('button', { name: label }));
-  await waitFor(() => expect(document.querySelector('.psheet h3')?.textContent).not.toBe('Add'));
+  await waitFor(() => expect(document.querySelector('.psheet h2')?.textContent).not.toBe('Add'));
 }
 const ADD: Record<string, string> = { Reminder: 'reminder', Repeat: 'repeat', 'Blocked by': 'blocked by', Related: 'related', Attachments: 'attachment', Fields: 'field' };
 // A set detail opens from its row, an unset one through Add.

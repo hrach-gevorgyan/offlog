@@ -77,6 +77,8 @@
   --ink-fixed-dark: #181a20;
   --danger: #bd4138;
   --success: #5abe73;
+  /* Green as text or an icon: --success alone is too light to read on white. */
+  --success-ink: color-mix(in srgb, var(--success) 50%, var(--text));
   --due-soon-bg: #faf3d4;
   --due-soon-ink: #884826;
   /* A warm accent for decoration only (Settings tiles), never for meaning. */
@@ -193,6 +195,7 @@ body.dark {
   --on-accent: #181a20; /* dark accent is light — needs dark text, not white (was hardcoded #fff before, 2.98:1) */
   --danger: #e77f7c;
   --success: #74d791;
+  --success-ink: color-mix(in srgb, var(--success) 50%, var(--text));
   --due-soon-bg: #372f1a;
   --due-soon-ink: #efc365;
   --amber: #efc365;
