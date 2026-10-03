@@ -1682,7 +1682,7 @@
     background: var(--accent); flex-shrink: 0;
   }
   .setting-row, .detail-content :global(.setting-row) { display: flex; align-items: center; gap: .75rem; }
-  .setting-hint, .detail-content :global(.setting-hint) { margin: 0; font-size: .74rem; color: var(--faint); line-height: 1.5; }
+  .setting-hint, .detail-content :global(.setting-hint) { margin: 0; font-size: .74rem; color: var(--muted); line-height: 1.5; }
   /* Pulls a status line up against the row it reports on, instead of
      sitting a full group-gap away as if it were a separate setting. */
   .detail-content :global(.setting-hint.compact-hint) { margin-top: -.3rem; }
@@ -1708,7 +1708,7 @@
   .detail-content :global(.this-device-tag) {
     font-family: 'Hanken Grotesk', sans-serif; font-size: .68rem; font-weight: 600;
     line-height: 1; display: inline-flex; align-items: center;
-    color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 10%, transparent);
     padding: 3px 6px; border-radius: 999px;
   }
 
@@ -1718,7 +1718,7 @@
   .detail-content :global(.storage-summary) { display: flex; flex-direction: column; gap: 2px; }
   .detail-content :global(.storage-headline) { font-size: .9rem; color: var(--text); font-weight: 500; }
   .detail-content :global(.storage-headline-warn) { color: var(--danger); }
-  .detail-content :global(.storage-detail) { font-family: var(--mono); font-size: .7rem; color: var(--faint); }
+  .detail-content :global(.storage-detail) { font-family: var(--mono); font-size: .7rem; color: var(--muted); }
 
   .detail-content :global(.project-export-select) { flex: 1; min-width: 0; }
 
@@ -1737,7 +1737,7 @@
   .field-label, .detail-content :global(.field-label) {
     display: flex; flex-direction: column; gap: .35rem;
     font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--faint);
+    text-transform: uppercase; color: var(--muted);
   }
   .field-label input, .detail-content :global(.field-label input) {
     padding: .5rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);

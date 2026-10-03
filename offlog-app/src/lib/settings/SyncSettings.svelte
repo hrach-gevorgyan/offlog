@@ -65,7 +65,7 @@
                     {#each deviceLastSeen as d (d.device)}
                       <div class="setting-row">
                         <span class="storage-info device-name-row">{d.device}{#if d.device === deviceName}<span class="this-device-tag">this device</span>{/if}</span>
-                        <span class="storage-info" style="color: var(--faint)">{timeAgo(d.lastSeen)}</span>
+                        <span class="storage-info" style="color: var(--muted)">{timeAgo(d.lastSeen)}</span>
                       </div>
                     {/each}
                   </div>
