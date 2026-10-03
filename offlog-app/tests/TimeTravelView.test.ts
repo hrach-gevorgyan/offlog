@@ -74,7 +74,7 @@ vi.mock('../src/lib/confirm', () => ({
 }));
 
 import { projects as projectsStore, showError } from '../src/lib/store';
-import TimeTravelView from '../src/lib/TimeTravelView.svelte';
+import TimeTravelView from '../src/lib/desktop/TimeTravelView.svelte';
 
 function mkProject(): ProjectDoc {
   return {

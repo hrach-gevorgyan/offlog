@@ -36,7 +36,7 @@ vi.mock('../src/lib/modalStack', () => ({
   isTopLayer: () => true,
 }));
 
-import SpaceManager from '../src/lib/SpaceManager.svelte';
+import SpaceManager from '../src/lib/desktop/SpaceManager.svelte';
 
 function mkSpace(overrides: Partial<SpaceDoc> = {}): SpaceDoc {
   return {

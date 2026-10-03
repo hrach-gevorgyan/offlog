@@ -47,7 +47,7 @@ vi.mock('../src/lib/modalStack', () => ({
 }));
 let topLayer = true;
 
-import QuickAdd from '../src/lib/QuickAdd.svelte';
+import QuickAdd from '../src/lib/desktop/QuickAdd.svelte';
 
 function mkProject(id: string, name: string): ProjectDoc {
   return {

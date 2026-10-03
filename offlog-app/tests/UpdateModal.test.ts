@@ -6,7 +6,7 @@ import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 // phase can be driven directly.
 const downloadUpdate = vi.fn();
 const installUpdate = vi.fn();
-vi.mock('../src/lib/updateChecker', async () => {
+vi.mock('../src/lib/desktop/updateChecker', async () => {
   const { writable } = await import('svelte/store');
   return {
     updateState: writable({ phase: 'idle' }),
@@ -17,8 +17,8 @@ vi.mock('../src/lib/updateChecker', async () => {
 });
 
 import { get } from 'svelte/store';
-import { updateState, showUpdateModal } from '../src/lib/updateChecker';
-import UpdateModal from '../src/lib/UpdateModal.svelte';
+import { updateState, showUpdateModal } from '../src/lib/desktop/updateChecker';
+import UpdateModal from '../src/lib/desktop/UpdateModal.svelte';
 
 const panel = (c: HTMLElement) => c.querySelector('.update-panel') as HTMLDivElement | null;
 const heading = (c: HTMLElement) => c.querySelector('.update-title')!.textContent;

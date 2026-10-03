@@ -1,0 +1,163 @@
+<script lang="ts">
+  import { createEventDispatcher, tick } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { popIn, popOut } from '../motion';
+
+  // Native <select> renders as the bare OS picker on Android (a plain list
+  // in a system sheet, no app styling at all) — jarring next to every other
+  // overlay in the app, which is a themed panel. This is a themed dropdown
+  // that looks and behaves the same on every platform. Keyboard-navigable
+  // (Up/Down/Enter/Escape) and closes on an outside click; Escape here
+  // stops propagation so it only closes this popover, not a parent modal
+  // it happens to be opened inside of.
+  // dotColor is optional and additive -- every existing caller omits it and
+  // renders exactly as before. Only priority currently sets it.
+  export let options: { value: string; label: string; group?: string; dotColor?: string }[] = [];
+  export let value: string;
+  export let placeholder = 'Select…';
+  export let placement: 'up' | 'down' = 'down';
+  export let disabled = false;
+
+  const dispatch = createEventDispatcher<{ change: string }>();
+
+  let open = false;
+  let triggerEl: HTMLButtonElement;
+  let panelEl: HTMLDivElement;
+  let highlighted = 0;
+
+  $: selected = options.find(o => o.value === value);
+  $: grouped = groupOptions(options);
+
+  function groupOptions(opts: typeof options): [string, typeof options][] {
+    const groups = new Map<string, typeof options>();
+    for (const o of opts) {
+      const g = o.group ?? '';
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g)!.push(o);
+    }
+    return [...groups.entries()];
+  }
+
+  // Focus must move into the panel on every open: onPanelKey is wired to
+  // panelEl's keydown, not the trigger's, so leaving focus on the trigger
+  // (as a mouse click does) makes the arrow keys dead.
+  async function openPanel() {
+    if (disabled) return;
+    open = true;
+    highlighted = Math.max(0, options.findIndex(o => o.value === value));
+    await tick();
+    panelEl?.focus();
+  }
+  function close() { open = false; triggerEl?.focus(); }
+  function toggle() { if (open) close(); else openPanel(); }
+
+  function choose(o: { value: string }) {
+    value = o.value;
+    dispatch('change', o.value);
+    close();
+  }
+
+  function onTriggerKey(e: KeyboardEvent) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPanel();
+    }
+  }
+
+  function onPanelKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); highlighted = Math.min(highlighted + 1, options.length - 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlighted = Math.max(highlighted - 1, 0); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (options[highlighted]) choose(options[highlighted]); }
+    else if (e.key === 'Tab') { close(); }
+  }
+
+  function onWindowClick(e: MouseEvent) {
+    if (!open) return;
+    const t = e.target as Node;
+    if (triggerEl?.contains(t) || panelEl?.contains(t)) return;
+    close();
+  }
+</script>
+
+<svelte:window on:click={onWindowClick} />
+
+<div class="custom-select">
+  <button
+    type="button"
+    class="cs-trigger"
+    class:cs-disabled={disabled}
+    bind:this={triggerEl}
+    {disabled}
+    on:click={toggle}
+    on:keydown={onTriggerKey}
+    aria-haspopup="listbox"
+    aria-expanded={open}
+  >
+    <span class="cs-value">{#if selected?.dotColor}<span class="cs-dot" style="background:{selected.dotColor}"></span>{/if}{selected?.label ?? placeholder}</span>
+    <svg class="cs-chevron" viewBox="0 0 10 6" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 5,5 9,1" /></svg>
+  </button>
+
+  {#if open}
+    <div class="cs-panel" class:placement-up={placement === 'up'} bind:this={panelEl} role="listbox" tabindex="-1" on:keydown={onPanelKey} in:fly={popIn} out:fly={popOut}>
+      {#each grouped as [group, opts] (group)}
+        {#if group}<div class="cs-group-label">{group}</div>{/if}
+        {#each opts as o (o.value)}
+          {@const idx = options.indexOf(o)}
+          <button
+            type="button"
+            class="cs-option"
+            class:selected={o.value === value}
+            class:highlighted={idx === highlighted}
+            role="option"
+            aria-selected={o.value === value}
+            on:click={() => choose(o)}
+            on:mouseenter={() => highlighted = idx}
+          >{#if o.dotColor}<span class="cs-dot" style="background:{o.dotColor}"></span>{/if}{o.label}</button>
+        {/each}
+      {/each}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .custom-select { position: relative; width: 100%; }
+
+  .cs-trigger {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: .45rem .6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); font-size: .88rem; font-family: inherit;
+    cursor: pointer; text-align: left; transition: border-color var(--dur-hover) var(--ease-hover);
+  }
+  .cs-trigger:hover { border-color: var(--border-strong); }
+  .cs-trigger.cs-disabled { opacity: .5; cursor: default; }
+  .cs-trigger:focus-visible, .cs-trigger[aria-expanded="true"] { outline: none; border-color: var(--accent); }
+  .cs-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* inline-block, not flex -- keeps every dot-less select's existing
+     ellipsis truncation untouched. */
+  .cs-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+  .cs-chevron { flex-shrink: 0; opacity: .6; }
+
+  .cs-panel {
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    box-shadow: 0 12px 32px rgba(0,0,0,.22); overflow-y: auto;
+    /* Exactly 7 options visible before scrolling: .cs-option is ~30px
+       tall (.4rem padding top/bottom + .85rem text), 1px gap between
+       each, plus this panel's own .3rem padding — 7*30 + 6*1 + 2*4.8. */
+    max-height: 225.6px;
+    padding: .3rem; display: flex; flex-direction: column; gap: 1px;
+  }
+  .cs-panel.placement-up { top: auto; bottom: calc(100% + 6px); }
+
+  .cs-group-label {
+    font-family: var(--mono); font-size: .62rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--faint); padding: .35rem .5rem .15rem;
+  }
+  .cs-option {
+    display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+    padding: .4rem .55rem; border-radius: 6px; font-size: .85rem; color: var(--text);
+  }
+  .cs-option.highlighted { background: var(--hover); }
+  .cs-option.selected { color: var(--accent); font-weight: 600; }
+</style>

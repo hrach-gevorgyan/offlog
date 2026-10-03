@@ -36,7 +36,7 @@ aren't obvious from the code.
 | Clipboard / Haptics / Launcher | `@capacitor/clipboard`, `-haptics`, `-app-launcher` | |
 | Styling | CSS custom properties | No CSS framework |
 | Fonts | Hanken Grotesk only | `--mono` points at the same face |
-| Notes editor | **CodeMirror 6** (`@codemirror/*`, `@lezer/markdown`) | Live markdown rendering in one pane — see `carddetail/MarkdownEditor.svelte` |
+| Notes editor | **CodeMirror 6** (`@codemirror/*`, `@lezer/markdown`) | Live markdown rendering in one pane — see `shared/MarkdownEditor.svelte` |
 
 **Two TypeScripts, on purpose.** `@typescript/native` is an alias for
 TypeScript 7 (the native compiler) and does the real checking, via
@@ -109,7 +109,7 @@ flowchart LR
   other fields only once set, the unset ones behind one "Add …" row; dates
   read "Sun 4 Oct" via `phone/format.ts` `shortDate()`; every phone date
   is picked on `phone/Month.svelte`, every time on the wheels), Agenda (list/month), Focus, Settings
-  (pushed pages that reuse `settings/*`, plus Recycle bin, History, Archived
+  (pushed pages that reuse `shared/AppearanceSettings.svelte`, plus Recycle bin, History, Archived
   projects, and Organize — spaces, tags and fields in `phone/settings/organize/`
   instead of the desktop manager overlays). Quick add is a bottom sheet that adds where the user is (the
   project and status on show via `nav.addContext`, or Agenda's chosen day).
@@ -182,7 +182,6 @@ src/
     modalStack.ts               Back-button/Escape close ordering — closeOnBack(); a window Escape handler acts only when isTopLayer()
     focusTrap.ts                use:trapFocus action, shared by every modal
     confirm.ts                  confirmAction() — promise wrapper around ConfirmDialog
-    commands.ts                 Command palette action list (Ctrl+K)
     discovery.ts                mDNS host discovery + pairing handshake (device side)
     notifications.ts            Reminder scheduling, both platforms
     autoBackup.ts               Silent daily local backup, 7 kept
@@ -190,66 +189,69 @@ src/
     focusLock.ts                The day's Focus commitment — per-day UI state, never synced
     today.ts                    `today` store: the local date, advancing at midnight
     tagColors.ts                Tag colour: stored override, else deterministic hash
-    updateChecker.ts            Desktop update check (Tauri updater plugin)
     spaceIcons.ts               The 25-icon space-icon set and resolver
     logFormat.ts                Turns log: docs into plain English for TimeTravelView
     nlpParse.ts                 parseQuickAdd() — local regex parsing, no network
     haptics.ts                  Single gate for every haptic call (Android only)
     demoSeed.ts                 Demo workspace for `npm run build:demo`; compiled out of normal builds
 
-    desktopViews.ts             The desktop views as one chunk; App.svelte imports it dynamically, never statically
-    Sidebar.svelte              Spaces, projects, sync indicator, bottom icon row
-    DashboardView.svelte        Home: project cards, pinned/overdue panels, daily brief
-    FocusView.svelte            Pick up to 3 tasks for the day; corkboard picker
-    KanbanBoard.svelte          Drag-and-drop columns (mouse + touch)
-    ListView.svelte             List/table with search, filter, sort, archive
-    AgendaView.svelte           Flat list (Overdue/Today/This week/Later) + month grid
-    FilterBar.svelte            Search + filter row shared by Kanban and List
-    TimeTravelView.svelte       log: docs grouped by day, with pagination
-    TaskHistoryPanel.svelte     Lazy-loaded history for one task
-    QuickAdd.svelte             Ctrl+N fast add; live-parses the title via nlpParse
-    GlobalSearch.svelte         Ctrl+K debounced search across all tasks
-    TrashView.svelte            Restore or purge soft-deleted tasks
+    shared/                     Screen pieces both shells use
+      MarkdownEditor.svelte       CodeMirror 6 wrapper, one live-rendering pane (the phone loads it lazily, phone/noteEditor.ts)
+      markdownLiveView.ts         CodeMirror decorations: bold/italic/heading/etc render inline as you type
+      TaskHistoryPanel.svelte     Lazy-loaded history for one task
+      AppearanceSettings.svelte   View & Accessibility (desktop settings and the phone's Appearance page)
+      taskHelpers.ts              Pure helpers: dates, summary text, image encoding
+      settingsHelpers.ts          Pure helpers: download, storage math, maint steps
 
-    CardDetail.svelte           Task editor shell: all card state, save(), history
-    carddetail/
-      RepeatReminderBlock.svelte  Repeat and reminder
-      ChecklistBlock.svelte       Checklist
-      CustomFieldsBlock.svelte    Custom field values
-      RelatedBlock.svelte         Related tasks
-      BlockedByBlock.svelte       Blocking dependencies
-      AttachmentsBlock.svelte     File attachments
-      NotesBlock.svelte           Markdown notes, via MarkdownEditor
-      MarkdownEditor.svelte       CodeMirror 6 wrapper, one live-rendering pane
-      markdownLiveView.ts         CodeMirror decorations: bold/italic/heading/etc
-                                   render inline as you type, no separate preview
-      helpers.ts                  Pure helpers: dates, summary text, image encoding
+    desktop/                    Everything only the desktop uses; nothing on the phone path imports from here
+      commands.ts                 Command palette action list (Ctrl+K)
+      updateChecker.ts            Desktop update check (Tauri updater plugin)
+      desktopViews.ts             The desktop views as one chunk; App.svelte imports it dynamically, never statically
+      Sidebar.svelte              Spaces, projects, sync indicator, bottom icon row
+      DashboardView.svelte        Home: project cards, pinned/overdue panels, daily brief
+      FocusView.svelte            Pick up to 3 tasks for the day; corkboard picker
+      KanbanBoard.svelte          Drag-and-drop columns (mouse + touch)
+      ListView.svelte             List/table with search, filter, sort, archive
+      AgendaView.svelte           Flat list (Overdue/Today/This week/Later) + month grid
+      FilterBar.svelte            Search + filter row shared by Kanban and List
+      TimeTravelView.svelte       log: docs grouped by day, with pagination
+      QuickAdd.svelte             Ctrl+N fast add; live-parses the title via nlpParse
+      GlobalSearch.svelte         Ctrl+K debounced search across all tasks
+      TrashView.svelte            Restore or purge soft-deleted tasks
 
-    SettingsPanel.svelte        Settings shell: category nav, shared state, save/close
-    settings/
-      AppearanceSettings.svelte   View & Accessibility
-      NotificationSettings.svelte Notifications
-      SyncSettings.svelte         Sync and pairing
-      OrganizeSettings.svelte     Organize
-      DataSettings.svelte         Backup & Storage
-      SecuritySettings.svelte     App Lock
-      AdvancedSettings.svelte     Advanced (sync URL, maintenance, reset)
-      helpers.ts                  Pure helpers: download, storage math, maint steps
+      CardDetail.svelte           Task editor shell: all card state, save(), history
+      carddetail/
+        RepeatReminderBlock.svelte  Repeat and reminder
+        ChecklistBlock.svelte       Checklist
+        CustomFieldsBlock.svelte    Custom field values
+        RelatedBlock.svelte         Related tasks
+        BlockedByBlock.svelte       Blocking dependencies
+        AttachmentsBlock.svelte     File attachments
+        NotesBlock.svelte           Markdown notes, via MarkdownEditor
 
-    SpaceManager.svelte         Manage spaces
-    TagManager.svelte           Manage tags and their colours
-    CustomFieldManager.svelte   Manage global custom field definitions
-    ArchivedProjectsManager.svelte  Archive and restore projects
+      SettingsPanel.svelte        Settings shell: category nav, shared state, save/close
+      settings/
+        NotificationSettings.svelte Notifications
+        SyncSettings.svelte         Sync and pairing
+        OrganizeSettings.svelte     Organize
+        DataSettings.svelte         Backup & Storage
+        SecuritySettings.svelte     App Lock
+        AdvancedSettings.svelte     Advanced (sync URL, maintenance, reset)
 
-    CustomSelect.svelte         Themed dropdown, replaces every native <select>
-    CalendarPicker.svelte       Desktop date pop-up: shortcut chips, round days, common times + a box for any other (the phone uses phone/Month.svelte)
-    TimePicker.svelte           Themed time picker
-    ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
-    NamePrompt.svelte           Desktop first run: device name + quick preferences + sync offer (the phone shows phone/Welcome.svelte)
-    UpdateModal.svelte          Desktop update available/downloading/failed
-    AppLock.svelte              PIN lock screen; Escape must not dismiss it
-    ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
-    PinStar.svelte              The shared pin star icon
+      SpaceManager.svelte         Manage spaces
+      TagManager.svelte           Manage tags and their colours
+      CustomFieldManager.svelte   Manage global custom field definitions
+      ArchivedProjectsManager.svelte  Archive and restore projects
+
+      CustomSelect.svelte         Themed dropdown, replaces every native <select>
+      CalendarPicker.svelte       Desktop date pop-up: shortcut chips, round days, common times + a box for any other (the phone uses phone/Month.svelte)
+      TimePicker.svelte           Themed time picker
+      ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
+      NamePrompt.svelte           Desktop first run: device name + quick preferences + sync offer (the phone shows phone/Welcome.svelte)
+      UpdateModal.svelte          Desktop update available/downloading/failed
+      AppLock.svelte              PIN lock screen; Escape must not dismiss it
+      ConfirmPinGate.svelte       Proves the current PIN before changing or removing it
+      PinStar.svelte              The pin star icon
 
     phone/                      The phone shell (PHONE_QUERY, never Tauri); its own chunk, loaded by App.svelte only on a phone
       PhoneApp.svelte             Tabs, screen stacks, nav bar, +, snackbar, keyboard handling
@@ -286,7 +288,7 @@ src/
       focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)
       project/                    Board, list, bulk/filter/card/project menu sheets, actions, filter.ts
       quickadd/                   Quick add panels; memory.ts keeps the last keyboard height
-      settings/                   Settings pages (reuse settings/*), Trash, History, Archived, organize/
+      settings/                   Settings pages (reuse shared/AppearanceSettings), Trash, History, Archived, organize/
       task/                       Task-screen sheets and Steps; when.ts has laterToday()
 ```
 

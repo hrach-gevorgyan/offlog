@@ -76,7 +76,7 @@ vi.mock('../src/lib/notifications', () => ({
   permissionState: writable('default'),
 }));
 
-vi.mock('../src/lib/updateChecker', () => ({
+vi.mock('../src/lib/desktop/updateChecker', () => ({
   updateState: writable({ status: 'idle' }),
   showUpdateModal: writable(false),
   checkForUpdate: vi.fn(),
@@ -104,7 +104,7 @@ vi.mock('../src/lib/theme', () => ({
 
 import dbDefault, { importJSON } from '../src/lib/db';
 import { closeOnBack } from '../src/lib/modalStack';
-import SettingsPanel from '../src/lib/SettingsPanel.svelte';
+import SettingsPanel from '../src/lib/desktop/SettingsPanel.svelte';
 
 // saveSettings() calls location.reload() after a sync change; jsdom has no
 // navigation, so it is stubbed and asserted on instead.

@@ -49,7 +49,7 @@ vi.mock('../src/lib/confirm', () => ({
   confirmAction: vi.fn().mockResolvedValue(true),
 }));
 
-import ListView from '../src/lib/ListView.svelte';
+import ListView from '../src/lib/desktop/ListView.svelte';
 
 const COLUMNS = [
   { id: 'col:todo', name: 'To do' },

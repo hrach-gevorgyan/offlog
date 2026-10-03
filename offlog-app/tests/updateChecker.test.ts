@@ -6,7 +6,7 @@ const check = vi.fn();
 vi.mock('@tauri-apps/plugin-updater', () => ({ check: () => check() }));
 vi.mock('../src/config', () => ({ isTauri: () => true, getAutoUpdateCheckEnabled: () => true }));
 
-import { checkForUpdate } from '../src/lib/updateChecker';
+import { checkForUpdate } from '../src/lib/desktop/updateChecker';
 
 const fakeUpdate = (version: string) => ({ version, body: '', close: vi.fn(() => Promise.resolve()) });
 

@@ -1,13 +1,13 @@
 <script lang="ts">
-  // The phone host for the desktop settings children (src/lib/settings/*).
-  // It carries SettingsPanel's state and handlers for one category at a time,
+  // The phone settings pages. Appearance reuses shared/AppearanceSettings;
+  // the page carries SettingsPanel's state and handlers for one category at a time,
   // so every setting keeps its exact behaviour; only the chrome is phone.
   // Multi-step flows (maintenance, restore preview) open as bottom sheets
   // instead of SettingsPanel's mini-modals. Sync has its own page.
   import { onMount, onDestroy } from 'svelte';
-  import AppearanceSettings from '../../settings/AppearanceSettings.svelte';
+  import AppearanceSettings from '../../shared/AppearanceSettings.svelte';
   import BackupPage from './BackupPage.svelte';
-  import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from '../../settings/helpers';
+  import { downloadBlob, freshMaintSteps, formatStorageEstimate, summarizeIssues, type MaintStep } from '../../shared/settingsHelpers';
   import { isAutoBackupEnabled, setAutoBackupEnabled, getLastAutoBackupAt } from '../../autoBackup';
   import db, {
     importJSON, analyzeImport, exportProjectDocs, exportTasksCSV,

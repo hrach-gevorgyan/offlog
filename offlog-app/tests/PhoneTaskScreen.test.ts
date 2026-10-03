@@ -60,7 +60,7 @@ import TaskScreen from '../src/lib/phone/TaskScreen.svelte';
 import { projects, showError } from '../src/lib/store';
 import { unlinkRelatedTask, unlinkBlockedBy, deleteAttachment } from '../src/lib/db';
 import { switchTab, push, stack, toast } from '../src/lib/phone/nav';
-import { dateFromToday } from '../src/lib/carddetail/helpers';
+import { dateFromToday } from '../src/lib/shared/taskHelpers';
 import type { Writable } from 'svelte/store';
 import { EditorView } from '@codemirror/view';
 

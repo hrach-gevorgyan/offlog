@@ -55,7 +55,7 @@ import {
   spaces as spacesStore, projects as projectsStore,
   activeSpaceId, activeProjectId, showError,
 } from '../src/lib/store';
-import Sidebar from '../src/lib/Sidebar.svelte';
+import Sidebar from '../src/lib/desktop/Sidebar.svelte';
 
 function mkSpace(overrides: Partial<SpaceDoc> = {}): SpaceDoc {
   return {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
-import type { Command } from '../src/lib/commands';
+import type { Command } from '../src/lib/desktop/commands';
 import type { ProjectDoc, TaskDoc } from '../src/lib/types';
 
 const searchAllTasks = vi.fn().mockResolvedValue([]);
@@ -26,7 +26,7 @@ vi.mock('../src/lib/modalStack', () => ({
 let topLayer = true;
 
 import { projects, showError } from '../src/lib/store';
-import GlobalSearch from '../src/lib/GlobalSearch.svelte';
+import GlobalSearch from '../src/lib/desktop/GlobalSearch.svelte';
 
 const PROJECT: ProjectDoc = {
   _id: 'project:1', type: 'project', space_id: 'space:unsorted', name: 'Test Project',

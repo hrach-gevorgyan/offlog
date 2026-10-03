@@ -10,16 +10,16 @@
   import type { CustomFieldFilter } from './lib/utils';
   import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
   import { applyTheme, watchSystemTheme, getThemeMode, setThemeMode, isEffectivelyDark, getHighContrast, setHighContrast } from './lib/theme';
-  import { getCommands } from './lib/commands';
+  import { getCommands } from './lib/desktop/commands';
   // Type-only: the desktop views load through desktopViews.ts (see below).
-  import type Sidebar from './lib/Sidebar.svelte';
-  import ConfirmDialog from './lib/ConfirmDialog.svelte';
-  import NamePrompt from './lib/NamePrompt.svelte';
+  import type Sidebar from './lib/desktop/Sidebar.svelte';
+  import ConfirmDialog from './lib/desktop/ConfirmDialog.svelte';
+  import NamePrompt from './lib/desktop/NamePrompt.svelte';
   import { hasShownNamePrompt, markNamePromptShown, isTauri, invokeTauri, isAppLockEnabled, getAppLockTimeoutMinutes, syncPrivacyScreen, isSyncEnabled } from './config';
   import { closeOnBack, closeAll, openLayers } from './lib/modalStack';
-  import AppLock from './lib/AppLock.svelte';
-  import UpdateModal from './lib/UpdateModal.svelte';
-  import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/updateChecker';
+  import AppLock from './lib/desktop/AppLock.svelte';
+  import UpdateModal from './lib/desktop/UpdateModal.svelte';
+  import { updateState, showUpdateModal, startBackgroundUpdateChecks } from './lib/desktop/updateChecker';
   import { isPhone, actions as phoneActions, backAtRoot, switchTab, navigate, showToast, tab as phoneTab } from './lib/phone/nav';
   import { setStatusBarSuppressed, setStatusBarOnHero, refreshStatusBar } from './lib/theme';
   import { fly } from 'svelte/transition';
@@ -543,10 +543,10 @@
   // Likewise the desktop views are one chunk a phone never fetches. Every
   // desktop component below renders only once `Desktop` is set; a static
   // import of any of them here would put them all back in the main bundle.
-  let Desktop: typeof import('./lib/desktopViews') | null = null;
+  let Desktop: typeof import('./lib/desktop/desktopViews') | null = null;
   let desktopLoad: Promise<void> | null = null;
   function loadDesktop(): Promise<void> {
-    desktopLoad ??= import('./lib/desktopViews').then(m => { Desktop = m; }).catch(() => showError('Could not load the app. Please reopen it.'));
+    desktopLoad ??= import('./lib/desktop/desktopViews').then(m => { Desktop = m; }).catch(() => showError('Could not load the app. Please reopen it.'));
     return desktopLoad;
   }
   $: if (!$isPhone) loadDesktop();

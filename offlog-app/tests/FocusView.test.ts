@@ -67,7 +67,7 @@ vi.mock('../src/lib/confirm', () => ({
 }));
 
 import { projects as projectsStore, showError } from '../src/lib/store';
-import FocusView from '../src/lib/FocusView.svelte';
+import FocusView from '../src/lib/desktop/FocusView.svelte';
 
 const COLUMNS = [
   { id: 'col:todo', name: 'To do' },

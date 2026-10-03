@@ -5,7 +5,7 @@ import type { CustomFieldDef, ProjectDoc, TaskDoc } from '../src/lib/types';
 // FilterBar owns no database access at all — its state is the bound filter
 // props plus one localStorage key of saved filters, so these tests read
 // those two surfaces directly.
-import FilterBar from '../src/lib/FilterBar.svelte';
+import FilterBar from '../src/lib/desktop/FilterBar.svelte';
 
 const COLUMNS = [
   { id: 'col:todo', name: 'To do' },

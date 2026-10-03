@@ -21,7 +21,7 @@
   import TopBar from './TopBar.svelte';
   import Sheet from './Sheet.svelte';
   import { loadNoteEditor } from './noteEditor';
-  import TaskHistoryPanel from '../TaskHistoryPanel.svelte';
+  import TaskHistoryPanel from '../shared/TaskHistoryPanel.svelte';
   import Pick from './task/Pick.svelte';
   import DueSheet from './task/DueSheet.svelte';
   import TagsSheet from './task/TagsSheet.svelte';
@@ -31,7 +31,7 @@
   import AttachmentsSheet from './task/AttachmentsSheet.svelte';
   import FieldsSheet from './task/FieldsSheet.svelte';
   import Steps from './task/Steps.svelte';
-  import { dueDateToReminderInput } from '../carddetail/helpers';
+  import { dueDateToReminderInput } from '../shared/taskHelpers';
   import { columnTasks, stepPosition } from './project/filter';
 
   export let id: string;

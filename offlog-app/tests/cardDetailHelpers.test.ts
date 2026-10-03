@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeFileName } from '../src/lib/carddetail/helpers';
+import { safeFileName } from '../src/lib/shared/taskHelpers';
 
 // An attachment's filename is data, not a path. It rides on the task doc, so
 // it can arrive from another device over sync or from a hand-edited backup --

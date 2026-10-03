@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 let attempts = 0;
-vi.mock('../src/lib/carddetail/MarkdownEditor.svelte', () => {
+vi.mock('../src/lib/shared/MarkdownEditor.svelte', () => {
   attempts++;
   if (attempts === 1) throw new Error('chunk failed');
   return { default: 'Editor' };

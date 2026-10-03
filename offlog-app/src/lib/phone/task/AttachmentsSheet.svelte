@@ -3,7 +3,7 @@
   import type { TaskDoc } from '../../types';
   import { addAttachment, deleteAttachment, getAttachmentBlob, ATTACHMENT_MAX_PER_TASK } from '../../db';
   import { ATTACHMENT_MAX_BYTES, isAttachmentExtensionAllowed, isAttachmentImage, attachmentExtension, formatAttachmentSize } from '../../attachments';
-  import { blobToBase64, downscaleImage, openAttachmentFile } from '../../carddetail/helpers';
+  import { blobToBase64, downscaleImage, openAttachmentFile } from '../../shared/taskHelpers';
   import { showError } from '../../store';
   import { I } from '../icons';
 

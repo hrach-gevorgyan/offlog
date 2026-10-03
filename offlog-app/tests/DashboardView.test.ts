@@ -66,7 +66,7 @@ vi.mock('../src/lib/confirm', () => ({
   confirmAction: vi.fn().mockResolvedValue(true),
 }));
 
-import DashboardView from '../src/lib/DashboardView.svelte';
+import DashboardView from '../src/lib/desktop/DashboardView.svelte';
 
 const COLUMNS = [
   { id: 'col:todo', name: 'To do' },

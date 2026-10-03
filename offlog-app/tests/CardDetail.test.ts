@@ -51,8 +51,8 @@ vi.mock('../src/lib/db', () => ({
 // genuine (if usually fast) async I/O timing -- unreliable under this whole
 // suite's full parallel load. Every other helper here is real; only the
 // actual file read is swapped for a synchronous stand-in.
-vi.mock('../src/lib/carddetail/helpers', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/lib/carddetail/helpers')>();
+vi.mock('../src/lib/shared/taskHelpers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/lib/shared/taskHelpers')>();
   return { ...actual, blobToBase64: vi.fn().mockResolvedValue('eA==') }; // "x" in base64
 });
 
@@ -79,7 +79,7 @@ vi.mock('../src/lib/confirm', () => ({
   confirmAction: (...args: unknown[]) => confirmAction(...args),
 }));
 
-import CardDetail from '../src/lib/CardDetail.svelte';
+import CardDetail from '../src/lib/desktop/CardDetail.svelte';
 
 function mkProject(): ProjectDoc {
   return {

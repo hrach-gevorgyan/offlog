@@ -3,7 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { TaskDoc } from '../types';
   import { getAllTasksDue, getDashboardData, subscribe, updateTask } from '../db';
-  import { dueDateToReminderInput } from '../carddetail/helpers';
+  import { dueDateToReminderInput } from '../shared/taskHelpers';
   import { showError, reloadTasks } from '../store';
   import { localDateStr } from '../utils';
   import { onNewDay } from '../today';

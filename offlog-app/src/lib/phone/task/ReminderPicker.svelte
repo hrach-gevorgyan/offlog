@@ -4,7 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { getDefaultReminderTime } from '../../../config';
   import { fmtTime, localDateStr } from '../../utils';
-  import { isoToLocalInput, dateFromToday } from '../../carddetail/helpers';
+  import { isoToLocalInput, dateFromToday } from '../../shared/taskHelpers';
   import { reminderPresets } from '../presets';
   import { shortDate } from '../format';
   import Month from '../Month.svelte';

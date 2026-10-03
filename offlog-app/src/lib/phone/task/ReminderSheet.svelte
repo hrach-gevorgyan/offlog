@@ -5,7 +5,7 @@
   import { requestPermission, permissionState } from '../../notifications';
   import { getDefaultReminderTime, isTauri } from '../../../config';
   import { fmtTime } from '../../utils';
-  import { dueDateToReminderInput } from '../../carddetail/helpers';
+  import { dueDateToReminderInput } from '../../shared/taskHelpers';
 
   export let task: TaskDoc;
   export let save: (changes: Partial<TaskDoc>, err: string) => Promise<boolean>;

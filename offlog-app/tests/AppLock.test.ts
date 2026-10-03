@@ -18,7 +18,7 @@ vi.mock('../src/config', () => ({
   isNativePlatform: vi.fn().mockReturnValue(false),
 }));
 
-import AppLock from '../src/lib/AppLock.svelte';
+import AppLock from '../src/lib/desktop/AppLock.svelte';
 
 function renderLock() {
   const unlocked = vi.fn();

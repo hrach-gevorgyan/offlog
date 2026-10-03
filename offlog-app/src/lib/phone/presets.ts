@@ -1,6 +1,6 @@
 // The date and reminder choices quick add and the task screen both offer:
 // one list, so the two never drift apart.
-import { dateFromToday, isoToLocalInput } from '../carddetail/helpers';
+import { dateFromToday, isoToLocalInput } from '../shared/taskHelpers';
 import { getDefaultReminderTime } from '../../config';
 import { fmtTime } from '../utils';
 import { laterToday } from './task/when';

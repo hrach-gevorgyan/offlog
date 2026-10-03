@@ -5,7 +5,7 @@ import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 // testing is that the promise handed to the caller actually settles with the
 // right value once it has been through the history.back() -> popstate
 // round-trip that modalStack drives.
-import ConfirmDialog from '../src/lib/ConfirmDialog.svelte';
+import ConfirmDialog from '../src/lib/desktop/ConfirmDialog.svelte';
 import { get } from 'svelte/store';
 import { confirmAction, confirmRequest } from '../src/lib/confirm';
 

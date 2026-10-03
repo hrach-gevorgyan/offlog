@@ -9,7 +9,7 @@ vi.mock('../src/config', () => ({
   verifyAppLockPin: (...args: unknown[]) => verifyAppLockPin(...args),
 }));
 
-import ConfirmPinGate from '../src/lib/ConfirmPinGate.svelte';
+import ConfirmPinGate from '../src/lib/desktop/ConfirmPinGate.svelte';
 
 function renderGate(props: Record<string, unknown> = {}) {
   const verified = vi.fn();

@@ -7,7 +7,7 @@ import { render, cleanup } from '@testing-library/svelte';
 // These assert the wiring across the four @codemirror/* packages the
 // component composes (view, state, commands, lang-markdown), not
 // CodeMirror's own behaviour.
-import MarkdownEditor from '../src/lib/carddetail/MarkdownEditor.svelte';
+import MarkdownEditor from '../src/lib/shared/MarkdownEditor.svelte';
 
 afterEach(cleanup);
 

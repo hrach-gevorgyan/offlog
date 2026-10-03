@@ -8,7 +8,10 @@ Svelte 5 + TypeScript + PouchDB, wrapped by Tauri (Windows) and Capacitor
 (Android). `offlog-desktop/` sits beside `offlog-app/`, not inside it, and
 wraps `offlog-app/dist` unmodified. On phone-sized screens (never the Tauri
 window) `App.svelte` renders the phone shell in `src/lib/phone/` instead of
-the desktop views; both read the same `store.ts`.
+the desktop views in `src/lib/desktop/`; both read the same `store.ts`.
+Screen pieces both use live in `src/lib/shared/`, the engine (db, store,
+utils, theme …) at the `src/lib/` root. The phone never imports from
+`desktop/` — move a piece to `shared/` instead.
 
 ## Docs
 
@@ -145,7 +148,7 @@ tasks, so splitting them would be a cycle.
 component with real logic has a test file using `@testing-library/svelte`
 against mocked `db`/`store`/`config`: mock the module, render, `fireEvent`,
 assert the write's exact arguments. Purely presentational children
-(`settings/*`, `carddetail/*` except MarkdownEditor, `PinStar`, and the
+(`desktop/settings/*`, `desktop/carddetail/*`, `PinStar`, and the
 phone sub-pages and sheets, through the `Phone*.test.ts` suites) are covered
 through their parents; `phone/PhoneApp.svelte` has none. `tests/App.test.ts`
 renders `App.svelte` against the real in-memory database for the App Lock

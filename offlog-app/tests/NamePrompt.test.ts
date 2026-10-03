@@ -35,7 +35,7 @@ vi.mock('../src/lib/notifications', () => ({
   permissionState: writable('default'),
 }));
 
-import NamePrompt from '../src/lib/NamePrompt.svelte';
+import NamePrompt from '../src/lib/desktop/NamePrompt.svelte';
 
 const title = (c: HTMLElement) => c.querySelector('.prompt-title')!.textContent;
 const input = (c: HTMLElement) => c.querySelector('.prompt-input') as HTMLInputElement;

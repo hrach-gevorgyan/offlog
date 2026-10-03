@@ -25,7 +25,7 @@ vi.mock('../src/lib/store', () => ({ showError: (...a: unknown[]) => showError(.
 const confirmAction = vi.fn();
 vi.mock('../src/lib/confirm', () => ({ confirmAction: (...a: unknown[]) => confirmAction(...a) }));
 
-import CustomFieldManager from '../src/lib/CustomFieldManager.svelte';
+import CustomFieldManager from '../src/lib/desktop/CustomFieldManager.svelte';
 
 const FIELDS: CustomFieldDef[] = [
   { id: 'field:aaa', name: 'Estimate', type: 'number' },

@@ -8,7 +8,7 @@ import type { Writable } from 'svelte/store';
 // rest of the file. Mocking desktopViews itself would hand App vitest's module
 // proxy, which Svelte's dev build cannot store.
 const h = vi.hoisted(() => ({ desktopLoads: 0 }));
-vi.mock('../src/lib/Sidebar.svelte', async (importOriginal) => {
+vi.mock('../src/lib/desktop/Sidebar.svelte', async (importOriginal) => {
   h.desktopLoads++;
   return importOriginal();
 });

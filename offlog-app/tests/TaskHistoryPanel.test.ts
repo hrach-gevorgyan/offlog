@@ -9,7 +9,7 @@ vi.mock('../src/lib/db', () => ({
   getLogsForTask: (...a: unknown[]) => getLogsForTask(...a),
 }));
 
-import TaskHistoryPanel from '../src/lib/TaskHistoryPanel.svelte';
+import TaskHistoryPanel from '../src/lib/shared/TaskHistoryPanel.svelte';
 
 function mkLog(extra: Record<string, unknown> = {}) {
   return {

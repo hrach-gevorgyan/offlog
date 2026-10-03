@@ -9,7 +9,7 @@ vi.mock('../src/config', () => ({
   getTimeFormat24h: () => getTimeFormat24h(),
 }));
 
-import TimePicker from '../src/lib/TimePicker.svelte';
+import TimePicker from '../src/lib/desktop/TimePicker.svelte';
 
 const selects = (c: HTMLElement) => [...c.querySelectorAll('.custom-select')] as HTMLElement[];
 const triggerText = (c: HTMLElement) =>

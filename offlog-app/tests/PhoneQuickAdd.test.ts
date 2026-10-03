@@ -28,7 +28,7 @@ vi.mock('../src/lib/store', async () => {
 import QuickAddSheet from '../src/lib/phone/QuickAddSheet.svelte';
 import { projects, showError, reloadTasks } from '../src/lib/store';
 import { localDateStr } from '../src/lib/utils';
-import { dateFromToday } from '../src/lib/carddetail/helpers';
+import { dateFromToday } from '../src/lib/shared/taskHelpers';
 import { shortDate } from '../src/lib/phone/format';
 import { get, type Writable } from 'svelte/store';
 import { toast } from '../src/lib/phone/nav';

@@ -84,7 +84,7 @@ if (!Element.prototype.animate) {
   };
 }
 
-// downloadBlob() (carddetail/helpers.ts, settings/helpers.ts) triggers a
+// downloadBlob() (shared/taskHelpers.ts, shared/settingsHelpers.ts) triggers a
 // browser download the same way in every real browser: build a blob: URL
 // on a throwaway <a download>, call .click(), done. jsdom has no download
 // manager, so it treats that click as a real navigation attempt instead
@@ -108,7 +108,7 @@ URL.revokeObjectURL = () => {};
 // native package, not worth installing just for this) — every
 // getContext('2d') call logs "Not implemented" to the console and
 // returns null. ListView's measureTextWidth() already tolerates that
-// null, but carddetail/helpers.ts's downscaleImage() does not (a bare
+// null, but shared/taskHelpers.ts's downscaleImage() does not (a bare
 // `getContext('2d')!`), so a null return is a latent
 // "Cannot read properties of null" the moment something exercises it.
 // A minimal stub covering what both call sites actually use --

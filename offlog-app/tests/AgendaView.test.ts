@@ -63,7 +63,7 @@ vi.mock('../src/lib/confirm', () => ({
 }));
 
 import { projects as projectsStore, showError } from '../src/lib/store';
-import AgendaView from '../src/lib/AgendaView.svelte';
+import AgendaView from '../src/lib/desktop/AgendaView.svelte';
 
 const COLUMNS = [
   { id: 'col:todo', name: 'To do' },

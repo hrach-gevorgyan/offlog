@@ -64,7 +64,7 @@ vi.mock('../src/lib/confirm', () => ({
   confirmAction: vi.fn().mockResolvedValue(true),
 }));
 
-import KanbanBoard from '../src/lib/KanbanBoard.svelte';
+import KanbanBoard from '../src/lib/desktop/KanbanBoard.svelte';
 
 const COLUMNS = [
   { id: 'col:idea', name: 'Idea' },

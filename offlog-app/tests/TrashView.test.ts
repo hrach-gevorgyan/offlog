@@ -40,7 +40,7 @@ vi.mock('../src/lib/modalStack', () => ({
 }));
 let topLayer = true;
 
-import TrashView from '../src/lib/TrashView.svelte';
+import TrashView from '../src/lib/desktop/TrashView.svelte';
 
 function mkTrashed(overrides: Partial<TaskDoc> & { project_name?: string } = {}) {
   return {

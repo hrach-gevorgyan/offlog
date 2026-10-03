@@ -85,7 +85,7 @@ vi.mock('../src/lib/notifications', async () => {
     permissionState: w('granted'), exactAlarmState: w('granted'), requestExactAlarmPermission: vi.fn(),
   };
 });
-vi.mock('../src/lib/updateChecker', async () => {
+vi.mock('../src/lib/desktop/updateChecker', async () => {
   const { writable: w } = await import('svelte/store');
   return { updateState: w({ phase: 'idle' }), showUpdateModal: w(false), checkForUpdate: vi.fn() };
 });

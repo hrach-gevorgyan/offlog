@@ -32,7 +32,7 @@ vi.mock('../src/lib/confirm', () => ({
   confirmAction: (...a: unknown[]) => confirmAction(...a),
 }));
 
-import TagManager from '../src/lib/TagManager.svelte';
+import TagManager from '../src/lib/desktop/TagManager.svelte';
 
 const TAGS = [{ tag: 'urgent', count: 3 }, { tag: 'home', count: 1 }];
 

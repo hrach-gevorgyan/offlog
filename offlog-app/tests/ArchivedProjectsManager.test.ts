@@ -42,7 +42,7 @@ vi.mock('../src/lib/modalStack', () => ({
 
 import { activeProjectId } from '../src/lib/store';
 import { get } from 'svelte/store';
-import ArchivedProjectsManager from '../src/lib/ArchivedProjectsManager.svelte';
+import ArchivedProjectsManager from '../src/lib/desktop/ArchivedProjectsManager.svelte';
 
 function mkProject(overrides: Partial<ProjectDoc> = {}): ProjectDoc {
   return {

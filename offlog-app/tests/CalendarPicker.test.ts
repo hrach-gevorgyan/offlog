@@ -13,7 +13,7 @@ vi.mock('../src/config', () => ({
   getDefaultReminderTime: () => '10:00',
 }));
 
-import CalendarPicker from '../src/lib/CalendarPicker.svelte';
+import CalendarPicker from '../src/lib/desktop/CalendarPicker.svelte';
 
 // Local Sunday 2026-03-15 22:30, which is already 2026-03-16 in UTC.
 const NOW = new Date('2026-03-16T05:30:00Z');

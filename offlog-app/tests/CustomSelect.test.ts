@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 
-import CustomSelect from '../src/lib/CustomSelect.svelte';
+import CustomSelect from '../src/lib/desktop/CustomSelect.svelte';
 
 // A pure presentational primitive: no db/store imports, so nothing to mock.
 // What matters is the value it emits and that the keyboard path can reach
