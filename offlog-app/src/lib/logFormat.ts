@@ -31,7 +31,7 @@ const FIELD_LABEL: Record<string, string> = {
   due_date: 'Due date', reminder_at: 'Reminder', remindOnDue: 'Remind on due date',
   tags: 'Tags', name: 'Name', columns: 'Statuses',
   pinned: 'Pinned', archived: 'Archived', column_id: 'Status',
-  checklist: 'Checklist', custom_values: 'Custom fields',
+  checklist: 'Checklist', custom_values: 'Fields',
   color: 'Color', icon: 'Icon', recurrence: 'Repeat', related: 'Related tasks',
   recurrenceInterval: 'Repeat interval', recurrenceWeekdaysOnly: 'Weekdays only',
   blocked_by: 'Blocked by', attachments: 'Attachments',
@@ -71,7 +71,7 @@ export function describeField(field: string, from: unknown, to: unknown): string
   if (field === 'title' || field === 'name') return `Renamed to "${to}"`;
   if (field === 'body') return 'Notes updated';
   if (field === 'checklist') return 'Checklist updated';
-  if (field === 'custom_values') return 'Custom fields updated';
+  if (field === 'custom_values') return 'Fields updated';
   if (field === 'columns') return 'Statuses updated';
   if (field === 'related') return 'Related tasks updated';
   if (field === 'blocked_by') return 'Blocked by tasks updated';

@@ -757,7 +757,7 @@
   const CONFLICT_FIELD_LABELS: Record<string, string> = {
     title: 'Title', name: 'Name', body: 'Notes', priority: 'Priority',
     due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags',
-    column_id: 'Status', checklist: 'Checklist', custom_values: 'Custom fields',
+    column_id: 'Status', checklist: 'Checklist', custom_values: 'Fields',
     related: 'Related', blocked_by: 'Blocked by', pinned: 'Pinned',
     archived: 'Archived', deleted: 'In trash', position: 'Order',
     columns: 'Statuses', color: 'Color', icon: 'Icon', default_view: 'Default view',
@@ -1261,7 +1261,6 @@
 </div>
 
 {#if showConnectModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showConnectModal = false} in:fade={scrimIn} out:fade={scrimOut}>
     <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Connect a device" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
@@ -1352,7 +1351,6 @@
 {/if}
 
 {#if showConflictsModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showConflictsModal = false} in:fade={scrimIn} out:fade={scrimOut}>
     <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Resolve conflicts" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
@@ -1404,7 +1402,6 @@
 {/if}
 
 {#if showMaintenanceModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={() => showMaintenanceModal = false} in:fade={scrimIn} out:fade={scrimOut}>
     <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Maintenance" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">
@@ -1470,7 +1467,6 @@
 {/if}
 
 {#if importPreview}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="mini-modal-scrim" on:click|self={cancelImport} in:fade={scrimIn} out:fade={scrimOut}>
     <div class="mini-modal" use:trapFocus role="dialog" aria-modal="true" aria-label="Restore from backup" in:dialogIn out:dialogOut>
       <div class="mini-modal-head">

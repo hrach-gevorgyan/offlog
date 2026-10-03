@@ -10,7 +10,6 @@
 
   // 'YYYY-MM-DD', or '' for none.
   export let value = '';
-  export let disabled = false;
 
   const dispatch = createEventDispatcher<{ pick: string }>();
   const monday = getWeekStartsMonday();
@@ -39,17 +38,17 @@
   }
 </script>
 
-<div class="month" class:disabled>
+<div class="month">
   <div class="mh">
-    <button class="nav" aria-label="Previous month" on:click={() => step(-1)} {disabled}>{@html I.back}</button>
+    <button class="nav" aria-label="Previous month" on:click={() => step(-1)}>{@html I.back}</button>
     <span aria-live="polite">{title}</span>
-    <button class="nav" aria-label="Next month" on:click={() => step(1)} {disabled}>{@html I.chev}</button>
+    <button class="nav" aria-label="Next month" on:click={() => step(1)}>{@html I.chev}</button>
   </div>
   <div class="grid" role="group" aria-label={title}>
     {#each DAYS as d}<span class="wd" aria-hidden="true">{d}</span>{/each}
     {#each cells as c (c.ymd)}
       <button class="day" class:out={c.out} class:today={c.ymd === $today} class:on={c.ymd === value}
-        aria-pressed={c.ymd === value} aria-label={shortDate(c.ymd)} {disabled}
+        aria-pressed={c.ymd === value} aria-label={shortDate(c.ymd)}
         on:click={() => dispatch('pick', c.ymd)}><span>{Number(c.ymd.slice(8))}</span></button>
     {/each}
   </div>
@@ -57,7 +56,6 @@
 
 <style>
   .month { background: var(--surface); border-radius: 16px; box-shadow: var(--p-shadow); padding: 8px 8px 6px; }
-  .month.disabled { opacity: .45; }
   .mh { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 4px; font-weight: 700; font-size: var(--p-fs-l); }
   .nav { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
   .nav:active { background: var(--col-bg); }
@@ -70,7 +68,6 @@
   .day.today span { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent-ink); }
   .day.on span { background: var(--accent); color: var(--on-accent); font-weight: 700; box-shadow: none; }
   .day:not(.on):active span { background: var(--col-bg); }
-  .day:disabled, .nav:disabled { cursor: default; }
   @media (orientation: landscape) and (max-height: 500px) {
     .day { height: 34px; }
     .day span { width: 30px; height: 30px; }

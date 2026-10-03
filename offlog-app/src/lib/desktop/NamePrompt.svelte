@@ -37,10 +37,7 @@
   // also exposes, shown on every platform. Sync is offered last, as step
   // 3, so choosing "Set up sync" — which hands off to full Settings —
   // never skips past prefs that were still ahead of it.
-  // The phone asks for the device name when Sync is turned on instead (the
-  // name only labels synced edits); desktop syncs from the start, so asks here.
-  export let askName = true;
-  let step: 1 | 2 | 3 = askName ? 1 : 2;
+  let step: 1 | 2 | 3 = 1;
 
   let themeMode: ThemeMode = getThemeMode();
   function selectThemeMode(mode: ThemeMode) {

@@ -4,9 +4,8 @@ import db, {
   searchAllTasks, invalidateTaskCache,
 } from '../src/lib/db';
 
-// A10 (large-dataset performance validation) + A24 (version-over-version
-// benchmark harness), scoped together per archive/history.md — A24 formalizes the
-// measurement infrastructure A10 needs anyway. Run with `npm run bench`
+// Large-dataset performance validation and a version-over-version
+// benchmark harness. Run with `npm run bench`
 // (separate from `npm test` — benchmarks are slow and not pass/fail, so
 // they don't belong in the regular gate). Compare the printed numbers
 // release to release; there's no hardcoded threshold here since absolute
@@ -17,8 +16,8 @@ import db, {
 // cards), getTasksForProject() (Kanban/List's main query), and
 // searchAllTasks() (Global Search, re-run on every keystroke in the real
 // app). Actual Svelte component render time isn't measurable yet — that's
-// blocked on A9 (component test infrastructure), still open.
-const TASK_COUNT = 3000; // mid-point of A10's realistic 1,000–5,000 estimate
+// blocked on component test infrastructure.
+const TASK_COUNT = 3000; // mid-point of a realistic 1,000–5,000 estimate
 const PROJECT_COUNT = 8;
 
 let targetProjectId = '';

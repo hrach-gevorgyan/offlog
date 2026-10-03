@@ -39,7 +39,7 @@ export function getCommands(ctx: CommandContext): Command[] {
     { id: 'contrast', label: 'Toggle High Contrast', keywords: 'appearance accessibility', run: ctx.toggleHighContrast },
     { id: 'settings', label: 'Open Settings', keywords: 'preferences config organize sync notifications', run: ctx.openSettings, opensOverlay: true },
     { id: 'timetravel', label: 'Open History', keywords: 'history activity log journal retrospective', run: ctx.openTimeTravel, opensOverlay: true },
-    { id: 'trash', label: 'Open Deleted', keywords: 'recycle bin restore trash', run: ctx.openTrash, opensOverlay: true },
+    { id: 'trash', label: 'Open Recycle bin', keywords: 'recycle bin deleted restore trash', run: ctx.openTrash, opensOverlay: true },
     { id: 'sync', label: 'Sync Now', keywords: 'refresh couchdb nyxdb replicate', run: ctx.syncNow },
   ];
 }

@@ -224,7 +224,7 @@
   // does not expose a component's plain top-level functions through
   // bind:this the way Svelte 3/4 did -- without export, sidebarRef.
   // openTimeTravel is undefined and calling it throws, caught nowhere,
-  // so Ctrl+K's "Open History"/"Open Settings"/"Open Deleted" would
+  // so Ctrl+K's "Open History"/"Open Settings"/"Open Recycle bin" would
   // silently do nothing.
   export async function openTimeTravel() {
     if (timeTravelActive) return;

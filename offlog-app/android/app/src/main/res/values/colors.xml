@@ -21,5 +21,4 @@
     <color name="colorWidgetSurface">#E6E8ED</color>
     <color name="colorWidgetText">#1F2937</color>      <!-- app.css text token, light -->
     <color name="colorWidgetAccent">#575FCA</color>    <!-- app.css accent token, light -->
-    <color name="colorWidgetMuted">#4B5563</color>   <!-- app.css muted token, light -->
 </resources>

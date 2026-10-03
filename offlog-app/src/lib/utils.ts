@@ -183,10 +183,6 @@ export function fmtFullTimestamp(ts: string): string {
 // no network call, no new dependency. Notes are often the most sensitive text
 // in the app, and "is this similar to that" doesn'''t need a network round-trip
 // to answer well enough for a soft hint.
-export function wordOverlapSimilarity(a: string, b: string): number {
-  return wordSetSimilarity(wordSet(a), wordSet(b));
-}
-
 export function wordSet(s: string): Set<string> {
   return new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
 }

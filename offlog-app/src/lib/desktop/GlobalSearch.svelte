@@ -9,7 +9,7 @@
   import { PRIORITY_COLOR } from '../constants';
   import { closeOnBack, discardTop, isTopLayer } from '../modalStack';
   import { trapFocus } from '../focusTrap';
-  import { localDateStr, escapeHtml } from '../utils';
+  import { localDateStr, escapeHtml, fmtDay, dayOf } from '../utils';
   import { showError } from '../store';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
@@ -189,7 +189,6 @@
     {#if matchingCommands.length > 0}
       <div class="section-label">Commands</div>
       {#each matchingCommands as c, i (c.id)}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div
           class="result-row"
           id="search-option-{i}"
@@ -212,7 +211,6 @@
       {#if matchingCommands.length > 0}<div class="section-label">Tasks</div>{/if}
       {#each results as r, ri (r._id)}
         {@const i = matchingCommands.length + ri}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
         <div
           class="result-row"
           id="search-option-{i}"
@@ -236,7 +234,7 @@
           <div class="result-meta">
             <span class="result-proj">{r.project_name}</span>
             {#if r.due_date}
-              <span class="result-due" class:overdue={r.due_date < today}>{r.due_date}</span>
+              <span class="result-due" class:overdue={r.due_date < today}>{fmtDay(dayOf(r.due_date))}</span>
             {/if}
           </div>
         </div>

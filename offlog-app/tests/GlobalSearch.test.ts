@@ -100,6 +100,15 @@ describe('GlobalSearch matching', () => {
     expect(rows(container)[0].textContent).toContain('Report draft');
   });
 
+  it('a result shows its due date in the app style, not as an ISO date', async () => {
+    searchAllTasks.mockResolvedValue([mkResult({ due_date: '2030-03-15' })]);
+    const { container } = render(GlobalSearch, { props: { commands: COMMANDS } });
+    await typeQuery(container, 'report');
+    await waitFor(() => expect(rows(container)).toHaveLength(1));
+    expect(rows(container)[0].textContent).toContain('15 Mar 2030');
+    expect(rows(container)[0].textContent).not.toContain('2030-03-15');
+  });
+
   it('reports no results when neither a command nor a task matches', async () => {
     const { container } = render(GlobalSearch, { props: { commands: COMMANDS } });
 

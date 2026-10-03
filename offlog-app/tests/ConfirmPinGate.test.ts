@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/svelte';
 
-// B61: the gate that makes changing/removing the App Lock PIN require
+// The gate that makes changing/removing the App Lock PIN require
 // the *current* PIN first. verifyAppLockPin is config.ts's real
 // hash-check — mocked here, its own correctness is config.test.ts's job.
 const verifyAppLockPin = vi.fn();
@@ -24,7 +24,7 @@ function renderGate(props: Record<string, unknown> = {}) {
 beforeEach(() => verifyAppLockPin.mockReset());
 afterEach(() => cleanup());
 
-describe('ConfirmPinGate (B61)', () => {
+describe('ConfirmPinGate', () => {
   it('dispatches verified only after the correct current PIN', async () => {
     verifyAppLockPin.mockResolvedValue(true);
     const g = renderGate();

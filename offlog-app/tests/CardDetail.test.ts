@@ -127,7 +127,7 @@ beforeEach(() => {
 
 afterEach(() => cleanup());
 
-describe('CardDetail save logic (A9)', () => {
+describe('CardDetail save logic', () => {
   it('names the tag input for screen readers', () => {
     const { getByLabelText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
     expect(getByLabelText('Add a tag').tagName).toBe('INPUT');
@@ -269,7 +269,7 @@ function openExtraBlock(container: HTMLElement, label: string) {
   );
 }
 
-describe('CardDetail batches related/blocked-by/attachments into Save (A2)', () => {
+describe('CardDetail batches related/blocked-by/attachments into Save', () => {
   it('does not link a related task until Save, then links it', async () => {
     const other = mkTask({ _id: 'task:2', title: 'Other task' });
     searchTasksForLinking.mockResolvedValue([other]);
@@ -388,7 +388,7 @@ describe('CardDetail Escape with a popover open', () => {
   });
 });
 
-describe('CardDetail discard & delete (A32)', () => {
+describe('CardDetail discard & delete', () => {
   it('Cancel discards edits — nothing is written', async () => {
     const { getByPlaceholderText, getByText } = render(CardDetail, { props: { task: mkTask(), project: mkProject() } });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { describeSyncError, attachSyncHandlers, startSync, syncNow, cancelSync, syncState } from '../src/lib/db';
 import { setSyncEnabled, setSyncUrl, getSyncUrl } from '../src/config';
 
-// archive/history.md A16 — offline-queue robustness for sync. There's no CI-reachable
+// Offline-queue robustness for sync. There's no CI-reachable
 // CouchDB in this project to genuinely drop mid-replication against, so this
 // covers the deterministic pieces that decide how a flaky/dropped connection
 // is classified and recovered from, without any real network I/O:
@@ -10,7 +10,7 @@ import { setSyncEnabled, setSyncUrl, getSyncUrl } from '../src/config';
 //   2. attachSyncHandlers()'s settle-once guard — the fix that stopped
 //      syncNow() from ever running two concurrent replications against the
 //      same remote (a real bug this project shipped and fixed once already).
-//   3. startSync() respecting the B13 pause toggle — the one branch of
+//   3. startSync() respecting the pause toggle — the one branch of
 //      startSync() that's fully testable without touching the network, since
 //      it returns before ever calling db.sync().
 describe('describeSyncError', () => {
@@ -88,8 +88,8 @@ describe('attachSyncHandlers settle-once guard', () => {
     expect(onSettle).toHaveBeenCalledExactlyOnceWith(undefined);
   });
 
-  // A32 (owner-reported, 2026-07-13): status showed "synced" when devices
-  // weren't actually syncing. Root cause: PouchDB's combined db.sync()
+  // Status must not show "synced" when devices
+  // aren't actually syncing. Root cause: PouchDB's combined db.sync()
   // object always emits a bare 'paused' (no error) whenever either
   // direction pauses — including pausing to retry after a connection
   // failure under retry:true — because its internal pushPaused()/
@@ -159,7 +159,7 @@ describe('attachSyncHandlers settle-once guard', () => {
   });
 });
 
-describe('startSync() respects the B13 pause toggle', () => {
+describe('startSync() respects the pause toggle', () => {
   beforeEach(() => {
     cancelSync(); // don't let a real handler from another test leak in
   });

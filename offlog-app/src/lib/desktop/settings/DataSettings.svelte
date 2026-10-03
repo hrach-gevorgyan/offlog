@@ -42,7 +42,7 @@
                 </div>
                 {#if storageAvailable && storagePercent >= STORAGE_WARN_THRESHOLD}
                   <p class="setting-hint setting-hint-warn">
-                    Try the maintenance tools in Advanced (prune old history, empty Recycle), or free up
+                    Try the maintenance tools in Advanced (prune old history, empty the Recycle bin), or free up
                     space on this device — once storage is truly full, new changes would stop saving.
                   </p>
                 {/if}
@@ -50,7 +50,7 @@
                   <p class="setting-hint">
                     {breakdown.activeTasks} active task{breakdown.activeTasks === 1 ? '' : 's'} ·
                     {breakdown.archivedTasks} archived ·
-                    {breakdown.deletedTasks} in Recycle ·
+                    {breakdown.deletedTasks} in the Recycle bin ·
                     {breakdown.logEntries} history entries
                     {#if breakdown.attachmentCount}
                       · {breakdown.attachmentCount} attachment{breakdown.attachmentCount === 1 ? '' : 's'} ({formatAttachmentSize(breakdown.attachmentBytes)})

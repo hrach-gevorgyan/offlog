@@ -57,7 +57,7 @@ function balanceIntoTwoLines(parts: string[], sep: string): [string, string] {
   return [join(parts.slice(0, bestSplit)), join(parts.slice(bestSplit))];
 }
 
-const EXTRAS_EMPTY_PARTS = ['Repeat', 'reminder', 'checklist', 'custom fields', 'related tasks', 'attachments', 'notes'];
+const EXTRAS_EMPTY_PARTS = ['Repeat', 'reminder', 'checklist', 'fields', 'related tasks', 'attachments', 'notes'];
 
 export function formatExtrasSummary(
   reminder: string, repeat: string | null, interval: number, weekdaysOnly: boolean,

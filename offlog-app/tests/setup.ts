@@ -35,7 +35,7 @@ Object.defineProperty(window, 'localStorage', {
   value: (globalThis as any).localStorage,
 });
 
-// B51 — jsdom has no Web Animations API, but Svelte 5's transition
+// jsdom has no Web Animations API, but Svelte 5's transition
 // directives (fly/fade/scale/slide, now used throughout CardDetail and
 // other panels for open/close animation) call `Element.animate()`
 // internally. Without this, any component with a transitioning element

@@ -137,7 +137,7 @@
       {/if}
 
       {#if customFields.length}
-        <div class="menu-label">Custom fields</div>
+        <div class="menu-label">Fields</div>
         {#each customFieldFilters as f, i}
           <div class="field-filter-row">
             <div class="field-filter-selects">

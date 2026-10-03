@@ -9,7 +9,7 @@ vi.mock('@capacitor/device', () => ({ Device: { getInfo: async () => plugin.info
 // credentials, since the PC app now generates a random password per
 // install.
 //
-// C7 (archive/history.md C7, mandatory release-gate item): the old fallback was a
+// The old fallback was a
 // real hardcoded password baked into source — a public-repo blocker on
 // its own. Not testing "falls back to the env/static default" here on
 // purpose: `VITE_SYNC_USER`/`VITE_SYNC_PASS` come from this dev
@@ -28,9 +28,9 @@ describe('getSyncCredentials()/setSyncCredentials()', () => {
     await expect(getSyncCredentials()).resolves.toEqual({ user: 'paired-user', pass: 'paired-pass' });
   });
 
-  // C8 (archive/history.md): plain-web/dev (no Tauri, no Capacitor native
+  // Plain-web/dev (no Tauri, no Capacitor native
   // platform in this test environment) is the one path that still uses
-  // localStorage directly -- an existing install upgrading past C8 has
+  // localStorage directly -- an existing install upgrading from it has
   // its real credentials sitting in the *old* plaintext keys and must
   // migrate silently, with no re-pairing needed.
   it('migrates legacy plaintext localStorage credentials on first read', async () => {
@@ -224,7 +224,7 @@ describe('App lock biometric flag', () => {
   });
 });
 
-// B58: pure polish, defaults on unlike App Lock's biometric (no security
+// Pure polish, defaults on unlike App Lock's biometric (no security
 // implication to defaulting a vibration on) — see config.ts's own comment.
 describe('Haptics setting', () => {
   beforeEach(() => {

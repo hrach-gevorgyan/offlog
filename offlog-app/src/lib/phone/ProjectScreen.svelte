@@ -84,7 +84,7 @@
   }
   onMount(() => {
     loadDecor();
-    getCustomFieldDefs().then(v => (customFields = v)).catch(() => showError('Could not load custom fields. Please try again.'));
+    getCustomFieldDefs().then(v => (customFields = v)).catch(() => showError('Could not load fields. Please try again.'));
     return subscribe(loadDecor);
   });
 

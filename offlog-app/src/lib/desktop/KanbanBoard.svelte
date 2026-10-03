@@ -538,7 +538,6 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="board" bind:this={boardEl} on:touchmove|nonpassive={onTouchMove} on:touchend={onTouchEnd} on:touchcancel={onTouchCancel}>
   {#each project.columns as col (col.id)}
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
       class="column"
       class:col-drag-over={dragOverCol === col.id}
@@ -550,7 +549,6 @@
       animate:flip={{ duration: 200, easing: cubicOut }}
     >
       <!-- Column header — this is the drag handle for reordering columns -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div
         class="col-header"
         draggable="true"
@@ -598,7 +596,6 @@
       </div>
 
       <!-- Card list — drop zone for cards -->
-      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div
         class="card-list"
         data-col-id={col.id}
@@ -642,7 +639,6 @@
                   <svg viewBox="0 0 14 14" width="13" height="13" fill="currentColor"><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="11" cy="7" r="1.2"/></svg>
                 </button>
                 {#if openCardMenu === task._id}
-                  <!-- svelte-ignore a11y-no-static-element-interactions -->
                   <div class="card-menu" bind:this={cardMenuPanelEl} on:click|stopPropagation on:keydown|stopPropagation in:fly={popIn} out:fly={popOut}>
                     <button type="button" class="card-menu-item" on:click={() => { openCardMenu = null; togglePin(task); }}>
                       <PinStar size={12} filled={task.pinned} stroked />

@@ -268,7 +268,7 @@
   const CONFLICT_FIELD_LABELS: Record<string, string> = {
     title: 'Title', name: 'Name', body: 'Notes', priority: 'Priority',
     due_date: 'Due date', reminder_at: 'Reminder', tags: 'Tags',
-    column_id: 'Status', checklist: 'Checklist', custom_values: 'Custom fields',
+    column_id: 'Status', checklist: 'Checklist', custom_values: 'Fields',
     related: 'Related', blocked_by: 'Blocked by', pinned: 'Pinned',
     archived: 'Archived', deleted: 'In trash', position: 'Order',
     columns: 'Statuses', color: 'Color', icon: 'Icon', default_view: 'Default view',

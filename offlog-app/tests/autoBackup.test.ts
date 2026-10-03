@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isBackupDue, filesToDelete, getAutoBackupUsage } from '../src/lib/autoBackup';
 
-describe('isBackupDue (B62)', () => {
+describe('isBackupDue', () => {
   it('is due when never run before', () => {
     expect(isBackupDue(null, new Date())).toBe(true);
   });
@@ -23,7 +23,7 @@ describe('isBackupDue (B62)', () => {
   });
 });
 
-describe('filesToDelete (B62)', () => {
+describe('filesToDelete', () => {
   it('deletes nothing when under the keep count', () => {
     const files = ['offlog-autobackup-2026-07-21.json', 'offlog-autobackup-2026-07-22.json'];
     expect(filesToDelete(files, 7)).toEqual([]);

@@ -177,7 +177,7 @@ describe('ListView mount', () => {
     render(ListView, { project: mkProject(), tasks: [mkTask()] });
 
     await waitFor(() => expect(showError).toHaveBeenCalled());
-    expect(String(showError.mock.calls[0][0])).toMatch(/custom fields/i);
+    expect(String(showError.mock.calls[0][0])).toMatch(/load fields/i);
   });
 });
 

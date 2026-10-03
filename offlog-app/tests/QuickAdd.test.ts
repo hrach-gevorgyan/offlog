@@ -83,7 +83,7 @@ afterEach(() => cleanup());
 const titleInput = (utils: ReturnType<typeof render>) =>
   utils.container.querySelector('.title-input') as HTMLInputElement;
 
-describe('QuickAdd create pipeline (A32)', () => {
+describe('QuickAdd create pipeline', () => {
   it('is announced as a dialog named Quick add task', () => {
     const { getByRole } = render(QuickAdd);
     expect(getByRole('dialog', { name: 'Quick add task' })).toBeTruthy();

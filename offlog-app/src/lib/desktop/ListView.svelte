@@ -216,7 +216,7 @@
     try {
       customFields = await getCustomFieldDefs();
     } catch {
-      showError('Could not load custom fields. Please try again.');
+      showError('Could not load fields. Please try again.');
     }
     const knownKeys = [...DEFAULT_ORDER, ...customFields.map(f => f.id)];
     try {

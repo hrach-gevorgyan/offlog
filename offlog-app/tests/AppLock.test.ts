@@ -35,7 +35,7 @@ beforeEach(() => {
 
 afterEach(() => cleanup());
 
-describe('AppLock PIN entry (A32)', () => {
+describe('AppLock PIN entry', () => {
   it('unlocks on a correct PIN', async () => {
     verifyAppLockPin.mockResolvedValue(true);
     const { unlocked, getByLabelText, getByText } = renderLock();
@@ -109,7 +109,7 @@ describe('AppLock PIN entry (A32)', () => {
   });
 });
 
-describe('AppLock recovery flow (A32)', () => {
+describe('AppLock recovery flow', () => {
   it('a wrong recovery code shows an error and does not clear the PIN', async () => {
     verifyAppLockRecoveryCode.mockResolvedValue(false);
     const { unlocked, getByText, getByLabelText, queryByText } = renderLock();

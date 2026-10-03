@@ -24,7 +24,7 @@ import db, {
   getDeviceLastSeen,
   subscribe,
 } from '../src/lib/db';
-import { findDuplicateChecklistItems, wordOverlapSimilarity, localDateStr } from '../src/lib/utils';
+import { findDuplicateChecklistItems, wordSet, wordSetSimilarity, localDateStr } from '../src/lib/utils';
 import type { SpaceDoc } from '../src/lib/types';
 
 // Full wipe between tests — db.ts's `db` is a module-level singleton (real
@@ -77,7 +77,7 @@ describe('posBetween', () => {
   });
 });
 
-// A9: the pure position math behind KanbanBoard.svelte's drag-and-drop
+// The pure position math behind KanbanBoard.svelte's drag-and-drop
 // (both the HTML5 desktop path and the touch path share this one
 // function) — see computeDropPosition()'s own comment in db.ts for why
 // this was extracted specifically to make it testable without a full
@@ -189,7 +189,7 @@ describe('project + task CRUD', () => {
     expect((await getProjects('space:unsorted')).some(p => p._id === project._id)).toBe(true);
   });
 
-  it('updateTask persists a checklist array (B18)', async () => {
+  it('updateTask persists a checklist array', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Checklist Project');
     const task = await createTask(project._id, 'space:unsorted', project.columns[0].id, 'With subtasks');
@@ -202,7 +202,7 @@ describe('project + task CRUD', () => {
   });
 });
 
-describe('createProjectFromTemplate (B8)', () => {
+describe('createProjectFromTemplate', () => {
   it('copies the template\'s status structure with fresh column ids', async () => {
     await seedSpace();
     const template = await createProject('space:unsorted', 'Template Project');
@@ -396,7 +396,7 @@ describe('"done" is positional (column_id === last column)', () => {
     expect(data.byProject[project._id].overdue).toBe(0);
   });
 
-  it('getDashboardData: B17 weekly-completed count, busiest project, and today tasks', async () => {
+  it('getDashboardData: weekly-completed count, busiest project, and today tasks', async () => {
     await seedSpace();
     const project = await createProject('space:unsorted', 'Weekly Project');
     const lastCol = project.columns.at(-1)!;
@@ -1013,7 +1013,7 @@ describe('checkIntegrity / repairDatabase', () => {
   });
 });
 
-// A9 (archive/history.md): the step sequencing/message-formatting behind
+// The step sequencing/message-formatting behind
 // SettingsPanel.svelte's "Run Maintenance" flow, extracted to
 // runMaintenanceSteps() specifically so it's reachable without mounting
 // that whole component — see its own comment in db.ts.
@@ -1576,7 +1576,7 @@ describe('retention pruning', () => {
 // launch. Exercising the same sequence headless catches anything that would
 // otherwise only surface as a blank/broken screen on a brand-new install.
 describe('bootstrap (seedIfEmpty smoke test)', () => {
-  it('seeds three default spaces (B24: Family dropped) and a Draft project into an empty database', async () => {
+  it('seeds three default spaces and a Draft project into an empty database', async () => {
     await initIndexes();
     await seedIfEmpty();
 
@@ -2201,9 +2201,9 @@ describe('duplicate-name detection helpers', () => {
     expect(self.some(m => m.taskId === t1._id)).toBe(false);
   });
 
-  it('wordOverlapSimilarity is 0 for disjoint text and 1 for identical text', () => {
-    expect(wordOverlapSimilarity('hello world', 'goodbye moon')).toBe(0);
-    expect(wordOverlapSimilarity('hello world', 'hello world')).toBe(1);
+  it('word-set similarity is 0 for disjoint text and 1 for identical text', () => {
+    expect(wordSetSimilarity(wordSet('hello world'), wordSet('goodbye moon'))).toBe(0);
+    expect(wordSetSimilarity(wordSet('hello world'), wordSet('hello world'))).toBe(1);
   });
 
   it('findDuplicateChecklistItems finds case-insensitive/trimmed repeats only', () => {
@@ -2474,7 +2474,7 @@ describe('backup/restore round-trip (the emergency exit)', () => {
   });
 });
 
-describe('"Blocked by" task dependencies (archive/history.md)', () => {
+describe('"Blocked by" task dependencies', () => {
   beforeEach(seedSpace);
 
   it('linkBlockedBy stores the dependency directionally, never mirrored onto the blocker', async () => {

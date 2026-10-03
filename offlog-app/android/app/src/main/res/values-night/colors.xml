@@ -6,5 +6,4 @@
     <color name="colorWidgetSurface">#323846</color>
     <color name="colorWidgetAccent">#8590E5</color>  <!-- app.css accent, dark -->
     <color name="colorWidgetText">#F3F4F6</color>    <!-- app.css text, dark -->
-    <color name="colorWidgetMuted">#A3A9B7</color>   <!-- app.css muted, dark -->
 </resources>
