@@ -1049,7 +1049,11 @@ scripted loops; the hero demo also holds while it's under 60% on screen or
 the tab is hidden. On phone widths the views tabs swap to phone
 screenshots through `<picture>` sources. Light and dark
 follow the visitor's system setting. It follows brand.md: one accent, Hanken Grotesk self-hosted
-from `site/fonts/`, real app screenshots in `site/img/` as WebP. It loads
+from `site/fonts/`, real app screenshots in `site/img/` as WebP. Every
+screenshot ships twice, `name.webp` and a sharper `name-2x.webp`, picked by
+`srcset`/`sizes`; make both from the full-size capture (2880 wide desktop,
+1170 wide phone), never by upscaling. Everything below the hero has
+`loading="lazy"`. It loads
 nothing from other origins, and its CSP meta forbids inline styles and
 scripts, so styling goes in `style.css`. `site/CNAME` holds `offlog.io`;
 `.github/workflows/pages.yml` publishes `site/` to GitHub Pages on pushes
