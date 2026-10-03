@@ -4,7 +4,7 @@
   import { getTaskIdsBlocked, getTaskIdsWithRelatedLinks, getTagColorOverrides, getCustomFieldDefs, subscribe } from '../db';
   import type { CustomFieldDef, TaskDoc } from '../types';
   import { PRIORITY_LABEL } from '../constants';
-  import { soften, wantsLightInk } from '../tagColors';
+  import { bandColours } from '../tagColors';
   import { claimStatusBar, isEffectivelyDark } from '../theme';
   import { actions, addContext, memo } from './nav';
   import { onDestroy } from 'svelte';
@@ -23,11 +23,6 @@
   $: project = $projects.find(p => p._id === id) ?? null;
   $: space = project ? $spaces.find(s => s._id === project!.space_id) : undefined;
 
-  // The band at the top is the space's colour, with Home's diagonal edge. Ink
-  // follows the colour: light ink on a dark colour, the page's own on a light
-  // one (dark mode deepens every band, so ink is always light there).
-  $: band = space ? soften(space.color) : null;
-  $: lightInk = !space || wantsLightInk(space.color);
   // The strip under the clock takes the band's colour while the band is under it.
   const strip = claimStatusBar(null);
   onDestroy(() => strip.release());
@@ -41,6 +36,16 @@
     mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     return () => mo.disconnect();
   });
+  // The band at the top is the space's colour, with Home's diagonal edge. Ink
+  // follows the colour: light ink on a dark colour, the page's own on a light
+  // one (dark mode deepens every band, so ink is always light there). A
+  // colour too mid-toned for either ink is darkened until its text reads.
+  const token = (n: string) => getComputedStyle(document.body).getPropertyValue(n).trim();
+  $: bc = space ? (dark
+    ? bandColours(space.color, { light: token('--on-hero'), mix: token('--bg') })
+    : bandColours(space.color, { light: token('--on-hero'), dark: token('--text') })) : null;
+  $: band = bc?.fill ?? null;
+  $: lightInk = !bc || bc.lightInk;
   $: strip.set(band && !scrolled ? { fill: band, lightIcons: lightInk || dark } : null);
   // $projectTasks follows the store's active project, so the screen on top
   // claims it (including when a lower project screen is uncovered).

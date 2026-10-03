@@ -81,6 +81,60 @@ export function wantsLightInk(hex: string): boolean {
   return L < 0.22;
 }
 
+// ── A solid colour band with text on it (the phone's project header) ─────
+// soften() in plain maths, so the band can be checked and adjusted before it
+// is drawn: OKLCH with chroma × 0.8, lightness lowered by `drop`.
+// Accepts #rgb too: the CSS minifier shortens tokens like --on-hero to #fff.
+const hexRgb = (hex: string): number[] | null => {
+  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1].length === 3 ? m[1].replace(/./g, c => c + c) : m[1], 16);
+  return [n >> 16, (n >> 8) & 255, n & 255];
+};
+const toLin = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+const fromLin = (c: number) => Math.round(255 * Math.min(1, Math.max(0, c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)));
+function softened(rgb: number[], drop: number): number[] {
+  const [r, g, b] = rgb.map(toLin);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s - drop;
+  const A = 0.8 * (1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s);
+  const B = 0.8 * (0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
+  const l3 = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m3 = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s3 = (L - 0.0894841775 * A - 1.2914855480 * B) ** 3;
+  return [
+    4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3,
+    -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3,
+    -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3,
+  ].map(fromLin);
+}
+const lum = (rgb: number[]) => { const [r, g, b] = rgb.map(toLin); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a: number[], b: number[]) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const toHex = (rgb: number[]) => '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+
+// The band's fill and ink, so its small text clears WCAG AA (4.5:1) on any
+// colour. `light`/`dark` are the two inks on offer (dark omitted: light ink
+// only); `mix` is the page background a dark-mode band is blended into, 62%
+// band, the same color-mix the CSS applies, which is where contrast is
+// measured. A colour that falls short is darkened just enough for the light
+// ink. Tokens that aren't hex fall back to soften()/wantsLightInk().
+export function bandColours(hex: string, ink: { light: string; dark?: string; mix?: string }): { fill: string; lightInk: boolean } {
+  const twoInks = ink.dark !== undefined, blended = ink.mix !== undefined;
+  const base = hexRgb(hex), li = hexRgb(ink.light), di = twoInks ? hexRgb(ink.dark!) : null, mix = blended ? hexRgb(ink.mix!) : null;
+  if (!base || !li || (twoInks && !di) || (blended && !mix)) return { fill: soften(hex), lightInk: twoInks ? wantsLightInk(hex) : true };
+  const seen = (rgb: number[]) => mix ? rgb.map((v, i) => Math.round(0.62 * v + 0.38 * mix[i])) : rgb;
+  const first = seen(softened(base, 0));
+  if (di && contrast(first, di) >= 4.5 && contrast(first, di) > contrast(first, li)) return { fill: soften(hex), lightInk: false };
+  if (contrast(first, li) >= 4.5) return { fill: soften(hex), lightInk: true };
+  for (let drop = 0.005; drop <= 0.6; drop += 0.005) {
+    const rgb = softened(base, drop);
+    if (contrast(seen(rgb), li) >= 4.5) return { fill: toHex(rgb), lightInk: true };
+  }
+  return { fill: '#000000', lightInk: true };
+}
+
 // Spoken names for TAG_PALETTE, same order (colour pickers read these,
 // not hex codes).
 const PALETTE_NAMES = ['Red', 'Vermilion', 'Orange', 'Amber', 'Yellow', 'Lime', 'Chartreuse', 'Spring green', 'Green', 'Mint', 'Emerald', 'Teal', 'Cyan', 'Sky', 'Blue', 'Cornflower', 'Indigo', 'Blue-violet', 'Violet', 'Purple', 'Fuchsia', 'Magenta', 'Pink', 'Rose'];

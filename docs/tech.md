@@ -849,8 +849,10 @@ same UI.
   light icons would vanish on the system's light bar. The strip sits below every modal
   scrim (z-index 299), so dialogs and sheets dim it with the page.
   A project screen's header sits on a band in its space's colour (Home's
-  diagonal edge; dark mode mixes it 62% toward `--bg`; ink is light unless
-  the colour's luminance is high) and tints the strip the same way through
+  diagonal edge; dark mode mixes it 62% toward `--bg`). `bandColours()` in
+  tagColors.ts picks the ink that contrasts more and, when neither reaches
+  4.5:1, lowers the colour's OKLCH lightness just enough for the light ink,
+  so any space colour keeps its small text readable. The band tints the strip the same way through
   `claimStatusBar()`. Claims stack: the newest live one wins and releasing it
   hands the strip back, so a screen whose outro ends after the next screen
   claimed cannot undo that claim.
