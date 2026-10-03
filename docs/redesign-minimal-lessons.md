@@ -2,8 +2,14 @@
 
 Written 30 September 2026, before deleting the branch. It held 102 commits
 on top of `main` (never pushed): the "Quiet" redesign, five audit passes,
-test and build infrastructure, and a last day of design exploration. This
-file is what's worth carrying into the next attempt.
+test and build infrastructure, and a last day of design exploration. The
+branch is gone. Its successor, the phone shell on `redesign/full`, was
+built under the process below and is recorded in
+[redesign/plan.md](redesign/plan.md); the decision itself is in
+[decisions.md](decisions.md) ("The phone gets its own shell; the desktop
+keeps main's design"). Sections 1–3 are the design lessons and still apply
+to any visual change; sections 4–6 list what was checked against the code
+on 3 October 2026.
 
 ---
 
@@ -60,7 +66,7 @@ What the owner has said they like:
 - Colour
 - Less text
 
-## 3. Recommended process for the next attempt ("longer planning")
+## 3. Recommended process for any redesign ("longer planning")
 
 1. **Collect references before any mockup.** Ask for 3–5 screenshots of
    things the owner finds beautiful, not only task apps. Name what's liked
@@ -71,91 +77,93 @@ What the owner has said they like:
    (the top of Today, then task rows, then colour, then type). Never a whole
    screen at once.
 4. **Prototype in the real app on a throwaway branch with realistic data**
-   (seed a believable set of projects and tasks first), and check it on the
-   phone before judging.
+   (`scripts/seed-demo.js`, `seed-scenario.js` or `seed-full.js`), and
+   check it on the phone before judging.
 5. **Keep structure; change character.** No navigation changes unless the
    owner asks.
 6. **Stop and ask when two rounds in a row are rejected**, rather than
    proposing a third direction.
+7. **Log every decision in [redesign/plan.md](redesign/plan.md)** in the
+   owner's words before code changes.
 
-## 4. Real bugs and UX issues found on this branch
+## 4. Bugs and UX issues found on the branch
 
-These are worth fixing again on `main` if they exist there.
+Checked against the current code on 3 October 2026:
 
-- **The phone view turned blank / panned sideways**: focusing a menu item
-  scrolled a page whose layout viewport was wider than the screen. The fix
-  was `html, body { overflow-x: clip }` and placing menus from
-  `trigger.getBoundingClientRect()` and `visualViewport`, focusing with
+- **Still open — Quick add eats possessive date words.** `parseQuickAdd`
+  (`src/lib/nlpParse.ts`) turns "Tomorrow's plan" into the title "'s plan"
+  due tomorrow, and "Review friday's notes" into "Review 's notes". A date
+  word followed by `'s` must stay in the title.
+- **Still open on desktop — a destructive confirm focuses the action.**
+  `desktop/ConfirmDialog.svelte` autofocuses the confirm button even when
+  `danger` is set; Cancel should take focus for destructive actions.
+- **Fixed — removing a status finished its tasks.** `removeColumn()` now
+  moves them (archived ones too) into the first remaining status with a
+  structural move that never triggers completion.
+- **Fixed — Escape closed several layers.** `modalStack.ts` closes only
+  the top layer (`closeTop()`).
+
+Not re-checked, worth a look when touching the area:
+
+- **The phone view turned blank / panned sideways** when focusing a menu
+  item scrolled a layout viewport wider than the screen. The branch's fix:
+  `html, body { overflow-x: clip }`, menus placed from
+  `trigger.getBoundingClientRect()` and `visualViewport`, and focusing with
   `{ preventScroll: true }`.
-- **Quick add's picker got clipped** because the composer had
-  `overflow-y: auto`; on a phone the list should open upwards.
-- **Quick add ignored the task title** in "Tomorrow's plan": date words
-  followed by `'s` must not be parsed as dates.
+- **A picker clipped by a scrolling container** (`overflow-y: auto` on the
+  composer); on a phone the list should open upwards.
 - **A finished day hid everything else** on Today. "Done" means the three,
   not the whole day; keep the rest visible and offer "Pick more".
 - **A "New project" row under every space** was noise; a single `+` per
   space is enough.
-- **A destructive confirm started focused on the action** instead of Cancel.
-- **Removing a status "finished" its tasks** when it should rehome them.
 - **Autosave could write twice**, or re-send a repeating finish.
-- **Escape closed several layers at once** instead of only the top one.
 - **Undo/error toasts were drawn in several places.** One shared stack is
   easier to use and to test.
-- **The finish check behaved differently** on Today, List and the board.
-  One helper, both directions, each with Undo.
+- **The finish check behaved differently** across Today, List and the
+  board. One helper (the phone has `toggleDone` in
+  `phone/project/actions.ts`), both directions, each with Undo.
 
 ## 5. Engineering lessons (independent of design)
 
-Worth redoing on `main`:
+Not yet done, or done only in part:
 
-- **Tests:** split `db.test.ts` into one file per area with a shared reset;
-  **fake timers** instead of real sleeps (suite 29 s → 12 s); **shared
-  mocks** in `tests/mocks/` instead of 70+ inline `vi.mock` factories.
+- **Tests:** `tests/db.test.ts` is still one file of about 2,750 lines; split
+  it per area with a shared reset. Fake timers are used in about 20 test
+  files; prefer them over real sleeps everywhere (the branch's suite went
+  29 s → 12 s). Shared mocks in `tests/mocks/` instead of inline `vi.mock`
+  factories in every file.
 - **One action menu component** (keyboard, Escape order, never clipped,
-  portaled to `<body>`).
+  portaled to `<body>`). There is no shared `Menu.svelte` today.
 - **Type, radius and spacing scales as tokens**, with tests that fail on a
   literal value. They kept the UI consistent at low cost.
 - **Move logic out of big components** (the autosave state machine,
   conflicts, pairing) into plain modules with their own tests.
-- **Android/Gradle:** use `=` assignment syntax in `app/build.gradle` (and
-  make `version.js` read both forms); a postinstall patch moves
-  capacitor-native-biometric and capacitor-zeroconf off JCenter.
 
-Gotchas hit while working:
+Gotchas that still hold:
 
 - **Never use Python for edits** (owner preference; a heredoc also turned
   `\b` into a backspace and corrupted a file). Use Edit/Write or Node.
-- **Many source files are CRLF.** Multi-line string replacements must match
-  the file's line endings. A small Node helper that converts the pattern to
-  the file's endings avoided repeated misses.
-- **The desktop (Tauri) CSP allows `img-src 'self' blob:` only**, so a CSS
-  `data:` image (for example an SVG noise texture) silently fails there.
-  Ship it as a file in `public/`.
-- **The Gradle build can't run in this environment** (no network to Maven
-  Central, missing AGP/Kotlin in the cache). The owner builds in Android
-  Studio; `npx cap sync android` is the last step here.
-- **The browser preview pane is narrow** and switches the app to its phone
-  layout. Set an explicit viewport to judge desktop, and reset it after.
+- **The desktop (Tauri) CSP allows `img-src 'self' blob:` only**
+  (`offlog-desktop/src-tauri/tauri.conf.json`), so a CSS `data:` image (for
+  example an SVG noise texture) silently fails there. Ship it as a file in
+  `public/`.
+- **Never run a Gradle or APK build** (CLAUDE.md). The owner builds in
+  Android Studio; `npx cap sync android` is the last step here.
+- **The browser preview pane is narrow** and matches `PHONE_QUERY`
+  (`phone/nav.ts`: ≤768px wide, or ≤500px tall in landscape), so it shows
+  the phone shell. Set an explicit viewport to judge desktop, and reset it
+  after.
 - **An empty dev database makes every design look empty.** Seed realistic
   data before any visual judgement.
 
-## 6. Things lost with the branch that may be wanted again
+## 6. What the branch had that is gone
 
-- **CLAUDE.md rules added on this branch:**
-  - A `closeOnBack()` component must sit behind a `{#key}` that changes on
-    every open.
-  - Action menus are one `Menu.svelte`.
-  - When splitting a component, move class rules to `:global()` but keep
-    element rules scoped.
-  - A pure type change must emit byte-identical JavaScript.
-  - The testing section: judge a run by its exit code, mutation-check new
-    tests, fake timers, shared mocks.
-- **A table of the 72 Japanese microseasons (kō)**, with start dates, kanji,
-  English names and solar terms, plus a lookup that wraps the year (the
-  last winter-solstice kō, 雪下出麦, starts on 1 January). It's in
-  `offlog-app/src/lib/microseasons.ts` in the working copy, not committed.
-- **A subset of Shippori Mincho** (Latin, digits and the 160 microseason
-  kanji, about 60 KB per weight, SIL OFL) and the Node script that makes it
-  with `subset-font`.
-- **The design mockups** in `design/` (both committed Quiet v1–v4 and
-  today's uncommitted explorations).
+- **CLAUDE.md rules** from the branch are back in CLAUDE.md: the
+  `closeOnBack()`/`{#key}` rule, `:global()` class rules when splitting a
+  component, byte-identical JavaScript for type-only changes, and the
+  testing section (exit codes, mutation-checking). Only the one-`Menu.svelte`
+  rule has nothing to point at yet (section 5).
+- **A table of the 72 Japanese microseasons (kō)**, a **Shippori Mincho
+  subset** made with `subset-font`, and the **design mockups** in `design/`
+  were never committed to `main` and are gone. The project uses one font
+  family, Hanken Grotesk (CLAUDE.md, Style).

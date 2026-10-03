@@ -1,7 +1,7 @@
 <script lang="ts">
-  // Shared by List and Kanban. Saved filters are stored per-project, not
+  // Shared by List and Board. Saved filters are stored per-project, not
   // per-view (one `offlog_saved_filters_<id>` localStorage key), so a
-  // filter saved from List also appears in Kanban's popover.
+  // filter saved from List also appears in the Board's popover.
   import type { ProjectDoc, TaskDoc, CustomFieldDef } from '../types';
   import type { CustomFieldFilter } from '../utils';
   import { PRIORITY_COLOR as PRIO_COLOR } from '../constants';
@@ -59,7 +59,7 @@
   let newFilterName = '';
   // Fixed-position, computed from the button's rect on open — not
   // absolute-anchored to an ancestor. ListView's .list-panel and a short
-  // Kanban board can both be shorter than the popover, and their
+  // Board can both be shorter than the popover, and their
   // `overflow: hidden`/auto would clip its bottom half.
   let menuPos = { top: 0, left: 0 };
   const MENU_WIDTH = 280;

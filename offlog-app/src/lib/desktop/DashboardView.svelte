@@ -413,7 +413,7 @@
   .proj-card-top { display: flex; align-items: center; gap: 6px; }
   .space-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   /* Task count in the card's top-right corner, same pill language as
-     Kanban's column-header count. margin-left:auto rather than a spacer
+     the Board's column-header count. margin-left:auto rather than a spacer
      div, so it works whether or not the space-dot/name are present. */
   .task-count {
     margin-left: auto; flex-shrink: 0;

@@ -1,7 +1,7 @@
 import { getTimeFormat24h } from '../config';
 
 // Shared by TimeTravelView and TaskHistoryPanel — both render the same
-// four changelog action types with independently-drifted hex values.
+// four changelog action types, so the colors live here and nowhere else.
 // CSS var()s here (not fixed hex) so these stay correct across light/dark
 // instead of being a frozen snapshot of one theme.
 export const ACTION_COLOR: Record<string, string> = {
@@ -9,7 +9,7 @@ export const ACTION_COLOR: Record<string, string> = {
 };
 
 // Single source of truth for "how does a clock time render" across the
-// whole app (Time Travel, reminders, last-synced, task history) so the
+// whole app (History, reminders, last-synced, task history) so the
 // Settings -> Appearance 24h/12h toggle (config.ts's getTimeFormat24h,
 // same per-device-override pattern as week-start-day) actually covers
 // every display site instead of just whichever one someone remembered

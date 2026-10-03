@@ -62,9 +62,9 @@
                            multiplication, not "every 2". -->
                       <span class="repeat-every-text">every</span>
                       <input type="number" min="1" max="365" class="repeat-interval-input" bind:value={recurrenceIntervalStr} aria-label="Repeat every N {UNIT_WORD[recurrenceStr]}" />
-                      <!-- The unit was previously only in the input's aria-label
-                           -- invisible to sighted users, who saw "Weekly [2]"
-                           with nothing confirming "2" meant weeks. -->
+                      <!-- The unit must be visible, not only in the input's
+                           aria-label: sighted users otherwise see "Weekly [2]"
+                           with nothing confirming "2" means weeks. -->
                       <span class="repeat-unit-text">{UNIT_WORD[recurrenceStr]}</span>
                     {/if}
                     {#if recurrenceStr}

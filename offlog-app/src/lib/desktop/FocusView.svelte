@@ -420,7 +420,7 @@
     gap: 18px 22px;
   }
   /* Priority is the thin colored top edge — same "color = priority"
-     language as Kanban/List/Agenda, on top rather than the left since
+     language as Board/List/Agenda, on top rather than the left since
      these notes tilt and sit in a scattered board. Selected/suggested
      state is communicated via border + accent color, never priority. */
   .note {

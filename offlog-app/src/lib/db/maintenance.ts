@@ -103,7 +103,7 @@ export function maybePruneOldDeletedTasks(): void {
 //     the backup still has values on tasks made after it, and Repair deletes
 //     values whose definition is missing.
 //  3. A project doc missing `columns` imports fine and then crashes the
-//     Dashboard, Kanban, List, FilterBar and CardDetail on `columns.at(-1)`,
+//     Dashboard, Board, List, FilterBar and CardDetail on `columns.at(-1)`,
 //     so structure is normalized on the way in.
 // A record straight out of a backup file: arbitrary, unvalidated JSON. Nothing
 // about its shape is known until the checks below run, so every field reads as
@@ -414,10 +414,9 @@ export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed:
       if (issue.type === 'orphaned_task') {
         const doc = await db.get<TaskDoc>(issue.docId);
         // Always land it in a real project. Archiving it while leaving the
-        // dangling project_id looked like a fix and was not: checkIntegrity
-        // does not skip archived tasks, so the same task came back as an
-        // orphan on every later run, and repair reported "Fixed 1" each time
-        // without ever fixing it. Unsorted cannot be deleted, so creating a
+        // dangling project_id is not a fix: checkIntegrity does not skip
+        // archived tasks, so the same task would come back as an orphan on
+        // every later run. Unsorted cannot be deleted, so creating a
         // home there is always available.
         let fallback = (await getProjects('space:unsorted'))[0];
         if (!fallback) fallback = await createProject('space:unsorted', 'Recovered');

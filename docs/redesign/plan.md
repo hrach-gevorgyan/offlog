@@ -28,7 +28,7 @@
 > | # | Phone decision | Chosen | Date |
 > |---|---|---|---|
 > | M1 | Navigation and home | **B + C**: a bottom tab bar, **Home · Today · + · Agenda · Search**, with the big + in the middle adding a task from any tab. **Home** (where the app opens) is C's overview: four tiles (Today, Late, Focus, Pinned) with counts, then each space's projects as a grouped list; a tile or project opens full screen with a back arrow. **Today** shows the focus card, due today and late, in `main`'s cards (priority edge, space dot, date pill). Settings is the gear at the top right. In `main`'s colours and depth. Source: [options/m1-navigation.html](options/m1-navigation.html), [options/m1b-navigation-bc.html](options/m1b-navigation-bc.html) | 30 Sep 2026 |
-> | M2 | How a task opens | **A · Full screen, settings-style**: the task slides in from the right as its own screen, with a back arrow (named after where you came from), Pin and ⋯ at the top right. The breadcrumb (space dot · space · project) sits above a large title with its check circle. Details are tappable grouped rows with coloured icons (Status, Due, Priority, Tags; then Reminder, Repeat), each opening the phone's own picker. Steps follow as a grouped list with "Add a step". It saves as you go, with no Save. Links, attachments, custom fields and history live under ⋯. Source: [options/m2-task.html](options/m2-task.html) | 30 Sep 2026 |
+> | M2 | How a task opens | **A · Full screen, settings-style**: the task slides in from the right as its own screen, with a back arrow (named after where you came from), Pin and ⋯ at the top right. The breadcrumb (space dot · space · project) sits above a large title with its check circle. Details are tappable grouped rows with coloured icons (Status, Due, Priority, Tags; then Reminder, Repeat), each opening the phone's own picker. Steps follow as a grouped list with "Add a step". It saves as you go, with no Save. Links, attachments, fields and history live under ⋯. Source: [options/m2-task.html](options/m2-task.html) | 30 Sep 2026 |
 > | M2b | Where Settings lives | **The gear at the top right of Home** opens a full Settings screen in the task screen's style. At the top, a sync status card ("Synced with 2 devices · just now"). Then grouped rows with coloured icons: Appearance, Notifications, Sync & devices, App lock | Spaces, tags & fields, Backup & restore | Recycle bin (with count), History. Each row opens its own screen with a back arrow. Source: [options/m2b-settings.html](options/m2b-settings.html) | 30 Sep 2026 |
 > | M3 | Adding a task (the +) | **A · Quick sheet over the keyboard**: the + opens a small sheet with the keyboard. One line to type in (smart words like tomorrow, friday, !high, #tag and @project are highlighted as understood, using `main`'s parser); chips above the keys for date, project, priority, tag and reminder, filled in from the words; a line saying where it lands ("Adds to New House Build · due tomorrow"); a round add button (or Return). It stays open for the next task. The default project is the one you're in; from Today or Home it's due today in the last-used project. Source: [options/m3-add.html](options/m3-add.html) | 30 Sep 2026 |
 > | M4 | A project: board and list on a phone | **A · Status tabs, one at a time**: a back link to Home, the project title with its space dot and open count, and ⋯. The statuses are pills with counts (the active one filled in accent) that you tap, or swipe the list sideways, to switch. One status fills the width, in `main`'s cards (priority edge, date pill, tag chips, step progress), with dots showing the position. The tab bar and its + stay visible; + adds to this project. *(Superseded: no dots; the selected pill shows position.)* Source: [options/m4-project.html](options/m4-project.html) | 30 Sep 2026 |
@@ -61,7 +61,10 @@ The prototype is being built into the app on `redesign/full`, one committed phas
 | 3 | Full-screen task screen with rows and bottom-sheet pickers (status, due, priority, tags, reminder, repeat, blocked by, related, attachments, fields, note preview, steps). | done 1 Oct 2026 |
 | 4 | Quick add as a bottom sheet (chips, duplicate warning, project/day context). | done 1 Oct 2026 |
 | 5 | Agenda (list/month) and Focus in the phone style. | done 1 Oct 2026 |
-| 6 | Settings as pushed phone pages; Trash, History, Organize, Archived projects. | done 1 Oct 2026 |
+| 6 | Settings as pushed phone pages; Recycle bin, History, Organize, Archived projects. | done 1 Oct 2026 |
+| 7 | Signature round (end of this file): lock screen, first-launch welcome, confirm sheet, wheels time picker and month date picker, recovery code page with Share, Sync, Backup, Reminders, Advanced and Privacy pages, project rename and move. | done 3 Oct 2026 |
+
+All phases are built; `phone/PhoneApp.svelte` hosts the shell. Held sideways (≤500px tall), the tabs move to a rail on the left and pages keep a readable column. The task screen's Markdown note editor loads on demand (`phone/noteEditor.ts`).
 
 Also on 1 Oct 2026: the palette was muted (chroma ×0.8; user space/tag colours via `soften()` at render time), the status bar takes the hero colour while Home's hero is under it, and reversible actions show an Undo snackbar. The hero greets without a name (the app stores none).
 
@@ -77,7 +80,7 @@ Research (Material 3 specs, NN/g, Android a11y, Todoist/TickTick/Google Tasks pa
 
 Not done: drag-and-drop on the board (Move to status / Move up / Move down instead); the desktop's command palette and keyboard-shortcut sheet (desktop only by design).
 
-> **Superseded by the phone-only scope above; kept as a record. Nothing below §3 is planned work.**
+> **§0–§4 are superseded by the phone-only scope above and kept as a record; none of it is planned work. The Signature round at the end is current.**
 
 ## 0. Brief
 
@@ -219,7 +222,7 @@ Then Phase 3 builds screen by screen, desktop first, then the phone.
 
 Moot after the phone-only scope change: the phone's Home and feature placement are decided in M1, M2b and P12 above.
 
-## Signature round (1–2 Oct 2026)
+## Signature round (1–3 Oct 2026)
 
 Phone only. After a research-backed UX pass (seven area reviews against Material 3, Apple HIG, NN/g, WCAG and comparable apps), the owner judged signature-detail proposals one at a time from emulator videos and pictures.
 

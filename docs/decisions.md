@@ -94,12 +94,13 @@ canvas-based downscaling can't decode it in a browser/webview. That's a
 compression-pipeline limit, not a security call.
 
 ### PouchDB as a UMD global, not ESM
-`index.html` loads PouchDB via a `<script>` tag, and `src/lib/db/core.ts`
+`index.html` loads PouchDB via a `<script>` tag (`public/pouchdb.js`,
+PouchDB's own minified dist build), and `src/lib/db/core.ts`
 registers `pouchdb-find` separately against the resulting global
 (`PouchDB.plugin(PouchDBFind)`). Intentional, not an oversight —
 switching would mean re-verifying every corner of sync behavior against a
-different bundling path for no functional gain. The ~51KB duplication is
-an accepted cost.
+different bundling path for no functional gain. The code `pouchdb-find`
+shares with PouchDB ends up shipped twice; that is an accepted cost.
 
 ### CouchDB-protocol server, not Firebase/Supabase/custom
 A CouchDB-protocol server speaks PouchDB's native replication with zero
@@ -174,7 +175,7 @@ reimplementation of CouchDB's replication protocol, by the same owner.
 layer is a drop-in (zero `offlog-app` code changes, full test suite
 passing including byte-for-byte conflict parity) and the size win is
 large — **installer 52.7MB → 4.98MB (~10.6x), installed footprint 164MB →
-20.4MB (~8.0x)**, measured when NyxDB replaced CouchDB, before v6.5.0;
+20.4MB (~8.0x)**, measured when NyxDB replaced CouchDB in v5.8.0;
 maintenance.md tracks current sizes. Requires NyxDB ≥ v0.1.5: v0.1.4 fixed `_bulk_get`
 misreporting a tombstoned/losing-conflict revision as `"deleted"` for a
 live document (hit on every first-time device pairing, since both devices
@@ -189,7 +190,7 @@ fit Offlog's conflict shape: CouchDB/PouchDB replication only transfers
 leaf revisions, never the ancestor they diverged from, and Offlog's
 conflicts come from two devices editing offline and syncing later — so no
 local ancestor ever exists. Offlog's own `log:` docs can't substitute for
-one either: the Changelog is user-clearable and auto-pruned, so a merge
+one either: History is user-clearable and auto-pruned, so a merge
 subsystem would depend on data the user is invited to delete. Instead the
 conflict modal shows every competing version and what differs between
 them, and the person picks one — see the entry below. Revisit only if the
@@ -238,11 +239,11 @@ it.
 ### Delete is soft for tasks and permanent for projects, on purpose
 
 Settled by the second feature audit (v6.8.0, see changelog.md), which walked the whole
-lifecycle — delete, undo toast, Recycle, delete forever, empty, and the
+lifecycle — delete, undo toast, Recycle bin, delete forever, empty, and the
 automatic prune — rather than reading the four functions separately.
 
 **The asymmetry is deliberate and is stated at the point of action.**
-Deleting a task is `deleted: true`: it lands in Recycle, is restorable for
+Deleting a task is `deleted: true`: it lands in the Recycle bin, is restorable for
 three months, and its attachment bytes are kept that whole time because it
 might come back. Deleting a *project* hard-removes it and every task in it,
 and its confirm says so — "and all its tasks? This can't be undone." Soft
@@ -251,13 +252,14 @@ something the user believes is gone.
 
 **Undo has two ranges and both are needed.** For the misclick: on desktop
 the toast covers the last three deletions for five seconds each; on the
-phone one Undo snackbar covers the latest action for six seconds. Recycle covers
+phone one Undo snackbar covers the latest action for six seconds. The
+Recycle bin covers
 everything else, shows what project each task came from, and says
 "auto-removed after 3 months" on its own header — so the prune is not a
 surprise.
 
 **Restoring must land somewhere the user can see.** `removeColumn()` moves
-the tasks it can see, and one sitting in Recycle is not among them, so a
+the tasks it can see, and one sitting in the Recycle bin is not among them, so a
 restore can point at a status that no longer exists. Restore lands it on the
 project's first status, and if its project has since been archived it comes
 back archived alongside it, so it reappears when the project does rather
@@ -330,7 +332,7 @@ monthly lands on Feb 28, or Feb 29 in a leap year); a reminder keeps its
 local wall-clock time across a DST boundary; "every N" and weekdays-only
 compose; a missing interval means 1, so documents written before the field
 existed behave unchanged; completion resets the checklist and returns the
-card to the first column in place, never spawning a second card; and the
+card to the first status in place, never spawning a second card; and the
 card summarises itself in words — "Repeats every 3 days" — before anything
 is expanded.
 
@@ -444,13 +446,13 @@ Source from GitHub, builds from a website, Android from Google Play.
 Nothing else, F-Droid included, is worth the process overhead for a
 project this size.
 
-### iOS: community contribution only, PWA is the zero-cost path
+### iOS: community contribution only
 A native iOS app needs a Mac, Xcode, and Apple's $99/year developer
 account — the fee alone contradicts the zero-cost stance, so this is
 community-contribution only, never planned work. The nearest zero-cost route onto
 an iPhone is Safari's Add to Home Screen, which is a shortcut, not an
 installed app — and since PWA support was deliberately removed (see that
-entry), it will not load without a network connection. Add no widgets, no
+entry), it will not load without a network connection. Expect no widgets, no
 lock-screen notification actions, and untested LAN sync. If it ever matters, the
 first step is testing the current web build on a real iPhone, not
 building a native app.
@@ -480,24 +482,25 @@ sheets) in `main`'s visual identity, and the desktop layout stays as it is.
 Both read the same stores and `db.ts`; nothing in the data model differs.
 Every decision and the owner's verdicts are in
 [redesign/plan.md](redesign/plan.md). Owner decisions there that override
-an earlier rule: phone Settings has an Offlog header card and coloured icon
-tiles (reversing the prototype's "no coloured squares"); the + is a plain
+an earlier rule: phone Settings opens with an Offlog header card holding the
+version and three tiles (Sync, Reminders, App lock), while its rows keep plain
+grey line icons; the + is a plain
 rounded square; the Home hero shifts slightly by season and evening. Rejected
 there and not to be re-proposed without new evidence: dotted row lines, and
 showing a task's facts under its title instead of form rows.
 
 ### Calendar sync (.ics), live-subscribe or one-shot export: declined
-A live-subscribe feed (OS calendar polls a local URL) doesn't work: the
-desktop app has no tray-independent background persistence for the sync
-host outside a running window, so the feed would only be reachable while
-Offlog happens to be open, which most calendar polls would miss. Android
-can't host the feed at all (no server on that platform, and standing one
+A live-subscribe feed (OS calendar polls a local URL) doesn't work well
+enough: the desktop app can sit in the tray and start at login, but the
+feed is still only reachable while that PC is on and on the same network,
+so a sleeping laptop or a phone away from home misses the polls — and
+reaching it from outside is away-from-home sync, which the manifesto
+excludes. Android can't host the feed at all (no server on that platform, and standing one
 up isn't worth the background-service surface). A plain one-shot ".ics
 export" fallback only serves rare cases (a weekly planning glance,
 sharing one deadline, a one-time migration) and doesn't justify the UI
 and code. Declined in both forms — don't re-propose without a real
-recurring use case, or the desktop app gaining full background
-persistence.
+recurring use case.
 
 ### Quick Add's NLP parsing is local regex, not an LLM call
 Quick Add parses free-typed text ("tomorrow 5pm !high #errand") into
@@ -512,11 +515,11 @@ can make and a phrasing-sensitive LLM can't.
 
 ## Data model
 
-### "Done" is positional (last column), not a boolean field
+### "Done" is positional (last status), not a boolean field
 Enforced invariant, repeated here because a multi-device conflict
 scenario could tempt someone to "fix" this with a simpler `done: boolean`.
-Don't — the positional model is just "which column," already what
-Kanban represents; changing it needs a data migration touching every view.
+Don't — the positional model is just "which status," already what
+the Board shows; changing it needs a data migration touching every view.
 
 ### Soft-delete only, never `db.remove()` for tasks (except admin paths)
 Also an enforced invariant. Multi-device replication makes hard deletes
@@ -524,6 +527,18 @@ more dangerous, not less: a hard delete that hasn't yet replicated to an
 offline device resurrects the doc as a new create when that device
 reconnects, unless the delete itself is a replicated tombstone — which
 soft-delete produces for free.
+
+The hard-delete exceptions are closed and listed: `deleteProject` (see
+"Delete is soft for tasks and permanent for projects" above),
+`wipeAndReseed`, the Recycle bin's `deleteForever`/`emptyTrash`,
+`pruneOldDeletedTasks` (3 months after deletion), and
+`clearLocalSeedBeforeFirstPair`. The last runs from `pairWithHost()`
+just before a device's first sync: every install seeds the same 4 fixed
+ids, so an untouched seed (no tasks, no user-created space or project, no
+seed doc edited) is removed so the pull takes the host's copies instead of
+forking a divergent revision history. Anything less than fully untouched
+is left alone, because setting up spaces and projects before adding a task
+is a normal way to start.
 
 ### Sub-projects and rethinking positional "done": both parked
 Nested project hierarchy touches the data model, every project-picker, and
@@ -536,9 +551,11 @@ Full context in [archive/history.md](archive/history.md)
 
 ### The auto-seeded "Draft" project is archivable like any other
 Nothing special-cases it — no hardcoded fallback, no assumption it stays
-active. Its only special handling anywhere is as one of 4 fixed
-default-seed IDs used for auto-resolving a pristine-conflict edge case,
-which works identically whether the project is archived or not.
+active. Its only special handling anywhere is as one of the 4 fixed
+default-seed ids (`SEED_IDS`, `PRISTINE_DEFAULTS`) — clearing an
+untouched seed before a device's first pairing, and auto-resolving a
+pristine-default conflict after sync — which works
+identically whether the project is archived or not.
 
 ---
 
@@ -571,7 +588,10 @@ silently to the PIN screen.
 ### TypeScript 7 is allowed, with `cap sync android` as a required gate
 TS 7 passes build/tsc/tests but broke `cap sync android` through a
 Capacitor CLI config-loader bug none of the local checks exercise; fixed
-from `@capacitor/cli` 8.5.0 onward. Standing rule: a Capacitor or
+from `@capacitor/cli` 8.5.0 onward. The `typescript` dependency is still
+on 6, while `npm run check` already runs TS 7's native compiler
+(`@typescript/native`); the rule applies to moving the dependency to 7
+and any upgrade after it. Standing rule: a Capacitor or
 TypeScript upgrade must be verified by diffing the generated
 `android/app/src/main/assets/capacitor.config.json` against
 `capacitor.config.ts` — every value must survive, including the nested
@@ -735,7 +755,8 @@ finished* is the mission succeeding, not stalling.
 
 Only real daily use reopens planned work — not a backlog, not an idea. A
 new plan is still finite, with an end: the phone redesign
-([redesign/plan.md](redesign/plan.md)) is the current one. Mesh sync was
+([redesign/plan.md](redesign/plan.md)) is the current one, built on
+`redesign/full` and merging to `main` on the owner's sign-off. Mesh sync was
 reopened the same way and closed again (see its entry).
 
 ### `reset-dev-env.ps1 -IncludeRelease` is a real data-loss risk, not routine
@@ -763,8 +784,9 @@ drops the link. Links are click-through, with a link-icon badge on
 cards/rows so a task's links are visible without opening it.
 
 ### Settings: per-tab controls apply live; the footer Save is Advanced-only
-In the desktop Settings panel, every tab but Advanced (and only while Sync
-is on) writes straight to its store on click — there's nothing buffered for
+In the desktop Settings panel, every tab writes straight to its store on
+click — the one exception is Advanced while Sync is on, which buffers its
+connection fields for "Save & restart sync" — there's nothing buffered for
 Cancel to discard. Save is still shown on every tab (routed through
 `saveSettings()`, a no-op when nothing's buffered), because a missing Save
 button reads as "did my change even take?" — worse than the button being a

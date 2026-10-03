@@ -1,6 +1,6 @@
 // The Android hardware/gesture back button — and the browser's own back
 // button/gesture on desktop/PWA — have no effect on modals and slide-in
-// panels by default: pressing back while e.g. Trash or Settings is open falls
+// panels by default: pressing back while e.g. Recycle bin or Settings is open falls
 // through to Capacitor's default, which minimizes or exits the app instead of
 // closing the open layer.
 //
@@ -183,7 +183,7 @@ export function closeTop(): boolean {
 
 // For an overlay that's being immediately replaced by another one opening
 // (a search result opening its task's detail view, a sidebar nav item
-// opening Settings/Trash/etc.) rather than dismissed outright. Removing
+// opening Settings/Recycle bin/etc.) rather than dismissed outright. Removing
 // this layer's entry via requestClose (history.back()) would race the
 // *next* overlay's own history.pushState() — back() resolves asynchronously
 // via 'popstate', pushState runs synchronously, so the two can interleave

@@ -1,6 +1,6 @@
 # Offlog — What Protects Your Data
 
-*Last updated: 2026-10-02*
+*Last updated: 2026-10-03*
 
 This page explains, in plain language, everything Offlog actually does to
 keep your data safe — and, just as importantly, the things it
@@ -74,6 +74,7 @@ million possible codes.
 | **Single use** | The first successful pairing consumes it. Generating a new code kills the old one. |
 | **8 wrong guesses and it's gone** | Someone spamming guesses at your PC over the network gets 8 tries, then the code self-destructs and you have to generate a new one. |
 | **Identical error every time** | Wrong code, expired code, already-used code, code that never existed — all return the same blank `403`. Nothing tells an attacker they're getting warmer. |
+| **Small requests only** | The pairing listener refuses request bodies over 4 KB and handles at most 8 requests at once; anything beyond that is turned away straight away, so clients that never finish sending can't tie up the PC. |
 | **Constant-time comparison** | The check takes the same amount of time whether the first byte is wrong or only the last one is. Otherwise the timing itself would leak how much of a guess was right. |
 
 **Honest limit, stated in the code itself:** six digits is six digits.
@@ -157,18 +158,22 @@ minutes unless you change it).
   tedious. On a phone the lock screen has its own number pad: it opens as
   soon as the digits match, and a pause on digits that don't match counts
   as one wrong try. The PIN's length is not stored anywhere.
-- **Fingerprint unlock is additive, never a replacement.** It's a faster
-  way in; the PIN remains the only thing that can change or remove the
-  lock. A failed or cancelled fingerprint just drops you to the PIN
+- **"Unlock with fingerprint or face" is additive, never a
+  replacement** (Android only). It's a faster way in; the PIN remains
+  the only thing that can change or remove the lock, and no new secret
+  is stored for it. A failed or cancelled scan just drops you to the PIN
   screen. Turning the feature on requires one real successful scan
   first, so you can't end up locked out of a phone with nothing
   enrolled.
 - **A recovery code is shown once**, in the format `XXXXX-XXXXX`, drawn
   from an alphabet with no `0`/`O` or `1`/`I`/`L` so it can't be copied
-  down ambiguously. Only its hash is kept. Save it — "Forgot PIN"
-  requires it. On the phone, Copy puts it on the clipboard and Share
-  hands it to an app you pick (a password manager, notes); nothing
-  sends it anywhere on its own.
+  down ambiguously. Only its salted hash is kept. Save it — "Forgot PIN"
+  requires it. Copy puts it on the clipboard; on the phone, Share also
+  hands it to an app you pick (a password manager, notes). Nothing sends
+  it anywhere on its own, and it can't be shown again later.
+- **An optional PIN hint** can be revealed from the lock screen. It's a
+  reminder you write yourself and it's stored as plain text, so don't
+  make it the PIN.
 - **If you never saved the code, the app tells you the truth**: there's
   no way in. There's no server to prove your identity to, so a
   "confirm and wipe" button would just be a lock anyone can pick.
@@ -184,7 +189,6 @@ screen. Encrypting the database properly would mean key management, a
 story for what happens when you forget the key, and every synced device
 agreeing on how encrypted data replicates — a much bigger feature than
 "stop a passer-by opening my task list", which is what this is for.
-That's the same scope as the app locks in Things or Todoist.
 
 ---
 
@@ -225,7 +229,7 @@ so it can highlight matches and show formatting — which is exactly the
 situation where hostile text becomes a hostile page.
 
 Every place that does this escapes the text **first**, then adds the
-formatting. There are about a hundred such places in the app; almost all
+formatting. There are well over a hundred such places in the app; almost all
 render fixed built-in icons and never touch your text at all. Exactly
 three handle real text — two for search-result highlighting, one for the
 release notes in the update dialog — and all three run everything
@@ -299,11 +303,12 @@ Verified in the code, not just claimed:
 - **No analytics, telemetry, crash reporting, or advertising library.**
   The dependency list contains none — no Sentry, Firebase, Google
   Analytics, Amplitude, Crashlytics.
-- **No third-party network calls.** Searching the entire app for web
-  addresses turns up **zero** external ones. The only two things Offlog
-  ever connects to are the sync server you configured and, on desktop,
+- **No third-party network calls.** The only two things Offlog ever
+  connects to are the sync server you configured and, on desktop,
   GitHub's release feed for update checks (on by default; can be turned
-  off in Settings).
+  off in Settings). The only other web addresses in the app are the
+  project's GitHub pages (the repository and its privacy policy), which
+  the phone's settings open in your own browser when you tap those links.
 - **The font is bundled, not fetched.** One typeface, shipped inside the
   app. Loading it from a font CDN would tell that CDN your IP address
   every time you opened the app.
@@ -328,7 +333,7 @@ Verified in the code, not just claimed:
 ## 9. Things that only matter if something goes wrong
 
 - **Deleting is never really deleting, at first.** A deleted task is
-  flagged, not destroyed, and goes to the recycle bin. Beyond being
+  flagged, not destroyed, and goes to the Recycle bin. Beyond being
   convenient, this is what makes sync safe: if a device that was offline
   reconnects, a genuinely destroyed record would come back to life as a
   brand-new one. Flagged deletions replicate correctly.

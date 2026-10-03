@@ -36,7 +36,8 @@ sync with each other over your own network.
 
 ## Screenshots
 
-Real captures from a real build — no mockups, no Lorem Ipsum.
+Real captures of the Windows app — no mockups, no Lorem Ipsum. On a phone
+the same data gets its own layout, with Home, Today, Agenda and Search tabs.
 
 <table>
   <tr>
@@ -45,14 +46,14 @@ Real captures from a real build — no mockups, no Lorem Ipsum.
       <br><sub><b>Dashboard</b> — every project at a glance, pinned and overdue tasks up front</sub>
     </td>
     <td width="50%" align="center">
-      <img src="docs/images/screenshot-kanban-desktop.png" alt="Kanban board view">
-      <br><sub><b>Kanban</b> — drag-and-drop columns, per-card due dates, tags, and checklist progress</sub>
+      <img src="docs/images/screenshot-kanban-desktop.png" alt="Board view">
+      <br><sub><b>Board</b> — drag-and-drop statuses, per-task due dates, tags, and checklist progress</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <img src="docs/images/screenshot-list-desktop.png" alt="List view">
-      <br><sub><b>List</b> — sortable columns, saved filters, multi-column sort</sub>
+      <br><sub><b>List</b> — saved filters, Shift+click for a multi-column sort</sub>
     </td>
     <td width="50%" align="center">
       <img src="docs/images/screenshot-focus-desktop.png" alt="Focus view">
@@ -72,7 +73,7 @@ Real captures from a real build — no mockups, no Lorem Ipsum.
 </table>
 
 <p align="center">
-  <img src="docs/images/screenshot-kanban-desktop-dark.png" alt="Kanban board view in dark mode" width="640">
+  <img src="docs/images/screenshot-kanban-desktop-dark.png" alt="Board view in dark mode" width="640">
   <br><sub>Light or dark — every screen, not just a toggle that half-works</sub>
 </p>
 
@@ -106,23 +107,23 @@ accounts, and sync only ever happens on your own local network.
 
 ## What it does
 
-**Organising**
+**Organizing**
 - Spaces hold projects; each project has its own statuses
-- **Kanban** and **List** views per project, with saved filters and
+- **Board** and **List** views per project, with saved filters and
   multi-column sort
 - **Agenda** — deadlines across every project, as a grouped list or a
   month calendar
-- **Focus** — pick up to 3 tasks for today. A deliberate commitment, not
-  an auto-generated list nobody trusts
+- **Focus** (the **Today** tab on a phone) — pick up to 3 tasks for today.
+  A deliberate commitment, not an auto-generated list nobody trusts
 
 **Tasks that hold real detail**
 - Notes, priority, due date, a reminder independent of it, checklists,
-  tags, custom fields, and file attachments up to 10 MB
-- **Dependencies** — mark a task blocked by another and it stays out of
-  Focus until the blocker is done. Circular chains are refused
+  tags, your own fields, and file attachments up to 10 MB
+- **Dependencies** — mark a task as blocked by another. Circular chains
+  are refused
 - **Recurring tasks** reset in place instead of spawning duplicates, and
   handle month-end and DST correctly
-- Every change to a task is recorded, so you can see its history
+- Every change to a task is recorded, so you can see its **History**
 
 **Finding things**
 - **Ctrl+K** searches titles, notes, tags, checklist text and attachment
@@ -131,11 +132,14 @@ accounts, and sync only ever happens on your own local network.
   `!priority` and `@project` out of what you type
 
 **Not losing things**
-- Soft delete with undo everywhere, plus a recycle bin
-- Backup and restore including attachments, custom fields and tag
-  colours — a restore brings back the workspace, not just the text
+- Soft delete with undo everywhere, plus a **Recycle bin**
+- Backup and restore including attachments, fields and tag colors — a
+  restore brings back the workspace, not just the text
 - Automatic local backups, last 7 kept
 - A database check-and-repair tool for orphaned tasks and invalid states
+- An optional **App Lock**: a PIN, fingerprint unlock on Android, and a
+  recovery code shown once. Lose both PIN and code and there is no way
+  in — there is no server to prove who you are to
 
 **Sync — the actual point**
 
@@ -154,8 +158,9 @@ phone re-finds it instead of making you pair again.
 - Light, dark, high contrast, and a reduce-motion setting every animation
   actually respects
 - Keyboard-operable throughout; WCAG AA contrast
-- **Android**: a home-screen widget with Dashboard, Focus and Quick Add
-  shortcuts; notification actions; hardware back button
+- **Android**: a layout made for the phone, portrait and landscape; a
+  home-screen widget with Focus, Quick Add and Home buttons; notification
+  actions; hardware back button
 - **Windows**: lives in the tray, `Ctrl+Alt+O` from anywhere, native
   notifications and save dialogs, automatic updates
 
@@ -170,12 +175,14 @@ point. Bugs found in real use get fixed, dependencies get updated,
 security reports get answered.
 
 Every release runs a zero-warning build, a clean type check and
-**<!--DYN:test_count-->653<!--/DYN--> tests** through CI. It has been
-through <!--DYN:maintenance_passes-->26<!--/DYN--> structured
+**<!--DYN:test_count-->1226<!--/DYN--> tests** through CI. It has been
+through <!--DYN:maintenance_passes-->27<!--/DYN--> structured
 maintenance audits against a written checklist of blind spots earned
 from real shipped bugs — [what each one found](docs/archive/maintenance.md).
 
-**What's next:** nothing planned. Peer-to-peer sync between phones was
+**What's next:** the phone layout gets a final check on a real phone
+before it is released, and the Play Store listing is waiting on Google's
+review. Peer-to-peer sync between phones was
 investigated and closed — Android blocks every route to it, and the
 reasoning is written down in [docs/decisions.md](docs/decisions.md) so it
 does not get reopened on a hunch. Sync still runs through a self-hosted
@@ -258,10 +265,10 @@ The only network traffic is sync between your own devices on your own
 network, and a desktop update check you can turn off.
 
 **Two phones and no PC — can they sync to each other?**
-Not today. Only the Windows app acts as the host that phones connect to.
-Removing that limitation is exactly what's on
-[the roadmap](docs/roadmap.md). Until then, use Backup and Restore to
-move data between phones.
+No. Only the Windows app acts as the host that phones connect to. Android
+blocks every route to a phone hosting sync itself; the reasoning is in
+[docs/decisions.md](docs/decisions.md). Use Backup and Restore to move
+data between phones.
 
 **Can I sync when I'm away from home?**
 No, by design. Sync only happens on the same local network. Remote sync
@@ -273,9 +280,10 @@ The installer isn't code-signed. Paid certificates aren't a path this
 project will take. Updates are verified by signature instead.
 
 **I'm moving to a new computer — how do I bring everything?**
-Everything lives in one folder: `%APPDATA%\com.offlog.app\`. Copy it to
-the new PC before opening Offlog there, and every phone that was already
-paired reconnects on its own. You don't need this for a reinstall on the
+Copy one folder, `%APPDATA%\com.offlog.app\`, to the new PC before opening
+Offlog there. It holds the PC's sync identity and its sync server's full
+copy of your data, and every phone that was already paired reconnects on
+its own. You don't need this for a reinstall on the
 same machine.
 
 **Do I have to use sync at all?**
@@ -305,10 +313,11 @@ no setup whatsoever.
 |---|---|
 | [docs/decisions.md](docs/decisions.md) | Manifesto, and why non-obvious choices were made |
 | [docs/tech.md](docs/tech.md) | Architecture, data model, sync internals, theme tokens |
-| [docs/roadmap.md](docs/roadmap.md) | Current status and planned work |
+| [docs/roadmap.md](docs/roadmap.md) | Open work, and what is waiting on someone else |
 | [docs/changelog.md](docs/changelog.md) | Version history, maintainer-level detail |
 | [docs/release-notes.md](docs/release-notes.md) | The same releases in plain language |
 | [docs/maintenance.md](docs/maintenance.md) | The audit checklist, including blind spots earned from real bugs |
+| [docs/security.md](docs/security.md) | What is protected, how, and what is not |
 | [docs/privacy.md](docs/privacy.md) | Privacy policy — short, because the app collects nothing |
 | [docs/motion.md](docs/motion.md) | How animation works here — which motion an element gets, and why |
 | [docs/brand.md](docs/brand.md) | Voice, visual identity, and trademark/fork terms |

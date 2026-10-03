@@ -11,15 +11,15 @@
   import { fmtTime, fmtDay, dayOf } from '../utils';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
-  // created by a parent's {#if}. The result was that no modal in this app
-  // animated at all, however carefully its preset was tuned. Gating the
+  // created by a parent's {#if}. Without the gate below no modal animates,
+  // however carefully its preset is tuned. Gating the
   // markup on a flag set in onMount() makes the elements the product of an
   // UPDATE inside this component, which is what Svelte animates.
   // See docs/motion.md.
   let __introReady = false;
   onMount(() => { __introReady = true; });
 
-  // Seeds the due date when opened from Month view's "Add card" on a
+  // Seeds the due date when opened from Month view's "Add task" on a
   // tapped day. A typed date phrase (parsed.due_date) still wins.
   export let initialDueDate: string | null = null;
 
@@ -56,7 +56,7 @@
   // Live parse on every keystroke -- pure, cheap regex work, no debounce
   // needed. It only changes the dropdown's selection, and never overrides a
   // project the user picked by hand (projectManuallyChosen).
-  // A bare time lands on the day this was opened for (Month view's Add card).
+  // A bare time lands on the day this was opened for (Month view's Add task).
   $: parsed = parseQuickAdd(title, $projects, new Date(), initialDueDate ? new Date(initialDueDate + 'T12:00:00') : undefined);
   $: if (parsed.projectId && !projectManuallyChosen) projectId = parsed.projectId;
   // A typed date phrase wins over the prefilled default.

@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Settings → Spaces, tags & fields. The desktop's Space, Tag and Custom
-  // Field managers as one page with three tabs; each item edits in a sheet.
+  // Settings → Spaces, tags & fields. The desktop's SpaceManager, TagManager
+  // and CustomFieldManager as one page with three tabs; each item edits in a sheet.
   import { onMount } from 'svelte';
   import { getSpaces, getTagCounts, getTagColorOverrides, getCustomFieldDefs, subscribe } from '../../../db';
   import { projects, showError } from '../../../store';

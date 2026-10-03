@@ -268,14 +268,12 @@ fn handle_pair_request(mut request: tiny_http::Request, state: &PairingState, uu
     };
     log::info!("pairing: succeeded");
     // Fired the instant the handshake itself succeeds, before the
-    // response even goes out -- the PC previously had no direct
-    // signal that pairing finished at all, and inferred it only by
-    // polling getDeviceLastSeen() for a new device name, which
-    // stays empty (and the PC screen stuck on the code) until the
-    // phone happens to write something of its own. This doesn't
-    // carry the phone's chosen device name (not known yet, only
-    // discoverable once it actually syncs a doc) -- the frontend's
-    // existing poll still resolves that separately.
+    // response even goes out: it is the PC's only direct signal that
+    // pairing finished. Polling getDeviceLastSeen() alone would leave
+    // the PC screen stuck on the code until the phone writes a doc of
+    // its own. This doesn't carry the phone's device name (not known
+    // until it syncs a doc) -- the frontend's poll resolves that
+    // separately.
     let _ = app_handle.emit("pairing-succeeded", ());
     let payload = PairResponse {
         port: state.info.port,
@@ -317,7 +315,7 @@ mod tests {
     // while silently breaking pairing against any phone, since the JS side
     // derives the same bytes independently. This pins the actual bytes
     // against the exact fixture tests/discovery.test.ts checks its own
-    // WebCrypto implementation with, so the cross-language contract now
+    // WebCrypto implementation with, so the cross-language contract
     // fails loudly from whichever side drifts first.
     #[test]
     fn derive_key_matches_the_javascript_sides_fixture_byte_for_byte() {
@@ -340,11 +338,10 @@ mod tests {
     // code+nonce, tag "enc") decrypts what the server encrypted, and a
     // key derived from any other code does not. This is exactly what
     // discovery.ts's deriveBits()+crypto.subtle.decrypt() do on the other
-    // side of the wire; cross-language compatibility (this ciphertext
-    // format decrypts correctly under WebCrypto's AES-GCM) was verified
-    // manually against a Node script using a fixture generated the same
-    // way, once, when this was built -- not re-run automatically since
-    // there's no JS runtime available here.
+    // side of the wire. Cross-language compatibility (this ciphertext
+    // format decrypting under WebCrypto's AES-GCM) has no automated
+    // test; a change to encrypt_response() needs a manual check against
+    // the JS side.
     #[test]
     fn encrypt_response_round_trips_under_the_matching_key_only() {
         let code = "482913";

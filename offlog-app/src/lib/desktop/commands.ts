@@ -8,7 +8,7 @@ export interface Command {
   keywords: string; // lowercase, space-separated extra match terms
   run: () => void;
   // True for commands whose run() opens another closeOnBack()-tracked
-  // overlay (QuickAdd/Settings/Time Travel/Trash) rather than just navigating
+  // overlay (QuickAdd/Settings/History/Recycle bin) rather than just navigating
   // or toggling a setting. GlobalSearch.svelte must close itself via
   // discardTop() rather than requestClose() for these: requestClose()'s real
   // history.back() races the new overlay's own pushState, and the new overlay

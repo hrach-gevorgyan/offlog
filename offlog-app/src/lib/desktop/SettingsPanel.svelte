@@ -33,8 +33,8 @@
   import { scrimIn, scrimOut, dialogIn, dialogOut, centredIn, centredOut, viewIn, exitMs } from '../motion';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
-  // created by a parent's {#if}. The result was that no modal in this app
-  // animated at all, however carefully its preset was tuned. Gating the
+  // created by a parent's {#if}. Without the gate below no modal animates,
+  // however carefully its preset is tuned. Gating the
   // markup on a flag set in onMount() makes the elements the product of an
   // UPDATE inside this component, which is what Svelte animates.
   // See docs/motion.md.
@@ -156,9 +156,9 @@
     if (showMaintenanceModal) { showMaintenanceModal = false; return; }
     if (pendingImportDocs) { cancelImport(); return; }
     // PIN sub-flows: back out of just this step, the same as every other
-    // modal-within-Settings above. Without these, Escape fell through to
-    // the final else and closed the whole panel mid-PIN-entry, or while
-    // ConfirmPinGate was asking for the current PIN to change/remove it.
+    // modal-within-Settings above. Without these, Escape falls through to
+    // the final else and closes the whole panel mid-PIN-entry, or while
+    // ConfirmPinGate is asking for the current PIN to change/remove it.
     if (pinGateMode) { pinGateMode = null; return; }
     if (showPinForm) { showPinForm = false; return; }
     if (isNarrow && activeCategory) backToList();
@@ -493,7 +493,7 @@
   }
   // scanForHosts() runs for a fixed 10s then flips isScanning back to
   // false on its own -- with nothing found, the button reverting to
-  // "Find my computer" was the only signal, indistinguishable from "still
+  // "Find my computer" would be the only signal, indistinguishable from "still
   // running" or "silently failed." True only once a scan has actually
   // completed with zero hosts, so it's not shown before any scan ran.
   $: scanFoundNothing = scanAttempted && !$isScanning && $discoveredHosts.length === 0;
@@ -830,7 +830,7 @@
   }
   function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
 
-  // Same lazy-modal pattern as Spaces/Tags/Custom Fields above
+  // Same lazy-modal pattern as Spaces/Tags/Fields above
   let ArchivedProjectsManagerComp: typeof import('./ArchivedProjectsManager.svelte').default | null = null;
   let showArchivedProjectsManager = false;
   let archivedProjectsManagerActive = false;
@@ -1316,9 +1316,7 @@
         {/if}
       </div>
       <!-- Every other mini-modal in Settings pins its primary action(s) to
-           a footer, separated from the scrolling body -- this one used to
-           bury its Cancel/Connect (and Done) inline instead, the one
-           genuine oversight among the states here. The scan list's "Find
+           a footer, separated from the scrolling body; this one does too. The scan list's "Find
            my computer"/per-host "Connect" and desktop's "Generate a code"
            stay in the body: those build/refresh a list rather than close
            the dialog, the same distinction that keeps Conflicts' Refresh
@@ -1700,7 +1698,7 @@
   .storage-info, .detail-content :global(.storage-info) { font-family: var(--mono); font-size: .72rem; color: var(--muted); flex: 1; }
   /* "Devices seen recently" always includes this device's own writes
      (they're logged like any other edit) mixed in with remote ones --
-     nothing previously said which entry that was, so matching it against
+     nothing else says which entry that is, so matching it against
      this device's own name (already known, right above in the same tab)
      is the only way to tell without remembering what you typed there. */
   .detail-content :global(.device-name-row) { display: inline-flex; align-items: center; gap: 6px; }

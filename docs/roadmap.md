@@ -19,20 +19,28 @@ Everything closed lives elsewhere, and is not repeated here:
 out — closed to decisions.md, parked to archive/history.md. A section with
 nothing in it stays that way until real use puts something there.
 
+State as of 3 Oct 2026.
+
 ---
 
 ## Waiting on someone else
 
-- **C3, Play Store listing.** Signing key wired into CI, privacy policy
-  done, listing assets ready. Waiting on Google's identity verification and
-  review. Whether local-network sync draws extra review friction is an open
-  question in decisions.md. The phone listing screenshots show `main`'s
-  phone layout and need recapturing once the phone redesign merges.
+- **C3, Play Store listing.** Release signing is wired into CI
+  (`release.yml` writes `keystore.properties` from repo secrets) and the
+  privacy policy is [privacy.md](privacy.md). Waiting on Google's identity
+  verification and review. Whether local-network sync draws extra review
+  friction is an open question in decisions.md. Before submitting, the
+  listing draft and screenshots (kept outside the repo, in the git-ignored
+  `brand kit/`) need redoing for the redesigned phone app: they still show
+  `main`'s layout and use retired names ("Kanban", "Time Travel" instead of
+  Board and History).
 - **C5, landing page.** One plain GitHub Pages page. Not blocking anything.
 
 ## Ours to do
 
-- **Phone redesign (`redesign/full`).** Phone-only shell in
-  `src/lib/phone/`; decisions and remaining items in
-  [redesign/plan.md](redesign/plan.md). Merge to `main` when the owner signs
-  off on the real build.
+- **Merge `redesign/full` into `main`.** The phone shell
+  (`src/lib/phone/`) is built, along with the shared vocabulary and the
+  desktop pieces that changed with it (`src/lib/desktop/`,
+  `src/lib/shared/`); decisions are in [redesign/plan.md](redesign/plan.md).
+  Merge when the owner signs off on the real build on a phone, then release
+  per CLAUDE.md's Release steps.

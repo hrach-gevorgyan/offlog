@@ -2,11 +2,9 @@ import { EditorView, Decoration, type DecorationSet, ViewPlugin, type ViewUpdate
 import { syntaxTree } from '@codemirror/language';
 import { RangeSetBuilder } from '@codemirror/state';
 
-// Mirrors NotesBlock's old rendered-preview surface (marked -> the same
-// ALLOWED_TAGS DOMPurify used to let through: strong/em/code/pre/ul/ol/li/
-// h1-4/blockquote/a/del/hr) but applied as CodeMirror decorations instead
-// of a second {@html} pane, so formatting shows inline while typing rather
-// than only after switching to a separate preview mode.
+// Renders a fixed tag set (strong/em/code/pre/ul/ol/li/h1-4/blockquote/a/
+// del/hr) as CodeMirror decorations rather than a second {@html} pane, so
+// formatting shows inline while typing.
 const HEADING_LEVEL: Record<string, number> = {
   ATXHeading1: 1, ATXHeading2: 2, ATXHeading3: 3, ATXHeading4: 4, ATXHeading5: 4, ATXHeading6: 4,
 };

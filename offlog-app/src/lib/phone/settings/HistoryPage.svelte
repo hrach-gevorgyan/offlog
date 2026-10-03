@@ -1,6 +1,6 @@
 <script lang="ts">
   import Empty from '../Empty.svelte';
-  // History (desktop: Time Travel) as a phone page: every logged change,
+  // History as a phone page: every logged change,
   // grouped by local day, newest first.
   import { onMount } from 'svelte';
   import { getRecentLogs, getTaskById, clearLogs, subscribe, type LogDoc } from '../../db';

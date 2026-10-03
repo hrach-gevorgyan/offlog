@@ -9,7 +9,7 @@ import android.net.Uri;
 import android.widget.RemoteViews;
 
 // Single combined home-screen widget: 3 static action buttons (Focus /
-// Quick Add / Dashboard), no dynamic data. No SharedPreferences read and
+// Quick Add / Home), no dynamic data. No SharedPreferences read and
 // no JS-side data bridge — this widget never changes appearance, only
 // what it opens.
 public class OffologWidgetProvider extends AppWidgetProvider {
@@ -43,8 +43,7 @@ public class OffologWidgetProvider extends AppWidgetProvider {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         // Each button needs its own distinct PendingIntent request code, or
         // Android reuses a cached one with the same intent shape and the
-        // wrong target fires — same reasoning as every other widget
-        // provider in this app.
+        // wrong target fires.
         return PendingIntent.getActivity(
             context, appWidgetId * 10 + slot, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE

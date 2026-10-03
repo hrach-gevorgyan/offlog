@@ -74,7 +74,16 @@ Produce a findings report covering the following. Rank every finding
   surprisingly large graph.
 - **Oversized files/functions** (>~300 / >~50 lines) — flag only where
   splitting genuinely helps. Large view components are large by design.
-- **Naming and organisation** against CLAUDE.md's conventions.
+- **Naming and organisation** against CLAUDE.md's conventions. Source
+  layout: desktop-only UI in `src/lib/desktop/`, the phone shell in
+  `src/lib/phone/`, pieces both use in `src/lib/shared/`, the engine
+  (`db.ts`, `store.ts`, `utils.ts`, …) at `src/lib/` root.
+  `tests/layout.test.ts` fails if `phone/` or `shared/` imports from
+  `desktop/`; a piece both shells need moves to `shared/`.
+- **User-facing wording** — one vocabulary on phone and desktop: Board,
+  History, Recycle bin, Fields, Add task, Status (never "Column"),
+  American spelling. Errors read "Could not … Please try again.", never
+  "Failed to". Dates go through `utils.ts`'s `fmtDay`.
 - **Performance suspects** — redundant DB round-trips, a `db.find()`
   missing `limit`, duplicate sync triggers, unthrottled listeners,
   needless `$:` recomputation, missed `invalidateTaskCache()` paths.
@@ -165,7 +174,7 @@ owner-only.
   credentials once compiled into `dist/` and from there into a shipped
   APK. A source-only scan does not catch this. Every pass: build, then
   grep `dist/` for anything in `.env.local` — it must come back empty.
-  `config.ts` gates its env reads on `import.meta.env.DEV`; confirm that
+  `src/config.ts` gates its env reads on `import.meta.env.DEV`; confirm that
   gate is intact.
 - **XSS surface** — grep every `{@html}` and confirm the value is a fixed
   internal constant, never user text or anything arriving over sync.
@@ -213,7 +222,9 @@ owner-only.
 - Only where Phase 1 found concrete evidence, never speculatively.
 - Priorities: fewer DB round-trips, batched writes, debounced sync
   triggers, no redundant reactive recomputation, heavy modules kept
-  lazy-loaded.
+  lazy-loaded (the phone loads the CodeMirror note editor through
+  `phone/noteEditor.ts`; nothing in the phone's startup path should
+  import it statically).
 - No new dependencies or caching layers without approval.
 
 ## Phase 4 — Verification
@@ -221,8 +232,9 @@ owner-only.
 1. Re-run all Phase 0 gates **by exit code**, plus `cargo build` if
    anything under `offlog-desktop/` changed.
 2. Trace the core flows in code and confirm the logic is unchanged: create
-   task → edit in CardDetail (desktop) and the phone's `TaskScreen` → move
-   across statuses → mark done (positional last-column rule) → delete/undo. Add sync replication and
+   task → edit in `desktop/CardDetail.svelte` and `phone/TaskScreen.svelte`
+   → move across statuses → mark done (positional last-column rule) →
+   delete/undo. Add sync replication and
    reminder scheduling if either was touched. If `offlog-desktop/` changed,
    also trace sidecar spawn → pairing code → `/pair` → credentials
    returned. A code-level trace is enough; this doesn't need a live device.

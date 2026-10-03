@@ -84,9 +84,10 @@ the *same instance* instead of recreating it. `closeOnBack()` only runs at
 setup, so the revived instance holds an already-spent `requestClose` and has
 no history entry: permanently stuck open, with a working-looking Escape and
 scrim that silently do nothing. Bump a counter per open and fold it in —
-`{#key detailTask._id + ':' + detailOpenSession}`, as in `KanbanBoard.svelte`;
-Sidebar's panels (`{#key settingsSession}`) and the phone's sheets key on a
-bare per-open counter.
+`{#key detailTask._id + ':' + detailOpenSession}`, as in
+`desktop/KanbanBoard.svelte`; Sidebar's panels (`{#key settingsSession}`) and
+the phone's sheets (`{#key newSession}` in `phone/Home.svelte`) key on a bare
+per-open counter.
 
 **Splitting a component's markup into children**: move the parent's CLASS
 rules to `:global()` under a parent-owned wrapper, but keep bare ELEMENT
@@ -131,10 +132,11 @@ tasks, so splitting them would be a cycle.
 - Every mutation writes a `log:` doc via `logChange()` (action ∈
   create/update/move/delete).
 - Document `_id` prefixes are the type system: `space:` / `project:` /
-  `task:` / `log:`. Range scans depend on them — never change them.
+  `task:` / `log:`, plus `meta:` and `tag:` (tech.md's Data Model). Range
+  scans depend on them — never change them.
 - **`column_id` is a string id, not the column object.** Assigning
-  `p.columns[i]` instead of `p.columns[i].id` makes tasks vanish from Kanban
-  while remaining valid, queryable docs.
+  `p.columns[i]` instead of `p.columns[i].id` makes tasks vanish from the
+  Board while remaining valid, queryable docs.
 - **Conflict info lives on `row.doc._conflicts`, never
   `row.value.conflicts`** — the latter has never existed in PouchDB.
   `db.allDocs({conflicts:true})` also needs `include_docs: true`. When
@@ -150,15 +152,17 @@ against mocked `db`/`store`/`config`: mock the module, render, `fireEvent`,
 assert the write's exact arguments. Purely presentational children
 (`desktop/settings/*`, `desktop/carddetail/*`, `PinStar`, and the
 phone sub-pages and sheets, through the `Phone*.test.ts` suites) are covered
-through their parents; `phone/PhoneApp.svelte` has none. `tests/App.test.ts`
-renders `App.svelte` against the real in-memory database for the App Lock
-gate and the Undo toast.
+through their parents; `phone/PhoneApp.svelte` has none of its own.
+`tests/App.test.ts` renders `App.svelte` against the real in-memory database
+for the App Lock gate and the Undo toast; `tests/AppShell.test.ts` checks the
+desktop chunk stays unloaded on a phone; `tests/layout.test.ts` fails if
+anything in `phone/` or `shared/` imports from `desktop/`.
 
 In order of how often they save you:
 
-1. **Judge a run by its exit code, not its summary.** Vitest prints
-   "569 passed" and still exits 1 on an unhandled rejection. `npx vitest run;
-   echo $?`
+1. **Judge a run by its exit code, not its summary.** Vitest can report
+   every test passed and still exit 1 on an unhandled rejection.
+   `npx vitest run; echo $?`
 2. **A test that survives a mutation asserts nothing.** Break the source,
    confirm THAT test fails, revert. If it still passes, rewrite or delete it.
 3. **Cover the failure path** — every mutating call site must surface
@@ -236,6 +240,11 @@ inside and import it back.
   everywhere, no CSS framework.
 - Statuses are called **"Status"** in user-facing wording, never "Column" —
   `column_id` is a frozen internal name. Dates in docs are absolute.
+- One vocabulary on phone and desktop: **Board** (not Kanban), **History**
+  (not Time Travel), **Recycle bin**, **Fields**, **Add task**; American
+  spelling (Color, Canceled). Errors read "Could not … Please try again.",
+  never "Failed to". Dates in the UI go through `fmtDay` in `utils.ts`.
+  Internal names (`KanbanBoard`, `TimeTravelView`, `TrashView`) stay.
 - **Max 3 font families project-wide; currently 1**, Hanken Grotesk,
   self-hosted from `public/fonts/` (never a CDN). `--mono` still
   exists as a token for uppercase/letter-spaced labels but points at the same

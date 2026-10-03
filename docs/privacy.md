@@ -1,6 +1,6 @@
 # Offlog — Privacy Policy
 
-*Last updated: 2026-10-02*
+*Last updated: 2026-10-03*
 
 This page exists to satisfy app-store requirements (Google Play, and
 Windows/desktop distribution channels that ask for one) with something
@@ -19,7 +19,7 @@ any third party, ever. Everything you enter into the app stays on your
 own device(s).
 
 The phone app shows a short version of this page under Settings →
-Advanced → Privacy; the two are kept in step.
+Advanced → Privacy, with a link back here; the two are kept in step.
 
 This page covers *what data exists and where*. For how that data is
 protected — the pairing handshake, App Lock, where the sync password is
@@ -43,14 +43,24 @@ stored, and the limits of each — see
   (Wi-Fi). No Offlog-operated server exists, is involved, or ever sees your
   data — there is nothing for the developer to collect even if they
   wanted to.
-- **Local backups** (on by default; can be turned off) are written only
-  to your device's own private app storage, never uploaded anywhere.
-- **Notification content** (reminders you set) is scheduled and shown
-  entirely on-device using your OS's own notification system.
+- **Automatic backups** (on by default; can be turned off) are written
+  about once a day, keeping the last seven, only to the app's own
+  private storage on your device — never uploaded anywhere. Android's
+  own cloud backup of app data is switched off for Offlog.
+- **Device name.** To tell your devices apart in sync and History, the
+  app reads your device's own name (Android's device name or model;
+  Windows' computer name) once, and you can change it. It is stored with
+  your data and goes only where your data goes: to your own devices or server.
+- **Reminders** are scheduled and shown entirely on-device using your
+  OS's own notification system; nothing goes through a server.
 - **Update checks** (Windows desktop app only, on by default, can be
   turned off in Settings) ask GitHub, where releases are published,
   whether a newer version exists. Like any web request, that request
   reaches GitHub with your IP address; it carries none of your data.
+  The Android app makes no update check of its own; you update it by
+  installing a newer APK, or through the Play Store once it is listed there.
+- **Links** such as "Full privacy policy" or "Source code" open GitHub
+  in your browser only when you tap them.
 
 ## What Offlog does *not* do
 

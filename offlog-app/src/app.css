@@ -135,8 +135,8 @@
   --dur-medium-out: 150ms;
   --dur-large-out: 225ms;
 
-  /* Kept: --ease/--dur are referenced by existing rules. --ease now maps to
-     the standard curve so the two systems agree. */
+  /* --ease/--dur are still referenced by rules; --ease is the standard
+     curve so the two systems agree. */
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --dur: .26s;
 

@@ -804,10 +804,9 @@
   .sidebar.collapsed { padding-left: .4rem; padding-right: .4rem; }
 
   /* Second condition covers a phone rotated to landscape -- its width
-     alone often exceeds 768px (e.g. ~915px on a Pixel-class phone), which
-     used to fall through to the "desktop" always-visible sidebar and eat
-     a big chunk of the already-short landscape height with no way to
-     hide it. max-height catches "phone in
+     alone often exceeds 768px (e.g. ~915px on a Pixel-class phone), and
+     the "desktop" always-visible sidebar would eat a big chunk of the
+     already-short landscape height with no way to hide it. max-height catches "phone in
      landscape" without also matching a genuinely short desktop window. */
   @media (max-width: 768px), (max-height: 500px) and (orientation: landscape) {
     .sidebar {

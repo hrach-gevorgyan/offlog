@@ -1,9 +1,9 @@
 # Contributing to Offlog
 
-Offlog is a single-maintainer, self-hosted personal task manager — see
+Offlog is a single-maintainer, local-first personal task manager — see
 [docs/decisions.md](docs/decisions.md)'s manifesto for the mission and
 the rest of that same file for why certain choices (no accounts, no
-hosted backend, no iOS, no monetization) are closed questions
+hosted backend, no iOS, no paywall) are closed questions
 rather than open ones. Read those before proposing anything that
 touches them.
 
@@ -15,15 +15,15 @@ practical mechanics of sending a change.
 
 ## Project status — read this first
 
-Offlog is **actively maintained but feature-complete**. It is not
-abandoned, and it is not archived — bugs get fixed, dependencies
-get updated, security reports get answered. What it doesn't have is a
-feature roadmap; see [docs/roadmap.md](docs/roadmap.md).
+Offlog is **actively maintained and close to feature-complete**. Bugs get
+fixed, dependencies get updated, security reports get answered. The only
+open work is what [docs/roadmap.md](docs/roadmap.md) lists — it holds
+nothing speculative.
 
 What that means for you:
 
 - **Bug reports from real use are the most valuable thing you can
-  send.** That's now the main way the app changes at all.
+  send.** That's the main way the app changes at all.
 - **Feature ideas are welcome, but open an issue before writing code.**
   New features get judged against "does daily use actually demand
   this," which is a higher bar than "this would be a good feature."
@@ -47,31 +47,46 @@ Sync is optional — the app works fully offline with no setup. See the
 [README](README.md#build-from-source) for the `.env.local` sync config and
 the desktop (`offlog-desktop/`, Tauri) build steps.
 
+## Where code lives
+
+All app code is in `offlog-app/src/`:
+
+- `src/lib/` root — the engine shared by every platform: `db.ts` (a barrel
+  over `src/lib/db/`; always import from `./db`), `store.ts`, `utils.ts`,
+  `theme.ts`, `notifications.ts` and friends.
+- `src/lib/desktop/` — desktop-only UI: the views, Sidebar, CardDetail,
+  Settings, the managers and pickers.
+- `src/lib/phone/` — the phone shell `App.svelte` renders on phone-sized
+  screens (never in the Tauri window).
+- `src/lib/shared/` — UI pieces both use, such as the Markdown editor and
+  the History panel.
+
+`phone/` and `shared/` must never import from `desktop/`;
+`tests/layout.test.ts` enforces it. A piece both need moves to `shared/`.
+
 ## Before opening a PR
 
 ```bash
 cd offlog-app
 npm run build            # must succeed with zero Svelte warnings
 npm run check            # svelte-check + tsc, must be clean
-npm test                 # must pass
+npm test                 # vitest, must pass
 ```
 
-Then verify the change visually in the browser (light **and** dark
-mode) if it touches any UI.
+Judge each by its exit code, not its summary. Then verify the change
+visually in the browser (light **and** dark mode) if it touches any UI.
 
 ### If your change touches build tooling, also run `cap sync`
 
 ```bash
-npx cap sync android     # required for TypeScript/Vite/Capacitor/Tauri changes
+npx cap sync android     # after the build; for TypeScript/Vite/Capacitor/Tauri changes
 ```
 
 **CI does not run this, and a green checkmark is not sufficient
 evidence.** CI covers build, type-check and tests only. A dependency
-bump can pass all three and still break the packaging path — TypeScript
-7 did exactly that, passing every gate and then breaking
-`npx cap sync android` on the next release tag, because the gates never
-exercise Capacitor CLI's own config loader. This is a documented blind
-spot; see [docs/maintenance.md](docs/maintenance.md).
+bump can pass all three and still break the packaging path, because the
+gates never exercise Capacitor CLI's own config loader. This is a
+documented blind spot; see [docs/maintenance.md](docs/maintenance.md).
 
 If you touch anything under `offlog-desktop/`, also:
 
@@ -85,28 +100,34 @@ cargo clippy --manifest-path src-tauri/Cargo.toml  # zero warnings
 
 - Matches the existing code style: compact CSS, Svelte 5 with `on:`
   event syntax, TypeScript everywhere, no CSS framework.
-- Comments explain *why*, not what the next line does — see `db.ts` for
-  the existing convention. Where a comment records a bug that was
-  actually hit, it stays; those comments are the project's memory.
-- No new colors hardcoded outside the CSS custom properties in
-  `src/app.css` (two narrow exceptions are documented in CLAUDE.md).
+- Comments state the rule, not the story: a non-obvious constraint, a
+  surprising API behaviour, or why a line that looks wrong is deliberate.
+  No dates, ticket ids or accounts of what was tried — git holds that.
+- No hardcoded hex/rgba in a component; colors are CSS custom properties
+  in `src/app.css` (the one exception, pure-black shadows and scrims, is
+  in CLAUDE.md). A new semantic color gets a token in both the light and
+  dark blocks.
+- User-facing wording matches the app's vocabulary: "Status" never
+  "Column", "Board", "Recycle bin", "Add task", and errors read
+  "Could not … Please try again."
 - Any new `db.ts` write path invalidates `_taskCache` and writes a
   `log:` changelog doc, matching every existing mutation.
 - **New logic ships with a test.** `db.ts` logic goes in
-  `tests/db.test.ts`; a component gets its own file alongside the
-  existing ones. These suites have caught real bugs that were silently
-  shipping — a broken conflict check, an incomplete conflict resolution,
-  and a backup format that couldn't be restored.
+  `tests/db.test.ts`; a component with real logic gets its own file using
+  `@testing-library/svelte` against mocked `db`/`store`/`config`.
+  Purely presentational children are covered through their parents (the
+  list is in CLAUDE.md).
 - **Prove the test works by breaking the code.** Invert a condition or
   drop a guard, confirm *that* test fails, then revert. A test that still
   passes against broken code asserts nothing — rewrite or delete it.
   Judge a run by its exit code, not its summary: vitest prints "passed"
   and still exits 1 on an unhandled rejection.
 - Every task-mutating call site is wrapped in `try/catch` +
-  `showError()`. No silent failures — this is an audited invariant, and
-  a regression on it is treated as a bug.
-- Any change to a document affecting `docs/` is reflected there in the
-  same PR — a change that isn't documented isn't finished, per
+  `showError()`, and its test covers the failure path. No silent
+  failures — this is an audited invariant, and a regression on it is
+  treated as a bug.
+- A change that affects something described in `docs/` updates that doc
+  in the same PR — a change that isn't documented isn't finished, per
   CLAUDE.md's standing rule.
 
 ## Things that will get a PR sent back
@@ -119,12 +140,14 @@ them are documented invariants rather than taste:
 - Treating "done" as a boolean. It's **positional** — a task is complete
   when its `column_id` equals its project's *last* column.
 - Assigning the whole column object to `column_id` instead of
-  `column.id`. Tasks silently vanish from Kanban while remaining valid,
+  `column.id`. Tasks silently vanish from the Board while remaining valid,
   queryable documents.
 - Calling `db.find()` without an explicit `limit` (it silently defaults
   to 25).
-- Adding a second font family, or a third — the cap is three
-  project-wide and currently one is in use.
+- Importing a `src/lib/db/` module directly instead of `./db`, or
+  importing `desktop/` code from `phone/` or `shared/`.
+- Adding a second font family — the cap is three project-wide and
+  currently one (Hanken Grotesk, self-hosted) is in use.
 
 ## Reporting bugs / requesting features
 

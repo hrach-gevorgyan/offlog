@@ -45,7 +45,7 @@ competent, not the one performing enthusiasm.** Concretely, in a
   qualifying it against competitors — see §4's "no comparison" rule.
   Confidence here means *not needing* to compare, not overstating.
 - **Honest, not polished-over.** Limitations (unsigned installers, no
-  iOS, LAN-only sync) are stated plainly with the real reason, the same
+  iOS, sync only on your own network) are stated plainly with the real reason, the same
   way README's "Install" section already does — never buried
   in a FAQ's fine print or omitted.
 
@@ -56,7 +56,8 @@ enterprise-grade, all-in-one, powerful, seamless, game-changing.
 
 ## 4. Voice & tone rules
 
-Per decisions.md's manifesto: **"not competing, just likable."**
+**Not competing, just likable.** Offlog isn't competing for attention in
+a market giants own (decisions.md, "The roadmap is finite").
 
 - **Lead with what Offlog *is*, not what it isn't compared to.** Avoid
   naming Trello/Notion/ClickUp/Jira in public-facing copy (fine in
@@ -117,16 +118,14 @@ copy that implies enterprise/team-admin capability Offlog doesn't have
 
 Every other colour — background, surface, text, danger, success — lives
 in [tech.md](tech.md)'s Theme System table, which is the single source
-of truth. Don't copy those values here. The accent (and the phone hero's
-`--hero-base`, which shares the light value) has to stay in step across:
-`app.css`; `capacitor.config.ts`'s `iconColor`; Android's
-`values/colors.xml` (`colorPrimary`, `colorAccent`, `splashBg`,
-`colorWidgetAccent`) and `values-night/colors.xml` (`splashBg`,
-`colorWidgetAccent`); and `resources/generate-icons.cjs`'s `BRAND`, which
-is `#575fca`, as are the launcher icon PNGs generated from it.
+of truth. Don't copy those values here. The phone hero's `--hero-base`
+shares the light accent and deepens to `#373D81` in dark. Accent and hero
+have to stay in step across several native files (Capacitor config, Android
+`colors.xml`, the icon generator); the list is in tech.md's Theme System
+section and CLAUDE.md's Theming rules.
 
-`--amber` (phone Settings icon tiles) is in-app wayfinding decoration only,
-not a second brand colour; it never appears on public material.
+`--amber` is in-app decoration only, not a second brand colour; it never
+appears on public material.
 
 **Rules for any new public material** (landing page, store banner,
 social card):
@@ -147,7 +146,7 @@ goes stale the moment nobody remembers to update it. Use a real
 shields.io or GitHub endpoint instead.
 
 **Badge colour:** any badge whose colour is free (licence, tech-stack)
-uses the accent. README's badges still use the previous `?color=5457E0`. Badges whose colour belongs to the
+uses the accent, `575FCA`, as README's badges do. Badges whose colour belongs to the
 service or a recognisable logo — GitHub's CI status, Svelte's orange —
 are left alone; overriding those looks broken, not on-brand.
 
@@ -171,7 +170,9 @@ default font or a second "display" typeface for headlines.
 
 - **Master:** `offlog-app/resources/source-logo.svg`.
   `resources/generate-icons.cjs` exports the Android launcher and
-  notification icons and `public/icon-512.png` from it (run
+  notification icons and `public/icon-512.png` from it,
+  `generate-splash.cjs` the legacy Android splash images and
+  `generate-installer-art.cjs` the Windows installer sidebar (run
   `npm i --no-save sharp` in `offlog-app/` first; it is not a dependency);
   `offlog-desktop/src-tauri/icons/` holds the desktop sizes
   (32/64/128/128@2x, `.ico`, `.icns`).
@@ -198,7 +199,7 @@ default font or a second "display" typeface for headlines.
 
 - No stock photography — nothing showing generic "people at laptops"
   or "team collaborating around a whiteboard." The product's own actual
-  screenshots (Kanban board, Dashboard, Focus view) are the only
+  screenshots (Board, Dashboard, Focus, the phone's Home) are the only
   imagery that should represent it, in both light and dark mode where
   relevant.
 - No illustration style has been established yet — if one is needed
@@ -208,6 +209,14 @@ default font or a second "display" typeface for headlines.
 - Screenshots used in marketing material should be genuine captures
   from a real build, not mockups with placeholder Lorem Ipsum content
   — same "honest, not polished-over" rule as §4's voice guidance.
+
+**Screenshots in the repo.** `docs/images/` holds README's banner
+(`readme-banner.png`) and its desktop captures: Dashboard, Board (light
+and dark), List, Focus, task detail and search. All are desktop; the repo
+has no phone captures. The two Board captures' file names still say
+"kanban" (README's alt text already says "Board view"): when they are
+retaken, name them "board" to match the app, and
+retake after any visible change so they show the app as it is.
 
 ## 7. Messaging pillars
 
@@ -227,11 +236,12 @@ public-facing surface:
 ## 8. Naming conventions (for future features)
 
 Feature names are plain, functional nouns, and both apps use the same
-ones: Board, List, Agenda,
-Focus, Quick Add, History, Recycle bin, Fields, and the Android "Quick
-actions" widget. A task is a task on both, never a card. History was
-called Time Travel on the desktop until 3 Oct 2026; one name per thing
-won over the playful one. Guidance for anything new: plain
+ones: Board, List, Agenda, Focus, Quick Add, History, Recycle bin,
+Fields, and the Android "Quick actions" widget. The phone's tabs are
+Home, Today, Agenda and Search; the desktop's overview is Dashboard. A
+task is a task on both, never a card ("Add task", not "Add card"), and a
+task's stage is its Status, never a column. One name per thing beats a
+playful second name. Guidance for anything new: plain
 functional names by default; a playful name only if it's still
 instantly clear what the feature does without needing the playful name
 explained first. Never a feature name that requires marketing copy to
@@ -279,8 +289,9 @@ later). In practice:
 - **Not fine without asking**: using the name or icon on a fork, a
   competing product, merchandise, or anything that could look like an
   official release or an endorsement by its owner.
-- Brand-related questions go through the repo's SECURITY.md contact
-  channel — no separate brand inquiry address exists.
+- Brand-related questions go through the contacts in
+  [privacy.md](privacy.md#contact) (a GitHub issue, or the email there for
+  anything private) — no separate brand inquiry address exists.
 
 ## 11. What's deliberately *not* here
 

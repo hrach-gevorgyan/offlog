@@ -9,11 +9,8 @@
 // without inventing a category system the data model doesn't have.
 //
 // 24 hues, ordered around the wheel (each entry commented with its hue in
-// degrees). Was 12 -- doubling to 24 means an average 15-degree gap
-// between neighbours, tighter than the earlier "densest stretch" (green/
-// emerald/teal/cyan at ~16 degrees apart) that got one color removed for
-// being too tight. At this count every neighbour pair is that tight or
-// tighter -- an honest limit of any hue-only palette this size, not
+// degrees), an average 15-degree gap between neighbours. Every neighbour
+// pair is that tight or tighter -- an honest limit of any hue-only palette this size, not
 // something spacing can fix. Verified anyway: at the 32% pastel mix used
 // for tag chips, every one of the 24 clears WCAG AA against var(--text)
 // with a large margin (worst case blueviolet at 8.5:1). Collisions are

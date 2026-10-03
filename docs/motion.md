@@ -6,7 +6,9 @@ Every animation in this project comes from one of two places: a preset in
 an element that stays mounted). There is no third place. A component-local
 `@keyframes` or a literal `220ms` in a rule is a bug — it escapes Reduce Motion
 and it drifts. Existing exceptions: the spinner (`spin`, in app.css and
-SettingsPanel), AppLock's `shake`, CardDetail's `check-pop`.
+`desktop/SettingsPanel.svelte`), the lock screens' `shake`
+(`desktop/AppLock.svelte`, `phone/PhoneLock.svelte`) and CardDetail's
+`check-pop`.
 
 The system is Material 3's easing and duration scale.
 https://m3.material.io/styles/motion/easing-and-duration
@@ -68,7 +70,7 @@ badly-animated one is broken.
 | `--dur-small-out` / `--dur-medium-out` / `--dur-large-out` | `113ms` / `150ms` / `225ms` | the CSS mirror of `OUT()` — see *Asymmetry* below |
 
 `--dur` (`.26s`) and `--ease` are legacy aliases. Do not use them in new code.
-Remaining users: KanbanBoard `.card`, and SettingsPanel's height animation (a
+Remaining users: KanbanBoard's `.card`, and SettingsPanel's height animation (a
 literal `.28s` set from JavaScript, which escapes Reduce Motion).
 
 A new duration or curve is almost never the answer. If nothing in the table
@@ -96,7 +98,8 @@ outro revives the same instance with a spent `requestClose`, and it is
 permanently stuck open.
 
 ### Edge-docked panels
-Time Travel, Trash, Spaces, Tags, Archived Projects, Custom Fields. All are
+The desktop's History (560px), Recycle bin (480px), and the Spaces, Tags,
+Archived Projects and Fields managers (420px), all in `src/lib/desktop/`. All are
 `position: fixed; top:0; right:0; bottom:0; width: min(Npx, 100vw)` with a
 `-8px 0 32px` shadow, at `z-index: 402` above the shared `.scrim`'s 400.
 
@@ -113,8 +116,9 @@ Two rules with teeth:
 - **The `w` you pass must equal the `width: min(Npx, …)` in that component's
   own `.panel` rule.** Travel is a percentage of the element, so a mismatch
   cannot leave the panel half on screen — but the *duration* is derived from
-  `w`, so a stale value silently changes velocity. Each `.panel` rule carries a
-  comment naming its markup argument; move one, move both.
+  `w`, so a stale value silently changes velocity. The same number also feeds
+  `exitMs.panel(w)` in the component's close handler; change all three
+  together.
 - **A panel never fades.** An opaque `--surface` slab cross-dissolving over a
   scrim is a brightening flash, worst in light theme. `panelIn` passes
   `opacity: 1`, because `fly` defaults `opacity: 0` when you omit the key.
@@ -132,7 +136,7 @@ described under *Asymmetry*.
 `popIn`/`popOut` — `y: 4`, 150/113ms. Short travel, short duration; they appear
 next to the control that opened them and the origin is already obvious from
 position. Used by `CustomSelect`, `CalendarPicker`, `FilterBar`, `CardDetail`,
-`KanbanBoard`, `SpaceManager`.
+`KanbanBoard`, `SpaceManager`, and the phone's `project/ListPane.svelte`.
 
 ### Toasts and transient feedback
 `toastIn`/`toastOut` rise 12px in and drop 8px out, 200/150ms; they are centred with
@@ -224,9 +228,12 @@ Never spread a preset to vary one field: `{...revealIn, axis: 'x'}` evaluates
 the `duration` getter and copies the value, which is exactly the freeze the
 getter exists to prevent. Add a named export instead.
 
-Rows inside an already-visible list (a task appearing in Kanban, a project in
+Rows inside an already-visible list (a task appearing on the Board, a project in
 the sidebar) get **no** mount transition. Twenty rows each running their own
-intro is a shimmer, not an arrival.
+intro is a shimmer, not an arrival. The one exception is the phone's
+finish/undo collapse (`collapseOut`/`collapseIn`, see *Phone*), gated per row
+by `phone/rowMotion.ts`: a mark set by the finish or Undo is consumed by the
+first read and lapses after 2s, so only that row animates.
 
 ### Forms and inputs
 Focus rings do not animate — `:focus-visible` in `app.css` is instant on
@@ -270,8 +277,8 @@ in the frame the pointer crosses the threshold. Drop *targets* may tint at
 ### Loading and progress
 `.spinner` in `app.css` is `animation: spin .7s linear infinite`, a literal
 rather than a token, **deliberately** — a frozen spinner reads as a hang, so
-Reduce Motion must not zero it. It is the one sanctioned animation outside the
-token system; drop `<span class="spinner"></span>` into any loading-text
+Reduce Motion must not zero it. It is one of the sanctioned exceptions listed at
+the top of this file; drop `<span class="spinner"></span>` into any loading-text
 container as-is.
 
 The cold-start `{#if ready}` swap is a hard cut and stays one: the loading
@@ -339,8 +346,9 @@ delay its own `close` dispatch instead: see
 Two independent sources, and both must be handled:
 
 - **The OS setting**, `(prefers-reduced-motion: reduce)`.
-- **The in-app override**, Settings → View & Accessibility, which the OS query
-  cannot see.
+- **The in-app override**, the Reduce motion switch (desktop Settings → View &
+  Accessibility, phone Settings → Appearance, both rendered by
+  `shared/AppearanceSettings.svelte`), which the OS query cannot see.
 
 `prefersReducedMotion()` in `theme.ts` ORs them, and `motion.ts`'s
 `d(base)` returns `0` when it is true. Zeroed, not skipped — opacity and
@@ -428,8 +436,11 @@ its header.
 
 Two related facts, both worth knowing before you assume green means correct:
 
-- **`App.svelte` has no test file.** Nothing in the top bar, the view switch,
-  the FAB, the toasts or the banner is covered by anything.
+- **`App.svelte` is barely covered.** `tests/App.test.ts` checks only the App
+  Lock gate and the Undo toast, and `tests/AppShell.test.ts` only that the
+  desktop views load lazily. The top bar, the view switch, the FAB and the
+  banner are untested, and `phone/PhoneApp.svelte` (screen motion, FAB,
+  snackbar) has no test file.
 - **No test asserts on transition parameters.** A width argument that no longer
   matches its panel, a preset passed where params were expected, a transition
   wired to the wrong element — all of it renders and passes. Motion changes are
@@ -465,7 +476,7 @@ Two rules go with it:
 - **Skip the stall under Reduce Motion.** With no fade to hide the swap
   behind, a delay is just latency. Flip everything at once instead.
 
-`Sidebar.svelte`'s `toggleCollapsed()` is the reference implementation.
+`desktop/Sidebar.svelte`'s `toggleCollapsed()` is the reference implementation.
 
 ## A parent's `{#if}` destroys the outro
 
@@ -499,6 +510,11 @@ const requestClose = closeOnBack(() => {
   leaves the panel sitting on an empty screen.
 - `closeOnBack()` already guards against firing twice, so this schedules
   at most one timer per open.
+
+The phone's `Sheet.svelte` gets the same result without a timer:
+`requestClose` flips its internal `open` flag, which starts `sheetOut`, and
+the sheet dispatches `close` from `on:outroend`, so the parent unmounts it
+only after the exit has played.
 
 ## Checklist for a new animated element
 

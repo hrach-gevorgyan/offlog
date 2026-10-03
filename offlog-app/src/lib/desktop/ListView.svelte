@@ -210,7 +210,7 @@
 
 
   onMount(async () => {
-    // Custom fields are global (not per-project) — fetched once here so
+    // Fields are global (not per-project) — fetched once here so
     // their ids are known before reconciling saved column state against
     // them. New fields default OFF (opt-in), same as created/updated/source.
     try {
@@ -907,7 +907,7 @@
   /* An inset ::before bar, not a full-height border-left: a full-height
      border reads as one continuous stripe across adjacent rows sharing a
      priority color, since the border-bottom hairline isn't enough to break
-     it. Same approach as Dashboard/Recycle's row lists. */
+     it. Same approach as Dashboard/Recycle bin's row lists. */
   .grid-row::before {
     content: '';
     position: absolute; left: 0; top: 3px; bottom: 3px;

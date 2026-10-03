@@ -43,9 +43,9 @@
   let sidebarOpen = false;
 
   type View = 'kanban' | 'list';
-  // Per-project Kanban/List choice for the *current* browser session,
+  // Per-project Board/List choice for the *current* browser session,
   // restored across a same-session refresh (see onMount below) so
-  // reloading mid-List-view doesn't silently bounce back to Kanban.
+  // reloading mid-List-view doesn't silently bounce back to Board.
   // Only reset to 'kanban' at genuine navigation points (picking a
   // project from the sidebar/dashboard) — see goToProject().
   let currentView: View = 'kanban';
@@ -63,7 +63,7 @@
 
   $: if (ready) { showDashboard; showAgenda; showFocus; $activeProjectId; currentView; saveView(); }
 
-  // The one place `activeProjectId` should reset the view to Kanban —
+  // The one place `activeProjectId` should reset the view to Board —
   // called from deliberate "go to this project" actions (sidebar project/
   // space click, dashboard project card), never from state restoration.
   // Must set activeSpaceId as well as activeProjectId: the breadcrumb
@@ -85,7 +85,7 @@
   // change on every open.
   let quickAddSession = 0;
   let searchSession = 0;
-  // Month view's "Add card" (a day cell tapped in Agenda's Month mode)
+  // Month view's "Add task" (a day cell tapped in Agenda's Month mode)
   // passes the tapped date through here so the new task's due date is
   // prefilled instead of blank — reset to null after every open so a
   // later Ctrl+N/FAB open (no date context) doesn't inherit a stale one.
@@ -95,7 +95,7 @@
   function openQuickAdd(dueDate: string | null = null) { if (locked) return; quickAddSession++; quickAddDueDate = dueDate; showQuickAdd = true; }
   function openSearch() { if (locked) return; searchSession++; showSearch = true; }
 
-  // Kanban's filter state lives here (not inside KanbanBoard) so the
+  // Board's filter state lives here (not inside KanbanBoard) so the
   // Filters button can sit in this shared board-header row. List view
   // keeps its own filter state internal to ListView.svelte.
   let kbSearch = '';
@@ -105,7 +105,7 @@
   let kbCustomFieldFilters: CustomFieldFilter[] = [];
   $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
   // Custom fields are global (not per-project), same as ListView's own
-  // copy — loaded once here for Kanban's FilterBar.
+  // copy — loaded once here for Board's FilterBar.
   let customFieldDefs: CustomFieldDef[] = [];
   getCustomFieldDefs().then(f => { customFieldDefs = f; });
   // Stale filter values from a previous project shouldn't silently narrow
@@ -180,7 +180,7 @@
   // The mobile sidebar drawer deliberately does NOT get a closeOnBack
   // history layer. It's primarily a launchpad — tapping any nav item
   // inside it immediately opens something else (a project, Settings,
-  // Trash…), which pushes its own history entry practically the same
+  // Recycle bin…), which pushes its own history entry practically the same
   // instant the drawer closes. Routing the drawer's close through
   // history.back() races the newly-opened overlay's history.pushState()
   // (back() resolves async via 'popstate', pushState runs sync) and can
@@ -445,7 +445,7 @@
         showDashboard = false; showAgenda = false; showFocus = false;
         // Restore via the plain store, not goToProject() — this is state
         // restoration on reload, not a deliberate navigation, so the
-        // in-progress Kanban/List choice (below) must survive too.
+        // in-progress Board/List choice (below) must survive too.
         activeProjectId.set(saved.projectId);
         if (saved.mode === 'list' || saved.mode === 'kanban') currentView = saved.mode;
       }
@@ -888,7 +888,7 @@
     flex: 1; min-width: 0; overflow: hidden; background: var(--bg);
     display: grid; grid-template-rows: 1fr; grid-template-columns: 1fr;
   }
-  /* Wraps each top-level view (Dashboard/Kanban/List/Agenda/Focus/empty-
+  /* Wraps each top-level view (Dashboard/Board/List/Agenda/Focus/empty-
      state) so the page-fade transition has a single element to animate --
      must mirror .main's own flex layout so the wrapped view still fills
      the available height instead of shrinking to its content. */

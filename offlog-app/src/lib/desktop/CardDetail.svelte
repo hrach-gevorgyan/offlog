@@ -27,15 +27,15 @@
   import { today } from '../today';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
-  // created by a parent's {#if}. The result was that no modal in this app
-  // animated at all, however carefully its preset was tuned. Gating the
+  // created by a parent's {#if}. Without the gate below no modal animates,
+  // however carefully its preset is tuned. Gating the
   // markup on a flag set in onMount() makes the elements the product of an
   // UPDATE inside this component, which is what Svelte animates.
   // See docs/motion.md.
   let __introReady = false;
   onMount(() => { __introReady = true; });
 
-  // The same per-tag color used everywhere else (Kanban cards, filters) --
+  // The same per-tag color used everywhere else (Board cards, filters) --
   // one-time fetch, not a live subscribe, since an override changing while
   // this exact card is open is not worth the extra machinery.
   let tagColorOverrides: Record<string, string> = {};
@@ -1134,7 +1134,7 @@
      stays comfortably safe (worst case ~6.6:1 against var(--text), full
      unmixed hue still fails WCAG AA for red/blue/violet). Text stays
      var(--text) rather than the raw hash color for the same
-     reason -- KanbanBoard's card-tag already worked this out once. */
+     reason -- matches KanbanBoard's card-tag. */
   /* A small rounded rectangle, not a full pill -- Notion's and GitHub's
      label chips both use this shape; the capsule/999px radius is a
      Material "filter chip" convention (an interactive toggle), not a
@@ -1144,9 +1144,9 @@
     background: var(--col-bg); color: var(--text); border-radius: var(--radius-sm);
     font-size: .74rem; font-weight: 500; padding: 0 2px 0 7px;
   }
-  /* 24x24 hit box, not a 24px glyph: the × stays its old size and the chip
+  /* 24x24 hit box, not a 24px glyph: the × glyph stays small and the chip
      keeps its height. Below 24 this fails WCAG 2.2's minimum target size
-     (2.5.8), and at the old 8x14 it was the hardest control here to tap. */
+     (2.5.8). */
   .tag-remove {
     display: inline-flex; align-items: center; justify-content: center;
     width: 24px; height: 24px; border-radius: 4px;

@@ -12,8 +12,8 @@
   import type { TaskDoc } from '../types';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
-  // created by a parent's {#if}. The result was that no modal in this app
-  // animated at all, however carefully its preset was tuned. Gating the
+  // created by a parent's {#if}. Without the gate below no modal animates,
+  // however carefully its preset is tuned. Gating the
   // markup on a flag set in onMount() makes the elements the product of an
   // UPDATE inside this component, which is what Svelte animates.
   // See docs/motion.md.
@@ -90,9 +90,8 @@
     if (!items.length) return;
     if (!(await confirmAction(`Restore all ${items.length} item${items.length === 1 ? '' : 's'} from the Recycle bin?`, { confirmLabel: 'Restore all' }))) return;
     restoringAll = true;
-    // Per task, not one try around the loop: a single failure used to abort
-    // the rest, so one unrestorable item left every task after it in Recycle
-    // while the message said only that "some" had failed.
+    // Per task, not one try around the loop: a single failure must not abort
+    // the rest and leave every task after it in the Recycle bin.
     let failed = 0;
     try {
       for (const t of items) {

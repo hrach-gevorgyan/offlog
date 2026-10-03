@@ -61,8 +61,8 @@ flowchart LR
     DB -.->|replication| Sync["Sync server<br/>optional"]
 ```
 
-- **UI** — `App.svelte` routes between Dashboard, Focus, Agenda, Kanban,
-  List, plus modals (CardDetail, QuickAdd, GlobalSearch, Settings). On a
+- **UI** — `App.svelte` routes between Dashboard, Focus, Agenda, Board
+  (`KanbanBoard.svelte`), List, plus modals (CardDetail, QuickAdd, GlobalSearch, Settings). On a
   phone-sized screen (`PHONE_QUERY` in `phone/nav.ts`, the same breakpoint as
   the desktop layout's mobile rules) `<main>` renders `phone/PhoneApp.svelte`
   instead: four tabs (Home, Today, Agenda, Search), each a stack of screens.
@@ -97,7 +97,7 @@ flowchart LR
   handler also trusts `openLayers` over `canGoBack`: Chrome hides history
   entries pushed without a gesture (a sheet opened from the widget) from it. Re-tapping the current tab at its root scrolls it to the
   top; the + steps aside on a long downward scroll (`fabScroll.ts`). Overdue
-  has "All to today", which leaves repeating tasks alone (their due date is
+  has "Move all to today" (with Undo), which leaves repeating tasks alone (their due date is
   what the next repeat counts from).
   Week start and 12/24h follow the device locale (`Intl`) until chosen in
   Appearance. Screens: Home, Today/Overdue/Pinned, Search,
@@ -154,7 +154,10 @@ flowchart LR
 ## Source File Map
 
 Paths are relative to `offlog-app/`. Every source file is listed except the phone shell's
-per-screen sheets, which are grouped by folder.
+per-screen sheets and pages, which are grouped by folder. The engine (database, stores,
+formatting, theme, notifications) sits at the root of `lib/`; `desktop/` and `phone/` are the
+two shells and `shared/` the screen pieces both use. `tests/layout.test.ts` fails if
+anything in `phone/` or `shared/` imports from `desktop/`.
 
 ```
 src/
@@ -181,7 +184,7 @@ src/
     motion.ts                   Shared transition params (panels, toasts). Motion only where it shows origin or progress
     modalStack.ts               Back-button/Escape close ordering — closeOnBack(); a window Escape handler acts only when isTopLayer()
     focusTrap.ts                use:trapFocus action, shared by every modal
-    confirm.ts                  confirmAction() — promise wrapper around ConfirmDialog
+    confirm.ts                  confirmAction() — promise wrapper; desktop ConfirmDialog or phone/ConfirmSheet answers it
     discovery.ts                mDNS host discovery + pairing handshake (device side)
     notifications.ts            Reminder scheduling, both platforms
     autoBackup.ts               Silent daily local backup, 7 kept
@@ -190,7 +193,7 @@ src/
     today.ts                    `today` store: the local date, advancing at midnight
     tagColors.ts                Tag colour: stored override, else deterministic hash
     spaceIcons.ts               The 25-icon space-icon set and resolver
-    logFormat.ts                Turns log: docs into plain English for TimeTravelView
+    logFormat.ts                Turns log: docs into plain English for History (desktop and phone)
     nlpParse.ts                 parseQuickAdd() — local regex parsing, no network
     haptics.ts                  Single gate for every haptic call (Android only)
     demoSeed.ts                 Demo workspace for `npm run build:demo`; compiled out of normal builds
@@ -210,20 +213,20 @@ src/
       Sidebar.svelte              Spaces, projects, sync indicator, bottom icon row
       DashboardView.svelte        Home: project cards, pinned/overdue panels, daily brief
       FocusView.svelte            Pick up to 3 tasks for the day; corkboard picker
-      KanbanBoard.svelte          Drag-and-drop columns (mouse + touch)
+      KanbanBoard.svelte          Board view: drag-and-drop status columns (mouse + touch)
       ListView.svelte             List/table with search, filter, sort, archive
       AgendaView.svelte           Flat list (Overdue/Today/This week/Later) + month grid
-      FilterBar.svelte            Search + filter row shared by Kanban and List
-      TimeTravelView.svelte       log: docs grouped by day, with pagination
+      FilterBar.svelte            Search + filter row shared by Board and List
+      TimeTravelView.svelte       History: log: docs grouped by day, 150 at a time
       QuickAdd.svelte             Ctrl+N fast add; live-parses the title via nlpParse
       GlobalSearch.svelte         Ctrl+K debounced search across all tasks
-      TrashView.svelte            Restore or purge soft-deleted tasks
+      TrashView.svelte            Recycle bin: restore or delete forever
 
       CardDetail.svelte           Task editor shell: all card state, save(), history
       carddetail/
         RepeatReminderBlock.svelte  Repeat and reminder
         ChecklistBlock.svelte       Checklist
-        CustomFieldsBlock.svelte    Custom field values
+        CustomFieldsBlock.svelte    Field values
         RelatedBlock.svelte         Related tasks
         BlockedByBlock.svelte       Blocking dependencies
         AttachmentsBlock.svelte     File attachments
@@ -240,7 +243,7 @@ src/
 
       SpaceManager.svelte         Manage spaces
       TagManager.svelte           Manage tags and their colours
-      CustomFieldManager.svelte   Manage global custom field definitions
+      CustomFieldManager.svelte   Fields: manage the global field definitions
       ArchivedProjectsManager.svelte  Archive and restore projects
 
       CustomSelect.svelte         Themed dropdown, replaces every native <select>
@@ -288,7 +291,7 @@ src/
       focus/rank.ts               Focus suggestions; a copy of FocusView's scoring (change both)
       project/                    Board, list, bulk/filter/card/project menu sheets, actions, filter.ts
       quickadd/                   Quick add panels; memory.ts keeps the last keyboard height
-      settings/                   Settings pages (reuse shared/AppearanceSettings), Trash, History, Archived, organize/
+      settings/                   Settings pages (reuse shared/AppearanceSettings), Recycle bin (TrashPage), History, Archived, organize/
       task/                       Task-screen sheets and Steps; when.ts has laterToday()
 ```
 
@@ -498,7 +501,8 @@ of attachments took 55 ms end to end.
 | `dueLabelLong` | Dashboard, Agenda |
 | `dueRelative` | Agenda |
 | `dueInk` | ListView |
-| `filterTasks` | ListView, Kanban, `phone/project/filter.ts` |
+| `filterTasks` | ListView, KanbanBoard, `phone/project/filter.ts` |
+| `fmtDay` | the one date style: "Wed 30 Sep" / "30 Sep", year only when not this year (desktop views, History; the phone's `shortDate()` in `phone/format.ts` matches it) |
 | `localDateStr` and friends | everywhere a calendar day matters |
 
 All date-only logic goes through `localDateStr()`. Never use
@@ -701,8 +705,9 @@ which refuses (`ConflictChangedError`) if sync changed them in the meantime.
 All colours are CSS custom properties in `app.css` — `:root` for light,
 `body.dark` for dark. Outside `app.css`, colours are hand-kept copies only
 where CSS can't reach: Android `values/colors.xml` / `values-night/colors.xml`,
-`theme-color` in `index.html`, `public/theme-init.js` and `theme.ts`, and
-`constants.ts`'s `PRIORITY_COLOR`. Each mirrors a token and must move with it. Derived tints use
+`theme-color` in `index.html`, `public/theme-init.js` and `theme.ts`; each
+mirrors a token and must move with it. `constants.ts`'s `PRIORITY_COLOR`
+(the low/medium/high hues) is fixed hex with no token behind it. Derived tints use
 `color-mix(in srgb, var(--accent) X%, transparent)`.
 
 | Token | Light | Dark | Role |
@@ -711,7 +716,7 @@ where CSS can't reach: Android `values/colors.xml` / `values-night/colors.xml`,
 | `--surface` | `#FFFFFF` | `#242934` | cards, panels |
 | `--sidebar-bg` | `#FBFBFC` | `#101218` | sidebar (follows theme) |
 | `--statusbar-fill` | `#f6f7f9` | `#181a20` | Android status-bar strip. `--bg` at rest; `body.statusbar-hero` makes it `--hero`, and `body.statusbar-band` makes it the claiming screen's `--statusbar-band` (deepened 62% into `--bg` in dark). Claims go through `theme.ts` (`setStatusBarOnHero`, `claimStatusBar`; latest live claim wins), applied after the native icon style lands |
-| `--col-bg` | `#ECEEF2` | `#1E222C` | Kanban column fill |
+| `--col-bg` | `#ECEEF2` | `#1E222C` | Board status column fill |
 | `--border` | `#E2E4EA` | `#2F3542` | hairlines |
 | `--border-strong` | `#C7CBD6` | `#3F4657` | stronger dividers, scrollbar |
 | `--state-hover` | `8%` | `8%` | hover tint alpha; `16%` in both high-contrast blocks |
@@ -728,7 +733,7 @@ where CSS can't reach: Android `values/colors.xml` / `values-night/colors.xml`,
 | `--check-ring` | `--faint` 75% | `--faint` 75% | unticked check circle/box border, 3:1 against cards (declared on `body`) |
 | `--on-accent` | `#FFFFFF` | `#181A20` | ink on accent/overdue/due-soon/faint backgrounds |
 | `--hero-base` / `--hero` | `#575FCA` | `#373D81` | the phone Home's hero band; dark deepens it instead of using the lighter dark accent. `--hero` is the base shifted by `--hero-dh` / `--hero-dl` on `<html>` (season and evening, `phone/livingHero.ts`) where relative colour is supported |
-| `--amber` | `#C98A2B` | `#EFC365` | decoration only (phone Settings icon tiles); never carries meaning and is not a brand colour |
+| `--amber` | `#C98A2B` | `#EFC365` | defined but referenced by no component; decoration only if used, never carries meaning, not a brand colour |
 | `--on-hero` | `#FFFFFF` | `#EFF0FC` | ink and the muted mark on `--hero` |
 | `--ink-fixed-dark` | `#181A20` | `#181A20` | ink on `--success`, which is bright in both themes |
 | `--danger` | `#BD4138` | `#E77F7C` | destructive actions |
@@ -752,7 +757,7 @@ colours). Phone-only type and shadow tokens (`--p-fs-*`, `--p-shadow`) live in
 `phone/phone.css`, scoped to `.phone-shell`/`.psheet`.
 
 Changing `--accent` or `--hero-base` also means updating `capacitor.config.ts`'s
-`iconColor`, Android's `values/colors.xml` (`colorPrimary`, `colorAccent`,
+`iconColor` and `android.backgroundColor` (= `--hero-base`), Android's `values/colors.xml` (`colorPrimary`, `colorAccent`,
 `splashBg` = `--hero-base`, and the `colorWidget*` set) and
 `values-night/colors.xml` (`splashBg` and the `colorWidget*` set only), and
 `resources/generate-icons.cjs`'s `BRAND` (currently `#575fca`). The widget
@@ -833,7 +838,8 @@ never on load.
 Capacitor wraps the same `dist/` in a WebView — same PouchDB, same sync,
 same UI.
 
-- **Touch drag on Kanban**: HTML5 drag events don't fire on touch, so Kanban
+- **Touch drag on the desktop Board** (tablet-sized screens get the desktop
+  views): HTML5 drag events don't fire on touch, so `KanbanBoard.svelte`
   uses `touchstart`/`touchmove`/`touchend` with `document.elementFromPoint`.
 - **Status bar**: targetSdk 36 forces edge-to-edge, and
   `StatusBar.setBackgroundColor()` is a hard no-op from API 35. The app
@@ -877,8 +883,8 @@ same UI.
   (offsets into the typed text). The title `<input>` has transparent text
   over an `aria-hidden` mirror that draws the same text with those spans
   tinted; the two share font, line-height and padding, and the mirror
-  copies the input's `scrollLeft`. Tapping a tinted token offers "Keep as
-  text", which inserts a `\` before it — the parser's per-token escape — so
+  copies the input's `scrollLeft`. Tapping a tinted token offers "Keep
+  “word” as text", which inserts a `\` before it — the parser's per-token escape — so
   the choice lives in the text and survives edits. Chips with a value sort
   first. The default project is the last one added to from Quick add
   (`offlog_quickadd_last_project` in localStorage), after an `@mention` or
@@ -997,7 +1003,7 @@ listening on 5984.
 
 **Tray-resident** (`lib.rs`). Closing the window hides it; the only quit
 path is the tray menu, which reuses the same NyxDB cleanup as a graceful
-exit. Tray menu: Show / Quick Add / Settings / "Start on login" (reads the
+exit. Tray menu: Show Offlog / Quick Add / Settings / "Start on login" (reads the
 real registry state) / Quit. A global `Ctrl+Alt+O` lands on Dashboard —
 Quick Add already has Ctrl+N, so this one's job is just getting back in
 fast. `bring_to_front()` toggles `always_on_top` true→false because a bare

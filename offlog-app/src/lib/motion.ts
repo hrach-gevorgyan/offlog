@@ -94,9 +94,9 @@ export const centredIn = { get duration() { return d(DUR.medium); }, start: 0.94
 export const centredOut = { get duration() { return d(OUT(DUR.medium)); }, start: 0.96, easing: easeAccelerate };
 
 // ── Edge-docked panels ───────────────────────────────────────────────────────
-// Travel is the panel's OWN width, never a fixed pixel count: a flat x:400
-// left Time Travel (560px) starting 160px on screen and Trash (480px) 80px
-// on screen, so they appeared to pop rather than slide.
+// Travel is the panel's OWN width, never a fixed pixel count: an offset
+// smaller than the panel (x:400 on the 560px History panel) starts it partly
+// on screen, so it appears to pop rather than slide.
 //
 // Built-in `fly` with per-panel params rather than a custom transition
 // function -- these panels carry no CSS transform for fly to overwrite, so a

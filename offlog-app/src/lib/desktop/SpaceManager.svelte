@@ -12,8 +12,8 @@
   import { SPACE_ICONS, DEFAULT_SPACE_ICON_KEY, getSpaceIconSvg } from '../spaceIcons';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
-  // created by a parent's {#if}. The result was that no modal in this app
-  // animated at all, however carefully its preset was tuned. Gating the
+  // created by a parent's {#if}. Without the gate below no modal animates,
+  // however carefully its preset is tuned. Gating the
   // markup on a flag set in onMount() makes the elements the product of an
   // UPDATE inside this component, which is what Svelte animates.
   // See docs/motion.md.

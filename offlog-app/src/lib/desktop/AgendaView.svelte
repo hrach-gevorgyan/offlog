@@ -88,7 +88,7 @@
   function monthNext() { monthOffset += 1; }
   function goToTodayMonth() { monthOffset = 0; selectedDay = today; }
   function toggleSelectedDay(dStr: string) { selectedDay = selectedDay === dStr ? null : dStr; }
-  // "Add card" in the day panel — QuickAdd (opened at the App level)
+  // "Add task" in the day panel — QuickAdd (opened at the App level)
   // prefills its due date from this, same as any other Quick Add open.
   // Accepts null because the call site reads `selectedDay` inside an
   // {#if selectedDay} block -- true at runtime, but Svelte can't narrow a

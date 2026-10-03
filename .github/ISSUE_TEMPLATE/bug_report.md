@@ -6,7 +6,7 @@ labels: bug
 ---
 
 **Platform**: Web / Android / Windows desktop (Tauri)
-**Version**: (Settings → Advanced, or the app's package.json/build.gradle version)
+**Version**: (Android: top of Settings; Windows: Settings → Advanced; web: the commit you built from)
 
 **What happened**
 
@@ -19,4 +19,4 @@ labels: bug
 
 **Screenshots** (if it's visual)
 
-**Anything else** — sync enabled or offline-only, dark/light theme, etc.
+**Anything else** — sync on or offline-only, dark/light theme, phone or desktop layout, etc.

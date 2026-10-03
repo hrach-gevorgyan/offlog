@@ -397,8 +397,8 @@ export async function updateCustomFieldDef(fieldId: string, patch: { name?: stri
 
 // Read-only count for the remove confirm dialog -- same shape as
 // getTagCounts(), and the same tasks removeCustomFieldDef's sweep below
-// would actually touch (deleted tasks included, since a restore from
-// Recycle would otherwise resurrect a value for a field that no longer
+// would actually touch (deleted tasks included, since a restore from the
+// Recycle bin would otherwise resurrect a value for a field that no longer
 // has a definition).
 export async function getCustomFieldUsageCount(fieldId: string): Promise<number> {
   const all = await getAllTasksRaw();
@@ -419,8 +419,8 @@ export async function removeCustomFieldDef(fieldId: string): Promise<CustomField
   // values away while the field still existed -- silent data loss.
   await db.put({ ...doc, fields, updated_at: now(), source: SOURCE });
 
-  // custom_values is keyed by field id, so deleting a definition used to
-  // strand every value under it: nothing renders them, nothing cleans them,
+  // custom_values is keyed by field id, so deleting a definition without this
+  // sweep would strand every value under it: nothing renders them, nothing cleans them,
   // and they ride along in every sync payload forever. Deleted tasks are
   // swept too -- restoring one later should not resurrect values for a field
   // that no longer exists.
@@ -478,8 +478,7 @@ export async function unarchiveProject(id: string): Promise<void> {
 
   // Restore exactly what archiving hid. Filtering on archivedWithProject is
   // the point: a task the user archived on its own must stay archived, and
-  // without the flag there is no way to tell the two apart -- which is why
-  // this used to restore nothing and hand back an empty project.
+  // without the flag there is no way to tell the two apart.
   const all = await getAllTasksRaw();
   const toRestore = all.filter(t => t.project_id === id && !t.deleted && t.archived && t.archivedWithProject);
   if (toRestore.length) {
@@ -1044,10 +1043,9 @@ export async function undoDelete(id: string): Promise<void> {
   const current = await db.get<TaskDoc>(id);
   if (!current.deleted) return;
 
-  // A task sitting in Recycle is skipped by removeColumn()'s move, so its
-  // status can be deleted out from under it. Restoring it unchanged put it
-  // back onto a status that no longer exists, where no view renders it --
-  // the task returned, invisibly, and only a maintenance run would say why.
+  // A task sitting in the Recycle bin is skipped by removeColumn()'s move, so
+  // its status can be deleted out from under it. Restoring it unchanged would
+  // put it back onto a status that no longer exists, where no view renders it.
   let column_id = current.column_id;
   // Restoring into an archived project cannot make the task visible -- the
   // project itself is hidden. Coming back archived alongside it is the
@@ -1074,9 +1072,9 @@ export async function undoDelete(id: string): Promise<void> {
   // *next* most-recent deleted task, chaining toasts endlessly.
 }
 
-// ── Trash (its own view — see TrashView.svelte) ─────────────────────────────
+// ── Recycle bin (its own view — see TrashView.svelte) ───────────────────────
 // The full deleted-items list, unlike the last-10 getRecentlyDeleted()
-// returns for the undo toast, plus permanent deletion and bulk "Empty Trash".
+// returns for the undo toast, plus permanent deletion and bulk "Empty Recycle bin".
 
 export async function getAllDeletedTasks(): Promise<(TaskDoc & { project_name?: string })[]> {
   const all = await getAllTasksRaw();

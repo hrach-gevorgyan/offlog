@@ -154,7 +154,7 @@
   }
 
   // Per-card "⋯" quick-actions menu. Writes immediately rather than
-  // batching into a form save the way CardDetail's fields do — a Kanban
+  // batching into a form save the way CardDetail's fields do — a Board
   // card action takes effect the moment it's clicked. Same click-outside
   // pattern as CustomSelect.svelte and CardDetail's own menu.
   let openCardMenu: string | null = null;
@@ -844,10 +844,7 @@
   /* min-width so 1- vs. 2-digit counts don't shift the column name's
      position. Opaque --surface rather than the translucent --hover layer:
      this pill has a rest fill of its own, and a state layer is for a
-     transparent rest state. (It used to say --hover was unusable here
-     because it equalled --col-bg exactly; --hover is a derived tint now,
-     so that reason is gone -- but an opaque pill still wants an opaque
-     fill.) */
+     transparent rest state. */
   .col-count {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 20px; height: 20px;
