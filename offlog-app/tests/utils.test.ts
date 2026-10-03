@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { dueRelative, dueDateShort, localDateStr, filterTasks } from '../src/lib/utils';
+import { describe, expect, it, vi, afterEach } from 'vitest';
+import { dueRelative, dueDateShort, localDateStr, filterTasks, fmtDay, dayOf, fmtFullTimestamp } from '../src/lib/utils';
 
 function daysFromToday(n: number): string {
   const d = new Date();
@@ -76,5 +76,19 @@ describe('filterTasks — custom field filters', () => {
     const result = filterTasks(tasks, '', '', 0, '', [{ fieldId: 'field:client', value: 'Acme' }]);
     expect(result.map(t => t.title)).not.toContain('D');
     expect(result.map(t => t.title)).not.toContain('E');
+  });
+});
+
+describe('fmtDay: one date style on phone and desktop', () => {
+  afterEach(() => { vi.useRealTimers(); });
+  it('writes day before month, a weekday on request, and the year only when it is not this year', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 3, 12));
+    expect(fmtDay(dayOf('2026-09-30'))).toBe('30 Sep');
+    expect(fmtDay(dayOf('2026-09-30'), { weekday: true })).toBe('Wed 30 Sep');
+    expect(fmtDay(dayOf('2027-01-05'), { weekday: true })).toBe('Tue 5 Jan 2027');
+    expect(fmtDay(dayOf('2026-09-30'), { year: true })).toBe('30 Sep 2026');
+    expect(dueDateShort('2026-09-30')).toBe('Wed 30 Sep');
+    expect(fmtFullTimestamp(new Date(2026, 8, 30, 14, 5).toISOString())).toMatch(/^30 Sep 2026, /);
   });
 });

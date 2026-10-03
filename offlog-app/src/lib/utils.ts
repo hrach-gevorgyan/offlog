@@ -100,15 +100,27 @@ export function timeAgo(iso: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return fmtDay(new Date(iso));
 }
+
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// One date style on phone and desktop: "Wed 30 Sep" or "30 Sep", in English
+// like the rest of the UI. The year is added when it isn't this year (a date
+// a year out must not read as this year), or always with `year: true`.
+export function fmtDay(d: Date, opts: { weekday?: boolean; year?: boolean } = {}): string {
+  const s = `${opts.weekday ? `${WD[d.getDay()]} ` : ''}${d.getDate()} ${MO[d.getMonth()]}`;
+  return opts.year || d.getFullYear() !== new Date().getFullYear() ? `${s} ${d.getFullYear()}` : s;
+}
+// A bare 'YYYY-MM-DD' at local noon, so no time zone tips it into another day.
+export const dayOf = (ymd: string) => new Date(`${ymd.slice(0, 10)}T12:00:00`);
 
 // `done`: a finished task's date is history, not a deadline -- it must never
 // read "Overdue". Done is positional (last status), so the caller decides.
 export function dueLabel(due: string | null, fallback = '', done = false, today = TODAY()): string {
   if (!due) return fallback;
   const days = daysDiff(due, today);
-  const short = new Date(due + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const short = fmtDay(dayOf(due));
   if (days < 0) return done ? short : `Overdue · ${short}`;
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
@@ -117,7 +129,7 @@ export function dueLabel(due: string | null, fallback = '', done = false, today 
 
 export function dueLabelLong(due: string, today = TODAY()): string {
   const days = daysDiff(due, today);
-  const short = new Date(due + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const short = fmtDay(dayOf(due), { weekday: true });
   if (days < 0) return `${Math.abs(days)}d overdue · ${short}`;
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
@@ -129,7 +141,7 @@ export function dueLabelLong(due: string, today = TODAY()): string {
 // Tomorrow" (both functions independently collapse day===1 to the same
 // literal word).
 export function dueDateShort(due: string): string {
-  return new Date(due + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return fmtDay(dayOf(due), { weekday: true });
 }
 
 export function dueRelative(due: string, today = TODAY()): string {
@@ -153,14 +165,14 @@ export function dueInk(due: string | null, done = false, today = TODAY()): strin
 export function fmtLastSynced(ts: string): string {
   const d = new Date(ts);
   const sameDay = d.toDateString() === new Date().toDateString();
-  return sameDay ? fmtTime(d) : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + fmtTime(d);
+  return sameDay ? fmtTime(d) : `${fmtDay(d)} ${fmtTime(d)}`;
 }
 
 // Full created/updated/history timestamps, shared by CardDetail.svelte and
 // TaskHistoryPanel.svelte.
 export function fmtFullTimestamp(ts: string): string {
   const d = new Date(ts);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d);
+  return `${fmtDay(d, { year: true })}, ${fmtTime(d)}`;
 }
 
 // A lightweight "did you mean to do this" nudge for accidental duplicates

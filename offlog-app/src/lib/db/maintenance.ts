@@ -518,7 +518,7 @@ export async function runMaintenanceSteps(
   let remainingIssues: IntegrityIssue[] = [];
   const cancelled = () => opts.isCancelled?.() === true;
   const stop = (...rest: MaintStepKey[]) => {
-    for (const k of rest) onStep({ key: k, status: 'skipped', note: 'Cancelled' });
+    for (const k of rest) onStep({ key: k, status: 'skipped', note: 'Canceled' });
     return { remainingIssues, cancelled: true };
   };
 

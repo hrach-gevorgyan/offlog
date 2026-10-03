@@ -146,11 +146,11 @@
                 <CustomSelect options={fieldValueOptionsFor(f.fieldId)} bind:value={f.value} />
               {/if}
             </div>
-            <button class="field-filter-remove" on:click={() => removeFieldFilter(i)} aria-label="Remove this custom field filter">×</button>
+            <button class="field-filter-remove" on:click={() => removeFieldFilter(i)} aria-label="Remove this field filter">×</button>
           </div>
         {/each}
         {#if canAddFieldFilter}
-          <button class="add-field-filter-btn" on:click={addFieldFilter}>+ Add custom field filter</button>
+          <button class="add-field-filter-btn" on:click={addFieldFilter}>+ Add field filter</button>
         {/if}
       {/if}
 

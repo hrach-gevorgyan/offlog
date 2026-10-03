@@ -2,7 +2,7 @@
 // that renders history (TimeTravelView, TaskHistoryPanel) produces identical
 // descriptions rather than each deriving its own drifting copy.
 
-import { fmtTime } from './utils';
+import { fmtTime, fmtDay, dayOf } from './utils';
 
 // A single field's before/after pair as updateTask() records it, and the
 // changelog fields these formatters read off a `log:` doc. Every field is
@@ -51,8 +51,8 @@ function fmtVal(field: string, val: unknown): string {
   if (field === 'checklist') return Array.isArray(val) ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'updated';
   if (field === 'custom_values') return 'updated';
   if (field === 'recurrence') return val === 'daily' ? 'Daily' : val === 'weekly' ? 'Weekly' : val === 'monthly' ? 'Monthly' : String(val);
-  if (field === 'due_date') return new Date(`${val as string}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  if (field === 'reminder_at') { const d = new Date(val as string); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' + fmtTime(d); }
+  if (field === 'due_date') return fmtDay(dayOf(val as string), { year: true });
+  if (field === 'reminder_at') { const d = new Date(val as string); return `${fmtDay(d, { year: true })}, ${fmtTime(d)}`; }
   if (Array.isArray(val)) return val.length ? `${val.length} item${val.length === 1 ? '' : 's'}` : 'none';
   if (typeof val === 'object') return 'updated';
   const s = String(val);
@@ -116,8 +116,7 @@ function fmtDiffs(diffs: Record<string, LogDiff>): string {
 
 export function fmt(ts: string) {
   const d = new Date(ts);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    + ' · ' + fmtTime(d);
+  return `${fmtDay(d)} · ${fmtTime(d)}`;
 }
 
 // Derived from the ref id's own prefix (space:/project:/task:), the same

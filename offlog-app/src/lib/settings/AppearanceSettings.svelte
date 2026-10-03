@@ -78,7 +78,7 @@
                     >24h</button>
                   </div>
                 </div>
-                {#if !phone}<p class="setting-hint">Controls every clock time shown in the app (Time Travel, reminders, task history, last synced).</p>{/if}
+                {#if !phone}<p class="setting-hint">Controls every clock time shown in the app (History, reminders, task history, last synced).</p>{/if}
               </div>
 
               <div class="setting-group">

@@ -224,7 +224,7 @@
   // does not expose a component's plain top-level functions through
   // bind:this the way Svelte 3/4 did -- without export, sidebarRef.
   // openTimeTravel is undefined and calling it throws, caught nowhere,
-  // so Ctrl+K's "Open Time Travel"/"Open Settings"/"Open Deleted" would
+  // so Ctrl+K's "Open History"/"Open Settings"/"Open Deleted" would
   // silently do nothing.
   export async function openTimeTravel() {
     if (timeTravelActive) return;
@@ -235,7 +235,7 @@
       showTimeTravel = true;
     } catch (e) {
       timeTravelActive = false;
-      showError('Failed to open Time Travel. Please try again.');
+      showError('Failed to open History. Please try again.');
     }
   }
   function onTimeTravelClosed() { showTimeTravel = false; timeTravelActive = false; }
@@ -253,7 +253,7 @@
       showTrash = true;
     } catch (e) {
       trashActive = false;
-      showError('Failed to open Recycle. Please try again.');
+      showError('Failed to open the Recycle bin. Please try again.');
     }
   }
   function onTrashClosed() { showTrash = false; trashActive = false; }
@@ -697,12 +697,12 @@
          tooltip is the only place syncTooltip and the deleted count
          show, so they must stay folded into the title text below. -->
     <div class="bottom-row" class:bottom-row-collapsed={effectiveCollapsed}>
-      <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="Time Travel">
+      <button class="icon-btn" on:click={() => { openTimeTravel(); dispatch('navigate'); }} title="History">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 8a6 6 0 1 1 1.8 4.3"/><polyline points="2,4 2,8 6,8"/><polyline points="8,5 8,8.5 10.5,10"/>
         </svg>
       </button>
-      <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Recycle{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
+      <button class="icon-btn" on:click={() => { openTrash(); dispatch('navigate'); }} title="Recycle bin{breakdown && breakdown.deletedTasks > 0 ? ` (${breakdown.deletedTasks})` : ''}">
         <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 4h10M5.5 4V2.5h3V4M3 4l.6 8.5a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L11 4"/>
         </svg>

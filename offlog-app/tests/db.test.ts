@@ -1078,7 +1078,7 @@ describe('runMaintenanceSteps', () => {
     // after it is reported cancelled rather than silently missing.
     expect(steps.check.status).toBe('done');
     for (const k of ['repair', 'history', 'trash', 'compact']) {
-      expect(steps[k].note).toBe('Cancelled');
+      expect(steps[k].note).toBe('Canceled');
     }
   });
 

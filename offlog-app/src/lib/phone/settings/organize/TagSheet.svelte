@@ -106,8 +106,8 @@
   <input class="p-fld" bind:value={name} aria-label="Tag name" enterkeyhint="done" autocapitalize="off"
     on:change={rename} on:keydown={e => e.key === 'Enter' && e.currentTarget.blur()} />
 
-  <div class="p-lab">Colour</div>
-  <div class="sw" role="radiogroup" aria-label="Colour">
+  <div class="p-lab">Color</div>
+  <div class="sw" role="radiogroup" aria-label="Color">
     <button role="radio" aria-checked={current === null} aria-label="Automatic" class="auto" class:on={current === null} on:click={() => pickColor(null)}>
       <span style:background={soften(hashTagColor(tag))}>A</span>
     </button>

@@ -421,7 +421,7 @@
 
   const MAINT_LABEL: Record<string, string> = {
     check: 'Check data', repair: 'Repair', history: 'Clear old history',
-    trash: 'Clear old Recycle items', compact: 'Free up space',
+    trash: 'Clear old Recycle bin items', compact: 'Free up space',
   };
 
 </script>

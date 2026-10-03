@@ -226,16 +226,21 @@ public-facing surface:
 
 ## 8. Naming conventions (for future features)
 
-Feature names so far are plain, functional nouns — Kanban (the phone
-calls it Board), List, Agenda, Focus, Quick Add, Time Travel (History on
-the phone), Recycle (Recycle bin on the phone), and the Android "Quick actions" widget. **Time Travel**
-is the one departure into a slightly playful name (for the changelog/
-history view) and works because it's immediately self-explanatory even
-before reading a description. Guidance for anything new: plain
+Feature names are plain, functional nouns, and both apps use the same
+ones: Board (the desktop view is still labelled Kanban), List, Agenda,
+Focus, Quick Add, History, Recycle bin, Fields, and the Android "Quick
+actions" widget. A task is a task on both, never a card. History was
+called Time Travel on the desktop until 3 Oct 2026; one name per thing
+won over the playful one. Guidance for anything new: plain
 functional names by default; a playful name only if it's still
 instantly clear what the feature does without needing the playful name
 explained first. Never a feature name that requires marketing copy to
 justify itself.
+
+**Spelling and dates.** American spelling (Color, Canceled, Organize).
+Dates are written day first, in English, the same on both apps: "Wed 30
+Sep", "30 Sep", with the year only when it isn't this year (`fmtDay` in
+`utils.ts`). Long forms ("October 2026") follow the system language.
 
 ## 9. Quick-reference do/don't
 

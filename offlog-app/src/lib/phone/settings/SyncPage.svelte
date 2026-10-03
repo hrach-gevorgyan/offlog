@@ -271,7 +271,7 @@
     column_id: 'Status', checklist: 'Checklist', custom_values: 'Custom fields',
     related: 'Related', blocked_by: 'Blocked by', pinned: 'Pinned',
     archived: 'Archived', deleted: 'In trash', position: 'Order',
-    columns: 'Statuses', color: 'Colour', icon: 'Icon', default_view: 'Default view',
+    columns: 'Statuses', color: 'Color', icon: 'Icon', default_view: 'Default view',
   };
   const conflictFieldLabel = (f: string) => CONFLICT_FIELD_LABELS[f] ?? f;
 </script>

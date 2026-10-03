@@ -210,7 +210,7 @@ describe('KanbanBoard due badge', () => {
     const { container } = render(KanbanBoard, { project: mkProject(), tasks: [withDue('col:idea', '2026-03-09')] });
 
     expect(badge(container).classList.contains('overdue')).toBe(true);
-    expect(badge(container).textContent!.trim()).toBe('Overdue · Mar 9');
+    expect(badge(container).textContent!.trim()).toBe('Overdue · 9 Mar');
   });
 
   // A finished task has no deadline left. Flagging it red was a false
@@ -220,7 +220,7 @@ describe('KanbanBoard due badge', () => {
 
     expect(badge(container).classList.contains('overdue')).toBe(false);
     expect(badge(container).classList.contains('soon')).toBe(false);
-    expect(badge(container).textContent!.trim()).toBe('Mar 9');
+    expect(badge(container).textContent!.trim()).toBe('9 Mar');
   });
 
   // Same wording as List view, not the raw stored "2026-03-11".
@@ -243,7 +243,7 @@ describe('KanbanBoard due badge', () => {
 
     await vi.advanceTimersByTimeAsync(24 * 3600_000);
     await tick();
-    expect(badge(container).textContent!.trim()).toBe('Overdue · Mar 12');
+    expect(badge(container).textContent!.trim()).toBe('Overdue · 12 Mar');
     expect(badge(container).classList.contains('overdue')).toBe(true);
   });
 });

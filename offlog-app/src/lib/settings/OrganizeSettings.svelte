@@ -18,7 +18,7 @@
                 </button>
                 <p class="setting-hint compact-hint">Rename tags or fix their colors — changes apply everywhere that tag is used.</p>
                 <button class="link-row link-row-compact" on:click={openCustomFieldManager}>
-                  <span class="link-row-title">Custom Fields</span>
+                  <span class="link-row-title">Fields</span>
                   <svg viewBox="0 0 8 14" width="7" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,1 7,7 1,13"/></svg>
                 </button>
                 <p class="setting-hint compact-hint">Custom field definitions are shared across every project — a field created here shows up on every task, everywhere.</p>

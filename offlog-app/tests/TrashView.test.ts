@@ -73,9 +73,9 @@ async function renderWith(items: (TaskDoc & { project_name?: string })[]) {
 }
 
 describe('TrashView restore', () => {
-  it('is announced as a dialog named Recycle', () => {
+  it('is announced as a dialog named Recycle bin', () => {
     const { getByRole } = render(TrashView);
-    expect(getByRole('dialog', { name: 'Recycle' })).toBeTruthy();
+    expect(getByRole('dialog', { name: 'Recycle bin' })).toBeTruthy();
   });
 
   it('restores a single task by id and reloads the task list', async () => {

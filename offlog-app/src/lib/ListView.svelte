@@ -8,7 +8,7 @@
   import { updateTask, unarchiveTask, getArchivedTasksForProject, getCustomFieldDefs, getTaskById } from './db';
   import { reloadTasks, showError, projects } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-  import { dueLabel, dueInk, filterTasks, type CustomFieldFilter } from './utils';
+  import { dueLabel, dueInk, filterTasks, fmtDay, dayOf, type CustomFieldFilter } from './utils';
   import { today } from './today';
   import CardDetail from './CardDetail.svelte';
   import FilterBar from './FilterBar.svelte';
@@ -423,7 +423,7 @@
   // Full date (month/day/year) — nothing truncates and the grid scrolls
   // horizontally, so there's no reason to abbreviate away the year.
   function fmtDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return fmtDay(iso.length === 10 ? dayOf(iso) : new Date(iso), { year: true });
   }
 
   // The mark-done circle is a single click with no confirmation, so the

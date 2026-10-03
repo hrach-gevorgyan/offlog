@@ -153,8 +153,8 @@
       on:keydown={e => { if (e.key === 'Enter') { if (id) e.currentTarget.blur(); else create(); } }} />
     {#if dupHint}<p class="hint" role="status">{dupHint}</p>{/if}
 
-    <div class="p-lab">Colour</div>
-    <div class="sw" role="radiogroup" aria-label="Colour">
+    <div class="p-lab">Color</div>
+    <div class="sw" role="radiogroup" aria-label="Color">
       {#each SWATCHES as c (c)}
         <button role="radio" aria-checked={same(color, c)} aria-label={colourName(c)} class:on={same(color, c)} on:click={() => setColor(c)}>
           <span style:background={soften(c)}></span>

@@ -255,8 +255,8 @@ describe('CalendarPicker open/close', () => {
   });
 
   it('labels the date, and the time when it has one', () => {
-    expect(trigger(renderPicker({ value: '2026-03-15' }).container).textContent!.trim()).toBe('Mar 15, 2026');
+    expect(trigger(renderPicker({ value: '2026-03-15' }).container).textContent!.trim()).toBe('Sun 15 Mar');
     cleanup();
-    expect(trigger(renderPicker({ value: '2026-03-15T09:30', withTime: true }).container).textContent!.trim()).toBe('Mar 15, 2026, 09:30');
+    expect(trigger(renderPicker({ value: '2026-03-15T09:30', withTime: true }).container).textContent!.trim()).toBe('Sun 15 Mar, 09:30');
   });
 });

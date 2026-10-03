@@ -8,7 +8,7 @@
   import { trapFocus } from './focusTrap';
   import CustomSelect from './CustomSelect.svelte';
   import { parseQuickAdd } from './nlpParse';
-  import { fmtTime } from './utils';
+  import { fmtTime, fmtDay, dayOf } from './utils';
   // Svelte does not run intro transitions on a component's own root elements
   // when the component itself is being created -- and every panel here is
   // created by a parent's {#if}. The result was that no modal in this app
@@ -200,7 +200,7 @@
     <div class="parsed-chips">
       {#if effectiveDueDate}
         <span class="chip chip-date">
-          {new Date(`${effectiveDueDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {fmtDay(dayOf(effectiveDueDate))}
           {#if parsed.reminder_at}· {fmtTime(new Date(parsed.reminder_at))}{/if}
         </span>
       {/if}

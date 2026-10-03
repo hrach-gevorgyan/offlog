@@ -236,7 +236,7 @@ describe('ListView due cell', () => {
   it('says "Overdue" for an open task past its date', () => {
     const { container } = render(ListView, { project: mkProject(), tasks: [mkTask({ column_id: 'col:todo', due_date: '2026-03-01' })] });
 
-    expect(dueCell(container).textContent).toBe('Overdue · Mar 1');
+    expect(dueCell(container).textContent).toBe('Overdue · 1 Mar');
   });
 
   // A checked-off task kept its red "Overdue" label -- a false alarm on
@@ -244,7 +244,7 @@ describe('ListView due cell', () => {
   it('shows only the date, in quiet ink, once the task is done', () => {
     const { container } = render(ListView, { project: mkProject(), tasks: [mkTask({ column_id: 'col:done', due_date: '2026-03-01' })] });
 
-    expect(dueCell(container).textContent).toBe('Mar 1');
+    expect(dueCell(container).textContent).toBe('1 Mar');
     expect(dueCell(container).style.color).toBe('var(--faint)');
   });
 });

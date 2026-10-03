@@ -111,9 +111,9 @@
 {#if __introReady}
 <div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(420)} out:fade={panelScrimOut(420)}></div>
 
-<div class="panel" role="dialog" aria-modal="true" aria-label="Manage Custom Fields" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
+<div class="panel" role="dialog" aria-modal="true" aria-label="Manage Fields" use:trapFocus in:fly={panelIn(420)} out:fly={panelOut(420)}>
   <div class="panel-head">
-    <span class="panel-title">Manage Custom Fields</span>
+    <span class="panel-title">Manage Fields</span>
     <button class="close-btn" on:click={() => requestClose()} aria-label="Close">✕</button>
   </div>
 
@@ -121,7 +121,7 @@
 
   <div class="item-list">
     {#if fields.length === 0}
-      <div class="empty">No custom fields yet.</div>
+      <div class="empty">No fields yet.</div>
     {:else}
       {#each fields as field (field.id)}
         {#if editingId === field.id}

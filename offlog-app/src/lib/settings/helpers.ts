@@ -16,7 +16,7 @@ export function freshMaintSteps(): MaintStep[] {
     { key: 'check',   label: 'Checking your data for problems', status: 'pending', note: '' },
     { key: 'repair',  label: 'Repairing anything fixable',      status: 'pending', note: '' },
     { key: 'history', label: 'Clearing old activity history',   status: 'pending', note: '' },
-    { key: 'trash',   label: 'Clearing old items from Recycle', status: 'pending', note: '' },
+    { key: 'trash',   label: 'Clearing old items from the Recycle bin', status: 'pending', note: '' },
     { key: 'compact', label: 'Freeing up unused space',         status: 'pending', note: '' },
   ];
 }

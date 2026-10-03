@@ -3,7 +3,7 @@
   import { popIn, popOut } from './motion';
   import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
   import TimePicker from './TimePicker.svelte';
-  import { fmtTime } from './utils';
+  import { fmtTime, fmtDay } from './utils';
   import { getWeekStartsMonday, getDefaultReminderTime } from '../config';
 
   // Themed calendar/date picker replacing the native OS one (desktop; the
@@ -147,7 +147,7 @@
   const DOW = monday ? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const timeLabel = (t: string) => fmtTime(new Date(`1970-01-01T${t}`));
 
-  $: dateText = !selected ? '' : selected.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  $: dateText = !selected ? '' : fmtDay(selected, { weekday: true });
   $: displayLabel = !selected ? placeholder
     : withTime ? `${dateText}, ${timeLabel(timeVal)}`
     : dateText;

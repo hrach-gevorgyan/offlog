@@ -6,7 +6,7 @@
   import CalendarPicker from '../CalendarPicker.svelte';
   import CustomSelect from '../CustomSelect.svelte';
   import { getDefaultReminderTime, isTauri } from '../../config';
-  import { fmtTime, advanceDate } from '../utils';
+  import { fmtTime, advanceDate, fmtDay, dayOf } from '../utils';
 
   export let task: TaskDoc;
   export let showRepeatReminder: boolean;
@@ -38,7 +38,7 @@
     ? advanceDate(due_date, recurrenceStr as 'daily' | 'weekly' | 'monthly', Number(recurrenceIntervalStr) || 1, recurrenceWeekdaysOnly)
     : null;
   $: nextOccurrenceLabel = nextOccurrence
-    ? new Date(`${nextOccurrence}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    ? fmtDay(dayOf(nextOccurrence), { weekday: true, year: true })
     : '';
 </script>
 

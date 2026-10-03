@@ -760,7 +760,7 @@
     column_id: 'Status', checklist: 'Checklist', custom_values: 'Custom fields',
     related: 'Related', blocked_by: 'Blocked by', pinned: 'Pinned',
     archived: 'Archived', deleted: 'In trash', position: 'Order',
-    columns: 'Statuses', color: 'Colour', icon: 'Icon', default_view: 'Default view',
+    columns: 'Statuses', color: 'Color', icon: 'Icon', default_view: 'Default view',
   };
   const conflictFieldLabel = (f: string) => CONFLICT_FIELD_LABELS[f] ?? f;
   $: if (activeCategory === 'sync' && conflictCount > 0 && conflictCount !== conflictsAttemptedFor && !loadingConflicts) {
@@ -825,7 +825,7 @@
       showCustomFieldManager = true;
     } catch (e) {
       customFieldManagerActive = false;
-      showError('Failed to open Custom Fields. Please try again.');
+      showError('Failed to open Fields. Please try again.');
     }
   }
   function onCustomFieldManagerClosed() { showCustomFieldManager = false; customFieldManagerActive = false; }
@@ -1416,7 +1416,7 @@
       <div class="mini-modal-body">
         <p class="setting-hint">
           Runs a full check in order: looks for problems with your data, repairs what it safely can,
-          clears old activity history (6+ months) and old Recycle items (3+ months), then frees up
+          clears old activity history (6+ months) and old Recycle bin items (3+ months), then frees up
           the space they were using.
         </p>
 

@@ -88,7 +88,7 @@
 
   async function restoreAll() {
     if (!items.length) return;
-    if (!(await confirmAction(`Restore all ${items.length} item${items.length === 1 ? '' : 's'} from Recycle?`, { confirmLabel: 'Restore all' }))) return;
+    if (!(await confirmAction(`Restore all ${items.length} item${items.length === 1 ? '' : 's'} from the Recycle bin?`, { confirmLabel: 'Restore all' }))) return;
     restoringAll = true;
     // Per task, not one try around the loop: a single failure used to abort
     // the rest, so one unrestorable item left every task after it in Recycle
@@ -110,13 +110,13 @@
 
   async function emptyAll() {
     if (!items.length) return;
-    if (!(await confirmAction(`Permanently delete all ${items.length} item${items.length === 1 ? '' : 's'} in Recycle? This can't be undone.`, { danger: true, confirmLabel: 'Empty Recycle' }))) return;
+    if (!(await confirmAction(`Permanently delete all ${items.length} item${items.length === 1 ? '' : 's'} in the Recycle bin? This can't be undone.`, { danger: true, confirmLabel: 'Empty Recycle bin' }))) return;
     emptying = true;
     try {
       await emptyTrash();
       await load();
     } catch {
-      showError('Failed to empty Recycle. Please try again.');
+      showError('Failed to empty the Recycle bin. Please try again.');
     } finally {
       emptying = false;
     }
@@ -129,9 +129,9 @@
 {#if __introReady}
 <div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(480)} out:fade={panelScrimOut(480)}></div>
 
-<div class="panel" role="dialog" aria-modal="true" aria-label="Recycle" use:trapFocus in:fly={panelIn(480)} out:fly={panelOut(480)}>
+<div class="panel" role="dialog" aria-modal="true" aria-label="Recycle bin" use:trapFocus in:fly={panelIn(480)} out:fly={panelOut(480)}>
   <div class="panel-head">
-    <span class="panel-title">Recycle</span>
+    <span class="panel-title">Recycle bin</span>
     {#if items.length > 0}
       <button class="restore-all-btn" on:click={restoreAll} disabled={restoringAll || emptying}>{restoringAll ? 'Restoring…' : 'Restore all'}</button>
       <button class="clear-btn" on:click={emptyAll} disabled={emptying || restoringAll}>{emptying ? 'Emptying…' : 'Empty'}</button>
@@ -143,7 +143,7 @@
 
   <div class="item-list">
     {#if items.length === 0}
-      <div class="empty">Recycle is empty. Deleted tasks show up here and can be restored, or removed for good.</div>
+      <div class="empty">The Recycle bin is empty. Deleted tasks show up here and can be restored, or removed for good.</div>
     {:else}
       <div class="item-rows">
         {#each items as t (t._id)}

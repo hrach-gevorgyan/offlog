@@ -178,9 +178,9 @@
 <!-- svelte-ignore a11y-no-static-element-interactions a11y-click-events-have-key-events -->
 <div class="scrim" on:click|self={() => requestClose()} in:fade={panelScrimIn(560)} out:fade={panelScrimOut(560)}></div>
 
-{#if __introReady}<div class="panel" role="dialog" aria-modal="true" aria-label="Time Travel" use:trapFocus in:fly={panelIn(560)} out:fly={panelOut(560)}>
+{#if __introReady}<div class="panel" role="dialog" aria-modal="true" aria-label="History" use:trapFocus in:fly={panelIn(560)} out:fly={panelOut(560)}>
   <div class="panel-head">
-    <span class="panel-title">Time Travel</span>
+    <span class="panel-title">History</span>
     {#if logs.length > 0}
       <!-- Confirmed like every other destructive action: this permanently
            erases the entire change history, the only record of what a task
