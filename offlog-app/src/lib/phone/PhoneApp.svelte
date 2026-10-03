@@ -23,6 +23,7 @@
   import { agendaDay } from './agenda/month';
   import SettingsScreen from './settings/SettingsScreen.svelte';
   import TaskScreen from './TaskScreen.svelte';
+  import { warmNoteEditor } from './noteEditor';
   import StatusesScreen from './StatusesScreen.svelte';
   import SettingsPage from './settings/SettingsPage.svelte';
 
@@ -70,6 +71,8 @@
     document.addEventListener('focusin', check);
     return () => { (vv ?? window).removeEventListener('resize', check); document.removeEventListener('focusout', later); document.removeEventListener('focusin', check); };
   });
+
+  onMount(warmNoteEditor);
 
   onMount(() => {
     actions.quickAdd = openAdd;

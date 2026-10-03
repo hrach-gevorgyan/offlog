@@ -77,6 +77,12 @@ flowchart LR
   `ready`, so the Tauri window never reveals a half-built UI; App.svelte must
   only ever reference those components through it (a static import pulls them
   back into the main bundle).
+  On the phone, the note editor (CodeMirror, about half a megabyte) is a
+  third chunk: `phone/noteEditor.ts` fetches it 1.5 s after PhoneApp mounts
+  and TaskScreen awaits it, so it stays off start-up. Nothing on the phone
+  path may import `MarkdownEditor.svelte` statically. `public/pouchdb.js` is
+  PouchDB's own minified `dist/pouchdb.min.js`; on an upgrade, copy that
+  file, not the unminified one.
   Every pushed screen owns one `modalStack` history entry, so Android back
   pops screens and overlays in one LIFO order; back at a non-Home tab root
   goes Home, and back at Home's root sends the app to the background
@@ -268,6 +274,7 @@ src/
       settings/ServerPage.svelte  Own server: a typed-in CouchDB-compatible server; saving forgets the paired computer
       settings/PrivacyPage.svelte The short version of docs/privacy.md (change both together)
       openLink.ts                 Opens a web page in the phone's browser (AppLauncher on Android)
+      noteEditor.ts               Loads the note editor chunk on demand, warmed after start-up
       settings/RemindersPage.svelte  Reminders page: default time, quiet hours, a two-step set-up card while Android is in the way
       settings/TimeSheet.svelte   The app's own time picker: hour and minute wheels (plus AM/PM in 12 h mode)
       Wheel.svelte                One snap-scrolling wheel; arrow keys step it, tapping an item centres it

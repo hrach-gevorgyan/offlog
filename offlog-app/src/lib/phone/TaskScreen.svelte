@@ -20,7 +20,7 @@
   import { I } from './icons';
   import TopBar from './TopBar.svelte';
   import Sheet from './Sheet.svelte';
-  import MarkdownEditor from '../carddetail/MarkdownEditor.svelte';
+  import { loadNoteEditor } from './noteEditor';
   import TaskHistoryPanel from '../TaskHistoryPanel.svelte';
   import Pick from './task/Pick.svelte';
   import DueSheet from './task/DueSheet.svelte';
@@ -84,6 +84,9 @@
   }
 
   let unsub: (() => void) | undefined;
+  let NoteEditor: Awaited<ReturnType<typeof loadNoteEditor>>['default'] | null = null;
+  onMount(() => { loadNoteEditor().then(m => NoteEditor = m.default, () => showError('Could not open the note editor. Please reopen the task.')); });
+
   onMount(async () => {
     unsub = subscribe(load);
     await load();
@@ -446,7 +449,7 @@
   {#if titleHint}<p class="p-say hint" class:indent={canFinish}>{titleHint}</p>{/if}
 
   <div class="note" class:indent={canFinish} on:focusin={() => noteFocused = true} on:focusout={() => { noteFocused = false; flushNote(); }} role="group" aria-label="Note">
-    <MarkdownEditor bind:value={body} placeholderText="Add a note" />
+    {#if NoteEditor}<svelte:component this={NoteEditor} bind:value={body} placeholderText="Add a note" />{/if}
   </div>
   {#if body.length > 500}<p class="p-say count">{body.length} characters</p>{/if}
   {#if noteHint}<p class="p-say hint" class:indent={canFinish}>{noteHint}</p>{/if}
