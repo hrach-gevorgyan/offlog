@@ -108,7 +108,7 @@
 </script>
 
 <TopBar title={TITLE[kind]} {sub} {root}>
-  {#if kind === 'late' && movable.length}<button class="p-tbtn" on:click={moveAllToToday} disabled={moving}>All to today</button>{/if}
+  {#if kind === 'late' && movable.length}<button class="p-tbtn" on:click={moveAllToToday} disabled={moving}>Move all to today</button>{/if}
 </TopBar>
 {#if kind === 'today' && lateCount}
   <button class="late-row" on:click={() => push({ k: 'late' })} aria-label="Open Overdue: {lateCount} overdue {lateCount === 1 ? 'task' : 'tasks'}">

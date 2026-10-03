@@ -74,7 +74,7 @@
   $: m.offset = offset;
   $: m.selected = selected;
   $: grid = monthGrid(offset, mondayFirst, new Date(today + 'T12:00:00'));
-  $: monthLabel = grid.anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  $: monthLabel = grid.anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   $: dayTasks = (byDate[selected] ?? []).slice().sort(byDue);
   // The same month as the date picker (Month.svelte): header inside the
   // card, two-letter days, round days.

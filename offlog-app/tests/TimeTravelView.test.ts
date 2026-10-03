@@ -109,12 +109,6 @@ const entries = (c: HTMLElement) => [...c.querySelectorAll('.entry')] as HTMLEle
 
 // Older days are labelled through toLocaleDateString, so the expectation is
 // derived the same way rather than hardcoding an en-US string.
-const localDayLabel = (d: Date, withYear = false) =>
-  d.toLocaleDateString(undefined, {
-    weekday: 'long', month: 'short', day: 'numeric',
-    year: withYear ? 'numeric' : undefined,
-  });
-
 async function renderTT(logs: unknown[], events: Record<string, () => void> = {}) {
   getRecentLogs.mockResolvedValue(logs);
   const r = render(TimeTravelView, { events } as any);
@@ -145,7 +139,7 @@ describe('TimeTravelView day grouping', () => {
     ]);
 
     expect(dayLabels(container))
-      .toEqual(['Today', 'Yesterday', localDayLabel(new Date(2026, 2, 4))]);
+      .toEqual(['Today', 'Yesterday', 'Wed 4 Mar']);
     expect(container.querySelectorAll('.day-group')[0].querySelectorAll('.entry')).toHaveLength(2);
   });
 
@@ -160,7 +154,7 @@ describe('TimeTravelView day grouping', () => {
   it('adds the year to a label from a previous year', async () => {
     const { container } = await renderTT([mkLog('log:1', { ts: ts(2025, 12, 24) })]);
 
-    expect(dayLabels(container)[0]).toBe(localDayLabel(new Date(2025, 11, 24), true));
+    expect(dayLabels(container)[0]).toBe('Wed 24 Dec 2025');
     expect(dayLabels(container)[0]).toContain('2025');
   });
 

@@ -7,6 +7,7 @@
   import { showError } from '../../store';
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from '../../logFormat';
   import { confirmAction } from '../../confirm';
+  import { fmtDay } from '../../utils';
   import TopBar from '../TopBar.svelte';
   import { actions } from '../nav';
 
@@ -50,12 +51,11 @@
   const todayKey = dayKey(new Date());
   const y = new Date(); y.setDate(y.getDate() - 1);
   const yesterdayKey = dayKey(y);
-  const thisYear = new Date().getFullYear();
   function dayLabel(key: string): string {
     if (key === todayKey) return 'Today';
     if (key === yesterdayKey) return 'Yesterday';
     const [yy, m, d] = key.split('-').map(Number);
-    return new Date(yy, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: yy !== thisYear ? 'numeric' : undefined });
+    return fmtDay(new Date(yy, m - 1, d), { weekday: true });
   }
 
   // The device chip only tells devices apart, so it shows once there are two.

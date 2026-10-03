@@ -22,7 +22,7 @@
   $: if (value !== lastValue) { lastValue = value; if (value) shown = value.slice(0, 7); }
 
   $: first = new Date(`${shown}-01T12:00:00`);
-  $: title = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  $: title = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   $: cells = ((): { ymd: string; out: boolean }[] => {
     const lead = (first.getDay() + 7 - (monday ? 1 : 0)) % 7;
     const start = new Date(first); start.setDate(1 - lead);

@@ -5,7 +5,7 @@
   import { getRecentLogs, getTaskById, clearLogs, subscribe } from './db';
   import { projects, showError } from './store';
   import { describeLog, fmt, entityLabel, ACTION_LABEL } from './logFormat';
-  import { ACTION_COLOR } from './utils';
+  import { ACTION_COLOR, fmtDay } from './utils';
   import { closeOnBack, isTopLayer } from './modalStack';
   import { confirmAction } from './confirm';
   import { trapFocus } from './focusTrap';
@@ -98,17 +98,12 @@
   const yesterdayDate = new Date();
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterdayKey = dayKey(yesterdayDate.toISOString());
-  const thisYear = new Date().getFullYear();
 
   function dayLabel(key: string): string {
     if (key === todayKey) return 'Today';
     if (key === yesterdayKey) return 'Yesterday';
     const [y, m, d] = key.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return date.toLocaleDateString(undefined, {
-      weekday: 'long', month: 'short', day: 'numeric',
-      year: y !== thisYear ? 'numeric' : undefined,
-    });
+    return fmtDay(new Date(y, m - 1, d), { weekday: true });
   }
 
   interface DayGroup { key: string; label: string; entries: LogDoc[]; counts: Record<string, number> }

@@ -185,7 +185,7 @@ describe('phone Agenda', () => {
     const again = render(AgendaScreen);
     await waitFor(() => expect(getAllTasksDue).toHaveBeenCalledTimes(2));
     expect(again.container.querySelector('.days button.sel')?.getAttribute('aria-label')).toBe(`${shortDate(pick)}, 0 due`);
-    expect(again.container.querySelector('.ml')?.textContent).toBe(new Date(d.getFullYear(), d.getMonth() + 2, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+    expect(again.container.querySelector('.ml')?.textContent).toBe(new Date(d.getFullYear(), d.getMonth() + 2, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
     expect(get(agendaDay)).toBe(pick);
   });
 

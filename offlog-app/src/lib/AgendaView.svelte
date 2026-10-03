@@ -5,7 +5,7 @@
   import { getAllTasksDue, updateTask, subscribe, getTaskById } from './db';
   import { projects, showError } from './store';
   import { PRIORITY_COLOR as PRIO_COLOR, PRIORITY_LABEL as PRIO_LABEL } from './constants';
-  import { dueLabelLong, dueRelative, dueDateShort, daysSinceWeekStart, localDateStr } from './utils';
+  import { dueLabelLong, dueRelative, dueDateShort, daysSinceWeekStart, localDateStr, fmtDay, dayOf } from './utils';
   import { today as todayStore } from './today';
   import { getWeekStartsMonday } from '../config';
   import CardDetail from './CardDetail.svelte';
@@ -69,7 +69,7 @@
     d.setMonth(d.getMonth() + monthOffset);
     return d;
   })();
-  $: monthLabel = monthAnchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  $: monthLabel = monthAnchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   $: monthLeadDays = daysSinceWeekStart(monthAnchor, weekStartsMonday);
   $: monthDaysInMonth = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 0).getDate();
   $: monthGridLength = Math.ceil((monthLeadDays + monthDaysInMonth) / 7) * 7;
@@ -221,7 +221,7 @@
       {#if selectedDay}
         <div class="month-day-panel" in:slide={revealIn} out:slide={revealOut}>
           <div class="month-day-panel-head">
-            <span>{new Date(selectedDay + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+            <span>{fmtDay(dayOf(selectedDay), { weekday: true })}</span>
             <button class="month-day-close" on:click={() => selectedDay = null} aria-label="Close">×</button>
           </div>
           {#if (tasksByDate[selectedDay] ?? []).length === 0}

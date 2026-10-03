@@ -61,10 +61,10 @@ describe('phone task lists', () => {
     expect(get(stack).at(-1)?.k).toBe('late');
   });
 
-  it('Late: All to today moves every late task to today; Undo puts each date back', async () => {
+  it('Late: Move all to today moves every late task to today; Undo puts each date back', async () => {
     const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });
     await findByText('Old');
-    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await fireEvent.click(getByRole('button', { name: 'Move all to today' }));
     await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(2));
     expect(updateTask).toHaveBeenCalledWith('task:Old', { due_date: day(0) });
     expect(updateTask).toHaveBeenCalledWith('task:Older', { due_date: day(0) });
@@ -80,25 +80,25 @@ describe('phone task lists', () => {
     getAllTasksDue.mockResolvedValue([task('task:Old', day(-3)), task('task:Rep', day(-2), { recurrence: 'weekly' } as Partial<TaskDoc>)]);
     const { findByText, getByRole, unmount } = render(TaskListScreen, { kind: 'late' });
     await findByText('Rep');
-    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await fireEvent.click(getByRole('button', { name: 'Move all to today' }));
     await waitFor(() => expect(updateTask).toHaveBeenCalledTimes(1));
     expect(updateTask).toHaveBeenCalledWith('task:Old', { due_date: day(0) });
     unmount();
     getAllTasksDue.mockResolvedValue([task('task:Rep', day(-2), { recurrence: 'weekly' } as Partial<TaskDoc>)]);
     const r2 = render(TaskListScreen, { kind: 'late' });
     await r2.findAllByText('Rep');
-    expect(r2.queryByRole('button', { name: 'All to today' })).toBeNull();
+    expect(r2.queryByRole('button', { name: 'Move all to today' })).toBeNull();
   });
 
   it('Late: a reminder that follows the due date moves with it; a failure surfaces an error', async () => {
     getAllTasksDue.mockResolvedValue([task('task:Old', day(-3), { remindOnDue: true } as Partial<TaskDoc>)]);
     const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });
     await findByText('Old');
-    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await fireEvent.click(getByRole('button', { name: 'Move all to today' }));
     await waitFor(() => expect(updateTask).toHaveBeenCalled());
     expect(updateTask.mock.calls[0][1]).toMatchObject({ due_date: day(0), reminder_at: expect.any(String) });
     updateTask.mockRejectedValueOnce(new Error('x'));
-    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await fireEvent.click(getByRole('button', { name: 'Move all to today' }));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not move every task. Please try again.'));
   });
 
@@ -106,7 +106,7 @@ describe('phone task lists', () => {
     updateTask.mockReset().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('x'));
     const { findByText, getByRole } = render(TaskListScreen, { kind: 'late' });
     await findByText('Old');
-    await fireEvent.click(getByRole('button', { name: 'All to today' }));
+    await fireEvent.click(getByRole('button', { name: 'Move all to today' }));
     await waitFor(() => expect(showError).toHaveBeenCalledWith('Could not move every task. Please try again.'));
     const t = get(toast);
     expect(t?.text).toBe('Moved 1 of 2 to today');
