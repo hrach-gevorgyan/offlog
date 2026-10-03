@@ -66,6 +66,10 @@ flowchart LR
   phone-sized screen (`PHONE_QUERY` in `phone/nav.ts`, the same breakpoint as
   the desktop layout's mobile rules) `<main>` renders `phone/PhoneApp.svelte`
   instead: four tabs (Home, Today, Agenda, Search), each a stack of screens.
+  Held sideways (`(orientation: landscape) and (max-height: 500px)`) the tabs
+  become a rail on the left, pages keep a 680px column, sheets a 600px
+  width, and Home, the project band, the lock screen and Welcome switch to
+  shorter or two-column layouts so their main action is on the first screen.
   Each shell is its own chunk, imported dynamically only on its side:
   `phone/PhoneApp.svelte` on a phone, `desktopViews.ts` (Sidebar, the five
   views, FilterBar, QuickAdd, GlobalSearch, CardDetail) everywhere else, so

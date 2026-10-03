@@ -127,4 +127,8 @@
   .grab-zone { position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 10px 0 12px; touch-action: none; cursor: grab; }
   .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); margin: 0 auto; }
   h2 { position: sticky; top: 27px; z-index: 1; background: var(--bg); margin: 0 -4px 8px; padding: 0 8px 4px; font-size: var(--p-fs-xl); font-weight: 700; }
+  /* Sideways, a sheet keeps a phone's width, centred. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .psheet { left: max(0px, calc((100% - 600px) / 2)); right: max(0px, calc((100% - 600px) / 2)); max-height: 94dvh; }
+  }
 </style>

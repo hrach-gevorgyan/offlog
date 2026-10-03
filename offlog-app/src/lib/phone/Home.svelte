@@ -292,4 +292,16 @@
   .p-row .lbl { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
   .late-n { color: var(--overdue-ink); font-size: var(--p-fs-xs); font-weight: 600; }
   .stat { font-size: var(--p-fs-s); color: var(--faint); text-align: center; margin: 4px 0 0; }
+
+  /* Sideways: a shorter band, so the projects start on the first screen. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .appbar { height: 56px; }
+    .hero { padding: 56px 20px 54px; }
+    .hbody { margin-top: 0; }
+    .hi { margin-bottom: 6px; }
+    .count b { font-size: 40px; }
+    .track { margin-top: 10px; }
+    .markwrap { width: 180px; height: 180px; right: -60px; top: -24px; }
+    .tiles { margin-top: -40px; }
+  }
 </style>

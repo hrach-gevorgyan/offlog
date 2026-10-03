@@ -27,9 +27,11 @@
 
 {#if ready}
 <div class="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title" use:trapFocus in:fade={scrimIn} out:fade={scrimOut}>
-  <svg class="mark" viewBox="0 0 1024 1024" aria-hidden="true">{#each MARK_PATHS as d}<path d={d} />{/each}</svg>
-  <h1 id="welcome-title">Welcome to Offlog</h1>
-  <p class="lead">A calm place for your tasks.</p>
+  <div class="intro">
+    <svg class="mark" viewBox="0 0 1024 1024" aria-hidden="true">{#each MARK_PATHS as d}<path d={d} />{/each}</svg>
+    <h1 id="welcome-title">Welcome to Offlog</h1>
+    <p class="lead">A calm place for your tasks.</p>
+  </div>
 
   <ul class="points">
     <li>
@@ -59,6 +61,7 @@
     display: flex; flex-direction: column; overflow-y: auto;
     padding: calc(env(safe-area-inset-top, 0px) + 64px) 26px calc(env(safe-area-inset-bottom, 0px) + 20px);
   }
+  .intro { display: contents; }
   .mark { width: 58px; height: 58px; fill: var(--accent); flex-shrink: 0; }
   h1 { margin: 22px 0 8px; font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
   .lead { margin: 0; font-size: 16px; color: var(--faint); line-height: 1.5; }
@@ -71,4 +74,21 @@
   .go { border: 0; border-radius: 14px; padding: 16px; cursor: pointer; font: inherit; font-size: 17px; font-weight: 700; background: var(--accent); color: var(--on-accent); }
   .go:active { filter: brightness(.94); }
   .link { border: 0; background: none; padding: 14px; cursor: pointer; font: inherit; font-size: 16px; font-weight: 600; color: var(--accent); }
+
+  /* Sideways: the greeting on the left, the points and the buttons on the
+     right, so Start is on the first screen. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .welcome {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-template-rows: 1fr auto auto auto 1fr;
+      column-gap: 48px; align-items: start;
+      padding: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-right, 0px) + 32px) calc(env(safe-area-inset-bottom, 0px) + 16px) calc(env(safe-area-inset-left, 0px) + 32px);
+    }
+    .intro { display: flex; flex-direction: column; grid-column: 1; grid-row: 2 / 5; align-self: center; }
+    .mark { width: 46px; height: 46px; }
+    h1 { margin: 14px 0 6px; font-size: 26px; }
+    .points { grid-column: 2; grid-row: 2 / 4; margin: 0; gap: 14px; }
+    .actions { grid-column: 2; grid-row: 4; margin-top: 0; padding-top: 18px; }
+    .go { padding: 13px; }
+    .link { padding: 10px; }
+  }
 </style>

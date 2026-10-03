@@ -71,4 +71,8 @@
   .day.on span { background: var(--accent); color: var(--on-accent); font-weight: 700; box-shadow: none; }
   .day:not(.on):active span { background: var(--col-bg); }
   .day:disabled, .nav:disabled { cursor: default; }
+  @media (orientation: landscape) and (max-height: 500px) {
+    .day { height: 34px; }
+    .day span { width: 30px; height: 30px; }
+  }
 </style>

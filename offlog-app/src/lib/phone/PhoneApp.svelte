@@ -247,4 +247,19 @@
   .pill :global(svg.i) { position: relative; width: 22px; height: 22px; }
   .tb.on .pill { color: var(--accent); }
   .pillbg { position: absolute; inset: 0; border-radius: 16px; background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+  /* A phone held sideways has little height: the tabs move to a rail on the
+     left, the + and the snackbar drop to the bottom edge, and pages keep a
+     readable column instead of rows the full width of the screen. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .phone-shell { flex-direction: row; }
+    .tabbar {
+      order: -1; flex-direction: column; justify-content: center; align-items: center; gap: 12px; width: 80px;
+      padding: calc(8px + env(safe-area-inset-top, 0px)) 0 calc(8px + env(safe-area-inset-bottom, 0px));
+      border-top: 0; border-right: 1px solid var(--border);
+    }
+    .fab { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+    .snack { left: 12px; right: 84px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 560px; }
+    .screen:not(.flush):not(.board) { padding-inline: max(16px, calc((100% - 680px) / 2)); }
+  }
 </style>

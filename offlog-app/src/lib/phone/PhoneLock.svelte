@@ -205,4 +205,21 @@
   }
   .go:disabled { opacity: .45; cursor: default; }
   .rec .link { align-self: center; }
+
+  /* Sideways there is no room for the keypad under the title: the title,
+     dots and links take the left, the keypad (or the recovery form) the right. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .lock {
+      display: grid; grid-template-columns: minmax(0, 320px) auto; grid-template-rows: 1fr auto auto auto 1fr;
+      column-gap: 56px; justify-content: center; align-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-right, 0px) + 24px) calc(env(safe-area-inset-bottom, 0px) + 12px) calc(env(safe-area-inset-left, 0px) + 24px);
+    }
+    .head { grid-column: 1; grid-row: 2; gap: 8px; }
+    .mark { width: 40px; height: 40px; }
+    .dots { grid-column: 1; grid-row: 3; justify-content: center; margin: 18px 0 8px; }
+    .foot { grid-column: 1; grid-row: 4; margin-top: 0; padding-top: 0; justify-content: center; }
+    .pad { grid-column: 2; grid-row: 1 / 6; align-self: center; grid-template-columns: repeat(3, 60px); gap: 10px 22px; }
+    .key { width: 60px; height: 60px; font-size: 24px; }
+    .rec { grid-column: 2; grid-row: 1 / 6; align-self: center; width: 340px; margin-top: 0; }
+  }
 </style>

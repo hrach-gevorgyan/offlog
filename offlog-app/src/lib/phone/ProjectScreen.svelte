@@ -166,4 +166,5 @@
   .p-seg.view { flex-shrink: 0; margin: -8px 0 -8px auto; padding: 2px; }
   .p-seg.view button { position: relative; flex: none; width: 56px; min-height: 30px; padding: 0; }
   .p-seg.view button::before { content: ''; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
+  @media (orientation: landscape) and (max-height: 500px) { .band { padding-bottom: 22px; margin-bottom: 14px; } }
 </style>

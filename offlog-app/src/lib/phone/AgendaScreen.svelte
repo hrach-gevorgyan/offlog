@@ -197,4 +197,5 @@
   .month button.sel .dots { color: var(--on-accent); }
   .none { display: flex; flex-direction: column; align-items: center; padding: 0 0 12px; }
   .none .p-empty { padding-bottom: 6px; }
+  @media (orientation: landscape) and (max-height: 500px) { .month button { height: 36px; gap: 1px; } }
 </style>
