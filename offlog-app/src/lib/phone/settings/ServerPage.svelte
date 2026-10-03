@@ -107,7 +107,7 @@
   .k b { display: flex; align-items: center; gap: 6px; font-size: var(--p-fs-l); }
   .k small { font-size: var(--p-fs-s); color: var(--muted); line-height: 1.4; }
   .state .p-dot { background: var(--border-strong); }
-  .ok .p-dot { background: var(--success); }
+  .ok .p-dot { background: var(--success-mark); }
   .bad .p-dot { background: var(--danger); }
   .note { margin: 0 4px 14px; font-size: var(--p-fs-s); color: var(--faint); line-height: 1.45; }
   .fld { display: block; background: var(--surface); border-radius: 12px; box-shadow: var(--p-shadow); padding: 9px 14px; margin-bottom: 8px; }

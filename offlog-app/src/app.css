@@ -81,6 +81,8 @@
   --success-ink: color-mix(in srgb, var(--success) 50%, var(--text));
   /* An off switch's track: --border-strong alone is 1.6:1 and the switch vanishes. */
   --switch-off: color-mix(in srgb, var(--border-strong) 60%, var(--text));
+  /* A green dot or mark that carries meaning: 3:1 or more against the card. */
+  --success-mark: color-mix(in srgb, var(--success) 70%, var(--text));
   --due-soon-bg: #faf3d4;
   --due-soon-ink: #884826;
   /* A warm accent for decoration only (Settings tiles), never for meaning. */
@@ -199,6 +201,7 @@ body.dark {
   --success: #74d791;
   --success-ink: color-mix(in srgb, var(--success) 50%, var(--text));
   --switch-off: color-mix(in srgb, var(--border-strong) 60%, var(--text));
+  --success-mark: var(--success);
   --due-soon-bg: #372f1a;
   --due-soon-ink: #efc365;
   --amber: #efc365;

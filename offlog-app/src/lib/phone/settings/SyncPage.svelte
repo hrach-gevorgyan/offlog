@@ -492,7 +492,7 @@
   .link i { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--surface);
     display: flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; font-size: 14px; color: var(--on-accent); background: var(--border-strong); }
   .link i :global(svg.i) { width: 14px; height: 14px; stroke-width: 3; }
-  .ok .link, .ok .link i { background: var(--success); }
+  .ok .link, .ok .link i { background: var(--success-mark); }
   .bad .link { background: repeating-linear-gradient(90deg, var(--danger) 0 6px, transparent 6px 11px); }
   .bad .link i { background: var(--danger); }
   .idle .link { background: repeating-linear-gradient(90deg, var(--border-strong) 0 6px, transparent 6px 11px); }
@@ -508,7 +508,7 @@
   .acc .ri { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .seen { display: flex; align-items: center; gap: 6px; }
   .seen .p-dot { background: var(--border-strong); }
-  .seen .p-dot.fresh { background: var(--success); }
+  .seen .p-dot.fresh { background: var(--success-mark); }
   .chev { display: flex; color: var(--faint); }
   .p-row > .p-k + .chev { margin-left: auto; }
   .p-v + .chev { margin-left: -6px; }

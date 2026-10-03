@@ -627,7 +627,7 @@
   .pset :global(.setting-row.step) { flex-wrap: nowrap; padding-top: 4px; }
   .pset :global(.setting-row.step + .setting-row.step) { border-top: 1px solid var(--border); padding-top: 10px; }
   .pset :global(.step .tick) { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .pset :global(.step.done .tick) { color: var(--on-accent); background: var(--success); }
+  .pset :global(.step.done .tick) { color: var(--on-accent); background: var(--success-mark); }
   .pset :global(.step.done .setting-label) { color: var(--muted); }
   .pset :global(.time-row) { position: relative; cursor: pointer; }
   .pset :global(button.time-row) { width: 100%; border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; }
