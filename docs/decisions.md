@@ -43,6 +43,15 @@ detail for anything summarized here lives in git history.
   local-network permission prompts, or general policy scrutiny of an app that
   talks to LAN addresses over cleartext HTTP. Answered only by the C3 review
   itself (roadmap.md).
+- **Should a project be renamable and movable to another space?** Neither
+  app can do either today (`main` never could); a typo in a project name is
+  permanent unless the project is recreated. Spaces, tags, fields and
+  statuses are all renamable. Raised by the 3 Oct 2026 readiness audit.
+- **One vocabulary and one date style across phone and desktop?** The two
+  apps name the same things differently (Recycle / Recycle bin, Time Travel /
+  History, card / task, Manage Custom Fields / Fields) and write dates
+  differently ("Sep 30, 2026" / "Wed 30 Sep"); spelling mixes British and
+  American. Raised by the same audit.
 
 Genuinely unresolved questions live here — shareable as-is for outside
 input, and distinct from both the decisions log below and roadmap.md's
