@@ -1057,7 +1057,12 @@ screenshot ships twice, `name.webp` and a sharper `name-2x.webp`, picked by
 nothing from other origins, and its CSP meta forbids inline styles and
 scripts, so styling goes in `style.css`. `site/CNAME` holds `offlog.io`;
 `.github/workflows/pages.yml` publishes `site/` to GitHub Pages on pushes
-to `main` that touch it. Preview locally with the `offlog-site` entry in
+to `main` that touch it, and daily. Before upload,
+`.github/scripts/stamp-release.mjs` writes the latest published release's
+version, date, installer link and file sizes into the download section's
+`data-rel` elements; the committed values are the fallback if that lookup
+fails. The Android button links `releases/latest/download/app-release.apk`,
+so the APK keeps that file name. Preview locally with the `offlog-site` entry in
 `.claude/launch.json` (Vite serving `site/` on port 4200). offlog.co is a
 registrar-level redirect to offlog.io, not a second Pages site.
 

@@ -388,26 +388,76 @@
     </div>
   </section>
 
+  <section class="compare" id="compare" aria-labelledby="compare-h">
+    <div class="wrap">
+      <p class="eyebrow lift">Different by design</p>
+      <h2 class="lift" id="compare-h">Not a cloud app, on purpose.</h2>
+      <p class="lede lift">Most task apps keep your list on their servers. Offlog keeps it on your devices. That changes a few things, some in your favor and some not.</p>
+      <div class="cmp-wrap lift">
+        <table class="cmp">
+          <thead><tr><td></td><th scope="col">Offlog</th><th scope="col">A typical cloud task app</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Where your tasks live</th><td class="y">On your phone and your PC</td><td>On the company's servers</td></tr>
+            <tr><th scope="row">Account</th><td class="y">None</td><td>Email and password, or a Google or Apple sign-in</td></tr>
+            <tr><th scope="row">Who can read your tasks</th><td class="y">Only you</td><td>You, and the company running it</td></tr>
+            <tr><th scope="row">Price</th><td class="y">Free, every feature, no ads</td><td>Often a free tier, then a subscription</td></tr>
+            <tr><th scope="row">If the company shuts down</th><td class="y">The app keeps working. The code is open.</td><td>The service can go with it</td></tr>
+            <tr><th scope="row">Sync away from home</th><td class="n">No, only on your own Wi-Fi</td><td class="y">Anywhere with internet</td></tr>
+            <tr><th scope="row">iPhone and Mac</th><td class="n">No</td><td class="y">Usually</td></tr>
+            <tr><th scope="row">Sharing with other people</th><td class="n">No, it's for one person</td><td class="y">Usually</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="fit lift">
+        <div class="for"><h3>Offlog is for you if</h3><ul><li>You want your tasks to stay on your own devices</li><li>You use an Android phone, a Windows PC, or both</li><li>You plan your own work and your own life</li></ul></div>
+        <div class="notfor"><h3>Look elsewhere if</h3><ul><li>You plan together with a team or a family</li><li>You use an iPhone or a Mac</li><li>You need your phone and PC to sync while you're away</li></ul></div>
+      </div>
+    </div>
+  </section>
+
   <section id="download">
     <div class="wrap">
       <p class="eyebrow lift">Download</p>
       <h2 class="lift">Two apps. One set of tasks.</h2>
       <p class="lede lift">Use either on its own, or both together.</p>
+      <p class="rel lift">Version <b data-rel="version">6.10.5</b> · released <time data-rel="date" datetime="2026-09-29">29 September 2026</time> · <a class="textlink" data-rel="notes" href="https://github.com/hrach-gevorgyan/offlog/releases/tag/v6.10.5">What's new</a></p>
       <div class="get lift">
         <article class="plat">
           <div class="big-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 5.5 10 4.5v7H3zM11 4.4 21 3v8.5H11zM3 12.5h7v7l-7-1zM11 12.5h10V21l-10-1.4z"/></svg></div>
-          <div><h3>Windows</h3><p class="req">An installer for your PC</p></div>
+          <div><h3>Windows</h3><p class="req">64-bit Windows · installs for your user, no admin rights needed</p></div>
           <ul><li>Board, List, Agenda and Focus, with keyboard shortcuts</li><li>Lives in the tray, opens with Ctrl+Alt+O</li><li>Hosts sync for your phone, and tells you about updates</li></ul>
-          <a class="btn btn-primary" href="https://github.com/hrach-gevorgyan/offlog/releases/latest">Download for Windows</a>
+          <a class="btn btn-primary" data-rel="exe" href="https://github.com/hrach-gevorgyan/offlog/releases/download/v6.10.5/Offlog_6.10.5_x64-setup.exe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
+            Download for Windows <small data-rel="exe-size">5.2 MB</small>
+          </a>
+          <details class="howto">
+            <summary>How to install</summary>
+            <ol>
+              <li>Open the downloaded <code data-rel="exe-name">Offlog_6.10.5_x64-setup.exe</code>.</li>
+              <li>If Windows says "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>. It warns because the installer isn't code-signed.</li>
+              <li>Follow the installer. Offlog opens, and stays in the tray when you close its window.</li>
+            </ol>
+          </details>
         </article>
         <article class="plat">
           <div class="big-ico"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.6 9.48 19.4 6.3a.4.4 0 0 0-.7-.4l-1.84 3.2a11 11 0 0 0-9.72 0L5.3 5.9a.4.4 0 0 0-.7.4l1.8 3.18A10.3 10.3 0 0 0 1 18h22a10.3 10.3 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg></div>
           <div><h3>Android</h3><p class="req">Android 7.0 or newer</p></div>
           <ul><li>Made for one hand: tabs, a full task screen, scroll wheels for time</li><li>Reminders with Done and Snooze 1h, and a home-screen widget</li><li>Works in landscape, and fully offline</li></ul>
-          <a class="btn btn-primary" href="https://github.com/hrach-gevorgyan/offlog/releases/latest">Download the APK</a>
+          <a class="btn btn-primary" href="https://github.com/hrach-gevorgyan/offlog/releases/latest/download/app-release.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>
+            Download the APK <small data-rel="apk-size">4.9 MB</small>
+          </a>
+          <details class="howto">
+            <summary>How to install</summary>
+            <ol>
+              <li>Download the APK on your phone, then open it from the download notification or your Downloads.</li>
+              <li>Android asks whether your browser may install apps. Tap <b>Settings</b>, turn on <b>Allow from this source</b>, and go back.</li>
+              <li>Tap <b>Install</b>. If Google Play Protect asks, let it scan the app first.</li>
+            </ol>
+          </details>
         </article>
       </div>
-      <p class="note lift">Windows shows a warning before installing because the installer isn't code-signed. Updates are still signature-checked. Until the Google Play listing is live, Android asks you to allow installs from your browser. No iOS or Mac version.</p>
+      <p class="note lift">Updates are signature-checked before they install. Until the Google Play listing is live, the APK comes from GitHub, where every release and its source code are public. No iOS or Mac version.</p>
     </div>
   </section>
 

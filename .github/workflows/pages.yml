@@ -1,12 +1,19 @@
-# Publishes site/ (offlog.io) to GitHub Pages. Static files only: no build
-# step, no secrets. site/CNAME carries the custom domain; Pages must be set to
-# "Source: GitHub Actions" in the repo settings.
+# Publishes site/ (offlog.io) to GitHub Pages. Static files; the one step
+# before upload stamps the latest release's version, date and file sizes into
+# the download section, falling back to the committed values. site/CNAME
+# carries the custom domain; Pages must be set to "Source: GitHub Actions" in
+# the repo settings.
 name: Website
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['site/**', '.github/workflows/pages.yml', '.github/scripts/stamp-release.mjs']
+  # Daily, so a new release reaches the download section within a day. Not on
+  # the release event: Pages only accepts deploys from the default branch, and
+  # a release run is on its tag.
+  schedule:
+    - cron: '17 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +27,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
@@ -27,6 +35,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - name: Stamp the latest release into the download section
+        run: node .github/scripts/stamp-release.mjs site/index.html
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d  # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         with:
