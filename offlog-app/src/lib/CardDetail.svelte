@@ -717,7 +717,7 @@
         <!-- Picker and shortcut pills share one row; the picker keeps a
              fixed-ish width so the pills have real room next to it. -->
         <div class="due-date-row">
-          <CalendarPicker value={due_date} on:change={(e) => due_date = e.detail} />
+          <CalendarPicker value={due_date} shortcuts={false} on:change={(e) => due_date = e.detail} />
           <div class="due-shortcuts">
             {#each DUE_SHORTCUTS as s}
               <button

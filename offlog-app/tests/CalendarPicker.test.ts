@@ -6,8 +6,11 @@ import { render, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 // UTC-based formatter would only drift on a machine that isn't on UTC.
 vi.hoisted(() => { process.env.TZ = 'America/Los_Angeles'; });
 
+const cfg = vi.hoisted(() => ({ monday: true }));
 vi.mock('../src/config', () => ({
   getTimeFormat24h: () => true,
+  getWeekStartsMonday: () => cfg.monday,
+  getDefaultReminderTime: () => '10:00',
 }));
 
 import CalendarPicker from '../src/lib/CalendarPicker.svelte';
@@ -24,6 +27,11 @@ const isOpen = (c: HTMLElement) =>
   (c.querySelector('.cal-trigger') as HTMLButtonElement).getAttribute('aria-expanded') === 'true';
 const monthLabel = (c: HTMLElement) => c.querySelector('.cal-month-label')!.textContent;
 const dayEls = (c: HTMLElement) => [...c.querySelectorAll('.cal-day')] as HTMLButtonElement[];
+const chip = (c: HTMLElement, label: string) => {
+  const el = [...c.querySelectorAll('.cal-chip, .cal-time')].find(b => b.textContent?.trim() === label);
+  if (!el) throw new Error(`no chip ${label}`);
+  return el;
+};
 const day = (c: HTMLElement, n: string) => {
   const el = dayEls(c).find(d => d.textContent === n);
   if (!el) throw new Error(`no day cell ${n}`);
@@ -67,11 +75,21 @@ describe('CalendarPicker date emission', () => {
 
   // The clock is deliberately on a day that has already rolled over in UTC:
   // "Today" must be the local date, not toISOString()'s.
-  it('Today emits the local date even when UTC is already on the next day', async () => {
+  it('the Today chip emits the local date even when UTC is already on the next day', async () => {
     const { container, change } = renderPicker({ value: '' });
     await open(container);
-    await fireEvent.click(footerBtn(container, 'Today'));
+    await fireEvent.click(chip(container, 'Today'));
     expect(emitted(change)).toEqual(['2026-03-15']);
+    expect(isOpen(container)).toBe(false);
+  });
+
+  it('shortcut chips: Tomorrow, Next Monday and In a week, the picked one marked', async () => {
+    const { container, change } = renderPicker({ value: '2026-03-16' });
+    await open(container);
+    expect([...container.querySelectorAll('.cal-chip')].map(b => b.textContent?.trim())).toEqual(['Today', 'Tomorrow', 'In a week']);
+    expect(container.querySelector('.cal-chip.on')!.textContent).toBe('Tomorrow');
+    await fireEvent.click(chip(container, 'In a week'));
+    expect(emitted(change)).toEqual(['2026-03-22']);
   });
 
   it('emits an empty string when cleared', async () => {
@@ -82,10 +100,16 @@ describe('CalendarPicker date emission', () => {
     expect(isOpen(container)).toBe(false);
   });
 
+  it('leaves its shortcut chips out when the parent has its own', async () => {
+    const { container } = renderPicker({ value: '', shortcuts: false });
+    await open(container);
+    expect(container.querySelector('.cal-chips')).toBeNull();
+  });
+
   it('offers no Clear button when there is nothing to clear', async () => {
     const { container } = renderPicker({ value: '' });
     await open(container);
-    expect([...container.querySelectorAll('.cal-footer-btn')].map(b => b.textContent?.trim())).toEqual(['Today']);
+    expect(container.querySelectorAll('.cal-footer-btn')).toHaveLength(0);
   });
 
   it('closes on pick in date-only mode', async () => {
@@ -113,10 +137,11 @@ describe('CalendarPicker with time', () => {
     expect(isOpen(container)).toBe(true);
   });
 
-  it('keeps the selected date when only the time changes', async () => {
+  it('keeps the selected date when only the time changes; an uncommon time opens the time box', async () => {
     const { container, change } = renderPicker({ value: '2026-03-15T14:30', withTime: true });
     await open(container);
-    const hourSelect = container.querySelector('.cal-time-row .custom-select') as HTMLElement;
+    expect(container.querySelector('.cal-time.on')!.getAttribute('aria-label')).toBe('Another time');
+    const hourSelect = container.querySelector('.cal-time-box .custom-select') as HTMLElement;
     await fireEvent.click(hourSelect.querySelector('.cs-trigger')!);
     const opt = [...hourSelect.querySelectorAll('.cs-option')].find(o => o.textContent === '08')!;
     await fireEvent.click(opt);
@@ -126,11 +151,22 @@ describe('CalendarPicker with time', () => {
   it('falls back to today when a time is picked with no date selected', async () => {
     const { container, change } = renderPicker({ value: '', withTime: true });
     await open(container);
-    const hourSelect = container.querySelector('.cal-time-row .custom-select') as HTMLElement;
-    await fireEvent.click(hourSelect.querySelector('.cs-trigger')!);
-    const opt = [...hourSelect.querySelectorAll('.cs-option')].find(o => o.textContent === '08')!;
-    await fireEvent.click(opt);
-    expect(emitted(change)).toEqual(['2026-03-15T08:00']);
+    await fireEvent.click(chip(container, '13:00'));
+    expect(emitted(change)).toEqual(['2026-03-15T13:00']);
+  });
+
+  it('starts a new reminder at the default time, offers common times, and Done closes', async () => {
+    const { container, change } = renderPicker({ value: '', withTime: true });
+    await open(container);
+    expect([...container.querySelectorAll('.cal-time')].map(b => b.textContent?.trim())).toEqual(['09:00', '10:00', '13:00', '18:00', '']);
+    expect(container.querySelector('.cal-time.on')!.textContent).toBe('10:00');
+    expect(container.querySelector('.cal-time-box')).toBeNull();
+    await fireEvent.click(day(container, '20'));
+    expect(emitted(change)).toEqual(['2026-03-20T10:00']);
+    await fireEvent.click(container.querySelector('[aria-label="Another time"]')!);
+    expect(container.querySelector('.cal-time-box .custom-select')).toBeTruthy();
+    await fireEvent.click(footerBtn(container, 'Done'));
+    expect(isOpen(container)).toBe(false);
   });
 });
 
@@ -173,6 +209,17 @@ describe('CalendarPicker month grid', () => {
     expect(monthLabel(container)).toBe('January 2027');
   });
 
+  it('starts the week on Sunday when that is the setting', async () => {
+    cfg.monday = false;
+    try {
+      const { container } = renderPicker({ value: '2026-03-15' });
+      await open(container);
+      expect(container.querySelector('.cal-dow span')!.textContent).toBe('Su');
+      // 2026-03-01 is a Sunday: no blanks before it.
+      expect([...container.querySelectorAll('.cal-grid > *')][0].textContent).toBe('1');
+    } finally { cfg.monday = true; }
+  });
+
   it('marks today and the selected day', async () => {
     const { container } = renderPicker({ value: '2026-03-20' });
     await open(container);
@@ -207,13 +254,9 @@ describe('CalendarPicker open/close', () => {
     expect(trigger(container).textContent!.trim()).toBe('No due date');
   });
 
-  it('labels the date with the desktop format, or the one passed in', () => {
+  it('labels the date, and the time when it has one', () => {
     expect(trigger(renderPicker({ value: '2026-03-15' }).container).textContent!.trim()).toBe('Mar 15, 2026');
     cleanup();
-    const fmt = vi.fn((ymd: string) => `<${ymd}>`);
-    const { container } = renderPicker({ value: '2026-03-15T09:30', withTime: true, formatDate: fmt, bare: true });
-    expect(trigger(container).textContent!.trim()).toBe('<2026-03-15>, 09:30');
-    expect(trigger(container).classList.contains('bare')).toBe(true);
-    expect(container.querySelector('.cal-trigger svg')).toBeNull();
+    expect(trigger(renderPicker({ value: '2026-03-15T09:30', withTime: true }).container).textContent!.trim()).toBe('Mar 15, 2026, 09:30');
   });
 });

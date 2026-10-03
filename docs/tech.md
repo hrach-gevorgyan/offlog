@@ -232,7 +232,7 @@ src/
     ArchivedProjectsManager.svelte  Archive and restore projects
 
     CustomSelect.svelte         Themed dropdown, replaces every native <select>
-    CalendarPicker.svelte       Themed date picker (desktop; the phone uses phone/Month.svelte)
+    CalendarPicker.svelte       Desktop date pop-up: shortcut chips, round days, common times + a box for any other (the phone uses phone/Month.svelte)
     TimePicker.svelte           Themed time picker
     ConfirmDialog.svelte        Themed confirm(), driven by confirm.ts
     NamePrompt.svelte           Desktop first run: device name + quick preferences + sync offer (the phone shows phone/Welcome.svelte)
