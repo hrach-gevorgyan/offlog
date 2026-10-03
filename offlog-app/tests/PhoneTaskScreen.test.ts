@@ -121,6 +121,9 @@ describe('phone TaskScreen', () => {
     // A closed sheet's history.back() lands as an async popstate; let it
     // settle so it cannot pop the next test's sheet.
     await new Promise(r => setTimeout(r, 20));
+    // Times are asserted as "13:00". Unset, the format follows the machine's
+    // locale, so an en-US CI runner would render "1:00 PM".
+    localStorage.setItem('offlog_time_format_24h', 'true');
     switchTab('home');
     toast.set(null);
     for (const f of Object.values(db)) f.mockReset();
