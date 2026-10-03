@@ -90,10 +90,10 @@ What the owner has said they like:
 
 Checked against the current code on 3 October 2026:
 
-- **Still open — Quick add eats possessive date words.** `parseQuickAdd`
-  (`src/lib/nlpParse.ts`) turns "Tomorrow's plan" into the title "'s plan"
-  due tomorrow, and "Review friday's notes" into "Review 's notes". A date
-  word followed by `'s` must stay in the title.
+- **Fixed — Quick add ate possessive date words.** A word followed by `'s`
+  ("Tomorrow's plan", "Review friday's notes") now stays in the title;
+  `find()` in `src/lib/nlpParse.ts` skips it, covered in
+  `tests/nlpParse.test.ts`.
 - **Still open on desktop — a destructive confirm focuses the action.**
   `desktop/ConfirmDialog.svelte` autofocuses the confirm button even when
   `danger` is set; Cancel should take focus for destructive actions.
