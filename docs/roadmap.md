@@ -30,11 +30,13 @@ State as of 3 Oct 2026.
   privacy policy is [privacy.md](privacy.md). Waiting on Google's identity
   verification and review. Whether local-network sync draws extra review
   friction is an open question in decisions.md. Before submitting, the
-  listing draft and screenshots (kept outside the repo, in the git-ignored
-  `brand kit/`) need redoing for the redesigned phone app: they still show
-  `main`'s layout and use retired names ("Kanban", "Time Travel" instead of
-  Board and History).
-- **C5, landing page.** One plain GitHub Pages page. Not blocking anything.
+  listing draft and its screenshots (kept outside the repo, in the
+  git-ignored `brand kit/`) were redone on 3 Oct 2026 for the redesigned
+  phone app, with a `play-ready/` set at the 2:1 ratio Play requires.
+- **C5, website at offlog.io.** Built in `site/` and published by
+  `.github/workflows/pages.yml` from `main`. Waiting on the owner: the DNS
+  records for offlog.io (and offlog.co forwarding to it), Pages set to
+  "Source: GitHub Actions" with the custom domain, and the merge to `main`.
 
 ## Ours to do
 

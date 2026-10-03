@@ -282,6 +282,8 @@ later). In practice:
   the repo's commits/release tags are the record. No formal trademark
   registration exists; these are common-law rights based on actual,
   dated use.
+- **Domains**: offlog.io is the official site; offlog.co is owned too and
+  forwards to it. Nothing else official lives anywhere else.
 - **Fine without asking**: naming Offlog in an article, a comparison,
   a "built with" note, or redistributing an official release unmodified.
 - **Not fine without asking**: using the name or icon on a fork, a

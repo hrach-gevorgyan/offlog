@@ -2,6 +2,8 @@
   <img src="docs/images/readme-banner.png" alt="Offlog — off the cloud, still logged." width="700">
 </p>
 
+<p align="center"><a href="https://offlog.io"><b>offlog.io</b></a></p>
+
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-575FCA?style=flat-square"></a>
   <a href="https://github.com/hrach-gevorgyan/offlog/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hrach-gevorgyan/offlog?style=flat-square&color=575FCA"></a>

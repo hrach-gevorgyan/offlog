@@ -107,6 +107,15 @@ data collected, no data shared, no data types declared. If this policy ever
 changes, that form has to be updated in the same pass — the two are checked
 against each other.
 
+## The website
+
+offlog.io is a static page served by GitHub Pages (offlog.co forwards
+to it). It sets no cookies, runs no analytics and loads nothing from other
+sites: its font, images and script are its own files. GitHub, as the host,
+keeps ordinary server logs such as IP addresses under
+[GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement);
+Offlog never sees them.
+
 ## Changes to this policy
 
 If this policy ever needs to change (for example, if a genuinely new

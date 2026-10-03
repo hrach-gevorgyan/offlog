@@ -13,6 +13,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--prefix", "offlog-app", "--", "--port", "4173", "--strictPort"],
       "port": 4173
+    },
+    {
+      "name": "offlog-site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["offlog-app/node_modules/vite/bin/vite.js", "site", "--port", "4200", "--strictPort"],
+      "port": 4200
     }
   ]
 }

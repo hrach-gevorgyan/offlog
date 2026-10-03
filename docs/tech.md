@@ -1034,6 +1034,19 @@ cargo tauri build
 
 ---
 
+## Website (offlog.io)
+
+`site/` is a static page, hand-written HTML and CSS with one small script
+(`site.js`: the nav hairline and scroll reveals; the page reads fine
+without it). It follows brand.md: one accent, Hanken Grotesk self-hosted
+from `site/fonts/`, real app screenshots in `site/img/` as WebP. It loads
+nothing from other origins, and its CSP meta forbids inline styles and
+scripts, so styling goes in `style.css`. `site/CNAME` holds `offlog.io`;
+`.github/workflows/pages.yml` publishes `site/` to GitHub Pages on pushes
+to `main` that touch it. Preview locally with the `offlog-site` entry in
+`.claude/launch.json` (Vite serving `site/` on port 4200). offlog.co is a
+registrar-level redirect to offlog.io, not a second Pages site.
+
 ## Version History
 
 See [changelog.md](changelog.md). Don't duplicate it here or in README.md.
