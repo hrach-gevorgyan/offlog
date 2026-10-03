@@ -17,6 +17,82 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [6.11.0] — 2026-10-04
+
+The phone app is rebuilt as its own shell (`src/lib/phone/`), replacing the
+squeezed desktop layout on phone-sized screens; the Tauri window never sees
+it. Alongside it: a readiness audit across both apps (accessibility, one
+vocabulary, error voice, data-layer races), the source split into
+`desktop/` and `shared/`, and the offlog.io website. No storage, sync or
+backup format changed — older installs read, sync and restore as before.
+
+### Added
+- **Phone shell**: four tabs (Home, Today, Agenda, Search) with a + button;
+  Home hero with what's left today and Overdue / Focus / Pinned tiles;
+  full-screen task with value-only rows and bottom-sheet pickers; project
+  screen on a band in its space colour with status pills, bulk select and
+  filters; Settings as pushed pages; Recycle bin, History and Archived as
+  phone screens; landscape layout with a tab rail.
+- **One date and time picker** on the phone (chips, a full-width month,
+  scroll wheels); the desktop date pop-up now matches it.
+- **Keypad lock screen**, a first-launch welcome page, and a Reminders
+  set-up card; Android asks for notification permission at the first
+  reminder instead of at launch.
+- **Rename a project or move it to another space** (phone menu, desktop
+  sidebar).
+- **Devices name themselves** from the Android device name or the Windows
+  computer name, so History shows where a change came from.
+- Android: predictive back at Home; a calmer quick-actions widget; splash
+  in the hero colour.
+- **offlog.io**: a static site in `site/`, published by
+  `.github/workflows/pages.yml`, which stamps the latest release's version,
+  date and file sizes into the download section daily
+  (`.github/scripts/stamp-release.mjs`).
+
+### Changed
+- Muted palette: chroma ×0.8 on the accent, status and priority colours;
+  icons, badges and installer art use the current brand colour (#575fca).
+- One vocabulary on phone and desktop — Board (not Kanban), History,
+  Recycle bin, Fields, Overdue (not Late) — one date style through `fmtDay`,
+  and one error voice ("Could not … Please try again.").
+- Code layout: desktop views in `src/lib/desktop/`, pieces both shells use in
+  `src/lib/shared/`; `tests/layout.test.ts` fails if `phone/` or `shared/`
+  imports from `desktop/`.
+- Default reminder time is 10:00.
+
+### Fixed
+- Finished tasks were flagged overdue, and maintenance flagged finished
+  tasks in archived projects.
+- Data layer: the task cache could miss a write made mid-read (one shared
+  change feed now); bulk actions reported success on partial failure;
+  project restore dropped attachments; conflict resolution, reload ordering
+  and sync/reminder races; a failed history write could fail the action.
+- Resume restarts phone sync; reminders re-arm hourly; future-dated stamps
+  are treated as due; Today/Tomorrow/Overdue roll over at local midnight; a
+  backup dated in the future rotates out first.
+- Desktop: duplicate adds, stranded archives, drop between pinned groups;
+  task Save writes only the edited fields; Escape closes only the top layer
+  and App Lock blocks overlays; the NyxDB sidecar is supervised and
+  restarted after a crash; a failed network scan no longer shows Scanning
+  forever.
+- Quick add keeps possessives ("Tomorrow's plan") in the title; backslash
+  escapes only at a word start.
+- The in-app Reduce motion switch also zeroes CSS transitions.
+- Accessibility audit, three rounds: contrast of greens, greys, off
+  switches (`--switch-off`, 3.5:1 / 4.2:1), band text (4.5:1 on every space
+  colour), status ticks (`--success-mark`, 3:1); dialogs announced, sheet
+  headings, named navigation and inputs, 24px hit areas in the List.
+
+### Security
+- The pairing server can no longer be stalled by a slow client, and the App
+  Lock recovery code comes from a CSPRNG.
+
+### Performance
+- Phone start-up loads about half a megabyte less JavaScript: PouchDB's
+  own minified build, the note editor loaded on first use, and the desktop
+  views and phone shell split into chunks neither platform loads for the
+  other.
+
 ## [6.10.5] — 2026-09-29
 
 A dependency release: every npm package, Rust crate and GitHub Action
@@ -532,67 +608,9 @@ which was slow, vague, and in one case destructive.
 
 ---
 
-## [6.6.0] — 2026-08-24
-
-Everything here came out of two investigations: a mesh-sync design pass that
-was closed without shipping, and a scale benchmark that turned out to be
-measuring nothing.
-
-### Changed
-- **Editing a task no longer costs the next screen a full rebuild.** Every
-  task write calls `invalidateTaskCache()`, which dropped the whole cache, so
-  the next read re-read every task. Against 20,000 tasks a read straight
-  after one edit cost 138.7ms versus 1.1ms warm. Invalidation now marks the
-  cache stale and the next read catches up from the change feed, falling back
-  to a full reload past 500 pending changes. **138.7ms → 5.3ms at 20,000
-  tasks; 39.6ms → 1.6ms at 5,000.** No call site changed and the
-  "invalidate on every task write path" invariant is untouched — the
-  guarantee is identical, only the cost moved.
-
-### Fixed
-- `clearLocalSeedBeforeFirstPair()` treated "zero tasks" as "untouched" and
-  deleted the four fixed seed documents on first pair. Setting up spaces and
-  projects before adding any task is a normal way to start, and those ids are
-  the spaces a new user renames first, so a rename plus no tasks lost real
-  work. Now also requires no user-created space or project, and every seed
-  doc still matching its original content — decided by content, not revision
-  number, since `wipeAndReseed()` leaves a pristine seed at generation 3+.
-- `scanConflicts()` ran an unbounded `allDocs` with `include_docs` on every
-  sync settle, loading six months of `log:` documents that cannot conflict.
-- "Cannot reach sync server — check you're on the same network" appeared
-  while the user *was* on the right network: the offline branch only fires
-  when `navigator.onLine` is false, which it is not when the host PC is
-  simply switched off.
-- `version.js` escaped only `.` before interpolating the version into a
-  `RegExp` (CodeQL `js/incomplete-sanitization`). It builds no dynamic regex
-  at all now.
-- The Android status-bar strip took its own colour rather than the page
-  background.
-
-### Removed
-- Mesh sync, closed after investigation. A spike against two real NyxDB
-  instances proved the protocol side works and that NyxDB needs no change;
-  Android closed it on four independent grounds, recorded in decisions.md so
-  it is not reopened on a hunch.
-
-### Internal
-- **`npm run bench` had never measured a database.** vitest does not run
-  `beforeAll` under `vitest bench`, so `perf.bench.ts`'s 3,000-task fixture
-  never existed — confirmed with a probe that saw 0 documents. Separately,
-  the task cache served every iteration, reporting 0.024ms for work costing
-  20ms cold. Both fixed; real numbers at 3,000 tasks are 20.2ms cold and
-  0.31ms warm for `getDashboardData`.
-- `scale.bench.ts` sweeps 1k/5k/20k tasks with three logs each, covering the
-  paths `perf.bench.ts` left out. Growth is linear (4.0–4.1× for 4× data)
-  across every path measured.
-- `db-metrics.js` reports what a real database actually contains — counts by
-  type, size percentiles, attachment bytes, revision depth — as aggregates
-  only.
-
 ---
 
----
-
+[6.11.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.5...v6.11.0
 [6.10.5]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.4...v6.10.5
 [6.10.4]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.3...v6.10.4
 [6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
@@ -602,4 +620,3 @@ measuring nothing.
 [6.9.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.8.0...v6.9.0
 [6.8.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.7.0...v6.8.0
 [6.7.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.6.0...v6.7.0
-[6.6.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.5.2...v6.6.0

@@ -31,6 +31,36 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v6.11.0
+
+### In short
+
+The phone app is rebuilt for one hand: Home, Today, Agenda and Search tabs, a full-screen task, one easy date and time picker, a keypad lock screen and landscape support. You can now rename a project or move it to another space, and each device names itself. Plus dozens of fixes, clearer wording, better contrast and a faster start on Android.
+
+### New
+- A phone app made for one hand: four tabs, a + button always in reach, and a Home screen that shows what's left today.
+- Every task opens full screen. Tap any row to change it.
+- One date and time picker everywhere: quick choices, a full month and scroll wheels for the time. The Windows app's date pop-up now matches it.
+- A keypad lock screen, a welcome page on first launch, and a simple way to set up reminders.
+- Rename a project or move it to another space.
+- Each device names itself, so History shows where a change came from.
+- Works in landscape on the phone.
+- Android's back gesture shows where it will go, and the home-screen widget is calmer.
+
+### Changed
+- Calmer colors across the app.
+- The same words on phone and Windows: Board, History, Recycle bin, Fields, Overdue.
+- New reminders default to 10:00.
+
+### Fixed
+- Finished tasks no longer show as overdue.
+- "Today", "Tomorrow" and "Overdue" now change at midnight while the app is open.
+- Quick Add keeps words like "Tomorrow's plan" in the title.
+- Escape and Back close only the top window.
+- Many rare cases where a change, a restore or a sync could be lost or reported wrongly.
+- Text and switches are easier to read, in light and dark mode.
+- The phone app starts faster.
+
 ## v6.10.5
 
 ### In short
