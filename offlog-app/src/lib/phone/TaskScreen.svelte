@@ -379,7 +379,10 @@
     : (task.recurrenceInterval ?? 1) > 1
       ? `Every ${task.recurrenceInterval} ${UNIT[task.recurrence]}` + (task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? ', weekdays' : '')
       : task.recurrence === 'daily' && task.recurrenceWeekdaysOnly ? 'Weekdays' : REPEAT_WORD[task.recurrence];
-  $: dueText = !pill ? '' : task?.due_date && pill.text !== shortDate(task.due_date) ? `${pill.text} · ${shortDate(task.due_date)}` : pill.text;
+  // The pill word, then the date, unless the date already starts with it
+  // (a weekday pill "Wed" and the date "Wed 7 Oct").
+  $: fullDue = task?.due_date ? shortDate(task.due_date) : '';
+  $: dueText = !pill ? '' : !fullDue || fullDue === pill.text || fullDue.startsWith(pill.text + ' ') ? fullDue || pill.text : `${pill.text} · ${fullDue}`;
   const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
   // Every detail that isn't set yet, in the order the Add sheet lists them.
   type AddKind = 'reminder' | 'repeat' | 'blocked' | 'related' | 'files' | 'fields';

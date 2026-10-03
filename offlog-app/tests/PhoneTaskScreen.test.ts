@@ -61,6 +61,7 @@ import { projects, showError } from '../src/lib/store';
 import { unlinkRelatedTask, unlinkBlockedBy, deleteAttachment } from '../src/lib/db';
 import { switchTab, push, stack, toast } from '../src/lib/phone/nav';
 import { dateFromToday } from '../src/lib/shared/taskHelpers';
+import { shortDate } from '../src/lib/phone/format';
 import type { Writable } from 'svelte/store';
 import { EditorView } from '@codemirror/view';
 
@@ -207,6 +208,16 @@ describe('phone TaskScreen', () => {
     await detail('Due');
     await fireEvent.click(sheetRow('Tomorrow'));
     expect(db.updateTask).toHaveBeenCalledWith('task:t', { due_date: dateFromToday(1) });
+  });
+
+  it('the due row names the weekday once: "Wed 7 Oct", but "Tomorrow · Thu 4 Oct"', async () => {
+    const soon = dateFromToday(4);
+    await open(task({ due_date: soon }));
+    expect(row('Due').getAttribute('aria-label')).toBe(`Due: ${shortDate(soon)}`);
+    cleanup();
+    const tmr = dateFromToday(1);
+    await open(task({ due_date: tmr }));
+    expect(row('Due').getAttribute('aria-label')).toBe(`Due: Tomorrow · ${shortDate(tmr)}`);
   });
 
   it('clearing the due date of a repeating task also clears the repeat', async () => {
