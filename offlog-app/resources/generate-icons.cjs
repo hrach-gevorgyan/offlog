@@ -5,8 +5,7 @@
 // which is not a dependency: run `npm i --no-save sharp` first.
 //
 // Don't switch to @capacitor/assets' `generate` CLI: on Windows it can
-// rasterize a stale Android vector drawable instead of
-// resources/icon-foreground.png.
+// rasterize a stale Android vector drawable instead of the source SVG.
 const sharp = require('sharp');
 const path = require('path');
 
@@ -77,13 +76,6 @@ async function main() {
   // rel="icon" and apple-touch-icon).
   const webFlattened = await flattenedSquare(1024, Math.round(1024 * 0.78));
   await sharp(webFlattened).resize(512, 512).png().toFile(path.join(WEB_PUBLIC, 'icon-512.png'));
-  await sharp(webFlattened).resize(192, 192).png().toFile(path.join(WEB_PUBLIC, 'icon-192.png'));
-
-  // resources/ reference copies — not read by any build step, just handy
-  // to have alongside source-logo.svg for anyone touching this later.
-  await sharp(await whiteSilhouette(1024)).toFile(path.join(__dirname, 'icon-foreground.png'));
-  await sharp({ create: { width: 1024, height: 1024, channels: 4, background: BRAND } }).png().toFile(path.join(__dirname, 'icon-background.png'));
-  await sharp(webFlattened).toFile(path.join(__dirname, 'icon.png'));
 
   // Desktop (offlog-desktop/Tauri) icon source — Windows has no adaptive-
   // icon masking like Android's, so a hard-square source renders with

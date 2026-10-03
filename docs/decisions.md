@@ -672,7 +672,7 @@ entropy against a resourced attacker — same honest framing as the PIN
 lock's throttle, not a claim of airtight security.
 
 ### CodeQL findings inside bundled Capacitor plugin source: dismiss manually
-`paths-ignore`/`.codeqlignore` only filter which files get *extracted*
+`paths-ignore` only filters which files get *extracted*
 for interpreted languages. Under `build-mode: manual`, Gradle/javac
 compiles every plugin module the app depends on and CodeQL indexes
 whatever the compiler touches, and no config lever stops that without
