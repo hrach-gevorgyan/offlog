@@ -15,6 +15,8 @@
 
   const m = memo({ q: '', limit: 40 });
   let q = m.q, limit = m.limit;
+  // The search repeats in the empty state so a typo shows; a long one is cut.
+  $: echo = q.trim().length > 40 ? `${q.trim().slice(0, 39)}…` : q.trim();
   $: m.q = q;
   let lastQ = m.q;
   $: if (q !== lastQ) { lastQ = q; limit = 40; }
@@ -93,7 +95,7 @@
     {/each}
     {#if results.length > limit}<button class="p-tbtn more" on:click={() => (limit += 40)}>Show {Math.min(40, results.length - limit)} more</button>{/if}
   {:else if !matchedProjects.length}
-    <Empty title="No matches" text="Archived projects aren't searched." />
+    <Empty title={`No matches for "${echo}"`} text="Archived projects aren't searched." />
   {/if}
 {/if}
 

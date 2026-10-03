@@ -67,6 +67,14 @@ describe('phone Search', () => {
     expect(await findByText(/Archived projects aren't searched/)).toBeTruthy();
   });
 
+  it('no matches repeats the search, cutting a long one', async () => {
+    const { getByLabelText, findByText } = render(SearchScreen);
+    await fireEvent.input(getByLabelText('Search'), { target: { value: '  tilse ' } });
+    expect(await findByText('No matches for "tilse"')).toBeTruthy();
+    await fireEvent.input(getByLabelText('Search'), { target: { value: 'x'.repeat(60) } });
+    expect(await findByText(`No matches for "${'x'.repeat(39)}…"`)).toBeTruthy();
+  });
+
   it('re-runs on the change feed', async () => {
     const { getByLabelText, findByText } = render(SearchScreen);
     await fireEvent.input(getByLabelText('Search'), { target: { value: 'tile' } });
