@@ -2,7 +2,7 @@
   import { ICON } from '../shared/iconPaths';
   import { soften } from '../tagColors';
   import { spaces, projects, activeSpaceId, activeProjectId, showError } from '../store';
-  import db, {
+  import {
     createProject, createProjectFromTemplate, deleteProject, updateProject, syncState,
     getStorageBreakdown, type StorageBreakdown, subscribe as subscribeDb,
     findProjectsByName,
@@ -11,7 +11,7 @@
   import { staleHostAlert } from '../discovery';
   import { fmtLastSynced } from '../utils';
   import { isNativePlatform, getSyncUrl } from '../../config';
-  import type { TaskDoc, ProjectDoc } from '../types';
+  import type { ProjectDoc } from '../types';
   import CustomSelect from './CustomSelect.svelte';
   import { getSpaceIconSvg } from '../spaceIcons';
   import { prefersReducedMotion } from '../theme';
