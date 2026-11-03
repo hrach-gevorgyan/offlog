@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or idea
+    url: https://github.com/hrach-gevorgyan/offlog/discussions
+    about: Ask how something works, share an idea, or say how you use Offlog.
+  - name: Security problem
+    url: https://github.com/hrach-gevorgyan/offlog/security/advisories/new
+    about: Report it privately, never in a public issue.

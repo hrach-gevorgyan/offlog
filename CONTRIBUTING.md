@@ -157,6 +157,9 @@ or an intentional design choice, check
 questions are already answered there, including ones that were tried
 and reversed.
 
+Questions, ideas and "here's how I use it" go in
+[Discussions](https://github.com/hrach-gevorgyan/offlog/discussions).
+
 For anything security-related, **don't open a public issue** — see
 [SECURITY.md](SECURITY.md) for private reporting.
 
