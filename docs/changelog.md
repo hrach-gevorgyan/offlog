@@ -17,6 +17,47 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [7.0.1] — 2026-11-03
+
+A dependency and security release: every shipped Rust and npm package past
+its open advisories, the rest of the tree on its newest compatible version,
+and release signing locked to tagged builds. No storage, sync or backup
+format changed.
+
+### Security
+- Desktop TLS (the updater and the sync host's `ureq`): rustls 0.23.46
+  (RUSTSEC-2026-0346 to 0349), rustls-webpki 0.103.16, webpki-roots and
+  webpki-root-certs 1.0.11 (CVE-2026-111943, distrusted emSign
+  intermediates).
+- ctutils 0.4.7 under `aes-gcm`, `pbkdf2` and `sha2`, the sync key's crypto
+  (RUSTSEC-2026-0385, non-constant-time comparisons).
+- tauri-plugin-updater 2.14.1 brings zip 9 (RUSTSEC-2026-0367 to 0369,
+  extraction through symlinks). Updates were already signature-checked before
+  anything was unzipped.
+- tokio 1.54.1 (RUSTSEC-2026-0386, Unix only).
+- Build and test tooling only, nothing shipped: vite 8.3.5, vitest 5.1.0,
+  undici 8.12.3 through jsdom, and glob 14 / minimatch 11 forced under
+  `@capacitor/cli` with npm `overrides` (GHSA-3g3m-2fjr-6pw4,
+  GHSA-g3hv-75wg-m249) until its rimraf moves on.
+
+### Changed
+- Tauri 2.12.5 with its plugins (autostart 2.7.0, updater 2.14.1),
+  mdns-sd 0.21.7, ureq 3.5.0; Capacitor 8.6.0 with its plugins (filesystem
+  8.1.5, app 8.1.2, share, status bar), Svelte 5.57.3, CodeMirror patches.
+  `deepmerge` (GHSA-gcqx-w48m-w2h4, low, build-time config merge only) has no
+  fixed version yet.
+- `release.yml`: the two signing jobs read their keys from a `release`
+  environment that only `v*` tags reach, and fail when a key is missing
+  instead of shipping a debug-signed APK or an unsigned update.
+- GitHub Actions pins bumped (checkout, setup-node, setup-java, artifacts,
+  CodeQL 4.39.1).
+- Repository: `ACCESSIBILITY.md`; the new-issue page offers Discussions and
+  private security advisories; the funding link is gone.
+
+### Fixed
+- Two unused imports in `desktop/Sidebar.svelte` that svelte-check 4.7.7
+  reports as errors. No runtime change.
+
 ## [7.0.0] — 2026-10-14
 
 End-to-end encrypted sync between the PC and its phones, the fixes from a
@@ -417,35 +458,9 @@ statement with no `try/catch` anywhere in the chain.
 - Both now surface `showError('Failed to load storage usage.')` on
   failure instead of the generic crash-net toast.
 
-## [6.10.1] — 2026-08-28
-
-A real crash from v6.10.0, caught live from the actual installed desktop
-build within hours of release: opening Settings → Sync could hit an
-unhandled promise rejection that spun into an uncaught-forever retry loop,
-pegging the main thread until the renderer ran out of heap (reproduced
-directly in a test: the failure path OOM'd a Node worker in ~5 minutes).
-
-### Fixed
-- `loadConflicts()` and `loadDeviceLastSeen()` in `SettingsPanel.svelte`
-  both fire from a bare reactive statement the moment the Sync tab opens,
-  with nothing awaiting or catching them. A real query failure became an
-  unhandled rejection — the generic "Something went wrong" crash-net toast,
-  with no specific message. Worse, `loadConflicts()`'s retry guard
-  (`conflictList.length === 0`) never became false on failure, so it
-  re-fired on every reactive tick, forever, entirely as microtasks with no
-  macrotask in between — starving the event loop so completely that even a
-  vitest test timeout never got a chance to fire before the process ran out
-  of memory. Both now surface a specific `showError()` message, and
-  `loadConflicts()` tracks which `conflictCount` it already attempted so a
-  failure doesn't retry until the underlying conflict count actually
-  changes.
-- Desktop crashes now also write to `Offlog.log` (via
-  `@tauri-apps/plugin-log`, `log:default` capability), not just the
-  browser devtools console — this exact bug was undiagnosable from the log
-  file alone before this fix.
-
 ---
 
+[7.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.2...v7.0.0
 [6.12.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.1...v6.12.2
 [6.12.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.0...v6.12.1
@@ -455,4 +470,3 @@ directly in a test: the failure path OOM'd a Node worker in ~5 minutes).
 [6.10.4]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.3...v6.10.4
 [6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
 [6.10.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.1...v6.10.2
-[6.10.1]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.0...v6.10.1

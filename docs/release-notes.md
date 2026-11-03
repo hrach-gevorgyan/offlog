@@ -31,6 +31,16 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v7.0.1
+
+### In short
+
+Security and stability updates. The parts that keep your connections and your sync key safe are on their newest versions, along with the libraries the app is built on. Nothing changes in how Offlog looks or works, and your tasks stay exactly as they are.
+
+### Fixed
+- Security updates for secure connections, app updates and the encryption behind sync.
+- The app and its building blocks are on their newest versions, with their bug fixes.
+
 ## v7.0.0
 
 ### In short
