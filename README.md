@@ -10,7 +10,7 @@
   <a href="https://github.com/hrach-gevorgyan/offlog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/hrach-gevorgyan/offlog/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/hrach-gevorgyan/offlog/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/hrach-gevorgyan/offlog?style=flat-square&color=575FCA"></a>
   <img alt="Commit activity" src="https://img.shields.io/github/commit-activity/m/hrach-gevorgyan/offlog?style=flat-square&color=575FCA">
-  <a href="https://github.com/hrach-gevorgyan/offlog/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/hrach-gevorgyan/offlog/total?style=flat-square&color=575FCA"></a>
+  <a href="https://github.com/hrach-gevorgyan/offlog/releases"><img alt="Downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fofflog.io%2Fdownloads.json&style=flat-square"></a>
 </p>
 
 <p align="center">

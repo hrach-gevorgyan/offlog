@@ -1,9 +1,11 @@
 // Writes the latest published release's version, date, installer link and
-// file sizes into site/index.html's data-rel elements before Pages deploys.
-// The values already in the file are the fallback: any failure here leaves
+// file sizes into site/index.html's data-rel elements before Pages deploys,
+// and the README badge's download count into site/downloads.json.
+// The values already in the files are the fallback: any failure here leaves
 // them as they are and never fails the deploy.
 //   node .github/scripts/stamp-release.mjs [site/index.html]
 import fs from 'node:fs';
+import path from 'node:path';
 
 const file = process.argv[2] || 'site/index.html';
 const repo = process.env.GITHUB_REPOSITORY || 'hrach-gevorgyan/offlog';
@@ -36,4 +38,23 @@ try {
   console.log(`Stamped ${rel.tag_name} (${day}): ${exe.name} ${mb(exe.size)}, APK ${mb(apk.size)}`);
 } catch (e) {
   console.log(`::warning::Release info not stamped, keeping the values in ${file}: ${e.message}`);
+}
+
+// Only the APK and the installer count. latest.json and the .sig are fetched
+// by every installed app's update check, so including them counts checks,
+// not downloads. The installer count still includes automatic updates.
+const badge = path.join(path.dirname(file), 'downloads.json');
+try {
+  let total = 0;
+  for (let page = 1; ; page++) {
+    const res = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=100&page=${page}`, { headers });
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    const rels = await res.json();
+    for (const rel of rels) for (const a of rel.assets) if (/\.(apk|exe)$/.test(a.name)) total += a.download_count;
+    if (rels.length < 100) break;
+  }
+  fs.writeFileSync(badge, JSON.stringify({ schemaVersion: 1, label: 'downloads', message: String(total), color: '575FCA' }) + '\n');
+  console.log(`Downloads badge: ${total}`);
+} catch (e) {
+  console.log(`::warning::Download count not stamped, keeping ${badge}: ${e.message}`);
 }

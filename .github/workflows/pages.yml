@@ -1,6 +1,7 @@
 # Publishes site/ (offlog.io) to GitHub Pages. Static files; the one step
 # before upload stamps the latest release's version, date and file sizes into
-# the download section, falling back to the committed values. site/CNAME
+# the download section, and the README badge's count into downloads.json,
+# falling back to the committed values. site/CNAME
 # carries the custom domain; Pages must be set to "Source: GitHub Actions" in
 # the repo settings.
 name: Website
@@ -12,6 +13,9 @@ on:
   # Also started by release-published.yml when a release is published, so the
   # download section shows it straight away.
   workflow_dispatch:
+  # Daily, so the README's download count keeps up between releases.
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
