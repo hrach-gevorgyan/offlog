@@ -7,7 +7,7 @@
   --paper: #F6F7F9; --surface: #FFFFFF; --sunk: #EDEFF3; --raised: #FFFFFF;
   --ink: #1F2937; --muted: #5B6372; --faint: #6B7280; --line: #E2E4EA;
   --accent: #575FCA; --accent-ink: #4C54BD; --accent-tint: #EEF0FB; --accent-line: #DCDFF5; --on-accent: #FFFFFF;
-  --night: #15171D; --night-2: #20242D; --night-line: transparent; --night-ink: #F3F4F6; --night-muted: #A7AEBA; --glow: #8590E5;
+  --night: #15171D; --night-2: #20242D; --night-line: transparent; --night-ink: #F3F4F6; --night-muted: #A7AEBA; --night-ok: #6FC48A; --glow: #8590E5;
   --ok: #3D8A57; --late: #BD4138; --mark: rgba(87, 95, 202, .22);
   --bezel: #0D0F14; --bezel-ring: transparent; --slot: #1F2937;
   --display: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -118,7 +118,7 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 .win { border-radius: 18px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: left; }
 .win .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--sunk); }
 .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
-.win .bar span { margin-left: 10px; font-size: 13px; color: var(--faint); font-weight: 600; }
+.win .bar span { margin-left: 10px; font-size: 13px; color: var(--muted); font-weight: 600; }
 .win img { width: 100%; }
 /* Scaled rather than resized: the demo screen's type is set in fixed px. */
 .demo-stage { position: absolute; top: 9%; right: -3%; text-align: left; transform: scale(.74); transform-origin: top right; }
@@ -194,7 +194,7 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 .window { margin-top: 44px; border-radius: 22px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .window .bar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--sunk); }
 .window .bar i { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
-.window .bar span { margin-left: 12px; font-size: 13px; color: var(--faint); font-weight: 600; }
+.window .bar span { margin-left: 12px; font-size: 13px; color: var(--muted); font-weight: 600; }
 .views-stack { position: relative; aspect-ratio: 16 / 10; }
 /* The outgoing view fades only after the incoming one is in, so the
    crossfade never dips to the background. */
@@ -278,7 +278,7 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 .syncsteps p { margin: 0; color: var(--night-muted); font-size: 16px; }
 .honest { display: flex; flex-wrap: wrap; gap: 10px; margin: 44px 0 0; padding: 0; list-style: none; max-width: 760px; }
 .honest li { font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .14); color: var(--night-muted); }
-.honest li b { color: var(--ok); font-weight: 700; }
+.honest li b { color: var(--night-ok); font-weight: 700; }
 .honest li.no b { color: var(--night-ink); }
 
 /* Privacy as a receipt */
@@ -375,7 +375,7 @@ section { padding-block: clamp(80px, 11vw, 150px); }
 /* Download */
 .rel { margin: 18px 0 0; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
 .rel b { color: var(--ink); }
-.btn small { font-size: 13px; font-weight: 600; opacity: .8; }
+.btn small { font-size: 13px; font-weight: 600; opacity: .9; }
 .howto { border-top: 1px solid var(--line); padding-top: 12px; }
 .howto summary { cursor: pointer; font-weight: 650; color: var(--accent-ink); min-height: 44px; display: flex; align-items: center; }
 .howto ol { margin: 4px 0 0; padding-left: 22px; color: var(--muted); font-size: 15px; }
