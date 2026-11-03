@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Offlog · Free task manager for Android and Windows</title>
-<meta name="description" content="A free task manager for Android and Windows. No account, no cloud, no subscription. Your phone and PC sync over your own Wi-Fi.">
+<title>Offlog · Free offline task manager for Android and Windows</title>
+<meta name="description" content="Free offline task manager for Android and Windows. No account, no cloud, no subscription. Your phone and PC sync over your own Wi-Fi, end-to-end encrypted.">
 <link rel="canonical" href="https://offlog.io/">
 <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Offlog">
 <meta property="og:url" content="https://offlog.io/">
-<meta property="og:title" content="Offlog · Free task manager for Android and Windows">
+<meta property="og:title" content="Offlog · Free offline task manager for Android and Windows">
 <meta property="og:description" content="Your tasks. Your devices. Nobody else's. A free task manager with no account, no cloud and no subscription.">
 <meta property="og:image" content="https://offlog.io/og.png">
 <meta property="og:image:width" content="1280">
@@ -25,6 +25,24 @@
 <link rel="preload" href="fonts/HankenGrotesk-variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" as="image" href="img/dashboard.webp" imagesrcset="img/dashboard.webp 1400w, img/dashboard-2x.webp 2200w" imagesizes="min(1100px, 92vw)" fetchpriority="high">
 <link rel="stylesheet" href="style.css">
+<!-- No softwareVersion: nothing stamps it at release time, so it would go stale. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Offlog",
+  "description": "Free offline task manager for Android and Windows. No account, no cloud, no subscription. Your phone and PC sync over your own Wi-Fi, end-to-end encrypted.",
+  "url": "https://offlog.io/",
+  "image": "https://offlog.io/og.png",
+  "applicationCategory": "ProductivityApplication",
+  "operatingSystem": "Windows, Android",
+  "downloadUrl": "https://github.com/hrach-gevorgyan/offlog/releases/latest",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Hrach Gevorgyan", "url": "https://github.com/hrach-gevorgyan" }
+}
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
