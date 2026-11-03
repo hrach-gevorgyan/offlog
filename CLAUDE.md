@@ -323,6 +323,8 @@ inside and import it back.
 **Never push, build the APK, or commit palette/visual changes without the
 owner's explicit request.** The Android `release` build signs with the real
 key when `app/keystore.properties` is present (CI's `release.yml` writes it
-from repo secrets) and falls back to AGP's public debug keystore when it is
-absent, so Studio's Run button works locally. A release built without those
-secrets is debug-signed; check before any Play Store upload.
+from the `release` environment's secrets, which only `v*` tags can reach)
+and falls back to AGP's public debug keystore when it is absent, so Studio's
+Run button works locally. CI refuses to build a release without the keys; a
+local release build without them is debug-signed, so check before any Play
+Store upload.

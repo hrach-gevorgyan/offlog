@@ -11,10 +11,12 @@ name: Release
 # whenever offlog-app/android/app/keystore.properties is present (see
 # keystore.properties.example for the format), falling back to AGP's
 # public debug keystore otherwise. This workflow writes that file (and
-# the keystore itself) from repo secrets before building -- if those
-# secrets aren't set, the build silently falls back to the debug keystore
-# instead of failing, so this workflow still works before you've added
-# them. Add these under Settings -> Secrets and variables -> Actions:
+# the keystore itself) from the `release` environment's secrets before
+# building, and fails if they're missing: a debug-signed APK can't
+# install over a real one. Only the two signing jobs name that
+# environment, and it only admits v* tags, so no other workflow or
+# branch can read the keys. Add these under Settings -> Environments ->
+# release:
 #   ANDROID_KEYSTORE_BASE64   -- `base64 -w0 offlog-release.keystore`
 #   ANDROID_KEYSTORE_PASSWORD -- same value used for both store and key
 #                                 password (see keystore.properties.example)
@@ -22,10 +24,9 @@ name: Release
 # Desktop auto-updater signing (E3): tauri.conf.json's plugins.updater
 # has a real pubkey (generated with `cargo tauri signer generate`) and a
 # real endpoint (GitHub Releases' "latest" download
-# URL). tauri-action signs the installer + writes latest.json whenever
-# these two env vars are set on the Windows job -- if unset, the build
-# still succeeds, it just produces an unsigned update artifact nobody
-# can verify (harmless until the owner adds the secrets). Add:
+# URL). tauri-action signs the installer + writes latest.json from these
+# two, also in the `release` environment; the job fails without them,
+# since installed apps reject an unsigned update. Add:
 #   TAURI_SIGNING_PRIVATE_KEY          -- contents of the private key
 #                                          file from `cargo tauri signer
 #                                          generate` (~/.tauri/offlog-updater.key)
@@ -87,6 +88,7 @@ jobs:
     # below, which genuinely need write to call the GitHub Release API.
     permissions:
       contents: read
+    environment: release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -142,15 +144,11 @@ jobs:
         working-directory: offlog-app
         run: npx cap sync android
 
-      - name: Write real signing key (if configured)
+      - name: Write real signing key
         working-directory: offlog-app/android/app
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        # No-ops (leaves build.gradle to fall back to the debug keystore)
-        # if the secrets haven't been added yet -- lets this workflow work
-        # before and after the real key is wired in, without two separate
-        # workflow files to maintain.
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > offlog-release.keystore
@@ -159,7 +157,8 @@ jobs:
             echo "keyAlias=offlog" >> keystore.properties
             echo "keyPassword=$KEYSTORE_PASSWORD" >> keystore.properties
           else
-            echo "ANDROID_KEYSTORE_BASE64 secret not set -- building with the debug keystore instead."
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set in the release environment."
+            exit 1
           fi
 
       - name: Build release APK
@@ -179,8 +178,20 @@ jobs:
 
   build-desktop-windows:
     needs: verify
+    environment: release
     runs-on: windows-latest
     steps:
+      - name: Updater signing key present
+        shell: bash
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEY" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY or its password is not set in the release environment."
+            exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7

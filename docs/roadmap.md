@@ -26,7 +26,8 @@ State as of 4 Oct 2026.
 ## Waiting on someone else
 
 - **C3, Play Store listing.** Release signing is wired into CI
-  (`release.yml` writes `keystore.properties` from repo secrets) and the
+  (`release.yml` writes `keystore.properties` from the `release`
+  environment's secrets) and the
   privacy policy is [privacy.md](privacy.md). Waiting on Google's identity
   verification and review. Whether local-network sync draws extra review
   friction is an open question in decisions.md. Before submitting, the
