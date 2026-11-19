@@ -9,11 +9,17 @@
 # --locked builds the dependency versions NyxDB's Cargo.lock records, never
 # newer ones resolved at build time.
 #
+# The C runtime is linked statically (+crt-static), matching the app's own
+# "staticVCRuntime": true in tauri.conf.json. A default MSVC build links
+# VCRUNTIME140.dll dynamically, and on a PC without the Visual C++
+# Redistributable nyxdb.exe then fails to start ("VCRUNTIME140.dll was not
+# found") -- Offlog itself opens fine, so only sync breaks.
+#
 # Output is NOT committed to git (~5MB) -- see offlog-desktop/.gitignore.
 # Re-run any time vendor/nyxdb-win/ is missing or after bumping $Ref: the
-# folder records the tag it was built from in VERSION, and a different tag
-# rebuilds it. A folder without VERSION counts as the current tag, since CI
-# restores it from a cache keyed on that tag.
+# folder records what it was built from ($Build) in VERSION, and anything
+# else rebuilds it. A folder without VERSION counts as current, since CI
+# restores it from a cache keyed on $Build.
 # Requires: git, a Rust toolchain (cargo build --release) on PATH.
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +27,10 @@ $ErrorActionPreference = "Stop"
 $Ref = "v0.1.8"
 $Commit = "f73ba27d18a2cd6a82ec379dd61fa5b9c4ed423f"
 $RepoUrl = "https://github.com/hrach-gevorgyan/nyxdb.git"
+# Tag plus build flavour. Changing how the binary is built must change this
+# too, or an old vendor folder / CI cache keeps the old binary. Keep the CI
+# cache keys (desktop-ci.yml, release.yml) equal to "nyxdb-win-$Build".
+$Build = "$Ref-crtstatic"
 
 $Root = Split-Path -Parent $PSScriptRoot
 $VendorDir = Join-Path $Root "vendor\nyxdb-win"
@@ -28,12 +38,12 @@ $TempClone = Join-Path $env:TEMP "offlog-nyxdb-build-$Ref"
 
 $VersionFile = Join-Path $VendorDir "VERSION"
 if ((Test-Path $VendorDir) -and (Test-Path (Join-Path $VendorDir "nyxdb.exe"))) {
-    if (-not (Test-Path $VersionFile)) { Set-Content -Path $VersionFile -Value $Ref -NoNewline }
-    if ((Get-Content $VersionFile -Raw).Trim() -eq $Ref) {
-        Write-Host "vendor\nyxdb-win is already $Ref. Skipping."
+    if (-not (Test-Path $VersionFile)) { Set-Content -Path $VersionFile -Value $Build -NoNewline }
+    if ((Get-Content $VersionFile -Raw).Trim() -eq $Build) {
+        Write-Host "vendor\nyxdb-win is already $Build. Skipping."
         exit 0
     }
-    Write-Host "vendor\nyxdb-win was built from another tag; rebuilding as $Ref."
+    Write-Host "vendor\nyxdb-win was built from another tag or flavour; rebuilding as $Build."
     Remove-Item $VendorDir -Recurse -Force
 }
 
@@ -53,15 +63,18 @@ if ($actualCommit -ne $Commit) {
 }
 Write-Host "Confirmed checkout is exactly $Ref ($Commit)."
 
-Write-Host "Building NyxDB (release)..."
+Write-Host "Building NyxDB (release, static CRT)..."
 Push-Location $TempClone
+$prevRustFlags = $env:RUSTFLAGS
 try {
+    $env:RUSTFLAGS = "-C target-feature=+crt-static"
     cargo build --release --locked
     if ($LASTEXITCODE -ne 0) {
         Write-Error "cargo build failed with exit code $LASTEXITCODE"
         exit 1
     }
 } finally {
+    $env:RUSTFLAGS = $prevRustFlags
     Pop-Location
 }
 
@@ -73,7 +86,7 @@ if (-not (Test-Path $builtExe)) {
 
 New-Item -ItemType Directory -Force -Path $VendorDir | Out-Null
 Copy-Item $builtExe (Join-Path $VendorDir "nyxdb.exe") -Force
-Set-Content -Path $VersionFile -Value $Ref -NoNewline
+Set-Content -Path $VersionFile -Value $Build -NoNewline
 Write-Host "Copied nyxdb.exe into vendor\nyxdb-win\."
 
 Remove-Item $TempClone -Recurse -Force -ErrorAction SilentlyContinue

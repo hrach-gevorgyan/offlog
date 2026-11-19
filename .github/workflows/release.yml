@@ -232,8 +232,8 @@ jobs:
         with:
           path: offlog-desktop/vendor/nyxdb-win
           # Keep in sync with desktop-ci.yml's key and the fetch
-          # script's $Ref.
-          key: nyxdb-win-v0.1.8
+          # script's $Build.
+          key: nyxdb-win-v0.1.8-crtstatic
 
       - name: Fetch vendored NyxDB (no-op on cache hit, builds from source otherwise)
         working-directory: offlog-desktop
