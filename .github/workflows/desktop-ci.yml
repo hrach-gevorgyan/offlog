@@ -82,11 +82,11 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
         with:
           path: offlog-desktop/vendor/nyxdb-win
-          # Bump this key's version segment together with the fetch
-          # script's $Ref -- a stale cache would otherwise pin an old
+          # Keep equal to "nyxdb-win-" + the fetch script's $Build
+          # (tag + build flavour) -- a stale cache would otherwise pin an old
           # NyxDB forever (the script skips fetching when the directory
           # already exists).
-          key: nyxdb-win-v0.1.8
+          key: nyxdb-win-v0.1.8-crtstatic
 
       - name: Fetch vendored NyxDB (no-op on cache hit)
         working-directory: offlog-desktop
