@@ -116,6 +116,14 @@ async function main() {
     });
     await until('B to receive the photos', async () => (await b.get(attId))._rev === att.rev);
     for (const s of syncs.splice(0)) s.cancel();
+    // NyxDB publishes a write to _changes before flushing it to disk, so B can
+    // see the photos while they're still only in memory and the kill below
+    // would lose them. Any later write is flushed before its "ok", and a flush
+    // persists everything written before it.
+    const barrier = await fetch(base + '/offlog/_local/flush-barrier', {
+      method: 'PUT', headers: { Authorization: AUTH, 'Content-Type': 'application/json' }, body: '{}',
+    });
+    if (!barrier.ok) fail(`PUT _local/flush-barrier returned ${barrier.status}`);
 
     await stop(child);
     child = start();
