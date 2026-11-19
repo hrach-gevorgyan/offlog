@@ -35,6 +35,9 @@ Visual C++ Redistributable. No storage, sync or backup format changed.
   so the test could kill the sidecar while the photos were still only in
   memory. It now waits for a flushed `_local` write first. Test only: the
   pushing replica re-sends anything unacknowledged.
+- `modalStack.ts`: `restoreFocus()` checks that `HTMLElement` exists. The
+  400 ms close fallback could fire after a test's jsdom was torn down, failing
+  CI with an unhandled "HTMLElement is not defined". Test only.
 
 ## [7.0.1] — 2026-11-03
 
