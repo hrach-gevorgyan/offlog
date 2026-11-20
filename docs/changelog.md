@@ -17,6 +17,28 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [7.0.2] — 2026-11-20
+
+A Windows fix: the bundled NyxDB sync host now runs on PCs without the
+Visual C++ Redistributable. No storage, sync or backup format changed.
+
+### Fixed
+- `nyxdb.exe` failed to start with "VCRUNTIME140.dll was not found" on a PC
+  without the Visual C++ Redistributable, so sync never came up even though
+  the app itself opened (the app already used `staticVCRuntime`).
+  `fetch-nyxdb-win.ps1` now builds NyxDB with `-C target-feature=+crt-static`.
+  `vendor/nyxdb-win/VERSION` records `v0.1.8-crtstatic`, and both workflows'
+  cache keys moved to `nyxdb-win-v0.1.8-crtstatic`, so an existing folder or
+  cache rebuilds rather than shipping the old binary.
+- `edit-replication.js` failed intermittently ("after a restart, GET att:png
+  returned 404"). NyxDB publishes a write to `_changes` before flushing it,
+  so the test could kill the sidecar while the photos were still only in
+  memory. It now waits for a flushed `_local` write first. Test only: the
+  pushing replica re-sends anything unacknowledged.
+- `modalStack.ts`: `restoreFocus()` checks that `HTMLElement` exists. The
+  400 ms close fallback could fire after a test's jsdom was torn down, failing
+  CI with an unhandled "HTMLElement is not defined". Test only.
+
 ## [7.0.1] — 2026-11-03
 
 A dependency and security release: every shipped Rust and npm package past
@@ -438,28 +460,9 @@ regression test reproducing the duplicate-name case.
   silently skipped the preferences step that would otherwise have
   followed.
 
-## [6.10.2] — 2026-08-28
-
-v6.10.1's fix wasn't the whole story: the same "opened Settings" crash
-recurred on a genuinely-updated v6.10.1 build. A full sweep of
-`SettingsPanel.svelte` found three more instances of the identical
-pattern — an unawaited async call fired from `onMount`/a reactive
-statement with no `try/catch` anywhere in the chain.
-
-### Fixed
-- `loadBreakdown()` — fires from a bare `onMount` on **every** Settings
-  category (not just Sync), and again on **every single** `subscribeDb()`
-  change event for as long as the panel stays open. The most likely of the
-  four to have been the actual repeat crash, given how often it fires
-  during active sync.
-- `loadStorage()` — `navigator.storage.estimate()` can reject in some
-  WebView/sandboxed contexts; now falls back to the existing "Not
-  available" state instead of an unhandled rejection.
-- Both now surface `showError('Failed to load storage usage.')` on
-  failure instead of the generic crash-net toast.
-
 ---
 
+[7.0.2]: https://github.com/hrach-gevorgyan/offlog/compare/v7.0.1...v7.0.2
 [7.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.2...v7.0.0
 [6.12.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.1...v6.12.2
@@ -469,4 +472,3 @@ statement with no `try/catch` anywhere in the chain.
 [6.10.5]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.4...v6.10.5
 [6.10.4]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.3...v6.10.4
 [6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
-[6.10.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.1...v6.10.2

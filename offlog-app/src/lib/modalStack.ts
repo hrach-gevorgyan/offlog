@@ -101,8 +101,10 @@ function ensureListening() {
 // Focus goes back to whatever opened a layer once it closes, so a keyboard
 // user isn't dropped on <body>: only when focus did fall there, never stealing
 // it, and never to a text field (on the phone that pops the keyboard back up).
+// Also reached from request()'s 400 ms fallback timer, which can fire after
+// the page is gone, so HTMLElement itself may not exist.
 function restoreFocus(opener: Element | null) {
-  if (!(opener instanceof HTMLElement) || opener.matches('input, textarea, [contenteditable="true"]')) return;
+  if (typeof HTMLElement === 'undefined' || !(opener instanceof HTMLElement) || opener.matches('input, textarea, [contenteditable="true"]')) return;
   setTimeout(() => {
     // The page can be gone by then (a test environment torn down).
     if (typeof document === 'undefined') return;

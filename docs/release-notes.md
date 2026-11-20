@@ -31,6 +31,15 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v7.0.2
+
+### In short
+
+A fix for the PC app: sync now starts on computers that don't have Microsoft's Visual C++ runtime installed. Before, those PCs showed a "VCRUNTIME140.dll was not found" message and sync never started. Nothing changes on the phone, and your tasks stay exactly as they are.
+
+### Fixed
+- On the PC, sync starts without needing Microsoft's Visual C++ runtime installed.
+
 ## v7.0.1
 
 ### In short
