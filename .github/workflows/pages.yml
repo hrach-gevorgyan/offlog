@@ -24,18 +24,18 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# Upload and deploy are separate jobs. In one job, deploy-pages can look for
+# the artifact a moment after it's finalized, find none, and fail ("No
+# artifacts named github-pages", actions/deploy-pages#451); re-running that
+# job then uploads a second artifact and fails on the duplicate. Split, a
+# failed deploy re-runs on its own against the one artifact.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # deploy-pages publishes the site (pages) and proves this run's
-      # identity to Pages with an OIDC token (id-token). Nothing else.
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      # configure-pages reads the site's Pages settings. Nothing else.
+      pages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
       - name: Stamp the latest release into the download section
@@ -46,5 +46,18 @@ jobs:
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         with:
           path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      # deploy-pages publishes the site (pages) and proves this run's
+      # identity to Pages with an OIDC token (id-token). Nothing else.
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
