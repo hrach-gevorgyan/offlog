@@ -356,7 +356,7 @@
       setAppLockBiometricEnabled(true);
       biometricEnabled = true;
     } catch {
-      biometricError = 'Could not confirm your fingerprint/face. Try again.';
+      biometricError = 'Could not confirm your fingerprint/face. Please try again.';
     } finally {
       biometricBusy = false;
     }
