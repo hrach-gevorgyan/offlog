@@ -382,4 +382,27 @@ describe('audit 2026-10-09: data-safety fixes', () => {
     await repairDatabase();
     expect((await db.get<TaskDoc>(t._id!)).project_id).not.toBe('project:not-arrived-yet');
   });
+
+  // A first pull cut off part way leaves tasks whose project comes later;
+  // the status is then 'error' or 'offline', not 'syncing'.
+  it('also waits after a sync that failed, or on a paired device that never finished one', async () => {
+    const t = await createTask('project:still-coming', 'space:unsorted', 'col:x', 'Cut off');
+    const lastSynced = syncState.lastSynced;
+    try {
+      for (const status of ['error', 'offline'] as const) {
+        syncState.status = status;
+        expect((await repairDatabase()).skipped).toBeGreaterThan(0);
+        expect((await db.get<TaskDoc>(t._id!)).project_id).toBe('project:still-coming');
+      }
+      syncState.status = 'idle';
+      syncState.lastSynced = null;
+      localStorage.setItem('offlog_sync_url', 'http://192.168.1.20:5984/offlog');
+      expect((await repairDatabase()).skipped).toBeGreaterThan(0);
+      expect((await db.get<TaskDoc>(t._id!)).project_id).toBe('project:still-coming');
+    } finally {
+      syncState.status = 'idle';
+      syncState.lastSynced = lastSynced;
+      localStorage.removeItem('offlog_sync_url');
+    }
+  });
 });

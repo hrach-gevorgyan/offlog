@@ -162,6 +162,12 @@ export function setSyncUrl(url: string) {
   localStorage.setItem('offlog_sync_url', url);
 }
 
+// A server set by pairing, the desktop's own sidecar or by hand, as opposed
+// to the plain web build's loopback default that may sync with nothing.
+export function hasSavedSyncUrl(): boolean {
+  return !!localStorage.getItem('offlog_sync_url');
+}
+
 // The PC app's pairing handshake generates a random password per install, so
 // a fixed user/password baked into the JS bundle could never match every PC a
 // device might sync to. Credentials are per-device, stored like the URL.

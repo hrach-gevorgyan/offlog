@@ -6,6 +6,7 @@ import { getProjects, getArchivedProjects, getSpaces, getCustomFieldDefs, create
 // repairDatabase() re-scans for conflicts after rewriting docs. maintenance ->
 // sync is the one edge beyond core <- entities; sync never imports back.
 import { scanConflicts, conflictBearingRows, syncState } from './sync';
+import { hasSavedSyncUrl, isSyncEnabled } from '../../config';
 
 // ── Log retention ────────────────────────────────────────────────────────────
 // log: docs are append-only and never pruned by any other code path, so the
@@ -452,7 +453,11 @@ export async function repairDatabase(known?: IntegrityIssue[]): Promise<{ fixed:
   const issues = known ?? (await checkIntegrity()).issues;
   let fixed = 0, skipped = 0;
 
-  const syncing = syncState.status === 'syncing';
+  // A sync that stopped short counts too: a first pull cut off part way, or
+  // one that failed, leaves tasks whose project or status comes later, and
+  // a repair written now would replicate over their real placement.
+  const status = syncState.status;
+  const syncing = status !== 'idle' || (isSyncEnabled() && hasSavedSyncUrl() && !syncState.lastSynced);
   for (const issue of issues) {
     if (syncing && WAITS_FOR_SYNC.has(issue.type)) { skipped++; continue; }
     try {
