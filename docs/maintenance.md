@@ -4,9 +4,9 @@ A scheduled audit routine, tailored to this repo. **Not a feature
 session:** external behaviour must stay identical. Read this whole file
 before touching code.
 
-**Current pointer** — last pass: **31st run** (2026-10-14, on `main`,
+**Current pointer** — last pass: **32nd run** (2026-11-26, on `main`,
 see [archive/maintenance.md](archive/maintenance.md)): audit before
-7.0.0; its fixes ship in 7.0.0. Next pass due: **2027-01-14, or on
+7.0.3; its fixes ship in 7.0.3. Next pass due: **2027-02-26, or on
 the next bug hit in daily use, whichever comes first.**
 
 This pointer is the only tracker state in this file. Past passes are

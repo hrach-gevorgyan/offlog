@@ -9,6 +9,49 @@ pass 22 and maintenance.md's scoping note.
 
 ---
 
+## 32nd run — 2026-11-26 (on `main`, before 7.0.3)
+
+Asked for by the owner ahead of schedule, after a dependency round (npm and
+cargo minor/patch, jsdom 31; the glob/minimatch overrides retired because
+rimraf now requires the fixed versions; Vite's chunk warning limit set just
+above CodeMirror's lazy 503 kB chunk). Same three audits as the 31st. Gates
+green by exit code before and after (check, zero-warning build, vitest
+1468 → 1479, cargo build with no warnings, cargo test 24 → 25).
+Fixed: App Lock never locked after the PC slept, since the first input on
+waking restarted the stalled countdown (it now reads the wall clock). The
+daily auto-backup leaked a PouchDB instance per run and retried a failure
+hourly with a full read (closed now, retry after 6 hours). A failing change
+feed reloaded every subscriber every 2 s forever (backs off to a minute).
+A failing removal of the old readable server retried after every sync
+(backs off to 6 hours). Board filters kept the field list read at startup;
+task history spun on a read error. Reordering statuses wrote the list read
+before the confirmation, dropping a status added or renamed meanwhile (now
+applied to the project as it is). Repair waited only while a sync was
+running, not after one failed or on a paired device that never finished
+one; and it moved tasks out of a status only the losing side of a project
+conflict has. The desktop's sync sat in PouchDB's minutes-long retry after
+NyxDB restarted, or after sleep (`sync-host-restarted`, and a wake resync).
+The stored sync login wasn't flushed before its rename. Three messages
+off the "Could not … Please try again." pattern.
+Docs: maintenance.md and security.md now count `open_web_link`'s
+`ShellExecuteW` as the third accepted unsafe kind (http(s)-only, tested).
+Checked clean: conflict handling, the documented hard deletes only,
+positional done, encrypted sync failing closed, restore, deep links, every
+mutating call site wrapped, no raw UTC dates, no `{@html}` beyond
+constants or escaped text, npm audit 0, no `.env.local` value in `dist/`,
+CSP and Android permissions unchanged, every action pinned to a SHA, no
+`pull_request_target`, docs links intact, `fetch-nyxdb-win.ps1` fails
+loudly on every path.
+Size: dist 2.1 MB (2.0 last pass), installer 5.91 MB and APK 4.99 MB at
+v7.0.1, within 10%.
+Left, as Open Questions in decisions.md: card-position respacing, backup
+retention beyond 7 days, whether NyxDB's flush reaches the disk, and the
+conflict scan and tombstone walks that grow with data. Also left: unused
+`export` keywords on nine module-local constants, and the six copies of
+the `HH:MM` → `fmtTime` helper (candidates for `utils.ts`).
+
+---
+
 ## 31st run — 2026-10-14 (on `main`, before 7.0.0)
 
 Aimed at the 112 commits since v6.12.2 (the audit fixes and the one-style
