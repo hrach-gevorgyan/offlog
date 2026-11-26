@@ -148,7 +148,7 @@ describe('pairWithHost', () => {
 
   it('surfaces a friendly message when the host is unreachable, not the raw fetch TypeError', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Could not fetch')));
-    await expect(pairWithHost(host, FIXTURE.code)).rejects.toThrow(/couldn.t reach/i);
+    await expect(pairWithHost(host, FIXTURE.code)).rejects.toThrow(/could not reach that computer/i);
   });
 });
 
