@@ -512,12 +512,15 @@ Verified in the code, not just claimed:
   stored sync credential, NyxDB data and WebView profile are explicitly
   denied. Files you export go through the system's own Save dialog, which
   grants access to exactly the file you chose.
-- **Only two kinds of memory-unsafe code exist** in the whole desktop
+- **Only three kinds of memory-unsafe code exist** in the whole desktop
   app: the Windows call that shuts down the sync server (used on quit,
-  and by a reset that only debug builds allow), and the two calls to
-  Windows' encryption facility. Each is a handful of lines with no
-  attacker-reachable input, and every maintenance pass counts them — a
-  third kind would be treated as a finding in itself.
+  and by a reset that only debug builds allow), the two calls to Windows'
+  encryption facility, and the call that opens a link from a note in your
+  browser. Each is a handful of lines. The link call is the only one that
+  sees text from outside (a note can arrive by sync), so it accepts only a
+  plain `http://` or `https://` address, never a file or program path, and
+  a test holds it to that. Every maintenance pass counts them — a fourth
+  kind would be treated as a finding in itself.
 
 ---
 

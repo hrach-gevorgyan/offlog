@@ -191,10 +191,12 @@ owner-only.
   property lookup.
 - **`localStorage` contents** — nothing sensitive beyond the documented,
   accepted tradeoffs.
-- **`src-tauri/` unsafe blocks** — there should be exactly two *kinds*:
+- **`src-tauri/` unsafe blocks** — there should be exactly three *kinds*:
   the `TerminateJobObject` FFI in `lib.rs` (its `unsafe extern` block
-  plus the two call sites) and the DPAPI calls in `secure_storage.rs`.
-  Count kinds, not occurrences. Any third kind is a finding. Confirm none is reachable
+  plus the two call sites), the DPAPI calls in `secure_storage.rs`, and
+  `ShellExecuteW` in `open_web_link`, which only `is_web_link`-checked
+  http(s) addresses reach. Count kinds, not occurrences. Any fourth kind is
+  a finding. Confirm none is reachable
   with attacker-controlled input, and that `pairing.rs` logs outcomes,
   never code or credential values.
 - **`eval(`, `new Function(`, `innerHTML =`** outside the `{@html}` cases.
