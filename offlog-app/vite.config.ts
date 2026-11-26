@@ -43,4 +43,9 @@ function cspPlugin(): Plugin {
 export default defineConfig({
   plugins: [svelte(), launchCoverPlugin(), cspPlugin()],
   base: './',
+  // The largest chunk is MarkdownEditor's, which is CodeMirror itself, about
+  // 500 kB and loaded only when a note editor opens; splitting it saves
+  // nothing. The limit sits just above it, so any other chunk this big still
+  // warns.
+  build: { chunkSizeWarningLimit: 560 },
 })
