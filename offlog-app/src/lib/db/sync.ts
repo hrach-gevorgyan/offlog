@@ -64,7 +64,7 @@ function reportRejected(count: number) {
 // On a PC moving to encrypted sync: anything the readable database holds
 // comes into this device first, then that database is deleted from the
 // server. Pulled unchecked, so it runs only for that move (config.ts).
-// Retried after each settled sync until done.
+// Retried after a settled sync, with a growing wait, until done.
 export async function retirePlainServer(): Promise<void> {
   const url = localStorage.getItem(PLAIN_SERVER_TO_RETIRE_KEY);
   if (!url || !getSyncKey()) return;
@@ -154,11 +154,27 @@ function markSynced() {
 
 // After a sync, not at boot: on the desktop the sync server may still be
 // starting then, and a large readable database must not hold up startup.
+// A failed attempt waits before the next one, doubling up to six hours: on
+// the desktop a sync settles after nearly every edit, and each attempt opens
+// a remote instance and pulls the whole readable database.
+const RETIRE_RETRY_MS = 60000;
+const RETIRE_RETRY_MAX_MS = 6 * 60 * 60 * 1000;
 let _retiring = false;
+let _retireNextAt = 0;
+let _retireDelay = RETIRE_RETRY_MS;
 function retireAfterSync() {
-  if (_retiring || !localStorage.getItem(PLAIN_SERVER_TO_RETIRE_KEY)) return;
+  if (_retiring || !localStorage.getItem(PLAIN_SERVER_TO_RETIRE_KEY) || Date.now() < _retireNextAt) return;
   _retiring = true;
-  retirePlainServer().catch(() => {}).finally(() => { _retiring = false; });
+  retirePlainServer().catch(() => {}).finally(() => {
+    _retiring = false;
+    if (localStorage.getItem(PLAIN_SERVER_TO_RETIRE_KEY)) {
+      _retireNextAt = Date.now() + _retireDelay;
+      _retireDelay = Math.min(_retireDelay * 2, RETIRE_RETRY_MAX_MS);
+    } else {
+      _retireNextAt = 0;
+      _retireDelay = RETIRE_RETRY_MS;
+    }
+  });
 }
 
 // Live sync pauses after every replicated batch, and a scan reads every
