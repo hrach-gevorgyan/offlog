@@ -359,6 +359,20 @@ describe('audit 2026-10-09: data-safety fixes', () => {
     expect((await getCustomFieldDefs()).map(f => f.id)).toContain(field.id);
   });
 
+  it('a task in a status only the losing side of a project conflict has is not reported or moved', async () => {
+    const base = { type: 'project', space_id: 'space:unsorted', name: 'Shared', position: 0, created_at: '2026-11-01T00:00:00.000Z', updated_at: '2026-11-01T00:00:00.000Z' };
+    await db.bulkDocs([
+      { ...base, _id: 'project:split-cols', _rev: '1-aaaa', columns: [{ id: 'col:todo', name: 'To do' }, { id: 'col:review', name: 'Review' }, { id: 'col:done', name: 'Done' }] },
+      { ...base, _id: 'project:split-cols', _rev: '1-bbbb', name: 'Shared (renamed)', columns: [{ id: 'col:todo', name: 'To do' }, { id: 'col:done', name: 'Done' }] },
+    ] as never, { new_edits: false });
+    const t = await createTask('project:split-cols', 'space:unsorted', 'col:review', 'In review');
+    const { issues } = await checkIntegrity();
+    expect(issues.filter(i => i.type === 'invalid_column')).toEqual([]);
+    expect(issues.some(i => i.type === 'conflict' && i.docId === 'project:split-cols')).toBe(true);
+    await repairDatabase();
+    expect((await db.get<TaskDoc>(t._id!)).column_id).toBe('col:review');
+  });
+
   it('values for a field defined only on the losing side of a conflict are not orphans', async () => {
     const { t } = await projectWithTask('Field value');
     await db.bulkDocs([

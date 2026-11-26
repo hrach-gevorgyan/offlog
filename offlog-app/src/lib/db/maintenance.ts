@@ -288,6 +288,20 @@ async function knownFieldIds(): Promise<Set<string>> {
   return ids;
 }
 
+// The same for statuses: while two devices' versions of a project are in
+// conflict, a status only the losing side has is still real, and moving its
+// tasks out would lose their place when that side is chosen.
+async function statusInConflictingRevision(projectId: string, columnId: string): Promise<boolean> {
+  try {
+    const doc = await db.get<ProjectDoc>(projectId, { conflicts: true });
+    for (const rev of doc._conflicts ?? []) {
+      const other = await db.get<ProjectDoc>(projectId, { rev });
+      if (other.columns?.some(c => c.id === columnId)) return true;
+    }
+  } catch { /* project gone; the caller reports that */ }
+  return false;
+}
+
 // Repairs that act on a reference to something missing. During a sync the
 // "missing" project, status, field or linked task may simply not have
 // arrived yet, so these wait until it settles.
@@ -374,7 +388,7 @@ export async function checkIntegrity(): Promise<{ issues: IntegrityIssue[]; chec
       continue;
     }
     const proj = projectById.get(t.project_id);
-    if (proj && proj.columns?.length && !proj.columns.some(c => c.id === t.column_id)) {
+    if (proj && proj.columns?.length && !proj.columns.some(c => c.id === t.column_id) && !(await statusInConflictingRevision(proj._id, t.column_id))) {
       issues.push({ type: 'invalid_column', docId: t._id!, description: `Task "${t.title}" points to a missing status in "${proj.name}"` });
     }
     // Moving a project rewrites its tasks' space after the project itself; a
