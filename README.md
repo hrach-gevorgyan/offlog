@@ -302,6 +302,7 @@ no setup whatsoever.
 
 ## Support
 
+- **Like Offlog?** A star at the top of this page helps other people find it.
 - **Bug or question** — open an
   [issue](https://github.com/hrach-gevorgyan/offlog/issues). Bug reports
   from real use are the most useful thing you can send, and now the main
