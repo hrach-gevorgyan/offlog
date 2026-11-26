@@ -54,9 +54,15 @@ pub fn store_secret(path: &std::path::Path, user: &str, pass: &str) -> std::io::
     }
     // Temp file + rename, like sync_host.rs's identity file: a write cut off
     // half-way would leave a blob that fails to decrypt, and load_secret
-    // reads that as "no credentials".
+    // reads that as "no credentials". The flush before the rename matters
+    // too: after a power cut the rename can survive while the data doesn't.
+    use std::io::Write;
     let tmp = path.with_extension("enc.tmp");
-    std::fs::write(&tmp, encrypted)?;
+    {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(&encrypted)?;
+        f.sync_all()?;
+    }
     std::fs::rename(&tmp, path)
 }
 
@@ -74,4 +80,20 @@ pub fn load_secret(path: &std::path::Path) -> Option<(String, String)> {
     let user = value.get("user")?.as_str()?.to_string();
     let pass = value.get("pass")?.as_str()?.to_string();
     Some((user, pass))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{load_secret, store_secret};
+
+    #[test]
+    fn stored_credentials_read_back_and_leave_no_temp_file() {
+        let dir = std::env::temp_dir().join(format!("offlog-secret-test-{}", std::process::id()));
+        let path = dir.join("sync-secret.enc");
+        store_secret(&path, "user", "first").unwrap();
+        store_secret(&path, "user", "second").unwrap();
+        assert_eq!(load_secret(&path), Some(("user".into(), "second".into())));
+        assert!(!path.with_extension("enc.tmp").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
