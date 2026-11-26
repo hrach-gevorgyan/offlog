@@ -31,6 +31,22 @@ for (const m of s.matchAll(/## (v[\d.]+)\n+### In short\n([\s\S]*?)\n\n/g))
 
 ---
 
+## v7.0.3
+
+### In short
+
+Fixes and updates. On the PC, sync now starts without Microsoft's Visual C++ runtime installed, App Lock locks after the PC wakes from sleep, and sync reconnects right away after a restart or sleep. Reordering statuses no longer undoes a change made on another device. Nothing changes in how Offlog looks, and your tasks stay exactly as they are.
+
+### Fixed
+- On the PC, sync starts without needing Microsoft's Visual C++ runtime installed.
+- App Lock locks when the PC wakes from sleep after the lock time has passed.
+- On the PC, sync reconnects right away after waking from sleep or after its sync server restarts.
+- Reordering statuses keeps a status that was just added or renamed on another device.
+- Run maintenance waits for sync to finish before it moves anything.
+- The Board's Filters menu shows fields added after the app started.
+- Task history no longer stays on "Loading…" when it can't be read.
+- The automatic daily backup uses less memory over long sessions.
+
 ## v7.0.2
 
 ### In short

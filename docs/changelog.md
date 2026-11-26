@@ -17,7 +17,46 @@ exceeds 10 releases, move the oldest into the archive.
 
 ---
 
+## [7.0.3] — 2026-11-26
+
+The 32nd maintenance pass and a dependency round, released together with
+7.0.2's fix, which was never tagged on its own. No storage, sync or backup
+format changed.
+
+### Fixed
+- App Lock: the first input after the PC slept restarted the stalled
+  countdown instead of locking (`App.svelte` reads the wall clock now).
+- Desktop sync waited out PouchDB's minutes-long retry after NyxDB restarted
+  or the PC woke: the supervisor emits `sync-host-restarted` and
+  `store.ts` calls `syncNow()` on it and on wake.
+- `reorderColumns` wrote the list read before the "becomes the last status"
+  confirmation, deleting a status added or renamed meanwhile; it now applies
+  the order to the project as it is.
+- `repairDatabase` deferred missing-reference repairs only while
+  `syncState.status === 'syncing'`; it also waits after a failed or offline
+  sync and on a paired device that never finished one. `checkIntegrity` no
+  longer reports a task whose status exists only on the losing side of a
+  project conflict.
+- Auto-backup leaked a PouchDB instance per run and retried a failure at
+  every hourly housekeeping; it closes the instance and retries after 6 hours.
+- The change feed restarted every 2 s forever while failing, reloading every
+  subscriber each time; it backs off to a minute. A failing
+  `retirePlainServer` backs off to 6 hours instead of running after every sync.
+- Board filters kept the field list read at startup (App reloads it on the
+  change feed); task history stayed on "Loading…" after a read error.
+- `secure_storage.rs` flushes the encrypted sync login before its rename.
+- Three messages reworded to "Could not … Please try again.".
+
+### Changed
+- npm and cargo minor/patch updates (Tauri 2.12.7, Capacitor 8.6.3, Svelte
+  5.59.2, CodeMirror, zip 9.8.2, rustls-webpki 0.103.17), jsdom 31 for tests.
+  The glob/minimatch `overrides` are gone: rimraf now requires the fixed
+  versions itself. `vite.config.ts` sets `chunkSizeWarningLimit: 560` for
+  CodeMirror's lazy 503 kB chunk.
+
 ## [7.0.2] — 2026-11-20
+
+Not released on its own; ships in 7.0.3.
 
 A Windows fix: the bundled NyxDB sync host now runs on PCs without the
 Visual C++ Redistributable. No storage, sync or backup format changed.
@@ -420,49 +459,10 @@ UI flash reported separately this session.
   stuck `true` forever after any failed load, silently blocking every
   load after the first failure.
 
-## [6.10.3] — 2026-08-29
-
-The real fix for the Settings → Sync crash that persisted through
-v6.10.1 and v6.10.2: both of those releases hardened async call sites
-that could reject, but the actual crash was a Svelte `each_key_duplicate`
-error thrown by `getDeviceLastSeen()` (`src/lib/db/core.ts`) — a device
-that logged before `source_id` existed and again after it ended up as
-two rows sharing one display name, and Svelte throws the instant a keyed
-`{#each}` sees a duplicate key. Fixed by merging entries by display name
-(newest write wins) after the identity-key grouping pass, with a
-regression test reproducing the duplicate-name case.
-
-### Fixed
-- `each_key_duplicate` crash opening Settings → Sync — the actual root
-  cause behind the "Something went wrong" crash reported after
-  v6.10.0/.1/.2.
-- CSP `frame-ancestors 'none'` removed from the `<meta>` tag in
-  `vite.config.ts` — spec-only enforceable via an HTTP header, so it was
-  a silent no-op that still logged a console warning on every load.
-  Desktop's own header-based CSP already covers this via Tauri.
-- Auto-backup writes into `$APPDATA/auto-backups` were silently failing
-  on desktop: `fs:allow-write-text-file` grants the command but not a
-  path, and no `fs:scope` entry existed for that folder. Added one
-  narrowly scoped to `auto-backups` only.
-- "Devices seen recently" — the "this device" pill's spacing/vertical
-  alignment against the device name.
-
-### Added
-- Desktop now emits a `pairing-succeeded` Tauri event from `pairing.rs`
-  the instant a phone completes the handshake, and shows an immediate
-  success state in Settings instead of waiting on the next unrelated
-  database poll to notice.
-
-### Changed
-- First-run onboarding (`NamePrompt.svelte`): the sync offer now comes
-  after the quick-preferences step instead of before it. Previously,
-  choosing "Set up sync" handed off straight to full Settings and
-  silently skipped the preferences step that would otherwise have
-  followed.
-
 ---
 
-[7.0.2]: https://github.com/hrach-gevorgyan/offlog/compare/v7.0.1...v7.0.2
+[7.0.3]: https://github.com/hrach-gevorgyan/offlog/compare/v7.0.1...v7.0.3
+[7.0.2]: https://github.com/hrach-gevorgyan/offlog/commit/6b585fd
 [7.0.1]: https://github.com/hrach-gevorgyan/offlog/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.2...v7.0.0
 [6.12.2]: https://github.com/hrach-gevorgyan/offlog/compare/v6.12.1...v6.12.2
@@ -471,4 +471,3 @@ regression test reproducing the duplicate-name case.
 [6.11.0]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.5...v6.11.0
 [6.10.5]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.4...v6.10.5
 [6.10.4]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.3...v6.10.4
-[6.10.3]: https://github.com/hrach-gevorgyan/offlog/compare/v6.10.2...v6.10.3
