@@ -68,18 +68,24 @@ function backupFilename(now: Date): string {
 
 async function collectBackupJson(): Promise<string> {
   const PouchDBCtor = window.PouchDB;
+  // PouchDB keeps every instance until close(), and a tray session runs this
+  // once a day for weeks.
   const db = new PouchDBCtor('offlog');
-  // `attachments: true, binary: false` inlines each attachment as base64
-  // `data` instead of a `{stub: true}` placeholder. Without it, a backup
-  // containing any attachment doesn't merely lose the file -- restoring it
-  // fails *entirely*, because PouchDB rejects a whole bulkDocs batch with
-  // `missing_stub` when a stub has no matching blob, taking every
-  // space/project/task in the file down with it.
-  const all = await db.allDocs({ include_docs: true, attachments: true, binary: false });
-  // A row can carry no doc (a deletion tombstone); reading _id off it
-  // would throw mid-backup.
-  const docs = all.rows.map(r => r.doc).filter(d => !!d && !d._id.startsWith('_'));
-  return JSON.stringify(docs, null, 2);
+  try {
+    // `attachments: true, binary: false` inlines each attachment as base64
+    // `data` instead of a `{stub: true}` placeholder. Without it, a backup
+    // containing any attachment doesn't merely lose the file -- restoring it
+    // fails *entirely*, because PouchDB rejects a whole bulkDocs batch with
+    // `missing_stub` when a stub has no matching blob, taking every
+    // space/project/task in the file down with it.
+    const all = await db.allDocs({ include_docs: true, attachments: true, binary: false });
+    // A row can carry no doc (a deletion tombstone); reading _id off it
+    // would throw mid-backup.
+    const docs = all.rows.map(r => r.doc).filter(d => !!d && !d._id.startsWith('_'));
+    return JSON.stringify(docs, null, 2);
+  } finally {
+    await db.close().catch(() => {});
+  }
 }
 
 async function runNative(json: string, now: Date): Promise<void> {
@@ -118,18 +124,27 @@ async function runTauri(json: string, now: Date): Promise<void> {
 // is tray-resident, so a session can last weeks and "next launch" may never
 // come -- backups would silently stop while still reporting a recent
 // timestamp. The isBackupDue() check above makes calling it often cheap.
+// A failed run is retried after this long, not at the next hourly
+// housekeeping: each attempt reads the whole database with attachments
+// inlined, and a disk that's full now will usually still be full in an hour.
+const RETRY_AFTER_FAILURE_MS = 6 * 60 * 60 * 1000;
+let failedAt = 0;
+
 export async function runAutoBackupIfDue(): Promise<void> {
   if (!isAutoBackupEnabled()) return;
   if (!isNativePlatform() && !isTauri()) return;
   const now = new Date();
   if (!isBackupDue(getLastAutoBackupAt(), now)) return;
+  if (failedAt && now.getTime() - failedAt >= 0 && now.getTime() - failedAt < RETRY_AFTER_FAILURE_MS) return;
   try {
     const json = await collectBackupJson();
     if (isNativePlatform()) await runNative(json, now);
     else if (isTauri()) await runTauri(json, now);
     localStorage.setItem(LAST_RUN_KEY, now.toISOString());
+    failedAt = 0;
   } catch (err) {
-    console.warn('autoBackup: failed, will retry at the next hourly housekeeping', err);
+    failedAt = now.getTime();
+    console.warn('autoBackup: failed, will retry in a few hours', err);
   }
 }
 
