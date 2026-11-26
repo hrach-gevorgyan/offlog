@@ -369,7 +369,13 @@ export function queueTaskWrite<T>(id: string, fn: () => Promise<T>): Promise<T> 
 // The rebuilt feed uses `since: 'now'`, so changes that landed during the gap
 // are never delivered -- hence every subscriber is notified on each restart to
 // force a full reload rather than resuming from a hole.
+// The wait doubles on each failure in a row, up to a minute, and resets once
+// a change gets through: every restart reloads every subscriber, which a
+// fault that persists (closed IndexedDB, full disk) would otherwise repeat
+// every two seconds for as long as it lasts.
 const CHANGE_FEED_RETRY_MS = 2000;
+const CHANGE_FEED_RETRY_MAX_MS = 60000;
+let _feedRetryDelay = CHANGE_FEED_RETRY_MS;
 
 // One PouchDB feed is shared by every subscriber, and a burst of changes
 // (a sync landing hundreds of docs) reaches each subscriber once per quiet
@@ -395,6 +401,7 @@ function attachFeed(isRestart: boolean) {
   if (!_subscribers.size) return;
   _feed = db.changes({ since: 'now', live: true })
     .on('change', () => {
+      _feedRetryDelay = CHANGE_FEED_RETRY_MS;
       invalidateTaskCache();
       scheduleFlush();
     })
@@ -402,7 +409,9 @@ function attachFeed(isRestart: boolean) {
       console.warn('change feed died, restarting', err);
       try { _feed?.cancel(); } catch { /* already dead */ }
       _feed = null;
-      _feedRetry = setTimeout(() => { _feedRetry = undefined; attachFeed(true); }, CHANGE_FEED_RETRY_MS);
+      const delay = _feedRetryDelay;
+      _feedRetryDelay = Math.min(delay * 2, CHANGE_FEED_RETRY_MAX_MS);
+      _feedRetry = setTimeout(() => { _feedRetry = undefined; attachFeed(true); }, delay);
     });
   // Anything that changed while the feed was down was never delivered.
   if (isRestart) { invalidateTaskCache(); scheduleFlush(); }
@@ -416,6 +425,7 @@ export function subscribe(callback: () => void): () => void {
   return () => {
     if (!_subscribers.delete(entry) || _subscribers.size) return;
     clearTimeout(_feedRetry); _feedRetry = undefined;
+    _feedRetryDelay = CHANGE_FEED_RETRY_MS;
     clearTimeout(_flushTimer); _flushTimer = undefined;
     try { _feed?.cancel(); } catch { /* already cancelled */ }
     _feed = null;

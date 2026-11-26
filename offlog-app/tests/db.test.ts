@@ -2851,6 +2851,41 @@ describe('subscribe() shares one change feed', () => {
     }
   });
 
+  it('waits longer after each feed failure in a row, up to a minute, and starts over after a change', async () => {
+    const handlers: Record<string, (x?: unknown) => void>[] = [];
+    const live = vi.spyOn(db, 'changes').mockImplementation(((opts?: any) => {
+      if (!opts?.live) return Promise.resolve({ results: [], last_seq: 0 }) as any;
+      const h: Record<string, (x?: unknown) => void> = {};
+      handlers.push(h);
+      const feed = { on: (e: string, cb: (x?: unknown) => void) => { h[e] = cb; return feed; }, cancel: () => {} };
+      return feed as any;
+    }) as any);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.useFakeTimers();
+    const off = subscribe(() => {});
+    try {
+      const waits: number[] = [];
+      for (let i = 0; i < 7; i++) {
+        handlers.at(-1)!.error(new Error('closed'));
+        const before = handlers.length;
+        let waited = 0;
+        while (handlers.length === before) { await vi.advanceTimersByTimeAsync(1000); waited += 1000; }
+        waits.push(waited);
+      }
+      expect(waits).toEqual([2000, 4000, 8000, 16000, 32000, 60000, 60000]);
+      handlers.at(-1)!.change();
+      handlers.at(-1)!.error(new Error('closed'));
+      const before = handlers.length;
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(handlers.length).toBe(before + 1);
+    } finally {
+      off();
+      vi.useRealTimers();
+      live.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
   it('stops notifying after the last unsubscribe', async () => {
     const project = await createProject('space:unsorted', 'Feed off');
     const a = vi.fn();
