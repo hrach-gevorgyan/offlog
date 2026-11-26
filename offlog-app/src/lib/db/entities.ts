@@ -367,8 +367,18 @@ export async function renameColumn(projectId: string, colId: string, name: strin
   return updateProject(projectId, doc => ({ columns: doc.columns.map(c => c.id === colId ? { ...c, name } : c) }));
 }
 
+// Applied to the project as it is when written, not the list the caller
+// read: the desktop asks for confirmation first, and a status added or
+// renamed on another device meanwhile must survive, or its tasks lose their
+// status and vanish from the Board. Statuses in `columns` take the slots they
+// hold in that order; any other status keeps its place.
 export async function reorderColumns(projectId: string, columns: Column[]): Promise<ProjectDoc> {
-  return updateProject(projectId, { columns });
+  const order = columns.map(c => c.id);
+  return updateProject(projectId, doc => {
+    const known = order.map(id => doc.columns.find(c => c.id === id)).filter((c): c is Column => !!c);
+    let k = 0;
+    return { columns: doc.columns.map(c => (order.includes(c.id) ? known[k++] : c)) };
+  });
 }
 
 // Which device hosts sync, by its Offlog name: the phone knows the PC only by

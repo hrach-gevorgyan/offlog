@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import db, {
-  createProject, createTask, updateTask, deleteTask, deleteProject, removeColumn, reorderColumns,
+  createProject, createTask, updateTask, deleteTask, deleteProject, removeColumn, reorderColumns, addColumn, renameColumn,
   addAttachment, getAttachmentBlob, exportProjectDocs, importJSON,
   getConflicts, resolveConflict, addCustomFieldDef, getCustomFieldDefs, checkIntegrity, repairDatabase,
   emptyTrash, deleteForever, pruneOldDeletedTasks, clearLogs, wipeAndReseed, getRecentLogs,
@@ -76,10 +76,27 @@ describe('single-project backup keeps attachments', () => {
   });
 });
 
+// The desktop builds the new order, then waits for "becomes the last status"
+// to be confirmed; a status added or renamed on another device meanwhile was
+// written over with the list read before the dialog.
+describe('reorderColumns applies the order to the project as it is now', () => {
+  it('keeps a status added and a rename made after the order was read', async () => {
+    const p = await createProject('space:unsorted', 'Order');
+    const [a, b, c, d] = p.columns;
+    const added = await addColumn(p._id!, 'Waiting');
+    const waiting = added.columns.find(col => col.name === 'Waiting')!;
+    await renameColumn(p._id!, b.id, 'Doing now');
+    const proj = await reorderColumns(p._id!, [b, a, c, d]);
+    expect(proj.columns.map(col => col.id)).toEqual([b.id, a.id, c.id, waiting.id, d.id]);
+    expect(proj.columns[0].name).toBe('Doing now');
+  });
+});
+
 describe('removeColumn never completes or resets a repeating task', () => {
   it('removing the first of two statuses lands the task on a live status with its due date unchanged', async () => {
     const p = await createProject('space:unsorted', 'P');
-    await reorderColumns(p._id!, [p.columns[0], p.columns[3]]);
+    await removeColumn(p._id!, p.columns[1].id);
+    await removeColumn(p._id!, p.columns[2].id);
     const t = await createTask(p._id!, 'space:unsorted', p.columns[0].id, 'Weekly review', { due_date: '2026-10-01', recurrence: 'weekly' });
     const proj = await removeColumn(p._id!, p.columns[0].id);
     const after = await db.get<TaskDoc>(t._id!);
