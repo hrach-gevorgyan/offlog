@@ -46,6 +46,27 @@ detail for anything summarized here lives in git history.
   ~90 MB batch in testing (2026-10-13); v0.1.8 accepted it. Unanswered:
   whether real data gets near it, and whether a smaller `batch_size` is
   worth its cost for small docs.
+- **Should card positions be respaced?** `posBetween` halves the gap on
+  every drop and nothing widens it again: about 50 drops into exactly the
+  same spot give two cards an equal position, and the drop stops sticking.
+  No data is lost. Respacing a status's cards fixes it but writes, and
+  replicates, every card in that status. Unanswered: whether real use ever
+  gets there.
+- **Should automatic backups keep an older copy too?** Only the 7 newest
+  daily copies are kept, so a permanent delete noticed after a week is gone
+  from all of them. A weekly or monthly copy would cover that, at the cost
+  of disk space (attachments are inlined in every copy).
+- **Is NyxDB's flush a real flush to disk?** Each write is acknowledged
+  after a flush. If that flush only reaches the OS cache, a PC losing power
+  can roll back pushes it already acknowledged, and the pushing device
+  never re-sends them. Killing the process is safe either way. Answered
+  in NyxDB's source, not here.
+- **Two costs that grow with data, waiting for the scale threshold below:**
+  the conflict scan after every finished sync reads every non-log doc
+  (`scanConflicts`), and pruning leaves tombstones that every range scan
+  still walks (`pruneOldLogs` scans all log tombstones weekly). Both are
+  slight today; an incremental scan, and a "pruned up to" mark for the log
+  prune, are the cheap fixes when measurements say so.
 - **Does local-network sync attract extra Play review friction?** Android's
   local-network permission prompts, or general policy scrutiny of an app that
   talks to LAN addresses over cleartext HTTP. Answered only by the C3 review
