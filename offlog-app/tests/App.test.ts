@@ -16,7 +16,7 @@ vi.mock('../src/config', async (importOriginal) => {
 });
 
 import App from '../src/App.svelte';
-import db, { createTask, deleteTask, getTaskById } from '../src/lib/db';
+import db, { createTask, deleteTask, getTaskById, addCustomFieldDef } from '../src/lib/db';
 import { projects } from '../src/lib/store';
 import { pendingOpenTaskId } from '../src/lib/notifications';
 
@@ -85,6 +85,24 @@ describe('App undo-delete toast', () => {
 
     await waitFor(async () => expect((await getTaskById(mine._id!))?.deleted).toBe(false));
     expect((await getTaskById(other._id!))?.deleted).toBe(true);
+  });
+});
+
+// App never remounts, so the Board's Filters menu once kept the field list it
+// read at startup until the app was restarted.
+describe('Board filters', () => {
+  it('offer a field added after startup', async () => {
+    const { container } = await renderReady(false);
+    const doc = container.ownerDocument;
+    const p = get(projects)[0];
+    const projectLink = () => [...doc.querySelectorAll<HTMLElement>('.sidebar button, .sidebar [role="button"]')].find(e => e.textContent?.trim() === p.name);
+    await waitFor(() => expect(projectLink()).toBeTruthy());
+    await fireEvent.click(projectLink()!);
+    await waitFor(() => expect(doc.querySelector('button[aria-label="Filters"]')).toBeTruthy());
+    await fireEvent.click(doc.querySelector('button[aria-label="Filters"]') as HTMLButtonElement);
+    expect(doc.querySelector('.add-field-filter-btn')).toBeNull();
+    await addCustomFieldDef('Course', 'text');
+    await waitFor(() => expect(doc.querySelector('.add-field-filter-btn')).toBeTruthy());
   });
 });
 

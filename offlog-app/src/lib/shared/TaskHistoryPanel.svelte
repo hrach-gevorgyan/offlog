@@ -8,7 +8,7 @@
 
   let history: Awaited<ReturnType<typeof getLogsForTask>> = [];
   let loaded = false;
-  getLogsForTask(taskId).then(h => { history = h; loaded = true; });
+  getLogsForTask(taskId).then(h => { history = h; }, () => {}).finally(() => { loaded = true; });
 
   const ACTION_LABEL: Record<string, string> = { create: 'Created', update: 'Edited', move: 'Moved', delete: 'Deleted' };
 

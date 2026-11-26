@@ -7,7 +7,7 @@
   import { scrimIn, scrimOut, centredIn, centredOut, toastIn, toastOut, viewIn, viewOut } from './lib/motion';
   import { get } from 'svelte/store';
   import { init, activeProject, activeProjectId, activeSpaceId, projectTasks, projects, spaces, reloadTasks, errorToast, modalOpen, showError } from './lib/store';
-  import { updateProject, subscribeUndo, undoDelete, getTaskById, syncNow, syncOnResume, getCustomFieldDefs } from './lib/db';
+  import { updateProject, subscribeUndo, undoDelete, getTaskById, syncNow, syncOnResume, getCustomFieldDefs, subscribe as subscribeDb } from './lib/db';
   import type { CustomFieldDef } from './lib/types';
   import type { CustomFieldFilter } from './lib/utils';
   import { pendingOpenTaskId, notificationActionError } from './lib/notifications';
@@ -109,9 +109,11 @@
   let kbCustomFieldFilters: CustomFieldFilter[] = [];
   $: kbAllTags = [...new Set($projectTasks.flatMap(t => t.tags))].sort();
   // Custom fields are global (not per-project), same as ListView's own
-  // copy — loaded once here for Board's FilterBar.
+  // copy, for Board's FilterBar. App never remounts, so a field added,
+  // renamed or synced in has to come through the change feed.
   let customFieldDefs: CustomFieldDef[] = [];
-  getCustomFieldDefs().then(f => { customFieldDefs = f; });
+  const loadFieldDefs = () => getCustomFieldDefs().then(f => { customFieldDefs = f; }).catch(() => {});
+  onMount(() => { loadFieldDefs(); return subscribeDb(loadFieldDefs); });
   // Stale filter values from a previous project shouldn't silently narrow
   // the next project's board — reset on every genuine navigation.
   // Takes the project id as an argument purely so the reactive dependency

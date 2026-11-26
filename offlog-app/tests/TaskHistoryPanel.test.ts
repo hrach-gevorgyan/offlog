@@ -42,6 +42,13 @@ describe('TaskHistoryPanel', () => {
     expect(rows(container)).toHaveLength(0);
   });
 
+  it('stops loading when the history cannot be read', async () => {
+    getLogsForTask.mockRejectedValueOnce(new Error('index not ready'));
+    const { container } = render(TaskHistoryPanel, { props: { taskId: 'task:1' } });
+
+    await waitFor(() => expect(container.textContent).toContain('No history recorded.'));
+  });
+
   it('phrases create/move/delete task-scoped and labels the action', async () => {
     getLogsForTask.mockResolvedValueOnce([
       mkLog({ _id: 'log:a', action: 'create' }),
