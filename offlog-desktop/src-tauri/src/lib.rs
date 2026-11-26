@@ -455,6 +455,9 @@ fn supervise_nyxdb(
         log::info!("sync_host: NyxDB restarted on port {}", info.port);
         if sync_host::wait_ready(info.port, Duration::from_secs(20)) || wait_ready_with_backoff(app_handle, info.port) {
             sync_host::ensure_database(info);
+            // The frontend restarts its replication (store.ts), which may
+            // otherwise sit in a retry wait of several minutes.
+            let _ = app_handle.emit("sync-host-restarted", ());
             if !announced {
                 start_pairing_and_discovery(app_handle, info);
                 announced = true;

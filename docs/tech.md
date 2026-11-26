@@ -1109,6 +1109,9 @@ policy starts over: a tray session lasts weeks, and a burst's usual causes (a
 full disk, a file a scanner holds) clear on their own. A
 failed respawn counts as another exit. The pairing server and mDNS start
 once per session, the first time NyxDB is ready, never again on restart.
+Each restart that comes up ready emits `sync-host-restarted`, and
+`store.ts`'s `watchSyncHostRestart` calls `syncNow()`, since PouchDB's own
+retry wait may have grown to minutes by then; waking from sleep does the same.
 NyxDB exits with code 3 when it can't open its store; on the second such
 exit in a row (one can be a passing lock), once per session, the data dir is
 renamed to `<name>.damaged-<unix-secs>` and NyxDB restarts on

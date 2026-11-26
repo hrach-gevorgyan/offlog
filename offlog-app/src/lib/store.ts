@@ -3,10 +3,10 @@ import type { SpaceDoc, ProjectDoc, TaskDoc } from './types';
 import {
   getSpaces, getProjects, getTasksForProject,
   seedIfEmpty, startSync, subscribe, initIndexes, maybePruneOldLogs, maybePruneOldDeletedTasks,
-  scanConflicts, putSyncHostRecord,
+  scanConflicts, putSyncHostRecord, syncNow,
 } from './db';
 import { rescheduleAll, initNotificationListeners, checkPermission } from './notifications';
-import { initTauriSyncDefaults, checkForOtherHosts, watchSyncDataSetAside, initDeviceName, isNativePlatform, syncsWithOwnSidecar, getDeviceId, getDeviceName } from '../config';
+import { initTauriSyncDefaults, checkForOtherHosts, watchSyncDataSetAside, initDeviceName, isNativePlatform, isTauri, syncsWithOwnSidecar, getDeviceId, getDeviceName } from '../config';
 import { watchForStaleHost } from './discovery';
 import { runAutoBackupIfDue } from './autoBackup';
 
@@ -130,6 +130,7 @@ export async function init() {
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 4000);
   setTimeout(() => { checkForOtherHosts().catch(() => {}); }, 10000);
   watchSyncDataSetAside().catch(() => {});
+  watchSyncHostRestart();
   subscribe(scheduleReload);
   checkPermission();
   // Listener setup failing (e.g. platform plugin unavailable) shouldn't
@@ -145,7 +146,19 @@ export async function init() {
   // yet" check, so calling hourly is cheap.
   setInterval(runHousekeeping, HOUSEKEEPING_INTERVAL_MS);
   // Android's reminders are OS alarms; desktop and web ones are JS timers.
-  if (!isNativePlatform()) watchForWake(() => { rescheduleAll().catch(() => {}); });
+  // Phones resync on resume; the tray window gets no such event, and its
+  // replication may sit in a long retry wait from before the sleep.
+  if (!isNativePlatform()) watchForWake(() => { rescheduleAll().catch(() => {}); syncNow().catch(() => {}); });
+}
+
+// The desktop restarts NyxDB after a crash, sometimes after resting an hour;
+// by then PouchDB's own retry wait has grown to minutes, so sync is restarted
+// as soon as the server answers again. Exported for tests.
+export function watchSyncHostRestart() {
+  if (!isTauri()) return;
+  import('@tauri-apps/api/event')
+    .then(({ listen }) => listen('sync-host-restarted', () => { syncNow().catch(() => {}); }))
+    .catch(() => { /* no event bridge (tests, a non-Tauri host) */ });
 }
 
 // Timers stall while a laptop sleeps, and the hidden tray window gets no
