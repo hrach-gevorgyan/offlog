@@ -462,12 +462,19 @@
   let locked = false;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
   let hiddenAt: number | null = null;
+  let lastActivity = Date.now();
 
   function resetIdleTimer() {
     if (idleTimer) clearTimeout(idleTimer);
-    if (locked || !isAppLockEnabled()) return;
+    const now = Date.now();
+    if (locked || !isAppLockEnabled()) { lastActivity = now; return; }
     // Immediately (0) locks on leaving the app, not on a pause while it is in use.
     const minutes = getAppLockTimeoutMinutes();
+    // Timers stall while the PC sleeps and a tray window gets no
+    // visibilitychange, so the first input after waking checks the wall clock
+    // before it re-arms the countdown.
+    if (minutes > 0 && now - lastActivity >= minutes * 60000) { locked = true; return; }
+    lastActivity = now;
     if (minutes > 0) idleTimer = setTimeout(() => { locked = true; }, minutes * 60000);
   }
 
@@ -487,6 +494,7 @@
 
   function onUnlocked() {
     locked = false;
+    lastActivity = Date.now();
     resetIdleTimer();
   }
 

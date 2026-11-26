@@ -88,6 +88,32 @@ describe('App undo-delete toast', () => {
   });
 });
 
+// While the PC sleeps the countdown timer stalls, and the first mouse move
+// after waking used to restart it instead of noticing the hours that passed.
+describe('App Lock after the PC sleeps', () => {
+  it('locks on the first input once the timeout has passed on the wall clock', async () => {
+    localStorage.setItem('offlog_app_lock_timeout_minutes', '5');
+    const realNow = Date.now.bind(Date);
+    let offset = 0;
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset);
+    try {
+      const r = await renderReady(false);
+      lockOn = true;
+      window.dispatchEvent(new Event('mousemove'));
+      offset = 2 * 60000;
+      window.dispatchEvent(new Event('mousemove'));
+      await new Promise(res => setTimeout(res, 50));
+      expect(r.container.querySelector('.lock-screen')).toBeNull();
+      offset += 6 * 60000;
+      window.dispatchEvent(new Event('mousemove'));
+      await waitFor(() => expect(r.container.querySelector('.lock-screen')).not.toBeNull());
+    } finally {
+      nowSpy.mockRestore();
+      localStorage.removeItem('offlog_app_lock_timeout_minutes');
+    }
+  });
+});
+
 describe('App Lock "Immediately"', () => {
   it('never locks while in use, and locks on coming back to the app', async () => {
     localStorage.setItem('offlog_app_lock_timeout_minutes', '0');

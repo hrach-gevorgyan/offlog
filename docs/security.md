@@ -243,8 +243,10 @@ secrecy; the key changes only if the PC's `sync-host.json` is rebuilt.
 ## 4. App Lock — the PIN on the app itself
 
 Optional. Off by default. Turn it on and Offlog asks for a PIN when you
-open it, and again after a time in the background that you choose (5
-minutes unless you change it, or Immediately: as soon as you leave the app).
+open it, and again after a time in the background or unused that you choose
+(5 minutes unless you change it, or Immediately: as soon as you leave the
+app). The time is read from the clock, so a PC that slept past it is locked
+on waking.
 
 - **The PIN itself is never stored.** Only a salted SHA-256 hash, with a
   fresh random salt generated when you set it. That stops someone casually
